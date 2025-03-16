@@ -1,0 +1,41 @@
+name: Release Obsidian plugin
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build plugin
+        run: npm run build
+        
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          
+          # Create a zip file with the required files
+          mkdir $tag
+          cp main.js manifest.json styles.css README.md $tag/
+          zip -r $tag.zip $tag
+          
+          # Create GitHub release
+          gh release create "$tag" \
+            --title "Version $tag" \
+            --notes "See [README.md](https://github.com/EricRhysTaylor/Obsidian_Radial_Timeline/blob/main/README.md) for details." \
+            main.js manifest.json styles.css $tag.zip 
