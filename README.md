@@ -61,7 +61,7 @@ The timeline displays:
 
 Hover over a scene to see its details and click to open the corresponding file.
 
-![Timeline Radial Screenshot](https://raw.githubusercontent.com/EricRhysTaylor/obsidian-timeline-radial/main/screenshot.png)
+![Timeline Radial Screenshot](https://raw.githubusercontent.com/EricRhysTaylor/Obsidian_Radial_Timeline/master/screenshot.png)
 
 ## Scene Ordering and Numbering
 
