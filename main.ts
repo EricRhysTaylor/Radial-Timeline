@@ -70,7 +70,7 @@ export default class TimelinePlugin extends Plugin {
         await this.loadSettings();
         this.addSettingTab(new TimelineSettingTab(this.app, this));
 
-        // Add auto-recompile on plugin load
+        // Add command to create timeline
         this.addCommand({
             id: 'create-interactive-timeline',
             name: 'Create Interactive Timeline',
@@ -90,27 +90,6 @@ export default class TimelinePlugin extends Plugin {
             }
         });
 
-        // Improved auto-create timeline when plugin loads
-        this.app.workspace.onLayoutReady(async () => {
-            // Add a small delay to ensure vault is fully loaded
-            setTimeout(async () => {
-                try {
-                    const sceneData = await this.getSceneData();
-                    if (sceneData.length > 0) {
-                        await this.createTimelineHTML("Timeline", sceneData);
-                        this.log("Timeline auto-generated on plugin load");
-                        new Notice("Timeline auto-generated");
-                    } else {
-                        this.log("No scene data found for auto-generation");
-                        new Notice("No scene data found for timeline auto-generation");
-                    }
-                } catch (error) {
-                    this.log("Error auto-generating timeline:", error);
-                    new Notice("Error auto-generating timeline");
-                }
-            }, 2000); // 2-second delay
-        });
-
         // Add message listener for file opening
         window.addEventListener('message', async (event) => {
             if (event.data.type === 'open-file') {
@@ -120,39 +99,6 @@ export default class TimelinePlugin extends Plugin {
                 }
             }
         });
-
-        // Add file rename listener
-        this.registerEvent(
-            this.app.vault.on('rename', async (file, oldPath) => {
-                // Only update if the file is in our source path
-                if (file.path.startsWith(this.settings.sourcePath) || oldPath.startsWith(this.settings.sourcePath)) {
-                    try {
-                        const sceneData = await this.getSceneData();
-                        if (sceneData.length > 0) {
-                            await this.createTimelineHTML("Timeline", sceneData);
-                            this.log(`Timeline updated after scene file rename: ${oldPath} -> ${file.path}`);
-                        }
-                    } catch (error) {
-                        this.log("Error updating timeline after rename:", error);
-                    }
-                }
-            })
-        );
-
-        // Add theme change listener
-        this.registerEvent(
-            this.app.workspace.on('css-change', async () => {
-                try {
-                    const sceneData = await this.getSceneData();
-                    if (sceneData.length > 0) {
-                        await this.createTimelineHTML("Timeline", sceneData);
-                        this.log("Timeline updated after theme change");
-                    }
-                } catch (error) {
-                    this.log("Error updating timeline after theme change:", error);
-                }
-            })
-        );
     }
 
     private async getSceneData(): Promise<Scene[]> {
@@ -1569,6 +1515,9 @@ class TimelineSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
+        // Add plugin settings
+        containerEl.createEl('h2', { text: 'Timeline Radial Settings' });
+
         new Setting(containerEl)
             .setName('Source Path')
             .setDesc('Path to folder containing scene files')
@@ -1579,5 +1528,162 @@ class TimelineSettingTab extends PluginSettingTab {
                     this.plugin.settings.sourcePath = value;
                     await this.plugin.saveSettings();
                 }));
+        
+        // Add documentation section
+        containerEl.createEl('h2', { text: 'Documentation' });
+        
+        // Create a container for the documentation with some styling
+        const docContainer = containerEl.createEl('div', { 
+            cls: 'timeline-documentation',
+            attr: { style: 'max-width: 800px; margin-top: 20px; padding: 20px; border-radius: 8px; background-color: var(--background-secondary);' }
+        });
+        
+        // Add README content
+        docContainer.createEl('h1', { text: 'Obsidian Timeline Radial' });
+        
+        docContainer.createEl('p', { text: 'A beautiful interactive radial timeline visualization plugin for Obsidian.md that displays scenes from your writing project in a circular timeline.' });
+        
+        // Features section
+        docContainer.createEl('h2', { text: 'Features' });
+        const featuresList = docContainer.createEl('ul');
+        [
+            'Creates an interactive radial timeline visualization of your scenes',
+            'Organizes scenes by act, subplot, and chronological order',
+            'Shows scene details on hover including title, date, synopsis, subplots, and characters',
+            'Color-codes scenes by status (Complete, Working, Todo, etc.)',
+            'Supports both light and dark themes',
+            'Allows clicking on scenes to open the corresponding file'
+        ].forEach(feature => {
+            featuresList.createEl('li', { text: feature });
+        });
+        
+        // How to Use section
+        docContainer.createEl('h2', { text: 'How to Use' });
+        const howToUseList = docContainer.createEl('ol');
+        [
+            'Install the plugin in your Obsidian vault',
+            'Configure the source path in the plugin settings to point to your scenes folder',
+            'Ensure your scene files have the required frontmatter metadata (see below)',
+            'Run the "Create Interactive Timeline" command using the Command Palette (Cmd/Ctrl+P) to generate the visualization',
+            'The timeline will be created in the "Outline" folder as an HTML file',
+            'Open the HTML file in Obsidian using the HTML Reader plugin to view and interact with your timeline',
+            'To update the timeline after making changes to your scene files, run the "Create Interactive Timeline" command again'
+        ].forEach(step => {
+            howToUseList.createEl('li', { text: step });
+        });
+        
+        // Metadata section
+        docContainer.createEl('h3', { text: 'Required Frontmatter Metadata' });
+        const metadataList = docContainer.createEl('ul');
+        [
+            '`Class: Scene` - Identifies the file as a scene',
+            '`When` - Date of the scene (required)',
+            '`Title` - Scene title',
+            '`Subplot` - Subplot(s) the scene belongs to',
+            '`Act` - Act number (1-3)',
+            '`Status` - Scene status (Complete, Working, Todo, etc.)',
+            '`Synopsis` - Brief description of the scene',
+            '`Character` - Characters in the scene',
+            '`Due` - Optional due date for the scene',
+            '`Edits` - Optional editing notes (scenes with Edits will display with purple number boxes)'
+        ].forEach(metadata => {
+            metadataList.createEl('li', { text: metadata });
+        });
+        
+        // Example section
+        docContainer.createEl('h2', { text: 'Scene Metadata Example' });
+        const exampleCode = docContainer.createEl('pre', { 
+            attr: { 
+                style: 'background-color: var(--background-primary-alt); padding: 10px; border-radius: 4px; overflow-x: auto;' 
+            } 
+        });
+        exampleCode.createEl('code', { 
+            text: `---
+Class: Scene
+Title: 1.2 The Discovery
+When: 2023-05-15
+Subplot: Main Plot
+Act: 1
+Status: Complete
+Synopsis: The protagonist discovers a mysterious artifact.
+Character: [John, Sarah]
+Edits: Changes for the next revision
+---` 
+        });
+        
+        // Timeline Visualization section
+        docContainer.createEl('h2', { text: 'Timeline Visualization' });
+        docContainer.createEl('p', { text: 'The timeline displays:' });
+        const visualizationList = docContainer.createEl('ul');
+        [
+            'Scenes arranged in a circular pattern',
+            'Acts divided into sections',
+            'Subplots organized in concentric rings',
+            'Scene numbers in small boxes',
+            'Color-coded scenes based on status',
+            'Month markers around the perimeter',
+            'Progress ring showing year progress'
+        ].forEach(item => {
+            visualizationList.createEl('li', { text: item });
+        });
+        
+        docContainer.createEl('p', { text: 'Hover over a scene to see its details and click to open the corresponding file.' });
+        
+        // Add screenshot image using Obsidian's resource path
+        const screenshotContainer = docContainer.createEl('div', {
+            attr: { 
+                style: 'margin: 20px 0; text-align: center;'
+            }
+        });
+        
+        // Create a paragraph explaining how to view the screenshot
+        screenshotContainer.createEl('p', {
+            text: 'Timeline Radial visualization:',
+            attr: {
+                style: 'font-weight: bold; margin-bottom: 10px;'
+            }
+        });
+        
+        // Create an actual image element instead of a link
+        screenshotContainer.createEl('img', {
+            attr: {
+                src: 'https://raw.githubusercontent.com/EricRhysTaylor/Obsidian_Radial_Timeline/master/screenshot.png',
+                alt: 'Timeline Radial Screenshot',
+                style: 'max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'
+            }
+        });
+        
+        // Add Scene Ordering and Numbering section
+        docContainer.createEl('h2', { text: 'Scene Ordering and Numbering' });
+        const orderingList = docContainer.createEl('ul');
+        [
+            'Scenes are ordered chronologically based on the `When` date in the frontmatter metadata',
+            'The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")',
+            'These numbers are displayed in small boxes on the timeline',
+            'Using numbered prefixes in your scene titles (like "1.2 The Discovery") helps Obsidian order scenes correctly in the file explorer',
+            'If scenes have the same `When` date, they are sub-ordered by their scene number'
+        ].forEach(item => {
+            orderingList.createEl('li', { text: item });
+        });
+        
+        // Required Plugins section
+        docContainer.createEl('h2', { text: 'Required Plugins' });
+        docContainer.createEl('p', { text: 'This plugin creates HTML files that can be viewed in Obsidian. For the best experience, you should have:' });
+        
+        const pluginsList = docContainer.createEl('ul');
+        const corePluginsItem = pluginsList.createEl('li');
+        corePluginsItem.createEl('strong', { text: 'Core Plugins: ' });
+        corePluginsItem.appendText('Make sure the "Outgoing Links" core plugin is enabled');
+        
+        const communityPluginsItem = pluginsList.createEl('li');
+        communityPluginsItem.createEl('strong', { text: 'Community Plugins: ' });
+        communityPluginsItem.appendText('The HTML Reader plugin is recommended for viewing the generated timeline HTML files');
+        
+        docContainer.createEl('p', { text: 'No other plugins are required for basic functionality. The plugin uses Obsidian\'s native API to read frontmatter metadata from your Markdown files - Dataview is NOT required. The plugin then generates an interactive HTML timeline visualization based on this metadata.' });
+        
+        // Author section
+        docContainer.createEl('h2', { text: 'Author' });
+        docContainer.createEl('p', { text: 'Created by Eric Rhys Taylor' });
+        docContainer.createEl('p', { text: 'For questions, issues, or feature requests, please contact the author directly.' });
     }
 }
