@@ -30,6 +30,7 @@ A beautiful interactive radial timeline visualization plugin for Obsidian.md tha
 
 4. Run the "Create Interactive Timeline" command to generate the visualization
 5. The timeline will be created in the "Outline" folder as an HTML file
+6. Open the HTML file in Obsidian using the HTML Reader plugin to view and interact with your timeline
 
 ## Scene Metadata Example
 
@@ -65,6 +66,15 @@ Hover over a scene to see its details and click to open the corresponding file.
 - Download the latest release
 - Extract the files to your vault's `.obsidian/plugins/Timeline` folder
 - Enable the plugin in Obsidian's Community Plugins settings
+
+## Required Plugins
+
+This plugin creates HTML files that can be viewed in Obsidian. For the best experience, you should have:
+
+- **Core Plugins**: Make sure the "Outgoing Links" core plugin is enabled
+- **Community Plugins**: The [HTML Reader](https://github.com/nuthrash/obsidian-html-plugin) plugin is recommended for viewing the generated timeline HTML files
+
+No other plugins are required for basic functionality. The plugin uses Obsidian's native API to read frontmatter metadata from your Markdown files - Dataview is NOT required. The plugin then generates an interactive HTML timeline visualization based on this metadata.
 
 ## Development
 
