@@ -8,7 +8,6 @@ A beautiful interactive radial timeline visualization plugin for Obsidian.md tha
 - Organizes scenes by act, subplot, and chronological order
 - Shows scene details on hover including title, date, synopsis, subplots, and characters
 - Color-codes scenes by status (Complete, Working, Todo, etc.)
-- Automatically updates when files change
 - Supports both light and dark themes
 - Allows clicking on scenes to open the corresponding file
 
@@ -28,9 +27,10 @@ A beautiful interactive radial timeline visualization plugin for Obsidian.md tha
    - `Due` - Optional due date for the scene
    - `Edits` - Optional editing notes (scenes with Edits will display with purple number boxes)
 
-4. Run the "Create Interactive Timeline" command to generate the visualization
+4. Run the "Create Interactive Timeline" command using the Command Palette (Cmd/Ctrl+P) to generate the visualization
 5. The timeline will be created in the "Outline" folder as an HTML file
 6. Open the HTML file in Obsidian using the HTML Reader plugin to view and interact with your timeline
+7. To update the timeline after making changes to your scene files, run the "Create Interactive Timeline" command again
 
 ## Scene Metadata Example
 
@@ -60,6 +60,16 @@ The timeline displays:
 - Progress ring showing year progress
 
 Hover over a scene to see its details and click to open the corresponding file.
+
+![Timeline Radial Screenshot](https://raw.githubusercontent.com/EricRhysTaylor/obsidian-timeline-radial/main/screenshot.png)
+
+## Scene Ordering and Numbering
+
+- Scenes are ordered chronologically based on the `When` date in the frontmatter metadata
+- The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")
+- These numbers are displayed in small boxes on the timeline
+- Using numbered prefixes in your scene titles (like "1.2 The Discovery") helps Obsidian order scenes correctly in the file explorer
+- If scenes have the same `When` date, they are sub-ordered by their scene number
 
 ## Installation
 
