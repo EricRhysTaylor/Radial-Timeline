@@ -1,6 +1,6 @@
 import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile } from "obsidian";
 
-interface TimelineSettings {
+interface ManuscriptTimelineSettings {
     sourcePath: string;
 }
 
@@ -26,7 +26,7 @@ interface SceneNumberInfo {
     height: number;
 }
 
-const DEFAULT_SETTINGS: TimelineSettings = {
+const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
     sourcePath: 'Book 1'
 };
 
@@ -63,17 +63,17 @@ function parseSceneTitle(title: string): { number: string; text: string } {
     };
 }
 
-export default class TimelinePlugin extends Plugin {
-    settings: TimelineSettings;
+export default class ManuscriptTimelinePlugin extends Plugin {
+    settings: ManuscriptTimelineSettings;
 
     async onload() {
         await this.loadSettings();
-        this.addSettingTab(new TimelineSettingTab(this.app, this));
+        this.addSettingTab(new ManuscriptTimelineSettingTab(this.app, this));
 
         // Add command to create timeline
         this.addCommand({
-            id: 'create-interactive-timeline',
-            name: 'Create Interactive Timeline',
+            id: 'create-manuscript-timeline',
+            name: 'Create Manuscript Timeline',
             callback: async () => {
                 try {
                     const sceneData = await this.getSceneData();
@@ -81,11 +81,11 @@ export default class TimelinePlugin extends Plugin {
                         new Notice("No valid scene data found.");
                         return;
                     }
-                    await this.createTimelineHTML("Timeline", sceneData);
-                    new Notice(`Interactive timeline created with ${sceneData.length} scenes`);
+                    await this.createTimelineHTML("Manuscript Timeline", sceneData);
+                    new Notice(`Manuscript timeline created with ${sceneData.length} scenes`);
                 } catch (error) {
                     this.log("Error:", error);
-                    new Notice("Failed to create timeline");
+                    new Notice("Failed to create manuscript timeline");
                 }
             }
         });
@@ -602,9 +602,7 @@ export default class TimelinePlugin extends Plugin {
             const sceneIndex = scenesInActAndSubplot.indexOf(scene);
             
             const sceneId = `scene-path-${scene.actNumber - 1}-${ring}-${sceneIndex}`;
-            console.log('Looking up number info for sceneId:', sceneId);
             const numberInfo = sceneNumbersMap.get(sceneId);
-            console.log('Found numberInfo:', numberInfo);
             
             const lineHeight = 30;
             const size = 1600;
@@ -930,9 +928,6 @@ export default class TimelinePlugin extends Plugin {
         scenes.forEach((scene) => {
             const { number } = parseSceneTitle(scene.title);
             if (number) {
-                console.log('Processing scene title:', scene.title);
-                console.log('Extracted number:', number);
-                
                 const subplotIndex = masterSubplotOrder.indexOf(scene.subplot);
                 const ring = NUM_RINGS - 1 - subplotIndex;
                 
@@ -974,7 +969,6 @@ export default class TimelinePlugin extends Plugin {
           
                 // Store scene number information for square and synopsis
                 const sceneId = `scene-path-${act}-${ring}-${sceneIndex}`;
-                console.log('Storing number info for sceneId:', sceneId);
                 sceneNumbersMap.set(sceneId, {
                     number,
                     x: squareX,
@@ -1015,9 +1009,6 @@ export default class TimelinePlugin extends Plugin {
         });
         svg += `</g>`;
         
-        // Add console.log here to debug
-console.log('Scene Numbers Map:', sceneNumbersMap);
-
         // Add all synopses at the end of the SVG
         svg += `            <g class="synopses-container">
                 ${synopsesHTML.join('\n')}
@@ -1160,7 +1151,7 @@ console.log('Scene Numbers Map:', sceneNumbersMap);
             const html = `<!DOCTYPE html>
     <html>
     <head>
-        <title>Interactive Timeline</title>
+        <title>Manuscript Timeline</title>
         <style>
             :root {
                 /* Default variables that will be overridden by Obsidian theme */
@@ -1280,7 +1271,6 @@ console.log('Scene Numbers Map:', sceneNumbersMap);
                     
                     // Force SVG text elements to use explicit colors based on theme
                     const textElements = document.querySelectorAll('.month-label, .month-label-outer, .act-label, .center-number-text');
-                    console.log('Found text elements to update:', textElements.length);
                     
                     textElements.forEach(el => {
                         el.style.fill = textColor;
@@ -1288,7 +1278,6 @@ console.log('Scene Numbers Map:', sceneNumbersMap);
                     
                     // Handle key-text elements separately with a more specific approach
                     document.querySelectorAll('g.color-key text.key-text').forEach(el => {
-                        console.log('Setting key-text element fill to', textColor);
                         // Use setAttribute to ensure the style is applied
                         el.setAttribute('fill', textColor);
                         // Also set the style.fill property
@@ -1323,7 +1312,7 @@ console.log('Scene Numbers Map:', sceneNumbersMap);
                         progressFill.style.stroke = computedStyle.getPropertyValue('--text-accent-hover') || '#8875ff';
                     }
                     
-                    console.log('Theme variables applied successfully - using ' + (isDarkMode ? 'dark' : 'light') + ' mode');
+                    console.log('Theme applied: ' + (isDarkMode ? 'dark' : 'light'));
                 } catch (error) {
                     console.error('Error applying theme variables:', error);
                 }
@@ -1346,7 +1335,6 @@ console.log('Scene Numbers Map:', sceneNumbersMap);
                 
                 // Start observing the parent body for class changes
                 observer.observe(parentBody, { attributes: true });
-                console.log('Theme observer started');
             } catch (error) {
                 console.error('Error setting up theme observer:', error);
             }
@@ -1359,19 +1347,14 @@ console.log('Scene Numbers Map:', sceneNumbersMap);
                 scene.addEventListener('click', async (e) => {
                     e.preventDefault();
                     const path = decodeURIComponent(scene.getAttribute('data-path'));
-                    console.log('Click: Opening file:', path);
                     
                     try {
                         const file = window.parent.app.vault.getAbstractFileByPath(path);
                         if (file) {
-                            console.log('File found, opening:', file.path);
                             await window.parent.app.workspace.getLeaf().openFile(file);
-                            console.log('File opened successfully');
-                        } else {
-                            console.log('File not found:', path);
                         }
                     } catch (error) {
-                        console.log('Error opening file:', error);
+                        console.error('Error opening file:', error);
                     }
                 });
 
@@ -1387,7 +1370,7 @@ console.log('Scene Numbers Map:', sceneNumbersMap);
                                     fileExplorer.view.revealInFolder(file);
                                 }
                             } catch (e) {
-                                console.log('Error revealing file:', e);
+                                console.error('Error revealing file:', e);
                             }
                         }
                     }
@@ -1495,18 +1478,18 @@ console.log('Scene Numbers Map:', sceneNumbersMap);
         const console = (window as any).console;
         if (console) {
             if (data) {
-                console.log(`Timeline Plugin: ${message}`, data);
+                console.log(`Manuscript Timeline Plugin: ${message}`, data);
             } else {
-                console.log(`Timeline Plugin: ${message}`);
+                console.log(`Manuscript Timeline Plugin: ${message}`);
             }
         }
     }
 }
 
-class TimelineSettingTab extends PluginSettingTab {
-    plugin: TimelinePlugin;
+class ManuscriptTimelineSettingTab extends PluginSettingTab {
+    plugin: ManuscriptTimelinePlugin;
 
-    constructor(app: App, plugin: TimelinePlugin) {
+    constructor(app: App, plugin: ManuscriptTimelinePlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }
@@ -1516,7 +1499,7 @@ class TimelineSettingTab extends PluginSettingTab {
         containerEl.empty();
 
         // Add plugin settings
-        containerEl.createEl('h2', { text: 'Timeline Radial Settings' });
+        containerEl.createEl('h2', { text: 'Manuscript Timeline Settings' });
 
         new Setting(containerEl)
             .setName('Source Path')
@@ -1539,7 +1522,7 @@ class TimelineSettingTab extends PluginSettingTab {
         });
         
         // Add README content
-        docContainer.createEl('h1', { text: 'Obsidian Timeline Radial' });
+        docContainer.createEl('h1', { text: 'Obsidian Manuscript Timeline' });
         
         docContainer.createEl('p', { text: 'A beautiful interactive radial timeline visualization plugin for Obsidian.md that displays scenes from your writing project in a circular timeline.' });
         
@@ -1557,6 +1540,17 @@ class TimelineSettingTab extends PluginSettingTab {
             featuresList.createEl('li', { text: feature });
         });
         
+        // Display Requirements section
+        docContainer.createEl('h2', { text: 'Display Requirements' });
+        const displayList = docContainer.createEl('ul');
+        [
+            'Recommended: High-resolution displays such as Apple Retina displays or Windows equivalent (4K or better)',
+            'The timeline contains detailed text and visual elements that benefit from higher pixel density',
+            'While usable on standard displays, you may need to zoom in to see all details clearly'
+        ].forEach(item => {
+            displayList.createEl('li', { text: item });
+        });
+        
         // How to Use section
         docContainer.createEl('h2', { text: 'How to Use' });
         const howToUseList = docContainer.createEl('ol');
@@ -1564,10 +1558,10 @@ class TimelineSettingTab extends PluginSettingTab {
             'Install the plugin in your Obsidian vault',
             'Configure the source path in the plugin settings to point to your scenes folder',
             'Ensure your scene files have the required frontmatter metadata (see below)',
-            'Run the "Create Interactive Timeline" command using the Command Palette (Cmd/Ctrl+P) to generate the visualization',
+            'Run the "Create Manuscript Timeline" command using the Command Palette (Cmd/Ctrl+P) to generate the visualization',
             'The timeline will be created in the "Outline" folder as an HTML file',
             'Open the HTML file in Obsidian using the HTML Reader plugin to view and interact with your timeline',
-            'To update the timeline after making changes to your scene files, run the "Create Interactive Timeline" command again'
+            'To update the timeline after making changes to your scene files, run the "Create Manuscript Timeline" command again'
         ].forEach(step => {
             howToUseList.createEl('li', { text: step });
         });
@@ -1638,7 +1632,7 @@ Edits: Changes for the next revision
         
         // Create a paragraph explaining how to view the screenshot
         screenshotContainer.createEl('p', {
-            text: 'Timeline Radial visualization:',
+            text: 'Manuscript Timeline visualization:',
             attr: {
                 style: 'font-weight: bold; margin-bottom: 10px;'
             }
@@ -1647,8 +1641,8 @@ Edits: Changes for the next revision
         // Create an actual image element instead of a link
         screenshotContainer.createEl('img', {
             attr: {
-                src: 'https://raw.githubusercontent.com/EricRhysTaylor/Obsidian_Radial_Timeline/master/screenshot.png',
-                alt: 'Timeline Radial Screenshot',
+                src: 'https://raw.githubusercontent.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/master/screenshot.png',
+                alt: 'Manuscript Timeline Screenshot',
                 style: 'max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'
             }
         });

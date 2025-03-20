@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-timeline-radial",
+	"name": "obsidian-manuscript-timeline",
 	"version": "1.0.1",
-	"description": "Interactive radial timeline visualization for Obsidian",
+	"description": "Interactive radial timeline visualization for manuscripts in Obsidian",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
@@ -13,7 +13,8 @@
 		"timeline",
 		"visualization",
 		"radial",
-		"writing"
+		"writing",
+		"manuscript"
 	],
 	"author": "Eric Rhys Taylor",
 	"license": "MIT",

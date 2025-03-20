@@ -1,4 +1,4 @@
-# Obsidian Timeline Radial
+# Obsidian Manuscript Timeline
 
 A beautiful interactive radial timeline visualization plugin for Obsidian.md that displays scenes from your writing project in a circular timeline.
 
@@ -10,6 +10,13 @@ A beautiful interactive radial timeline visualization plugin for Obsidian.md tha
 - Color-codes scenes by status (Complete, Working, Todo, etc.)
 - Supports both light and dark themes
 - Allows clicking on scenes to open the corresponding file
+
+## Display Requirements
+
+This plugin creates an information-dense visualization that works best on high-resolution displays:
+- Recommended: High-resolution displays such as Apple Retina displays or Windows equivalent (4K or better)
+- The timeline contains detailed text and visual elements that benefit from higher pixel density
+- While usable on standard displays, you may need to zoom in to see all details clearly
 
 ## How to Use
 
@@ -27,10 +34,10 @@ A beautiful interactive radial timeline visualization plugin for Obsidian.md tha
    - `Due` - Optional due date for the scene
    - `Edits` - Optional editing notes (scenes with Edits will display with purple number boxes)
 
-4. Run the "Create Interactive Timeline" command using the Command Palette (Cmd/Ctrl+P) to generate the visualization
+4. Run the "Create Manuscript Timeline" command using the Command Palette (Cmd/Ctrl+P) to generate the visualization
 5. The timeline will be created in the "Outline" folder as an HTML file
 6. Open the HTML file in Obsidian using the HTML Reader plugin to view and interact with your timeline
-7. To update the timeline after making changes to your scene files, run the "Create Interactive Timeline" command again
+7. To update the timeline after making changes to your scene files, run the "Create Manuscript Timeline" command again
 
 ## Scene Metadata Example
 
@@ -61,7 +68,7 @@ The timeline displays:
 
 Hover over a scene to see its details and click to open the corresponding file.
 
-![Timeline Radial Screenshot](https://raw.githubusercontent.com/EricRhysTaylor/Obsidian_Radial_Timeline/master/screenshot.png)
+![Manuscript Timeline Screenshot](https://raw.githubusercontent.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/master/screenshot.png)
 
 ## Scene Ordering and Numbering
 
@@ -74,7 +81,7 @@ Hover over a scene to see its details and click to open the corresponding file.
 ## Installation
 
 - Download the latest release
-- Extract the files to your vault's `.obsidian/plugins/Timeline` folder
+- Extract the files to your vault's `.obsidian/plugins/manuscript-timeline` folder
 - Enable the plugin in Obsidian's Community Plugins settings
 
 ## Required Plugins

@@ -1,9 +1,9 @@
 {
-	"id": "Timeline",
-	"name": "Timeline Radial",
+	"id": "manuscript-timeline",
+	"name": "Manuscript Timeline",
 	"version": "1.0.1",
 	"minAppVersion": "1.4.0",
-	"description": "Interactive radial timeline visualization for writing projects",
+	"description": "A beautiful interactive radial timeline visualization for writing projects that displays scenes organized by act, subplot, and chronological order",
 	"author": "Eric Rhys Taylor",
 	"authorUrl": "https://github.com/EricRhysTaylor",
 	"isDesktopOnly": false

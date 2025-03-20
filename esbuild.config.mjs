@@ -14,7 +14,7 @@ const prod = process.argv[2] === "production";
 
 // Define source and destination paths
 const sourceDir = ".";
-const destDir = "/Users/erictaylor/Documents/Author/Book Trisan Series/Trisan Obsidian Vault .nosync/.obsidian/plugins/timeline";
+const destDir = "/Users/erictaylor/Documents/Author/Book Trisan Series/Trisan Obsidian Vault .nosync/.obsidian/plugins/manuscript-timeline";
 
 // Files to copy (in addition to the built JS)
 const filesToCopy = [

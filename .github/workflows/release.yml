@@ -37,5 +37,5 @@ jobs:
           # Create GitHub release
           gh release create "$tag" \
             --title "Version $tag" \
-            --notes "See [README.md](https://github.com/EricRhysTaylor/Obsidian_Radial_Timeline/blob/main/README.md) for details." \
+            --notes "See [README.md](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/blob/main/README.md) for details." \
             main.js manifest.json styles.css $tag.zip 
