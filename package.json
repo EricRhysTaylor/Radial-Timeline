@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-manuscript-timeline",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Interactive radial timeline visualization for manuscripts in Obsidian",
 	"main": "main.js",
 	"scripts": {
