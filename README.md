@@ -74,7 +74,12 @@ The timeline displays:
 
 Hover over a scene to see its details and click to open the corresponding file.
 
-![Manuscript Timeline Screenshot](https://raw.githubusercontent.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/master/screenshot.png)
+<a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
+  <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #444;" />
+</a>
+<div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
+  Click image to view full size in browser
+</div>
 
 ## Technical Implementation
 
