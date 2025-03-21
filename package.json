@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-manuscript-timeline",
-	"version": "1.0.2",
-	"description": "Interactive radial timeline visualization for manuscripts in Obsidian",
+	"version": "1.0.3",
+	"description": "A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
@@ -17,7 +17,8 @@
 		"manuscript"
 	],
 	"author": "Eric Rhys Taylor",
-	"license": "MIT",
+	"license": "UNLICENSED",
+	"private": true,
 	"devDependencies": {
 		"@types/node": "^20.10.5",
 		"builtin-modules": "^3.3.0",
