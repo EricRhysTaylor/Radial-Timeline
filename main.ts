@@ -2001,11 +2001,31 @@ Edits:
                 style: 'text-align: center; margin: 20px 0;'
             }
         });
-        screenshotContainer.createEl('img', {
+        
+        // Create an anchor tag that wraps the image and opens in a new tab
+        const screenshotLink = screenshotContainer.createEl('a', {
+            attr: {
+                href: 'https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png',
+                target: '_blank',
+                rel: 'noopener',
+                style: 'display: inline-block; cursor: pointer;'
+            }
+        });
+        
+        // Add the image inside the anchor tag
+        screenshotLink.createEl('img', {
             attr: {
                 src: 'https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png',
                 alt: 'Example Timeline Screenshot',
                 style: 'max-width: 100%; border-radius: 8px; border: 1px solid var(--background-modifier-border);'
+            }
+        });
+        
+        // Add a small hint text below the image
+        screenshotContainer.createEl('div', {
+            text: 'Click image to view full size in browser',
+            attr: {
+                style: 'font-size: 0.8em; margin-top: 5px; color: var(--text-muted);'
             }
         });
         
