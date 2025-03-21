@@ -18,8 +18,8 @@ const destDir = "/Users/erictaylor/Documents/Author/Book Trisan Series/Trisan Ob
 
 // Files to copy (in addition to the built JS)
 const filesToCopy = [
-	"manifest.json",
-	"styles.css" // If you have a styles file
+	"manifest.json"
+	// styles.css has been removed as it's not needed
 ];
 
 // Function to copy files

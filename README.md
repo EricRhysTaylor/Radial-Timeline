@@ -2,6 +2,12 @@
 
 A beautiful interactive radial timeline visualization plugin for Obsidian.md that displays scenes from your writing project in a circular timeline.
 
+## Support Development
+
+If you find this plugin useful, consider supporting its continued development:
+
+<a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
 ## Features
 
 - Creates an interactive radial timeline visualization of your scenes
@@ -70,6 +76,19 @@ Hover over a scene to see its details and click to open the corresponding file.
 
 ![Manuscript Timeline Screenshot](https://raw.githubusercontent.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/master/screenshot.png)
 
+## Technical Implementation
+
+The Manuscript Timeline visualization was inspired by and draws on principles from [D3.js](https://d3js.org), a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:
+
+- SVG-based visualization techniques
+- Data-driven document manipulation
+- Interactive elements with hover and click behaviors
+- Radial layouts and polar coordinates
+- Scale transformations and data mapping
+- Dynamic color manipulation and pattern generation
+
+The visualizations are built using pure SVG and JavaScript, offering a lightweight solution that maintains the elegance and interactivity of D3-style visualizations while being fully compatible with Obsidian's rendering capabilities.
+
 ## Scene Ordering and Numbering
 
 - Scenes are ordered chronologically based on the `When` date in the frontmatter metadata
@@ -98,7 +117,7 @@ No other plugins are required for basic functionality. The plugin uses Obsidian'
 - Clone this repository
 - Run `npm i` to install dependencies
 - Run `npm run dev` to start compilation in watch mode
-- Copy the `main.js`, `styles.css`, and `manifest.json` files to your vault's plugins folder
+- Copy the `main.js` and `manifest.json` files to your vault's plugins folder
 
 ## License
 
@@ -108,4 +127,6 @@ MIT
 
 Created by Eric Rhys Taylor
 
-For questions, issues, or feature requests, please contact via GitHub.
+## Questions & Support
+
+For questions, issues, or feature requests, please [open an issue on GitHub](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues).

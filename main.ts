@@ -2,6 +2,12 @@ import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile } 
 
 interface ManuscriptTimelineSettings {
     sourcePath: string;
+    publishStageColors: {
+        Zero: string;
+        Author: string;
+        House: string;
+        Press: string;
+    };
 }
 
 interface Scene {
@@ -15,6 +21,7 @@ interface Scene {
     Character?: string[];
     due?: Date; //optional
     Edits?: string;
+    "Publish Stage"?: string; // Changed from PublishStage to "Publish Stage"
 }
 
 // Add this interface to store scene number information for the scene square and synopsis
@@ -27,16 +34,21 @@ interface SceneNumberInfo {
 }
 
 const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
-    sourcePath: 'Book 1'
+    sourcePath: 'Book 1',
+    publishStageColors: {
+        "Zero": "#9E70CF",  // Purple
+        "Author": "#5E85CF", // Blue
+        "House": "#DA7847",  // Orange
+        "Press": "#6FB971"   // Green
+    }
 };
 
 //a primary color for each status
-// 70b970 green, da7847 orange, 7c6460 flat brown, 9e71d0 purple, bbbbbb gray 
+// 6FB971 green, DA7847 orange, 7C6561 flat brown, 9E70CF purple, 5E85CF Blue, bbbbbb gray 
 const STATUS_COLORS = {
-    "Complete": "#7c6460",
     "Working": "#70b970",
     "Todo": "#aaaaaa",
-    "Empty": "#eeeeee",
+    "Empty": "#f0f0f0", // Light gray (will be replaced with light Zero color)
     "Due": "#d05e5e"
 };
 
@@ -68,27 +80,23 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     async onload() {
         await this.loadSettings();
-        this.addSettingTab(new ManuscriptTimelineSettingTab(this.app, this));
+        
+        // Add ribbon icon
+        this.addRibbonIcon('calendar-range', 'Generate Manuscript Timeline', async () => {
+            await this.generateTimeline();
+        });
 
-        // Add command to create timeline
+        // Add command
         this.addCommand({
-            id: 'create-manuscript-timeline',
-            name: 'Create Manuscript Timeline',
+            id: 'generate-manuscript-timeline',
+            name: 'Generate Manuscript Timeline',
             callback: async () => {
-                try {
-                    const sceneData = await this.getSceneData();
-                    if (sceneData.length === 0) {
-                        new Notice("No valid scene data found.");
-                        return;
-                    }
-                    await this.createTimelineHTML("Manuscript Timeline", sceneData);
-                    new Notice(`Manuscript timeline created with ${sceneData.length} scenes`);
-                } catch (error) {
-                    this.log("Error:", error);
-                    new Notice("Failed to create manuscript timeline");
-                }
+                await this.generateTimeline();
             }
         });
+
+        // Add settings tab
+        this.addSettingTab(new ManuscriptTimelineSettingTab(this.app, this));
 
         // Add message listener for file opening
         window.addEventListener('message', async (event) => {
@@ -101,6 +109,22 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         });
     }
 
+    // Method to generate timeline
+    async generateTimeline(): Promise<void> {
+        try {
+            const sceneData = await this.getSceneData();
+            if (sceneData.length === 0) {
+                new Notice("No valid scene data found.");
+                return;
+            }
+            await this.createTimelineHTML("Manuscript Timeline", sceneData);
+            new Notice(`Manuscript timeline created with ${sceneData.length} scenes`);
+        } catch (error) {
+            console.error("Error generating timeline:", error);
+            new Notice("Failed to create manuscript timeline");
+        }
+    }
+
     private async getSceneData(): Promise<Scene[]> {
         const files = this.app.vault.getMarkdownFiles()
             .filter(file => file.path.startsWith(this.settings.sourcePath));
@@ -109,7 +133,13 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         for (const file of files) {
             const metadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
             if (metadata?.Class === "Scene" && metadata?.When) {
-                const when = new Date(metadata.When);
+                // Fix for date shift issue - ensure dates are interpreted as UTC
+                const whenStr = metadata.When;
+                
+                // Directly parse the date in a way that preserves the specified date regardless of timezone
+                // Use a specific time (noon UTC) to avoid any date boundary issues
+                const when = new Date(`${whenStr}T12:00:00Z`);
+                
                 if (!isNaN(when.getTime())) {
                     // Split subplots if provided, otherwise default to "Main Plot"
                     const subplots = metadata.Subplot
@@ -158,7 +188,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             Character: characters,
                             due: metadata.Due ? new Date(metadata.Due) : undefined,
                             Edits: metadata.Edits || '',
+                            "Publish Stage": metadata["Publish Stage"] || 'Zero' // Changed from PublishStage to "Publish Stage"
                         });
+
+                        // Add debug logging for Publish Stage
+                        console.log(`Scene: ${metadata.Title || file.basename}, Status: ${status}, Publish Stage: ${metadata["Publish Stage"] || 'Zero'}`);
                     });
                 }
             }
@@ -228,7 +262,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const months = Array.from({ length: 12 }, (_, i) => {
             const angle = (i / 12) * 2 * Math.PI - Math.PI / 2; // Adjust so January is at the top
             const name = new Date(2000, i).toLocaleString('en-US', { month: 'long' });
-            return { name, angle };
+            const shortName = new Date(2000, i).toLocaleString('en-US', { month: 'short' }).slice(0, 3);
+            return { name, shortName, angle };
         });
     
         // Calculate total available space
@@ -440,10 +475,53 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             .info-text {
                 fill: #333333 !important;
             }
+
+            .color-key-center {
+                opacity: 1;
+                pointer-events: none;
+            }
+
+            .center-key-text {
+                fill: var(--text-normal, #333333);
+                font-size: 18px;
+                text-transform: uppercase;
+                opacity: 0.85; /* Slightly transparent */
+            }
         </style>`;
+
+        // Access the publishStageColors from settings
+        const PUBLISH_STAGE_COLORS = this.settings.publishStageColors;
 
         // Begin defs act
         svg += `<defs>`;
+        
+        // Define plaid patterns for Working and Todo status
+        svg += `<pattern id="plaidWorking" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+            <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Working, 10)}"/>
+            <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
+            <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
+        </pattern>`;
+        
+        svg += `<pattern id="plaidTodo" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+            <rect width="10" height="10" fill="${this.lightenColor(STATUS_COLORS.Todo, 15)}"/>
+            <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
+            <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
+        </pattern>`;
+        
+        // Define patterns for Working and Todo states with Publish Stage colors
+        svg += `${Object.entries(PUBLISH_STAGE_COLORS).map(([stage, color]) => `
+            <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+                <rect width="10" height="10" fill="${this.darkenColor(color, 10)}"/>
+                <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
+                <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
+            </pattern>
+            
+            <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+                <rect width="10" height="10" fill="${this.lightenColor(color, 20)}"/>
+                <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
+                <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
+            </pattern>
+        `).join('')}`;
         
         // Define outer arc paths for months
         months.forEach(({ name, angle }, index) => {
@@ -563,7 +641,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 />
                 <text class="month-label">
                     <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
-                        ${name}
+                        ${months[monthIndex].shortName}
                     </textPath>
                 </text>
             `;
@@ -666,18 +744,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     </g>
                     ` : ''}
 
-                    <!-- Center number display -->
-                    <g transform="translate(0, 0)">
-                        <text 
-                            x="0" 
-                            y="0" 
-                            text-anchor="middle" 
-                            dominant-baseline="middle" 
-                            class="center-number-text"
-                            dy="0.1em"
-                        >${parseSceneTitle(scene.title).number || 'ERROR: No Number'}</text>
-                    </g>
-
                     ${showRightText ? `
                     <!-- Right side text block -->
                     <g transform="translate(-300, 250)">
@@ -728,12 +794,27 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 const statusList = Array.isArray(scene.status) ? scene.status : [scene.status];
                                 const normalizedStatus = statusList[0]?.toString().trim().toLowerCase() || '';
                                 
+                                // Get the publish stage for pattern selection
+                                const publishStage = scene["Publish Stage"] || 'Zero';
+                                
                                 if (normalizedStatus === "complete") {
-                                    return STATUS_COLORS.Complete; // Use Complete color
+                                    // For completed scenes, use Publish Stage color with full opacity
+                                    const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
+                                    // Do not apply any modifications to the color to ensure it matches the legend
+                                    return stageColor;
                                 }
                                 if (scene.due && new Date() > new Date(scene.due)) {
                                     return STATUS_COLORS.Due; // Use Due color if past due date
                                 }
+                                
+                                // Check for working or todo status to use plaid pattern
+                                if (normalizedStatus === "working") {
+                                    return `url(#plaidWorking${publishStage})`;
+                                }
+                                if (normalizedStatus === "todo") {
+                                    return `url(#plaidTodo${publishStage})`;
+                                }
+                                
                                 return STATUS_COLORS[statusList[0] as keyof typeof STATUS_COLORS] || STATUS_COLORS.Todo; // Use status color or default to Todo
                             })();
             
@@ -791,7 +872,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             `;
 
                             svg += `<path d="${arcPath}" 
-                                     fill="${STATUS_COLORS.Empty}" 
+                                     fill="${this.lightenColor(PUBLISH_STAGE_COLORS.Zero, 50)}" 
                                      stroke="white" 
                                      stroke-width="1" 
                                      class="scene-path"/>`;
@@ -806,8 +887,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(endAngle))}
                         A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
                     `;
-                    const defaultEmptyColor = "#f0f0f0"; // Light gray for empty sections
-                    svg += `<path d="${arcPath}" fill="${defaultEmptyColor}" stroke="white" stroke-width="1"/>`;
+                    const emptyColor = this.lightenColor(PUBLISH_STAGE_COLORS.Zero, 50); // Lighter purple/Zero color
+                    svg += `<path d="${arcPath}" fill="${emptyColor}" stroke="white" stroke-width="1"/>`;
                 }
             }
         }
@@ -882,8 +963,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const normalizedStatus = scene.status?.toString().trim().toLowerCase() || '';
             
             if (normalizedStatus === "complete") {
-                // Complete scenes are always counted as Complete
-                acc["Complete"] = (acc["Complete"] || 0) + 1;
+                // For completed scenes, count by Publish Stage
+                const publishStage = scene["Publish Stage"] || 'Zero';
+                // Use the publishStage directly with type safety
+                const validStage = publishStage as keyof typeof PUBLISH_STAGE_COLORS;
+                acc[validStage] = (acc[validStage] || 0) + 1;
             } else if (scene.due && new Date() > new Date(scene.due)) {
                 // Non-complete scenes that are past due date are counted as Due
                 acc["Due"] = (acc["Due"] || 0) + 1;
@@ -894,32 +978,81 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             return acc;
         }, {} as Record<string, number>);
 
-        // Add color key without decorative elements
+        // Add center color key
+        const centerRadius = innerRadius * 0.7; // Slightly smaller than innerRadius
+        const centerKeySize = 20; // Size of color swatches
+        const centerLineHeight = 35;
+
+        // Separate stage colors and status colors
+        const stageColorEntries = Object.entries(PUBLISH_STAGE_COLORS);
+        const statusColorEntries = Object.entries(STATUS_COLORS)
+            .filter(([status]) => status !== 'Empty' && status !== 'Complete');
+
+        // Calculate heights for alignment
+        const maxEntries = Math.max(stageColorEntries.length, statusColorEntries.length);
+        const totalHeight = maxEntries * centerLineHeight;
+        const startY = -totalHeight / 2 + centerLineHeight / 2;
+
         svg += `
-            <g class="color-key">
-                <!-- Status swatches and labels -->
-                ${Object.entries(STATUS_COLORS)
-                    .filter(([status]) => status !== 'Empty')
-                    .map(([status, color], index) => `
-                        <g transform="translate(${keyX}, ${keyY + (index * lineHeight)})">
-                            <!-- Color swatch -->
-                            <rect 
-                                x="0" 
+            <g class="color-key-center">
+                <!-- Stage colors column (left) -->
+                ${stageColorEntries.map(([stage, color], index) => {
+                    const yPos = startY + (index * centerLineHeight);
+                    return `
+                        <g transform="translate(-25, ${yPos})">
+                            <!-- Stage label with right justification -->
+                            <text 
+                                x="-10" 
                                 y="0" 
-                                width="${swatchSize}" 
-                                height="${swatchSize}" 
+                                dominant-baseline="middle" 
+                                text-anchor="end"
+                                class="center-key-text"
+                            >${stage.toUpperCase()} <tspan style="font-size: 14px; opacity: 0.7; baseline-shift: super;">${statusCounts[stage] || 0}</tspan></text>
+                            
+                            <!-- Color SWATCH to the right of text -->
+                            <rect 
+                                x="-3" 
+                                y="-13" 
+                                width="25" 
+                                height="25" 
                                 fill="${color}"
                             />
-                            
-                            <!-- Status label and count -->
-                            <text 
-                                x="${textOffset}" 
-                                y="${swatchSize/2}" 
-                                alignment-baseline="middle" 
-                                class="key-text"
-                            >${status} (${statusCounts[status] || 0})</text>
                         </g>
-                    `).join('')}
+                    `;
+                }).join('')}
+
+                <!-- Status colors column (right) -->
+                ${statusColorEntries.map(([status, color], index) => {
+                    const yPos = startY + (index * centerLineHeight);
+                    
+                    // Check if this is Working or Todo status to show plaid pattern
+                    const isWorkingOrTodo = status === 'Working' || status === 'Todo';
+                    const fillValue = isWorkingOrTodo ? 
+                        `url(#plaid${status}Zero)` : // Use the Zero publishing stage for the legend
+                        color;
+                    
+                    return `
+                        <g transform="translate(25, ${yPos})">
+                            <!-- Color SWATCH first (left) -->
+                            <rect 
+                                x="-20" 
+                                y="-13" 
+                                width="25" 
+                                height="25" 
+                                fill="${fillValue}"
+                            />
+                            
+                            <!-- Status label with left justification -->
+                            <text 
+                                x="10" 
+                                y="0" 
+                                dominant-baseline="middle" 
+                                text-anchor="start"
+                                class="center-key-text"
+                            >${status.toUpperCase()} <tspan style="font-size: 14px; opacity: 0.7; baseline-shift: super;">${statusCounts[status] || 0}</tspan></text>
+                        </g>
+                    `;
+                }).join('')}
             </g>
         `;
 
@@ -1051,6 +1184,26 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const G = Math.max(((num >> 8) & 0x00FF) - amt, 0);
         const B = Math.max((num & 0x0000FF) - amt, 0);
         return `#${(1 << 24 | R << 16 | G << 8 | B).toString(16).slice(1)}`;
+    }
+
+    private lightenColor(color: string, percent: number): string {
+        // Parse the color
+        const num = parseInt(color.replace("#", ""), 16);
+        
+        // Extract original RGB values
+        const R = (num >> 16);
+        const G = ((num >> 8) & 0x00FF);
+        const B = (num & 0x0000FF);
+        
+        // Calculate lightened values
+        const mixRatio = Math.min(1, percent / 100); // How much white to mix in
+        
+        // Simple lightening calculation that preserves the hue
+        const newR = Math.min(255, Math.round(R + (255 - R) * mixRatio));
+        const newG = Math.min(255, Math.round(G + (255 - G) * mixRatio));
+        const newB = Math.min(255, Math.round(B + (255 - B) * mixRatio));
+        
+        return "#" + (1 << 24 | newR << 16 | newG << 8 | newB).toString(16).slice(1);
     }
 
     /// Helper function to split text into balanced lines
@@ -1230,6 +1383,27 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             ${this.createTimelineSVG(scenes)}
         </div>
         <script>
+            // Helper function to lighten a color
+            function lightenColor(color, percent) {
+                // Parse the color
+                const num = parseInt(color.replace("#", ""), 16);
+                
+                // Extract original RGB values
+                const R = (num >> 16);
+                const G = ((num >> 8) & 0x00FF);
+                const B = (num & 0x0000FF);
+                
+                // Calculate lightened values
+                const mixRatio = Math.min(1, percent / 100); // How much white to mix in
+                
+                // Simple lightening calculation that preserves the hue
+                const newR = Math.min(255, Math.round(R + (255 - R) * mixRatio));
+                const newG = Math.min(255, Math.round(G + (255 - G) * mixRatio));
+                const newB = Math.min(255, Math.round(B + (255 - B) * mixRatio));
+                
+                return "#" + (1 << 24 | newR << 16 | newG << 8 | newB).toString(16).slice(1);
+            }
+            
             // Function to apply Obsidian theme variables to the iframe content
             function applyThemeVariables() {
                 try {
@@ -1278,6 +1452,14 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     
                     // Handle key-text elements separately with a more specific approach
                     document.querySelectorAll('g.color-key text.key-text').forEach(el => {
+                        // Use setAttribute to ensure the style is applied
+                        el.setAttribute('fill', textColor);
+                        // Also set the style.fill property
+                        el.style.fill = textColor;
+                    });
+                    
+                    // Handle center key text elements with similar approach
+                    document.querySelectorAll('g.color-key-center text.center-key-text').forEach(el => {
                         // Use setAttribute to ensure the style is applied
                         el.setAttribute('fill', textColor);
                         // Also set the style.fill property
@@ -1341,7 +1523,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             // JavaScript to handle hover and click effects
             const sceneGroups = document.querySelectorAll('.scene-group');
-            const EMPTY_COLOR = "${STATUS_COLORS.Empty}"; // Get the Empty status color
+            const ZERO_COLOR = "${this.settings.publishStageColors.Zero}"; // Store Zero color for calculations
+            const EMPTY_COLOR = lightenColor(ZERO_COLOR, 50); // Dynamically calculate empty color based on Zero
             
             sceneGroups.forEach(scene => {
                 scene.addEventListener('click', async (e) => {
@@ -1383,7 +1566,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         if (path.id !== scenePathId) {
                             // Store the original color if not already stored
                             if (!path.getAttribute('data-original-color')) {
-                                path.setAttribute('data-original-color', path.getAttribute('fill'));
+                                const currentFill = path.getAttribute('fill');
+                                // Store the full pattern URL or color
+                                path.setAttribute('data-original-color', currentFill);
                             }
                             path.setAttribute('fill', EMPTY_COLOR);
                         }
@@ -1512,23 +1697,166 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
         
-        // Add documentation section
-        containerEl.createEl('h2', { text: 'Documentation' });
+        // Add publish stage color settings
+        containerEl.createEl('h3', { text: 'Publishing Stage Colors' });
         
-        // Create a container for the documentation with some styling
-        const docContainer = containerEl.createEl('div', { 
-            cls: 'timeline-documentation',
-            attr: { style: 'max-width: 800px; margin-top: 20px; padding: 20px; border-radius: 8px; background-color: var(--background-secondary);' }
+        // Helper function to create a color swatch
+        const createColorSwatch = (container: HTMLElement, color: string) => {
+            const swatch = container.createEl('div');
+            swatch.style.backgroundColor = color;
+            swatch.style.width = '30px';
+            swatch.style.height = '30px';
+            swatch.style.border = '1px solid #ccc';
+            swatch.style.borderRadius = '4px';
+            swatch.style.display = 'inline-block';
+            swatch.style.marginLeft = '10px';
+            return swatch;
+        };
+        
+        // Zero stage color
+        let zeroColorSwatch: HTMLElement;
+        let zeroColorSetting = new Setting(containerEl)
+            .setName('Zero Stage Color')
+            .setDesc('Color for Zero publishing stage (changing this will affect empty scenes too)')
+            .addText(text => {
+                const textComponent = text
+                    .setPlaceholder('#9E70CF')
+                    .setValue(this.plugin.settings.publishStageColors.Zero)
+                    .onChange(async (value) => {
+                        this.plugin.settings.publishStageColors.Zero = value;
+                        await this.plugin.saveSettings();
+                        zeroColorSwatch.style.backgroundColor = value;
+                    });
+                return textComponent;
+            });
+        
+        // Add swatch after creating the setting
+        zeroColorSwatch = createColorSwatch(zeroColorSetting.controlEl, this.plugin.settings.publishStageColors.Zero);
+        
+        zeroColorSetting.addExtraButton(button => {
+            button
+                .setIcon('reset')
+                .setTooltip('Reset to default')
+                .onClick(async () => {
+                    this.plugin.settings.publishStageColors.Zero = DEFAULT_SETTINGS.publishStageColors.Zero;
+                    await this.plugin.saveSettings();
+                    const textComponent = zeroColorSetting.components[0] as any;
+                    textComponent.setValue(DEFAULT_SETTINGS.publishStageColors.Zero);
+                    zeroColorSwatch.style.backgroundColor = DEFAULT_SETTINGS.publishStageColors.Zero;
+                });
+        });
+            
+        // Author stage color
+        let authorColorSwatch: HTMLElement;
+        let authorColorSetting = new Setting(containerEl)
+            .setName('Author Stage Color')
+            .setDesc('Color for Author publishing stage')
+            .addText(text => {
+                const textComponent = text
+                    .setPlaceholder('#5E85CF')
+                    .setValue(this.plugin.settings.publishStageColors.Author)
+                    .onChange(async (value) => {
+                        this.plugin.settings.publishStageColors.Author = value;
+                        await this.plugin.saveSettings();
+                        authorColorSwatch.style.backgroundColor = value;
+                    });
+                return textComponent;
+            });
+            
+        // Add swatch after creating the setting
+        authorColorSwatch = createColorSwatch(authorColorSetting.controlEl, this.plugin.settings.publishStageColors.Author);
+        
+        authorColorSetting.addExtraButton(button => {
+            button
+                .setIcon('reset')
+                .setTooltip('Reset to default')
+                .onClick(async () => {
+                    this.plugin.settings.publishStageColors.Author = DEFAULT_SETTINGS.publishStageColors.Author;
+                    await this.plugin.saveSettings();
+                    const textComponent = authorColorSetting.components[0] as any;
+                    textComponent.setValue(DEFAULT_SETTINGS.publishStageColors.Author);
+                    authorColorSwatch.style.backgroundColor = DEFAULT_SETTINGS.publishStageColors.Author;
+                });
+        });
+            
+        // House stage color
+        let houseColorSwatch: HTMLElement;
+        let houseColorSetting = new Setting(containerEl)
+            .setName('House Stage Color')
+            .setDesc('Color for House publishing stage')
+            .addText(text => {
+                const textComponent = text
+                    .setPlaceholder('#DA7847')
+                    .setValue(this.plugin.settings.publishStageColors.House)
+                    .onChange(async (value) => {
+                        this.plugin.settings.publishStageColors.House = value;
+                        await this.plugin.saveSettings();
+                        houseColorSwatch.style.backgroundColor = value;
+                    });
+                return textComponent;
+            });
+            
+        // Add swatch after creating the setting
+        houseColorSwatch = createColorSwatch(houseColorSetting.controlEl, this.plugin.settings.publishStageColors.House);
+        
+        houseColorSetting.addExtraButton(button => {
+            button
+                .setIcon('reset')
+                .setTooltip('Reset to default')
+                .onClick(async () => {
+                    this.plugin.settings.publishStageColors.House = DEFAULT_SETTINGS.publishStageColors.House;
+                    await this.plugin.saveSettings();
+                    const textComponent = houseColorSetting.components[0] as any;
+                    textComponent.setValue(DEFAULT_SETTINGS.publishStageColors.House);
+                    houseColorSwatch.style.backgroundColor = DEFAULT_SETTINGS.publishStageColors.House;
+                });
+        });
+            
+        // Press stage color
+        let pressColorSwatch: HTMLElement;
+        let pressColorSetting = new Setting(containerEl)
+            .setName('Press Stage Color')
+            .setDesc('Color for Press publishing stage')
+            .addText(text => {
+                const textComponent = text
+                    .setPlaceholder('#6FB971')
+                    .setValue(this.plugin.settings.publishStageColors.Press)
+                    .onChange(async (value) => {
+                        this.plugin.settings.publishStageColors.Press = value;
+                        await this.plugin.saveSettings();
+                        pressColorSwatch.style.backgroundColor = value;
+                    });
+                return textComponent;
+            });
+            
+        // Add swatch after creating the setting
+        pressColorSwatch = createColorSwatch(pressColorSetting.controlEl, this.plugin.settings.publishStageColors.Press);
+        
+        pressColorSetting.addExtraButton(button => {
+            button
+                .setIcon('reset')
+                .setTooltip('Reset to default')
+                .onClick(async () => {
+                    this.plugin.settings.publishStageColors.Press = DEFAULT_SETTINGS.publishStageColors.Press;
+                    await this.plugin.saveSettings();
+                    const textComponent = pressColorSetting.components[0] as any;
+                    textComponent.setValue(DEFAULT_SETTINGS.publishStageColors.Press);
+                    pressColorSwatch.style.backgroundColor = DEFAULT_SETTINGS.publishStageColors.Press;
+                });
         });
         
-        // Add README content
-        docContainer.createEl('h1', { text: 'Obsidian Manuscript Timeline' });
+        // Add a horizontal rule
+        containerEl.createEl('hr');
         
-        docContainer.createEl('p', { text: 'A beautiful interactive radial timeline visualization plugin for Obsidian.md that displays scenes from your writing project in a circular timeline.' });
+        // ABOUT section with merged Features
+        containerEl.createEl('h3', { text: 'About Manuscript Timeline' });
         
-        // Features section
-        docContainer.createEl('h2', { text: 'Features' });
-        const featuresList = docContainer.createEl('ul');
+        containerEl.createEl('p', { 
+            text: 'An interactive radial timeline visualization plugin for Obsidian.md that displays scenes from your writing project in a circular timeline.'
+        });
+        
+        // Merged Features into About section
+        const featuresList = containerEl.createEl('ul');
         [
             'Creates an interactive radial timeline visualization of your scenes',
             'Organizes scenes by act, subplot, and chronological order',
@@ -1540,20 +1868,46 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             featuresList.createEl('li', { text: feature });
         });
         
+        // Author information
+        containerEl.createEl('p', { 
+            text: 'Created by Eric Rhys Taylor'
+        });
+        
+        // Support link - moved up from bottom
+        containerEl.createEl('h4', { text: 'Support Development' });
+        containerEl.createEl('p', { 
+            text: 'If you find this plugin useful, consider supporting its continued development:'
+        });
+        
+        const supportLink = containerEl.createEl('a', { 
+            href: 'https://www.buymeacoffee.com/ericrhystaylor'
+        });
+        supportLink.target = '_blank';
+        supportLink.createEl('img', { 
+            attr: {
+                src: 'https://cdn.buymeacoffee.com/buttons/v2/default-blue.png',
+                alt: 'Buy Me A Coffee',
+                style: 'height: 60px !important; width: 217px !important;'
+            }
+        });
+        
         // Display Requirements section
-        docContainer.createEl('h2', { text: 'Display Requirements' });
-        const displayList = docContainer.createEl('ul');
+        containerEl.createEl('h3', { text: 'Display Requirements' });
+        containerEl.createEl('p', { 
+            text: 'This plugin creates an information-dense visualization that is more legible on high-resolution displays.'
+        });
+        const requirementsList = containerEl.createEl('ul');
         [
             'Recommended: High-resolution displays such as Apple Retina displays or Windows equivalent (4K or better)',
             'The timeline contains detailed text and visual elements that benefit from higher pixel density',
             'While usable on standard displays, you may need to zoom in to see all details clearly'
-        ].forEach(item => {
-            displayList.createEl('li', { text: item });
+        ].forEach(req => {
+            requirementsList.createEl('li', { text: req });
         });
         
         // How to Use section
-        docContainer.createEl('h2', { text: 'How to Use' });
-        const howToUseList = docContainer.createEl('ol');
+        containerEl.createEl('h3', { text: 'How to Use' });
+        const usageList = containerEl.createEl('ol');
         [
             'Install the plugin in your Obsidian vault',
             'Configure the source path in the plugin settings to point to your scenes folder',
@@ -1563,52 +1917,68 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             'Open the HTML file in Obsidian using the HTML Reader plugin to view and interact with your timeline',
             'To update the timeline after making changes to your scene files, run the "Create Manuscript Timeline" command again'
         ].forEach(step => {
-            howToUseList.createEl('li', { text: step });
+            usageList.createEl('li', { text: step });
         });
         
-        // Metadata section
-        docContainer.createEl('h3', { text: 'Required Frontmatter Metadata' });
-        const metadataList = docContainer.createEl('ul');
+        // Required Metadata section
+        containerEl.createEl('h3', { text: 'Required Scene Metadata' });
+        containerEl.createEl('p', { 
+            text: 'Scene files must have the following frontmatter:'
+        });
+        const metadataList = containerEl.createEl('ul');
         [
-            '`Class: Scene` - Identifies the file as a scene',
-            '`When` - Date of the scene (required)',
-            '`Title` - Scene title',
-            '`Subplot` - Subplot(s) the scene belongs to',
-            '`Act` - Act number (1-3)',
-            '`Status` - Scene status (Complete, Working, Todo, etc.)',
-            '`Synopsis` - Brief description of the scene',
-            '`Character` - Characters in the scene',
-            '`Due` - Optional due date for the scene',
-            '`Edits` - Optional editing notes (scenes with Edits will display with purple number boxes)'
-        ].forEach(metadata => {
-            metadataList.createEl('li', { text: metadata });
+            'Class: Scene - Identifies the file as a scene',
+            'When - Date of the scene (required)',
+            'Title - Scene title',
+            'Subplot - Subplot(s) the scene belongs to',
+            'Act - Act number (1-3)',
+            'Status - Scene status (Complete, Working, Todo, etc.)',
+            'Synopsis - Brief description of the scene',
+            'Character - Characters in the scene',
+            'Due - Optional due date for the scene',
+            'Edits - Optional editing notes (scenes with Edits will display with purple number boxes)',
+            'Publish Stage - Publishing stage (Zero, Author, House, Press)'
+        ].forEach(meta => {
+            metadataList.createEl('li', { text: meta });
         });
         
-        // Example section
-        docContainer.createEl('h2', { text: 'Scene Metadata Example' });
-        const exampleCode = docContainer.createEl('pre', { 
-            attr: { 
-                style: 'background-color: var(--background-primary-alt); padding: 10px; border-radius: 4px; overflow-x: auto;' 
-            } 
+        // Example metadata
+        containerEl.createEl('h4', { text: 'Example Metadata' });
+        const exampleCode = containerEl.createEl('pre', {
+            attr: {
+                style: 'line-height: 1.7; white-space: pre-wrap; overflow-x: auto; padding: 10px; background: var(--background-secondary); border-radius: 4px; user-select: text; cursor: text; font-family: monospace;'
+            }
         });
         exampleCode.createEl('code', { 
+            attr: {
+                style: 'user-select: text;'
+            },
             text: `---
 Class: Scene
-Title: 1.2 The Discovery
-When: 2023-05-15
-Subplot: Main Plot
-Act: 1
-Status: Complete
 Synopsis: The protagonist discovers a mysterious artifact.
-Character: [John, Sarah]
-Edits: Changes for the next revision
----` 
+Subplot:
+  - The Great War
+  - Jinnis Pickle
+Act: 1
+When: 2023-05-15
+Character:
+  - John Mars
+  - Celon Tim
+Place:
+  - Diego
+  - Earth
+Publish Stage: Zero
+Status: Complete
+Edits:
+---`
         });
         
-        // Timeline Visualization section
-        docContainer.createEl('h2', { text: 'Timeline Visualization' });
-        docContainer.createEl('p', { text: 'The timeline displays:' });
-        const visualizationList = docContainer.createEl('ul');
+        // Timeline elements section
+        containerEl.createEl('h3', { text: 'Timeline Visualization Elements' });
+        containerEl.createEl('p', { 
+            text: 'The timeline displays:'
+        });
+        const timelineElementsList = containerEl.createEl('ul');
         [
             'Scenes arranged in a circular pattern',
             'Acts divided into sections',
@@ -1617,67 +1987,70 @@ Edits: Changes for the next revision
             'Color-coded scenes based on status',
             'Month markers around the perimeter',
             'Progress ring showing year progress'
-        ].forEach(item => {
-            visualizationList.createEl('li', { text: item });
+        ].forEach(element => {
+            timelineElementsList.createEl('li', { text: element });
         });
         
-        docContainer.createEl('p', { text: 'Hover over a scene to see its details and click to open the corresponding file.' });
-        
-        // Add screenshot image using Obsidian's resource path
-        const screenshotContainer = docContainer.createEl('div', {
-            attr: { 
-                style: 'margin: 20px 0; text-align: center;'
-            }
+        containerEl.createEl('p', { 
+            text: 'Hover over a scene to see its details and click to open the corresponding file.'
         });
         
-        // Create a paragraph explaining how to view the screenshot
-        screenshotContainer.createEl('p', {
-            text: 'Manuscript Timeline visualization:',
+        // Add screenshot image
+        const screenshotContainer = containerEl.createEl('div', {
             attr: {
-                style: 'font-weight: bold; margin-bottom: 10px;'
+                style: 'text-align: center; margin: 20px 0;'
             }
         });
-        
-        // Create an actual image element instead of a link
         screenshotContainer.createEl('img', {
             attr: {
-                src: 'https://raw.githubusercontent.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/master/screenshot.png',
-                alt: 'Manuscript Timeline Screenshot',
-                style: 'max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);'
+                src: 'https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png',
+                alt: 'Example Timeline Screenshot',
+                style: 'max-width: 100%; border-radius: 8px; border: 1px solid var(--background-modifier-border);'
             }
         });
         
-        // Add Scene Ordering and Numbering section
-        docContainer.createEl('h2', { text: 'Scene Ordering and Numbering' });
-        const orderingList = docContainer.createEl('ul');
+        // Scene Ordering section
+        containerEl.createEl('h3', { text: 'Scene Ordering and Numbering' });
+        const orderingList = containerEl.createEl('ul');
         [
-            'Scenes are ordered chronologically based on the `When` date in the frontmatter metadata',
+            'Scenes are ordered chronologically based on the When date in the frontmatter metadata',
             'The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")',
             'These numbers are displayed in small boxes on the timeline',
-            'Using numbered prefixes in your scene titles (like "1.2 The Discovery") helps Obsidian order scenes correctly in the file explorer',
-            'If scenes have the same `When` date, they are sub-ordered by their scene number'
+            'Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer',
+            'If scenes have the same When date, they are sub-ordered by their scene number'
         ].forEach(item => {
             orderingList.createEl('li', { text: item });
         });
         
-        // Required Plugins section
-        docContainer.createEl('h2', { text: 'Required Plugins' });
-        docContainer.createEl('p', { text: 'This plugin creates HTML files that can be viewed in Obsidian. For the best experience, you should have:' });
+        // Technical Implementation - D3.js inspiration section (moved to the end)
+        containerEl.createEl('h3', { text: 'Technical Implementation' });
         
-        const pluginsList = docContainer.createEl('ul');
-        const corePluginsItem = pluginsList.createEl('li');
-        corePluginsItem.createEl('strong', { text: 'Core Plugins: ' });
-        corePluginsItem.appendText('Make sure the "Outgoing Links" core plugin is enabled');
+        containerEl.createEl('p', { 
+            text: `The Manuscript Timeline visualization was inspired by and draws on principles from D3.js, a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:`
+        });
         
-        const communityPluginsItem = pluginsList.createEl('li');
-        communityPluginsItem.createEl('strong', { text: 'Community Plugins: ' });
-        communityPluginsItem.appendText('The HTML Reader plugin is recommended for viewing the generated timeline HTML files');
+        const techList = containerEl.createEl('ul');
+        [
+            'SVG-based visualization techniques',
+            'Data-driven document manipulation',
+            'Interactive elements with hover and click behaviors',
+            'Radial layouts and polar coordinates',
+            'Scale transformations and data mapping',
+            'Dynamic color manipulation and pattern generation'
+        ].forEach(technique => {
+            techList.createEl('li', { text: technique });
+        });
         
-        docContainer.createEl('p', { text: 'No other plugins are required for basic functionality. The plugin uses Obsidian\'s native API to read frontmatter metadata from your Markdown files - Dataview is NOT required. The plugin then generates an interactive HTML timeline visualization based on this metadata.' });
+        containerEl.createEl('p', { 
+            text: `The visualizations are built using pure SVG and JavaScript, offering a lightweight solution that maintains the elegance and interactivity of D3-style visualizations while being fully compatible with Obsidian's rendering capabilities.`
+        });
         
-        // Author section
-        docContainer.createEl('h2', { text: 'Author' });
-        docContainer.createEl('p', { text: 'Created by Eric Rhys Taylor' });
-        docContainer.createEl('p', { text: 'For questions, issues, or feature requests, please contact the author directly.' });
+        // D3.js link
+        const d3Link = containerEl.createEl('p');
+        const link = d3Link.createEl('a', { 
+            text: 'Learn more about D3.js',
+            href: 'https://d3js.org/'
+        });
+        link.target = '_blank';
     }
 }

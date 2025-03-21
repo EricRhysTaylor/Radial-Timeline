@@ -1,9 +1,9 @@
 {
 	"id": "manuscript-timeline",
 	"name": "Manuscript Timeline",
-	"version": "1.0.1",
+	"version": "1.0.0",
 	"minAppVersion": "1.4.0",
-	"description": "A beautiful interactive radial timeline visualization for writing projects that displays scenes organized by act, subplot, and chronological order",
+	"description": "A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.",
 	"author": "Eric Rhys Taylor",
 	"authorUrl": "https://github.com/EricRhysTaylor",
 	"isDesktopOnly": false
