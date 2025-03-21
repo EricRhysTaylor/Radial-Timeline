@@ -457,7 +457,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
 
             .progress-ring-fill {
-                stroke: var(--text-accent-hover, #8875ff);
+                /* Stroke color is applied via gradient in the SVG */
                 stroke-width: 10;
                 fill: none;
             }
@@ -546,17 +546,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             `;
         });
 
-
         // Close defs act
         svg += `</defs>`;
-
 
         //outer months Labels
         months.forEach(({ name }, index) => {
             const pathId = `monthLabelPath-${index}`;
             svg += `
-                <text class="month-label-outer">
-                    <textPath href="#${pathId}" startOffset="0" text-anchor="start">
+                <text class="month-label">
+                    <textPath href="#${pathId}" startOffset="50%" text-anchor="middle">
                         ${name}
                     </textPath>
                 </text>
@@ -576,6 +574,34 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const startAngle = -Math.PI / 2; // Start at 12 o'clock
         const endAngle = startAngle + (2 * Math.PI * yearProgress);
 
+        // Define rainbow gradients for the segments
+        svg += `<defs>
+            <linearGradient id="linearColors1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#FF0000"></stop>
+                <stop offset="100%" stop-color="#FF7F00"></stop>
+            </linearGradient>
+            <linearGradient id="linearColors2" x1="0.5" y1="0" x2="0.5" y2="1">
+                <stop offset="0%" stop-color="#FF7F00"></stop>
+                <stop offset="100%" stop-color="#FFFF00"></stop>
+            </linearGradient>
+            <linearGradient id="linearColors3" x1="1" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FFFF00"></stop>
+                <stop offset="100%" stop-color="#00FF00"></stop>
+            </linearGradient>
+            <linearGradient id="linearColors4" x1="1" y1="1" x2="0" y2="0">
+                <stop offset="0%" stop-color="#00FF00"></stop>
+                <stop offset="100%" stop-color="#0000FF"></stop>
+            </linearGradient>
+            <linearGradient id="linearColors5" x1="0.5" y1="1" x2="0.5" y2="0">
+                <stop offset="0%" stop-color="#0000FF"></stop>
+                <stop offset="100%" stop-color="#4B0082"></stop>
+            </linearGradient>
+            <linearGradient id="linearColors6" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0%" stop-color="#4B0082"></stop>
+                <stop offset="100%" stop-color="#8F00FF"></stop>
+            </linearGradient>
+        </defs>`;
+
         // Add the base gray circle
         svg += `
             <circle
@@ -586,17 +612,44 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             />
         `;
 
-        // Add the progress arc
-        svg += `
-            <path
-                d="
-                    M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
-                    A ${progressRadius} ${progressRadius} 0 ${yearProgress > 0.5 ? 1 : 0} 1 
-                    ${progressRadius * Math.cos(endAngle)} ${progressRadius * Math.sin(endAngle)}
-                "
-                class="progress-ring-fill"
-            />
-        `;
+        // Create six segments for the rainbow
+        const segmentCount = 6;
+        const fullCircleAngle = 2 * Math.PI;
+        const segmentAngle = fullCircleAngle / segmentCount;
+        
+        // Calculate how many complete segments to show based on year progress
+        const completeSegments = Math.floor(yearProgress * segmentCount);
+        
+        // Calculate the partial segment angle (for the last visible segment)
+        const partialSegmentAngle = (yearProgress * segmentCount - completeSegments) * segmentAngle;
+        
+        // Draw each segment that should be visible
+        for (let i = 0; i < segmentCount; i++) {
+            // Calculate this segment's start and end angles
+            const segStart = startAngle + (i * segmentAngle);
+            let segEnd = segStart + segmentAngle;
+            
+            // If this is beyond what should be shown based on year progress, skip it
+            if (i > completeSegments) continue;
+            
+            // If this is the last partial segment, adjust the end angle
+            if (i === completeSegments && partialSegmentAngle > 0) {
+                segEnd = segStart + partialSegmentAngle;
+            }
+            
+            // Create the arc path for this segment
+            svg += `
+                <path
+                    d="
+                        M ${progressRadius * Math.cos(segStart)} ${progressRadius * Math.sin(segStart)}
+                        A ${progressRadius} ${progressRadius} 0 ${(segEnd - segStart) > Math.PI ? 1 : 0} 1 
+                        ${progressRadius * Math.cos(segEnd)} ${progressRadius * Math.sin(segEnd)}
+                    "
+                    class="progress-ring-fill"
+                    stroke="url(#linearColors${i+1})"
+                />
+            `;
+        }
 
         // THEN add the month spokes group (existing code)
         svg += `<g class="month-spokes">`;
@@ -1489,10 +1542,14 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         progressBase.style.stroke = isDarkMode ? '#444444' : '#dddddd';
                     }
                     
+                    // Remove the code that overwrites the rainbow gradient
+                    // We want to keep the rainbow gradient applied in the SVG
+                    /* 
                     const progressFill = document.querySelector('.progress-ring-fill');
                     if (progressFill) {
                         progressFill.style.stroke = computedStyle.getPropertyValue('--text-accent-hover') || '#8875ff';
                     }
+                    */
                     
                     console.log('Theme applied: ' + (isDarkMode ? 'dark' : 'light'));
                 } catch (error) {
