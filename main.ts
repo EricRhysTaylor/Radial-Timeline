@@ -553,7 +553,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         months.forEach(({ name }, index) => {
             const pathId = `monthLabelPath-${index}`;
             svg += `
-                <text class="month-label">
+                <text class="month-label-outer">
                     <textPath href="#${pathId}" startOffset="50%" text-anchor="middle">
                         ${name}
                     </textPath>
