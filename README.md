@@ -1,6 +1,6 @@
 # Obsidian Manuscript Timeline
 
-An interactive radial timeline visualization plugin for Obsidian.md that displays scenes from your writing project in a circular timeline.
+A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.
 
 ## Features
 
