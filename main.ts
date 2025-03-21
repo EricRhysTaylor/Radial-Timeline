@@ -530,8 +530,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             // Convert 5px to radians based on the circle's circumference
             const pixelToRadian = (5 * 2 * Math.PI) / (2 * Math.PI * outerlabelRadius);
             
-            const startAngle = angle + pixelToRadian;  // Add tiny offset to move label clockwise from spoke
-            const endAngle = angle + (Math.PI / 6); // Maintain same arc length for text to follow
+            // Make the month offset very small, similar to but positive (clockwise) for Acts
+            const angleOffset = 0.01; // Half of previous value (0.02)
+            const startAngle = angle + angleOffset;  // Small offset to move label clockwise
+            const endAngle = startAngle + (Math.PI / 24); // Short arc length
   
             const pathId = `monthLabelPath-${index}`;
 
@@ -554,7 +556,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const pathId = `monthLabelPath-${index}`;
             svg += `
                 <text class="month-label-outer">
-                    <textPath href="#${pathId}" startOffset="50%" text-anchor="middle">
+                    <textPath href="#${pathId}" startOffset="0" text-anchor="start">
                         ${name}
                     </textPath>
                 </text>
