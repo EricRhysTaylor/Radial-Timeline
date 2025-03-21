@@ -1,12 +1,6 @@
 # Obsidian Manuscript Timeline
 
-A beautiful interactive radial timeline visualization plugin for Obsidian.md that displays scenes from your writing project in a circular timeline.
-
-## Support Development
-
-If you find this plugin useful, consider supporting its continued development:
-
-<a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+An interactive radial timeline visualization plugin for Obsidian.md that displays scenes from your writing project in a circular timeline.
 
 ## Features
 
@@ -16,6 +10,12 @@ If you find this plugin useful, consider supporting its continued development:
 - Color-codes scenes by status (Complete, Working, Todo, etc.)
 - Supports both light and dark themes
 - Allows clicking on scenes to open the corresponding file
+
+## Support Development
+
+If you find this plugin useful, consider supporting its continued development:
+
+<a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 ## Display Requirements
 
