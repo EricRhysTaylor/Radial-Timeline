@@ -130,10 +130,13 @@ No other plugins are required for basic functionality. The plugin uses Obsidian'
 
 ## Development
 
-- Clone this repository
-- Run `npm i` to install dependencies
-- Run `npm run dev` to start compilation in watch mode
-- Copy the `main.js` and `manifest.json` files to your vault's plugins folder
+Development of this plugin is private. The source code is provided for transparency and to allow users to verify its functionality, but it is not licensed for derivative works.
+
+If you wish to contribute to the development of this plugin or report issues:
+- [Open an issue on GitHub](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues) to report bugs or suggest features
+- Contact the author via GitHub for potential collaboration opportunities
+
+Any modifications or derivative works require explicit permission from the author.
 
 ## License
 
