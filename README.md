@@ -19,7 +19,7 @@ If you find this plugin useful, consider supporting its continued development:
 
 ## Display Requirements
 
-This plugin creates an information-dense visualization that works best on high-resolution displays:
+This plugin creates an information-dense visualization that is more legible on high-resolution displays:
 - Recommended: High-resolution displays such as Apple Retina displays or Windows equivalent (4K or better)
 - The timeline contains detailed text and visual elements that benefit from higher pixel density
 - While usable on standard displays, you may need to zoom in to see all details clearly
@@ -28,40 +28,51 @@ This plugin creates an information-dense visualization that works best on high-r
 
 1. Install the plugin in your Obsidian vault
 2. Configure the source path in the plugin settings to point to your scenes folder
-3. Ensure your scene files have the required frontmatter metadata:
-   - `Class: Scene` - Identifies the file as a scene
-   - `When` - Date of the scene (required)
-   - `Title` - Scene title
-   - `Subplot` - Subplot(s) the scene belongs to
-   - `Act` - Act number (1-3)
-   - `Status` - Scene status (Complete, Working, Todo, etc.)
-   - `Synopsis` - Brief description of the scene
-   - `Character` - Characters in the scene
-   - `Due` - Optional due date for the scene
-   - `Edits` - Optional editing notes (scenes with Edits will display with purple number boxes)
-
+3. Ensure your scene files have the required frontmatter metadata (see below)
 4. Run the "Create Manuscript Timeline" command using the Command Palette (Cmd/Ctrl+P) to generate the visualization
 5. The timeline will be created in the "Outline" folder as an HTML file
 6. Open the HTML file in Obsidian using the HTML Reader plugin to view and interact with your timeline
 7. To update the timeline after making changes to your scene files, run the "Create Manuscript Timeline" command again
 
-## Scene Metadata Example
+## Required Scene Metadata
+
+Scene files must have the following frontmatter:
+- Class: Scene - Identifies the file as a scene
+- When - Date of the scene (required)
+- Title - Scene title
+- Subplot - Subplot(s) the scene belongs to
+- Act - Act number (1-3)
+- Status - Scene status (Complete, Working, Todo, etc.)
+- Synopsis - Brief description of the scene
+- Character - Characters in the scene
+- Due - Optional due date for the scene
+- Edits - Optional editing notes (scenes with Edits will display with purple number boxes)
+- Publish Stage - Publishing stage (Zero, Author, House, Press)
+
+### Example Metadata
 
 ```yaml
 ---
 Class: Scene
-Title: 1.2 The Discovery
-When: 2023-05-15
-Subplot: Main Plot
-Act: 1
-Status: Complete
 Synopsis: The protagonist discovers a mysterious artifact.
-Character: [John, Sarah]
-Edits: Changes for the next revision
+Subplot:
+  - The Great War
+  - Jinnis Pickle
+Act: 1
+When: 2023-05-15
+Character:
+  - John Mars
+  - Celon Tim
+Place:
+  - Diego
+  - Earth
+Publish Stage: Zero
+Status: Complete
+Edits:
 ---
 ```
 
-## Timeline Visualization
+## Timeline Visualization Elements
 
 The timeline displays:
 - Scenes arranged in a circular pattern
@@ -81,6 +92,14 @@ Hover over a scene to see its details and click to open the corresponding file.
   Click image to view full size in browser
 </div>
 
+## Scene Ordering and Numbering
+
+- Scenes are ordered chronologically based on the When date in the frontmatter metadata
+- The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")
+- These numbers are displayed in small boxes on the timeline
+- Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer
+- If scenes have the same When date, they are sub-ordered by their scene number
+
 ## Technical Implementation
 
 The Manuscript Timeline visualization was inspired by and draws on principles from [D3.js](https://d3js.org), a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:
@@ -93,14 +112,6 @@ The Manuscript Timeline visualization was inspired by and draws on principles fr
 - Dynamic color manipulation and pattern generation
 
 The visualizations are built using pure SVG and JavaScript, offering a lightweight solution that maintains the elegance and interactivity of D3-style visualizations while being fully compatible with Obsidian's rendering capabilities.
-
-## Scene Ordering and Numbering
-
-- Scenes are ordered chronologically based on the `When` date in the frontmatter metadata
-- The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")
-- These numbers are displayed in small boxes on the timeline
-- Using numbered prefixes in your scene titles (like "1.2 The Discovery") helps Obsidian order scenes correctly in the file explorer
-- If scenes have the same `When` date, they are sub-ordered by their scene number
 
 ## Installation
 
