@@ -21,8 +21,8 @@ const destDirs = [
 
 // Files to copy (in addition to the built JS)
 const filesToCopy = [
-	"manifest.json"
-	// styles.css has been removed as it's not needed
+	"manifest.json",
+	"styles.css"
 ];
 
 // Function to copy files
