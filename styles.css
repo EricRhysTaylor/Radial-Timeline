@@ -1,0 +1,101 @@
+/* Manuscript Timeline Plugin Styles */
+
+/* Timeline container */
+.manuscript-timeline-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+}
+
+/* SVG styling */
+.manuscript-timeline-container svg {
+  width: 100%;
+  height: 100%;
+  max-height: calc(100vh - 100px);
+  max-width: 100%;
+  margin: 0 auto;
+  transform-origin: center;
+  cursor: default;
+  background-color: transparent;
+}
+
+/* Scene elements */
+.scene-path {
+  cursor: pointer;
+  transition: opacity 0.2s ease-out;
+}
+
+.scene-path.faded {
+  opacity: 0.3;
+}
+
+.scene-title {
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+}
+
+.scene-title.faded {
+  opacity: 0.2;
+}
+
+/* Scene info tooltip */
+.scene-info {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-out;
+}
+
+/* Number elements */
+.number-square, .number-text {
+  transition: opacity 0.2s ease-out;
+}
+
+.number-square.faded, .number-text.faded {
+  opacity: 0.2;
+}
+
+/* Documentation styling */
+.documentation-container {
+  padding: 0 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.metadata-example {
+  background-color: var(--background-secondary);
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+  font-family: monospace;
+  user-select: all;
+  cursor: text;
+}
+
+/* Screenshot styling */
+.screenshot-link {
+  display: inline-block;
+  cursor: pointer;
+}
+
+.screenshot-image {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.screenshot-caption {
+  text-align: center;
+  font-size: 0.8em;
+  margin-top: 5px;
+  color: #888;
+}
+
+/* Buy me a coffee button */
+.bmc-button {
+  height: 60px !important;
+  width: 217px !important;
+} 
