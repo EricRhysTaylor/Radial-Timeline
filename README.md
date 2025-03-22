@@ -10,6 +10,7 @@ A manuscript timeline for creative fiction writing projects that displays scenes
 - Color-codes scenes by status (Complete, Working, Todo, etc.)
 - Supports both light and dark themes
 - Allows clicking on scenes to open the corresponding file
+- Fully integrated into Obsidian's interface - no external plugins required
 
 ## Support Development
 
@@ -29,10 +30,22 @@ This plugin creates an information-dense visualization that is more legible on h
 1. Install the plugin in your Obsidian vault
 2. Configure the source path in the plugin settings to point to your scenes folder
 3. Ensure your scene files have the required frontmatter metadata (see below)
-4. Run the "Create Manuscript Timeline" command using the Command Palette (Cmd/Ctrl+P) to generate the visualization
-5. The timeline will be created in the "Outline" folder as an HTML file
-6. Open the HTML file in Obsidian using the HTML Reader plugin to view and interact with your timeline
-7. To update the timeline after making changes to your scene files, run the "Create Manuscript Timeline" command again
+4. Click the manuscript timeline ribbon icon or run the "Show Manuscript Timeline" command from the Command Palette
+5. The timeline will open in a new tab in the main editor area
+6. Interact with the timeline by hovering over scenes to see details and clicking to open the corresponding file
+7. Use the zoom controls in the top left corner to zoom in/out and reset the view
+8. The timeline automatically updates when you modify, create, or delete scene files
+
+## Settings
+
+The plugin offers several settings to customize its behavior:
+
+- **Source Path**: Set the folder containing your scene files (e.g., "Book 1" or "Scenes")
+- **Publishing Stage Colors**: Customize colors for different publishing stages (Zero, Author, House, Press)
+- **Reset to Default Colors**: Restore all color settings to their original values if you've made changes
+- **Debug Mode**: Enable detailed logging in the console (useful for troubleshooting)
+
+These settings can be accessed from Settings → Community Plugins → Manuscript Timeline → Settings.
 
 ## Required Scene Metadata
 
@@ -49,7 +62,7 @@ Scene files must have the following frontmatter:
 - Edits - Optional editing notes (scenes with Edits will display with purple number boxes)
 - Publish Stage - Publishing stage (Zero, Author, House, Press)
 
-### Example Metadata
+### Example Metadata (use "Paste and Match Style" when copying to avoid formatting issues)
 
 ```yaml
 ---
@@ -121,12 +134,7 @@ The visualizations are built using pure SVG and JavaScript, offering a lightweig
 
 ## Required Plugins
 
-This plugin creates HTML files that can be viewed in Obsidian. For the best experience, you should have:
-
-- **Core Plugins**: Make sure the "Outgoing Links" core plugin is enabled
-- **Community Plugins**: The [HTML Reader](https://github.com/nuthrash/obsidian-html-plugin) plugin is recommended for viewing the generated timeline HTML files
-
-No other plugins are required for basic functionality. The plugin uses Obsidian's native API to read frontmatter metadata from your Markdown files - Dataview is NOT required. The plugin then generates an interactive HTML timeline visualization based on this metadata.
+This plugin is completely self-contained and does not require any additional plugins to function properly. It integrates directly into Obsidian's interface and renders the timeline visualization in a native Obsidian tab.
 
 ## Development
 

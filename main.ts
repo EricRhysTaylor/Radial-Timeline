@@ -1,4 +1,4 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView } from "obsidian";
 
 interface ManuscriptTimelineSettings {
     sourcePath: string;
@@ -8,20 +8,31 @@ interface ManuscriptTimelineSettings {
         House: string;
         Press: string;
     };
+    debug: boolean; // Add debug setting
 }
 
+// Constants for the view
+const TIMELINE_VIEW_TYPE = "manuscript-timeline-view";
+const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript Timeline";
+
 interface Scene {
-    title: string;
-    when: Date; //required
-    subplot: string;
+    title?: string;
+    date: string;
+    path?: string;
+    subplot?: string;
+    act?: string;
+    characters?: string[];
+    pov?: string;
+    location?: string;
+    number?: number;
     synopsis?: string;
-    actNumber: number;
-    path: string;
-    status: string;
-    Character?: string[];
-    due?: Date; //optional
-    Edits?: string;
-    "Publish Stage"?: string; // Changed from PublishStage to "Publish Stage"
+    when?: Date; // Keep for backward compatibility 
+    actNumber?: number; // Keep for backward compatibility
+    Character?: string[]; // Keep for backward compatibility
+    status?: string | string[]; // Add status property
+    "Publish Stage"?: string; // Add publish stage property
+    due?: string; // Add due date property
+    Edits?: string; // Add edits property
 }
 
 // Add this interface to store scene number information for the scene square and synopsis
@@ -40,7 +51,8 @@ const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
         "Author": "#5E85CF", // Blue
         "House": "#DA7847",  // Orange
         "Press": "#6FB971"   // Green
-    }
+    },
+    debug: false // Default to false
 };
 
 //a primary color for each status
@@ -77,21 +89,34 @@ function parseSceneTitle(title: string): { number: string; text: string } {
 
 export default class ManuscriptTimelinePlugin extends Plugin {
     settings: ManuscriptTimelineSettings;
+    
+    // Add this property to track the active view
+    activeTimelineView: ManuscriptTimelineView | null = null;
 
     async onload() {
         await this.loadSettings();
         
-        // Add ribbon icon
-        this.addRibbonIcon('calendar-range', 'Generate Manuscript Timeline', async () => {
-            await this.generateTimeline();
+        // Register the timeline view
+        this.registerView(
+            TIMELINE_VIEW_TYPE,
+            (leaf: WorkspaceLeaf) => {
+                const view = new ManuscriptTimelineView(leaf, this);
+                this.activeTimelineView = view;
+                return view;
+            }
+        );
+        
+        // Add ribbon icon for the new view
+        this.addRibbonIcon('calendar-with-checkmark', 'Manuscript Timeline', () => {
+            this.activateView();
         });
 
-        // Add command
+        // Add command for the new view
         this.addCommand({
-            id: 'generate-manuscript-timeline',
-            name: 'Generate Manuscript Timeline',
+            id: 'show-manuscript-timeline',
+            name: 'Show Manuscript Timeline',
             callback: async () => {
-                await this.generateTimeline();
+                await this.activateView();
             }
         });
 
@@ -107,32 +132,76 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 }
             }
         });
-    }
 
-    // Method to generate timeline
-    async generateTimeline(): Promise<void> {
-        try {
-            const sceneData = await this.getSceneData();
-            if (sceneData.length === 0) {
-                new Notice("No valid scene data found.");
-                return;
-            }
-            await this.createTimelineHTML("Manuscript Timeline", sceneData);
-            new Notice(`Manuscript timeline created with ${sceneData.length} scenes`);
-        } catch (error) {
-            console.error("Error generating timeline:", error);
-            new Notice("Failed to create manuscript timeline");
+        // Register event listeners to refresh the timeline when files change
+        this.registerEvent(
+            this.app.vault.on('modify', (file) => this.refreshTimelineIfNeeded(file))
+        );
+        this.registerEvent(
+            this.app.vault.on('delete', (file) => this.refreshTimelineIfNeeded(file))
+        );
+        this.registerEvent(
+            this.app.vault.on('create', (file) => this.refreshTimelineIfNeeded(file))
+        );
+        this.registerEvent(
+            this.app.vault.on('rename', (file) => this.refreshTimelineIfNeeded(file))
+        );
+        
+        // Add event listener for metadata cache changes
+        this.registerEvent(
+            this.app.metadataCache.on('changed', (file) => this.refreshTimelineIfNeeded(file))
+        );
+
+        // Add command to open the timeline view
+        this.addCommand({
+            id: 'open-manuscript-timeline-view',
+            name: 'Open Timeline View',
+            callback: () => this.activateView()
+        });
+    }
+    
+    // Helper to activate the timeline view
+    async activateView() {
+        // Check if view already exists
+        const leaves = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE);
+        
+        if (leaves.length > 0) {
+            // View exists, just reveal it
+            this.app.workspace.revealLeaf(leaves[0]);
+            return;
         }
+        
+        // Create a new leaf in the center (main editor area)
+        const leaf = this.app.workspace.getLeaf('tab');
+        await leaf.setViewState({
+            type: TIMELINE_VIEW_TYPE,
+            active: true
+        });
+        
+        // Reveal the leaf
+        this.app.workspace.revealLeaf(leaf);
     }
 
-    private async getSceneData(): Promise<Scene[]> {
-        const files = this.app.vault.getMarkdownFiles()
-            .filter(file => file.path.startsWith(this.settings.sourcePath));
+    // Method to generate timeline (legacy HTML method - will be removed later)
+
+    // Public method to get scene data
+    async getSceneData(): Promise<Scene[]> {
+        // Find markdown files in vault that match the filters
+        const files = this.app.vault.getMarkdownFiles().filter(file => {
+            // If sourcePath is empty, include all files, otherwise only include files in the sourcePath
+            if (this.settings.sourcePath) {
+                return file.path.startsWith(this.settings.sourcePath);
+            }
+            return true;
+        });
+
         const scenes: Scene[] = [];
     
         for (const file of files) {
+            try {
             const metadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
-            if (metadata?.Class === "Scene" && metadata?.When) {
+                
+                if (metadata && metadata.Class === "Scene") {
                 // Fix for date shift issue - ensure dates are interpreted as UTC
                 const whenStr = metadata.When;
                 
@@ -154,16 +223,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     // Ensure actNumber is a valid number between 1 and 3
                     const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
     
-                    // Handle status as either string or array
-                    let status = "Todo";
-                    if (metadata.Status) {
-                        if (Array.isArray(metadata.Status)) {
-                            status = metadata.Status[0]; // Use first status if it's an array
-                        } else {
-                            status = metadata.Status;
-                        }
-                    }
-    
                     // Parse Character metadata - it might be a string or array
                     let characters = metadata.Character;
                     if (characters) {
@@ -173,49 +232,66 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         }
                         // Clean up the internal link format (remove [[ and ]])
                         characters = characters.map((char: string) => char.replace(/[\[\]]/g, ''));
+                        } else {
+                            characters = [];
                     }
     
                     // Create a separate entry for each subplot
                     subplots.forEach(subplot => {
                         scenes.push({
                             title: metadata.Title || file.basename,
-                            when: when,
+                                date: when.toISOString(),
+                                path: file.path,
                             subplot: subplot,
-                            synopsis: metadata.Synopsis ? String(metadata.Synopsis) : '',
+                                act: validActNumber.toString(),
+                                characters: characters,
+                                pov: metadata.Pov,
+                                location: metadata.Place,
+                                number: validActNumber,
+                                synopsis: metadata.Synopsis,
+                                when: when,
                             actNumber: validActNumber,
-                            path: file.path,
-                            status: status,
-                            Character: characters,
-                            due: metadata.Due ? new Date(metadata.Due) : undefined,
-                            Edits: metadata.Edits || '',
-                            "Publish Stage": metadata["Publish Stage"] || 'Zero' // Changed from PublishStage to "Publish Stage"
-                        });
+                                Character: characters,
+                                status: metadata.Status,
+                                "Publish Stage": metadata["Publish Stage"],
+                                due: metadata.Due,
+                                Edits: metadata.Edits
+                            });
 
-                        // Add debug logging for Publish Stage
-                        console.log(`Scene: ${metadata.Title || file.basename}, Status: ${status}, Publish Stage: ${metadata["Publish Stage"] || 'Zero'}`);
+                            // Only log scene data in debug mode, and avoid the noisy scene details
+                            if (this.settings.debug) {
+                                this.log(`Added scene: ${metadata.Title || file.basename}`);
+                            }
                     });
                 }
             }
+            } catch (error) {
+                console.error(`Error processing file ${file.path}:`, error);
         }
+        }
+
         //sort scenes by when and then by scene number for the subplot radials
         return scenes.sort((a, b) => {
-            // First compare by when
-            const whenComparison = a.when.getTime() - b.when.getTime();
+            // First compare by when (date)
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            const whenComparison = dateA.getTime() - dateB.getTime();
             if (whenComparison !== 0) return whenComparison;
             
-            // If whens are equal, compare by scene number
-            const aNumber = parseSceneTitle(a.title).number;
-            const bNumber = parseSceneTitle(b.title).number;
+            // If dates are equal, compare by scene number
+            const aNumber = parseSceneTitle(a.title || '').number;
+            const bNumber = parseSceneTitle(b.title || '').number;
             
             // Convert scene numbers to numbers for comparison
-            const aNum = aNumber ? parseFloat(aNumber) : 0;
-            const bNum = bNumber ? parseFloat(bNumber) : 0;
-            
-            return aNum - bNum;
+            // Ensure we're using numeric values by explicitly parsing the strings
+            const aNumberValue = aNumber ? parseInt(aNumber, 10) : 0;
+            const bNumberValue = bNumber ? parseInt(bNumber, 10) : 0;
+            return aNumberValue - bNumberValue;
         });
     }
 
-    private createTimelineSVG(scenes: Scene[]): string {
+    // Change from private to public
+    public createTimelineSVG(scenes: Scene[]): string {
         const size = 1600;
         const margin = 30;
         const innerRadius = 200; // the first ring is 200px from the center
@@ -227,7 +303,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Collect all unique subplots
         const allSubplotsSet = new Set<string>();
         scenes.forEach(scene => {
-            allSubplotsSet.add(scene.subplot);
+            allSubplotsSet.add(scene.subplot || "None");
         });
         const allSubplots = Array.from(allSubplotsSet);
     
@@ -244,7 +320,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         }
     
         scenes.forEach(scene => {
-            const act = scene.actNumber - 1; // Subtract 1 for 0-based index
+            const act = scene.actNumber !== undefined ? scene.actNumber - 1 : 0; // Subtract 1 for 0-based index, default to 0 if undefined
     
             // Ensure act is within valid range
             const validAct = (act >= 0 && act < NUM_ACTS) ? act : 0;
@@ -707,9 +783,21 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         // Create master subplot order before the act loop
         const masterSubplotOrder = (() => {
-            const subplotCounts = Object.entries(scenesByActAndSubplot[0]).map(([subplot, scenes]) => ({
+            // Create a combined set of all subplots from all acts
+            const allSubplotsMap = new Map<string, number>();
+            
+            // Iterate through all acts to gather all subplots
+            for (let actIndex = 0; actIndex < NUM_ACTS; actIndex++) {
+                Object.entries(scenesByActAndSubplot[actIndex] || {}).forEach(([subplot, scenes]) => {
+                    // Add scenes count to existing count or initialize
+                    allSubplotsMap.set(subplot, (allSubplotsMap.get(subplot) || 0) + scenes.length);
+                });
+            }
+            
+            // Convert map to array of subplot objects
+            const subplotCounts = Array.from(allSubplotsMap.entries()).map(([subplot, count]) => ({
                 subplot,
-                count: scenes.length,
+                count
             }));
 
             // Sort subplots, but ensure "Main Plot" or empty subplot is first
@@ -727,14 +815,21 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Synopses at end to be above all other elements
         const synopsesHTML: string[] = [];
         scenes.forEach((scene) => {
-            const subplotIndex = masterSubplotOrder.indexOf(scene.subplot);
+            // Handle undefined subplot with a default "Main Plot"
+            const subplot = scene.subplot || "Main Plot";
+            const subplotIndex = masterSubplotOrder.indexOf(subplot);
             const ring = NUM_RINGS - 1 - subplotIndex;
             
+            // Handle undefined actNumber with a default of 1
+            const actNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
+            
             // Get the scenes for this act and subplot to determine correct index
-            const scenesInActAndSubplot = scenesByActAndSubplot[scene.actNumber - 1][scene.subplot] || [];
+            const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
+            const actIndex = sceneActNumber - 1;
+            const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
             const sceneIndex = scenesInActAndSubplot.indexOf(scene);
             
-            const sceneId = `scene-path-${scene.actNumber - 1}-${ring}-${sceneIndex}`;
+            const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
             const numberInfo = sceneNumbersMap.get(sceneId);
             
             const lineHeight = 30;
@@ -763,7 +858,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 this.splitIntoBalancedLines(scene.synopsis, maxTextWidth) : [];
 
             const contentLines = [
-                `${scene.title} - ${scene.when.toLocaleDateString()}`,
+                `${scene.title} - ${scene.when?.toLocaleDateString()}`,
                 ...synopsisLines,
                 // Add a non-breaking space to preserve the line spacing
                 '\u00A0', // Using non-breaking space instead of empty string
@@ -781,8 +876,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const totalHeight = contentLines.length * lineHeight;
 
             // Determine which text block to show based on Act number
-            const showLeftText = scene.actNumber <= 2;
-            const showRightText = scene.actNumber === 3;
+            const displayActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
+            const showLeftText = displayActNumber <= 2;
+            const showRightText = displayActNumber === 3;
 
             synopsesHTML.push(`
                 <g class="scene-info info-container" 
@@ -839,7 +935,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         const sceneAngleSize = (endAngle - startAngle) / currentScenes.length;
             
                         currentScenes.forEach((scene, idx) => {
-                            const { number, text } = parseSceneTitle(scene.title);
+                            const { number, text } = parseSceneTitle(scene.title || '');
                             const sceneStartAngle = startAngle + (idx * sceneAngleSize);
                             const sceneEndAngle = sceneStartAngle + sceneAngleSize;
                             const textPathRadius = (innerR + outerR) / 2;
@@ -890,7 +986,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             const dyOffset = -1; // Small negative offset to align with top curve with 1px padding
             
                             svg += `
-                            <g class="scene-group" data-path="${encodeURIComponent(scene.path)}" id="scene-group-${act}-${ring}-${idx}">
+                            <g class="scene-group" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                 <path id="${sceneId}"
                                       d="${arcPath}" 
                                       fill="${color}" 
@@ -1008,12 +1104,14 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const processedScenes = new Set<string>(); // Track scenes by their path
         const statusCounts = scenes.reduce((acc, scene) => {
             // Skip if we've already processed this scene
-            if (processedScenes.has(scene.path)) {
+            if (scene.path && processedScenes.has(scene.path)) {
                 return acc;
             }
             
             // Mark scene as processed
-            processedScenes.add(scene.path);
+            if (scene.path) {
+                processedScenes.add(scene.path);
+            }
             
             const normalizedStatus = scene.status?.toString().trim().toLowerCase() || '';
             
@@ -1028,7 +1126,18 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 acc["Due"] = (acc["Due"] || 0) + 1;
             } else {
                 // All other scenes are counted by their status
-                acc[scene.status] = (acc[scene.status] || 0) + 1;
+                // First get the status as a string safely
+                let statusKey = "Todo"; // Default to Todo
+                
+                if (scene.status) {
+                    if (Array.isArray(scene.status) && scene.status.length > 0) {
+                        statusKey = String(scene.status[0]);
+                    } else if (typeof scene.status === 'string') {
+                        statusKey = scene.status;
+                    }
+                }
+                
+                acc[statusKey] = (acc[statusKey] || 0) + 1;
             }
             return acc;
         }, {} as Record<string, number>);
@@ -1114,18 +1223,20 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Add number squares after all other elements but before synopses
         svg += `<g class="number-squares">`;
         scenes.forEach((scene) => {
-            const { number } = parseSceneTitle(scene.title);
+            const { number } = parseSceneTitle(scene.title || '');
             if (number) {
-                const subplotIndex = masterSubplotOrder.indexOf(scene.subplot);
+                const subplot = scene.subplot || "Main Plot";
+                const subplotIndex = masterSubplotOrder.indexOf(subplot);
                 const ring = NUM_RINGS - 1 - subplotIndex;
                 
                 // Get the scenes for this act and subplot to determine correct index
-                const scenesInActAndSubplot = scenesByActAndSubplot[scene.actNumber - 1][scene.subplot] || [];
+                const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
+                const actIndex = sceneActNumber - 1;
+                const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
                 const sceneIndex = scenesInActAndSubplot.indexOf(scene);
                 
-                const act = scene.actNumber - 1;
-                const startAngle = (act * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                const endAngle = ((act + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                const startAngle = (actIndex * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                const endAngle = ((actIndex + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
                 const sceneAngleSize = (endAngle - startAngle) / scenesInActAndSubplot.length;
                 const sceneStartAngle = startAngle + (sceneIndex * sceneAngleSize);
                 
@@ -1156,7 +1267,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 const squareY = textPathRadius * Math.sin(sceneStartAngle) + 2;
           
                 // Store scene number information for square and synopsis
-                const sceneId = `scene-path-${act}-${ring}-${sceneIndex}`;
+                const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
                 sceneNumbersMap.set(sceneId, {
                     number,
                     x: squareX,
@@ -1348,350 +1459,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         }).join(' ');
     }
 
-    async createTimelineHTML(title: string, scenes: Scene[]): Promise<void> {
-        try {
-            const folderPath = 'Outline';
-            if (!(await this.app.vault.adapter.exists(folderPath))) {
-                await this.app.vault.createFolder(folderPath);
-            }
-    
-            const htmlPath = `${folderPath}/${title}.html`;
-            const html = `<!DOCTYPE html>
-    <html>
-    <head>
-        <title>Manuscript Timeline</title>
-        <style>
-            :root {
-                /* Default variables that will be overridden by Obsidian theme */
-                --background-primary: transparent;
-                --background-secondary: transparent;
-                --text-normal: #333333;
-                --text-muted: #666666;
-                --text-faint: #999999;
-                --text-accent: #705dcf;
-                --text-accent-hover: #8875ff;
-                --background-modifier-border: #ddd;
-            }
-            
-            html, body {
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                height: 100%;
-                overflow: auto;
-                font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, sans-serif;
-                background-color: transparent !important;
-                color: var(--text-normal);
-            }
-            
-            body { 
-                display: grid; 
-                place-items: center; 
-                background-color: transparent !important;
-            }
-            
-            #timeline-container {
-                width: 100%;
-                height: 100%;
-                display: grid;
-                place-items: center;
-                background-color: transparent !important;
-            }
-            
-            svg {
-                max-width: 100%;
-                max-height: 100%;
-                width: 100vw;
-                height: 100vh;
-                object-fit: contain;
-                background-color: transparent !important;
-            }
-
-            /* New CSS classes for faded and highlighted states */
-            .scene-path.faded {
-                opacity: 0.5;
-                transition: opacity 0.2s ease-out;
-            }
-
-            .scene-path.highlighted {
-                opacity: 1;
-                transition: opacity 0.2s ease-out;
-            }
-            
-            /* Ensure key-text elements are styled correctly */
-            .theme-dark .key-text {
-                fill: #ffffff !important;
-            }
-            
-            .theme-light .key-text {
-                fill: #333333 !important;
-            }
-            
-            /* Always keep info-text dark for better visibility against light background */
-            .info-text {
-                fill: #333333 !important;
-            }
-        </style>
-    </head>
-    <body>
-        <div id="timeline-container">
-            ${this.createTimelineSVG(scenes)}
-        </div>
-        <script>
-            // Helper function to lighten a color
-            function lightenColor(color, percent) {
-                // Parse the color
-                const num = parseInt(color.replace("#", ""), 16);
-                
-                // Extract original RGB values
-                const R = (num >> 16);
-                const G = ((num >> 8) & 0x00FF);
-                const B = (num & 0x0000FF);
-                
-                // Calculate lightened values
-                const mixRatio = Math.min(1, percent / 100); // How much white to mix in
-                
-                // Simple lightening calculation that preserves the hue
-                const newR = Math.min(255, Math.round(R + (255 - R) * mixRatio));
-                const newG = Math.min(255, Math.round(G + (255 - G) * mixRatio));
-                const newB = Math.min(255, Math.round(B + (255 - B) * mixRatio));
-                
-                return "#" + (1 << 24 | newR << 16 | newG << 8 | newB).toString(16).slice(1);
-            }
-            
-            // Function to apply Obsidian theme variables to the iframe content
-            function applyThemeVariables() {
-                try {
-                    // Get the parent document (Obsidian)
-                    const parentDocument = window.parent.document;
-                    
-                    // Check if dark mode is active
-                    const isDarkMode = parentDocument.body.classList.contains('theme-dark');
-                    
-                    // Get computed styles from parent
-                    const computedStyle = window.getComputedStyle(parentDocument.documentElement);
-                    
-                    // List of variables to copy from Obsidian
-                    const variables = [
-                        '--background-primary',
-                        '--background-secondary',
-                        '--text-normal',
-                        '--text-muted',
-                        '--text-faint',
-                        '--text-accent',
-                        '--text-accent-hover',
-                        '--background-modifier-border'
-                    ];
-                    
-                    // Apply each variable to this document
-                    variables.forEach(variable => {
-                        const value = computedStyle.getPropertyValue(variable);
-                        if (value) {
-                            document.documentElement.style.setProperty(variable, value);
-                        }
-                    });
-                    
-                    // Add theme class to body
-                    document.body.classList.remove('theme-dark', 'theme-light');
-                    document.body.classList.add(isDarkMode ? 'theme-dark' : 'theme-light');
-                    
-                    // Force text color based on theme
-                    const textColor = isDarkMode ? '#ffffff' : '#333333';
-                    
-                    // Force SVG text elements to use explicit colors based on theme
-                    const textElements = document.querySelectorAll('.month-label, .month-label-outer, .act-label, .center-number-text');
-                    
-                    textElements.forEach(el => {
-                        el.style.fill = textColor;
-                    });
-                    
-                    // Handle key-text elements separately with a more specific approach
-                    document.querySelectorAll('g.color-key text.key-text').forEach(el => {
-                        // Use setAttribute to ensure the style is applied
-                        el.setAttribute('fill', textColor);
-                        // Also set the style.fill property
-                        el.style.fill = textColor;
-                    });
-                    
-                    // Handle center key text elements with similar approach
-                    document.querySelectorAll('g.color-key-center text.center-key-text').forEach(el => {
-                        // Use setAttribute to ensure the style is applied
-                        el.setAttribute('fill', textColor);
-                        // Also set the style.fill property
-                        el.style.fill = textColor;
-                    });
-                    
-                    // Keep info-text elements dark for better visibility against light background
-                    document.querySelectorAll('.info-text').forEach(el => {
-                        // Always use dark text for info panels
-                        el.style.fill = '#333333';
-                    });
-                    
-                    // Force SVG lines to use theme colors
-                    document.querySelectorAll('.month-spoke-line:not(.act-boundary)')
-                        .forEach(el => {
-                            el.style.stroke = textColor;
-                        });
-                    
-                    document.querySelectorAll('.month-spoke-line.act-boundary, .act-border')
-                        .forEach(el => {
-                            el.style.stroke = computedStyle.getPropertyValue('--text-accent') || '#705dcf';
-                        });
-                    
-                    // Force progress ring to use theme colors
-                    const progressBase = document.querySelector('.progress-ring-base');
-                    if (progressBase) {
-                        progressBase.style.stroke = isDarkMode ? '#444444' : '#dddddd';
-                    }
-                    
-                    // Remove the code that overwrites the rainbow gradient
-                    // We want to keep the rainbow gradient applied in the SVG
-                    /* 
-                    const progressFill = document.querySelector('.progress-ring-fill');
-                    if (progressFill) {
-                        progressFill.style.stroke = computedStyle.getPropertyValue('--text-accent-hover') || '#8875ff';
-                    }
-                    */
-                    
-                    console.log('Theme applied: ' + (isDarkMode ? 'dark' : 'light'));
-                } catch (error) {
-                    console.error('Error applying theme variables:', error);
-                }
-            }
-            
-            // Apply theme variables when the page loads
-            window.addEventListener('load', applyThemeVariables);
-            
-            // Set up observer to detect theme changes in Obsidian
-            try {
-                const parentBody = window.parent.document.body;
-                const observer = new MutationObserver(mutations => {
-                    mutations.forEach(mutation => {
-                        if (mutation.attributeName === 'class') {
-                            // Theme might have changed, reapply variables
-                            setTimeout(applyThemeVariables, 100);
-                        }
-                    });
-                });
-                
-                // Start observing the parent body for class changes
-                observer.observe(parentBody, { attributes: true });
-            } catch (error) {
-                console.error('Error setting up theme observer:', error);
-            }
-            
-            // JavaScript to handle hover and click effects
-            const sceneGroups = document.querySelectorAll('.scene-group');
-            const ZERO_COLOR = "${this.settings.publishStageColors.Zero}"; // Store Zero color for calculations
-            const EMPTY_COLOR = lightenColor(ZERO_COLOR, 50); // Dynamically calculate empty color based on Zero
-            
-            sceneGroups.forEach(scene => {
-                scene.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    const path = decodeURIComponent(scene.getAttribute('data-path'));
-                    
-                    try {
-                        const file = window.parent.app.vault.getAbstractFileByPath(path);
-                        if (file) {
-                            await window.parent.app.workspace.getLeaf().openFile(file);
-                        }
-                    } catch (error) {
-                        console.error('Error opening file:', error);
-                    }
-                });
-
-                scene.addEventListener('mouseenter', (e) => {
-                    // Add reveal functionality
-                    const path = decodeURIComponent(scene.getAttribute('data-path'));
-                    if (window.parent.app) {
-                        const fileExplorer = window.parent.app.workspace.getLeavesOfType('file-explorer')[0];
-                        if (fileExplorer) {
-                            try {
-                                const file = window.parent.app.vault.getAbstractFileByPath(path);
-                                if (file) {
-                                    fileExplorer.view.revealInFolder(file);
-                                }
-                            } catch (e) {
-                                console.error('Error revealing file:', e);
-                            }
-                        }
-                    }
-
-                    const scenePathId = scene.querySelector('.scene-path').id;
-                    
-                    // Store original colors and change others to Empty color
-                    sceneGroups.forEach(s => {
-                        const path = s.querySelector('.scene-path');
-                        if (path.id !== scenePathId) {
-                            // Store the original color if not already stored
-                            if (!path.getAttribute('data-original-color')) {
-                                const currentFill = path.getAttribute('fill');
-                                // Store the full pattern URL or color
-                                path.setAttribute('data-original-color', currentFill);
-                            }
-                            path.setAttribute('fill', EMPTY_COLOR);
-                        }
-                        
-                        const title = s.querySelector('.scene-title');
-                        if (title && path.id !== scenePathId) {
-                            title.classList.add('faded');
-                        }
-                    });
-
-                    // Fade all number squares and text except for the current scene
-                    document.querySelectorAll('.number-square, .number-text').forEach(element => {
-                        if (element.getAttribute('data-scene-id') !== scenePathId) {
-                            element.classList.add('faded');
-                            // For squares with purple background, change to white with black text when faded
-                            if (element.classList.contains('number-square')) {
-                                element.setAttribute('data-original-fill', element.getAttribute('fill'));
-                                element.setAttribute('fill', 'white');
-                            }
-                            if (element.classList.contains('number-text')) {
-                                element.setAttribute('data-original-fill', element.getAttribute('fill'));
-                                element.setAttribute('fill', 'black');
-                            }
-                        }
-                    });
-                });
-
-                scene.addEventListener('mouseleave', () => {
-                    // Restore original colors
-                    sceneGroups.forEach(s => {
-                        const path = s.querySelector('.scene-path');
-                        const originalColor = path.getAttribute('data-original-color');
-                        if (originalColor) {
-                            path.setAttribute('fill', originalColor);
-                            path.removeAttribute('data-original-color');
-                        }
-                        
-                        const title = s.querySelector('.scene-title');
-                        if (title) title.classList.remove('faded');
-                    });
-
-                    // Remove fading and restore original colors for all number squares and text
-                    document.querySelectorAll('.number-square, .number-text').forEach(element => {
-                        element.classList.remove('faded');
-                        const originalFill = element.getAttribute('data-original-fill');
-                        if (originalFill) {
-                            element.setAttribute('fill', originalFill);
-                            element.removeAttribute('data-original-fill');
-                        }
-                    });
-                });
-            });
-        </script>
-    </body>
-    </html>`;
-    
-            await this.app.vault.adapter.write(htmlPath, html);
-    
-        } catch (error) {
-            this.log("Error creating timeline:", error);
-            throw error;
-        }
-    }
-
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     }
@@ -1719,12 +1486,35 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     private log(message: string, data?: any) {
-        const console = (window as any).console;
-        if (console) {
+        if (this.settings.debug) {
             if (data) {
                 console.log(`Manuscript Timeline Plugin: ${message}`, data);
             } else {
                 console.log(`Manuscript Timeline Plugin: ${message}`);
+            }
+        }
+    }
+
+    // Method to refresh the timeline if the active view exists
+    refreshTimelineIfNeeded(file: TAbstractFile) {
+        // Only refresh if the file is a markdown file
+        if (!(file instanceof TFile) || file.extension !== 'md') {
+            return;
+        }
+
+        // Get all timeline views
+        const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
+            .map(leaf => leaf.view as ManuscriptTimelineView)
+            .filter(view => view instanceof ManuscriptTimelineView);
+
+        // Refresh each view
+        for (const view of timelineViews) {
+            if (view) {
+                // Get the leaf that contains the view
+                const leaf = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)[0];
+                if (leaf) {
+                    view.refreshTimeline();
+                }
             }
         }
     }
@@ -1739,15 +1529,14 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
     }
 
     display(): void {
-        const { containerEl } = this;
+        const {containerEl} = this;
         containerEl.empty();
 
-        // Add plugin settings
-        containerEl.createEl('h2', { text: 'Manuscript Timeline Settings' });
+        containerEl.createEl('h2', {text: 'Manuscript Timeline Settings'});
 
         new Setting(containerEl)
-            .setName('Source Path')
-            .setDesc('Path to folder containing scene files')
+            .setName('Source path')
+            .setDesc('Path to your manuscript files')
             .addText(text => text
                 .setPlaceholder('Enter path')
                 .setValue(this.plugin.settings.sourcePath)
@@ -1755,264 +1544,276 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                     this.plugin.settings.sourcePath = value;
                     await this.plugin.saveSettings();
                 }));
+                
+        new Setting(containerEl)
+            .setName('Debug mode')
+            .setDesc('Enable debug logging in console')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.debug)
+                .onChange(async (value) => {
+                    this.plugin.settings.debug = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        containerEl.createEl('h3', {text: 'Publishing Stage Colors'});
         
-        // Add publish stage color settings
-        containerEl.createEl('h3', { text: 'Publishing Stage Colors' });
+        // Add Reset to Default Colors button
+        new Setting(containerEl)
+            .setName('Reset to Default Colors')
+            .setDesc('Restore all color settings to their default values')
+            .addButton(button => button
+                .setButtonText('Reset Colors')
+                .onClick(async () => {
+                    // Apply default colors from DEFAULT_SETTINGS constant
+                    this.plugin.settings.publishStageColors = Object.assign({}, DEFAULT_SETTINGS.publishStageColors);
+                    
+                    // Save settings
+                    await this.plugin.saveSettings();
+                    
+                    // Refresh the settings display to show updated colors
+                    this.display();
+                    
+                    // Show a notice to confirm
+                    new Notice('Publishing stage colors have been reset to defaults');
+                }));
         
-        // Helper function to create a color swatch
-        const createColorSwatch = (container: HTMLElement, color: string) => {
-            const swatch = container.createEl('div');
+        // Create a color swatch function
+        const createColorSwatch = (container: HTMLElement, color: string): HTMLElement => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
             swatch.style.backgroundColor = color;
-            swatch.style.width = '30px';
-            swatch.style.height = '30px';
-            swatch.style.border = '1px solid #ccc';
-            swatch.style.borderRadius = '4px';
+            swatch.style.width = '20px';
+            swatch.style.height = '20px';
+            swatch.style.borderRadius = '3px';
             swatch.style.display = 'inline-block';
-            swatch.style.marginLeft = '10px';
+            swatch.style.marginRight = '8px';
+            swatch.style.border = '1px solid var(--background-modifier-border)';
+            
+            container.appendChild(swatch);
             return swatch;
         };
         
-        // Zero stage color
-        let zeroColorSwatch: HTMLElement;
-        let zeroColorSetting = new Setting(containerEl)
-            .setName('Zero Stage Color')
-            .setDesc('Color for Zero publishing stage (changing this will affect empty scenes too)')
+        new Setting(containerEl)
+            .setName('Zero Stage')
+            .setDesc('Color for scenes in the Zero draft stage')
             .addText(text => {
-                const textComponent = text
-                    .setPlaceholder('#9E70CF')
+                const colorInput = text
                     .setValue(this.plugin.settings.publishStageColors.Zero)
                     .onChange(async (value) => {
                         this.plugin.settings.publishStageColors.Zero = value;
                         await this.plugin.saveSettings();
-                        zeroColorSwatch.style.backgroundColor = value;
+                        if (swatch) {
+                            swatch.style.backgroundColor = value;
+                        }
                     });
-                return textComponent;
+                
+                // Add null check before passing parent to the function
+                const parent = text.inputEl.parentElement;
+                const swatch = parent ? createColorSwatch(parent, this.plugin.settings.publishStageColors.Zero) : null;
+                return colorInput;
             });
-        
-        // Add swatch after creating the setting
-        zeroColorSwatch = createColorSwatch(zeroColorSetting.controlEl, this.plugin.settings.publishStageColors.Zero);
-        
-        zeroColorSetting.addExtraButton(button => {
-            button
-                .setIcon('reset')
-                .setTooltip('Reset to default')
-                .onClick(async () => {
-                    this.plugin.settings.publishStageColors.Zero = DEFAULT_SETTINGS.publishStageColors.Zero;
-                    await this.plugin.saveSettings();
-                    const textComponent = zeroColorSetting.components[0] as any;
-                    textComponent.setValue(DEFAULT_SETTINGS.publishStageColors.Zero);
-                    zeroColorSwatch.style.backgroundColor = DEFAULT_SETTINGS.publishStageColors.Zero;
-                });
-        });
-            
-        // Author stage color
-        let authorColorSwatch: HTMLElement;
-        let authorColorSetting = new Setting(containerEl)
-            .setName('Author Stage Color')
-            .setDesc('Color for Author publishing stage')
+
+        new Setting(containerEl)
+            .setName('Author Stage')
+            .setDesc('Color for scenes in the Author stage')
             .addText(text => {
-                const textComponent = text
-                    .setPlaceholder('#5E85CF')
+                const colorInput = text
                     .setValue(this.plugin.settings.publishStageColors.Author)
                     .onChange(async (value) => {
                         this.plugin.settings.publishStageColors.Author = value;
                         await this.plugin.saveSettings();
-                        authorColorSwatch.style.backgroundColor = value;
+                        if (swatch) {
+                            swatch.style.backgroundColor = value;
+                        }
                     });
-                return textComponent;
+                
+                // Add null check before passing parent to the function
+                const parent = text.inputEl.parentElement;
+                const swatch = parent ? createColorSwatch(parent, this.plugin.settings.publishStageColors.Author) : null;
+                return colorInput;
             });
-            
-        // Add swatch after creating the setting
-        authorColorSwatch = createColorSwatch(authorColorSetting.controlEl, this.plugin.settings.publishStageColors.Author);
-        
-        authorColorSetting.addExtraButton(button => {
-            button
-                .setIcon('reset')
-                .setTooltip('Reset to default')
-                .onClick(async () => {
-                    this.plugin.settings.publishStageColors.Author = DEFAULT_SETTINGS.publishStageColors.Author;
-                    await this.plugin.saveSettings();
-                    const textComponent = authorColorSetting.components[0] as any;
-                    textComponent.setValue(DEFAULT_SETTINGS.publishStageColors.Author);
-                    authorColorSwatch.style.backgroundColor = DEFAULT_SETTINGS.publishStageColors.Author;
-                });
-        });
-            
-        // House stage color
-        let houseColorSwatch: HTMLElement;
-        let houseColorSetting = new Setting(containerEl)
-            .setName('House Stage Color')
-            .setDesc('Color for House publishing stage')
+
+        new Setting(containerEl)
+            .setName('House Stage')
+            .setDesc('Color for scenes in the House stage')
             .addText(text => {
-                const textComponent = text
-                    .setPlaceholder('#DA7847')
+                const colorInput = text
                     .setValue(this.plugin.settings.publishStageColors.House)
                     .onChange(async (value) => {
                         this.plugin.settings.publishStageColors.House = value;
                         await this.plugin.saveSettings();
-                        houseColorSwatch.style.backgroundColor = value;
+                        if (swatch) {
+                            swatch.style.backgroundColor = value;
+                        }
                     });
-                return textComponent;
+                
+                // Add null check before passing parent to the function
+                const parent = text.inputEl.parentElement;
+                const swatch = parent ? createColorSwatch(parent, this.plugin.settings.publishStageColors.House) : null;
+                return colorInput;
             });
-            
-        // Add swatch after creating the setting
-        houseColorSwatch = createColorSwatch(houseColorSetting.controlEl, this.plugin.settings.publishStageColors.House);
-        
-        houseColorSetting.addExtraButton(button => {
-            button
-                .setIcon('reset')
-                .setTooltip('Reset to default')
-                .onClick(async () => {
-                    this.plugin.settings.publishStageColors.House = DEFAULT_SETTINGS.publishStageColors.House;
-                    await this.plugin.saveSettings();
-                    const textComponent = houseColorSetting.components[0] as any;
-                    textComponent.setValue(DEFAULT_SETTINGS.publishStageColors.House);
-                    houseColorSwatch.style.backgroundColor = DEFAULT_SETTINGS.publishStageColors.House;
-                });
-        });
-            
-        // Press stage color
-        let pressColorSwatch: HTMLElement;
-        let pressColorSetting = new Setting(containerEl)
-            .setName('Press Stage Color')
-            .setDesc('Color for Press publishing stage')
+
+        new Setting(containerEl)
+            .setName('Press Stage')
+            .setDesc('Color for scenes in the Press stage')
             .addText(text => {
-                const textComponent = text
-                    .setPlaceholder('#6FB971')
+                const colorInput = text
                     .setValue(this.plugin.settings.publishStageColors.Press)
                     .onChange(async (value) => {
                         this.plugin.settings.publishStageColors.Press = value;
                         await this.plugin.saveSettings();
-                        pressColorSwatch.style.backgroundColor = value;
+                        if (swatch) {
+                            swatch.style.backgroundColor = value;
+                        }
                     });
-                return textComponent;
+                
+                // Add null check before passing parent to the function
+                const parent = text.inputEl.parentElement;
+                const swatch = parent ? createColorSwatch(parent, this.plugin.settings.publishStageColors.Press) : null;
+                return colorInput;
             });
             
-        // Add swatch after creating the setting
-        pressColorSwatch = createColorSwatch(pressColorSetting.controlEl, this.plugin.settings.publishStageColors.Press);
+        // Add horizontal rule to separate settings from documentation
+        containerEl.createEl('hr', { cls: 'settings-separator' });
         
-        pressColorSetting.addExtraButton(button => {
-            button
-                .setIcon('reset')
-                .setTooltip('Reset to default')
-                .onClick(async () => {
-                    this.plugin.settings.publishStageColors.Press = DEFAULT_SETTINGS.publishStageColors.Press;
-                    await this.plugin.saveSettings();
-                    const textComponent = pressColorSetting.components[0] as any;
-                    textComponent.setValue(DEFAULT_SETTINGS.publishStageColors.Press);
-                    pressColorSwatch.style.backgroundColor = DEFAULT_SETTINGS.publishStageColors.Press;
-                });
-        });
+        // Add documentation section
+        containerEl.createEl('h2', {text: 'Documentation', cls: 'setting-item-heading'});
         
-        // Add a horizontal rule
-        containerEl.createEl('hr');
+        // Add horizontal rule to separate settings from documentation
+        containerEl.createEl('hr', { cls: 'settings-separator' });
         
-        // ABOUT section with merged Features
-        containerEl.createEl('h3', { text: 'About Manuscript Timeline' });
-        
-        containerEl.createEl('p', { 
-            text: 'A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.'
-        });
-        
-        // Merged Features into About section
-        const featuresList = containerEl.createEl('ul');
-        [
-            'Creates an interactive radial timeline visualization of your scenes',
-            'Organizes scenes by act, subplot, and chronological order',
-            'Shows scene details on hover including title, date, synopsis, subplots, and characters',
-            'Color-codes scenes by status (Complete, Working, Todo, etc.)',
-            'Supports both light and dark themes',
-            'Allows clicking on scenes to open the corresponding file'
-        ].forEach(feature => {
-            featuresList.createEl('li', { text: feature });
-        });
-        
-        // Author information
-        containerEl.createEl('p', { 
-            text: 'Created by Eric Rhys Taylor'
-        });
-        
-        // Support link - moved up from bottom
-        containerEl.createEl('h4', { text: 'Support Development' });
-        containerEl.createEl('p', { 
-            text: 'If you find this plugin useful, consider supporting its continued development:'
-        });
-        
-        const supportLink = containerEl.createEl('a', { 
-            href: 'https://www.buymeacoffee.com/ericrhystaylor'
-        });
-        supportLink.target = '_blank';
-        supportLink.createEl('img', { 
-            attr: {
-                src: 'https://cdn.buymeacoffee.com/buttons/v2/default-blue.png',
-                alt: 'Buy Me A Coffee',
-                style: 'height: 60px !important; width: 217px !important;'
+        // Add some basic styling for the documentation section
+        const style = document.createElement('style');
+        style.textContent = `
+            .settings-separator {
+                margin: 1em 0 2em 0;
+                border: none;
+                border-top: 1px solid var(--background-modifier-border);
             }
-        });
-        
-        // Display Requirements section
-        containerEl.createEl('h3', { text: 'Display Requirements' });
-        containerEl.createEl('p', { 
-            text: 'This plugin creates an information-dense visualization that is more legible on high-resolution displays.'
-        });
-        const requirementsList = containerEl.createEl('ul');
-        [
-            'Recommended: High-resolution displays such as Apple Retina displays or Windows equivalent (4K or better)',
-            'The timeline contains detailed text and visual elements that benefit from higher pixel density',
-            'While usable on standard displays, you may need to zoom in to see all details clearly'
-        ].forEach(req => {
-            requirementsList.createEl('li', { text: req });
-        });
-        
-        // How to Use section
-        containerEl.createEl('h3', { text: 'How to Use' });
-        const usageList = containerEl.createEl('ol');
-        [
-            'Install the plugin in your Obsidian vault',
-            'Configure the source path in the plugin settings to point to your scenes folder',
-            'Ensure your scene files have the required frontmatter metadata (see below)',
-            'Run the "Create Manuscript Timeline" command using the Command Palette (Cmd/Ctrl+P) to generate the visualization',
-            'The timeline will be created in the "Outline" folder as an HTML file',
-            'Open the HTML file in Obsidian using the HTML Reader plugin to view and interact with your timeline',
-            'To update the timeline after making changes to your scene files, run the "Create Manuscript Timeline" command again'
-        ].forEach(step => {
-            usageList.createEl('li', { text: step });
-        });
-        
-        // Required Metadata section
-        containerEl.createEl('h3', { text: 'Required Scene Metadata' });
-        containerEl.createEl('p', { 
-            text: 'Scene files must have the following frontmatter:'
-        });
-        const metadataList = containerEl.createEl('ul');
-        [
-            'Class: Scene - Identifies the file as a scene',
-            'When - Date of the scene (required)',
-            'Title - Scene title',
-            'Subplot - Subplot(s) the scene belongs to',
-            'Act - Act number (1-3)',
-            'Status - Scene status (Complete, Working, Todo, etc.)',
-            'Synopsis - Brief description of the scene',
-            'Character - Characters in the scene',
-            'Due - Optional due date for the scene',
-            'Edits - Optional editing notes (scenes with Edits will display with purple number boxes)',
-            'Publish Stage - Publishing stage (Zero, Author, House, Press)'
-        ].forEach(meta => {
-            metadataList.createEl('li', { text: meta });
-        });
-        
-        // Example metadata
-        containerEl.createEl('h4', { text: 'Example Metadata' });
-        const exampleCode = containerEl.createEl('pre', {
-            attr: {
-                style: 'line-height: 1.7; white-space: pre-wrap; overflow-x: auto; padding: 10px; background: var(--background-secondary); border-radius: 4px; user-select: text; cursor: text; font-family: monospace;'
+            .documentation-container {
+                padding: 0 1em;
             }
-        });
-        exampleCode.createEl('code', { 
-            attr: {
-                style: 'user-select: text;'
-            },
-            text: `---
+            .documentation-container h1 {
+                font-size: 1.8em;
+                margin-top: 0.5em;
+            }
+            .documentation-container h2 {
+                font-size: 1.5em;
+                margin-top: 1.5em;
+                padding-bottom: 0.3em;
+                border-bottom: 1px solid var(--background-modifier-border);
+            }
+            .documentation-container h3 {
+                font-size: 1.2em;
+                margin-top: 1em;
+            }
+            .documentation-container img {
+                max-width: 100%;
+                border-radius: 5px;
+                margin: 1em 0;
+            }
+            .documentation-container code {
+                background-color: var(--background-primary);
+                padding: 0.2em 0.4em;
+                border-radius: 3px;
+            }
+            .documentation-container pre {
+                background-color: var(--background-primary);
+                padding: 1em;
+                border-radius: 5px;
+                overflow-x: auto;
+                margin: 1em 0;
+            }
+            .metadata-example {
+                line-height: 2em;
+                white-space: pre;
+                font-family: monospace;
+                user-select: all;
+                cursor: text;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Create a container for the documentation content
+        const docContent = containerEl.createEl('div', {cls: 'documentation-container'});
+        
+        // Add README content - structured as Markdown but rendered as HTML
+        docContent.innerHTML = `
+            <h1>Obsidian Manuscript Timeline</h1>
+            
+            <p>A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.</p>
+            
+            <h2>Features</h2>
+            
+            <ul>
+                <li>Creates an interactive radial timeline visualization of your scenes</li>
+                <li>Organizes scenes by act, subplot, and chronological order</li>
+                <li>Shows scene details on hover including title, date, synopsis, subplots, and characters</li>
+                <li>Color-codes scenes by status (Complete, Working, Todo, etc.)</li>
+                <li>Supports both light and dark themes</li>
+                <li>Allows clicking on scenes to open the corresponding file</li>
+                <li>Fully integrated into Obsidian's interface - no external plugins required</li>
+            </ul>
+            
+            <h2>Support Development</h2>
+            
+            <p>If you find this plugin useful, consider supporting its continued development:</p>
+            
+            <p><a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;"></a></p>
+            
+            <h2>Display Requirements</h2>
+            
+            <p>This plugin creates an information-dense visualization that is more legible on high-resolution displays:</p>
+            <ul>
+                <li>Recommended: High-resolution displays such as Apple Retina displays or Windows equivalent (4K or better)</li>
+                <li>The timeline contains detailed text and visual elements that benefit from higher pixel density</li>
+                <li>While usable on standard displays, you may need to zoom in to see all details clearly</li>
+            </ul>
+            
+            <h2>How to Use</h2>
+            
+            <ol>
+                <li>Install the plugin in your Obsidian vault</li>
+                <li>Configure the source path in the plugin settings to point to your scenes folder</li>
+                <li>Ensure your scene files have the required frontmatter metadata (see below)</li>
+                <li>Click the manuscript timeline ribbon icon or run the "Show Manuscript Timeline" command from the Command Palette</li>
+                <li>The timeline will open in a new tab in the main editor area</li>
+                <li>Interact with the timeline by hovering over scenes to see details and clicking to open the corresponding file</li>
+                <li>The timeline automatically updates when you modify, create, or delete scene files</li>
+            </ol>
+            
+            <h2>Settings</h2>
+            
+            <p>The plugin offers several settings to customize its behavior:</p>
+            
+            <ul>
+                <li><strong>Source Path</strong>: Set the folder containing your scene files (e.g., "Book 1" or "Scenes")</li>
+                <li><strong>Publishing Stage Colors</strong>: Customize colors for different publishing stages (Zero, Author, House, Press)</li>
+                <li><strong>Reset to Default Colors</strong>: Restore all color settings to their original values if you've made changes</li>
+                <li><strong>Debug Mode</strong>: Enable detailed logging in the console (useful for troubleshooting)</li>
+            </ul>
+            
+            <h2>Required Scene Metadata</h2>
+            
+            <p>Scene files must have the following frontmatter:</p>
+            <ul>
+                <li>Class: Scene - Identifies the file as a scene</li>
+                <li>When - Date of the scene (required)</li>
+                <li>Title - Scene title</li>
+                <li>Subplot - Subplot(s) the scene belongs to</li>
+                <li>Act - Act number (1-3)</li>
+                <li>Status - Scene status (Complete, Working, Todo, etc.)</li>
+                <li>Synopsis - Brief description of the scene</li>
+                <li>Character - Characters in the scene</li>
+                <li>Due - Optional due date for the scene</li>
+                <li>Edits - Optional editing notes (scenes with Edits will display with purple number boxes)</li>
+                <li>Publish Stage - Publishing stage (Zero, Author, House, Press)</li>
+            </ul>
+            
+            <h3>Example Metadata</h3>
+            <p><em>Use "Paste and Match Style" when copying to avoid formatting issues</em></p>
+            
+            <pre class="metadata-example"><code>---
 Class: Scene
 Synopsis: The protagonist discovers a mysterious artifact.
 Subplot:
@@ -2029,107 +1830,453 @@ Place:
 Publish Stage: Zero
 Status: Complete
 Edits:
----`
+---</code></pre>
+            
+            <h2>Timeline Visualization Elements</h2>
+            
+            <p>The timeline displays:</p>
+            <ul>
+                <li>Scenes arranged in a circular pattern</li>
+                <li>Acts divided into sections</li>
+                <li>Subplots organized in concentric rings</li>
+                <li>Scene numbers in small boxes</li>
+                <li>Color-coded scenes based on status</li>
+                <li>Month markers around the perimeter</li>
+                <li>Progress ring showing year progress</li>
+            </ul>
+            
+            <p>Hover over a scene to see its details and click to open the corresponding file.</p>
+            
+            <p><a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
+              <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #444;">
+            </a></p>
+            <div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
+              Click image to view full size in browser
+            </div>
+            
+            <h2>Scene Ordering and Numbering</h2>
+            
+            <ul>
+                <li>Scenes are ordered chronologically based on the When date in the frontmatter metadata</li>
+                <li>The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")</li>
+                <li>These numbers are displayed in small boxes on the timeline</li>
+                <li>Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer</li>
+                <li>If scenes have the same When date, they are sub-ordered by their scene number</li>
+            </ul>
+            
+            <h2>Technical Implementation</h2>
+            
+            <p>The Manuscript Timeline visualization was inspired by and draws on principles from <a href="https://d3js.org">D3.js</a>, a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:</p>
+            
+            <ul>
+                <li>SVG-based visualization techniques</li>
+                <li>Data-driven document manipulation</li>
+                <li>Interactive elements with hover and click behaviors</li>
+                <li>Radial layouts and polar coordinates</li>
+                <li>Scale transformations and data mapping</li>
+                <li>Dynamic color manipulation and pattern generation</li>
+            </ul>
+            
+            <p>The visualizations are built using pure SVG and JavaScript, offering a lightweight solution that maintains the elegance and interactivity of D3-style visualizations while being fully compatible with Obsidian's rendering capabilities.</p>
+            
+            <h2>Installation</h2>
+            
+            <ul>
+                <li>Download the latest release</li>
+                <li>Extract the files to your vault's <code>.obsidian/plugins/manuscript-timeline</code> folder</li>
+                <li>Enable the plugin in Obsidian's Community Plugins settings</li>
+            </ul>
+            
+            <h2>Development</h2>
+            
+            <p>Development of this plugin is private. The source code is provided for transparency and to allow users to verify its functionality, but it is not licensed for derivative works.</p>
+            
+            <p>If you wish to contribute to the development of this plugin or report issues:</p>
+            <ul>
+                <li><a href="https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues">Open an issue on GitHub</a> to report bugs or suggest features</li>
+                <li>Contact the author via GitHub for potential collaboration opportunities</li>
+            </ul>
+            
+            <p>Any modifications or derivative works require explicit permission from the author.</p>
+            
+            <h2>License</h2>
+            
+            <p>© 2025 Eric Rhys Taylor. All Rights Reserved.</p>
+            
+            <p>This Obsidian plugin is proprietary software.</p>
+            <ul>
+                <li>You may use this plugin for personal use only.</li>
+                <li>You may not copy, modify, distribute, sublicense, or resell any part of this plugin.</li>
+                <li>Commercial use of this software (e.g., as part of a paid product or service) is strictly prohibited without a separate license agreement.</li>
+                <li>Attribution is required in any mention or reference to this plugin.</li>
+            </ul>
+            
+            <p>For licensing inquiries, please contact via GitHub.</p>
+            
+            <h2>Author</h2>
+            
+            <p>Created by Eric Rhys Taylor</p>
+            
+            <h2>Questions & Support</h2>
+            
+            <p>For questions, issues, or feature requests, please <a href="https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues">open an issue on GitHub</a>.</p>
+        `;
+    }
+}
+
+// Timeline View implementation
+export class ManuscriptTimelineView extends ItemView {
+    plugin: ManuscriptTimelinePlugin;
+    sceneData: Scene[] = [];
+
+    constructor(leaf: WorkspaceLeaf, plugin: ManuscriptTimelinePlugin) {
+        super(leaf);
+        this.plugin = plugin;
+    }
+    
+    getViewType(): string {
+        return TIMELINE_VIEW_TYPE;
+    }
+    
+    getDisplayText(): string {
+        return TIMELINE_VIEW_DISPLAY_TEXT;
+    }
+    
+    async onOpen(): Promise<void> {
+        this.refreshTimeline();
+    }
+
+    refreshTimeline() {
+        const container = this.contentEl;
+        container.empty();
+        
+        const loadingEl = container.createEl("div", {
+            cls: "loading-message",
+            text: "Loading timeline data..."
         });
         
-        // Timeline elements section
-        containerEl.createEl('h3', { text: 'Timeline Visualization Elements' });
-        containerEl.createEl('p', { 
-            text: 'The timeline displays:'
-        });
-        const timelineElementsList = containerEl.createEl('ul');
-        [
-            'Scenes arranged in a circular pattern',
-            'Acts divided into sections',
-            'Subplots organized in concentric rings',
-            'Scene numbers in small boxes',
-            'Color-coded scenes based on status',
-            'Month markers around the perimeter',
-            'Progress ring showing year progress'
-        ].forEach(element => {
-            timelineElementsList.createEl('li', { text: element });
-        });
+        // Get the scene data using the plugin's method
+        this.plugin.getSceneData()
+            .then(sceneData => {
+                this.sceneData = sceneData;
+                
+                // Remove the loading message
+                loadingEl.remove();
+                
+                // Render the timeline with the scene data
+                this.renderTimeline(container, this.sceneData);
+            })
+            .catch(error => {
+                loadingEl.textContent = `Error: ${error.message}`;
+                if (this.plugin.settings.debug) {
+                    console.error("Failed to load timeline data", error);
+                }
+            });
+    }
+    
+    async onClose(): Promise<void> {
+        // Clean up any event listeners or resources
+    }
+    
+    renderTimeline(container: HTMLElement, scenes: Scene[]): void {
+        // Clear container first
+        container.empty();
+        container.addClass('manuscript-timeline-container');
         
-        containerEl.createEl('p', { 
-            text: 'Hover over a scene to see its details and click to open the corresponding file.'
-        });
+        if (!scenes || scenes.length === 0) {
+            container.createEl('p', { text: 'No scene data available.' });
+            return;
+        }
         
-        // Add screenshot image
-        const screenshotContainer = containerEl.createEl('div', {
-            attr: {
-                style: 'text-align: center; margin: 20px 0;'
+        // Add a local lightenColor function to avoid using the private plugin method
+        const lightenColorLocally = (color: string, percent: number): string => {
+            // Remove the # if present
+            let hex = color.replace('#', '');
+            
+            // Convert to RGB
+            let r = parseInt(hex.slice(0, 2), 16);
+            let g = parseInt(hex.slice(2, 4), 16);
+            let b = parseInt(hex.slice(4, 6), 16);
+            
+            // Lighten by the percentage
+            r = Math.min(255, r + Math.floor((255 - r) * (percent / 100)));
+            g = Math.min(255, g + Math.floor((255 - g) * (percent / 100)));
+            b = Math.min(255, b + Math.floor((255 - b) * (percent / 100)));
+            
+            // Convert back to hex
+            return '#' + r.toString(16).padStart(2, '0') + 
+                         g.toString(16).padStart(2, '0') + 
+                         b.toString(16).padStart(2, '0');
+        };
+        
+        // Instead of recreating the SVG from scratch, use the existing method
+        try {
+            // Generate the SVG content using the plugin's existing method
+            const svgContent = this.plugin.createTimelineSVG(scenes);
+            
+            // Create a container with proper styling for centered content
+            const timelineContainer = container.createEl("div", {
+                cls: "manuscript-timeline-container",
+                attr: {
+                    style: "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; overflow: auto;"
+                }
+            });
+            
+            // Set the SVG content
+            timelineContainer.innerHTML = svgContent;
+            
+            // Find the SVG element
+            const svgElement = timelineContainer.querySelector("svg");
+            if (svgElement) {
+                // Center the SVG
+                svgElement.style.width = "100%";
+                svgElement.style.height = "100%";
+                svgElement.style.maxHeight = "calc(100vh - 100px)";
+                svgElement.style.maxWidth = "100%";
+                svgElement.style.margin = "0 auto";
+                svgElement.style.transformOrigin = "center";
+                svgElement.style.cursor = "default";
+                
+                // Manually add mouseover event handlers for scene groups
+                const sceneGroups = timelineContainer.querySelectorAll(".scene-group");
+                sceneGroups.forEach(sceneGroup => {
+                    // Get the scene path element ID
+                    const scenePath = sceneGroup.querySelector(".scene-path");
+                    if (!scenePath) return;
+                    
+                    const sceneId = scenePath.id;
+                    const synopsisEl = timelineContainer.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+                    
+                    // Add mouseenter event to show synopsis
+                    sceneGroup.addEventListener("mouseenter", (e) => {
+                        // Show the synopsis
+                        if (synopsisEl) {
+                            synopsisEl.setAttribute("style", "opacity: 1; pointer-events: all;");
+                        }
+                        
+                        // Fade all other scenes including void scenes
+                        timelineContainer.querySelectorAll("path.scene-path").forEach(pathEl => {
+                            if (pathEl.id !== sceneId) {
+                                // Store original fill if not already stored
+                                if (!pathEl.hasAttribute("data-original-fill")) {
+                                    const currentFill = pathEl.getAttribute("fill");
+                                    pathEl.setAttribute("data-original-fill", currentFill || "");
+                                }
+                                
+                                // Get original fill to calculate lighter version
+                                const originalFill = pathEl.getAttribute("data-original-fill") || "";
+                                
+                                // Apply lighter color instead of just reducing opacity
+                                if (originalFill.startsWith("#")) {
+                                    // For hex colors, apply a lighter version
+                                    try {
+                                        // Simple lightening algorithm
+                                        const lighterColor = lightenColorLocally(originalFill, 70);
+                                        pathEl.setAttribute("fill", lighterColor);
+                                    } catch (e) {
+                                        // Fallback to opacity if color lightening fails
+                                        pathEl.classList.add("faded");
+                                    }
+                                } else if (originalFill.startsWith("url(#")) {
+                                    // For pattern fills (like plaid for Todo/Working), add semi-transparent overlay to lighten
+                                    // Instead of just reducing opacity which makes it darker
+                                    
+                                    // First check if we've already added a lighter class to avoid duplicating
+                                    if (!pathEl.classList.contains("plaid-lighter")) {
+                                        // Add a class to identify this element as having a plaid filter
+                                        pathEl.classList.add("plaid-lighter");
+                                        
+                                        // Create an overlay filter if it doesn't exist yet
+                                        if (!document.getElementById('lighten-plaid-filter')) {
+                                            const svg = timelineContainer.querySelector('svg');
+                                            if (svg) {
+                                                // Create a filter that preserves colors while making them lighter
+                                                const defs = svg.querySelector('defs') || svg.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "defs"));
+                                                const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+                                                filter.setAttribute("id", "lighten-plaid-filter");
+                                                
+                                                // Instead of a color matrix, use a component transfer to adjust brightness
+                                                // This preserves the hue while making colors lighter
+                                                const feComponentTransfer = document.createElementNS("http://www.w3.org/2000/svg", "feComponentTransfer");
+                                                
+                                                // Create function for each color channel
+                                                const funcR = document.createElementNS("http://www.w3.org/2000/svg", "feFuncR");
+                                                funcR.setAttribute("type", "linear");
+                                                funcR.setAttribute("slope", "0.5");
+                                                funcR.setAttribute("intercept", "0.5");
+                                                
+                                                const funcG = document.createElementNS("http://www.w3.org/2000/svg", "feFuncG");
+                                                funcG.setAttribute("type", "linear");
+                                                funcG.setAttribute("slope", "0.5");
+                                                funcG.setAttribute("intercept", "0.5");
+                                                
+                                                const funcB = document.createElementNS("http://www.w3.org/2000/svg", "feFuncB");
+                                                funcB.setAttribute("type", "linear");
+                                                funcB.setAttribute("slope", "0.5");
+                                                funcB.setAttribute("intercept", "0.5");
+                                                
+                                                // Add the functions to the component transfer
+                                                feComponentTransfer.appendChild(funcR);
+                                                feComponentTransfer.appendChild(funcG);
+                                                feComponentTransfer.appendChild(funcB);
+                                                
+                                                filter.appendChild(feComponentTransfer);
+                                                defs.appendChild(filter);
+                                            }
+                                        }
+                                        
+                                        // Apply the lighten filter
+                                        pathEl.setAttribute("filter", "url(#lighten-plaid-filter)");
+                                    }
+                                } else {
+                                    // For any other fill, use opacity
+                                    pathEl.classList.add("faded");
+                                }
+                            }
+                        });
+                        
+                        // Also fade void arcs which aren't part of scene-path class
+                        timelineContainer.querySelectorAll("path:not(.scene-path)").forEach(pathEl => {
+                            // Skip any paths that are part of other elements like month lines
+                            if (pathEl.parentElement && 
+                                !pathEl.parentElement.classList.contains("month-spokes") &&
+                                !pathEl.parentElement.classList.contains("act-borders") &&
+                                !pathEl.id.startsWith("monthLabelPath-") &&
+                                !pathEl.id.startsWith("innerMonthPath-") &&
+                                !pathEl.id.startsWith("actPath-") &&
+                                !pathEl.classList.contains("progress-ring-base") &&
+                                !pathEl.classList.contains("progress-ring-fill")) {
+                                
+                                // Store original fill if not already stored
+                                if (!pathEl.hasAttribute("data-original-fill")) {
+                                    const currentFill = pathEl.getAttribute("fill");
+                                    pathEl.setAttribute("data-original-fill", currentFill || "");
+                                }
+                                
+                                // Get original fill
+                                const originalFill = pathEl.getAttribute("data-original-fill") || "";
+                                
+                                // Apply lighter color to void arcs too
+                                if (originalFill.startsWith("#")) {
+                                    try {
+                                        const lighterColor = lightenColorLocally(originalFill, 70);
+                                        pathEl.setAttribute("fill", lighterColor);
+                                    } catch (e) {
+                                        pathEl.classList.add("faded");
+                                    }
+                                } else {
+                                    pathEl.classList.add("faded");
+                                }
+                            }
+                        });
+                        
+                        // Fade the title text
+                        sceneGroups.forEach(otherGroup => {
+                            if (otherGroup !== sceneGroup) {
+                                const titleEl = otherGroup.querySelector(".scene-title");
+                                if (titleEl) {
+                                    titleEl.classList.add("faded");
+                                }
+                            }
+                        });
+                        
+                        // Fade all number squares except for the current scene
+                        timelineContainer.querySelectorAll(".number-square, .number-text").forEach(el => {
+                            const dataSceneId = el.getAttribute("data-scene-id");
+                            if (dataSceneId !== sceneId) {
+                                el.classList.add("faded");
+                            }
+                        });
+                    });
+                    
+                    // Add mouseleave event to hide synopsis and restore colors
+                    sceneGroup.addEventListener("mouseleave", (e) => {
+                        // Hide the synopsis
+                        if (synopsisEl) {
+                            synopsisEl.setAttribute("style", "opacity: 0; pointer-events: none;");
+                        }
+                        
+                        // Restore original colors for scene paths
+                        timelineContainer.querySelectorAll("path.scene-path").forEach(pathEl => {
+                            const originalFill = pathEl.getAttribute("data-original-fill");
+                            if (originalFill) {
+                                pathEl.setAttribute("fill", originalFill);
+                                pathEl.removeAttribute("data-original-fill");
+                            }
+                            // Remove any filters that were applied
+                            if (pathEl.hasAttribute("filter")) {
+                                pathEl.removeAttribute("filter");
+                            }
+                            pathEl.classList.remove("faded");
+                            pathEl.classList.remove("plaid-lighter");
+                        });
+                        
+                        // Restore original colors for void arcs
+                        timelineContainer.querySelectorAll("path:not(.scene-path)").forEach(pathEl => {
+                            const originalFill = pathEl.getAttribute("data-original-fill");
+                            if (originalFill) {
+                                pathEl.setAttribute("fill", originalFill);
+                                pathEl.removeAttribute("data-original-fill");
+                            }
+                            pathEl.classList.remove("faded");
+                        });
+                        
+                        // Restore title opacity
+                        timelineContainer.querySelectorAll(".scene-title").forEach(titleEl => {
+                            titleEl.classList.remove("faded");
+                        });
+                        
+                        // Restore all number squares
+                        timelineContainer.querySelectorAll(".number-square, .number-text").forEach(el => {
+                            el.classList.remove("faded");
+                        });
+                    });
+                });
+                
+                // Add click event for scene paths to open the file
+                timelineContainer.querySelectorAll(".scene-path").forEach(element => {
+                    element.addEventListener("click", (event) => {
+                        const parentGroup = (element as HTMLElement).closest(".scene-group");
+                        if (parentGroup) {
+                            const path = parentGroup.getAttribute("data-path");
+                            if (path) {
+                                const file = this.app.vault.getAbstractFileByPath(decodeURIComponent(path));
+                                if (file instanceof TFile) {
+                                    this.app.workspace.getLeaf().openFile(file);
+                                    event.stopPropagation();
+                                }
+                            }
+                        }
+                    });
+                });
+                
+                // Add CSS for better visual effects
+                const styleEl = document.createElement("style");
+                styleEl.textContent = `
+                    .scene-path.faded {
+                        opacity: 0.3;
+                        transition: opacity 0.2s ease-out;
+                    }
+                    
+                    .scene-title.faded {
+                        opacity: 0.2;
+                    }
+                    
+                    .number-square.faded, .number-text.faded {
+                        opacity: 0.2;
+                    }
+                `;
+                document.head.appendChild(styleEl);
             }
-        });
-        
-        // Create an anchor tag that wraps the image and opens in a new tab
-        const screenshotLink = screenshotContainer.createEl('a', {
-            attr: {
-                href: 'https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png',
-                target: '_blank',
-                rel: 'noopener',
-                style: 'display: inline-block; cursor: pointer;'
+            
+        } catch (error) {
+            if (this.plugin.settings.debug) {
+                console.error("Error rendering timeline:", error);
             }
-        });
-        
-        // Add the image inside the anchor tag
-        screenshotLink.createEl('img', {
-            attr: {
-                src: 'https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png',
-                alt: 'Example Timeline Screenshot',
-                style: 'max-width: 100%; border-radius: 8px; border: 1px solid var(--background-modifier-border);'
-            }
-        });
-        
-        // Add a small hint text below the image
-        screenshotContainer.createEl('div', {
-            text: 'Click image to view full size in browser',
-            attr: {
-                style: 'font-size: 0.8em; margin-top: 5px; color: var(--text-muted);'
-            }
-        });
-        
-        // Scene Ordering section
-        containerEl.createEl('h3', { text: 'Scene Ordering and Numbering' });
-        const orderingList = containerEl.createEl('ul');
-        [
-            'Scenes are ordered chronologically based on the When date in the frontmatter metadata',
-            'The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")',
-            'These numbers are displayed in small boxes on the timeline',
-            'Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer',
-            'If scenes have the same When date, they are sub-ordered by their scene number'
-        ].forEach(item => {
-            orderingList.createEl('li', { text: item });
-        });
-        
-        // Technical Implementation - D3.js inspiration section (moved to the end)
-        containerEl.createEl('h3', { text: 'Technical Implementation' });
-        
-        containerEl.createEl('p', { 
-            text: `The Manuscript Timeline visualization was inspired by and draws on principles from D3.js, a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:`
-        });
-        
-        const techList = containerEl.createEl('ul');
-        [
-            'SVG-based visualization techniques',
-            'Data-driven document manipulation',
-            'Interactive elements with hover and click behaviors',
-            'Radial layouts and polar coordinates',
-            'Scale transformations and data mapping',
-            'Dynamic color manipulation and pattern generation'
-        ].forEach(technique => {
-            techList.createEl('li', { text: technique });
-        });
-        
-        containerEl.createEl('p', { 
-            text: `The visualizations are built using pure SVG and JavaScript, offering a lightweight solution that maintains the elegance and interactivity of D3-style visualizations while being fully compatible with Obsidian's rendering capabilities.`
-        });
-        
-        // D3.js link
-        const d3Link = containerEl.createEl('p');
-        const link = d3Link.createEl('a', { 
-            text: 'Learn more about D3.js',
-            href: 'https://d3js.org/'
-        });
-        link.target = '_blank';
+            container.createEl("div", {
+                cls: "error-message",
+                text: `Error rendering timeline: ${error.message}`
+            });
+        }
     }
 }
