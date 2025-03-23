@@ -2594,8 +2594,17 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                             if (element) {
                                                 // First remove any other styling classes that might interfere
                                                 element.classList.remove('selected');
-                                                // Then add the non-selected class
+                                                
+                                                // Apply non-selected class
                                                 element.classList.add('non-selected');
+                                                
+                                                // For scene title, also use direct style manipulation
+                                                if (element.classList.contains('scene-title')) {
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fill = "#FFFFFF";
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fontWeight = "normal";
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.stroke = "none";
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "0";
+                                                }
                                                 
                                                 // Force browser reflow to apply the class
                                                 void (element as HTMLElement).offsetWidth;
@@ -2610,10 +2619,17 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                         const currentSceneTitle = svgElement.querySelector(`.scene-title[data-scene-id="${currentId}"]`);
                                         
                                         if (currentSceneTitle) {
-                                            // First remove any classes that might interfere
+                                            // Remove any interfering classes/styles
                                             currentSceneTitle.classList.remove('non-selected');
-                                            // Then add the selected class
+                                            
+                                            // Apply selected styling with high specificity
                                             currentSceneTitle.classList.add('selected');
+                                            (currentSceneTitle as SVGElement & {style: CSSStyleDeclaration}).style.fill = "#000000";
+                                            (currentSceneTitle as SVGElement & {style: CSSStyleDeclaration}).style.fontWeight = "bold";
+                                            
+                                            // Reset stroke styles if they were previously set to none
+                                            (currentSceneTitle as SVGElement & {style: CSSStyleDeclaration}).style.stroke = "white";
+                                            (currentSceneTitle as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "0.5px";
                                         }
                                     }
                                 });
@@ -2650,7 +2666,26 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                     
                                     elementsToReset.forEach(element => {
                                         if (element) {
+                                            // Remove mouseover classes
                                             element.classList.remove('selected', 'non-selected');
+                                            
+                                            // Reset inline styles for scene titles
+                                            if (element.classList.contains('scene-title')) {
+                                                // Reset to default or preserve open state styling
+                                                if (element.classList.contains('scene-is-open')) {
+                                                    // Restore open scene styling
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fill = "";
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fontWeight = "";
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.stroke = "";
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "";
+                                                } else {
+                                                    // Reset to normal styling
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fill = "";
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fontWeight = "";
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.stroke = "";
+                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "";
+                                                }
+                                            }
                                             
                                             // Force browser reflow to apply the class
                                             void (element as HTMLElement).offsetWidth;

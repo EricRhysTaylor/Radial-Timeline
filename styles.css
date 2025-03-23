@@ -479,6 +479,9 @@ tspan.character-text {
 .scene-title.selected {
   fill: #000000 !important;
   font-weight: bold !important;
+  stroke: white !important;
+  stroke-width: 0.5px !important;
+  paint-order: stroke !important;
 }
 
 /* Scene title styling for non-selected state */
@@ -487,11 +490,15 @@ tspan.character-text {
   font-weight: normal !important;
   stroke: none !important;
   stroke-width: 0 !important;
+  /* Ensure this style takes precedence */
+  transition: fill 0s !important;
 }
 
 /* Number elements during mouseover - higher specificity */
 .number-square.non-selected {
   fill: #EFEFEF !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
 }
 
 .number-text.non-selected {
@@ -509,6 +516,8 @@ tspan.character-text {
   font-weight: normal !important;
   stroke: none !important;
   stroke-width: 0 !important;
+  /* Ensure this style takes precedence */
+  transition: fill 0s !important;
 }
 
 /* Make sure number elements for open scenes also respect non-selected treatment */
