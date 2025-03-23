@@ -1604,25 +1604,24 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         this.openScenePaths = new Set<string>();
         
-        // Get all open leaves of type 'markdown'
-        const openLeaves = this.app.workspace.getLeavesOfType('markdown');
-
-        // Add each file path to the set
-        openLeaves.forEach((leaf) => {
-            if (leaf.view instanceof MarkdownView) {
-                const file = leaf.view.file;
-                if (file instanceof TFile) {
-                    this.openScenePaths.add(file.path);
-                }
+        // Get all open leaves
+        const leaves = this.app.workspace.getLeavesOfType('markdown');
+        
+        // Collect the paths of all open markdown files
+        leaves.forEach(leaf => {
+            // Check if the view is a MarkdownView with a file
+            const view = leaf.view;
+            if (view instanceof MarkdownView && view.file) {
+                this.openScenePaths.add(view.file.path);
             }
         });
-
+        
         // Also check if there's an active file not in a leaf
         const activeFile = this.app.workspace.getActiveFile();
         if (activeFile) {
             this.openScenePaths.add(activeFile.path);
         }
-
+        
         // Get all open tabs from the workspace layout
         try {
             // @ts-ignore - Use the workspace layout accessor which may not be fully typed
@@ -1642,9 +1641,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         } catch (e) {
             console.error("Error accessing workspace layout:", e);
         }
-        
-        // Log the open scene paths for debugging
-        console.log(`Open scene paths:`, Array.from(this.openScenePaths));
         
         // Check if the open files have changed
         let hasChanged = false;
@@ -1671,13 +1667,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
         }
         
-        // If files have changed, refresh the active timeline view
-        if (hasChanged && this.activeTimelineView) {
+        // If files have changed, refresh the timeline
+        if (hasChanged) {
             console.log("Open files changed, refreshing timeline");
-            // Use requestAnimationFrame to avoid too many refreshes in quick succession
-            requestAnimationFrame(() => {
-                this.activeTimelineView?.refreshTimeline();
-            });
+            // Update the active timeline view if it exists
+            requestAnimationFrame(() => this.activeTimelineView?.refreshTimeline());
         }
     }
 }
@@ -1963,15 +1957,12 @@ export class ManuscriptTimelineView extends ItemView {
         // Get all open leaves
         const leaves = this.app.workspace.getLeavesOfType('markdown');
         
-        console.log(`Found ${leaves.length} open markdown leaves`);
-        
         // Collect the paths of all open markdown files
         leaves.forEach(leaf => {
             // Check if the view is a MarkdownView with a file
             const view = leaf.view;
             if (view instanceof MarkdownView && view.file) {
                 this.openScenePaths.add(view.file.path);
-                console.log(`Added open file to tracking: ${view.file.path}`);
             }
         });
         
@@ -1979,7 +1970,6 @@ export class ManuscriptTimelineView extends ItemView {
         const activeFile = this.app.workspace.getActiveFile();
         if (activeFile) {
             this.openScenePaths.add(activeFile.path);
-            console.log(`Added active file to tracking: ${activeFile.path}`);
         }
         
         // Get all open tabs from the workspace layout
@@ -1988,7 +1978,6 @@ export class ManuscriptTimelineView extends ItemView {
             const layout = this.app.workspace.getLayout();
             if (layout && layout.leaves) {
                 const leafIds = Object.keys(layout.leaves as Record<string, any>);
-                console.log(`Found ${leafIds.length} leaf IDs in layout`);
                 
                 // Try to find any additional file paths from the layout
                 leafIds.forEach(id => {
@@ -1996,15 +1985,12 @@ export class ManuscriptTimelineView extends ItemView {
                     const leafData = layout.leaves[id];
                     if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
                         this.openScenePaths.add(leafData.state.file);
-                        console.log(`Added file from layout: ${leafData.state.file}`);
                     }
                 });
             }
         } catch (e) {
             console.error("Error accessing workspace layout:", e);
         }
-        
-        console.log(`Tracking ${this.openScenePaths.size} open scene paths:`, Array.from(this.openScenePaths));
         
         // Check if the open files have changed
         let hasChanged = false;
@@ -2034,10 +2020,7 @@ export class ManuscriptTimelineView extends ItemView {
         // If files have changed, refresh the timeline
         if (hasChanged) {
             console.log("Open files changed, refreshing timeline");
-            // Use requestAnimationFrame to avoid too many refreshes in quick succession
-            requestAnimationFrame(() => {
-                this.renderTimeline(this.containerEl.children[1] as HTMLElement, this.sceneData);
-            });
+            requestAnimationFrame(() => this.refreshTimeline());
         }
     }
 
@@ -2100,13 +2083,6 @@ export class ManuscriptTimelineView extends ItemView {
             this.app.workspace.on('quick-preview', () => {
                 this.updateOpenFilesTracking();
             })
-        );
-        
-        // Setup a regular check (every 2 seconds) to catch any changes missed by events
-        this.registerInterval(
-            window.setInterval(() => {
-                this.updateOpenFilesTracking();
-            }, 2000)
         );
         
         // Initial timeline render
