@@ -75,7 +75,40 @@ path.scene-path[fill="#EEEEEE"] {
   transition: opacity 0.3s ease-out;
   pointer-events: none;
   z-index: 100; /* Ensure synopsis appears above other elements */
-  width: 250px; /* Using narrower width to match our changes */
+}
+
+/* Quadrant-specific positioning for synopses */
+.synopsis-q1 .info-text {
+  text-anchor: end; /* Right justify for Q1 */
+}
+
+.synopsis-q2 .info-text {
+  text-anchor: start; /* Left justify for Q2 */
+}
+
+.synopsis-q3 .info-text {
+  text-anchor: start; /* Left justify for Q3 */
+}
+
+.synopsis-q4 .info-text {
+  text-anchor: end; /* Right justify for Q4 */
+}
+
+/* Override for title text elements */
+.synopsis-q1 .title-text-main, .synopsis-q1 .title-text-secondary, .synopsis-q1 .metadata-text {
+  text-anchor: end !important;
+}
+
+.synopsis-q2 .title-text-main, .synopsis-q2 .title-text-secondary, .synopsis-q2 .metadata-text {
+  text-anchor: start !important;
+}
+
+.synopsis-q3 .title-text-main, .synopsis-q3 .title-text-secondary, .synopsis-q3 .metadata-text {
+  text-anchor: start !important;
+}
+
+.synopsis-q4 .title-text-main, .synopsis-q4 .title-text-secondary, .synopsis-q4 .metadata-text {
+  text-anchor: end !important;
 }
 
 .scene-info.visible {
@@ -84,7 +117,6 @@ path.scene-path[fill="#EEEEEE"] {
   /* Ensure no other style is overriding this */
   visibility: visible !important;
   display: block !important;
-  transform: none !important; /* Reset any transform from fixed positioning */
 }
 
 /* Synopsis connector - curve from scene to text */
@@ -373,11 +405,54 @@ tspan.character-text {
 /* Style for the "SUBPLOTS:" and "CHARACTERS:" labels */
 
 /* Debug information styling */
-.debug-info {
-  font-size: 12px;
+.debug-info-container {
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.debug-info-background {
+  fill: rgba(255,255,255,0.8);
+  rx: 5px;
+  ry: 5px;
+  stroke: #333333;
+  stroke-width: 1px;
+}
+
+.debug-info-text {
+  font-size: 20px;
   fill: #ff3300;
   font-weight: bold;
   stroke: white;
   stroke-width: 0.5px;
   paint-order: stroke;
+  pointer-events: none;
+}
+
+/* Scene-info specific overrides to ensure proper text justification */
+.scene-info text.info-text.title-text-main {
+  font-size: 24px;
+  font-weight: 700;
+  fill: var(--text-normal);
+}
+
+.scene-info text.info-text.title-text-secondary {
+  font-size: 18px;
+  fill: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: normal;
+}
+
+/* Ensure synopsis divider line matches text alignment */
+.synopsis-q1 .synopsis-divider, .synopsis-q4 .synopsis-divider {
+  transform: translateX(100%);
+}
+
+/* Force global overrides for Q1 and Q4 */
+.synopsis-q1 text, .synopsis-q4 text {
+  text-anchor: end !important;
+}
+
+/* Force global overrides for Q2 and Q3 */
+.synopsis-q2 text, .synopsis-q3 text {
+  text-anchor: start !important;
 }

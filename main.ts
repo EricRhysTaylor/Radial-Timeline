@@ -1725,49 +1725,37 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             // Determine which quadrant the mouse is in
             const quadrant = 
-                svgP.x >= 0 && svgP.y >= 0 ? "Bottom Right (Q1)" :
-                svgP.x < 0 && svgP.y >= 0 ? "Bottom Left (Q2)" :
-                svgP.x < 0 && svgP.y < 0 ? "Top Left (Q3)" :
-                "Top Right (Q4)";
+                svgP.x >= 0 && svgP.y >= 0 ? "Q1" :
+                svgP.x < 0 && svgP.y >= 0 ? "Q2" :
+                svgP.x < 0 && svgP.y < 0 ? "Q3" :
+                "Q4";
             
-            // Calculate position based on quadrant - adjust values based on real-world testing
+            // Place the synopsis in the appropriate position based on quadrant
             let translateX, translateY;
+            synopsis.classList.remove('synopsis-q1', 'synopsis-q2', 'synopsis-q3', 'synopsis-q4');
             
-            // Position the synopsis to avoid going off-screen - modified based on testing
-            if (svgP.x >= 0 && svgP.y >= 0) {  // Bottom Right (Q1)
-                translateX = 20;  // Move right from cursor
-                translateY = 20;  // Move down from cursor
-            } else if (svgP.x < 0 && svgP.y >= 0) {  // Bottom Left (Q2)
-                translateX = -250;  // Move left from cursor
-                translateY = 20;  // Move down from cursor
-            } else if (svgP.x < 0 && svgP.y < 0) {  // Top Left (Q3)
-                translateX = -250;  // Move left from cursor
-                translateY = -250;  // Move up from cursor
-            } else {  // Top Right (Q4)
-                translateX = 20;  // Move right from cursor
-                translateY = -250;  // Move up from cursor
+            if (quadrant === 'Q1') { // Mouse in Bottom Right (Q1)
+                translateX = -600;    // Place at X = -600
+                translateY = 150;     // Place at Y = 150
+                synopsis.classList.add('synopsis-q2'); // Left justify in Q2
+            } else if (quadrant === 'Q2') { // Mouse in Bottom Left (Q2)
+                translateX = 600;     // Place at X = 600
+                translateY = 150;     // Place at Y = 150
+                synopsis.classList.add('synopsis-q1'); // Right justify in Q1
+            } else if (quadrant === 'Q3') { // Mouse in Top Left (Q3)
+                translateX = 500;     // Place at X = 500
+                translateY = -550;    // Place at Y = -550
+                synopsis.classList.add('synopsis-q4'); // Right justify in Q4
+            } else { // Mouse in Top Right (Q4)
+                translateX = -500;    // Place at X = -500
+                translateY = -550;    // Place at Y = -550
+                synopsis.classList.add('synopsis-q3'); // Left justify in Q3
             }
             
-            // Add debug info at the top of the synopsis
+            // Remove debug info if it exists (don't add it)
             const debugInfo = synopsis.querySelector('.debug-info');
             if (debugInfo) {
-                debugInfo.textContent = `Mouse: X:${Math.round(svgP.x)}, Y:${Math.round(svgP.y)} | ${quadrant}`;
-            } else {
-                // Create debug info element if it doesn't exist
-                const debugText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                debugText.setAttribute("class", "debug-info");
-                debugText.setAttribute("x", "0");
-                debugText.setAttribute("y", "-20");
-                debugText.setAttribute("text-anchor", "left");
-                debugText.textContent = `Mouse: X:${Math.round(svgP.x)}, Y:${Math.round(svgP.y)} | ${quadrant}`;
-                
-                // Add debug info as the first child of the synopsis g element
-                const synopsisGroup = synopsis.querySelector('g');
-                if (synopsisGroup) {
-                    synopsisGroup.insertBefore(debugText, synopsisGroup.firstChild);
-                } else {
-                    synopsis.appendChild(debugText);
-                }
+                debugInfo.remove();
             }
             
             // Make sure the synopsis is visible by applying both class and style changes
@@ -1775,11 +1763,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
             (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
             
-            // Position based on mouse quadrant
-            const translateValue = `translate(${Math.round(svgP.x + translateX)}, ${Math.round(svgP.y + translateY)})`;
+            // Position based on calculated values
+            const translateValue = `translate(${translateX}, ${translateY})`;
             synopsis.setAttribute('transform', translateValue);
             
-            console.log(`Synopsis shown at position: ${Math.round(svgP.x + translateX)}, ${Math.round(svgP.y + translateY)}`, {
+            console.log(`Synopsis shown at position: ${translateX}, ${translateY} for quadrant ${quadrant}`, {
                 synopsisVisible: synopsis.classList.contains('visible'),
                 transform: synopsis.getAttribute('transform'),
                 opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
@@ -2208,6 +2196,50 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 svgElement.setAttribute('width', '100%');
                 svgElement.setAttribute('height', '100%');
                 svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                
+                // Add debug info display
+                const svgNS = "http://www.w3.org/2000/svg";
+                const debugContainer = document.createElementNS(svgNS, "g");
+                debugContainer.classList.add("debug-info-container");
+                debugContainer.setAttribute("transform", "translate(10, 30)");
+                
+                const debugBackground = document.createElementNS(svgNS, "rect");
+                debugBackground.classList.add("debug-info-background");
+                debugBackground.setAttribute("x", "0");
+                debugBackground.setAttribute("y", "0");
+                debugBackground.setAttribute("width", "400");
+                debugBackground.setAttribute("height", "40");
+                
+                const debugText = document.createElementNS(svgNS, "text");
+                debugText.classList.add("debug-info-text");
+                debugText.setAttribute("x", "10");
+                debugText.setAttribute("y", "25");
+                debugText.textContent = "Mouse: X:0, Y:0 | Quadrant: -";
+                
+                debugContainer.appendChild(debugBackground);
+                debugContainer.appendChild(debugText);
+                svgElement.appendChild(debugContainer);
+                
+                // Add mouse move event to update debug text
+                svgElement.addEventListener('mousemove', (event: MouseEvent) => {
+                    const svgElementTyped = svgElement as SVGSVGElement;
+                    const pt = svgElementTyped.createSVGPoint();
+                    pt.x = event.clientX;
+                    pt.y = event.clientY;
+                    const ctm = svgElementTyped.getScreenCTM();
+                    if (ctm) {
+                        const svgP = pt.matrixTransform(ctm.inverse());
+                        
+                        // Determine quadrant
+                        const quadrant = 
+                            svgP.x >= 0 && svgP.y >= 0 ? "Q1 (Bottom Right)" :
+                            svgP.x < 0 && svgP.y >= 0 ? "Q2 (Bottom Left)" :
+                            svgP.x < 0 && svgP.y < 0 ? "Q3 (Top Left)" :
+                            "Q4 (Top Right)";
+                        
+                        debugText.textContent = `Mouse: X:${Math.round(svgP.x)}, Y:${Math.round(svgP.y)} | Quadrant: ${quadrant}`;
+                    }
+                });
                 
                 // Add direct JavaScript handlers for mouse events
                 const allSynopses = svgElement.querySelectorAll(".scene-info");
