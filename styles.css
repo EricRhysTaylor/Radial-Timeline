@@ -1,4 +1,5 @@
 /* Manuscript Timeline Plugin Styles */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap');
 
 /* Timeline container */
 .manuscript-timeline-container {
@@ -33,12 +34,29 @@
   transform-origin: center;
   cursor: default;
   background-color: transparent;
+  font-family: 'Lato', sans-serif;
 }
 
 /* Scene elements */
 .scene-path {
   cursor: pointer;
   transition: opacity 0.2s ease-out, fill 0.2s ease-out;
+}
+
+/* Scene act elements */
+.scene-act {
+  fill-opacity: 0;
+  transition: fill-opacity 0.2s;
+}
+
+.scene-act:hover {
+  fill-opacity: 0.3;
+  cursor: pointer;
+}
+
+/* Scene group hover behaviors */
+.scene-group:hover .scene-info {
+  opacity: 1;
 }
 
 /* Void cells styling - remove pointer cursor */
@@ -52,7 +70,7 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Non-selected scene during mouseover */
 .scene-path.non-selected {
-  fill: #EFEFEF;
+  fill: #EFEFEF !important;
 }
 
 /* Selected scene during mouseover */
@@ -60,9 +78,13 @@ path.scene-path[fill="#EEEEEE"] {
   filter: saturate(1.3) contrast(1.2);
 }
 
+/* Basic scene title styling */
 .scene-title {
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   cursor: pointer;
+  fill: white;
+  opacity: 1;
+  pointer-events: none;
 }
 
 .scene-title.faded {
@@ -210,7 +232,7 @@ path.scene-path[fill="#EEEEEE"] {
 .synopsis-cell.cell-8 { transition-delay: 0.4s; }
 .synopsis-cell.cell-9 { transition-delay: 0.45s; }
 
-/* Number elements */
+/* Number elements basic styling */
 .number-square, .number-text {
   transition: opacity 0.2s ease-out, fill 0.2s ease-out, transform 0.2s ease-out, stroke 0.2s ease-out, stroke-width 0.2s ease-out;
 }
@@ -219,7 +241,23 @@ path.scene-path[fill="#EEEEEE"] {
   opacity: 0.2;
 }
 
-/* Number elements during mouseover - use !important to override any other styles */
+/* Mouseover styling - high specificity for scene title */ 
+.scene-title.non-selected {
+  fill: #FFFFFF !important;
+  font-weight: normal !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
+.scene-title.selected {
+  fill: #000000 !important;
+  font-weight: bold !important;
+  stroke: white !important;
+  stroke-width: 0.5px !important;
+  paint-order: stroke !important;
+}
+
+/* Number elements during mouseover with high specificity */
 .number-square.non-selected {
   fill: #EFEFEF !important;
   stroke: none !important;
@@ -237,6 +275,33 @@ path.scene-path[fill="#EEEEEE"] {
 
 .number-text.selected {
   font-weight: bold;
+}
+
+/* Open scene indicators with high specificity */
+.scene-title.scene-is-open {
+  fill: var(--interactive-accent) !important;
+  font-weight: bold !important;
+  stroke: white !important;
+  stroke-width: 3px !important;
+  paint-order: stroke !important;
+}
+
+.number-square.scene-is-open {
+  stroke: var(--interactive-accent) !important;
+  stroke-width: 2px !important;
+}
+
+/* Make sure open cells respect the non-selected treatment during mouseover */
+.scene-path.scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+}
+
+/* Make sure title text for open scenes also respects non-selected treatment during mouseover */
+.scene-title.scene-is-open.non-selected {
+  fill: #FFFFFF !important;
+  font-weight: normal !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
 }
 
 /* Text styling for SVG elements */
@@ -459,78 +524,106 @@ tspan.character-text {
   text-anchor: start !important;
 }
 
-/* Open scene indicators */
-/* Scene title and number text styling for open files */
-.scene-title.scene-is-open {
-  fill: var(--interactive-accent) !important;
-  font-weight: bold !important;
-  stroke: white !important;
-  stroke-width: 3px !important;
-  paint-order: stroke !important;
+/* Center number styles */
+.center-number-text {
+  fill: var(--text-normal, #333333);
+  font-size: 140px;
+  pointer-events: none;
+  font-weight: 900;
 }
 
-/* Add styling for number squares in open scene files */
-.number-square.scene-is-open {
-  stroke: var(--interactive-accent) !important;
-  stroke-width: 2px !important;
+/* Month and Act Label Styles */
+.month-label {
+  fill: var(--text-normal, #333333);
+  font-size: 16px;
+  pointer-events: none;
+  dominant-baseline: middle;
 }
 
-/* Regular scene title styling for selected state */
-.scene-title.selected {
-  fill: #000000 !important;
-  font-weight: bold !important;
-  stroke: white !important;
-  stroke-width: 0.5px !important;
-  paint-order: stroke !important;
+.month-label-outer {
+  fill: var(--text-normal, #333333);
+  font-size: 20px;
+  pointer-events: none;
+  dominant-baseline: middle;
 }
 
-/* Scene title styling for non-selected state */
-.scene-title.non-selected {
-  fill: #FFFFFF !important;
-  font-weight: normal !important;
-  stroke: none !important;
-  stroke-width: 0 !important;
-  /* Ensure this style takes precedence */
-  transition: fill 0s !important;
+.act-label {
+  fill: var(--text-normal, #333333);
+  font-size: 20px;
+  font-weight: bold;
+  pointer-events: none;
+  dominant-baseline: middle;
 }
 
-/* Number elements during mouseover - higher specificity */
-.number-square.non-selected {
-  fill: #EFEFEF !important;
-  stroke: none !important;
-  stroke-width: 0 !important;
+.month-spoke-line {
+  stroke: var(--text-normal, #333333);
+  stroke-width: 1;
 }
 
-.number-text.non-selected {
-  fill: #FFFFFF !important;
+.month-spoke-line.act-boundary {
+  stroke: var(--text-accent, #705dcf);
+  stroke-width: 3;
 }
 
-/* Make sure open cells respect the non-selected treatment during mouseover */
-.scene-path.scene-is-open.non-selected {
-  fill: #EFEFEF !important;
+/* Act Borders and Progress Ring */
+.act-border {
+  stroke: var(--text-accent, #705dcf);
+  stroke-width: 5;
+  fill: none;
 }
 
-/* Make sure title text for open scenes also respects non-selected treatment during mouseover */
-.scene-title.scene-is-open.non-selected {
-  fill: #FFFFFF !important;
-  font-weight: normal !important;
-  stroke: none !important;
-  stroke-width: 0 !important;
-  /* Ensure this style takes precedence */
-  transition: fill 0s !important;
+.progress-ring-base {
+  stroke: var(--background-modifier-border, #dddddd);
+  stroke-width: 10;
+  fill: none;
 }
 
-/* Make sure number elements for open scenes also respect non-selected treatment */
-.number-square.scene-is-open.non-selected {
-  fill: #EFEFEF !important;
-  stroke: none !important;
+.progress-ring-fill {
+  /* Stroke color is applied via gradient in the SVG */
+  stroke-width: 10;
+  fill: none;
 }
 
-.number-text.scene-is-open.non-selected {
-  fill: #FFFFFF !important;
+/* Key and Information Text Styles */
+.key-text {
+  fill: var(--text-normal, #333333);
+  font-size: 16px;
+  transition: fill 0.2s ease;
 }
 
-/* Force global overrides for Q1 and Q4 */
-.synopsis-q1 text, .synopsis-q4 text {
-  text-anchor: end !important;
+.theme-dark .key-text {
+  fill: #ffffff !important;
+}
+
+.theme-light .key-text {
+  fill: #333333 !important;
+}
+
+.info-text {
+  dominant-baseline: hanging;
+  text-anchor: start;
+  fill: #333333 !important; /* Always keep info-text dark for better visibility */
+}
+
+.info-title {
+  fill: var(--text-normal, #333333);
+  font-size: 28px;
+  text-anchor: middle;
+}
+
+.info-container {
+  fill: var(--text-normal, #333333);
+  font-size: 24px;
+}
+
+.color-key-center {
+  opacity: 1;
+  pointer-events: none;
+}
+
+.center-key-text {
+  fill: var(--text-normal, #333333);
+  font-size: 18px;
+  text-transform: uppercase;
+  opacity: 0.85; /* Slightly transparent */
 }

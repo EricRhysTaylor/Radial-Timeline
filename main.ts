@@ -435,207 +435,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const lineOuterRadius = ringStartRadii[N - 1] + ringWidths[N - 1] + 30;
     
         // **Include the `<style>` code here**
-        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="background-color: transparent;">
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap');
-
-            svg {
-                font-family: 'Lato', sans-serif;
-                background-color: transparent;
-            }
-
-            .scene-title {
-                fill: white;
-                opacity: 1;
-                pointer-events: none;
-            }
-
-            .scene-title.faded {
-                fill: var(--text-muted, #666666);
-                opacity: 0.2;
-            }
-
-            .center-number-text {
-                fill: var(--text-normal, #333333);
-                font-size: 140px;
-                pointer-events: none;
-                font-weight: 900;
-            }
-
-            .scene-act {
-                fill-opacity: 0;
-                transition: fill-opacity 0.2s;
-            }
-
-            .scene-act:hover {
-                fill-opacity: 0.3;
-                cursor: pointer;
-            }
-
-            .scene-info {
-                opacity: 0;
-                transition: opacity 0.2s;
-                pointer-events: none;
-            }
-
-            .scene-group:hover .scene-info {
-                opacity: 1;
-            }
-
-            .number-text {
-                font-size: 14px;
-                pointer-events: none;
-            }
-
-            .number-text.faded {
-                opacity: 0.2;
-            }
-
-            .number-square {
-                opacity: 1;
-                pointer-events: none;
-            }
-
-            .number-square.faded {
-                opacity: 0.2;
-            }
-
-            .scene-path {
-                opacity: 1;
-                transition: opacity 0.2s ease-out;
-                pointer-events: all;
-            }
-
-            .scene-path.faded {
-                opacity: 0.5;
-                transition: opacity 0.2s ease-out;
-            }
-
-            .scene-path.highlighted {
-                opacity: 1;
-                transition: opacity 0.2s ease-out;
-            }
-
-            .info-title {
-                fill: var(--text-normal, #333333);
-                font-size: 28px;
-                text-anchor: middle;
-            }
-
-            .subplot-text {
-                fill: var(--text-normal, #333333);
-                font-size: 28px;
-                text-anchor: middle;
-            }
-
-            .synopsis-text {
-                fill: var(--text-normal, #333333);
-                font-size: 28px;
-                text-anchor: middle;
-            }
-
-            .month-label {
-                fill: var(--text-normal, #333333);
-                font-size: 16px;
-                pointer-events: none;
-                dominant-baseline: middle;
-            }
-
-            .month-label-outer {
-                fill: var(--text-normal, #333333);
-                font-size: 20px;
-                pointer-events: none;
-                dominant-baseline: middle;
-            }
-
-            .act-label {
-                fill: var(--text-normal, #333333);
-                font-size: 20px;
-                font-weight: bold;
-                pointer-events: none;
-                dominant-baseline: middle;
-            }
-
-            .info-container {
-                fill: var(--text-normal, #333333);
-                font-size: 24px;
-            }
-
-            .info-text {
-                dominant-baseline: hanging;
-                text-anchor: start;
-                fill: var(--text-normal, #333333);
-            }
-            
-            .key-text {
-                fill: var(--text-normal, #333333);
-                font-size: 16px;
-                transition: fill 0.2s ease;
-            }
-            
-            // Add CSS classes for month spokes in the SVG style section
-            .month-spoke-line {
-                stroke: var(--text-normal, #333333);
-                stroke-width: 1;
-            }
-
-            .month-spoke-line.act-boundary {
-                stroke: var(--text-accent, #705dcf);
-                stroke-width: 3;
-            }
-            
-            // Add CSS classes for act borders and progress ring
-            .act-border {
-                stroke: var(--text-accent, #705dcf);
-                stroke-width: 5;
-                fill: none;
-            }
-
-            .progress-ring-base {
-                stroke: var(--background-modifier-border, #dddddd);
-                stroke-width: 10;
-                fill: none;
-            }
-
-            .progress-ring-fill {
-                /* Stroke color is applied via gradient in the SVG */
-                stroke-width: 10;
-                fill: none;
-            }
-            
-            /* Ensure key-text elements are styled correctly */
-            .theme-dark .key-text {
-                fill: #ffffff !important;
-            }
-            
-            .theme-light .key-text {
-                fill: #333333 !important;
-            }
-            
-            /* Always keep info-text dark for better visibility against light background */
-            .info-text {
-                fill: #333333 !important;
-            }
-
-            .color-key-center {
-                opacity: 1;
-                pointer-events: none;
-            }
-
-            .center-key-text {
-                fill: var(--text-normal, #333333);
-                font-size: 18px;
-                text-transform: uppercase;
-                opacity: 0.85; /* Slightly transparent */
-            }
-            
-            .status-count {
-                font-size: 14px;
-                opacity: 0.7;
-                vertical-align: super;
-                baseline-shift: super;
-            }
-        </style>`;
+        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg">`;
 
         // Access the publishStageColors from settings
         const PUBLISH_STAGE_COLORS = this.settings.publishStageColors;
@@ -2592,19 +2392,8 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                         
                                         elementsToFade.forEach(element => {
                                             if (element) {
-                                                // First remove any other styling classes that might interfere
-                                                element.classList.remove('selected');
-                                                
-                                                // Apply non-selected class
+                                                // ONLY ADD NON-SELECTED CLASS - just like for number boxes
                                                 element.classList.add('non-selected');
-                                                
-                                                // For scene title, also use direct style manipulation
-                                                if (element.classList.contains('scene-title')) {
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fill = "#FFFFFF";
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fontWeight = "normal";
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.stroke = "none";
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "0";
-                                                }
                                                 
                                                 // Force browser reflow to apply the class
                                                 void (element as HTMLElement).offsetWidth;
@@ -2614,22 +2403,13 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                         // Make the current path more prominent with class
                                         otherPath.classList.add('selected');
                                         
-                                        // Highlight this scene's title
+                                        // Highlight this scene's title and add the selected class
                                         const currentId = otherPath.id;
                                         const currentSceneTitle = svgElement.querySelector(`.scene-title[data-scene-id="${currentId}"]`);
                                         
                                         if (currentSceneTitle) {
-                                            // Remove any interfering classes/styles
-                                            currentSceneTitle.classList.remove('non-selected');
-                                            
-                                            // Apply selected styling with high specificity
+                                            // ONLY ADD SELECTED CLASS - just like for number boxes
                                             currentSceneTitle.classList.add('selected');
-                                            (currentSceneTitle as SVGElement & {style: CSSStyleDeclaration}).style.fill = "#000000";
-                                            (currentSceneTitle as SVGElement & {style: CSSStyleDeclaration}).style.fontWeight = "bold";
-                                            
-                                            // Reset stroke styles if they were previously set to none
-                                            (currentSceneTitle as SVGElement & {style: CSSStyleDeclaration}).style.stroke = "white";
-                                            (currentSceneTitle as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "0.5px";
                                         }
                                     }
                                 });
