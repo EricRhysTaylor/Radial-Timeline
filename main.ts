@@ -2577,7 +2577,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                 const allPaths = svgElement.querySelectorAll(".scene-path");
                                 allPaths.forEach(otherPath => {
                                     if (otherPath !== path) {
-                                        // Set ALL non-selected scenes to #EFEFEF class
+                                        // Set ALL non-selected scenes to non-selected class
                                         otherPath.classList.add('non-selected');
                                         
                                         // Find and fade this path's number box and scene title
@@ -2592,6 +2592,9 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                         
                                         elementsToFade.forEach(element => {
                                             if (element) {
+                                                // First remove any other styling classes that might interfere
+                                                element.classList.remove('selected');
+                                                // Then add the non-selected class
                                                 element.classList.add('non-selected');
                                                 
                                                 // Force browser reflow to apply the class
@@ -2607,6 +2610,9 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                         const currentSceneTitle = svgElement.querySelector(`.scene-title[data-scene-id="${currentId}"]`);
                                         
                                         if (currentSceneTitle) {
+                                            // First remove any classes that might interfere
+                                            currentSceneTitle.classList.remove('non-selected');
+                                            // Then add the selected class
                                             currentSceneTitle.classList.add('selected');
                                         }
                                     }

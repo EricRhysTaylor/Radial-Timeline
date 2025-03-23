@@ -483,7 +483,7 @@ tspan.character-text {
 
 /* Scene title styling for non-selected state */
 .scene-title.non-selected {
-  fill: #EFEFEF !important;
+  fill: #FFFFFF !important;
   font-weight: normal !important;
   stroke: none !important;
   stroke-width: 0 !important;
@@ -505,7 +505,7 @@ tspan.character-text {
 
 /* Make sure title text for open scenes also respects non-selected treatment during mouseover */
 .scene-title.scene-is-open.non-selected {
-  fill: #EFEFEF !important;
+  fill: #FFFFFF !important;
   font-weight: normal !important;
   stroke: none !important;
   stroke-width: 0 !important;
