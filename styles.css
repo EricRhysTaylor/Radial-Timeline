@@ -212,20 +212,22 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Number elements */
 .number-square, .number-text {
-  transition: opacity 0.2s ease-out, fill 0.2s ease-out, transform 0.2s ease-out, stroke 0.2s ease-out;
+  transition: opacity 0.2s ease-out, fill 0.2s ease-out, transform 0.2s ease-out, stroke 0.2s ease-out, stroke-width 0.2s ease-out;
 }
 
 .number-square.faded, .number-text.faded {
   opacity: 0.2;
 }
 
-/* Number elements during mouseover */
+/* Number elements during mouseover - use !important to override any other styles */
 .number-square.non-selected {
-  fill: #EFEFEF;
+  fill: #EFEFEF !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
 }
 
 .number-text.non-selected {
-  fill: #FFFFFF;
+  fill: #FFFFFF !important;
 }
 
 .number-square.selected {
@@ -455,4 +457,71 @@ tspan.character-text {
 /* Force global overrides for Q2 and Q3 */
 .synopsis-q2 text, .synopsis-q3 text {
   text-anchor: start !important;
+}
+
+/* Open scene indicators */
+/* Scene title and number text styling for open files */
+.scene-title.scene-is-open {
+  fill: var(--interactive-accent) !important;
+  font-weight: bold !important;
+  stroke: white !important;
+  stroke-width: 3px !important;
+  paint-order: stroke !important;
+}
+
+/* Add styling for number squares in open scene files */
+.number-square.scene-is-open {
+  stroke: var(--interactive-accent) !important;
+  stroke-width: 2px !important;
+}
+
+/* Regular scene title styling for selected state */
+.scene-title.selected {
+  fill: #000000 !important;
+  font-weight: bold !important;
+}
+
+/* Scene title styling for non-selected state */
+.scene-title.non-selected {
+  fill: #EFEFEF !important;
+  font-weight: normal !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
+/* Number elements during mouseover - higher specificity */
+.number-square.non-selected {
+  fill: #EFEFEF !important;
+}
+
+.number-text.non-selected {
+  fill: #FFFFFF !important;
+}
+
+/* Make sure open cells respect the non-selected treatment during mouseover */
+.scene-path.scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+}
+
+/* Make sure title text for open scenes also respects non-selected treatment during mouseover */
+.scene-title.scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+  font-weight: normal !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
+/* Make sure number elements for open scenes also respect non-selected treatment */
+.number-square.scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+  stroke: none !important;
+}
+
+.number-text.scene-is-open.non-selected {
+  fill: #FFFFFF !important;
+}
+
+/* Force global overrides for Q1 and Q4 */
+.synopsis-q1 text, .synopsis-q4 text {
+  text-anchor: end !important;
 }

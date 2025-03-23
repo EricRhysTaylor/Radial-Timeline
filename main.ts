@@ -1,4 +1,4 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView } from "obsidian";
 
 // Helper functions for safe SVG creation - add at the top of the file
 function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
@@ -100,7 +100,8 @@ const STATUS_COLORS = {
     "Working": "#70b970",
     "Todo": "#aaaaaa",
     "Empty": "#f0f0f0", // Light gray (will be replaced with light Zero color)
-    "Due": "#d05e5e"
+    "Due": "#d05e5e",
+    "Complete": "#999999" // Added for complete status
 };
 
 const NUM_ACTS = 3;
@@ -131,6 +132,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     
     // Add this property to track the active view
     activeTimelineView: ManuscriptTimelineView | null = null;
+
+    // Add a property to track open scene paths
+    openScenePaths: Set<string> = new Set<string>();
 
     async onload() {
         await this.loadSettings();
@@ -197,6 +201,18 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             name: 'Open Timeline View',
             callback: () => this.activateView()
         });
+
+        // Register event to update open files tracking
+        this.registerEvent(
+            this.app.workspace.on('file-open', (file) => this.updateOpenFilesTracking())
+        );
+        // We don't need a separate 'file-close' handler since 'layout-change' will capture file closings
+        this.registerEvent(
+            this.app.workspace.on('layout-change', () => this.updateOpenFilesTracking())
+        );
+
+        // Initialize open files tracking
+        this.updateOpenFilesTracking();
     }
     
     // Helper to activate the timeline view
@@ -629,9 +645,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         // Define plaid patterns for Working and Todo status
         svg += `<pattern id="plaidWorking" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-            <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Working, 10)}"/>
-            <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
-            <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
+            <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Working, 5)}"/>
+            <circle cx="5" cy="5" r="2" fill="#ffffff" fill-opacity="0.6"/>
+            <circle cx="0" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+            <circle cx="10" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+            <circle cx="0" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+            <circle cx="10" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
         </pattern>`;
         
         svg += `<pattern id="plaidTodo" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
@@ -643,9 +662,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Define patterns for Working and Todo states with Publish Stage colors
         svg += `${Object.entries(PUBLISH_STAGE_COLORS).map(([stage, color]) => `
             <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="${this.darkenColor(color, 10)}"/>
-                <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
-                <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
+                <rect width="10" height="10" fill="${this.darkenColor(color, 5)}"/>
+                <circle cx="5" cy="5" r="2" fill="#ffffff" fill-opacity="0.6"/>
+                <circle cx="0" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+                <circle cx="10" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+                <circle cx="0" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+                <circle cx="10" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
             </pattern>
             
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
@@ -1324,11 +1346,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 ${statusColorEntries.map(([status, color], index) => {
                     const yPos = startY + (index * centerLineHeight);
                     
-                    // Check if this is Working or Todo status to show plaid pattern
-                    const isWorkingOrTodo = status === 'Working' || status === 'Todo';
-                    const fillValue = isWorkingOrTodo ? 
-                        `url(#plaid${status}Zero)` : // Use the Zero publishing stage for the legend
-                        color;
+                    // Check if this has a special pattern (Working, Todo, or Complete)
+                    const hasSpecialPattern = status === 'Working' || status === 'Todo';
+                    let fillValue;
+                    
+                    if (hasSpecialPattern) {
+                        fillValue = `url(#plaid${status}Zero)`;
+                    } else {
+                        fillValue = color;
+                    }
                     
                     return `
                         <g transform="translate(25, ${yPos})">
@@ -1752,12 +1778,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 synopsis.classList.add('synopsis-q3'); // Left justify in Q3
             }
             
-            // Remove debug info if it exists (don't add it)
-            const debugInfo = synopsis.querySelector('.debug-info');
-            if (debugInfo) {
-                debugInfo.remove();
-            }
-            
             // Make sure the synopsis is visible by applying both class and style changes
             synopsis.classList.add('visible');
             (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
@@ -1774,6 +1794,90 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             });
         } catch (error) {
             console.error("Error in updateSynopsisPosition:", error);
+        }
+    }
+
+    // Add method to update open files tracking
+    private updateOpenFilesTracking() {
+        // Store the previous state to check if it changed
+        const previousOpenFiles = new Set(this.openScenePaths);
+        
+        this.openScenePaths = new Set<string>();
+        
+        // Get all open leaves of type 'markdown'
+        const openLeaves = this.app.workspace.getLeavesOfType('markdown');
+
+        // Add each file path to the set
+        openLeaves.forEach((leaf) => {
+            if (leaf.view instanceof MarkdownView) {
+                const file = leaf.view.file;
+                if (file instanceof TFile) {
+                    this.openScenePaths.add(file.path);
+                }
+            }
+        });
+
+        // Also check if there's an active file not in a leaf
+        const activeFile = this.app.workspace.getActiveFile();
+        if (activeFile) {
+            this.openScenePaths.add(activeFile.path);
+        }
+
+        // Get all open tabs from the workspace layout
+        try {
+            // @ts-ignore - Use the workspace layout accessor which may not be fully typed
+            const layout = this.app.workspace.getLayout();
+            if (layout && layout.leaves) {
+                const leafIds = Object.keys(layout.leaves as Record<string, any>);
+                
+                // Try to find any additional file paths from the layout
+                leafIds.forEach(id => {
+                    // @ts-ignore - Access the layout structure which may not be fully typed
+                    const leafData = layout.leaves[id];
+                    if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
+                        this.openScenePaths.add(leafData.state.file);
+                    }
+                });
+            }
+        } catch (e) {
+            console.error("Error accessing workspace layout:", e);
+        }
+        
+        // Log the open scene paths for debugging
+        console.log(`Open scene paths:`, Array.from(this.openScenePaths));
+        
+        // Check if the open files have changed
+        let hasChanged = false;
+        
+        // Different size means something changed
+        if (previousOpenFiles.size !== this.openScenePaths.size) {
+            hasChanged = true;
+        } else {
+            // Check if any files were added or removed
+            for (const path of previousOpenFiles) {
+                if (!this.openScenePaths.has(path)) {
+                    hasChanged = true;
+                    break;
+                }
+            }
+            
+            if (!hasChanged) {
+                for (const path of this.openScenePaths) {
+                    if (!previousOpenFiles.has(path)) {
+                        hasChanged = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // If files have changed, refresh the active timeline view
+        if (hasChanged && this.activeTimelineView) {
+            console.log("Open files changed, refreshing timeline");
+            // Use requestAnimationFrame to avoid too many refreshes in quick succession
+            requestAnimationFrame(() => {
+                this.activeTimelineView?.refreshTimeline();
+            });
         }
     }
 }
@@ -2030,7 +2134,8 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
 export class ManuscriptTimelineView extends ItemView {
     plugin: ManuscriptTimelinePlugin;
     sceneData: Scene[] = [];
-
+    openScenePaths: Set<string> = new Set<string>();
+    
     constructor(leaf: WorkspaceLeaf, plugin: ManuscriptTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -2048,6 +2153,94 @@ export class ManuscriptTimelineView extends ItemView {
         return "shell";
     }
 
+    // Add method to update open files tracking
+    updateOpenFilesTracking(): void {
+        // Store the previous state to check if it changed
+        const previousOpenFiles = new Set(this.openScenePaths);
+        
+        this.openScenePaths = new Set<string>();
+        
+        // Get all open leaves
+        const leaves = this.app.workspace.getLeavesOfType('markdown');
+        
+        console.log(`Found ${leaves.length} open markdown leaves`);
+        
+        // Collect the paths of all open markdown files
+        leaves.forEach(leaf => {
+            // Check if the view is a MarkdownView with a file
+            const view = leaf.view;
+            if (view instanceof MarkdownView && view.file) {
+                this.openScenePaths.add(view.file.path);
+                console.log(`Added open file to tracking: ${view.file.path}`);
+            }
+        });
+        
+        // Also check if there's an active file not in a leaf
+        const activeFile = this.app.workspace.getActiveFile();
+        if (activeFile) {
+            this.openScenePaths.add(activeFile.path);
+            console.log(`Added active file to tracking: ${activeFile.path}`);
+        }
+        
+        // Get all open tabs from the workspace layout
+        try {
+            // @ts-ignore - Use the workspace layout accessor which may not be fully typed
+            const layout = this.app.workspace.getLayout();
+            if (layout && layout.leaves) {
+                const leafIds = Object.keys(layout.leaves as Record<string, any>);
+                console.log(`Found ${leafIds.length} leaf IDs in layout`);
+                
+                // Try to find any additional file paths from the layout
+                leafIds.forEach(id => {
+                    // @ts-ignore - Access the layout structure which may not be fully typed
+                    const leafData = layout.leaves[id];
+                    if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
+                        this.openScenePaths.add(leafData.state.file);
+                        console.log(`Added file from layout: ${leafData.state.file}`);
+                    }
+                });
+            }
+        } catch (e) {
+            console.error("Error accessing workspace layout:", e);
+        }
+        
+        console.log(`Tracking ${this.openScenePaths.size} open scene paths:`, Array.from(this.openScenePaths));
+        
+        // Check if the open files have changed
+        let hasChanged = false;
+        
+        // Different size means something changed
+        if (previousOpenFiles.size !== this.openScenePaths.size) {
+            hasChanged = true;
+        } else {
+            // Check if any files were added or removed
+            for (const path of previousOpenFiles) {
+                if (!this.openScenePaths.has(path)) {
+                    hasChanged = true;
+                    break;
+                }
+            }
+            
+            if (!hasChanged) {
+                for (const path of this.openScenePaths) {
+                    if (!previousOpenFiles.has(path)) {
+                        hasChanged = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // If files have changed, refresh the timeline
+        if (hasChanged) {
+            console.log("Open files changed, refreshing timeline");
+            // Use requestAnimationFrame to avoid too many refreshes in quick succession
+            requestAnimationFrame(() => {
+                this.renderTimeline(this.containerEl.children[1] as HTMLElement, this.sceneData);
+            });
+        }
+    }
+
     refreshTimeline() {
         const container = this.containerEl.children[1] as HTMLElement;
         container.empty();
@@ -2056,6 +2249,9 @@ export class ManuscriptTimelineView extends ItemView {
             cls: "loading-message",
             text: "Loading timeline data..."
         });
+        
+        // First update the tracking of open files
+        this.updateOpenFilesTracking();
         
         // Get the scene data using the plugin's method
         this.plugin.getSceneData()
@@ -2078,6 +2274,42 @@ export class ManuscriptTimelineView extends ItemView {
     }
     
     async onOpen(): Promise<void> {
+        // Register event to track file opens
+        this.registerEvent(
+            this.app.workspace.on('file-open', () => {
+                this.updateOpenFilesTracking();
+            })
+        );
+        
+        // Register event for layout changes (tab opening/closing)
+        this.registerEvent(
+            this.app.workspace.on('layout-change', () => {
+                this.updateOpenFilesTracking();
+            })
+        );
+        
+        // Register for active leaf changes which might mean tabs were changed
+        this.registerEvent(
+            this.app.workspace.on('active-leaf-change', () => {
+                this.updateOpenFilesTracking();
+            })
+        );
+        
+        // Register for quick switching between files
+        this.registerEvent(
+            this.app.workspace.on('quick-preview', () => {
+                this.updateOpenFilesTracking();
+            })
+        );
+        
+        // Setup a regular check (every 2 seconds) to catch any changes missed by events
+        this.registerInterval(
+            window.setInterval(() => {
+                this.updateOpenFilesTracking();
+            }, 2000)
+        );
+        
+        // Initial timeline render
         this.refreshTimeline();
     }
     
@@ -2197,50 +2429,6 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 svgElement.setAttribute('height', '100%');
                 svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                 
-                // Add debug info display
-                const svgNS = "http://www.w3.org/2000/svg";
-                const debugContainer = document.createElementNS(svgNS, "g");
-                debugContainer.classList.add("debug-info-container");
-                debugContainer.setAttribute("transform", "translate(10, 30)");
-                
-                const debugBackground = document.createElementNS(svgNS, "rect");
-                debugBackground.classList.add("debug-info-background");
-                debugBackground.setAttribute("x", "0");
-                debugBackground.setAttribute("y", "0");
-                debugBackground.setAttribute("width", "400");
-                debugBackground.setAttribute("height", "40");
-                
-                const debugText = document.createElementNS(svgNS, "text");
-                debugText.classList.add("debug-info-text");
-                debugText.setAttribute("x", "10");
-                debugText.setAttribute("y", "25");
-                debugText.textContent = "Mouse: X:0, Y:0 | Quadrant: -";
-                
-                debugContainer.appendChild(debugBackground);
-                debugContainer.appendChild(debugText);
-                svgElement.appendChild(debugContainer);
-                
-                // Add mouse move event to update debug text
-                svgElement.addEventListener('mousemove', (event: MouseEvent) => {
-                    const svgElementTyped = svgElement as SVGSVGElement;
-                    const pt = svgElementTyped.createSVGPoint();
-                    pt.x = event.clientX;
-                    pt.y = event.clientY;
-                    const ctm = svgElementTyped.getScreenCTM();
-                    if (ctm) {
-                        const svgP = pt.matrixTransform(ctm.inverse());
-                        
-                        // Determine quadrant
-                        const quadrant = 
-                            svgP.x >= 0 && svgP.y >= 0 ? "Q1 (Bottom Right)" :
-                            svgP.x < 0 && svgP.y >= 0 ? "Q2 (Bottom Left)" :
-                            svgP.x < 0 && svgP.y < 0 ? "Q3 (Top Left)" :
-                            "Q4 (Top Right)";
-                        
-                        debugText.textContent = `Mouse: X:${Math.round(svgP.x)}, Y:${Math.round(svgP.y)} | Quadrant: ${quadrant}`;
-                    }
-                });
-                
                 // Add direct JavaScript handlers for mouse events
                 const allSynopses = svgElement.querySelectorAll(".scene-info");
                 allSynopses.forEach(synopsis => {
@@ -2249,14 +2437,55 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
                 });
                 
-                // Find all scene paths for click interaction
-                const scenePaths = svgElement.querySelectorAll(".scene-path");
-                scenePaths.forEach((path) => {
-                    const group = path.closest(".scene-group");
-                    if (group) {
-                        // Using getAttribute for compatibility
+                // Mark open files in the timeline
+                const sceneGroups = svgElement.querySelectorAll(".scene-group");
+                console.log(`Found ${sceneGroups.length} scene groups to check against ${this.openScenePaths.size} open files`);
+                
+                let markedOpenCount = 0;
+                sceneGroups.forEach((group) => {
+                    const encodedPath = group.getAttribute("data-path");
+                    if (encodedPath && encodedPath !== "") {
+                        const filePath = decodeURIComponent(encodedPath);
+                        
+                        // Check if this file is currently open in a tab
+                        if (this.openScenePaths.has(filePath)) {
+                            console.log(`Marking scene as open: ${filePath}`);
+                            markedOpenCount++;
+                            
+                            // Add a class to indicate this scene is open
+                            group.classList.add("scene-is-open");
+                            
+                            // Mark the scene path element (but no styling)
+                            const scenePath = group.querySelector(".scene-path");
+                            if (scenePath) {
+                                scenePath.classList.add("scene-is-open");
+                            }
+                            
+                            // Mark the scene title text if present
+                            const sceneTitle = group.querySelector(".scene-title");
+                            if (sceneTitle) {
+                                sceneTitle.classList.add("scene-is-open");
+                            }
+                            
+                            // Mark the number square (but no styling)
+                            const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${scenePath?.id}"]`);
+                            if (numberSquare) {
+                                numberSquare.classList.add("scene-is-open");
+                            }
+                            
+                            // Mark the number text with the accent color
+                            const numberText = svgElement.querySelector(`.number-text[data-scene-id="${scenePath?.id}"]`);
+                            if (numberText) {
+                                numberText.classList.add("scene-is-open");
+                            }
+                        }
+                    }
+                    
+                    // Find all scene paths for click interaction
+                    const path = group.querySelector(".scene-path");
+                    if (path) {
                         const encodedPath = group.getAttribute("data-path");
-                        if (encodedPath) {
+                        if (encodedPath && encodedPath !== "") {
                             const filePath = decodeURIComponent(encodedPath);
                             path.addEventListener("click", () => {
                                 const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
@@ -2272,8 +2501,9 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                         // If the file is already open, just reveal that leaf
                                         this.plugin.app.workspace.revealLeaf(existingLeaf);
                                     } else {
-                                        // Otherwise, open in a new leaf
-                                        this.plugin.app.workspace.getLeaf('tab').openFile(file);
+                                        // Open in a new tab without trying to return focus
+                                        const leaf = this.plugin.app.workspace.getLeaf('tab');
+                                        leaf.openFile(file);
                                     }
                                 }
                             });
@@ -2287,17 +2517,31 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                         if (synopsis) {
                             // Apply mouseover effects for the group/path
                             group.addEventListener("mouseenter", (event: MouseEvent) => {
-                                if (synopsis) {
-                                    // Use our new function to update synopsis position with debug info
-                                    const svg = svgElement.closest('svg') as SVGSVGElement;
-                                    this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
-                                }
+                                // Reset all previous mouseover effects to ensure clean state
+                                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                                allElements.forEach(element => {
+                                    element.classList.remove('selected', 'non-selected');
+                                });
+                                
+                                // Update synopsis position with debug info
+                                const svg = svgElement.closest('svg') as SVGSVGElement;
+                                this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
+                                
+                                // Make the tooltip visible
+                                synopsis.classList.add('visible');
+                                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
+                                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
+                                
+                                console.log("Synopsis shown", {
+                                    synopsisVisible: synopsis.classList.contains('visible'),
+                                    opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
+                                });
                                 
                                 console.log("Mouseover triggered for scene:", sceneId);
                                 
                                 // Reveal the file in navigation
                                 const encodedPath = group.getAttribute("data-path");
-                                if (encodedPath) {
+                                if (encodedPath && encodedPath !== "") {
                                     const filePath = decodeURIComponent(encodedPath);
                                     const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
                                     if (file instanceof TFile) {
@@ -2310,7 +2554,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                     }
                                 }
                                 
-                                // Find and animate the number square for this scene - v2
+                                // Find and animate the number square for this scene
                                 const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
                                 const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
                                 
@@ -2330,26 +2574,41 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                 }
                                 
                                 // Apply color transform without changing opacity
-                                scenePaths.forEach(otherPath => {
+                                const allPaths = svgElement.querySelectorAll(".scene-path");
+                                allPaths.forEach(otherPath => {
                                     if (otherPath !== path) {
                                         // Set ALL non-selected scenes to #EFEFEF class
                                         otherPath.classList.add('non-selected');
                                         
-                                        // Find and fade this path's number box
+                                        // Find and fade this path's number box and scene title
                                         const otherId = otherPath.id;
-                                        const otherNumberSquare = svgElement.querySelector(`.number-square[data-scene-id="${otherId}"]`);
-                                        const otherNumberText = svgElement.querySelector(`.number-text[data-scene-id="${otherId}"]`);
                                         
-                                        if (otherNumberSquare) {
-                                            otherNumberSquare.classList.add('non-selected');
-                                        }
+                                        // Add non-selected to all elements for this path
+                                        const elementsToFade = [
+                                            svgElement.querySelector(`.number-square[data-scene-id="${otherId}"]`),
+                                            svgElement.querySelector(`.number-text[data-scene-id="${otherId}"]`),
+                                            svgElement.querySelector(`.scene-title[data-scene-id="${otherId}"]`)
+                                        ];
                                         
-                                        if (otherNumberText) {
-                                            otherNumberText.classList.add('non-selected');
-                                        }
+                                        elementsToFade.forEach(element => {
+                                            if (element) {
+                                                element.classList.add('non-selected');
+                                                
+                                                // Force browser reflow to apply the class
+                                                void (element as HTMLElement).offsetWidth;
+                                            }
+                                        });
                                     } else {
                                         // Make the current path more prominent with class
                                         otherPath.classList.add('selected');
+                                        
+                                        // Highlight this scene's title
+                                        const currentId = otherPath.id;
+                                        const currentSceneTitle = svgElement.querySelector(`.scene-title[data-scene-id="${currentId}"]`);
+                                        
+                                        if (currentSceneTitle) {
+                                            currentSceneTitle.classList.add('selected');
+                                        }
                                     }
                                 });
                             });
@@ -2361,55 +2620,44 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                     (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
                                     (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
                                     
-                                    // Also reset the transform to make sure it's properly hidden
-                                    // synopsis.setAttribute('transform', 'translate(0, 0)');
-                                    
                                     console.log("Synopsis hidden", {
                                         synopsisVisible: synopsis.classList.contains('visible'),
                                         opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
                                     });
                                 }
                                 
-                                // Reset number square animation
-                                const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
-                                const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
-                                
-                                if (numberSquare) {
-                                    numberSquare.classList.remove('selected');
-                                    // Reset the stroke properties
-                                    (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.stroke = "";
-                                    (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "";
-                                }
-                                
-                                if (numberText) {
-                                    numberText.classList.remove('selected');
-                                }
-                                
-                                // Restore all scene paths to original appearance
-                                scenePaths.forEach(otherPath => {
-                                    // Remove all effect classes
+                                // Reset the styling of all scene elements
+                                const allPaths = svgElement.querySelectorAll(".scene-path");
+                                allPaths.forEach(otherPath => {
+                                    // Remove the mouseover effect classes
                                     otherPath.classList.remove('selected', 'non-selected');
                                     
-                                    // Restore number squares and text
+                                    // Reset number box and title styling
                                     const otherId = otherPath.id;
-                                    const otherNumberSquare = svgElement.querySelector(`.number-square[data-scene-id="${otherId}"]`);
-                                    const otherNumberText = svgElement.querySelector(`.number-text[data-scene-id="${otherId}"]`);
                                     
-                                    if (otherNumberSquare) {
-                                        otherNumberSquare.classList.remove('non-selected');
-                                    }
+                                    // Remove classes from all elements for this path
+                                    const elementsToReset = [
+                                        svgElement.querySelector(`.number-square[data-scene-id="${otherId}"]`),
+                                        svgElement.querySelector(`.number-text[data-scene-id="${otherId}"]`),
+                                        svgElement.querySelector(`.scene-title[data-scene-id="${otherId}"]`)
+                                    ];
                                     
-                                    if (otherNumberText) {
-                                        otherNumberText.classList.remove('non-selected');
-                                    }
+                                    elementsToReset.forEach(element => {
+                                        if (element) {
+                                            element.classList.remove('selected', 'non-selected');
+                                            
+                                            // Force browser reflow to apply the class
+                                            void (element as HTMLElement).offsetWidth;
+                                        }
+                                    });
                                 });
                             });
                         }
                     }
                 });
                 
+                console.log(`Marked ${markedOpenCount} scenes as open`);
                 console.log("Added click handlers and mouseover effects to scene paths");
-            } else {
                 console.error("Failed to find SVG element in container");
             }
         } catch (error) {
