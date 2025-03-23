@@ -1706,67 +1706,87 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Add this function near the top of the class, after refreshTimelineIfNeeded 
     public updateSynopsisPosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
-        if (!synopsis || !svg) return;
-        
-        const pt = svg.createSVGPoint();
-        pt.x = event.clientX;
-        pt.y = event.clientY;
-        const ctm = svg.getScreenCTM();
-        if (!ctm) return;
-        
-        const svgP = pt.matrixTransform(ctm.inverse());
-        
-        // Determine which quadrant the mouse is in
-        const quadrant = 
-            svgP.x >= 0 && svgP.y >= 0 ? "Bottom Right (Q1)" :
-            svgP.x < 0 && svgP.y >= 0 ? "Bottom Left (Q2)" :
-            svgP.x < 0 && svgP.y < 0 ? "Top Left (Q3)" :
-            "Top Right (Q4)";
-        
-        // Calculate position based on quadrant
-        let translateX, translateY;
-        
-        // Position the synopsis to avoid going off-screen
-        if (svgP.x >= 0 && svgP.y >= 0) {  // Bottom Right (Q1)
-            translateX = 50;  // Move right from cursor
-            translateY = 50;  // Move down from cursor
-        } else if (svgP.x < 0 && svgP.y >= 0) {  // Bottom Left (Q2)
-            translateX = -300;  // Move left from cursor
-            translateY = 50;  // Move down from cursor
-        } else if (svgP.x < 0 && svgP.y < 0) {  // Top Left (Q3)
-            translateX = -300;  // Move left from cursor
-            translateY = -300;  // Move up from cursor
-        } else {  // Top Right (Q4)
-            translateX = 50;  // Move right from cursor
-            translateY = -300;  // Move up from cursor
+        if (!synopsis || !svg) {
+            console.log("updateSynopsisPosition: missing synopsis or svg element", {synopsis, svg});
+            return;
         }
         
-        // Add debug info at the top of the synopsis
-        const debugInfo = synopsis.querySelector('.debug-info');
-        if (debugInfo) {
-            debugInfo.textContent = `Mouse: X:${Math.round(svgP.x)}, Y:${Math.round(svgP.y)} | ${quadrant}`;
-        } else {
-            // Create debug info element if it doesn't exist
-            const debugText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            debugText.setAttribute("class", "debug-info");
-            debugText.setAttribute("x", "0");
-            debugText.setAttribute("y", "-20");
-            debugText.setAttribute("text-anchor", "left");
-            debugText.textContent = `Mouse: X:${Math.round(svgP.x)}, Y:${Math.round(svgP.y)} | ${quadrant}`;
-            
-            // Add debug info as the first child of the synopsis g element
-            const synopsisGroup = synopsis.querySelector('g');
-            if (synopsisGroup) {
-                synopsisGroup.insertBefore(debugText, synopsisGroup.firstChild);
-            } else {
-                synopsis.appendChild(debugText);
+        try {
+            const pt = svg.createSVGPoint();
+            pt.x = event.clientX;
+            pt.y = event.clientY;
+            const ctm = svg.getScreenCTM();
+            if (!ctm) {
+                console.log("updateSynopsisPosition: No SVG CTM available");
+                return;
             }
+            
+            const svgP = pt.matrixTransform(ctm.inverse());
+            
+            // Determine which quadrant the mouse is in
+            const quadrant = 
+                svgP.x >= 0 && svgP.y >= 0 ? "Bottom Right (Q1)" :
+                svgP.x < 0 && svgP.y >= 0 ? "Bottom Left (Q2)" :
+                svgP.x < 0 && svgP.y < 0 ? "Top Left (Q3)" :
+                "Top Right (Q4)";
+            
+            // Calculate position based on quadrant - adjust values based on real-world testing
+            let translateX, translateY;
+            
+            // Position the synopsis to avoid going off-screen - modified based on testing
+            if (svgP.x >= 0 && svgP.y >= 0) {  // Bottom Right (Q1)
+                translateX = 20;  // Move right from cursor
+                translateY = 20;  // Move down from cursor
+            } else if (svgP.x < 0 && svgP.y >= 0) {  // Bottom Left (Q2)
+                translateX = -250;  // Move left from cursor
+                translateY = 20;  // Move down from cursor
+            } else if (svgP.x < 0 && svgP.y < 0) {  // Top Left (Q3)
+                translateX = -250;  // Move left from cursor
+                translateY = -250;  // Move up from cursor
+            } else {  // Top Right (Q4)
+                translateX = 20;  // Move right from cursor
+                translateY = -250;  // Move up from cursor
+            }
+            
+            // Add debug info at the top of the synopsis
+            const debugInfo = synopsis.querySelector('.debug-info');
+            if (debugInfo) {
+                debugInfo.textContent = `Mouse: X:${Math.round(svgP.x)}, Y:${Math.round(svgP.y)} | ${quadrant}`;
+            } else {
+                // Create debug info element if it doesn't exist
+                const debugText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                debugText.setAttribute("class", "debug-info");
+                debugText.setAttribute("x", "0");
+                debugText.setAttribute("y", "-20");
+                debugText.setAttribute("text-anchor", "left");
+                debugText.textContent = `Mouse: X:${Math.round(svgP.x)}, Y:${Math.round(svgP.y)} | ${quadrant}`;
+                
+                // Add debug info as the first child of the synopsis g element
+                const synopsisGroup = synopsis.querySelector('g');
+                if (synopsisGroup) {
+                    synopsisGroup.insertBefore(debugText, synopsisGroup.firstChild);
+                } else {
+                    synopsis.appendChild(debugText);
+                }
+            }
+            
+            // Make sure the synopsis is visible by applying both class and style changes
+            synopsis.classList.add('visible');
+            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
+            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
+            
+            // Position based on mouse quadrant
+            const translateValue = `translate(${Math.round(svgP.x + translateX)}, ${Math.round(svgP.y + translateY)})`;
+            synopsis.setAttribute('transform', translateValue);
+            
+            console.log(`Synopsis shown at position: ${Math.round(svgP.x + translateX)}, ${Math.round(svgP.y + translateY)}`, {
+                synopsisVisible: synopsis.classList.contains('visible'),
+                transform: synopsis.getAttribute('transform'),
+                opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
+            });
+        } catch (error) {
+            console.error("Error in updateSynopsisPosition:", error);
         }
-        
-        // Position based on mouse quadrant
-        synopsis.setAttribute('transform', `translate(${Math.round(svgP.x + translateX)}, ${Math.round(svgP.y + translateY)})`);
-        
-        this.log(`Synopsis shown at position: ${Math.round(svgP.x + translateX)}, ${Math.round(svgP.y + translateY)}`);
     }
 }
 
@@ -2308,6 +2328,14 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                     synopsis.classList.remove('visible');
                                     (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
                                     (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
+                                    
+                                    // Also reset the transform to make sure it's properly hidden
+                                    // synopsis.setAttribute('transform', 'translate(0, 0)');
+                                    
+                                    console.log("Synopsis hidden", {
+                                        synopsisVisible: synopsis.classList.contains('visible'),
+                                        opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
+                                    });
                                 }
                                 
                                 // Reset number square animation

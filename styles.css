@@ -75,17 +75,7 @@ path.scene-path[fill="#EEEEEE"] {
   transition: opacity 0.3s ease-out;
   pointer-events: none;
   z-index: 100; /* Ensure synopsis appears above other elements */
-  /* Fix positioning for fixed location */
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 350px; /* Fixed width */
-  background-color: var(--background-primary);
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--background-modifier-border);
+  width: 250px; /* Using narrower width to match our changes */
 }
 
 .scene-info.visible {
@@ -94,6 +84,7 @@ path.scene-path[fill="#EEEEEE"] {
   /* Ensure no other style is overriding this */
   visibility: visible !important;
   display: block !important;
+  transform: none !important; /* Reset any transform from fixed positioning */
 }
 
 /* Synopsis connector - curve from scene to text */
