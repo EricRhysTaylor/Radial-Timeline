@@ -380,3 +380,13 @@ tspan.character-text {
 }
 
 /* Style for the "SUBPLOTS:" and "CHARACTERS:" labels */
+
+/* Debug information styling */
+.debug-info {
+  font-size: 12px;
+  fill: #ff3300;
+  font-weight: bold;
+  stroke: white;
+  stroke-width: 0.5px;
+  paint-order: stroke;
+}

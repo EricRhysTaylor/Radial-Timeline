@@ -1703,6 +1703,71 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         return dimensions;
     }
+
+    // Add this function near the top of the class, after refreshTimelineIfNeeded 
+    public updateSynopsisPosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
+        if (!synopsis || !svg) return;
+        
+        const pt = svg.createSVGPoint();
+        pt.x = event.clientX;
+        pt.y = event.clientY;
+        const ctm = svg.getScreenCTM();
+        if (!ctm) return;
+        
+        const svgP = pt.matrixTransform(ctm.inverse());
+        
+        // Determine which quadrant the mouse is in
+        const quadrant = 
+            svgP.x >= 0 && svgP.y >= 0 ? "Bottom Right (Q1)" :
+            svgP.x < 0 && svgP.y >= 0 ? "Bottom Left (Q2)" :
+            svgP.x < 0 && svgP.y < 0 ? "Top Left (Q3)" :
+            "Top Right (Q4)";
+        
+        // Calculate position based on quadrant
+        let translateX, translateY;
+        
+        // Position the synopsis to avoid going off-screen
+        if (svgP.x >= 0 && svgP.y >= 0) {  // Bottom Right (Q1)
+            translateX = 50;  // Move right from cursor
+            translateY = 50;  // Move down from cursor
+        } else if (svgP.x < 0 && svgP.y >= 0) {  // Bottom Left (Q2)
+            translateX = -300;  // Move left from cursor
+            translateY = 50;  // Move down from cursor
+        } else if (svgP.x < 0 && svgP.y < 0) {  // Top Left (Q3)
+            translateX = -300;  // Move left from cursor
+            translateY = -300;  // Move up from cursor
+        } else {  // Top Right (Q4)
+            translateX = 50;  // Move right from cursor
+            translateY = -300;  // Move up from cursor
+        }
+        
+        // Add debug info at the top of the synopsis
+        const debugInfo = synopsis.querySelector('.debug-info');
+        if (debugInfo) {
+            debugInfo.textContent = `Mouse: X:${Math.round(svgP.x)}, Y:${Math.round(svgP.y)} | ${quadrant}`;
+        } else {
+            // Create debug info element if it doesn't exist
+            const debugText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            debugText.setAttribute("class", "debug-info");
+            debugText.setAttribute("x", "0");
+            debugText.setAttribute("y", "-20");
+            debugText.setAttribute("text-anchor", "left");
+            debugText.textContent = `Mouse: X:${Math.round(svgP.x)}, Y:${Math.round(svgP.y)} | ${quadrant}`;
+            
+            // Add debug info as the first child of the synopsis g element
+            const synopsisGroup = synopsis.querySelector('g');
+            if (synopsisGroup) {
+                synopsisGroup.insertBefore(debugText, synopsisGroup.firstChild);
+            } else {
+                synopsis.appendChild(debugText);
+            }
+        }
+        
+        // Position based on mouse quadrant
+        synopsis.setAttribute('transform', `translate(${Math.round(svgP.x + translateX)}, ${Math.round(svgP.y + translateY)})`);
+        
+        this.log(`Synopsis shown at position: ${Math.round(svgP.x + translateX)}, ${Math.round(svgP.y + translateY)}`);
+    }
 }
 
 class ManuscriptTimelineSettingTab extends PluginSettingTab {
@@ -2169,18 +2234,11 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                         
                         if (synopsis) {
                             // Apply mouseover effects for the group/path
-                            group.addEventListener("mouseenter", (event) => {
+                            group.addEventListener("mouseenter", (event: MouseEvent) => {
                                 if (synopsis) {
-                                    // Apply BOTH class and direct style changes for maximum compatibility
-                                    synopsis.classList.add('visible');
-                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
-                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
-                                    
-                                    // Fixed position in the top-right corner of the SVG
-                                    // This avoids all coordinate transformation issues
-                                    synopsis.setAttribute('transform', 'translate(300, -500)');
-                                    
-                                    console.log("Synopsis shown at fixed position");
+                                    // Use our new function to update synopsis position with debug info
+                                    const svg = svgElement.closest('svg') as SVGSVGElement;
+                                    this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
                                 }
                                 
                                 console.log("Mouseover triggered for scene:", sceneId);
