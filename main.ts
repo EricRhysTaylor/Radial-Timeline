@@ -146,7 +146,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         );
         
         // Add ribbon icon for the new view
-        this.addRibbonIcon('calendar-with-checkmark', 'Manuscript Timeline', () => {
+        this.addRibbonIcon('shell', 'Manuscript Timeline', () => {
             this.activateView();
         });
 
@@ -323,8 +323,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             // Convert scene numbers to numbers for comparison
             // Ensure we're using numeric values by explicitly parsing the strings
-            const aNumberValue = aNumber ? parseInt(aNumber, 10) : 0;
-            const bNumberValue = bNumber ? parseInt(bNumber, 10) : 0;
+            // Use parseFloat instead of parseInt to handle decimal scene numbers correctly
+            const aNumberValue = aNumber ? parseFloat(aNumber) : 0;
+            const bNumberValue = bNumber ? parseFloat(bNumber) : 0;
             return aNumberValue - bNumberValue;
         });
     }
@@ -336,23 +337,14 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const innerRadius = 200; // the first ring is 200px from the center
         const outerRadius = size / 2 - margin;
     
-        // Create SVG element
-        const svg = createSvgElement("svg", {
-            "width": size.toString(),
-            "height": size.toString(),
-            "viewBox": `0 0 ${size} ${size}`,
-            "xmlns": "http://www.w3.org/2000/svg"
-        }, ["manuscript-timeline-svg"]);
+        // Create SVG with styles now in external CSS file
+        let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg">`;
         
         // Center the origin in the middle of the SVG
-        const g = createSvgElement("g", {
-            "transform": `translate(${size / 2}, ${size / 2})`
-        });
-        svg.appendChild(g);
+        svg += `<g transform="translate(${size / 2}, ${size / 2})">`;
         
         // Create defs for patterns and gradients
-        const defs = createSvgElement("defs");
-        svg.appendChild(defs);
+        svg += `<defs>`;
     
         // Create a map to store scene number information for the scene square and synopsis
         const sceneNumbersMap = new Map<string, SceneNumberInfo>();
@@ -427,7 +419,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const lineOuterRadius = ringStartRadii[N - 1] + ringWidths[N - 1] + 30;
     
         // **Include the `<style>` code here**
-        let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="background-color: transparent;">
+        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="background-color: transparent;">
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap');
 
@@ -619,6 +611,13 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 font-size: 18px;
                 text-transform: uppercase;
                 opacity: 0.85; /* Slightly transparent */
+            }
+            
+            .status-count {
+                font-size: 14px;
+                opacity: 0.7;
+                vertical-align: super;
+                baseline-shift: super;
             }
         </style>`;
 
@@ -889,7 +888,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
             const numberInfo = sceneNumbersMap.get(sceneId);
             
-            const lineHeight = 30;
+            const lineHeight = 26; // Reduced for tighter spacing
             const size = 1600;
             const maxTextWidth = 500;
             const topOffset = -size / 2;
@@ -919,15 +918,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 ...synopsisLines,
                 // Add a non-breaking space to preserve the line spacing
                 '\u00A0', // Using non-breaking space instead of empty string
-                // Subplots with bullet-like separator
-                orderedSubplots.map((subplot, i) => 
-                    `<tspan style="font-size: 17px; fill: #555555; text-transform: uppercase; font-weight: bold;">${subplot}</tspan>`
-                ).join(`<tspan style="font-size: 17px; fill: #555555;"> • </tspan>`),
-                // Characters with bullets between them
+                // Just pass the subplot and character info without prefixes
+                orderedSubplots.join(', '),
+                // Characters without prefix
                 scene.Character && scene.Character.length > 0 ? 
-                    scene.Character.map((char, i) => 
-                        `<tspan style="fill: ${characterColors[i]}; font-size: 14px;">${char.toUpperCase()}</tspan>`
-                    ).join(`<tspan style="fill: ${characterColors[0]}; font-size: 14px;"> • </tspan>`) : '',
+                    scene.Character.join(', ') : '',
             ].filter(line => line);
 
             const totalHeight = contentLines.length * lineHeight;
@@ -939,30 +934,113 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
             synopsesHTML.push(`
                 <g class="scene-info info-container" 
-                   style="opacity: 0; pointer-events: none;" 
                    data-for-scene="${sceneId}">
-                    ${showLeftText ? `
-                    <!-- Left side text block -->
-                    <g transform="translate(-650, -400)">
-                        ${contentLines.map((line, i) => `
-                            <text class="info-text" x="10" y="${i * lineHeight}"
-                                style="${i === 0 ? 'font-size: 24px; font-weight: bold;' : ''}"
-                            >${line}</text>
-                        `).join('')}
-                    </g>
-                    ` : ''}
+                    
+                    ${(() => {
+                        // Get the scene's act and subplot to determine its position
+                        const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
+                        const actIndex = sceneActNumber - 1;
+                        const subplot = scene.subplot || "Main Plot";
+                        const ring = NUM_RINGS - 1 - masterSubplotOrder.indexOf(subplot);
+                        
+                        // Calculate angles from act index
+                        const startAngle = (actIndex * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                        const endAngle = ((actIndex + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                        
+                        // Calculate radius from ring index
+                        const innerRadius = ringStartRadii[ring];
+                        const outerRadius = innerRadius + ringWidths[ring];
+                        
+                        // Find the angular position of this scene
+                        const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
+                        const sceneIndex = scenesInActAndSubplot.indexOf(scene);
+                        const sceneAngleSize = (endAngle - startAngle) / scenesInActAndSubplot.length;
+                        const sceneStartAngle = startAngle + (sceneIndex * sceneAngleSize);
+                        const sceneEndAngle = sceneStartAngle + sceneAngleSize;
+                        
+                        // Calculate the source point (where the scene is)
+                        const sceneAngleMidpoint = (sceneStartAngle + sceneEndAngle) / 2;
+                        const sourceX = (innerRadius + outerRadius) / 2 * Math.cos(sceneAngleMidpoint);
+                        const sourceY = (innerRadius + outerRadius) / 2 * Math.sin(sceneAngleMidpoint);
+                        
+                        // For fixed position, we don't need to calculate quadrants or edge points
+                        // We'll just use the center of the scene cell for the connector
+                        const edgeX = sourceX;
+                        const edgeY = sourceY;
 
-                    ${showRightText ? `
-                    <!-- Right side text block -->
-                    <g transform="translate(-300, 250)">
-                        ${contentLines.map((line, i) => `
-                            <text class="info-text" x="0" y="${i * lineHeight}"
-                                style="${i === 0 ? 'font-size: 24px; font-weight: bold;' : ''}"
-                                text-anchor="middle"
-                            >${line}</text>
-                        `).join('')}
-                    </g>
-                    ` : ''}
+                        // Prepare the content measurement
+                        const titleFontSize = 24;
+                        const bodyFontSize = 18;
+                        
+                        // Prepare the complete text content to measure
+                        let fullText = `<div style="font-size:${titleFontSize}px;font-weight:700;margin-bottom:10px;">${this.escapeXml(contentLines[0])}</div>`;
+                        
+                        // Add synopsis lines
+                        const synopsisEndIndex = synopsisLines.length + 1; // +1 for title
+                        for (let i = 1; i < synopsisEndIndex; i++) {
+                            fullText += `<div style="font-size:${bodyFontSize}px;margin-top:5px;">${this.escapeXml(contentLines[i])}</div>`;
+                        }
+                        
+                        // Add metadata items
+                        const metadataItems = contentLines.slice(synopsisEndIndex);
+                        metadataItems.forEach(line => {
+                            // Handle tspan elements by removing tags for measurement
+                            const plainText = line.replace(/<[^>]*>/g, '');
+                            fullText += `<div style="font-size:${bodyFontSize}px;margin-top:5px;">${this.escapeXml(plainText)}</div>`;
+                        });
+                        
+                        // Use a fixed width for the text
+                        const textWidth = 250;
+                        
+                        // Get accurate text dimensions for height
+                        const textDimensions = this.measureTextDimensions(fullText, textWidth, bodyFontSize);
+                        const textHeight = textDimensions.height;
+                        
+                        // Use fixed position for the synopsis at the center of the SVG
+                        // No need for connector path since we're using fixed HTML positioning
+                        
+                        // Text alignment (always left-justified)
+                        const textAlign = 'left';
+                        
+                        // No connector path needed for fixed positioning
+                        const connectorPath = '';
+                        
+                        // Calculate text anchor point with standard offset
+                        const textAnchorOffset = 0;
+                        
+                        // Create HTML for synopsis content - now with fixed positioning via CSS
+                        let textHTML = `<g class="synopsis-text">`;
+                        
+                        // Title
+                        textHTML += `<text class="info-text title-text-main" x="0" y="0" text-anchor="${textAlign}">${this.escapeXml(contentLines[0])}</text>`;
+                        
+                        // Determine text width for divider
+                        const titleTextWidth = Math.min(contentLines[0].length * 12, 200);
+                        
+                        // Decorative divider below the title
+                        textHTML += `<line class="synopsis-divider" x1="0" y1="30" x2="${titleTextWidth}" y2="30" stroke-width="1.5"></line>`;
+                        
+                        // Add synopsis lines
+                        for (let i = 1; i < synopsisEndIndex; i++) {
+                            textHTML += `<text class="info-text title-text-secondary" x="0" y="${40 + ((i-1) * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(contentLines[i])}</text>`;
+                        }
+                        
+                        // Metadata (subplots, characters)
+                        const metadataStartY = 40 + ((synopsisEndIndex-1) * lineHeight) + 15;
+                        metadataItems.forEach((line, i) => {
+                            // Create a containing text element to ensure proper alignment
+                            if (line.includes('<tspan')) {
+                                // For lines with tspan elements (subplots, characters)
+                                textHTML += `<text class="info-text metadata-text" x="0" y="${metadataStartY + (i * lineHeight)}" text-anchor="${textAlign}">${line}</text>`;
+                            } else {
+                                textHTML += `<text class="info-text title-text-secondary" x="0" y="${metadataStartY + (i * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(line)}</text>`;
+                            }
+                        });
+                        
+                        textHTML += `</g>`;
+                        
+                        return connectorPath + textHTML;
+                    })()}
                 </g>
             `);
         });
@@ -1056,7 +1134,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                       d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + 0.02))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + 0.02))} 
                                          A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
                                       fill="none"/>
-                                <text class="scene-title" style="font-size: ${fontSize}px" dy="${dyOffset}">
+                                <text class="scene-title scene-title-${fontSize <= 10 ? 'small' : (fontSize <= 12 ? 'medium' : 'large')}" dy="${dyOffset}">
                                     <textPath href="#textPath-${act}-${ring}-${idx}" startOffset="4">
                                         ${text}
                                     </textPath>
@@ -1080,7 +1158,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             `;
 
                             svg += `<path d="${arcPath}" 
-                                     fill="${this.lightenColor(PUBLISH_STAGE_COLORS.Zero, 50)}" 
+                                     fill="#EEEEEE" 
                                      stroke="white" 
                                      stroke-width="1" 
                                      class="scene-path"/>`;
@@ -1095,7 +1173,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(endAngle))}
                         A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
                     `;
-                    const emptyColor = this.lightenColor(PUBLISH_STAGE_COLORS.Zero, 50); // Lighter purple/Zero color
+                    const emptyColor = "#EEEEEE"; // Light gray for empty scenes
                     svg += `<path d="${arcPath}" fill="${emptyColor}" stroke="white" stroke-width="1"/>`;
                 }
             }
@@ -1155,7 +1233,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const keyY = -size/2 + 50; // Position from top
         const swatchSize = 20;
         const textOffset = 30;
-        const lineHeight = 30;
+        const lineHeight = 26; // Reduced for tighter spacing
 
         // Calculate the number of scenes for each status using a Set to track unique scenes
         const processedScenes = new Set<string>(); // Track scenes by their path
@@ -1228,7 +1306,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="end"
                                 class="center-key-text"
-                            >${stage.toUpperCase()} <tspan style="font-size: 14px; opacity: 0.7; baseline-shift: super;">${statusCounts[stage] || 0}</tspan></text>
+                            >${stage.toUpperCase()} <tspan class="status-count">${statusCounts[stage] || 0}</tspan></text>
                             
                             <!-- Color SWATCH to the right of text -->
                             <rect 
@@ -1270,7 +1348,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="start"
                                 class="center-key-text"
-                            >${status.toUpperCase()} <tspan style="font-size: 14px; opacity: 0.7; baseline-shift: super;">${statusCounts[status] || 0}</tspan></text>
+                            >${status.toUpperCase()} <tspan class="status-count">${statusCounts[status] || 0}</tspan></text>
                         </g>
                     `;
                 }).join('')}
@@ -1435,7 +1513,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const lines: string[] = [];
         let currentLine: string[] = [];
         let currentLength = 0;
-        const targetCharsPerLine = 60; // Approximately 60 characters per line for 500px width
+        const targetCharsPerLine = 45; // Reduced from 60 to 45 characters per line for narrower text
 
         for (let word of words) {
             // Add 1 for the space after the word
@@ -1478,8 +1556,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     private formatSynopsis(text: string, innerRadius: number, fontSize: number): string {
-        const maxTextWidth = innerRadius * 2; // Maximum width of text block (fits within the inner void)
-        const maxWordsPerLine = 7; // Adjust this for line balancing (approx. number of words per line)
+        const maxTextWidth = innerRadius * 1.5; // Reduced from 2 to 1.5 to make text block narrower
+        const maxWordsPerLine = 6; // Reduced from 7 to 6 for shorter lines
     
         // Split text into lines with balanced word count
         const lines = this.splitIntoBalancedLines(text, maxWordsPerLine);
@@ -1574,6 +1652,56 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 }
             }
         }
+    }
+
+    // Add this helper function for escaping XML/HTML special characters
+    private escapeXml(unsafe: string): string {
+        if (unsafe === undefined || unsafe === null) return '';
+        
+        // Convert to string first (in case it's a number or other type)
+        const str = String(unsafe);
+        
+        // Handle ampersands first, but preserve existing XML entities
+        return str
+            .replace(/&(?!(amp|lt|gt|quot|apos|#\d+);)/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;')
+            // Also escape comments to prevent XML parsing issues
+            .replace(/\/\//g, '&#47;&#47;');
+    }
+    
+    /**
+     * Measures text dimensions using an offscreen DOM element
+     * This provides much more accurate text sizing than estimation
+     */
+    private measureTextDimensions(text: string, maxWidth: number, fontSize: number, fontWeight: string = 'normal'): {width: number, height: number} {
+        // Create an offscreen element for measurement
+        const el = document.createElement('div');
+        el.style.position = 'absolute';
+        el.style.visibility = 'hidden';
+        el.style.maxWidth = `${maxWidth}px`;
+        el.style.fontSize = `${fontSize}px`;
+        el.style.fontWeight = fontWeight;
+        el.style.fontFamily = "'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif";
+        el.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
+        el.innerHTML = text;
+        
+        // Append to DOM for measurement
+        document.body.appendChild(el);
+        
+        // Get the dimensions
+        const rect = el.getBoundingClientRect();
+        const dimensions = {
+            width: rect.width,
+            height: rect.height
+        };
+        
+        // Clean up
+        document.body.removeChild(el);
+        
+        return dimensions;
     }
 }
 
@@ -1843,12 +1971,12 @@ export class ManuscriptTimelineView extends ItemView {
         return TIMELINE_VIEW_DISPLAY_TEXT;
     }
     
-    async onOpen(): Promise<void> {
-        this.refreshTimeline();
+    getIcon(): string {
+        return "shell";
     }
 
     refreshTimeline() {
-        const container = this.contentEl;
+        const container = this.containerEl.children[1] as HTMLElement;
         container.empty();
         
         const loadingEl = container.createEl("div", {
@@ -1869,14 +1997,81 @@ export class ManuscriptTimelineView extends ItemView {
             })
             .catch(error => {
                 loadingEl.textContent = `Error: ${error.message}`;
+                loadingEl.className = "error-message";
                 if (this.plugin.settings.debug) {
                     console.error("Failed to load timeline data", error);
                 }
             });
     }
     
+    async onOpen(): Promise<void> {
+        this.refreshTimeline();
+    }
+    
     async onClose(): Promise<void> {
         // Clean up any event listeners or resources
+    }
+    
+    async createTestSceneFile(): Promise<void> {
+        const sourcePath = this.plugin.settings.sourcePath || "";
+        let targetPath = sourcePath;
+        
+        // Make sure the folder exists
+        if (sourcePath && !this.plugin.app.vault.getAbstractFileByPath(sourcePath)) {
+            try {
+                // Try to create the folder if it doesn't exist
+                await this.plugin.app.vault.createFolder(sourcePath);
+                console.log(`Created folder: ${sourcePath}`);
+            } catch (error) {
+                console.error(`Failed to create folder: ${sourcePath}`, error);
+                new Notice(`Failed to create folder: ${sourcePath}`);
+                return;
+            }
+        }
+        
+        // Create the test scene file content
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+        const testSceneContent = `---
+Class: Scene
+Title: 1 Test Scene
+When: ${today}
+Act: 1
+Subplot: Main Plot
+Character: [Protagonist]
+Status: Working
+Synopsis: This is a test scene created to troubleshoot the timeline view.
+---
+
+# Test Scene
+
+This is a test scene created to help troubleshoot the Manuscript Timeline plugin.
+
+## Scene Details
+- Title: Test Scene
+- When: ${today}
+- Act: 1
+- Subplot: Main Plot
+- Character: Protagonist
+- Status: Working
+`;
+        
+        // Generate a unique filename
+        const filename = `${targetPath ? targetPath + "/" : ""}1_test_scene.md`;
+        
+        try {
+            // Create the file
+            await this.plugin.app.vault.create(filename, testSceneContent);
+            console.log(`Created test scene file: ${filename}`);
+            new Notice(`Created test scene file: ${filename}`);
+            
+            // Refresh the timeline after a short delay to allow metadata cache to update
+            setTimeout(() => {
+                this.refreshTimeline();
+            }, 500);
+        } catch (error) {
+            console.error(`Failed to create test scene file: ${filename}`, error);
+            new Notice(`Failed to create test scene file: ${filename}`);
+        }
     }
     
     renderTimeline(container: HTMLElement, scenes: Scene[]): void {
@@ -1887,62 +2082,217 @@ export class ManuscriptTimelineView extends ItemView {
             container.createEl("div", {
                 text: "No scenes found. Please check your source path in the settings."
             });
+            console.log("Timeline: No scenes found. Source path:", this.plugin.settings.sourcePath);
+            
+            // Add button to create a test scene file
+            const testButton = container.createEl("button", {
+                text: "Create a Test Scene File"
+            });
+            
+            testButton.style.marginTop = "20px";
+            testButton.style.padding = "10px";
+            
+            testButton.addEventListener("click", async () => {
+                await this.createTestSceneFile();
+            });
+            
             return;
         }
         
-        this.sceneData = scenes;
+        console.log(`Timeline: Found ${scenes.length} scenes to render`);
         
-        // Add a local lightenColor function to avoid using the private plugin method
-        const lightenColorLocally = (color: string, percent: number): string => {
-            // ... existing lightenColor implementation ...
-            return '#000000'; // Simplified return for this example
-        };
+        this.sceneData = scenes;
         
         try {
             // Generate the SVG content using the plugin's existing method
             const svgContent = this.plugin.createTimelineSVG(scenes);
+            console.log("SVG content generated, length:", svgContent.length);
             
             // Create a container with proper styling for centered content
             const timelineContainer = container.createEl("div", {
                 cls: "manuscript-timeline-container"
             });
             
-            // Apply styles as class attributes
-            timelineContainer.style.display = "flex";
-            timelineContainer.style.flexDirection = "column";
-            timelineContainer.style.alignItems = "center";
-            timelineContainer.style.justifyContent = "center";
-            timelineContainer.style.height = "100%";
-            timelineContainer.style.width = "100%";
-            timelineContainer.style.overflow = "auto";
-            
-            // Safely create and append the SVG using DOM methods instead of innerHTML
-            const parser = new DOMParser();
-            const svgDoc = parser.parseFromString(svgContent, "image/svg+xml");
-            const svgElement = svgDoc.documentElement;
-            
-            // Check for parsing errors
-            if (svgElement.tagName === "parsererror") {
-                throw new Error("SVG parsing error: " + svgElement.textContent);
-            }
-            
-            // Adopt the node into the current document
-            const importedNode = document.importNode(svgElement, true);
-            timelineContainer.appendChild(importedNode);
+            // Use innerHTML to set the SVG content
+            timelineContainer.innerHTML = svgContent;
             
             // Find the SVG element
-            const svgElement2 = timelineContainer.querySelector("svg");
-            if (svgElement2) {
-                // Apply styling to the SVG
-                svgElement2.style.width = "100%";
-                svgElement2.style.height = "100%";
-                svgElement2.style.maxHeight = "calc(100vh - 100px)";
-                svgElement2.style.maxWidth = "100%";
-                svgElement2.style.margin = "0 auto";
-                svgElement2.style.transformOrigin = "center";
-                svgElement2.style.cursor = "default";
+            const svgElement = timelineContainer.querySelector("svg");
+            if (svgElement) {
+                // Set proper attributes for SVG element
+                svgElement.setAttribute('width', '100%');
+                svgElement.setAttribute('height', '100%');
+                svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                 
-                // ... rest of the original event handling code ...
+                // Add direct JavaScript handlers for mouse events
+                const allSynopses = svgElement.querySelectorAll(".scene-info");
+                allSynopses.forEach(synopsis => {
+                    // Initial setup to ensure they're hidden
+                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
+                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
+                });
+                
+                // Find all scene paths for click interaction
+                const scenePaths = svgElement.querySelectorAll(".scene-path");
+                scenePaths.forEach((path) => {
+                    const group = path.closest(".scene-group");
+                    if (group) {
+                        // Using getAttribute for compatibility
+                        const encodedPath = group.getAttribute("data-path");
+                        if (encodedPath) {
+                            const filePath = decodeURIComponent(encodedPath);
+                            path.addEventListener("click", () => {
+                                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+                                if (file instanceof TFile) {
+                                    // Check if the file is already open in any leaf
+                                    const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
+                                    const existingLeaf = leaves.find(leaf => {
+                                        const viewState = leaf.getViewState();
+                                        return viewState.state?.file === file.path;
+                                    });
+                                    
+                                    if (existingLeaf) {
+                                        // If the file is already open, just reveal that leaf
+                                        this.plugin.app.workspace.revealLeaf(existingLeaf);
+                                    } else {
+                                        // Otherwise, open in a new leaf
+                                        this.plugin.app.workspace.getLeaf('tab').openFile(file);
+                                    }
+                                }
+                            });
+                            (path as SVGElement & {style: CSSStyleDeclaration}).style.cursor = "pointer";
+                        }
+                        
+                        // Add mouseover effects for synopses
+                        const sceneId = path.id;
+                        const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+                        
+                        if (synopsis) {
+                            // Apply mouseover effects for the group/path
+                            group.addEventListener("mouseenter", (event) => {
+                                if (synopsis) {
+                                    // Apply BOTH class and direct style changes for maximum compatibility
+                                    synopsis.classList.add('visible');
+                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
+                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
+                                    
+                                    // Fixed position in the top-right corner of the SVG
+                                    // This avoids all coordinate transformation issues
+                                    synopsis.setAttribute('transform', 'translate(300, -500)');
+                                    
+                                    console.log("Synopsis shown at fixed position");
+                                }
+                                
+                                console.log("Mouseover triggered for scene:", sceneId);
+                                
+                                // Reveal the file in navigation
+                                const encodedPath = group.getAttribute("data-path");
+                                if (encodedPath) {
+                                    const filePath = decodeURIComponent(encodedPath);
+                                    const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+                                    if (file instanceof TFile) {
+                                        // Use the file explorer view to reveal the file
+                                        const fileExplorer = this.plugin.app.workspace.getLeavesOfType("file-explorer")[0]?.view;
+                                        if (fileExplorer) {
+                                            // @ts-ignore - Ignore TypeScript errors as the API may not be fully typed
+                                            fileExplorer.revealInFolder(file);
+                                        }
+                                    }
+                                }
+                                
+                                // Find and animate the number square for this scene - v2
+                                const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
+                                const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                                
+                                if (numberSquare) {
+                                    numberSquare.classList.add('selected');
+                                    
+                                    // Get the scene fill color and apply it to the number box stroke
+                                    const sceneFill = path.getAttribute("fill");
+                                    if (sceneFill) {
+                                        (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.stroke = sceneFill;
+                                        (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "2px";
+                                    }
+                                }
+                                
+                                if (numberText) {
+                                    numberText.classList.add('selected');
+                                }
+                                
+                                // Apply color transform without changing opacity
+                                scenePaths.forEach(otherPath => {
+                                    if (otherPath !== path) {
+                                        // Set ALL non-selected scenes to #EFEFEF class
+                                        otherPath.classList.add('non-selected');
+                                        
+                                        // Find and fade this path's number box
+                                        const otherId = otherPath.id;
+                                        const otherNumberSquare = svgElement.querySelector(`.number-square[data-scene-id="${otherId}"]`);
+                                        const otherNumberText = svgElement.querySelector(`.number-text[data-scene-id="${otherId}"]`);
+                                        
+                                        if (otherNumberSquare) {
+                                            otherNumberSquare.classList.add('non-selected');
+                                        }
+                                        
+                                        if (otherNumberText) {
+                                            otherNumberText.classList.add('non-selected');
+                                        }
+                                    } else {
+                                        // Make the current path more prominent with class
+                                        otherPath.classList.add('selected');
+                                    }
+                                });
+                            });
+                            
+                            group.addEventListener("mouseleave", () => {
+                                if (synopsis) {
+                                    // Apply BOTH class and direct style changes for maximum compatibility
+                                    synopsis.classList.remove('visible');
+                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
+                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
+                                }
+                                
+                                // Reset number square animation
+                                const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
+                                const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                                
+                                if (numberSquare) {
+                                    numberSquare.classList.remove('selected');
+                                    // Reset the stroke properties
+                                    (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.stroke = "";
+                                    (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "";
+                                }
+                                
+                                if (numberText) {
+                                    numberText.classList.remove('selected');
+                                }
+                                
+                                // Restore all scene paths to original appearance
+                                scenePaths.forEach(otherPath => {
+                                    // Remove all effect classes
+                                    otherPath.classList.remove('selected', 'non-selected');
+                                    
+                                    // Restore number squares and text
+                                    const otherId = otherPath.id;
+                                    const otherNumberSquare = svgElement.querySelector(`.number-square[data-scene-id="${otherId}"]`);
+                                    const otherNumberText = svgElement.querySelector(`.number-text[data-scene-id="${otherId}"]`);
+                                    
+                                    if (otherNumberSquare) {
+                                        otherNumberSquare.classList.remove('non-selected');
+                                    }
+                                    
+                                    if (otherNumberText) {
+                                        otherNumberText.classList.remove('non-selected');
+                                    }
+                                });
+                            });
+                        }
+                    }
+                });
+                
+                console.log("Added click handlers and mouseover effects to scene paths");
+            } else {
+                console.error("Failed to find SVG element in container");
             }
         } catch (error) {
             console.error("Error rendering timeline:", error);

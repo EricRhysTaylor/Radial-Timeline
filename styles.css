@@ -11,6 +11,18 @@
   overflow: auto;
 }
 
+/* Loading and error messages */
+.loading-message, .error-message {
+  padding: 20px;
+  text-align: center;
+  font-size: 1.2em;
+  color: var(--text-muted);
+}
+
+.error-message {
+  color: var(--text-error);
+}
+
 /* SVG styling */
 .manuscript-timeline-container svg {
   width: 100%;
@@ -26,11 +38,26 @@
 /* Scene elements */
 .scene-path {
   cursor: pointer;
-  transition: opacity 0.2s ease-out;
+  transition: opacity 0.2s ease-out, fill 0.2s ease-out;
+}
+
+/* Void cells styling - remove pointer cursor */
+path.scene-path[fill="#EEEEEE"] {
+  cursor: default !important;
 }
 
 .scene-path.faded {
   opacity: 0.3;
+}
+
+/* Non-selected scene during mouseover */
+.scene-path.non-selected {
+  fill: #EFEFEF;
+}
+
+/* Selected scene during mouseover */
+.scene-path.selected {
+  filter: saturate(1.3) contrast(1.2);
 }
 
 .scene-title {
@@ -45,17 +72,193 @@
 /* Scene info tooltip */
 .scene-info {
   opacity: 0;
+  transition: opacity 0.3s ease-out;
   pointer-events: none;
-  transition: opacity 0.2s ease-out;
+  z-index: 100; /* Ensure synopsis appears above other elements */
+  /* Fix positioning for fixed location */
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 350px; /* Fixed width */
+  background-color: var(--background-primary);
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--background-modifier-border);
 }
+
+.scene-info.visible {
+  opacity: 1 !important;
+  pointer-events: all !important;
+  /* Ensure no other style is overriding this */
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* Synopsis connector - curve from scene to text */
+.synopsis-connector {
+  fill: none;
+  stroke: var(--text-accent, #705DCF);
+  stroke-width: 2.5;
+  stroke-dasharray: 3, 5;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+.scene-info.visible .synopsis-connector {
+  opacity: 1;
+}
+
+/* Synopsis text container */
+.synopsis-text {
+  fill: var(--text-normal, #333333);
+  font-size: 28px;
+  text-anchor: middle;
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+  transition-delay: 0.1s;
+  pointer-events: none;
+  max-width: 250px; /* Added max-width to limit the text width */
+}
+
+.scene-info.visible .synopsis-text {
+  opacity: 1;
+}
+
+/* Remove synopsis background and improve text visibility */
+/* Title text styling */
+.title-text-main {
+  font-size: 24px;
+  font-weight: bold;
+  fill: var(--text-normal, #333333);
+  stroke: white;
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+.title-text-secondary {
+  font-size: 16px;
+  fill: var(--text-normal, #333333);
+  stroke: white;
+  stroke-width: 2px;
+  paint-order: stroke;
+}
+
+/* Synopsis text styling */
+/* Divider line */
+.synopsis-divider {
+  stroke: var(--text-accent, #705DCF);
+  stroke-width: 2;
+  stroke-opacity: 0.8;
+  stroke-linecap: round;
+}
+
+/* Synopsis cells */
+.synopsis-cell {
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+  filter: brightness(1.1) contrast(0.9);
+  stroke: var(--text-accent, #705DCF);
+  stroke-width: 1.5;
+  stroke-opacity: 0;
+  transition: opacity 0.4s ease-out, 
+              filter 0.4s ease-out, 
+              stroke-opacity 0.4s ease-out,
+              transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform: scale(0.95);
+}
+
+.synopsis-cell.revealed {
+  opacity: 0.92 !important;
+  stroke-opacity: 1;
+  transform: scale(1);
+}
+
+.synopsis-cell.cell-0 { transition-delay: 0.0s; }
+.synopsis-cell.cell-1 { transition-delay: 0.05s; }
+.synopsis-cell.cell-2 { transition-delay: 0.1s; }
+.synopsis-cell.cell-3 { transition-delay: 0.15s; }
+.synopsis-cell.cell-4 { transition-delay: 0.2s; }
+.synopsis-cell.cell-5 { transition-delay: 0.25s; }
+.synopsis-cell.cell-6 { transition-delay: 0.3s; }
+.synopsis-cell.cell-7 { transition-delay: 0.35s; }
+.synopsis-cell.cell-8 { transition-delay: 0.4s; }
+.synopsis-cell.cell-9 { transition-delay: 0.45s; }
 
 /* Number elements */
 .number-square, .number-text {
-  transition: opacity 0.2s ease-out;
+  transition: opacity 0.2s ease-out, fill 0.2s ease-out, transform 0.2s ease-out, stroke 0.2s ease-out;
 }
 
 .number-square.faded, .number-text.faded {
   opacity: 0.2;
+}
+
+/* Number elements during mouseover */
+.number-square.non-selected {
+  fill: #EFEFEF;
+}
+
+.number-text.non-selected {
+  fill: #FFFFFF;
+}
+
+.number-square.selected {
+  transform: scale(1.2);
+  z-index: 10;
+}
+
+.number-text.selected {
+  font-weight: bold;
+}
+
+/* Text styling for SVG elements */
+.subplot-text {
+  font-size: 16px;
+  fill: #555555;
+  font-weight: normal;
+}
+
+.connector-text {
+  font-size: 18px;
+  fill: #555555;
+}
+
+.character-text {
+  font-size: 18px;
+  font-weight: normal;
+}
+
+/* Scene title text with variable font size */
+.scene-title-small {
+  font-size: 9px;
+}
+
+.scene-title-medium {
+  font-size: 16px;
+}
+
+.scene-title-large {
+  font-size: 18px;
+}
+
+/* Flipped text for Act 2 */
+.scene-title-flipped {
+  fill: var(--text-accent, #705DCF); /* Make Act 2 text a different color to improve visibility */
+}
+
+/* Add specific text element rotations for Act 2 - attempt to rotate text within textPath */
+.scene-title-flipped textPath {
+  letter-spacing: 1px; /* Add slight letter spacing for better readability */
+}
+
+.status-count {
+  font-size: 18px;
+  opacity: 0.7;
+  vertical-align: super;
+  font-size: smaller;
 }
 
 /* Documentation styling */
@@ -98,4 +301,82 @@
 .bmc-button {
   height: 60px !important;
   width: 217px !important;
-} 
+}
+
+/* Make sure SVG text elements receive these styles */
+svg text.info-text {
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 16px;
+  fill: var(--text-normal, #333333);
+  white-space: pre-wrap;
+  max-width: 250px; /* Added max-width constraint */
+  stroke: white;
+  stroke-width: 2px;
+  paint-order: stroke;
+}
+
+svg text.info-text.title-text-main {
+  font-size: 24px;
+  font-weight: 700;
+  fill: var(--text-normal);
+  text-anchor: start;
+}
+
+svg text.info-text.title-text-secondary {
+  font-size: 18px;
+  fill: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: normal;
+  text-anchor: start;
+}
+
+/* Text styling for subplots and characters in synopsis */
+tspan.subplot-text {
+  font-size: 16px;
+  fill: #555555;
+  font-weight: normal;
+}
+
+tspan.connector-text {
+  font-size: 18px;
+  fill: #555555;
+}
+
+tspan.character-text {
+  font-size: 18px;
+  font-weight: normal;
+}
+
+/* Text styling in synopsis */
+.scene-info text.info-text {
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  stroke: white;
+  stroke-width: 2px;
+  paint-order: stroke;
+}
+
+.scene-info text.info-text.title-text-main {
+  font-size: 24px;
+  font-weight: 700;
+  fill: var(--text-normal);
+  text-anchor: start;
+}
+
+.scene-info text.info-text.title-text-secondary {
+  font-size: 18px;
+  fill: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: normal;
+  text-anchor: start;
+}
+
+/* Metadata text (subplots and characters) */
+.scene-info text.info-text.metadata-text {
+  font-size: 18px;
+  fill: var(--text-muted);
+  text-anchor: start;
+  font-weight: normal;
+  text-transform: none; /* Allow mixed case */
+}
+
+/* Style for the "SUBPLOTS:" and "CHARACTERS:" labels */
