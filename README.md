@@ -18,13 +18,6 @@ If you find this plugin useful, consider supporting its continued development:
 
 <a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
-## Display Requirements
-
-This plugin creates an information-dense visualization that is more legible on high-resolution displays:
-- Recommended: High-resolution displays such as Apple Retina displays or Windows equivalent (4K or better)
-- The timeline contains detailed text and visual elements that benefit from higher pixel density
-- While usable on standard displays, you may need to zoom in to see all details clearly
-
 ## How to Use
 
 1. Install the plugin in your Obsidian vault
