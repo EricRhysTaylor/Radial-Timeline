@@ -1,4 +1,4 @@
-# Obsidian Manuscript Timeline
+## Obsidian Manuscript Timeline
 
 A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.
 
@@ -10,15 +10,17 @@ A manuscript timeline for creative fiction writing projects that displays scenes
 - Color-codes scenes by status (Complete, Working, Todo, etc.)
 - Supports both light and dark themes
 - Allows clicking on scenes to open the corresponding file
+- Visually highlights currently open scene tabs in the radial timeline with special styling
 - Fully integrated into Obsidian's interface - no external plugins required
 
-## Support Development
+<a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
+  <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #444;" />
+</a>
+<div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
+  Click image to view full size in browser
+</div>
 
-If you find this plugin useful, consider supporting its continued development:
-
-<a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
-
-## How to Use
+### How to Use
 
 1. Install the plugin in your Obsidian vault
 2. Configure the source path in the plugin settings to point to your scenes folder
@@ -29,7 +31,7 @@ If you find this plugin useful, consider supporting its continued development:
 7. Use the zoom controls in the top left corner to zoom in/out and reset the view
 8. The timeline automatically updates when you modify, create, or delete scene files
 
-## Settings
+### Settings
 
 The plugin offers several settings to customize its behavior:
 
@@ -40,7 +42,7 @@ The plugin offers several settings to customize its behavior:
 
 These settings can be accessed from Settings → Community Plugins → Manuscript Timeline → Settings.
 
-## Required Scene Metadata
+### Required Scene Metadata
 
 Scene files must have the following frontmatter:
 - Class: Scene - Identifies the file as a scene
@@ -55,7 +57,7 @@ Scene files must have the following frontmatter:
 - Edits - Optional editing notes (scenes with Edits will display with purple number boxes)
 - Publish Stage - Publishing stage (Zero, Author, House, Press)
 
-### Example Metadata (use "Paste and Match Style" when copying to avoid formatting issues)
+#### Example Metadata (use "Paste and Match Style" when copying to avoid formatting issues)
 
 ```yaml
 ---
@@ -78,7 +80,7 @@ Edits:
 ---
 ```
 
-## Timeline Visualization Elements
+### Timeline Visualization Elements
 
 The timeline displays:
 - Scenes arranged in a circular pattern
@@ -91,14 +93,7 @@ The timeline displays:
 
 Hover over a scene to see its details and click to open the corresponding file.
 
-<a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-  <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #444;" />
-</a>
-<div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
-  Click image to view full size in browser
-</div>
-
-## Scene Ordering and Numbering
+### Scene Ordering and Numbering
 
 - Scenes are ordered chronologically based on the When date in the frontmatter metadata
 - The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")
@@ -106,7 +101,7 @@ Hover over a scene to see its details and click to open the corresponding file.
 - Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer
 - If scenes have the same When date, they are sub-ordered by their scene number
 
-## Technical Implementation
+### Technical Implementation
 
 The Manuscript Timeline visualization was inspired by and draws on principles from [D3.js](https://d3js.org), a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:
 
@@ -119,19 +114,23 @@ The Manuscript Timeline visualization was inspired by and draws on principles fr
 
 The visualizations are built using pure SVG and JavaScript, offering a lightweight solution that maintains the elegance and interactivity of D3-style visualizations while being fully compatible with Obsidian's rendering capabilities.
 
-## Installation
+### Installation
 
 - Download the latest release
 - Extract the files to your vault's `.obsidian/plugins/manuscript-timeline` folder
 - Enable the plugin in Obsidian's Community Plugins settings
 
-## Required Plugins
+### Required Plugins
 
 This plugin is completely self-contained and does not require any additional plugins to function properly. It integrates directly into Obsidian's interface and renders the timeline visualization in a native Obsidian tab.
 
-## Development
+### Development
 
 Development of this plugin is private. The source code is provided for transparency and to allow users to verify its functionality, but it is not licensed for derivative works.
+
+If you find this plugin useful, consider supporting its continued development:
+
+<a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 If you wish to contribute to the development of this plugin or report issues:
 - [Open an issue on GitHub](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues) to report bugs or suggest features
@@ -139,7 +138,7 @@ If you wish to contribute to the development of this plugin or report issues:
 
 Any modifications or derivative works require explicit permission from the author.
 
-## License
+### License
 
 © 2025 Eric Rhys Taylor. All Rights Reserved.
 
@@ -151,10 +150,10 @@ This Obsidian plugin is proprietary software.
 
 For licensing inquiries, please contact via GitHub.
 
-## Author
+### Author
 
 Created by Eric Rhys Taylor
 
-## Questions & Support
+### Questions & Support
 
 For questions, issues, or feature requests, please [open an issue on GitHub](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues).
