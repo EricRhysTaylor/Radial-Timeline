@@ -1,4 +1,4 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent } from "obsidian";
 
 // Helper functions for safe SVG creation - add at the top of the file
 function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
@@ -71,7 +71,7 @@ interface Scene {
     status?: string | string[]; // Add status property
     "Publish Stage"?: string; // Add publish stage property
     due?: string; // Add due date property
-    Edits?: string; // Add edits property
+    pendingEdits?: string; // Add pending edits property
 }
 
 // Add this interface to store scene number information for the scene square and synopsis
@@ -180,7 +180,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         });
         
         // Schedule a delayed polling of open files after startup
-        // Only do this if we haven't already done a check on view creation
         setTimeout(() => {
             this.log('Performing initial open files check...');
             
@@ -195,6 +194,14 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         }, 3000); // Wait 3 seconds after plugin load
 
         // Register event listeners to refresh the timeline when files change
+        this.registerEvent(
+            this.app.workspace.on('file-open', async (file) => {
+                if (file instanceof TFile && this.activeTimelineView) {
+                    this.log('File opened, updating timeline...');
+                    await this.activeTimelineView.updateOpenFilesTracking();
+                }
+            })
+        );
         this.registerEvent(
             this.app.vault.on('modify', (file) => this.refreshTimelineIfNeeded(file))
         );
@@ -328,7 +335,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 status: metadata.Status,
                                 "Publish Stage": metadata["Publish Stage"],
                                 due: metadata.Due,
-                                Edits: metadata.Edits
+                                pendingEdits: metadata["Pending Edits"]
                             });
 
                             // Only log scene data in debug mode, and avoid the noisy scene details
@@ -464,11 +471,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Define plaid patterns for Working and Todo status
         svg += `<pattern id="plaidWorking" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
             <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Working, 5)}"/>
-            <circle cx="5" cy="5" r="2" fill="#ffffff" fill-opacity="0.6"/>
-            <circle cx="0" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
-            <circle cx="10" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
-            <circle cx="0" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
-            <circle cx="10" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+            <circle cx="5" cy="5" r="2" fill="#ffffff" fill-opacity="0.4"/>
+            <circle cx="0" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
+            <circle cx="10" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
+            <circle cx="0" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
+            <circle cx="10" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
         </pattern>`;
         
         svg += `<pattern id="plaidTodo" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
@@ -481,11 +488,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         svg += `${Object.entries(PUBLISH_STAGE_COLORS).map(([stage, color]) => `
             <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
                 <rect width="10" height="10" fill="${this.darkenColor(color, 5)}"/>
-                <circle cx="5" cy="5" r="2" fill="#ffffff" fill-opacity="0.6"/>
-                <circle cx="0" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
-                <circle cx="10" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
-                <circle cx="0" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
-                <circle cx="10" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+                <circle cx="5" cy="5" r="2" fill="#ffffff" fill-opacity="0.4"/>
+                <circle cx="0" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
+                <circle cx="10" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
+                <circle cx="0" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
+                <circle cx="10" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
             </pattern>
             
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
@@ -913,7 +920,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             const { number, text } = parseSceneTitle(scene.title || '');
                             const sceneStartAngle = startAngle + (idx * sceneAngleSize);
                             const sceneEndAngle = sceneStartAngle + sceneAngleSize;
-                            const textPathRadius = (innerR + outerR) / 2;
+                            // Position text 2px from the top boundary of the cell
+                            const textPathRadius = outerR - 25;
             
                             // Determine the color of a scene based on its status and due date
                             const color = (() => {
@@ -1256,7 +1264,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 });
 
                 // Determine colors based on Edits metadata
-                const hasEdits = scene.Edits && scene.Edits.trim() !== '';
+                const hasEdits = scene.pendingEdits && scene.pendingEdits.trim() !== '';
                 const squareBackgroundColor = hasEdits ? "#8875ff" : "white";
                 const textColor = hasEdits ? "white" : "black";
 
@@ -1733,26 +1741,241 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
+    // Add color swatch creation function
+    private createColorSwatch(container: HTMLElement, color: string): HTMLElement {
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        swatch.style.backgroundColor = color;
+        swatch.style.width = '20px';
+        swatch.style.height = '20px';
+        swatch.style.borderRadius = '3px';
+        swatch.style.display = 'inline-block';
+        swatch.style.marginRight = '8px';
+        swatch.style.border = '1px solid var(--background-modifier-border)';
+        
+        container.appendChild(swatch);
+        return swatch;
+    }
+
+    // Add color picker function with centered dialog
+    private async showColorPicker(currentColor: string): Promise<string | null> {
+        return new Promise((resolve) => {
+            // Create a modal container
+            const modal = document.createElement('div');
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+            modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            modal.style.display = 'flex';
+            modal.style.justifyContent = 'center';
+            modal.style.alignItems = 'center';
+            modal.style.zIndex = '1000';
+
+            // Create the color picker container
+            const pickerContainer = document.createElement('div');
+            pickerContainer.style.backgroundColor = 'var(--background-primary)';
+            pickerContainer.style.padding = '20px';
+            pickerContainer.style.borderRadius = '8px';
+            pickerContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
+            pickerContainer.style.position = 'relative';
+            pickerContainer.style.cursor = 'move';
+
+            // Create the color picker input
+            const colorPicker = document.createElement('input');
+            colorPicker.type = 'color';
+            colorPicker.value = currentColor;
+            colorPicker.style.width = '100%';
+            colorPicker.style.height = '40px';
+            colorPicker.style.marginBottom = '10px';
+
+            // Create hex input
+            const hexInput = document.createElement('input');
+            hexInput.type = 'text';
+            hexInput.value = currentColor;
+            hexInput.style.width = '100%';
+            hexInput.style.marginBottom = '5px';
+            hexInput.style.padding = '5px';
+
+            // Create RGB input
+            const rgbInput = document.createElement('input');
+            rgbInput.type = 'text';
+            rgbInput.value = this.hexToRgb(currentColor);
+            rgbInput.style.width = '100%';
+            rgbInput.style.marginBottom = '10px';
+            rgbInput.style.padding = '5px';
+
+            // Create buttons container
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.style.display = 'flex';
+            buttonsContainer.style.gap = '10px';
+            buttonsContainer.style.justifyContent = 'flex-end';
+
+            // Create OK button
+            const okButton = document.createElement('button');
+            okButton.textContent = 'OK';
+            okButton.style.padding = '5px 15px';
+            okButton.style.borderRadius = '4px';
+            okButton.style.border = 'none';
+            okButton.style.backgroundColor = 'var(--interactive-accent)';
+            okButton.style.color = 'white';
+            okButton.style.cursor = 'pointer';
+
+            // Create Cancel button
+            const cancelButton = document.createElement('button');
+            cancelButton.textContent = 'Cancel';
+            cancelButton.style.padding = '5px 15px';
+            cancelButton.style.borderRadius = '4px';
+            cancelButton.style.border = 'none';
+            cancelButton.style.backgroundColor = 'var(--background-modifier-error)';
+            cancelButton.style.color = 'white';
+            cancelButton.style.cursor = 'pointer';
+
+            // Add drag functionality
+            let isDragging = false;
+            let currentX: number;
+            let currentY: number;
+            let initialX: number;
+            let initialY: number;
+            let xOffset = 0;
+            let yOffset = 0;
+
+            pickerContainer.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+                    xOffset = currentX;
+                    yOffset = currentY;
+                    pickerContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // Update hex and RGB values when color changes
+            colorPicker.addEventListener('input', (e) => {
+                const newColor = (e.target as HTMLInputElement).value;
+                hexInput.value = newColor;
+                rgbInput.value = this.hexToRgb(newColor);
+            });
+
+            // Update color picker when hex input changes
+            hexInput.addEventListener('input', (e) => {
+                const newColor = (e.target as HTMLInputElement).value;
+                if (this.isValidHex(newColor)) {
+                    colorPicker.value = newColor;
+                    rgbInput.value = this.hexToRgb(newColor);
+                }
+            });
+
+            // Update color picker when RGB input changes
+            rgbInput.addEventListener('input', (e) => {
+                const newColor = (e.target as HTMLInputElement).value;
+                const hex = this.rgbToHex(newColor);
+                if (hex) {
+                    colorPicker.value = hex;
+                    hexInput.value = hex;
+                }
+            });
+
+            // Add buttons to container
+            buttonsContainer.appendChild(cancelButton);
+            buttonsContainer.appendChild(okButton);
+
+            // Add all elements to the picker container
+            pickerContainer.appendChild(colorPicker);
+            pickerContainer.appendChild(hexInput);
+            pickerContainer.appendChild(rgbInput);
+            pickerContainer.appendChild(buttonsContainer);
+
+            // Add picker container to modal
+            modal.appendChild(pickerContainer);
+
+            // Add modal to document
+            document.body.appendChild(modal);
+
+            // Handle button clicks
+            okButton.addEventListener('click', () => {
+                document.body.removeChild(modal);
+                resolve(colorPicker.value);
+            });
+
+            cancelButton.addEventListener('click', () => {
+                document.body.removeChild(modal);
+                resolve(null);
+            });
+
+            // Close on modal click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    // Helper function to convert hex to RGB
+    private hexToRgb(hex: string): string {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (result) {
+            return `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})`;
+        }
+        return '';
+    }
+
+    // Helper function to convert RGB to hex
+    private rgbToHex(rgb: string): string | null {
+        const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+        if (match) {
+            const r = parseInt(match[1]);
+            const g = parseInt(match[2]);
+            const b = parseInt(match[3]);
+            return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+        return null;
+    }
+
+    // Helper function to validate hex color
+    private isValidHex(hex: string): boolean {
+        return /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex);
+    }
+
     display(): void {
         const {containerEl} = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', {text: 'Manuscript Timeline Settings'});
+        // Add horizontal rule to separate settings
+        containerEl.createEl('hr', { cls: 'settings-separator' });
 
+        // Add settings section
+        containerEl.createEl('h2', {text: 'Settings', cls: 'setting-item-heading'});
+        
+        // Add source path setting
         new Setting(containerEl)
-            .setName('Source path')
-            .setDesc('Path to your manuscript files')
+            .setName('Source Path')
+            .setDesc('Set the folder containing your scene files (e.g., "Book 1" or "Scenes")')
             .addText(text => text
-                .setPlaceholder('Enter path')
                 .setValue(this.plugin.settings.sourcePath)
                 .onChange(async (value) => {
                     this.plugin.settings.sourcePath = value;
                     await this.plugin.saveSettings();
                 }));
-                
+
+        // Add debug mode setting
         new Setting(containerEl)
-            .setName('Debug mode')
-            .setDesc('Enable debug logging in console')
+            .setName('Debug Mode')
+            .setDesc('Enable detailed logging in the console (useful for troubleshooting)')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.debug)
                 .onChange(async (value) => {
@@ -1760,164 +1983,88 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        containerEl.createEl('h3', {text: 'Publishing Stage Colors'});
+        // Add publishing stage colors section
+        containerEl.createEl('h2', {text: 'Publishing Stage Colors', cls: 'setting-item-heading'});
         
-        // Add Reset to Default Colors button
-        new Setting(containerEl)
-            .setName('Reset to Default Colors')
-            .setDesc('Restore all color settings to their default values')
-            .addButton(button => button
-                .setButtonText('Reset Colors')
-                .onClick(async () => {
-                    // Apply default colors from DEFAULT_SETTINGS constant
-                    this.plugin.settings.publishStageColors = Object.assign({}, DEFAULT_SETTINGS.publishStageColors);
-                    
-                    // Save settings
-                    await this.plugin.saveSettings();
-                    
-                    // Refresh the settings display to show updated colors
-                    this.display();
-                    
-                    // Show a notice to confirm
-                    new Notice('Publishing stage colors have been reset to defaults');
-                }));
-        
-        // Create a color swatch function
-        const createColorSwatch = (container: HTMLElement, color: string): HTMLElement => {
-            const swatch = document.createElement('div');
-            swatch.className = 'color-swatch';
-            swatch.style.backgroundColor = color;
-            swatch.style.width = '20px';
-            swatch.style.height = '20px';
-            swatch.style.borderRadius = '3px';
-            swatch.style.display = 'inline-block';
-            swatch.style.marginRight = '8px';
-            swatch.style.border = '1px solid var(--background-modifier-border)';
+        // Create color settings for each stage
+        Object.entries(this.plugin.settings.publishStageColors).forEach(([stage, color]) => {
+            let textInputRef: TextComponent | undefined;
+            new Setting(containerEl)
+                .setName(stage)
+                .addText(textInput => {
+                    textInputRef = textInput;
+                    textInput.setValue(color)
+                        .onChange(async (value) => {
+                            if (this.isValidHex(value)) {
+                                (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = value;
+                                await this.plugin.saveSettings();
+                                // Update the color swatch
+                                const swatch = textInput.inputEl.parentElement?.querySelector('.color-swatch') as HTMLElement;
+                                if (swatch) {
+                                    swatch.style.backgroundColor = value;
+                                }
+                            }
+                        });
+                })
+                .addExtraButton(button => {
+                    button.setIcon('reset')
+                        .setTooltip('Reset to default')
+                        .onClick(async () => {
+                            const defaultColor = DEFAULT_SETTINGS.publishStageColors[stage as keyof typeof DEFAULT_SETTINGS.publishStageColors];
+                            (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = defaultColor;
+                            await this.plugin.saveSettings();
+                            textInputRef?.setValue(defaultColor);
+                            // Update the color swatch
+                            const swatch = textInputRef?.inputEl.parentElement?.querySelector('.color-swatch') as HTMLElement;
+                            if (swatch) {
+                                swatch.style.backgroundColor = defaultColor;
+                            }
+                        });
+                });
             
-            container.appendChild(swatch);
-            return swatch;
-        };
-        
-        new Setting(containerEl)
-            .setName('Zero Stage')
-            .setDesc('Color for scenes in the Zero draft stage')
-            .addText(text => {
-                const colorInput = text
-                    .setValue(this.plugin.settings.publishStageColors.Zero)
-                    .onChange(async (value) => {
-                        this.plugin.settings.publishStageColors.Zero = value;
-                        await this.plugin.saveSettings();
-                        if (swatch) {
-                            swatch.style.backgroundColor = value;
-                        }
-                    });
-                
-                // Add null check before passing parent to the function
-                const parent = text.inputEl.parentElement;
-                const swatch = parent ? createColorSwatch(parent, this.plugin.settings.publishStageColors.Zero) : null;
-                return colorInput;
-            });
+            // Add color swatch after the text input
+            if (textInputRef) {
+                const swatchContainer = textInputRef.inputEl.parentElement;
+                if (swatchContainer) {
+                    const swatch = document.createElement('div');
+                    swatch.className = 'color-swatch';
+                    swatch.style.backgroundColor = color;
+                    swatch.style.width = '20px';
+                    swatch.style.height = '20px';
+                    swatch.style.borderRadius = '3px';
+                    swatch.style.display = 'inline-block';
+                    swatch.style.marginLeft = '8px';
+                    swatch.style.border = '1px solid var(--background-modifier-border)';
+                    swatchContainer.appendChild(swatch);
+                }
+            }
+        });
 
-        new Setting(containerEl)
-            .setName('Author Stage')
-            .setDesc('Color for scenes in the Author stage')
-            .addText(text => {
-                const colorInput = text
-                    .setValue(this.plugin.settings.publishStageColors.Author)
-                    .onChange(async (value) => {
-                        this.plugin.settings.publishStageColors.Author = value;
-                        await this.plugin.saveSettings();
-                        if (swatch) {
-                            swatch.style.backgroundColor = value;
-                        }
-                    });
-                
-                // Add null check before passing parent to the function
-                const parent = text.inputEl.parentElement;
-                const swatch = parent ? createColorSwatch(parent, this.plugin.settings.publishStageColors.Author) : null;
-                return colorInput;
-            });
-
-        new Setting(containerEl)
-            .setName('House Stage')
-            .setDesc('Color for scenes in the House stage')
-            .addText(text => {
-                const colorInput = text
-                    .setValue(this.plugin.settings.publishStageColors.House)
-                    .onChange(async (value) => {
-                        this.plugin.settings.publishStageColors.House = value;
-                        await this.plugin.saveSettings();
-                        if (swatch) {
-                            swatch.style.backgroundColor = value;
-                        }
-                    });
-                
-                // Add null check before passing parent to the function
-                const parent = text.inputEl.parentElement;
-                const swatch = parent ? createColorSwatch(parent, this.plugin.settings.publishStageColors.House) : null;
-                return colorInput;
-            });
-
-        new Setting(containerEl)
-            .setName('Press Stage')
-            .setDesc('Color for scenes in the Press stage')
-            .addText(text => {
-                const colorInput = text
-                    .setValue(this.plugin.settings.publishStageColors.Press)
-                    .onChange(async (value) => {
-                        this.plugin.settings.publishStageColors.Press = value;
-                        await this.plugin.saveSettings();
-                        if (swatch) {
-                            swatch.style.backgroundColor = value;
-                        }
-                    });
-                
-                // Add null check before passing parent to the function
-                const parent = text.inputEl.parentElement;
-                const swatch = parent ? createColorSwatch(parent, this.plugin.settings.publishStageColors.Press) : null;
-                return colorInput;
-            });
-            
         // Add horizontal rule to separate settings from documentation
         containerEl.createEl('hr', { cls: 'settings-separator' });
         
         // Add documentation section
         containerEl.createEl('h2', {text: 'Documentation', cls: 'setting-item-heading'});
         
-        // Add horizontal rule to separate settings from documentation
-        containerEl.createEl('hr', { cls: 'settings-separator' });
+        // Create documentation section
+        const documentationContainer = containerEl.createDiv('documentation-container');
+        documentationContainer.style.marginLeft = '0';
+        documentationContainer.style.paddingLeft = '0';
         
-        // Create a container for the documentation content
-        const docContent = containerEl.createEl('div', {cls: 'documentation-container'});
-        
-        // Add README content using safe DOM methods instead of innerHTML
-        // Create main heading
-        docContent.createEl('h1', {text: 'Obsidian Manuscript Timeline'});
-        
-        // Add description
-        docContent.createEl('p', {
-            text: 'A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.'
-        });
-        
-        // Features section
-        docContent.createEl('h2', {text: 'Features'});
-        
-        // Feature list
-        const featureList = docContent.createEl('ul');
-        const features = [
-            'Creates an interactive radial timeline visualization of your scenes',
-            'Organizes scenes by act, subplot, and chronological order',
-            'Click on scenes to open their corresponding files',
-            'Hover over scenes to see their details',
-            'Color-code scenes by subplot',
-            'Filter by publish stage or status',
-            'Customize source directory',
-            'Supports scene numbering for easy reference'
-        ];
-        
-        features.forEach(feature => {
-            featureList.createEl('li', {text: feature});
-        });
+        // Fetch README.md content from GitHub
+        fetch('https://raw.githubusercontent.com/ericrhystaylor/Obsidian-Manuscript-Timeline/refs/heads/master/README.md')
+            .then(response => response.text())
+            .then(content => {
+                MarkdownRenderer.renderMarkdown(
+                    content,
+                    documentationContainer,
+                    '',
+                    this.plugin
+                );
+            })
+            .catch(error => {
+                documentationContainer.createEl('p', { text: 'Error loading documentation. Please check your internet connection.' });
+            });
     }
 }
 
