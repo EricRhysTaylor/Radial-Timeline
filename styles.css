@@ -1,0 +1,721 @@
+/* Manuscript Timeline Plugin Styles */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap');
+
+/* Timeline container */
+.manuscript-timeline-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+}
+
+/* Loading and error messages */
+.loading-message, .error-message {
+  padding: 20px;
+  text-align: center;
+  font-size: 1.2em;
+  color: var(--text-muted);
+}
+
+.error-message {
+  color: var(--text-error);
+}
+
+/* SVG styling */
+.manuscript-timeline-container svg {
+  width: 100%;
+  height: 100%;
+  max-height: calc(100vh - 100px);
+  max-width: 100%;
+  margin: 0 auto;
+  transform-origin: center;
+  cursor: default;
+  background-color: transparent;
+  font-family: 'Lato', sans-serif;
+}
+
+/* Scene elements */
+.scene-path {
+  cursor: pointer;
+  transition: opacity 0.1s, fill 0.1s;
+}
+
+/* Scene act elements */
+.scene-act {
+  fill-opacity: 0;
+  transition: fill-opacity 0.2s;
+}
+
+.scene-act:hover {
+  fill-opacity: 0.3;
+  cursor: pointer;
+}
+
+/* Scene group hover behaviors */
+.scene-group:hover .scene-info {
+  opacity: 1;
+}
+
+/* Void cells styling - remove pointer cursor */
+path.scene-path[fill="#EEEEEE"] {
+  cursor: default !important;
+}
+
+.scene-path.faded {
+  opacity: 0.3;
+}
+
+/* Non-selected scene during mouseover - these should have high priority */
+.scene-path.non-selected {
+  fill: #EFEFEF !important;
+  transition: fill 0.2s ease-out;
+}
+
+/* Selected scene during mouseover */
+.scene-path.selected {
+  filter: saturate(1.3) contrast(1.2);
+}
+
+/* Basic scene title styling */
+.scene-title {
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+  fill: white;
+  opacity: 1;
+  pointer-events: none;
+  transition: fill 0.1s, opacity 0.1s;
+}
+
+.scene-title.faded {
+  opacity: 0.2;
+}
+
+/* Scene info tooltip */
+.scene-info {
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Quadrant-specific positioning for synopses */
+.synopsis-q1 .info-text {
+  text-anchor: end; /* Right justify for Q1 */
+}
+
+.synopsis-q2 .info-text {
+  text-anchor: start; /* Left justify for Q2 */
+}
+
+.synopsis-q3 .info-text {
+  text-anchor: start; /* Left justify for Q3 */
+}
+
+.synopsis-q4 .info-text {
+  text-anchor: end; /* Right justify for Q4 */
+}
+
+/* Override for title text elements */
+.synopsis-q1 .title-text-main, .synopsis-q1 .title-text-secondary, .synopsis-q1 .metadata-text {
+  text-anchor: end !important;
+}
+
+.synopsis-q2 .title-text-main, .synopsis-q2 .title-text-secondary, .synopsis-q2 .metadata-text {
+  text-anchor: start !important;
+}
+
+.synopsis-q3 .title-text-main, .synopsis-q3 .title-text-secondary, .synopsis-q3 .metadata-text {
+  text-anchor: start !important;
+}
+
+.synopsis-q4 .title-text-main, .synopsis-q4 .title-text-secondary, .synopsis-q4 .metadata-text {
+  text-anchor: end !important;
+}
+
+.scene-info.visible {
+  opacity: 1 !important;
+  pointer-events: all !important;
+  /* Ensure no other style is overriding this */
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* Synopsis connector - curve from scene to text */
+.synopsis-connector {
+  fill: none;
+  stroke: var(--text-accent, #705DCF);
+  stroke-width: 2.5;
+  stroke-dasharray: 3, 5;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.scene-info.visible .synopsis-connector {
+  opacity: 1;
+}
+
+/* Synopsis text container */
+.synopsis-text {
+  fill: var(--text-normal, #333333);
+  font-size: 28px;
+  text-anchor: middle;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+  max-width: 250px;
+}
+
+.scene-info.visible .synopsis-text {
+  opacity: 1;
+}
+
+/* Remove synopsis background and improve text visibility */
+/* Title text styling */
+.title-text-main {
+  font-size: 24px;
+  font-weight: bold;
+  fill: var(--text-normal, #333333);
+  stroke: white;
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+.title-text-secondary {
+  font-size: 16px;
+  fill: var(--text-normal, #333333);
+  stroke: white;
+  stroke-width: 2px;
+  paint-order: stroke;
+}
+
+/* Synopsis text styling */
+/* Divider line */
+.synopsis-divider {
+  stroke: var(--text-accent, #705DCF);
+  stroke-width: 2;
+  stroke-opacity: 0.8;
+  stroke-linecap: round;
+}
+
+/* Synopsis cells */
+.synopsis-cell {
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+  filter: brightness(1.1) contrast(0.9);
+  stroke: var(--text-accent, #705DCF);
+  stroke-width: 1.5;
+  stroke-opacity: 0;
+  transform: scale(0.95);
+}
+
+.synopsis-cell.revealed {
+  opacity: 0.92 !important;
+  stroke-opacity: 1;
+  transform: scale(1);
+}
+
+/* Simplify cell transitions - reduce or remove delay */
+.synopsis-cell.cell-0 { transition-delay: 0s; }
+.synopsis-cell.cell-1 { transition-delay: 0.02s; }
+.synopsis-cell.cell-2 { transition-delay: 0.04s; }
+.synopsis-cell.cell-3 { transition-delay: 0.06s; }
+.synopsis-cell.cell-4 { transition-delay: 0.08s; }
+.synopsis-cell.cell-5 { transition-delay: 0.1s; }
+.synopsis-cell.cell-6 { transition-delay: 0.12s; }
+.synopsis-cell.cell-7 { transition-delay: 0.14s; }
+.synopsis-cell.cell-8 { transition-delay: 0.16s; }
+.synopsis-cell.cell-9 { transition-delay: 0.18s; }
+
+/* Number elements basic styling */
+.number-square, .number-text {
+  transition: opacity 0.1s, fill 0.1s, transform 0.1s;
+  pointer-events: none;
+}
+
+.number-square.faded, .number-text.faded {
+  opacity: 0.2;
+}
+
+/* Mouseover styling - high specificity for scene title */ 
+.scene-title.non-selected:not(.scene-is-open) {
+  fill: #FFFFFF !important;
+  font-weight: normal !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
+.scene-title.selected {
+  fill: #000000 !important;
+  font-weight: bold !important;
+  stroke: white !important;
+  stroke-width: 0.5px !important;
+  paint-order: stroke !important;
+}
+
+/* Number elements during mouseover with high specificity */
+.number-square.non-selected {
+  fill: #EFEFEF !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+  transition: fill 0.2s ease-out,
+              stroke 0.2s ease-out,
+              stroke-width 0.2s ease-out,
+              transform 0.2s ease-out;
+}
+
+.number-text.non-selected {
+  fill: #FFFFFF !important;
+}
+
+.number-square.selected {
+  transform: scale(1.2);
+  z-index: 10;
+  stroke-width: 2px !important;
+  /* Use the scene color if available, otherwise fall back to accent color */
+  stroke: var(--scene-color, #705DCF) !important;
+}
+
+/* Note: We can't use attr() reliably in CSS for colors, so the color is applied via inline CSS var in JavaScript */
+
+.number-text.selected {
+  font-weight: bold;
+}
+
+/* Text styling for SVG elements */
+.subplot-text {
+  font-size: 16px;
+  fill: #555555;
+  font-weight: normal;
+}
+
+.connector-text {
+  font-size: 18px;
+  fill: #555555;
+}
+
+.character-text {
+  font-size: 18px;
+  font-weight: normal;
+}
+
+/* Scene title text with variable font size */
+.scene-title-small {
+  font-size: 9px;
+}
+
+.scene-title-medium {
+  font-size: 16px;
+}
+
+.scene-title-large {
+  font-size: 18px;
+}
+
+/* Flipped text for Act 2 */
+.scene-title-flipped {
+  fill: var(--text-accent, #705DCF); /* Make Act 2 text a different color to improve visibility */
+}
+
+/* Add specific text element rotations for Act 2 - attempt to rotate text within textPath */
+.scene-title-flipped textPath {
+  letter-spacing: 1px; /* Add slight letter spacing for better readability */
+}
+
+.status-count {
+  font-size: 75%;
+  opacity: 0.85;
+  vertical-align: super;
+  position: relative;
+  top: -0.4em;
+  font-weight: normal;
+  baseline-shift: super;
+}
+
+/* Documentation styling */
+.settings-separator {
+  margin: 1em 0 2em 0;
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.documentation-container {
+  padding: 0 1em;
+}
+
+.documentation-container h1 {
+  font-size: 1.8em;
+  margin-top: 0.5em;
+}
+
+.documentation-container h2 {
+  font-size: 1.5em;
+  margin-top: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.documentation-container h3 {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+
+.documentation-container img {
+  max-width: 100%;
+  border-radius: 5px;
+  margin: 1em 0;
+}
+
+.documentation-container code {
+  background-color: var(--background-primary);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+.documentation-container pre {
+  background-color: var(--background-primary);
+  padding: 1em;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.metadata-example {
+  line-height: 2em;
+  white-space: pre;
+  font-family: monospace;
+  user-select: all;
+  cursor: text;
+  background-color: var(--background-secondary);
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+/* Screenshot styling */
+.screenshot-link {
+  display: inline-block;
+  cursor: pointer;
+}
+
+.screenshot-image {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.screenshot-caption {
+  text-align: center;
+  font-size: 0.8em;
+  margin-top: 5px;
+  color: #888;
+}
+
+/* Buy me a coffee button */
+.bmc-button {
+  height: 60px !important;
+  width: 217px !important;
+}
+
+/* Make sure SVG text elements receive these styles */
+svg text.info-text {
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 16px;
+  fill: var(--text-normal, #333333);
+  white-space: pre-wrap;
+  max-width: 250px; /* Added max-width constraint */
+  stroke: white;
+  stroke-width: 2px;
+  paint-order: stroke;
+}
+
+svg text.info-text.title-text-main {
+  font-size: 24px;
+  font-weight: 700;
+  fill: var(--text-normal);
+  text-anchor: start;
+}
+
+svg text.info-text.title-text-secondary {
+  font-size: 18px;
+  fill: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: normal;
+  text-anchor: start;
+}
+
+/* Text styling for subplots and characters in synopsis */
+tspan.subplot-text {
+  font-size: 16px;
+  fill: #555555;
+  font-weight: normal;
+}
+
+tspan.connector-text {
+  font-size: 18px;
+  fill: #555555;
+}
+
+tspan.character-text {
+  font-size: 18px;
+  font-weight: normal;
+}
+
+/* Text styling in synopsis */
+.scene-info text.info-text {
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  stroke: white;
+  stroke-width: 2px;
+  paint-order: stroke;
+}
+
+.scene-info text.info-text.title-text-main {
+  font-size: 24px;
+  font-weight: 700;
+  fill: var(--text-normal);
+  text-anchor: start;
+}
+
+.scene-info text.info-text.title-text-secondary {
+  font-size: 18px;
+  fill: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: normal;
+  text-anchor: start;
+}
+
+/* Metadata text (subplots and characters) */
+.scene-info text.info-text.metadata-text {
+  font-size: 18px;
+  fill: var(--text-muted);
+  text-anchor: start;
+  font-weight: normal;
+  text-transform: none; /* Allow mixed case */
+}
+
+/* Style for the "SUBPLOTS:" and "CHARACTERS:" labels */
+
+/* Debug information styling */
+.debug-info-container {
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.debug-info-background {
+  fill: rgba(255,255,255,0.8);
+  rx: 5px;
+  ry: 5px;
+  stroke: #333333;
+  stroke-width: 1px;
+}
+
+.debug-info-text {
+  font-size: 20px;
+  fill: #ff3300;
+  font-weight: bold;
+  stroke: white;
+  stroke-width: 0.5px;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+/* Scene-info specific overrides to ensure proper text justification */
+.scene-info text.info-text.title-text-main {
+  font-size: 24px;
+  font-weight: 700;
+  fill: var(--text-normal);
+}
+
+.scene-info text.info-text.title-text-secondary {
+  font-size: 18px;
+  fill: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: normal;
+}
+
+/* Ensure synopsis divider line matches text alignment */
+.synopsis-q1 .synopsis-divider, .synopsis-q4 .synopsis-divider {
+  transform: translateX(100%);
+}
+
+/* Force global overrides for Q1 and Q4 */
+.synopsis-q1 text, .synopsis-q4 text {
+  text-anchor: end !important;
+}
+
+/* Force global overrides for Q2 and Q3 */
+.synopsis-q2 text, .synopsis-q3 text {
+  text-anchor: start !important;
+}
+
+/* Center number styles */
+.center-number-text {
+  fill: var(--text-normal, #333333);
+  font-size: 140px;
+  pointer-events: none;
+  font-weight: 900;
+}
+
+/* Month and Act Label Styles */
+.month-label {
+  fill: var(--text-normal, #333333);
+  font-size: 16px;
+  pointer-events: none;
+  dominant-baseline: middle;
+}
+
+.month-label-outer {
+  fill: var(--text-normal, #333333);
+  font-size: 20px;
+  pointer-events: none;
+  dominant-baseline: middle;
+}
+
+.act-label {
+  fill: var(--text-normal, #333333);
+  font-size: 20px;
+  font-weight: bold;
+  pointer-events: none;
+  dominant-baseline: middle;
+}
+
+.month-spoke-line {
+  stroke: var(--text-normal, #333333);
+  stroke-width: 1;
+}
+
+.month-spoke-line.act-boundary {
+  stroke: #FFFFFF;
+  stroke-width: 3;
+}
+
+/* Act Borders and Progress Ring */
+.act-border {
+  stroke: #FFFFFF;
+  stroke-width: 5;
+  fill: none;
+}
+
+.progress-ring-base {
+  stroke: var(--background-modifier-border, #dddddd);
+  stroke-width: 10;
+  fill: none;
+}
+
+.progress-ring-fill {
+  /* Stroke color is applied via gradient in the SVG */
+  stroke-width: 10;
+  fill: none;
+}
+
+/* Key and Information Text Styles */
+.key-text {
+  fill: var(--text-normal, #333333);
+  font-size: 16px;
+  transition: fill 0.2s ease;
+}
+
+.theme-dark .key-text {
+  fill: #ffffff !important;
+}
+
+.theme-light .key-text {
+  fill: #333333 !important;
+}
+
+.info-text {
+  dominant-baseline: hanging;
+  text-anchor: start;
+  fill: #333333 !important; /* Always keep info-text dark for better visibility */
+}
+
+.info-title {
+  fill: var(--text-normal, #333333);
+  font-size: 28px;
+  text-anchor: middle;
+}
+
+.info-container {
+  fill: var(--text-normal, #333333);
+  font-size: 24px;
+}
+
+.color-key-center {
+  opacity: 1;
+  pointer-events: none;
+}
+
+.center-key-text {
+  fill: var(--text-normal, #333333);
+  font-size: 18px;
+  text-transform: uppercase;
+  opacity: 0.85; /* Slightly transparent */
+}
+
+/* Rules for open scenes - minimal, simplified approach */
+
+/* When no hover is happening - default state for open scenes */
+.scene-title.scene-is-open {
+  fill: var(--text-accent, #705DCF) !important;
+  stroke: white !important;
+  stroke-width: 3px !important;
+  paint-order: stroke !important;
+}
+
+.number-square.scene-is-open {
+  stroke: #705DCF !important;
+  stroke-width: 3px !important;
+  transform: scale(1.2) !important;
+}
+
+.number-text.scene-is-open {
+  font-weight: normal !important;
+  fill: #000000 !important;
+}
+
+/* When another scene is being hovered - open scenes should look non-selected */
+.scene-title.scene-is-open.non-selected {
+  fill: #FFFFFF!important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+  opacity: 0.7 !important;
+}
+
+.number-square.scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+  transform: scale(1) !important;
+  transition: fill 0.1s;
+}
+
+.number-text.scene-is-open.non-selected {
+  fill: #ffffff !important;
+  opacity: 1 !important;
+  font-weight: normal !important;
+  transition: fill 0.1s;
+}
+
+/* When hovering the open scene itself */
+.scene-title.scene-is-open.selected {
+  fill: #705DCF !important;
+  stroke: white !important;
+  stroke-width: 3px !important;
+  paint-order: stroke !important;
+}
+
+.number-square.scene-is-open.selected {
+  stroke: #705DCF !important;
+  stroke-width: 2px !important;
+  transform: scale(1.2) !important;
+  fill: #FFFFFF !important;
+  transition: fill 0.1s, transform 0.1s;
+}
+
+.number-text.scene-is-open.selected {
+  fill: #000000 !important;
+  font-weight: bold !important;
+}

@@ -1,4 +1,43 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView } from "obsidian";
+
+// Helper functions for safe SVG creation - add at the top of the file
+function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
+    const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    
+    // Set attributes
+    for (const [key, value] of Object.entries(attributes)) {
+        element.setAttribute(key, value);
+    }
+    
+    // Add classes
+    if (classes.length > 0) {
+        element.classList.add(...classes);
+    }
+    
+    return element;
+}
+
+function createSvgText(content: string, x: string | number, y: string | number, classes: string[] = []): SVGTextElement {
+    const text = createSvgElement("text", { x: x.toString(), y: y.toString() }) as SVGTextElement;
+    text.textContent = content;
+    
+    if (classes.length > 0) {
+        text.classList.add(...classes);
+    }
+    
+    return text;
+}
+
+function createSvgTspan(content: string, classes: string[] = []): SVGTSpanElement {
+    const tspan = createSvgElement("tspan") as SVGTSpanElement;
+    tspan.textContent = content;
+    
+    if (classes.length > 0) {
+        tspan.classList.add(...classes);
+    }
+    
+    return tspan;
+}
 
 interface ManuscriptTimelineSettings {
     sourcePath: string;
@@ -61,7 +100,8 @@ const STATUS_COLORS = {
     "Working": "#70b970",
     "Todo": "#aaaaaa",
     "Empty": "#f0f0f0", // Light gray (will be replaced with light Zero color)
-    "Due": "#d05e5e"
+    "Due": "#d05e5e",
+    "Complete": "#999999" // Added for complete status
 };
 
 const NUM_ACTS = 3;
@@ -93,7 +133,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     // Add this property to track the active view
     activeTimelineView: ManuscriptTimelineView | null = null;
 
+    // Add a property to track open scene paths
+    openScenePaths: Set<string> = new Set<string>();
+
     async onload() {
+        // Always log when plugin loads, regardless of debug setting
+        console.log('Manuscript Timeline Plugin: Loading plugin...');
         await this.loadSettings();
         
         // Register the timeline view
@@ -102,19 +147,20 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             (leaf: WorkspaceLeaf) => {
                 const view = new ManuscriptTimelineView(leaf, this);
                 this.activeTimelineView = view;
+                this.log('Timeline view created');
                 return view;
             }
         );
         
         // Add ribbon icon for the new view
-        this.addRibbonIcon('calendar-with-checkmark', 'Manuscript Timeline', () => {
+        this.addRibbonIcon('shell', 'Manuscript Timeline', () => {
             this.activateView();
         });
 
         // Add command for the new view
         this.addCommand({
             id: 'show-manuscript-timeline',
-            name: 'Show Manuscript Timeline',
+            name: 'Show Timeline',
             callback: async () => {
                 await this.activateView();
             }
@@ -132,6 +178,21 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 }
             }
         });
+        
+        // Schedule a delayed polling of open files after startup
+        // Only do this if we haven't already done a check on view creation
+        setTimeout(() => {
+            this.log('Performing initial open files check...');
+            
+            // Only perform check if the view exists and there are no open files detected yet
+            if (this.activeTimelineView && this.activeTimelineView.openScenePaths.size === 0) {
+                this.log('No open files detected yet, running initial check');
+                this.activeTimelineView.updateOpenFilesTracking();
+                this.log('Initial open files check complete.');
+            } else {
+                this.log('View already has open files tracked, skipping redundant check');
+            }
+        }, 3000); // Wait 3 seconds after plugin load
 
         // Register event listeners to refresh the timeline when files change
         this.registerEvent(
@@ -158,6 +219,18 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             name: 'Open Timeline View',
             callback: () => this.activateView()
         });
+
+        // Register event to update open files tracking
+        this.registerEvent(
+            this.app.workspace.on('file-open', (file) => this.updateOpenFilesTracking())
+        );
+        // We don't need a separate 'file-close' handler since 'layout-change' will capture file closings
+        this.registerEvent(
+            this.app.workspace.on('layout-change', () => this.updateOpenFilesTracking())
+        );
+
+        // Initialize open files tracking
+        this.updateOpenFilesTracking();
     }
     
     // Helper to activate the timeline view
@@ -284,8 +357,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             // Convert scene numbers to numbers for comparison
             // Ensure we're using numeric values by explicitly parsing the strings
-            const aNumberValue = aNumber ? parseInt(aNumber, 10) : 0;
-            const bNumberValue = bNumber ? parseInt(bNumber, 10) : 0;
+            // Use parseFloat instead of parseInt to handle decimal scene numbers correctly
+            const aNumberValue = aNumber ? parseFloat(aNumber) : 0;
+            const bNumberValue = bNumber ? parseFloat(bNumber) : 0;
             return aNumberValue - bNumberValue;
         });
     }
@@ -296,6 +370,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const margin = 30;
         const innerRadius = 200; // the first ring is 200px from the center
         const outerRadius = size / 2 - margin;
+    
+        // Create SVG with styles now in external CSS file
+        let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg">`;
+        
+        // Center the origin in the middle of the SVG
+        svg += `<g transform="translate(${size / 2}, ${size / 2})">`;
+        
+        // Create defs for patterns and gradients
+        svg += `<defs>`;
     
         // Create a map to store scene number information for the scene square and synopsis
         const sceneNumbersMap = new Map<string, SceneNumberInfo>();
@@ -370,200 +453,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const lineOuterRadius = ringStartRadii[N - 1] + ringWidths[N - 1] + 30;
     
         // **Include the `<style>` code here**
-        let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="background-color: transparent;">
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap');
-
-            svg {
-                font-family: 'Lato', sans-serif;
-                background-color: transparent;
-            }
-
-            .scene-title {
-                fill: white;
-                opacity: 1;
-                pointer-events: none;
-            }
-
-            .scene-title.faded {
-                fill: var(--text-muted, #666666);
-                opacity: 0.2;
-            }
-
-            .center-number-text {
-                fill: var(--text-normal, #333333);
-                font-size: 140px;
-                pointer-events: none;
-                font-weight: 900;
-            }
-
-            .scene-act {
-                fill-opacity: 0;
-                transition: fill-opacity 0.2s;
-            }
-
-            .scene-act:hover {
-                fill-opacity: 0.3;
-                cursor: pointer;
-            }
-
-            .scene-info {
-                opacity: 0;
-                transition: opacity 0.2s;
-                pointer-events: none;
-            }
-
-            .scene-group:hover .scene-info {
-                opacity: 1;
-            }
-
-            .number-text {
-                font-size: 14px;
-                pointer-events: none;
-            }
-
-            .number-text.faded {
-                opacity: 0.2;
-            }
-
-            .number-square {
-                opacity: 1;
-                pointer-events: none;
-            }
-
-            .number-square.faded {
-                opacity: 0.2;
-            }
-
-            .scene-path {
-                opacity: 1;
-                transition: opacity 0.2s ease-out;
-                pointer-events: all;
-            }
-
-            .scene-path.faded {
-                opacity: 0.5;
-                transition: opacity 0.2s ease-out;
-            }
-
-            .scene-path.highlighted {
-                opacity: 1;
-                transition: opacity 0.2s ease-out;
-            }
-
-            .info-title {
-                fill: var(--text-normal, #333333);
-                font-size: 28px;
-                text-anchor: middle;
-            }
-
-            .subplot-text {
-                fill: var(--text-normal, #333333);
-                font-size: 28px;
-                text-anchor: middle;
-            }
-
-            .synopsis-text {
-                fill: var(--text-normal, #333333);
-                font-size: 28px;
-                text-anchor: middle;
-            }
-
-            .month-label {
-                fill: var(--text-normal, #333333);
-                font-size: 16px;
-                pointer-events: none;
-                dominant-baseline: middle;
-            }
-
-            .month-label-outer {
-                fill: var(--text-normal, #333333);
-                font-size: 20px;
-                pointer-events: none;
-                dominant-baseline: middle;
-            }
-
-            .act-label {
-                fill: var(--text-normal, #333333);
-                font-size: 20px;
-                font-weight: bold;
-                pointer-events: none;
-                dominant-baseline: middle;
-            }
-
-            .info-container {
-                fill: var(--text-normal, #333333);
-                font-size: 24px;
-            }
-
-            .info-text {
-                dominant-baseline: hanging;
-                text-anchor: start;
-                fill: var(--text-normal, #333333);
-            }
-            
-            .key-text {
-                fill: var(--text-normal, #333333);
-                font-size: 16px;
-                transition: fill 0.2s ease;
-            }
-            
-            // Add CSS classes for month spokes in the SVG style section
-            .month-spoke-line {
-                stroke: var(--text-normal, #333333);
-                stroke-width: 1;
-            }
-
-            .month-spoke-line.act-boundary {
-                stroke: var(--text-accent, #705dcf);
-                stroke-width: 3;
-            }
-            
-            // Add CSS classes for act borders and progress ring
-            .act-border {
-                stroke: var(--text-accent, #705dcf);
-                stroke-width: 5;
-                fill: none;
-            }
-
-            .progress-ring-base {
-                stroke: var(--background-modifier-border, #dddddd);
-                stroke-width: 10;
-                fill: none;
-            }
-
-            .progress-ring-fill {
-                /* Stroke color is applied via gradient in the SVG */
-                stroke-width: 10;
-                fill: none;
-            }
-            
-            /* Ensure key-text elements are styled correctly */
-            .theme-dark .key-text {
-                fill: #ffffff !important;
-            }
-            
-            .theme-light .key-text {
-                fill: #333333 !important;
-            }
-            
-            /* Always keep info-text dark for better visibility against light background */
-            .info-text {
-                fill: #333333 !important;
-            }
-
-            .color-key-center {
-                opacity: 1;
-                pointer-events: none;
-            }
-
-            .center-key-text {
-                fill: var(--text-normal, #333333);
-                font-size: 18px;
-                text-transform: uppercase;
-                opacity: 0.85; /* Slightly transparent */
-            }
-        </style>`;
+        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg">`;
 
         // Access the publishStageColors from settings
         const PUBLISH_STAGE_COLORS = this.settings.publishStageColors;
@@ -573,9 +463,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         // Define plaid patterns for Working and Todo status
         svg += `<pattern id="plaidWorking" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-            <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Working, 10)}"/>
-            <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
-            <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
+            <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Working, 5)}"/>
+            <circle cx="5" cy="5" r="2" fill="#ffffff" fill-opacity="0.6"/>
+            <circle cx="0" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+            <circle cx="10" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+            <circle cx="0" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+            <circle cx="10" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
         </pattern>`;
         
         svg += `<pattern id="plaidTodo" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
@@ -587,9 +480,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Define patterns for Working and Todo states with Publish Stage colors
         svg += `${Object.entries(PUBLISH_STAGE_COLORS).map(([stage, color]) => `
             <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="${this.darkenColor(color, 10)}"/>
-                <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
-                <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.6"/>
+                <rect width="10" height="10" fill="${this.darkenColor(color, 5)}"/>
+                <circle cx="5" cy="5" r="2" fill="#ffffff" fill-opacity="0.6"/>
+                <circle cx="0" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+                <circle cx="10" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+                <circle cx="0" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
+                <circle cx="10" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.5"/>
             </pattern>
             
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
@@ -832,7 +728,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
             const numberInfo = sceneNumbersMap.get(sceneId);
             
-            const lineHeight = 30;
+            const lineHeight = 26; // Reduced for tighter spacing
             const size = 1600;
             const maxTextWidth = 500;
             const topOffset = -size / 2;
@@ -862,15 +758,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 ...synopsisLines,
                 // Add a non-breaking space to preserve the line spacing
                 '\u00A0', // Using non-breaking space instead of empty string
-                // Subplots with bullet-like separator
-                orderedSubplots.map((subplot, i) => 
-                    `<tspan style="font-size: 17px; fill: #555555; text-transform: uppercase; font-weight: bold;">${subplot}</tspan>`
-                ).join(`<tspan style="font-size: 17px; fill: #555555;"> • </tspan>`),
-                // Characters with bullets between them
+                // Just pass the subplot and character info without prefixes
+                orderedSubplots.join(', '),
+                // Characters without prefix
                 scene.Character && scene.Character.length > 0 ? 
-                    scene.Character.map((char, i) => 
-                        `<tspan style="fill: ${characterColors[i]}; font-size: 14px;">${char.toUpperCase()}</tspan>`
-                    ).join(`<tspan style="fill: ${characterColors[0]}; font-size: 14px;"> • </tspan>`) : '',
+                    scene.Character.join(', ') : '',
             ].filter(line => line);
 
             const totalHeight = contentLines.length * lineHeight;
@@ -882,30 +774,113 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
             synopsesHTML.push(`
                 <g class="scene-info info-container" 
-                   style="opacity: 0; pointer-events: none;" 
                    data-for-scene="${sceneId}">
-                    ${showLeftText ? `
-                    <!-- Left side text block -->
-                    <g transform="translate(-650, -400)">
-                        ${contentLines.map((line, i) => `
-                            <text class="info-text" x="10" y="${i * lineHeight}"
-                                style="${i === 0 ? 'font-size: 24px; font-weight: bold;' : ''}"
-                            >${line}</text>
-                        `).join('')}
-                    </g>
-                    ` : ''}
+                    
+                    ${(() => {
+                        // Get the scene's act and subplot to determine its position
+                        const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
+                        const actIndex = sceneActNumber - 1;
+                        const subplot = scene.subplot || "Main Plot";
+                        const ring = NUM_RINGS - 1 - masterSubplotOrder.indexOf(subplot);
+                        
+                        // Calculate angles from act index
+                        const startAngle = (actIndex * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                        const endAngle = ((actIndex + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                        
+                        // Calculate radius from ring index
+                        const innerRadius = ringStartRadii[ring];
+                        const outerRadius = innerRadius + ringWidths[ring];
+                        
+                        // Find the angular position of this scene
+                        const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
+                        const sceneIndex = scenesInActAndSubplot.indexOf(scene);
+                        const sceneAngleSize = (endAngle - startAngle) / scenesInActAndSubplot.length;
+                        const sceneStartAngle = startAngle + (sceneIndex * sceneAngleSize);
+                        const sceneEndAngle = sceneStartAngle + sceneAngleSize;
+                        
+                        // Calculate the source point (where the scene is)
+                        const sceneAngleMidpoint = (sceneStartAngle + sceneEndAngle) / 2;
+                        const sourceX = (innerRadius + outerRadius) / 2 * Math.cos(sceneAngleMidpoint);
+                        const sourceY = (innerRadius + outerRadius) / 2 * Math.sin(sceneAngleMidpoint);
+                        
+                        // For fixed position, we don't need to calculate quadrants or edge points
+                        // We'll just use the center of the scene cell for the connector
+                        const edgeX = sourceX;
+                        const edgeY = sourceY;
 
-                    ${showRightText ? `
-                    <!-- Right side text block -->
-                    <g transform="translate(-300, 250)">
-                        ${contentLines.map((line, i) => `
-                            <text class="info-text" x="0" y="${i * lineHeight}"
-                                style="${i === 0 ? 'font-size: 24px; font-weight: bold;' : ''}"
-                                text-anchor="middle"
-                            >${line}</text>
-                        `).join('')}
-                    </g>
-                    ` : ''}
+                        // Prepare the content measurement
+                        const titleFontSize = 24;
+                        const bodyFontSize = 18;
+                        
+                        // Prepare the complete text content to measure
+                        let fullText = `<div style="font-size:${titleFontSize}px;font-weight:700;margin-bottom:10px;">${this.escapeXml(contentLines[0])}</div>`;
+                        
+                        // Add synopsis lines
+                        const synopsisEndIndex = synopsisLines.length + 1; // +1 for title
+                        for (let i = 1; i < synopsisEndIndex; i++) {
+                            fullText += `<div style="font-size:${bodyFontSize}px;margin-top:5px;">${this.escapeXml(contentLines[i])}</div>`;
+                        }
+                        
+                        // Add metadata items
+                        const metadataItems = contentLines.slice(synopsisEndIndex);
+                        metadataItems.forEach(line => {
+                            // Handle tspan elements by removing tags for measurement
+                            const plainText = line.replace(/<[^>]*>/g, '');
+                            fullText += `<div style="font-size:${bodyFontSize}px;margin-top:5px;">${this.escapeXml(plainText)}</div>`;
+                        });
+                        
+                        // Use a fixed width for the text
+                        const textWidth = 250;
+                        
+                        // Get accurate text dimensions for height
+                        const textDimensions = this.measureTextDimensions(fullText, textWidth, bodyFontSize);
+                        const textHeight = textDimensions.height;
+                        
+                        // Use fixed position for the synopsis at the center of the SVG
+                        // No need for connector path since we're using fixed HTML positioning
+                        
+                        // Text alignment (always left-justified)
+                        const textAlign = 'left';
+                        
+                        // No connector path needed for fixed positioning
+                        const connectorPath = '';
+                        
+                        // Calculate text anchor point with standard offset
+                        const textAnchorOffset = 0;
+                        
+                        // Create HTML for synopsis content - now with fixed positioning via CSS
+                        let textHTML = `<g class="synopsis-text">`;
+                        
+                        // Title
+                        textHTML += `<text class="info-text title-text-main" x="0" y="0" text-anchor="${textAlign}">${this.escapeXml(contentLines[0])}</text>`;
+                        
+                        // Determine text width for divider
+                        const titleTextWidth = Math.min(contentLines[0].length * 12, 200);
+                        
+                        // Decorative divider below the title
+                        textHTML += `<line class="synopsis-divider" x1="0" y1="30" x2="${titleTextWidth}" y2="30" stroke-width="1.5"></line>`;
+                        
+                        // Add synopsis lines
+                        for (let i = 1; i < synopsisEndIndex; i++) {
+                            textHTML += `<text class="info-text title-text-secondary" x="0" y="${40 + ((i-1) * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(contentLines[i])}</text>`;
+                        }
+                        
+                        // Metadata (subplots, characters)
+                        const metadataStartY = 40 + ((synopsisEndIndex-1) * lineHeight) + 15;
+                        metadataItems.forEach((line, i) => {
+                            // Create a containing text element to ensure proper alignment
+                            if (line.includes('<tspan')) {
+                                // For lines with tspan elements (subplots, characters)
+                                textHTML += `<text class="info-text metadata-text" x="0" y="${metadataStartY + (i * lineHeight)}" text-anchor="${textAlign}">${line}</text>`;
+                            } else {
+                                textHTML += `<text class="info-text title-text-secondary" x="0" y="${metadataStartY + (i * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(line)}</text>`;
+                            }
+                        });
+                        
+                        textHTML += `</g>`;
+                        
+                        return connectorPath + textHTML;
+                    })()}
                 </g>
             `);
         });
@@ -999,7 +974,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                       d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + 0.02))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + 0.02))} 
                                          A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
                                       fill="none"/>
-                                <text class="scene-title" style="font-size: ${fontSize}px" dy="${dyOffset}">
+                                <text class="scene-title scene-title-${fontSize <= 10 ? 'small' : (fontSize <= 12 ? 'medium' : 'large')}" dy="${dyOffset}" data-scene-id="${sceneId}">
                                     <textPath href="#textPath-${act}-${ring}-${idx}" startOffset="4">
                                         ${text}
                                     </textPath>
@@ -1023,7 +998,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             `;
 
                             svg += `<path d="${arcPath}" 
-                                     fill="${this.lightenColor(PUBLISH_STAGE_COLORS.Zero, 50)}" 
+                                     fill="#EEEEEE" 
                                      stroke="white" 
                                      stroke-width="1" 
                                      class="scene-path"/>`;
@@ -1038,7 +1013,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(endAngle))}
                         A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
                     `;
-                    const emptyColor = this.lightenColor(PUBLISH_STAGE_COLORS.Zero, 50); // Lighter purple/Zero color
+                    const emptyColor = "#EEEEEE"; // Light gray for empty scenes
                     svg += `<path d="${arcPath}" fill="${emptyColor}" stroke="white" stroke-width="1"/>`;
                 }
             }
@@ -1098,7 +1073,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const keyY = -size/2 + 50; // Position from top
         const swatchSize = 20;
         const textOffset = 30;
-        const lineHeight = 30;
+        const lineHeight = 26; // Reduced for tighter spacing
 
         // Calculate the number of scenes for each status using a Set to track unique scenes
         const processedScenes = new Set<string>(); // Track scenes by their path
@@ -1171,7 +1146,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="end"
                                 class="center-key-text"
-                            >${stage.toUpperCase()} <tspan style="font-size: 14px; opacity: 0.7; baseline-shift: super;">${statusCounts[stage] || 0}</tspan></text>
+                            >${stage.toUpperCase()} <tspan class="status-count">${statusCounts[stage] || 0}</tspan></text>
                             
                             <!-- Color SWATCH to the right of text -->
                             <rect 
@@ -1189,11 +1164,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 ${statusColorEntries.map(([status, color], index) => {
                     const yPos = startY + (index * centerLineHeight);
                     
-                    // Check if this is Working or Todo status to show plaid pattern
-                    const isWorkingOrTodo = status === 'Working' || status === 'Todo';
-                    const fillValue = isWorkingOrTodo ? 
-                        `url(#plaid${status}Zero)` : // Use the Zero publishing stage for the legend
-                        color;
+                    // Check if this has a special pattern (Working, Todo, or Complete)
+                    const hasSpecialPattern = status === 'Working' || status === 'Todo';
+                    let fillValue;
+                    
+                    if (hasSpecialPattern) {
+                        fillValue = `url(#plaid${status}Zero)`;
+                    } else {
+                        fillValue = color;
+                    }
                     
                     return `
                         <g transform="translate(25, ${yPos})">
@@ -1213,7 +1192,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="start"
                                 class="center-key-text"
-                            >${status.toUpperCase()} <tspan style="font-size: 14px; opacity: 0.7; baseline-shift: super;">${statusCounts[status] || 0}</tspan></text>
+                            >${status.toUpperCase()} <tspan class="status-count">${statusCounts[status] || 0}</tspan></text>
                         </g>
                     `;
                 }).join('')}
@@ -1378,7 +1357,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const lines: string[] = [];
         let currentLine: string[] = [];
         let currentLength = 0;
-        const targetCharsPerLine = 60; // Approximately 60 characters per line for 500px width
+        const targetCharsPerLine = 45; // Reduced from 60 to 45 characters per line for narrower text
 
         for (let word of words) {
             // Add 1 for the space after the word
@@ -1421,8 +1400,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     private formatSynopsis(text: string, innerRadius: number, fontSize: number): string {
-        const maxTextWidth = innerRadius * 2; // Maximum width of text block (fits within the inner void)
-        const maxWordsPerLine = 7; // Adjust this for line balancing (approx. number of words per line)
+        const maxTextWidth = innerRadius * 1.5; // Reduced from 2 to 1.5 to make text block narrower
+        const maxWordsPerLine = 6; // Reduced from 7 to 6 for shorter lines
     
         // Split text into lines with balanced word count
         const lines = this.splitIntoBalancedLines(text, maxWordsPerLine);
@@ -1485,7 +1464,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         };
     }
 
-    private log(message: string, data?: any) {
+    public log(message: string, data?: any) {
+        // Only log if debug mode is enabled
         if (this.settings.debug) {
             if (data) {
                 console.log(`Manuscript Timeline Plugin: ${message}`, data);
@@ -1516,6 +1496,231 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     view.refreshTimeline();
                 }
             }
+        }
+    }
+
+    // Add this helper function for escaping XML/HTML special characters
+    private escapeXml(unsafe: string): string {
+        if (unsafe === undefined || unsafe === null) return '';
+        
+        // Convert to string first (in case it's a number or other type)
+        const str = String(unsafe);
+        
+        // Handle ampersands first, but preserve existing XML entities
+        return str
+            .replace(/&(?!(amp|lt|gt|quot|apos|#\d+);)/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;')
+            // Also escape comments to prevent XML parsing issues
+            .replace(/\/\//g, '&#47;&#47;');
+    }
+    
+    /**
+     * Measures text dimensions using an offscreen DOM element
+     * This provides much more accurate text sizing than estimation
+     */
+    private measureTextDimensions(text: string, maxWidth: number, fontSize: number, fontWeight: string = 'normal'): {width: number, height: number} {
+        // Create an offscreen element for measurement
+        const el = document.createElement('div');
+        el.style.position = 'absolute';
+        el.style.visibility = 'hidden';
+        el.style.maxWidth = `${maxWidth}px`;
+        el.style.fontSize = `${fontSize}px`;
+        el.style.fontWeight = fontWeight;
+        el.style.fontFamily = "'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif";
+        el.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
+        el.innerHTML = text;
+        
+        // Append to DOM for measurement
+        document.body.appendChild(el);
+        
+        // Get the dimensions
+        const rect = el.getBoundingClientRect();
+        const dimensions = {
+            width: rect.width,
+            height: rect.height
+        };
+        
+        // Clean up
+        document.body.removeChild(el);
+        
+        return dimensions;
+    }
+
+    // Add this function near the top of the class, after refreshTimelineIfNeeded 
+    public updateSynopsisPosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
+        if (!synopsis || !svg) {
+            this.log("updateSynopsisPosition: missing synopsis or svg element", {synopsis, svg});
+            return;
+        }
+        
+        try {
+            const pt = svg.createSVGPoint();
+            pt.x = event.clientX;
+            pt.y = event.clientY;
+            const ctm = svg.getScreenCTM();
+            if (!ctm) {
+                this.log("updateSynopsisPosition: No SVG CTM available");
+                return;
+            }
+            
+            const svgP = pt.matrixTransform(ctm.inverse());
+            
+            // Determine which quadrant the mouse is in
+            const quadrant = 
+                svgP.x >= 0 && svgP.y >= 0 ? "Q1" :
+                svgP.x < 0 && svgP.y >= 0 ? "Q2" :
+                svgP.x < 0 && svgP.y < 0 ? "Q3" :
+                "Q4";
+            
+            // Place the synopsis in the appropriate position based on quadrant
+            let translateX, translateY;
+            synopsis.classList.remove('synopsis-q1', 'synopsis-q2', 'synopsis-q3', 'synopsis-q4');
+            
+            if (quadrant === 'Q1') { // Mouse in Bottom Right (Q1)
+                translateX = -600;    // Place at X = -600
+                translateY = 150;     // Place at Y = 150
+                synopsis.classList.add('synopsis-q2'); // Left justify in Q2
+            } else if (quadrant === 'Q2') { // Mouse in Bottom Left (Q2)
+                translateX = 600;     // Place at X = 600
+                translateY = 150;     // Place at Y = 150
+                synopsis.classList.add('synopsis-q1'); // Right justify in Q1
+            } else if (quadrant === 'Q3') { // Mouse in Top Left (Q3)
+                translateX = 500;     // Place at X = 500
+                translateY = -550;    // Place at Y = -550
+                synopsis.classList.add('synopsis-q4'); // Right justify in Q4
+            } else { // Mouse in Top Right (Q4)
+                translateX = -500;    // Place at X = -500
+                translateY = -550;    // Place at Y = -550
+                synopsis.classList.add('synopsis-q3'); // Left justify in Q3
+            }
+            
+            // Make sure the synopsis is visible by applying both class and style changes
+            synopsis.classList.add('visible');
+            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
+            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
+            
+            // Position based on calculated values
+            const translateValue = `translate(${translateX}, ${translateY})`;
+            synopsis.setAttribute('transform', translateValue);
+            
+            this.log(`Synopsis shown at position: ${translateX}, ${translateY} for quadrant ${quadrant}`, {
+                synopsisVisible: synopsis.classList.contains('visible'),
+                transform: synopsis.getAttribute('transform'),
+                quadrant: quadrant
+            });
+        } catch (error) {
+            console.error("Error in updateSynopsisPosition:", error);
+        }
+    }
+
+    // Add method to update open files tracking
+    private updateOpenFilesTracking() {
+        this.log('Running open files tracking check...');
+        
+        // Store the previous state to check if it changed
+        const previousOpenFiles = new Set(this.openScenePaths);
+        
+        this.openScenePaths = new Set<string>();
+        
+        // Get all open leaves
+        const leaves = this.app.workspace.getLeavesOfType('markdown');
+        const openFilesList: string[] = []; // Add proper type
+        
+        // Collect the paths of all open markdown files
+        leaves.forEach(leaf => {
+            // Check if the view is a MarkdownView with a file
+            const view = leaf.view;
+            if (view instanceof MarkdownView && view.file) {
+                this.openScenePaths.add(view.file.path);
+                openFilesList.push(view.file.path);
+            }
+        });
+        
+        // Also check if there's an active file not in a leaf
+        const activeFile = this.app.workspace.getActiveFile();
+        if (activeFile && !openFilesList.includes(activeFile.path)) {
+            this.openScenePaths.add(activeFile.path);
+            openFilesList.push(activeFile.path);
+        }
+        
+        // Get all open tabs from the workspace layout
+        try {
+            // @ts-ignore - Use the workspace layout accessor which may not be fully typed
+            const layout = this.app.workspace.getLayout();
+            if (layout && layout.leaves) {
+                const leafIds = Object.keys(layout.leaves as Record<string, any>);
+                
+                // Try to find any additional file paths from the layout
+                leafIds.forEach(id => {
+                    // @ts-ignore - Access the layout structure which may not be fully typed
+                    const leafData = layout.leaves[id];
+                    if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
+                        const filePath = leafData.state.file;
+                        if (!openFilesList.includes(filePath)) {
+                            this.openScenePaths.add(filePath);
+                            openFilesList.push(filePath);
+                        }
+                    }
+                });
+            }
+        } catch (e) {
+            console.error("Error accessing workspace layout:", e);
+        }
+        
+        // Log a summary instead of individual files
+        if (openFilesList.length > 0) {
+            this.log(`Found ${openFilesList.length} open files: ${openFilesList.join(', ')}`);
+        } else {
+            this.log('No open files found');
+        }
+        
+        // Check if the open files have changed
+        let hasChanged = false;
+        
+        // Different size means something changed
+        if (previousOpenFiles.size !== this.openScenePaths.size) {
+            this.log(`Open files count changed from ${previousOpenFiles.size} to ${this.openScenePaths.size}`);
+            hasChanged = true;
+        } else {
+            // Check if any files were added or removed
+            const addedFiles = [];
+            const removedFiles = [];
+            
+            for (const path of previousOpenFiles) {
+                if (!this.openScenePaths.has(path)) {
+                    removedFiles.push(path);
+                    hasChanged = true;
+                }
+            }
+            
+            for (const path of this.openScenePaths) {
+                if (!previousOpenFiles.has(path)) {
+                    addedFiles.push(path);
+                    hasChanged = true;
+                }
+            }
+            
+            if (addedFiles.length > 0) {
+                this.log(`New files opened: ${addedFiles.join(', ')}`);
+            }
+            
+            if (removedFiles.length > 0) {
+                this.log(`Files no longer open: ${removedFiles.join(', ')}`);
+            }
+        }
+        
+        // Update the UI if something changed
+        if (hasChanged) {
+            this.log('Open files changed, refreshing timeline...');
+            // Use the appropriate method to refresh the timeline
+            if (this.activeTimelineView) {
+                this.activeTimelineView.refreshTimeline();
+            }
+        } else {
+            this.log('No changes in open files detected');
         }
     }
 }
@@ -1682,245 +1887,37 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         // Add horizontal rule to separate settings from documentation
         containerEl.createEl('hr', { cls: 'settings-separator' });
         
-        // Add some basic styling for the documentation section
-        const style = document.createElement('style');
-        style.textContent = `
-            .settings-separator {
-                margin: 1em 0 2em 0;
-                border: none;
-                border-top: 1px solid var(--background-modifier-border);
-            }
-            .documentation-container {
-                padding: 0 1em;
-            }
-            .documentation-container h1 {
-                font-size: 1.8em;
-                margin-top: 0.5em;
-            }
-            .documentation-container h2 {
-                font-size: 1.5em;
-                margin-top: 1.5em;
-                padding-bottom: 0.3em;
-                border-bottom: 1px solid var(--background-modifier-border);
-            }
-            .documentation-container h3 {
-                font-size: 1.2em;
-                margin-top: 1em;
-            }
-            .documentation-container img {
-                max-width: 100%;
-                border-radius: 5px;
-                margin: 1em 0;
-            }
-            .documentation-container code {
-                background-color: var(--background-primary);
-                padding: 0.2em 0.4em;
-                border-radius: 3px;
-            }
-            .documentation-container pre {
-                background-color: var(--background-primary);
-                padding: 1em;
-                border-radius: 5px;
-                overflow-x: auto;
-                margin: 1em 0;
-            }
-            .metadata-example {
-                line-height: 2em;
-                white-space: pre;
-                font-family: monospace;
-                user-select: all;
-                cursor: text;
-            }
-        `;
-        document.head.appendChild(style);
-        
         // Create a container for the documentation content
         const docContent = containerEl.createEl('div', {cls: 'documentation-container'});
         
-        // Add README content - structured as Markdown but rendered as HTML
-        docContent.innerHTML = `
-            <h1>Obsidian Manuscript Timeline</h1>
-            
-            <p>A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.</p>
-            
-            <h2>Features</h2>
-            
-            <ul>
-                <li>Creates an interactive radial timeline visualization of your scenes</li>
-                <li>Organizes scenes by act, subplot, and chronological order</li>
-                <li>Shows scene details on hover including title, date, synopsis, subplots, and characters</li>
-                <li>Color-codes scenes by status (Complete, Working, Todo, etc.)</li>
-                <li>Supports both light and dark themes</li>
-                <li>Allows clicking on scenes to open the corresponding file</li>
-                <li>Fully integrated into Obsidian's interface - no external plugins required</li>
-            </ul>
-            
-            <h2>Support Development</h2>
-            
-            <p>If you find this plugin useful, consider supporting its continued development:</p>
-            
-            <p><a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;"></a></p>
-            
-            <h2>Display Requirements</h2>
-            
-            <p>This plugin creates an information-dense visualization that is more legible on high-resolution displays:</p>
-            <ul>
-                <li>Recommended: High-resolution displays such as Apple Retina displays or Windows equivalent (4K or better)</li>
-                <li>The timeline contains detailed text and visual elements that benefit from higher pixel density</li>
-                <li>While usable on standard displays, you may need to zoom in to see all details clearly</li>
-            </ul>
-            
-            <h2>How to Use</h2>
-            
-            <ol>
-                <li>Install the plugin in your Obsidian vault</li>
-                <li>Configure the source path in the plugin settings to point to your scenes folder</li>
-                <li>Ensure your scene files have the required frontmatter metadata (see below)</li>
-                <li>Click the manuscript timeline ribbon icon or run the "Show Manuscript Timeline" command from the Command Palette</li>
-                <li>The timeline will open in a new tab in the main editor area</li>
-                <li>Interact with the timeline by hovering over scenes to see details and clicking to open the corresponding file</li>
-                <li>The timeline automatically updates when you modify, create, or delete scene files</li>
-            </ol>
-            
-            <h2>Settings</h2>
-            
-            <p>The plugin offers several settings to customize its behavior:</p>
-            
-            <ul>
-                <li><strong>Source Path</strong>: Set the folder containing your scene files (e.g., "Book 1" or "Scenes")</li>
-                <li><strong>Publishing Stage Colors</strong>: Customize colors for different publishing stages (Zero, Author, House, Press)</li>
-                <li><strong>Reset to Default Colors</strong>: Restore all color settings to their original values if you've made changes</li>
-                <li><strong>Debug Mode</strong>: Enable detailed logging in the console (useful for troubleshooting)</li>
-            </ul>
-            
-            <h2>Required Scene Metadata</h2>
-            
-            <p>Scene files must have the following frontmatter:</p>
-            <ul>
-                <li>Class: Scene - Identifies the file as a scene</li>
-                <li>When - Date of the scene (required)</li>
-                <li>Title - Scene title</li>
-                <li>Subplot - Subplot(s) the scene belongs to</li>
-                <li>Act - Act number (1-3)</li>
-                <li>Status - Scene status (Complete, Working, Todo, etc.)</li>
-                <li>Synopsis - Brief description of the scene</li>
-                <li>Character - Characters in the scene</li>
-                <li>Due - Optional due date for the scene</li>
-                <li>Edits - Optional editing notes (scenes with Edits will display with purple number boxes)</li>
-                <li>Publish Stage - Publishing stage (Zero, Author, House, Press)</li>
-            </ul>
-            
-            <h3>Example Metadata</h3>
-            <p><em>Use "Paste and Match Style" when copying to avoid formatting issues</em></p>
-            
-            <pre class="metadata-example"><code>---
-Class: Scene
-Synopsis: The protagonist discovers a mysterious artifact.
-Subplot:
-  - The Great War
-  - Jinnis Pickle
-Act: 1
-When: 2023-05-15
-Character:
-  - John Mars
-  - Celon Tim
-Place:
-  - Diego
-  - Earth
-Publish Stage: Zero
-Status: Complete
-Edits:
----</code></pre>
-            
-            <h2>Timeline Visualization Elements</h2>
-            
-            <p>The timeline displays:</p>
-            <ul>
-                <li>Scenes arranged in a circular pattern</li>
-                <li>Acts divided into sections</li>
-                <li>Subplots organized in concentric rings</li>
-                <li>Scene numbers in small boxes</li>
-                <li>Color-coded scenes based on status</li>
-                <li>Month markers around the perimeter</li>
-                <li>Progress ring showing year progress</li>
-            </ul>
-            
-            <p>Hover over a scene to see its details and click to open the corresponding file.</p>
-            
-            <p><a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-              <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #444;">
-            </a></p>
-            <div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
-              Click image to view full size in browser
-            </div>
-            
-            <h2>Scene Ordering and Numbering</h2>
-            
-            <ul>
-                <li>Scenes are ordered chronologically based on the When date in the frontmatter metadata</li>
-                <li>The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")</li>
-                <li>These numbers are displayed in small boxes on the timeline</li>
-                <li>Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer</li>
-                <li>If scenes have the same When date, they are sub-ordered by their scene number</li>
-            </ul>
-            
-            <h2>Technical Implementation</h2>
-            
-            <p>The Manuscript Timeline visualization was inspired by and draws on principles from <a href="https://d3js.org">D3.js</a>, a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:</p>
-            
-            <ul>
-                <li>SVG-based visualization techniques</li>
-                <li>Data-driven document manipulation</li>
-                <li>Interactive elements with hover and click behaviors</li>
-                <li>Radial layouts and polar coordinates</li>
-                <li>Scale transformations and data mapping</li>
-                <li>Dynamic color manipulation and pattern generation</li>
-            </ul>
-            
-            <p>The visualizations are built using pure SVG and JavaScript, offering a lightweight solution that maintains the elegance and interactivity of D3-style visualizations while being fully compatible with Obsidian's rendering capabilities.</p>
-            
-            <h2>Installation</h2>
-            
-            <ul>
-                <li>Download the latest release</li>
-                <li>Extract the files to your vault's <code>.obsidian/plugins/manuscript-timeline</code> folder</li>
-                <li>Enable the plugin in Obsidian's Community Plugins settings</li>
-            </ul>
-            
-            <h2>Development</h2>
-            
-            <p>Development of this plugin is private. The source code is provided for transparency and to allow users to verify its functionality, but it is not licensed for derivative works.</p>
-            
-            <p>If you wish to contribute to the development of this plugin or report issues:</p>
-            <ul>
-                <li><a href="https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues">Open an issue on GitHub</a> to report bugs or suggest features</li>
-                <li>Contact the author via GitHub for potential collaboration opportunities</li>
-            </ul>
-            
-            <p>Any modifications or derivative works require explicit permission from the author.</p>
-            
-            <h2>License</h2>
-            
-            <p>© 2025 Eric Rhys Taylor. All Rights Reserved.</p>
-            
-            <p>This Obsidian plugin is proprietary software.</p>
-            <ul>
-                <li>You may use this plugin for personal use only.</li>
-                <li>You may not copy, modify, distribute, sublicense, or resell any part of this plugin.</li>
-                <li>Commercial use of this software (e.g., as part of a paid product or service) is strictly prohibited without a separate license agreement.</li>
-                <li>Attribution is required in any mention or reference to this plugin.</li>
-            </ul>
-            
-            <p>For licensing inquiries, please contact via GitHub.</p>
-            
-            <h2>Author</h2>
-            
-            <p>Created by Eric Rhys Taylor</p>
-            
-            <h2>Questions & Support</h2>
-            
-            <p>For questions, issues, or feature requests, please <a href="https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues">open an issue on GitHub</a>.</p>
-        `;
+        // Add README content using safe DOM methods instead of innerHTML
+        // Create main heading
+        docContent.createEl('h1', {text: 'Obsidian Manuscript Timeline'});
+        
+        // Add description
+        docContent.createEl('p', {
+            text: 'A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.'
+        });
+        
+        // Features section
+        docContent.createEl('h2', {text: 'Features'});
+        
+        // Feature list
+        const featureList = docContent.createEl('ul');
+        const features = [
+            'Creates an interactive radial timeline visualization of your scenes',
+            'Organizes scenes by act, subplot, and chronological order',
+            'Click on scenes to open their corresponding files',
+            'Hover over scenes to see their details',
+            'Color-code scenes by subplot',
+            'Filter by publish stage or status',
+            'Customize source directory',
+            'Supports scene numbering for easy reference'
+        ];
+        
+        features.forEach(feature => {
+            featureList.createEl('li', {text: feature});
+        });
     }
 }
 
@@ -1928,10 +1925,17 @@ Edits:
 export class ManuscriptTimelineView extends ItemView {
     plugin: ManuscriptTimelinePlugin;
     sceneData: Scene[] = [];
-
+    openScenePaths: Set<string> = new Set<string>();
+    
     constructor(leaf: WorkspaceLeaf, plugin: ManuscriptTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
+    }
+    
+    // Add log method that respects the plugin's debug setting
+    private log(message: string, data?: any) {
+        // Use the plugin's log method
+        this.plugin.log(message, data);
     }
     
     getViewType(): string {
@@ -1942,18 +1946,126 @@ export class ManuscriptTimelineView extends ItemView {
         return TIMELINE_VIEW_DISPLAY_TEXT;
     }
     
-    async onOpen(): Promise<void> {
-        this.refreshTimeline();
+    getIcon(): string {
+        return "shell";
+    }
+
+    // Update the updateOpenFilesTracking method to use the log method
+    updateOpenFilesTracking(): void {
+        this.log('Running open files tracking check...');
+        
+        // Store the previous state to check if it changed
+        const previousOpenFiles = new Set(this.openScenePaths);
+        
+        this.openScenePaths = new Set<string>();
+        
+        // Get all open leaves
+        const leaves = this.app.workspace.getLeavesOfType('markdown');
+        const openFilesList: string[] = []; // Add proper type
+        
+        // Collect the paths of all open markdown files
+        leaves.forEach(leaf => {
+            // Check if the view is a MarkdownView with a file
+            const view = leaf.view;
+            if (view instanceof MarkdownView && view.file) {
+                this.openScenePaths.add(view.file.path);
+                openFilesList.push(view.file.path);
+            }
+        });
+        
+        // Also check if there's an active file not in a leaf
+        const activeFile = this.app.workspace.getActiveFile();
+        if (activeFile && !openFilesList.includes(activeFile.path)) {
+            this.openScenePaths.add(activeFile.path);
+            openFilesList.push(activeFile.path);
+        }
+        
+        // Get all open tabs from the workspace layout
+        try {
+            // @ts-ignore - Use the workspace layout accessor which may not be fully typed
+            const layout = this.app.workspace.getLayout();
+            if (layout && layout.leaves) {
+                const leafIds = Object.keys(layout.leaves as Record<string, any>);
+                
+                // Try to find any additional file paths from the layout
+                leafIds.forEach(id => {
+                    // @ts-ignore - Access the layout structure which may not be fully typed
+                    const leafData = layout.leaves[id];
+                    if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
+                        const filePath = leafData.state.file;
+                        if (!openFilesList.includes(filePath)) {
+                            this.openScenePaths.add(filePath);
+                            openFilesList.push(filePath);
+                        }
+                    }
+                });
+            }
+        } catch (e) {
+            console.error("Error accessing workspace layout:", e);
+        }
+        
+        // Log a summary instead of individual files
+        if (openFilesList.length > 0) {
+            this.log(`Found ${openFilesList.length} open files: ${openFilesList.join(', ')}`);
+        } else {
+            this.log('No open files found');
+        }
+        
+        // Check if the open files have changed
+        let hasChanged = false;
+        
+        // Different size means something changed
+        if (previousOpenFiles.size !== this.openScenePaths.size) {
+            this.log(`Open files count changed from ${previousOpenFiles.size} to ${this.openScenePaths.size}`);
+            hasChanged = true;
+        } else {
+            // Check if any files were added or removed
+            const addedFiles = [];
+            const removedFiles = [];
+            
+            for (const path of previousOpenFiles) {
+                if (!this.openScenePaths.has(path)) {
+                    removedFiles.push(path);
+                    hasChanged = true;
+                }
+            }
+            
+            for (const path of this.openScenePaths) {
+                if (!previousOpenFiles.has(path)) {
+                    addedFiles.push(path);
+                    hasChanged = true;
+                }
+            }
+            
+            if (addedFiles.length > 0) {
+                this.log(`New files opened: ${addedFiles.join(', ')}`);
+            }
+            
+            if (removedFiles.length > 0) {
+                this.log(`Files no longer open: ${removedFiles.join(', ')}`);
+            }
+        }
+        
+        // Update the UI if something changed
+        if (hasChanged) {
+            this.log('Open files changed, refreshing timeline...');
+            this.refreshTimeline();
+        } else {
+            this.log('No changes in open files detected');
+        }
     }
 
     refreshTimeline() {
-        const container = this.contentEl;
+        const container = this.containerEl.children[1] as HTMLElement;
         container.empty();
         
         const loadingEl = container.createEl("div", {
             cls: "loading-message",
             text: "Loading timeline data..."
         });
+        
+        // First update the tracking of open files
+        this.updateOpenFilesTracking();
         
         // Get the scene data using the plugin's method
         this.plugin.getSceneData()
@@ -1968,311 +2080,414 @@ export class ManuscriptTimelineView extends ItemView {
             })
             .catch(error => {
                 loadingEl.textContent = `Error: ${error.message}`;
+                loadingEl.className = "error-message";
                 if (this.plugin.settings.debug) {
                     console.error("Failed to load timeline data", error);
                 }
             });
     }
     
+    async onOpen(): Promise<void> {
+        this.log('Opening timeline view');
+        
+        // Register event to track file opens
+        this.registerEvent(
+            this.app.workspace.on('file-open', () => {
+                this.log('File opened event');
+                this.updateOpenFilesTracking();
+            })
+        );
+        
+        // Register event for layout changes (tab opening/closing)
+        this.registerEvent(
+            this.app.workspace.on('layout-change', () => {
+                this.log('Layout changed event');
+                this.updateOpenFilesTracking();
+            })
+        );
+        
+        // Register for active leaf changes which might mean tabs were changed
+        this.registerEvent(
+            this.app.workspace.on('active-leaf-change', () => {
+                this.log('Active leaf changed event');
+                this.updateOpenFilesTracking();
+            })
+        );
+        
+        // Register for quick switching between files
+        this.registerEvent(
+            this.app.workspace.on('quick-preview', () => {
+                this.log('Quick preview event');
+                this.updateOpenFilesTracking();
+            })
+        );
+        
+        // Initial check of open files
+        this.updateOpenFilesTracking();
+        
+        // Initial timeline render
+        this.refreshTimeline();
+    }
+    
     async onClose(): Promise<void> {
         // Clean up any event listeners or resources
     }
     
+    async createTestSceneFile(): Promise<void> {
+        const sourcePath = this.plugin.settings.sourcePath || "";
+        let targetPath = sourcePath;
+        
+        // Make sure the folder exists
+        if (sourcePath && !this.plugin.app.vault.getAbstractFileByPath(sourcePath)) {
+            try {
+                // Try to create the folder if it doesn't exist
+                await this.plugin.app.vault.createFolder(sourcePath);
+                console.log(`Created folder: ${sourcePath}`);
+            } catch (error) {
+                console.error(`Failed to create folder: ${sourcePath}`, error);
+                new Notice(`Failed to create folder: ${sourcePath}`);
+                return;
+            }
+        }
+        
+        // Create the test scene file content
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+        const testSceneContent = `---
+Class: Scene
+Title: 1 Test Scene
+When: ${today}
+Act: 1
+Subplot: Main Plot
+Character: [Protagonist]
+Status: Working
+Synopsis: This is a test scene created to troubleshoot the timeline view.
+---
+
+# Test Scene
+
+This is a test scene created to help troubleshoot the Manuscript Timeline plugin.
+
+## Scene Details
+- Title: Test Scene
+- When: ${today}
+- Act: 1
+- Subplot: Main Plot
+- Character: Protagonist
+- Status: Working
+`;
+        
+        // Generate a unique filename
+        const filename = `${targetPath ? targetPath + "/" : ""}1_test_scene.md`;
+        
+        try {
+            // Create the file
+            await this.plugin.app.vault.create(filename, testSceneContent);
+            console.log(`Created test scene file: ${filename}`);
+            new Notice(`Created test scene file: ${filename}`);
+            
+            // Refresh the timeline after a short delay to allow metadata cache to update
+            setTimeout(() => {
+                this.refreshTimeline();
+            }, 500);
+        } catch (error) {
+            console.error(`Failed to create test scene file: ${filename}`, error);
+            new Notice(`Failed to create test scene file: ${filename}`);
+        }
+    }
+    
     renderTimeline(container: HTMLElement, scenes: Scene[]): void {
-        // Clear container first
+        // Clear existing content
         container.empty();
-        container.addClass('manuscript-timeline-container');
         
         if (!scenes || scenes.length === 0) {
-            container.createEl('p', { text: 'No scene data available.' });
+            container.createEl("div", {
+                text: "No scenes found. Please check your source path in the settings."
+            });
+            this.log("No scenes found. Source path:", this.plugin.settings.sourcePath);
+            
+            // Add button to create a test scene file
+            const testButton = container.createEl("button", {
+                text: "Create a Test Scene File"
+            });
+            
+            testButton.style.marginTop = "20px";
+            testButton.style.padding = "10px";
+            
+            testButton.addEventListener("click", async () => {
+                await this.createTestSceneFile();
+            });
+            
             return;
         }
         
-        // Add a local lightenColor function to avoid using the private plugin method
-        const lightenColorLocally = (color: string, percent: number): string => {
-            // Remove the # if present
-            let hex = color.replace('#', '');
-            
-            // Convert to RGB
-            let r = parseInt(hex.slice(0, 2), 16);
-            let g = parseInt(hex.slice(2, 4), 16);
-            let b = parseInt(hex.slice(4, 6), 16);
-            
-            // Lighten by the percentage
-            r = Math.min(255, r + Math.floor((255 - r) * (percent / 100)));
-            g = Math.min(255, g + Math.floor((255 - g) * (percent / 100)));
-            b = Math.min(255, b + Math.floor((255 - b) * (percent / 100)));
-            
-            // Convert back to hex
-            return '#' + r.toString(16).padStart(2, '0') + 
-                         g.toString(16).padStart(2, '0') + 
-                         b.toString(16).padStart(2, '0');
-        };
+        this.log(`Found ${scenes.length} scenes to render`);
         
-        // Instead of recreating the SVG from scratch, use the existing method
+        this.sceneData = scenes;
+        
         try {
             // Generate the SVG content using the plugin's existing method
             const svgContent = this.plugin.createTimelineSVG(scenes);
+            this.log("SVG content generated, length:", svgContent.length);
             
             // Create a container with proper styling for centered content
             const timelineContainer = container.createEl("div", {
-                cls: "manuscript-timeline-container",
-                attr: {
-                    style: "display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; overflow: auto;"
-                }
+                cls: "manuscript-timeline-container"
             });
             
-            // Set the SVG content
+            // Use innerHTML to set the SVG content
             timelineContainer.innerHTML = svgContent;
             
             // Find the SVG element
             const svgElement = timelineContainer.querySelector("svg");
             if (svgElement) {
-                // Center the SVG
-                svgElement.style.width = "100%";
-                svgElement.style.height = "100%";
-                svgElement.style.maxHeight = "calc(100vh - 100px)";
-                svgElement.style.maxWidth = "100%";
-                svgElement.style.margin = "0 auto";
-                svgElement.style.transformOrigin = "center";
-                svgElement.style.cursor = "default";
+                // Set proper attributes for SVG element
+                svgElement.setAttribute('width', '100%');
+                svgElement.setAttribute('height', '100%');
+                svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                 
-                // Manually add mouseover event handlers for scene groups
-                const sceneGroups = timelineContainer.querySelectorAll(".scene-group");
-                sceneGroups.forEach(sceneGroup => {
-                    // Get the scene path element ID
-                    const scenePath = sceneGroup.querySelector(".scene-path");
-                    if (!scenePath) return;
-                    
-                    const sceneId = scenePath.id;
-                    const synopsisEl = timelineContainer.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
-                    
-                    // Add mouseenter event to show synopsis
-                    sceneGroup.addEventListener("mouseenter", (e) => {
-                        // Show the synopsis
-                        if (synopsisEl) {
-                            synopsisEl.setAttribute("style", "opacity: 1; pointer-events: all;");
-                        }
-                        
-                        // Fade all other scenes including void scenes
-                        timelineContainer.querySelectorAll("path.scene-path").forEach(pathEl => {
-                            if (pathEl.id !== sceneId) {
-                                // Store original fill if not already stored
-                                if (!pathEl.hasAttribute("data-original-fill")) {
-                                    const currentFill = pathEl.getAttribute("fill");
-                                    pathEl.setAttribute("data-original-fill", currentFill || "");
-                                }
-                                
-                                // Get original fill to calculate lighter version
-                                const originalFill = pathEl.getAttribute("data-original-fill") || "";
-                                
-                                // Apply lighter color instead of just reducing opacity
-                                if (originalFill.startsWith("#")) {
-                                    // For hex colors, apply a lighter version
-                                    try {
-                                        // Simple lightening algorithm
-                                        const lighterColor = lightenColorLocally(originalFill, 70);
-                                        pathEl.setAttribute("fill", lighterColor);
-                                    } catch (e) {
-                                        // Fallback to opacity if color lightening fails
-                                        pathEl.classList.add("faded");
-                                    }
-                                } else if (originalFill.startsWith("url(#")) {
-                                    // For pattern fills (like plaid for Todo/Working), add semi-transparent overlay to lighten
-                                    // Instead of just reducing opacity which makes it darker
-                                    
-                                    // First check if we've already added a lighter class to avoid duplicating
-                                    if (!pathEl.classList.contains("plaid-lighter")) {
-                                        // Add a class to identify this element as having a plaid filter
-                                        pathEl.classList.add("plaid-lighter");
-                                        
-                                        // Create an overlay filter if it doesn't exist yet
-                                        if (!document.getElementById('lighten-plaid-filter')) {
-                                            const svg = timelineContainer.querySelector('svg');
-                                            if (svg) {
-                                                // Create a filter that preserves colors while making them lighter
-                                                const defs = svg.querySelector('defs') || svg.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "defs"));
-                                                const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
-                                                filter.setAttribute("id", "lighten-plaid-filter");
-                                                
-                                                // Instead of a color matrix, use a component transfer to adjust brightness
-                                                // This preserves the hue while making colors lighter
-                                                const feComponentTransfer = document.createElementNS("http://www.w3.org/2000/svg", "feComponentTransfer");
-                                                
-                                                // Create function for each color channel
-                                                const funcR = document.createElementNS("http://www.w3.org/2000/svg", "feFuncR");
-                                                funcR.setAttribute("type", "linear");
-                                                funcR.setAttribute("slope", "0.5");
-                                                funcR.setAttribute("intercept", "0.5");
-                                                
-                                                const funcG = document.createElementNS("http://www.w3.org/2000/svg", "feFuncG");
-                                                funcG.setAttribute("type", "linear");
-                                                funcG.setAttribute("slope", "0.5");
-                                                funcG.setAttribute("intercept", "0.5");
-                                                
-                                                const funcB = document.createElementNS("http://www.w3.org/2000/svg", "feFuncB");
-                                                funcB.setAttribute("type", "linear");
-                                                funcB.setAttribute("slope", "0.5");
-                                                funcB.setAttribute("intercept", "0.5");
-                                                
-                                                // Add the functions to the component transfer
-                                                feComponentTransfer.appendChild(funcR);
-                                                feComponentTransfer.appendChild(funcG);
-                                                feComponentTransfer.appendChild(funcB);
-                                                
-                                                filter.appendChild(feComponentTransfer);
-                                                defs.appendChild(filter);
-                                            }
-                                        }
-                                        
-                                        // Apply the lighten filter
-                                        pathEl.setAttribute("filter", "url(#lighten-plaid-filter)");
-                                    }
-                                } else {
-                                    // For any other fill, use opacity
-                                    pathEl.classList.add("faded");
-                                }
-                            }
-                        });
-                        
-                        // Also fade void arcs which aren't part of scene-path class
-                        timelineContainer.querySelectorAll("path:not(.scene-path)").forEach(pathEl => {
-                            // Skip any paths that are part of other elements like month lines
-                            if (pathEl.parentElement && 
-                                !pathEl.parentElement.classList.contains("month-spokes") &&
-                                !pathEl.parentElement.classList.contains("act-borders") &&
-                                !pathEl.id.startsWith("monthLabelPath-") &&
-                                !pathEl.id.startsWith("innerMonthPath-") &&
-                                !pathEl.id.startsWith("actPath-") &&
-                                !pathEl.classList.contains("progress-ring-base") &&
-                                !pathEl.classList.contains("progress-ring-fill")) {
-                                
-                                // Store original fill if not already stored
-                                if (!pathEl.hasAttribute("data-original-fill")) {
-                                    const currentFill = pathEl.getAttribute("fill");
-                                    pathEl.setAttribute("data-original-fill", currentFill || "");
-                                }
-                                
-                                // Get original fill
-                                const originalFill = pathEl.getAttribute("data-original-fill") || "";
-                                
-                                // Apply lighter color to void arcs too
-                                if (originalFill.startsWith("#")) {
-                                    try {
-                                        const lighterColor = lightenColorLocally(originalFill, 70);
-                                        pathEl.setAttribute("fill", lighterColor);
-                                    } catch (e) {
-                                        pathEl.classList.add("faded");
-                                    }
-                                } else {
-                                    pathEl.classList.add("faded");
-                                }
-                            }
-                        });
-                        
-                        // Fade the title text
-                        sceneGroups.forEach(otherGroup => {
-                            if (otherGroup !== sceneGroup) {
-                                const titleEl = otherGroup.querySelector(".scene-title");
-                                if (titleEl) {
-                                    titleEl.classList.add("faded");
-                                }
-                            }
-                        });
-                        
-                        // Fade all number squares except for the current scene
-                        timelineContainer.querySelectorAll(".number-square, .number-text").forEach(el => {
-                            const dataSceneId = el.getAttribute("data-scene-id");
-                            if (dataSceneId !== sceneId) {
-                                el.classList.add("faded");
-                            }
-                        });
-                    });
-                    
-                    // Add mouseleave event to hide synopsis and restore colors
-                    sceneGroup.addEventListener("mouseleave", (e) => {
-                        // Hide the synopsis
-                        if (synopsisEl) {
-                            synopsisEl.setAttribute("style", "opacity: 0; pointer-events: none;");
-                        }
-                        
-                        // Restore original colors for scene paths
-                        timelineContainer.querySelectorAll("path.scene-path").forEach(pathEl => {
-                            const originalFill = pathEl.getAttribute("data-original-fill");
-                            if (originalFill) {
-                                pathEl.setAttribute("fill", originalFill);
-                                pathEl.removeAttribute("data-original-fill");
-                            }
-                            // Remove any filters that were applied
-                            if (pathEl.hasAttribute("filter")) {
-                                pathEl.removeAttribute("filter");
-                            }
-                            pathEl.classList.remove("faded");
-                            pathEl.classList.remove("plaid-lighter");
-                        });
-                        
-                        // Restore original colors for void arcs
-                        timelineContainer.querySelectorAll("path:not(.scene-path)").forEach(pathEl => {
-                            const originalFill = pathEl.getAttribute("data-original-fill");
-                            if (originalFill) {
-                                pathEl.setAttribute("fill", originalFill);
-                                pathEl.removeAttribute("data-original-fill");
-                            }
-                            pathEl.classList.remove("faded");
-                        });
-                        
-                        // Restore title opacity
-                        timelineContainer.querySelectorAll(".scene-title").forEach(titleEl => {
-                            titleEl.classList.remove("faded");
-                        });
-                        
-                        // Restore all number squares
-                        timelineContainer.querySelectorAll(".number-square, .number-text").forEach(el => {
-                            el.classList.remove("faded");
-                        });
-                    });
+                // Add direct JavaScript handlers for mouse events
+                const allSynopses = svgElement.querySelectorAll(".scene-info");
+                allSynopses.forEach(synopsis => {
+                    // Initial setup to ensure they're hidden
+                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
+                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
                 });
                 
-                // Add click event for scene paths to open the file
-                timelineContainer.querySelectorAll(".scene-path").forEach(element => {
-                    element.addEventListener("click", (event) => {
-                        const parentGroup = (element as HTMLElement).closest(".scene-group");
-                        if (parentGroup) {
-                            const path = parentGroup.getAttribute("data-path");
-                            if (path) {
-                                const file = this.app.vault.getAbstractFileByPath(decodeURIComponent(path));
+                // Mark open files in the timeline
+                const sceneGroups = svgElement.querySelectorAll(".scene-group");
+                this.log(`Found ${sceneGroups.length} scene groups to check against ${this.openScenePaths.size} open files`);
+                
+                let markedOpenCount = 0;
+                sceneGroups.forEach((group) => {
+                    const encodedPath = group.getAttribute("data-path");
+                    if (encodedPath && encodedPath !== "") {
+                        const filePath = decodeURIComponent(encodedPath);
+                        
+                        // Check if this file is currently open in a tab
+                        if (this.openScenePaths.has(filePath)) {
+                            this.log(`Marking scene as open: ${filePath}`);
+                            markedOpenCount++;
+                            
+                            // Add a class to indicate this scene is open
+                            group.classList.add("scene-is-open");
+                            
+                            // Mark the scene path element (but no styling)
+                            const scenePath = group.querySelector(".scene-path");
+                            if (scenePath) {
+                                scenePath.classList.add("scene-is-open");
+                            }
+                            
+                            // Mark the scene title text if present
+                            const sceneTitle = group.querySelector(".scene-title");
+                            if (sceneTitle) {
+                                sceneTitle.classList.add("scene-is-open");
+                            }
+                            
+                            // Mark the number square (but no styling)
+                            const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${scenePath?.id}"]`);
+                            if (numberSquare) {
+                                numberSquare.classList.add("scene-is-open");
+                            }
+                            
+                            // Mark the number text with the accent color
+                            const numberText = svgElement.querySelector(`.number-text[data-scene-id="${scenePath?.id}"]`);
+                            if (numberText) {
+                                numberText.classList.add("scene-is-open");
+                            }
+                        }
+                    }
+                    
+                    // Find all scene paths for click interaction
+                    const path = group.querySelector(".scene-path");
+                    if (path) {
+                        const encodedPath = group.getAttribute("data-path");
+                        if (encodedPath && encodedPath !== "") {
+                            const filePath = decodeURIComponent(encodedPath);
+                            path.addEventListener("click", () => {
+                                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
                                 if (file instanceof TFile) {
-                                    this.app.workspace.getLeaf().openFile(file);
-                                    event.stopPropagation();
+                                    // Check if the file is already open in any leaf
+                                    const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
+                                    const existingLeaf = leaves.find(leaf => {
+                                        const viewState = leaf.getViewState();
+                                        return viewState.state?.file === file.path;
+                                    });
+                                    
+                                    if (existingLeaf) {
+                                        // If the file is already open, just reveal that leaf
+                                        this.plugin.app.workspace.revealLeaf(existingLeaf);
+                                    } else {
+                                        // Open in a new tab without trying to return focus
+                                        const leaf = this.plugin.app.workspace.getLeaf('tab');
+                                        leaf.openFile(file);
+                                    }
                                 }
-                            }
+                            });
+                            (path as SVGElement & {style: CSSStyleDeclaration}).style.cursor = "pointer";
                         }
-                    });
+                        
+                        // Add mouseover effects for synopses
+                        const sceneId = path.id;
+                        const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+                        
+                        if (synopsis) {
+                            // Apply mouseover effects for the group/path
+                            group.addEventListener("mouseenter", (event: MouseEvent) => {
+                                // Reset all previous mouseover effects to ensure clean state
+                                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                                allElements.forEach(element => {
+                                    // Remove only the selected and non-selected classes, but keep the scene-is-open class
+                                    element.classList.remove('selected', 'non-selected');
+                                });
+                                
+                                // Update synopsis position with debug info
+                                const svg = svgElement.closest('svg') as SVGSVGElement;
+                                this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
+                                
+                                // Make the tooltip visible
+                                synopsis.classList.add('visible');
+                                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
+                                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
+                                
+                                this.log("Synopsis shown", {
+                                    synopsisVisible: synopsis.classList.contains('visible'),
+                                    opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
+                                });
+                                
+                                this.log("Mouseover triggered for scene:", sceneId);
+                                
+                                // Reveal the file in navigation
+                                const encodedPath = group.getAttribute("data-path");
+                                if (encodedPath && encodedPath !== "") {
+                                    const filePath = decodeURIComponent(encodedPath);
+                                    const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+                                    if (file instanceof TFile) {
+                                        // Use the file explorer view to reveal the file
+                                        const fileExplorer = this.plugin.app.workspace.getLeavesOfType("file-explorer")[0]?.view;
+                                        if (fileExplorer) {
+                                            // @ts-ignore - Ignore TypeScript errors as the API may not be fully typed
+                                            fileExplorer.revealInFolder(file);
+                                        }
+                                    }
+                                }
+                                
+                                // Find and animate the number square for this scene
+                                const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
+                                const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                                
+                                if (numberSquare) {
+                                    numberSquare.classList.add('selected');
+                                    
+                                    // Add scene color as CSS custom property
+                                    const sceneFill = path.getAttribute("fill");
+                                    if (sceneFill) {
+                                        // Use CSS variable for color
+                                        (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.setProperty('--scene-color', sceneFill);
+                                    }
+                                }
+                                
+                                if (numberText) {
+                                    numberText.classList.add('selected');
+                                }
+                                
+                                // Apply color transform without changing opacity
+                                const allPaths = svgElement.querySelectorAll(".scene-path");
+                                allPaths.forEach(otherPath => {
+                                    if (otherPath !== path) {
+                                        // Set ALL non-selected scenes to non-selected class
+                                        otherPath.classList.add('non-selected');
+                                        
+                                        // Find and fade this path's number box and scene title
+                                        const otherId = otherPath.id;
+                                        
+                                        // Add non-selected to all elements for this path
+                                        const elementsToFade = [
+                                            svgElement.querySelector(`.number-square[data-scene-id="${otherId}"]`),
+                                            svgElement.querySelector(`.number-text[data-scene-id="${otherId}"]`),
+                                            svgElement.querySelector(`.scene-title[data-scene-id="${otherId}"]`)
+                                        ];
+                                        
+                                        elementsToFade.forEach(element => {
+                                            if (element) {
+                                                // ONLY ADD NON-SELECTED CLASS - just like for number boxes
+                                                element.classList.add('non-selected');
+                                                
+                                                // Force browser reflow to apply the class
+                                                void (element as HTMLElement).offsetWidth;
+                                            }
+                                        });
+                                    } else {
+                                        // Make the current path more prominent with class
+                                        otherPath.classList.add('selected');
+                                        
+                                        // Highlight this scene's title and add the selected class
+                                        const currentId = otherPath.id;
+                                        const currentSceneTitle = svgElement.querySelector(`.scene-title[data-scene-id="${currentId}"]`);
+                                        
+                                        if (currentSceneTitle) {
+                                            // ONLY ADD SELECTED CLASS - just like for number boxes
+                                            currentSceneTitle.classList.add('selected');
+                                        }
+                                    }
+                                });
+                            });
+                            
+                            group.addEventListener("mouseleave", () => {
+                                if (synopsis) {
+                                    // Apply BOTH class and direct style changes for maximum compatibility
+                                    synopsis.classList.remove('visible');
+                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
+                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
+                                    
+                                    this.log("Synopsis hidden", {
+                                        synopsisVisible: synopsis.classList.contains('visible'),
+                                        opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
+                                    });
+                                }
+                                
+                                // Reset the styling of all scene elements
+                                const allPaths = svgElement.querySelectorAll(".scene-path");
+                                allPaths.forEach(otherPath => {
+                                    // Remove the mouseover effect classes
+                                    otherPath.classList.remove('selected', 'non-selected');
+                                    
+                                    // Reset number box and title styling
+                                    const otherId = otherPath.id;
+                                    
+                                    // Remove classes from all elements for this path
+                                    const elementsToReset = [
+                                        svgElement.querySelector(`.number-square[data-scene-id="${otherId}"]`),
+                                        svgElement.querySelector(`.number-text[data-scene-id="${otherId}"]`),
+                                        svgElement.querySelector(`.scene-title[data-scene-id="${otherId}"]`)
+                                    ];
+                                    
+                                    elementsToReset.forEach(element => {
+                                        if (element) {
+                                            // Remove mouseover classes
+                                            element.classList.remove('selected', 'non-selected');
+                                            
+                                            // For number squares, remove the custom CSS property
+                                            if (element.classList.contains('number-square')) {
+                                                (element as SVGElement & {style: CSSStyleDeclaration}).style.removeProperty('--scene-color');
+                                            }
+                                            
+                                            // Force browser reflow to apply the class
+                                            void (element as HTMLElement).offsetWidth;
+                                        }
+                                    });
+                                });
+                            });
+                        }
+                    }
                 });
                 
-                // Add CSS for better visual effects
-                const styleEl = document.createElement("style");
-                styleEl.textContent = `
-                    .scene-path.faded {
-                        opacity: 0.3;
-                        transition: opacity 0.2s ease-out;
-                    }
-                    
-                    .scene-title.faded {
-                        opacity: 0.2;
-                    }
-                    
-                    .number-square.faded, .number-text.faded {
-                        opacity: 0.2;
-                    }
-                `;
-                document.head.appendChild(styleEl);
+                this.log(`Marked ${markedOpenCount} scenes as open`);
+                this.log("Added click handlers and mouseover effects to scene paths");
+            } else {
+                console.error("Failed to find SVG element in container");
             }
-            
         } catch (error) {
-            if (this.plugin.settings.debug) {
-                console.error("Error rendering timeline:", error);
-            }
+            console.error("Error rendering timeline:", error);
             container.createEl("div", {
                 cls: "error-message",
                 text: `Error rendering timeline: ${error.message}`
