@@ -81,7 +81,6 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Basic scene title styling */
 .scene-title {
-  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   cursor: pointer;
   fill: white;
   opacity: 1;
@@ -698,4 +697,19 @@ tspan.character-text {
 .number-text.scene-is-open.selected {
   fill: #000000;
   font-weight: bold;
+}
+
+/* Number squares for search results */
+.number-square.search-result {
+  fill: #FFCC00;
+}
+
+/* When a scene is both open and a search result */
+.number-square.search-result.non-selected {
+  stroke: #FFFFFF;
+}
+
+/* Search clear button */
+.clear-search-btn {
+  cursor: pointer;
 }
