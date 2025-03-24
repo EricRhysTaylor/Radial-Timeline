@@ -40,7 +40,7 @@
 /* Scene elements */
 .scene-path {
   cursor: pointer;
-  transition: opacity 0.2s ease-out, fill 0.2s ease-out;
+  transition: opacity 0.1s, fill 0.1s;
 }
 
 /* Scene act elements */
@@ -68,9 +68,10 @@ path.scene-path[fill="#EEEEEE"] {
   opacity: 0.3;
 }
 
-/* Non-selected scene during mouseover */
+/* Non-selected scene during mouseover - these should have high priority */
 .scene-path.non-selected {
   fill: #EFEFEF !important;
+  transition: fill 0.2s ease-out;
 }
 
 /* Selected scene during mouseover */
@@ -85,6 +86,7 @@ path.scene-path[fill="#EEEEEE"] {
   fill: white;
   opacity: 1;
   pointer-events: none;
+  transition: fill 0.1s, opacity 0.1s;
 }
 
 .scene-title.faded {
@@ -94,9 +96,9 @@ path.scene-path[fill="#EEEEEE"] {
 /* Scene info tooltip */
 .scene-info {
   opacity: 0;
-  transition: opacity 0.3s ease-out;
+  transition: opacity 0.15s;
   pointer-events: none;
-  z-index: 100; /* Ensure synopsis appears above other elements */
+  z-index: 100;
 }
 
 /* Quadrant-specific positioning for synopses */
@@ -149,7 +151,7 @@ path.scene-path[fill="#EEEEEE"] {
   stroke-dasharray: 3, 5;
   stroke-linecap: round;
   opacity: 0;
-  transition: opacity 0.3s ease-out;
+  transition: opacity 0.15s;
 }
 
 .scene-info.visible .synopsis-connector {
@@ -162,10 +164,9 @@ path.scene-path[fill="#EEEEEE"] {
   font-size: 28px;
   text-anchor: middle;
   opacity: 0;
-  transition: opacity 0.4s ease-out;
-  transition-delay: 0.1s;
+  transition: opacity 0.15s;
   pointer-events: none;
-  max-width: 250px; /* Added max-width to limit the text width */
+  max-width: 250px;
 }
 
 .scene-info.visible .synopsis-text {
@@ -203,15 +204,11 @@ path.scene-path[fill="#EEEEEE"] {
 /* Synopsis cells */
 .synopsis-cell {
   opacity: 0;
-  transition: opacity 0.4s ease-out;
+  transition: opacity 0.15s, transform 0.15s;
   filter: brightness(1.1) contrast(0.9);
   stroke: var(--text-accent, #705DCF);
   stroke-width: 1.5;
   stroke-opacity: 0;
-  transition: opacity 0.4s ease-out, 
-              filter 0.4s ease-out, 
-              stroke-opacity 0.4s ease-out,
-              transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   transform: scale(0.95);
 }
 
@@ -221,20 +218,22 @@ path.scene-path[fill="#EEEEEE"] {
   transform: scale(1);
 }
 
-.synopsis-cell.cell-0 { transition-delay: 0.0s; }
-.synopsis-cell.cell-1 { transition-delay: 0.05s; }
-.synopsis-cell.cell-2 { transition-delay: 0.1s; }
-.synopsis-cell.cell-3 { transition-delay: 0.15s; }
-.synopsis-cell.cell-4 { transition-delay: 0.2s; }
-.synopsis-cell.cell-5 { transition-delay: 0.25s; }
-.synopsis-cell.cell-6 { transition-delay: 0.3s; }
-.synopsis-cell.cell-7 { transition-delay: 0.35s; }
-.synopsis-cell.cell-8 { transition-delay: 0.4s; }
-.synopsis-cell.cell-9 { transition-delay: 0.45s; }
+/* Simplify cell transitions - reduce or remove delay */
+.synopsis-cell.cell-0 { transition-delay: 0s; }
+.synopsis-cell.cell-1 { transition-delay: 0.02s; }
+.synopsis-cell.cell-2 { transition-delay: 0.04s; }
+.synopsis-cell.cell-3 { transition-delay: 0.06s; }
+.synopsis-cell.cell-4 { transition-delay: 0.08s; }
+.synopsis-cell.cell-5 { transition-delay: 0.1s; }
+.synopsis-cell.cell-6 { transition-delay: 0.12s; }
+.synopsis-cell.cell-7 { transition-delay: 0.14s; }
+.synopsis-cell.cell-8 { transition-delay: 0.16s; }
+.synopsis-cell.cell-9 { transition-delay: 0.18s; }
 
 /* Number elements basic styling */
 .number-square, .number-text {
-  transition: opacity 0.2s ease-out, fill 0.2s ease-out, transform 0.2s ease-out, stroke 0.2s ease-out, stroke-width 0.2s ease-out;
+  transition: opacity 0.1s, fill 0.1s, transform 0.1s;
+  pointer-events: none;
 }
 
 .number-square.faded, .number-text.faded {
@@ -242,7 +241,7 @@ path.scene-path[fill="#EEEEEE"] {
 }
 
 /* Mouseover styling - high specificity for scene title */ 
-.scene-title.non-selected {
+.scene-title.non-selected:not(.scene-is-open) {
   fill: #FFFFFF !important;
   font-weight: normal !important;
   stroke: none !important;
@@ -262,6 +261,10 @@ path.scene-path[fill="#EEEEEE"] {
   fill: #EFEFEF !important;
   stroke: none !important;
   stroke-width: 0 !important;
+  transition: fill 0.2s ease-out,
+              stroke 0.2s ease-out,
+              stroke-width 0.2s ease-out,
+              transform 0.2s ease-out;
 }
 
 .number-text.non-selected {
@@ -271,37 +274,15 @@ path.scene-path[fill="#EEEEEE"] {
 .number-square.selected {
   transform: scale(1.2);
   z-index: 10;
+  stroke-width: 2px !important;
+  /* Use the scene color if available, otherwise fall back to accent color */
+  stroke: var(--scene-color, #705DCF) !important;
 }
+
+/* Note: We can't use attr() reliably in CSS for colors, so the color is applied via inline CSS var in JavaScript */
 
 .number-text.selected {
   font-weight: bold;
-}
-
-/* Open scene indicators with high specificity */
-.scene-title.scene-is-open {
-  fill: var(--interactive-accent) !important;
-  font-weight: bold !important;
-  stroke: white !important;
-  stroke-width: 3px !important;
-  paint-order: stroke !important;
-}
-
-.number-square.scene-is-open {
-  stroke: var(--interactive-accent) !important;
-  stroke-width: 2px !important;
-}
-
-/* Make sure open cells respect the non-selected treatment during mouseover */
-.scene-path.scene-is-open.non-selected {
-  fill: #EFEFEF !important;
-}
-
-/* Make sure title text for open scenes also respects non-selected treatment during mouseover */
-.scene-title.scene-is-open.non-selected {
-  fill: #FFFFFF !important;
-  font-weight: normal !important;
-  stroke: none !important;
-  stroke-width: 0 !important;
 }
 
 /* Text styling for SVG elements */
@@ -345,27 +326,73 @@ path.scene-path[fill="#EEEEEE"] {
 }
 
 .status-count {
-  font-size: 18px;
-  opacity: 0.7;
+  font-size: 75%;
+  opacity: 0.85;
   vertical-align: super;
-  font-size: smaller;
+  position: relative;
+  top: -0.4em;
+  font-weight: normal;
+  baseline-shift: super;
 }
 
 /* Documentation styling */
+.settings-separator {
+  margin: 1em 0 2em 0;
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
 .documentation-container {
-  padding: 0 20px;
-  max-width: 800px;
-  margin: 0 auto;
+  padding: 0 1em;
+}
+
+.documentation-container h1 {
+  font-size: 1.8em;
+  margin-top: 0.5em;
+}
+
+.documentation-container h2 {
+  font-size: 1.5em;
+  margin-top: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.documentation-container h3 {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+
+.documentation-container img {
+  max-width: 100%;
+  border-radius: 5px;
+  margin: 1em 0;
+}
+
+.documentation-container code {
+  background-color: var(--background-primary);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+.documentation-container pre {
+  background-color: var(--background-primary);
+  padding: 1em;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 1em 0;
 }
 
 .metadata-example {
+  line-height: 2em;
+  white-space: pre;
+  font-family: monospace;
+  user-select: all;
+  cursor: text;
   background-color: var(--background-secondary);
   padding: 10px;
   border-radius: 5px;
   overflow-x: auto;
-  font-family: monospace;
-  user-select: all;
-  cursor: text;
 }
 
 /* Screenshot styling */
@@ -561,13 +588,13 @@ tspan.character-text {
 }
 
 .month-spoke-line.act-boundary {
-  stroke: var(--text-accent, #705dcf);
+  stroke: #FFFFFF;
   stroke-width: 3;
 }
 
 /* Act Borders and Progress Ring */
 .act-border {
-  stroke: var(--text-accent, #705dcf);
+  stroke: #FFFFFF;
   stroke-width: 5;
   fill: none;
 }
@@ -626,4 +653,69 @@ tspan.character-text {
   font-size: 18px;
   text-transform: uppercase;
   opacity: 0.85; /* Slightly transparent */
+}
+
+/* Rules for open scenes - minimal, simplified approach */
+
+/* When no hover is happening - default state for open scenes */
+.scene-title.scene-is-open {
+  fill: var(--text-accent, #705DCF) !important;
+  stroke: white !important;
+  stroke-width: 3px !important;
+  paint-order: stroke !important;
+}
+
+.number-square.scene-is-open {
+  stroke: #705DCF !important;
+  stroke-width: 3px !important;
+  transform: scale(1.2) !important;
+}
+
+.number-text.scene-is-open {
+  font-weight: normal !important;
+  fill: #000000 !important;
+}
+
+/* When another scene is being hovered - open scenes should look non-selected */
+.scene-title.scene-is-open.non-selected {
+  fill: #FFFFFF!important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+  opacity: 0.7 !important;
+}
+
+.number-square.scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+  transform: scale(1) !important;
+  transition: fill 0.1s;
+}
+
+.number-text.scene-is-open.non-selected {
+  fill: #ffffff !important;
+  opacity: 1 !important;
+  font-weight: normal !important;
+  transition: fill 0.1s;
+}
+
+/* When hovering the open scene itself */
+.scene-title.scene-is-open.selected {
+  fill: #705DCF !important;
+  stroke: white !important;
+  stroke-width: 3px !important;
+  paint-order: stroke !important;
+}
+
+.number-square.scene-is-open.selected {
+  stroke: #705DCF !important;
+  stroke-width: 2px !important;
+  transform: scale(1.2) !important;
+  fill: #FFFFFF !important;
+  transition: fill 0.1s, transform 0.1s;
+}
+
+.number-text.scene-is-open.selected {
+  fill: #000000 !important;
+  font-weight: bold !important;
 }

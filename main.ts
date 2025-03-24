@@ -137,6 +137,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     openScenePaths: Set<string> = new Set<string>();
 
     async onload() {
+        // Always log when plugin loads, regardless of debug setting
+        console.log('Manuscript Timeline Plugin: Loading plugin...');
         await this.loadSettings();
         
         // Register the timeline view
@@ -145,6 +147,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             (leaf: WorkspaceLeaf) => {
                 const view = new ManuscriptTimelineView(leaf, this);
                 this.activeTimelineView = view;
+                this.log('Timeline view created');
                 return view;
             }
         );
@@ -175,6 +178,21 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 }
             }
         });
+        
+        // Schedule a delayed polling of open files after startup
+        // Only do this if we haven't already done a check on view creation
+        setTimeout(() => {
+            this.log('Performing initial open files check...');
+            
+            // Only perform check if the view exists and there are no open files detected yet
+            if (this.activeTimelineView && this.activeTimelineView.openScenePaths.size === 0) {
+                this.log('No open files detected yet, running initial check');
+                this.activeTimelineView.updateOpenFilesTracking();
+                this.log('Initial open files check complete.');
+            } else {
+                this.log('View already has open files tracked, skipping redundant check');
+            }
+        }, 3000); // Wait 3 seconds after plugin load
 
         // Register event listeners to refresh the timeline when files change
         this.registerEvent(
@@ -956,7 +974,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                       d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + 0.02))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + 0.02))} 
                                          A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
                                       fill="none"/>
-                                <text class="scene-title scene-title-${fontSize <= 10 ? 'small' : (fontSize <= 12 ? 'medium' : 'large')}" dy="${dyOffset}">
+                                <text class="scene-title scene-title-${fontSize <= 10 ? 'small' : (fontSize <= 12 ? 'medium' : 'large')}" dy="${dyOffset}" data-scene-id="${sceneId}">
                                     <textPath href="#textPath-${act}-${ring}-${idx}" startOffset="4">
                                         ${text}
                                     </textPath>
@@ -1446,7 +1464,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         };
     }
 
-    private log(message: string, data?: any) {
+    public log(message: string, data?: any) {
+        // Only log if debug mode is enabled
         if (this.settings.debug) {
             if (data) {
                 console.log(`Manuscript Timeline Plugin: ${message}`, data);
@@ -1533,7 +1552,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     // Add this function near the top of the class, after refreshTimelineIfNeeded 
     public updateSynopsisPosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
         if (!synopsis || !svg) {
-            console.log("updateSynopsisPosition: missing synopsis or svg element", {synopsis, svg});
+            this.log("updateSynopsisPosition: missing synopsis or svg element", {synopsis, svg});
             return;
         }
         
@@ -1543,7 +1562,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             pt.y = event.clientY;
             const ctm = svg.getScreenCTM();
             if (!ctm) {
-                console.log("updateSynopsisPosition: No SVG CTM available");
+                this.log("updateSynopsisPosition: No SVG CTM available");
                 return;
             }
             
@@ -1587,10 +1606,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const translateValue = `translate(${translateX}, ${translateY})`;
             synopsis.setAttribute('transform', translateValue);
             
-            console.log(`Synopsis shown at position: ${translateX}, ${translateY} for quadrant ${quadrant}`, {
+            this.log(`Synopsis shown at position: ${translateX}, ${translateY} for quadrant ${quadrant}`, {
                 synopsisVisible: synopsis.classList.contains('visible'),
                 transform: synopsis.getAttribute('transform'),
-                opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
+                quadrant: quadrant
             });
         } catch (error) {
             console.error("Error in updateSynopsisPosition:", error);
@@ -1599,6 +1618,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Add method to update open files tracking
     private updateOpenFilesTracking() {
+        this.log('Running open files tracking check...');
+        
         // Store the previous state to check if it changed
         const previousOpenFiles = new Set(this.openScenePaths);
         
@@ -1606,6 +1627,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         // Get all open leaves
         const leaves = this.app.workspace.getLeavesOfType('markdown');
+        const openFilesList: string[] = []; // Add proper type
         
         // Collect the paths of all open markdown files
         leaves.forEach(leaf => {
@@ -1613,13 +1635,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const view = leaf.view;
             if (view instanceof MarkdownView && view.file) {
                 this.openScenePaths.add(view.file.path);
+                openFilesList.push(view.file.path);
             }
         });
         
         // Also check if there's an active file not in a leaf
         const activeFile = this.app.workspace.getActiveFile();
-        if (activeFile) {
+        if (activeFile && !openFilesList.includes(activeFile.path)) {
             this.openScenePaths.add(activeFile.path);
+            openFilesList.push(activeFile.path);
         }
         
         // Get all open tabs from the workspace layout
@@ -1634,7 +1658,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     // @ts-ignore - Access the layout structure which may not be fully typed
                     const leafData = layout.leaves[id];
                     if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
-                        this.openScenePaths.add(leafData.state.file);
+                        const filePath = leafData.state.file;
+                        if (!openFilesList.includes(filePath)) {
+                            this.openScenePaths.add(filePath);
+                            openFilesList.push(filePath);
+                        }
                     }
                 });
             }
@@ -1642,36 +1670,57 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             console.error("Error accessing workspace layout:", e);
         }
         
+        // Log a summary instead of individual files
+        if (openFilesList.length > 0) {
+            this.log(`Found ${openFilesList.length} open files: ${openFilesList.join(', ')}`);
+        } else {
+            this.log('No open files found');
+        }
+        
         // Check if the open files have changed
         let hasChanged = false;
         
         // Different size means something changed
         if (previousOpenFiles.size !== this.openScenePaths.size) {
+            this.log(`Open files count changed from ${previousOpenFiles.size} to ${this.openScenePaths.size}`);
             hasChanged = true;
         } else {
             // Check if any files were added or removed
+            const addedFiles = [];
+            const removedFiles = [];
+            
             for (const path of previousOpenFiles) {
                 if (!this.openScenePaths.has(path)) {
+                    removedFiles.push(path);
                     hasChanged = true;
-                    break;
                 }
             }
             
-            if (!hasChanged) {
-                for (const path of this.openScenePaths) {
-                    if (!previousOpenFiles.has(path)) {
-                        hasChanged = true;
-                        break;
-                    }
+            for (const path of this.openScenePaths) {
+                if (!previousOpenFiles.has(path)) {
+                    addedFiles.push(path);
+                    hasChanged = true;
                 }
+            }
+            
+            if (addedFiles.length > 0) {
+                this.log(`New files opened: ${addedFiles.join(', ')}`);
+            }
+            
+            if (removedFiles.length > 0) {
+                this.log(`Files no longer open: ${removedFiles.join(', ')}`);
             }
         }
         
-        // If files have changed, refresh the timeline
+        // Update the UI if something changed
         if (hasChanged) {
-            console.log("Open files changed, refreshing timeline");
-            // Update the active timeline view if it exists
-            requestAnimationFrame(() => this.activeTimelineView?.refreshTimeline());
+            this.log('Open files changed, refreshing timeline...');
+            // Use the appropriate method to refresh the timeline
+            if (this.activeTimelineView) {
+                this.activeTimelineView.refreshTimeline();
+            }
+        } else {
+            this.log('No changes in open files detected');
         }
     }
 }
@@ -1838,58 +1887,6 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         // Add horizontal rule to separate settings from documentation
         containerEl.createEl('hr', { cls: 'settings-separator' });
         
-        // Add some basic styling for the documentation section
-        const style = document.createElement('style');
-        style.textContent = `
-            .settings-separator {
-                margin: 1em 0 2em 0;
-                border: none;
-                border-top: 1px solid var(--background-modifier-border);
-            }
-            .documentation-container {
-                padding: 0 1em;
-            }
-            .documentation-container h1 {
-                font-size: 1.8em;
-                margin-top: 0.5em;
-            }
-            .documentation-container h2 {
-                font-size: 1.5em;
-                margin-top: 1.5em;
-                padding-bottom: 0.3em;
-                border-bottom: 1px solid var(--background-modifier-border);
-            }
-            .documentation-container h3 {
-                font-size: 1.2em;
-                margin-top: 1em;
-            }
-            .documentation-container img {
-                max-width: 100%;
-                border-radius: 5px;
-                margin: 1em 0;
-            }
-            .documentation-container code {
-                background-color: var(--background-primary);
-                padding: 0.2em 0.4em;
-                border-radius: 3px;
-            }
-            .documentation-container pre {
-                background-color: var(--background-primary);
-                padding: 1em;
-                border-radius: 5px;
-                overflow-x: auto;
-                margin: 1em 0;
-            }
-            .metadata-example {
-                line-height: 2em;
-                white-space: pre;
-                font-family: monospace;
-                user-select: all;
-                cursor: text;
-            }
-        `;
-        document.head.appendChild(style);
-        
         // Create a container for the documentation content
         const docContent = containerEl.createEl('div', {cls: 'documentation-container'});
         
@@ -1935,6 +1932,12 @@ export class ManuscriptTimelineView extends ItemView {
         this.plugin = plugin;
     }
     
+    // Add log method that respects the plugin's debug setting
+    private log(message: string, data?: any) {
+        // Use the plugin's log method
+        this.plugin.log(message, data);
+    }
+    
     getViewType(): string {
         return TIMELINE_VIEW_TYPE;
     }
@@ -1947,8 +1950,10 @@ export class ManuscriptTimelineView extends ItemView {
         return "shell";
     }
 
-    // Add method to update open files tracking
+    // Update the updateOpenFilesTracking method to use the log method
     updateOpenFilesTracking(): void {
+        this.log('Running open files tracking check...');
+        
         // Store the previous state to check if it changed
         const previousOpenFiles = new Set(this.openScenePaths);
         
@@ -1956,6 +1961,7 @@ export class ManuscriptTimelineView extends ItemView {
         
         // Get all open leaves
         const leaves = this.app.workspace.getLeavesOfType('markdown');
+        const openFilesList: string[] = []; // Add proper type
         
         // Collect the paths of all open markdown files
         leaves.forEach(leaf => {
@@ -1963,13 +1969,15 @@ export class ManuscriptTimelineView extends ItemView {
             const view = leaf.view;
             if (view instanceof MarkdownView && view.file) {
                 this.openScenePaths.add(view.file.path);
+                openFilesList.push(view.file.path);
             }
         });
         
         // Also check if there's an active file not in a leaf
         const activeFile = this.app.workspace.getActiveFile();
-        if (activeFile) {
+        if (activeFile && !openFilesList.includes(activeFile.path)) {
             this.openScenePaths.add(activeFile.path);
+            openFilesList.push(activeFile.path);
         }
         
         // Get all open tabs from the workspace layout
@@ -1984,7 +1992,11 @@ export class ManuscriptTimelineView extends ItemView {
                     // @ts-ignore - Access the layout structure which may not be fully typed
                     const leafData = layout.leaves[id];
                     if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
-                        this.openScenePaths.add(leafData.state.file);
+                        const filePath = leafData.state.file;
+                        if (!openFilesList.includes(filePath)) {
+                            this.openScenePaths.add(filePath);
+                            openFilesList.push(filePath);
+                        }
                     }
                 });
             }
@@ -1992,35 +2004,54 @@ export class ManuscriptTimelineView extends ItemView {
             console.error("Error accessing workspace layout:", e);
         }
         
+        // Log a summary instead of individual files
+        if (openFilesList.length > 0) {
+            this.log(`Found ${openFilesList.length} open files: ${openFilesList.join(', ')}`);
+        } else {
+            this.log('No open files found');
+        }
+        
         // Check if the open files have changed
         let hasChanged = false;
         
         // Different size means something changed
         if (previousOpenFiles.size !== this.openScenePaths.size) {
+            this.log(`Open files count changed from ${previousOpenFiles.size} to ${this.openScenePaths.size}`);
             hasChanged = true;
         } else {
             // Check if any files were added or removed
+            const addedFiles = [];
+            const removedFiles = [];
+            
             for (const path of previousOpenFiles) {
                 if (!this.openScenePaths.has(path)) {
+                    removedFiles.push(path);
                     hasChanged = true;
-                    break;
                 }
             }
             
-            if (!hasChanged) {
-                for (const path of this.openScenePaths) {
-                    if (!previousOpenFiles.has(path)) {
-                        hasChanged = true;
-                        break;
-                    }
+            for (const path of this.openScenePaths) {
+                if (!previousOpenFiles.has(path)) {
+                    addedFiles.push(path);
+                    hasChanged = true;
                 }
+            }
+            
+            if (addedFiles.length > 0) {
+                this.log(`New files opened: ${addedFiles.join(', ')}`);
+            }
+            
+            if (removedFiles.length > 0) {
+                this.log(`Files no longer open: ${removedFiles.join(', ')}`);
             }
         }
         
-        // If files have changed, refresh the timeline
+        // Update the UI if something changed
         if (hasChanged) {
-            console.log("Open files changed, refreshing timeline");
-            requestAnimationFrame(() => this.refreshTimeline());
+            this.log('Open files changed, refreshing timeline...');
+            this.refreshTimeline();
+        } else {
+            this.log('No changes in open files detected');
         }
     }
 
@@ -2057,9 +2088,12 @@ export class ManuscriptTimelineView extends ItemView {
     }
     
     async onOpen(): Promise<void> {
+        this.log('Opening timeline view');
+        
         // Register event to track file opens
         this.registerEvent(
             this.app.workspace.on('file-open', () => {
+                this.log('File opened event');
                 this.updateOpenFilesTracking();
             })
         );
@@ -2067,6 +2101,7 @@ export class ManuscriptTimelineView extends ItemView {
         // Register event for layout changes (tab opening/closing)
         this.registerEvent(
             this.app.workspace.on('layout-change', () => {
+                this.log('Layout changed event');
                 this.updateOpenFilesTracking();
             })
         );
@@ -2074,6 +2109,7 @@ export class ManuscriptTimelineView extends ItemView {
         // Register for active leaf changes which might mean tabs were changed
         this.registerEvent(
             this.app.workspace.on('active-leaf-change', () => {
+                this.log('Active leaf changed event');
                 this.updateOpenFilesTracking();
             })
         );
@@ -2081,9 +2117,13 @@ export class ManuscriptTimelineView extends ItemView {
         // Register for quick switching between files
         this.registerEvent(
             this.app.workspace.on('quick-preview', () => {
+                this.log('Quick preview event');
                 this.updateOpenFilesTracking();
             })
         );
+        
+        // Initial check of open files
+        this.updateOpenFilesTracking();
         
         // Initial timeline render
         this.refreshTimeline();
@@ -2163,7 +2203,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             container.createEl("div", {
                 text: "No scenes found. Please check your source path in the settings."
             });
-            console.log("Timeline: No scenes found. Source path:", this.plugin.settings.sourcePath);
+            this.log("No scenes found. Source path:", this.plugin.settings.sourcePath);
             
             // Add button to create a test scene file
             const testButton = container.createEl("button", {
@@ -2180,14 +2220,14 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             return;
         }
         
-        console.log(`Timeline: Found ${scenes.length} scenes to render`);
+        this.log(`Found ${scenes.length} scenes to render`);
         
         this.sceneData = scenes;
         
         try {
             // Generate the SVG content using the plugin's existing method
             const svgContent = this.plugin.createTimelineSVG(scenes);
-            console.log("SVG content generated, length:", svgContent.length);
+            this.log("SVG content generated, length:", svgContent.length);
             
             // Create a container with proper styling for centered content
             const timelineContainer = container.createEl("div", {
@@ -2215,7 +2255,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 
                 // Mark open files in the timeline
                 const sceneGroups = svgElement.querySelectorAll(".scene-group");
-                console.log(`Found ${sceneGroups.length} scene groups to check against ${this.openScenePaths.size} open files`);
+                this.log(`Found ${sceneGroups.length} scene groups to check against ${this.openScenePaths.size} open files`);
                 
                 let markedOpenCount = 0;
                 sceneGroups.forEach((group) => {
@@ -2225,7 +2265,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                         
                         // Check if this file is currently open in a tab
                         if (this.openScenePaths.has(filePath)) {
-                            console.log(`Marking scene as open: ${filePath}`);
+                            this.log(`Marking scene as open: ${filePath}`);
                             markedOpenCount++;
                             
                             // Add a class to indicate this scene is open
@@ -2296,6 +2336,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                 // Reset all previous mouseover effects to ensure clean state
                                 const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
                                 allElements.forEach(element => {
+                                    // Remove only the selected and non-selected classes, but keep the scene-is-open class
                                     element.classList.remove('selected', 'non-selected');
                                 });
                                 
@@ -2308,12 +2349,12 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                 (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
                                 (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
                                 
-                                console.log("Synopsis shown", {
+                                this.log("Synopsis shown", {
                                     synopsisVisible: synopsis.classList.contains('visible'),
                                     opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
                                 });
                                 
-                                console.log("Mouseover triggered for scene:", sceneId);
+                                this.log("Mouseover triggered for scene:", sceneId);
                                 
                                 // Reveal the file in navigation
                                 const encodedPath = group.getAttribute("data-path");
@@ -2337,11 +2378,11 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                 if (numberSquare) {
                                     numberSquare.classList.add('selected');
                                     
-                                    // Get the scene fill color and apply it to the number box stroke
+                                    // Add scene color as CSS custom property
                                     const sceneFill = path.getAttribute("fill");
                                     if (sceneFill) {
-                                        (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.stroke = sceneFill;
-                                        (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "2px";
+                                        // Use CSS variable for color
+                                        (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.setProperty('--scene-color', sceneFill);
                                     }
                                 }
                                 
@@ -2398,7 +2439,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                     (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
                                     (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
                                     
-                                    console.log("Synopsis hidden", {
+                                    this.log("Synopsis hidden", {
                                         synopsisVisible: synopsis.classList.contains('visible'),
                                         opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
                                     });
@@ -2425,22 +2466,9 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                             // Remove mouseover classes
                                             element.classList.remove('selected', 'non-selected');
                                             
-                                            // Reset inline styles for scene titles
-                                            if (element.classList.contains('scene-title')) {
-                                                // Reset to default or preserve open state styling
-                                                if (element.classList.contains('scene-is-open')) {
-                                                    // Restore open scene styling
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fill = "";
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fontWeight = "";
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.stroke = "";
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "";
-                                                } else {
-                                                    // Reset to normal styling
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fill = "";
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.fontWeight = "";
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.stroke = "";
-                                                    (element as SVGElement & {style: CSSStyleDeclaration}).style.strokeWidth = "";
-                                                }
+                                            // For number squares, remove the custom CSS property
+                                            if (element.classList.contains('number-square')) {
+                                                (element as SVGElement & {style: CSSStyleDeclaration}).style.removeProperty('--scene-color');
                                             }
                                             
                                             // Force browser reflow to apply the class
@@ -2453,8 +2481,9 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     }
                 });
                 
-                console.log(`Marked ${markedOpenCount} scenes as open`);
-                console.log("Added click handlers and mouseover effects to scene paths");
+                this.log(`Marked ${markedOpenCount} scenes as open`);
+                this.log("Added click handlers and mouseover effects to scene paths");
+            } else {
                 console.error("Failed to find SVG element in container");
             }
         } catch (error) {
