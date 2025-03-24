@@ -61,7 +61,7 @@
 
 /* Void cells styling - remove pointer cursor */
 path.scene-path[fill="#EEEEEE"] {
-  cursor: default !important;
+  cursor: default;
 }
 
 .scene-path.faded {
@@ -70,7 +70,7 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Non-selected scene during mouseover - these should have high priority */
 .scene-path.non-selected {
-  fill: #EFEFEF !important;
+  fill: #EFEFEF;
   transition: fill 0.2s ease-out;
 }
 
@@ -120,41 +120,31 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Override for title text elements */
 .synopsis-q1 .title-text-main, .synopsis-q1 .title-text-secondary, .synopsis-q1 .metadata-text {
-  text-anchor: end !important;
+  text-anchor: end;
 }
 
 .synopsis-q2 .title-text-main, .synopsis-q2 .title-text-secondary, .synopsis-q2 .metadata-text {
-  text-anchor: start !important;
+  text-anchor: start;
 }
 
 .synopsis-q3 .title-text-main, .synopsis-q3 .title-text-secondary, .synopsis-q3 .metadata-text {
-  text-anchor: start !important;
+  text-anchor: start;
 }
 
 .synopsis-q4 .title-text-main, .synopsis-q4 .title-text-secondary, .synopsis-q4 .metadata-text {
-  text-anchor: end !important;
+  text-anchor: end;
 }
 
 .scene-info.visible {
-  opacity: 1 !important;
-  pointer-events: all !important;
+  opacity: 1;
+  pointer-events: all;
   /* Ensure no other style is overriding this */
-  visibility: visible !important;
-  display: block !important;
+  visibility: visible;
+  display: block;
 }
 
-/* Synopsis connector - curve from scene to text */
-.synopsis-connector {
-  fill: none;
-  stroke: var(--text-accent, #705DCF);
-  stroke-width: 2.5;
-  stroke-dasharray: 3, 5;
-  stroke-linecap: round;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
 
-.scene-info.visible .synopsis-connector {
+.scene-info.visible {
   opacity: 1;
 }
 
@@ -213,7 +203,7 @@ path.scene-path[fill="#EEEEEE"] {
 }
 
 .synopsis-cell.revealed {
-  opacity: 0.92 !important;
+  opacity: 0.92;
   stroke-opacity: 1;
   transform: scale(1);
 }
@@ -242,25 +232,23 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Mouseover styling - high specificity for scene title */ 
 .scene-title.non-selected:not(.scene-is-open) {
-  fill: #FFFFFF !important;
-  font-weight: normal !important;
-  stroke: none !important;
-  stroke-width: 0 !important;
+  fill: #FFFFFF;
+  font-weight: normal;
+  stroke: none;
+  stroke-width: 0;
 }
 
 .scene-title.selected {
-  fill: #000000 !important;
-  font-weight: bold !important;
-  stroke: white !important;
-  stroke-width: 0.5px !important;
-  paint-order: stroke !important;
+  stroke: #000000;
+  stroke-width: 3px;
+  paint-order: stroke;
 }
 
 /* Number elements during mouseover with high specificity */
 .number-square.non-selected {
-  fill: #EFEFEF !important;
-  stroke: none !important;
-  stroke-width: 0 !important;
+  fill: #EFEFEF;
+  stroke: none;
+  stroke-width: 0;
   transition: fill 0.2s ease-out,
               stroke 0.2s ease-out,
               stroke-width 0.2s ease-out,
@@ -268,15 +256,15 @@ path.scene-path[fill="#EEEEEE"] {
 }
 
 .number-text.non-selected {
-  fill: #FFFFFF !important;
+  fill: #FFFFFF;
 }
 
 .number-square.selected {
   transform: scale(1.2);
   z-index: 10;
-  stroke-width: 2px !important;
+  stroke-width: 2px;
   /* Use the scene color if available, otherwise fall back to accent color */
-  stroke: var(--scene-color, #705DCF) !important;
+  stroke: var(--scene-color, #705DCF);
 }
 
 /* Note: We can't use attr() reliably in CSS for colors, so the color is applied via inline CSS var in JavaScript */
@@ -315,15 +303,7 @@ path.scene-path[fill="#EEEEEE"] {
   font-size: 18px;
 }
 
-/* Flipped text for Act 2 */
-.scene-title-flipped {
-  fill: var(--text-accent, #705DCF); /* Make Act 2 text a different color to improve visibility */
-}
 
-/* Add specific text element rotations for Act 2 - attempt to rotate text within textPath */
-.scene-title-flipped textPath {
-  letter-spacing: 1px; /* Add slight letter spacing for better readability */
-}
 
 .status-count {
   font-size: 75%;
@@ -416,8 +396,8 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Buy me a coffee button */
 .bmc-button {
-  height: 60px !important;
-  width: 217px !important;
+  height: 60px;
+  width: 217px;
 }
 
 /* Make sure SVG text elements receive these styles */
@@ -543,12 +523,12 @@ tspan.character-text {
 
 /* Force global overrides for Q1 and Q4 */
 .synopsis-q1 text, .synopsis-q4 text {
-  text-anchor: end !important;
+  text-anchor: end !important;  
 }
 
 /* Force global overrides for Q2 and Q3 */
 .synopsis-q2 text, .synopsis-q3 text {
-  text-anchor: start !important;
+  text-anchor: start;
 }
 
 /* Center number styles */
@@ -619,17 +599,17 @@ tspan.character-text {
 }
 
 .theme-dark .key-text {
-  fill: #ffffff !important;
+  fill: #ffffff;
 }
 
 .theme-light .key-text {
-  fill: #333333 !important;
+  fill: #333333;
 }
 
 .info-text {
   dominant-baseline: hanging;
   text-anchor: start;
-  fill: #333333 !important; /* Always keep info-text dark for better visibility */
+  fill: #333333; /* Always keep info-text dark for better visibility */
 }
 
 .info-title {
@@ -659,63 +639,63 @@ tspan.character-text {
 
 /* When no hover is happening - default state for open scenes */
 .scene-title.scene-is-open {
-  fill: var(--text-accent, #705DCF) !important;
-  stroke: white !important;
-  stroke-width: 3px !important;
-  paint-order: stroke !important;
+  fill: white;
+  font-weight: bold;
+  stroke: black;
+  stroke-width: 3px;
+  paint-order: stroke;
 }
 
 .number-square.scene-is-open {
-  stroke: #705DCF !important;
-  stroke-width: 3px !important;
-  transform: scale(1.2) !important;
+  stroke: #705DCF;
+  stroke-width: 3px;
+  transform: scale(1.2);
 }
 
 .number-text.scene-is-open {
-  font-weight: normal !important;
-  fill: #000000 !important;
+  font-weight: normal;
+  fill: #000000;
 }
 
 /* When another scene is being hovered - open scenes should look non-selected */
 .scene-title.scene-is-open.non-selected {
   fill: #FFFFFF!important;
-  stroke: none !important;
-  stroke-width: 0 !important;
-  opacity: 0.7 !important;
+  stroke: none;
+  stroke-width: 0;
 }
 
 .number-square.scene-is-open.non-selected {
-  fill: #EFEFEF !important;
-  stroke: none !important;
-  stroke-width: 0 !important;
-  transform: scale(1) !important;
+  fill: #EFEFEF;
+  stroke: none;
+  stroke-width: 0;
+  transform: scale(1);
   transition: fill 0.1s;
 }
 
 .number-text.scene-is-open.non-selected {
-  fill: #ffffff !important;
-  opacity: 1 !important;
-  font-weight: normal !important;
+  fill: #ffffff;
+  opacity: 1;
+  font-weight: normal;
   transition: fill 0.1s;
 }
 
 /* When hovering the open scene itself */
 .scene-title.scene-is-open.selected {
-  fill: #705DCF !important;
-  stroke: white !important;
-  stroke-width: 3px !important;
-  paint-order: stroke !important;
+  fill: #705DCF;
+  font-weight: bold;
+  stroke: black;
+  stroke-width: 5px;
+  paint-order: stroke;
 }
 
 .number-square.scene-is-open.selected {
-  stroke: #705DCF !important;
-  stroke-width: 2px !important;
-  transform: scale(1.2) !important;
-  fill: #FFFFFF !important;
+  stroke: #705DCF;
+  stroke-width: 3px;
+  fill: #FFFFFF;
   transition: fill 0.1s, transform 0.1s;
 }
 
 .number-text.scene-is-open.selected {
-  fill: #000000 !important;
-  font-weight: bold !important;
+  fill: #000000;
+  font-weight: bold;
 }
