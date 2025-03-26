@@ -146,7 +146,16 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         if (!this.searchActive || !this.searchTerm) return text;
         
         const regex = new RegExp(`(${this.escapeRegExp(this.searchTerm)})`, 'gi');
-        return text.replace(regex, `<tspan class="search-term">$1</tspan>`);
+        
+        // Check if the text already contains tspan elements
+        if (text.includes('<tspan')) {
+            // For text that already has tspan tags, we need to be careful not to break them
+            // This is a simplified approach - a more robust solution would use DOM parsing
+            return text.replace(regex, (match) => `<tspan class="search-term">${match}</tspan>`);
+        } else {
+            // Simple case - just wrap the matched text in a tspan
+            return text.replace(regex, `<tspan class="search-term">$1</tspan>`);
+        }
     }
 
     // Add helper method to escape special characters in regex
@@ -845,11 +854,21 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         const titleColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || 
                                           PUBLISH_STAGE_COLORS.Zero;
                         
-                        // Add the title with the publish stage color
+                        // Add debug logging to see the color values
+                        if (this.settings.debug) {
+                            this.log(`Synopsis title color for ${scene.title}: Stage=${publishStage}, Color=${titleColor}`);
+                        }
+                        
+                        // Ensure publishStage is a string and create a valid class name
+                        const stageClass = `title-stage-${String(publishStage).toLowerCase()}`;
+                        
+                        // Add the title with the publish stage color using tspan to ensure color is applied
                         if (titleContent.includes('<tspan')) {
-                            textHTML += `<text class="info-text title-text-main" x="0" y="0" text-anchor="${textAlign}" fill="${titleColor}">${titleContent}</text>`;
+                            // If it already has tspan tags, preserve them but add our color
+                            textHTML += `<text class="info-text title-text-main ${stageClass}" x="0" y="0" text-anchor="${textAlign}" style="--title-color: ${titleColor};">${titleContent}</text>`;
                         } else {
-                            textHTML += `<text class="info-text title-text-main" x="0" y="0" text-anchor="${textAlign}" fill="${titleColor}">${this.escapeXml(titleContent)}</text>`;
+                            // Wrap the entire content in a tspan with explicit fill color
+                            textHTML += `<text class="info-text title-text-main ${stageClass}" x="0" y="0" text-anchor="${textAlign}" style="--title-color: ${titleColor};"><tspan fill="${titleColor}">${this.escapeXml(titleContent)}</tspan></text>`;
                         }
                         
                         // Add synopsis lines - adjust y position since we removed the divider

@@ -98,12 +98,46 @@ path.scene-path[fill="#EEEEEE"] {
   transition: opacity 0.15s;
   pointer-events: none;
   z-index: 100;
-  color: #333333;
 }
 
-/* Ensure all text within scene-info inherits the color */
+/* Global text rule - apply only basic styling */
 .scene-info text {
-  fill: #333333;
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  stroke: white;
+  stroke-width: 2px;
+  paint-order: stroke;
+}
+
+/* Ensure that inline colors are preserved */
+text.info-text.title-text-main tspan {
+  fill: inherit; /* Inherit the color from parent or inline attribute */
+}
+
+/* For tspans with explicit fill attribute */
+text.info-text.title-text-main tspan[fill] {
+  /* Use the explicitly set fill color */
+}
+
+/* General rule for all title text tspans */
+text.info-text.title-text-main tspan:not(.search-term) {
+  fill: var(--title-color) !important; /* Use the inline color variable */
+}
+
+/* Additional stage-specific styling if needed */
+text.info-text.title-text-main.title-stage-zero tspan,
+text.info-text.title-text-main.title-stage-author tspan, 
+text.info-text.title-text-main.title-stage-house tspan,
+text.info-text.title-text-main.title-stage-press tspan {
+  /* These rules are now handled by the general rule above */
+}
+
+/* Override for search terms */
+text.info-text.title-text-main tspan.search-term {
+  /* Search term styling overrides fill but preserves visibility */
+  stroke: currentColor; /* Use the current text color for the stroke */
+  stroke-width: 0.5em;
+  stroke-opacity: 0.5;
+  paint-order: stroke;
 }
 
 /* Quadrant-specific positioning for synopses */
@@ -410,11 +444,17 @@ path.scene-path[fill="#EEEEEE"] {
   width: 217px;
 }
 
+/* Global container styling to ensure colors are applied correctly */
+.manuscript-timeline-container .scene-info {
+  /* Force colors to be respected regardless of theme */
+  color: inherit !important;
+}
+
 /* Make sure SVG text elements receive these styles */
 svg text.info-text {
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 16px;
-  fill: var(--text-normal, #333333);
+  /* Remove the fill property to allow inline styling */
   white-space: pre-wrap;
   max-width: 250px; /* Added max-width constraint */
   stroke: white;
@@ -425,13 +465,13 @@ svg text.info-text {
 svg text.info-text.title-text-main {
   font-size: 24px;
   font-weight: 700;
-  /* Removed fill property to allow inline styling */
+  /* No fill property to allow the inline fill attribute to take effect */
   text-anchor: start;
 }
 
 svg text.info-text.title-text-secondary {
   font-size: 18px;
-  fill: var(--text-muted);
+  fill: var(--text-muted, #888888);  /* Use a lighter color that won't conflict with title text */
   text-transform: uppercase;
   font-weight: normal;
   text-anchor: start;
@@ -465,16 +505,15 @@ tspan.character-text {
 .scene-info text.info-text.title-text-main {
   font-size: 24px;
   font-weight: 700;
-  /* Removed fill property to allow inline styling */
+  /* No fill property to allow the inline fill attribute to take effect */
   text-anchor: start;
 }
 
 .scene-info text.info-text.title-text-secondary {
   font-size: 18px;
-  fill: var(--text-muted);
+  fill: var(--text-muted, #888888);  /* Use a lighter color that won't conflict with title text */
   text-transform: uppercase;
   font-weight: normal;
-  text-anchor: start;
 }
 
 /* Metadata text (subplots and characters) */
@@ -516,13 +555,13 @@ tspan.character-text {
 .scene-info text.info-text.title-text-main {
   font-size: 24px;
   font-weight: 700;
-  /* Removed fill property to allow inline styling */
+  /* No fill property to allow the inline fill attribute to take effect */
   text-anchor: start;
 }
 
 .scene-info text.info-text.title-text-secondary {
   font-size: 18px;
-  fill: var(--text-muted);
+  fill: var(--text-muted, #888888);  /* Use a lighter color that won't conflict with title text */
   text-transform: uppercase;
   font-weight: normal;
 }
@@ -605,7 +644,7 @@ tspan.character-text {
 .info-text {
   dominant-baseline: hanging;
   text-anchor: start;
-  fill: #333333; /* Always keep info-text dark for better visibility */
+  /* Remove global fill to allow inline attributes to work */
 }
 
 .info-title {
@@ -867,4 +906,14 @@ tspan.character-text {
   display: inline-block;
   margin-right: 8px;
   border: 1px solid var(--background-modifier-border);
+}
+
+/* Ensure color is never overridden - most specific rule */
+svg .scene-info text.info-text.title-text-main[fill] {
+  fill: attr(fill) !important; /* This ensures the inline fill attribute is always respected */
+}
+
+/* Set color directly on text elements */
+text.info-text.title-text-main {
+  fill: var(--title-color) !important; /* Use the inline color variable */
 }
