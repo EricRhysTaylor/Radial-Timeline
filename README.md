@@ -54,7 +54,7 @@ Scene files must have the following frontmatter:
 - Synopsis - Brief description of the scene
 - Character - Characters in the scene
 - Due - Optional due date for the scene
-- Edits - Optional editing notes (scenes with Edits will display with purple number boxes)
+- Pending Edits - Optional editing notes (scenes with Edits will display with purple number boxes)
 - Publish Stage - Publishing stage (Zero, Author, House, Press)
 
 #### Example Metadata (use "Paste and Match Style" when copying to avoid formatting issues)
@@ -76,7 +76,7 @@ Place:
   - Earth
 Publish Stage: Zero
 Status: Complete
-Edits:
+Pending Edits:
 ---
 ```
 

@@ -638,16 +638,14 @@ tspan.character-text {
 
 /* When no hover is happening - default state for open scenes */
 .scene-title.scene-is-open {
-  fill: white;
-  font-weight: bold;
-  stroke: black;
-  stroke-width: 3px;
-  paint-order: stroke;
+  fill: #000000;
+  font-weight: normal;
+
 }
 
 .number-square.scene-is-open {
-  stroke: #705DCF;
-  stroke-width: 3px;
+  stroke: #000000;
+  stroke-width: 1px;
   transform: scale(1.2);
 }
 
@@ -680,9 +678,8 @@ tspan.character-text {
 
 /* When hovering the open scene itself */
 .scene-title.scene-is-open.selected {
-  fill: #705DCF;
-  font-weight: bold;
-  stroke: black;
+  fill: #000000;
+  stroke: #FFFFFF;
   stroke-width: 5px;
   paint-order: stroke;
 }
@@ -706,10 +703,60 @@ tspan.character-text {
 
 /* When a scene is both open and a search result */
 .number-square.search-result.non-selected {
-  stroke: #FFFFFF;
+  fill: #EFEFEF;
+}
+
+/* When a scene is both open and a search result */
+.number-square.search-result.non-selected {
+  fill: #EFEFEF;
+}
+
+/* Number squares with pending edits */
+.number-square[data-has-edits="true"] {
+  fill: #8875ff;
+}
+
+.number-square[data-has-edits="true"] + .number-text {
+  fill: #000000;
+}
+
+/* When a scene with pending edits is non-selected */
+.number-square[data-has-edits="true"].non-selected {
+  fill: #EFEFEF;
+}
+
+.number-square[data-has-edits="true"].non-selected + .number-text {
+  fill: #ffffff;
 }
 
 /* Search clear button */
 .clear-search-btn {
   cursor: pointer;
+}
+
+/* Search highlight styles */
+.search-highlight {
+    fill: #FFD700;
+    font-weight: bold;
+    stroke: #000000;
+    stroke-width: 0.5;
+    stroke-opacity: 0.3;
+}
+
+/* Clear search button styles */
+.clear-search-btn {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.clear-search-btn:hover {
+    transform: scale(1.1);
+}
+
+.clear-search-btn circle {
+    transition: fill 0.2s;
+}
+
+.clear-search-btn:hover circle {
+    fill: #FFE5E5;
 }

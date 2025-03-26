@@ -1,4 +1,4 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent } from "obsidian";
 
 // Helper functions for safe SVG creation - add at the top of the file
 function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
@@ -141,6 +141,21 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
     
+    // Add helper method to highlight search terms
+    private highlightSearchTerm(text: string): string {
+        if (!this.searchActive || !this.searchTerm) return text;
+        
+        const regex = new RegExp(`(${this.escapeRegExp(this.searchTerm)})`, 'gi');
+        return text.replace(regex, (match) => {
+            return `<tspan class="search-highlight">${this.escapeXml(match)}</tspan>`;
+        });
+    }
+
+    // Add helper method to escape special characters in regex
+    private escapeRegExp(string: string): string {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
     async onload() {
         console.log('loading Manuscript Timeline plugin');
 
@@ -178,6 +193,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             name: 'Clear Timeline Search',
             callback: () => this.clearSearch()
         });
+
+        // Add settings tab
+        this.addSettingTab(new ManuscriptTimelineSettingTab(this.app, this));
     }
     
     // Helper to activate the timeline view
@@ -324,6 +342,28 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Add search results indicator if search is active
         if (this.searchActive && this.searchResults.size > 0) {
             svg += `
+                <style>
+                    .search-highlight {
+                        fill: #FFD700;
+                        font-weight: bold;
+                        stroke: #000000;
+                        stroke-width: 0.5;
+                        stroke-opacity: 0.3;
+                    }
+                    .clear-search-btn {
+                        cursor: pointer;
+                        transition: transform 0.2s;
+                    }
+                    .clear-search-btn:hover {
+                        transform: scale(1.1);
+                    }
+                    .clear-search-btn circle {
+                        transition: fill 0.2s;
+                    }
+                    .clear-search-btn:hover circle {
+                        fill: #FFE5E5;
+                    }
+                </style>
                 <g transform="translate(-${size/2 - 20}, -${size/2 - 30})">
                     <rect x="0" y="0" width="200" height="40" rx="5" ry="5" 
                           fill="#FFCC00" fill-opacity="0.6" stroke="#000000" stroke-width="1" />
@@ -714,19 +754,13 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             ];
 
             // Prepare text content with modified format
-            const synopsisLines = scene.synopsis ? 
-                this.splitIntoBalancedLines(scene.synopsis, maxTextWidth) : [];
-
             const contentLines = [
-                `${scene.title} - ${scene.when?.toLocaleDateString()}`,
-                ...synopsisLines,
-                // Add a non-breaking space to preserve the line spacing
-                '\u00A0', // Using non-breaking space instead of empty string
-                // Just pass the subplot and character info without prefixes
-                orderedSubplots.join(', '),
-                // Characters without prefix
+                this.highlightSearchTerm(`${scene.title} - ${scene.when?.toLocaleDateString()}`),
+                ...(scene.synopsis ? this.splitIntoBalancedLines(scene.synopsis, maxTextWidth).map(line => this.highlightSearchTerm(line)) : []),
+                '\u00A0',
+                this.highlightSearchTerm(orderedSubplots.join(', ')),
                 scene.Character && scene.Character.length > 0 ? 
-                    scene.Character.join(', ') : '',
+                    this.highlightSearchTerm(scene.Character.join(', ')) : '',
             ].filter(line => line);
 
             const totalHeight = contentLines.length * lineHeight;
@@ -780,9 +814,20 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         let fullText = `<div style="font-size:${titleFontSize}px;font-weight:700;margin-bottom:10px;">${this.escapeXml(contentLines[0])}</div>`;
                         
                         // Add synopsis lines
-                        const synopsisEndIndex = synopsisLines.length + 1; // +1 for title
+                        const synopsisEndIndex = contentLines.length - 2; // -2 to exclude the spacer and subplot/character lines
                         for (let i = 1; i < synopsisEndIndex; i++) {
                             fullText += `<div style="font-size:${bodyFontSize}px;margin-top:5px;">${this.escapeXml(contentLines[i])}</div>`;
+                        }
+                        
+                        // Add spacer
+                        fullText += `<div style="height:10px;"></div>`;
+                        
+                        // Add subplot and character info
+                        if (contentLines[contentLines.length - 2]) {
+                            fullText += `<div style="font-size:${bodyFontSize}px;color:#666;">${this.escapeXml(contentLines[contentLines.length - 2])}</div>`;
+                        }
+                        if (contentLines[contentLines.length - 1]) {
+                            fullText += `<div style="font-size:${bodyFontSize}px;color:#666;">${this.escapeXml(contentLines[contentLines.length - 1])}</div>`;
                         }
                         
                         // Add metadata items
@@ -1227,8 +1272,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
                 // Determine colors based on Edits metadata
                 const hasEdits = scene.pendingEdits && scene.pendingEdits.trim() !== '';
-                const squareBackgroundColor = hasEdits ? "#8875ff" : "white";
-                const textColor = hasEdits ? "white" : "black";
 
                 // Check if scene is open or a search result
                 const isSceneOpen = scene.path && this.openScenePaths.has(scene.path);
@@ -1246,9 +1289,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             y="-${squareSize.height/2}" 
                             width="${squareSize.width}" 
                             height="${squareSize.height}" 
-                            fill="${squareBackgroundColor}" 
+                            fill="white"
                             class="${squareClasses}"
                             data-scene-id="${sceneId}"
+                            data-has-edits="${hasEdits}"
                         />
                         <text 
                             x="0" 
@@ -1258,7 +1302,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}"
                             data-scene-id="${sceneId}"
                             dy="0.1em"
-                            fill="${textColor}"
+                            fill="black"
                         >${number}</text>
                     </g>
                 `;
@@ -1480,20 +1524,16 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Add this helper function for escaping XML/HTML special characters
     private escapeXml(unsafe: string): string {
-        if (unsafe === undefined || unsafe === null) return '';
-        
-        // Convert to string first (in case it's a number or other type)
-        const str = String(unsafe);
-        
-        // Handle ampersands first, but preserve existing XML entities
-        return str
-            .replace(/&(?!(amp|lt|gt|quot|apos|#\d+);)/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&apos;')
-            // Also escape comments to prevent XML parsing issues
-            .replace(/\/\//g, '&#47;&#47;');
+        return unsafe.replace(/[<>&'"]/g, c => {
+            switch (c) {
+                case '<': return '&lt;';
+                case '>': return '&gt;';
+                case '&': return '&amp;';
+                case '\'': return '&apos;';
+                case '"': return '&quot;';
+                default: return c;
+            }
+        });
     }
     
     /**
@@ -1705,39 +1745,68 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Search related methods
     private openSearchPrompt(): void {
-        const searchPrompt = new Notice('', 0);
-        const searchContainer = searchPrompt.noticeEl.createDiv();
+        const modal = new Modal(this.app);
+        modal.titleEl.setText('Search Timeline');
+        
+        const contentEl = modal.contentEl;
+        contentEl.empty();
+        
+        // Create search input container
+        const searchContainer = contentEl.createDiv('search-container');
         searchContainer.style.display = 'flex';
-        searchContainer.style.alignItems = 'center';
+        searchContainer.style.gap = '10px';
+        searchContainer.style.marginBottom = '15px';
         
-        const searchLabel = searchContainer.createSpan({text: 'Search: '});
-        searchLabel.style.marginRight = '8px';
+        // Create search input
+        const searchInput = new TextComponent(searchContainer);
+        searchInput.setPlaceholder('Enter search term (min 3 characters)');
+        searchInput.inputEl.style.flex = '1';
         
-        const searchInput = searchContainer.createEl('input', {
-            type: 'text',
-            placeholder: 'Enter search term (min 4 chars)',
-            value: this.searchTerm
-        });
-        searchInput.style.width = '200px';
-        searchInput.style.marginRight = '8px';
+        // Create button container
+        const buttonContainer = contentEl.createDiv('button-container');
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.gap = '10px';
+        buttonContainer.style.justifyContent = 'flex-end';
         
-        const searchButton = searchContainer.createEl('button', {text: 'Search'});
-        searchButton.style.marginRight = '8px';
-        searchButton.onclick = () => {
-            const term = searchInput.value;
-            if (term.length >= 4) {
-                this.performSearch(term);
-                searchPrompt.hide();
-            } else {
-                new Notice('Search term must be at least 4 characters', 3000);
+        // Create search button
+        const searchButton = new ButtonComponent(buttonContainer)
+            .setButtonText('Search')
+            .onClick(() => {
+                const term = searchInput.getValue().trim();
+                if (term.length >= 3) {
+                    this.performSearch(term);
+                    modal.close();
+                } else {
+                    new Notice('Please enter at least 3 characters to search');
+                }
+            });
+        
+        // Create reset button
+        const resetButton = new ButtonComponent(buttonContainer)
+            .setButtonText('Reset')
+            .onClick(() => {
+                // Clear the search input
+                searchInput.setValue('');
+                // Clear the search and refresh the timeline
+                this.clearSearch();
+                // Close the modal after clearing
+                modal.close();
+            });
+        
+        // Add keyboard event listener
+        searchInput.inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const term = searchInput.getValue().trim();
+                if (term.length >= 3) {
+                    this.performSearch(term);
+                    modal.close();
+                } else {
+                    new Notice('Please enter at least 3 characters to search');
+                }
             }
-        };
+        });
         
-        const cancelButton = searchContainer.createEl('button', {text: 'Cancel'});
-        cancelButton.onclick = () => searchPrompt.hide();
-        
-        // Focus the input
-        searchInput.focus();
+        modal.open();
     }
     
     public performSearch(term: string): void {
@@ -1765,10 +1834,17 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 }
             });
             
-            // Refresh the timeline to show search results
-            if (this.activeTimelineView) {
-                this.activeTimelineView.refreshTimeline();
-            }
+            // Get all timeline views and refresh them
+            const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
+                .map(leaf => leaf.view as ManuscriptTimelineView)
+                .filter(view => view instanceof ManuscriptTimelineView);
+
+            // Refresh each view
+            timelineViews.forEach(view => {
+                if (view) {
+                    view.refreshTimeline();
+                }
+            });
         });
     }
     
@@ -1777,10 +1853,17 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         this.searchTerm = '';
         this.searchResults.clear();
         
-        // Refresh the timeline to remove search highlights
-        if (this.activeTimelineView) {
-            this.activeTimelineView.refreshTimeline();
-        }
+        // Get all timeline views and refresh them
+        const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
+            .map(leaf => leaf.view as ManuscriptTimelineView)
+            .filter(view => view instanceof ManuscriptTimelineView);
+
+        // Refresh each view
+        timelineViews.forEach(view => {
+            if (view) {
+                view.refreshTimeline();
+            }
+        });
     }
 }
 
@@ -2469,6 +2552,10 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 this.log(`Found ${sceneGroups.length} scene groups to check against ${this.openScenePaths.size} open files`);
                 
                 let markedOpenCount = 0;
+                
+                // Setup search controls after SVG is rendered
+                this.setupSearchControls();
+                
                 sceneGroups.forEach((group) => {
                     const encodedPath = group.getAttribute("data-path");
                     if (encodedPath && encodedPath !== "") {
