@@ -132,7 +132,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     
     // View reference
     activeTimelineView: ManuscriptTimelineView | null = null;
-    
+
     // Track open scene paths
     openScenePaths: Set<string> = new Set<string>();
     
@@ -146,21 +146,20 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         if (!this.searchActive || !this.searchTerm) return text;
         
         const regex = new RegExp(`(${this.escapeRegExp(this.searchTerm)})`, 'gi');
-        return text.replace(regex, (match) => {
-            return `<tspan class="search-highlight">${this.escapeXml(match)}</tspan>`;
-        });
+        return text.replace(regex, `<tspan class="search-term">$1</tspan>`);
     }
 
     // Add helper method to escape special characters in regex
     private escapeRegExp(string: string): string {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
-    
+
     async onload() {
-        console.log('loading Manuscript Timeline plugin');
-
         await this.loadSettings();
-
+        
+        // Set CSS variables for publish stage colors
+        this.setCSSColorVariables();
+        
         // Register the view
         this.registerView(
             TIMELINE_VIEW_TYPE,
@@ -169,7 +168,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 return new ManuscriptTimelineView(leaf, this);
             }
         );
-
+        
         // Add ribbon icon
         this.addRibbonIcon('shell', 'Manuscript Timeline', () => {
             this.activateView();
@@ -342,28 +341,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Add search results indicator if search is active
         if (this.searchActive && this.searchResults.size > 0) {
             svg += `
-                <style>
-                    .search-highlight {
-                        fill: #FFD700;
-                        font-weight: bold;
-                        stroke: #000000;
-                        stroke-width: 0.5;
-                        stroke-opacity: 0.3;
-                    }
-                    .clear-search-btn {
-                        cursor: pointer;
-                        transition: transform 0.2s;
-                    }
-                    .clear-search-btn:hover {
-                        transform: scale(1.1);
-                    }
-                    .clear-search-btn circle {
-                        transition: fill 0.2s;
-                    }
-                    .clear-search-btn:hover circle {
-                        fill: #FFE5E5;
-                    }
-                </style>
                 <g transform="translate(-${size/2 - 20}, -${size/2 - 30})">
                     <rect x="0" y="0" width="200" height="40" rx="5" ry="5" 
                           fill="#FFCC00" fill-opacity="0.6" stroke="#000000" stroke-width="1" />
@@ -811,23 +788,23 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         const bodyFontSize = 18;
                         
                         // Prepare the complete text content to measure
-                        let fullText = `<div style="font-size:${titleFontSize}px;font-weight:700;margin-bottom:10px;">${this.escapeXml(contentLines[0])}</div>`;
+                        let fullText = `<div class="synopsis-title">${this.escapeXml(contentLines[0])}</div>`;
                         
                         // Add synopsis lines
                         const synopsisEndIndex = contentLines.length - 2; // -2 to exclude the spacer and subplot/character lines
                         for (let i = 1; i < synopsisEndIndex; i++) {
-                            fullText += `<div style="font-size:${bodyFontSize}px;margin-top:5px;">${this.escapeXml(contentLines[i])}</div>`;
+                            fullText += `<div class="synopsis-body">${this.escapeXml(contentLines[i])}</div>`;
                         }
                         
                         // Add spacer
-                        fullText += `<div style="height:10px;"></div>`;
+                        fullText += `<div class="synopsis-spacer"></div>`;
                         
                         // Add subplot and character info
                         if (contentLines[contentLines.length - 2]) {
-                            fullText += `<div style="font-size:${bodyFontSize}px;color:#666;">${this.escapeXml(contentLines[contentLines.length - 2])}</div>`;
+                            fullText += `<div class="synopsis-metadata">${this.escapeXml(contentLines[contentLines.length - 2])}</div>`;
                         }
                         if (contentLines[contentLines.length - 1]) {
-                            fullText += `<div style="font-size:${bodyFontSize}px;color:#666;">${this.escapeXml(contentLines[contentLines.length - 1])}</div>`;
+                            fullText += `<div class="synopsis-metadata">${this.escapeXml(contentLines[contentLines.length - 1])}</div>`;
                         }
                         
                         // Add metadata items
@@ -835,7 +812,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         metadataItems.forEach(line => {
                             // Handle tspan elements by removing tags for measurement
                             const plainText = line.replace(/<[^>]*>/g, '');
-                            fullText += `<div style="font-size:${bodyFontSize}px;margin-top:5px;">${this.escapeXml(plainText)}</div>`;
+                            fullText += `<div class="synopsis-body">${this.escapeXml(plainText)}</div>`;
                         });
                         
                         // Use a fixed width for the text
@@ -860,18 +837,29 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         // Create HTML for synopsis content - now with fixed positioning via CSS
                         let textHTML = `<g class="synopsis-text">`;
                         
-                        // Title
-                        textHTML += `<text class="info-text title-text-main" x="0" y="0" text-anchor="${textAlign}">${this.escapeXml(contentLines[0])}</text>`;
+                        // Title - don't escape XML if it contains tspan elements
+                        const titleContent = contentLines[0];
                         
-                        // Determine text width for divider
-                        const titleTextWidth = Math.min(contentLines[0].length * 12, 200);
+                        // Get the Publish Stage color for the title
+                        const publishStage = scene["Publish Stage"] || 'Zero';
+                        const titleColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || 
+                                          PUBLISH_STAGE_COLORS.Zero;
                         
-                        // Decorative divider below the title
-                        textHTML += `<line class="synopsis-divider" x1="0" y1="30" x2="${titleTextWidth}" y2="30" stroke-width="1.5"></line>`;
+                        // Add the title with the publish stage color
+                        if (titleContent.includes('<tspan')) {
+                            textHTML += `<text class="info-text title-text-main" x="0" y="0" text-anchor="${textAlign}" fill="${titleColor}">${titleContent}</text>`;
+                        } else {
+                            textHTML += `<text class="info-text title-text-main" x="0" y="0" text-anchor="${textAlign}" fill="${titleColor}">${this.escapeXml(titleContent)}</text>`;
+                        }
                         
-                        // Add synopsis lines
+                        // Add synopsis lines - adjust y position since we removed the divider
                         for (let i = 1; i < synopsisEndIndex; i++) {
-                            textHTML += `<text class="info-text title-text-secondary" x="0" y="${40 + ((i-1) * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(contentLines[i])}</text>`;
+                            const lineContent = contentLines[i];
+                            if (lineContent.includes('<tspan')) {
+                                textHTML += `<text class="info-text title-text-secondary" x="0" y="${30 + ((i-1) * lineHeight)}" text-anchor="${textAlign}">${lineContent}</text>`;
+                            } else {
+                                textHTML += `<text class="info-text title-text-secondary" x="0" y="${30 + ((i-1) * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(lineContent)}</text>`;
+                            }
                         }
                         
                         // Metadata (subplots, characters)
@@ -880,6 +868,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             // Create a containing text element to ensure proper alignment
                             if (line.includes('<tspan')) {
                                 // For lines with tspan elements (subplots, characters)
+                                // Don't escape the line content since we need the tspan elements to be rendered as HTML
                                 textHTML += `<text class="info-text metadata-text" x="0" y="${metadataStartY + (i * lineHeight)}" text-anchor="${textAlign}">${line}</text>`;
                             } else {
                                 textHTML += `<text class="info-text title-text-secondary" x="0" y="${metadataStartY + (i * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(line)}</text>`;
@@ -970,11 +959,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             let sceneClasses = "scene-path";
                             if (scene.path && this.openScenePaths.has(scene.path)) sceneClasses += " scene-is-open";
                             // Don't add search-result class to scene paths anymore
-
+            
                             // In createTimelineSVG method, replace the font size calculation with a fixed size:
                             const fontSize = 18; // Fixed font size for all rings
                             const dyOffset = -1;
-                            
+            
                             svg += `
                             <g class="scene-group" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                 <path id="${sceneId}"
@@ -1376,39 +1365,48 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     /// Helper function to split text into balanced lines
     private splitIntoBalancedLines(text: string, maxWidth: number): string[] {
-        const words = text.split(' ');
+        // First, handle any existing tspan elements by temporarily replacing them
+        const tspanRegex = /<tspan[^>]*>([^<]*)<\/tspan>/g;
+        const tempText = text.replace(tspanRegex, (_, content) => content);
+        
+        const words = tempText.split(/\s+/);
         const lines: string[] = [];
-        let currentLine: string[] = [];
-        let currentLength = 0;
-        const targetCharsPerLine = 45; // Reduced from 60 to 45 characters per line for narrower text
-
-        for (let word of words) {
-            // Add 1 for the space after the word
-            const wordLength = word.length + 1;
+        let currentLine = '';
+        let currentWidth = 0;
+        const maxCharsPerLine = 50; // Approximately 400px at 16px font size
+        
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            const wordWidth = word.length;
             
-            if (currentLength + wordLength > targetCharsPerLine) {
-                if (currentLine.length > 0) {
-                    lines.push(currentLine.join(' '));
-                    currentLine = [word];
-                    currentLength = wordLength;
+            if (currentWidth + wordWidth > maxCharsPerLine && currentLine !== '') {
+                lines.push(currentLine.trim());
+                currentLine = word;
+                currentWidth = wordWidth;
                 } else {
-                    // If a single word is longer than the line length, force it onto its own line
-                    currentLine.push(word);
-                    lines.push(currentLine.join(' '));
-                    currentLine = [];
-                    currentLength = 0;
-                }
-            } else {
-                currentLine.push(word);
-                currentLength += wordLength;
+                currentLine += (currentLine ? ' ' : '') + word;
+                currentWidth += wordWidth + (currentLine ? 1 : 0); // Add space width
             }
         }
-
-        if (currentLine.length > 0) {
-            lines.push(currentLine.join(' '));
+        
+        if (currentLine) {
+            lines.push(currentLine.trim());
         }
-
-        return lines;
+        
+        // Restore tspan elements in the final lines
+        return lines.map(line => {
+            let restoredLine = line;
+            const tspanMatches = text.match(tspanRegex) || [];
+            
+            tspanMatches.forEach(tspan => {
+                const content = tspan.replace(/<[^>]*>/g, '');
+                if (line.includes(content)) {
+                    restoredLine = restoredLine.replace(content, tspan);
+                }
+            });
+            
+            return restoredLine;
+        });
     }
 
     // Add a helper method for hyphenation
@@ -1423,33 +1421,16 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     private formatSynopsis(text: string, innerRadius: number, fontSize: number): string {
-        const maxTextWidth = innerRadius * 1.5; // Reduced from 2 to 1.5 to make text block narrower
-        const maxWordsPerLine = 6; // Reduced from 7 to 6 for shorter lines
+        const maxTextWidth = 400; // Fixed width for all text elements
+        const maxCharsPerLine = 50; // Approximately 400px at 16px font size
     
         // Split text into lines with balanced word count
-        const lines = this.splitIntoBalancedLines(text, maxWordsPerLine);
-    
-        // Calculate character width dynamically based on font size
-        const characterWidth = 0.6 * fontSize; // Average character width multiplier
+        const lines = this.splitIntoBalancedLines(text, maxCharsPerLine);
     
         // Prepare the formatted text to render inside the SVG
         return lines.map((line, i) => {
-            const spaceCount = line.split(' ').length - 1;
-            const lineWidth = line.length * characterWidth;
-            const extraSpace = maxTextWidth - lineWidth;
-    
-            // Justify the text only if there's extra space and lines are more than one
-            if (lineWidth < maxTextWidth && lines.length > 1 && spaceCount > 0 && extraSpace > 0) {
-                const spacesNeeded = extraSpace / spaceCount;
-                line = line.split(' ').join(' '.repeat(Math.ceil(spacesNeeded)));
-                if (spacesNeeded < 0) {
-                    this.log(`Negative spacesNeeded for line: "${line}"`);
-                }
-            }
-    
-            return `<text class="synopsis-text" x="0" y="${20 + i * 25}" text-anchor="middle">${line}</text>`;
+            return `<text class="synopsis-text" x="0" y="${20 + i * 25}" text-anchor="middle" style="max-width: ${maxTextWidth}px;">${line}</text>`;
         }).join(' ');
-    
     }
 
 
@@ -1488,14 +1469,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     public log(message: string, data?: any) {
-        // Only log if debug mode is enabled
-        if (this.settings.debug) {
-            if (data) {
-                console.log(`Manuscript Timeline Plugin: ${message}`, data);
-            } else {
-                console.log(`Manuscript Timeline Plugin: ${message}`);
-            }
-        }
+        // Disable all debug logging
+        return;
     }
 
     // Method to refresh the timeline if the active view exists
@@ -1589,30 +1564,32 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             // Determine which quadrant the mouse is in
             const quadrant = 
-                svgP.x >= 0 && svgP.y >= 0 ? "Q1" :
-                svgP.x < 0 && svgP.y >= 0 ? "Q2" :
-                svgP.x < 0 && svgP.y < 0 ? "Q3" :
-                "Q4";
+                svgP.x >= 0 && svgP.y >= 0 ? "Q1" :  // Bottom Right
+                svgP.x < 0 && svgP.y >= 0 ? "Q2" :   // Bottom Left
+                svgP.x < 0 && svgP.y < 0 ? "Q3" :    // Top Left
+                "Q4";                                // Top Right
             
             // Place the synopsis in the appropriate position based on quadrant
+            // Note: The synopsis is displayed in the OPPOSITE quadrant from the mouse position
+            // with specific justification for each display location
             let translateX, translateY;
             synopsis.classList.remove('synopsis-q1', 'synopsis-q2', 'synopsis-q3', 'synopsis-q4');
             
             if (quadrant === 'Q1') { // Mouse in Bottom Right (Q1)
-                translateX = -600;    // Place at X = -600
-                translateY = 150;     // Place at Y = 150
+                translateX = -600;    // Place at X = -600 (Q2 area - left side)
+                translateY = 150;     // Place at Y = 150 (bottom half)
                 synopsis.classList.add('synopsis-q2'); // Left justify in Q2
             } else if (quadrant === 'Q2') { // Mouse in Bottom Left (Q2)
-                translateX = 600;     // Place at X = 600
-                translateY = 150;     // Place at Y = 150
+                translateX = 600;     // Place at X = 600 (Q1 area - right side)
+                translateY = 150;     // Place at Y = 150 (bottom half)
                 synopsis.classList.add('synopsis-q1'); // Right justify in Q1
             } else if (quadrant === 'Q3') { // Mouse in Top Left (Q3)
-                translateX = 500;     // Place at X = 500
-                translateY = -550;    // Place at Y = -550
+                translateX = 500;     // Place at X = 500 (Q4 area - right side)
+                translateY = -550;    // Place at Y = -550 (top half)
                 synopsis.classList.add('synopsis-q4'); // Right justify in Q4
             } else { // Mouse in Top Right (Q4)
-                translateX = -500;    // Place at X = -500
-                translateY = -550;    // Place at Y = -550
+                translateX = -500;    // Place at X = -500 (Q3 area - left side)
+                translateY = -550;    // Place at Y = -550 (top half)
                 synopsis.classList.add('synopsis-q3'); // Left justify in Q3
             }
             
@@ -1624,6 +1601,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             // Position based on calculated values
             const translateValue = `translate(${translateX}, ${translateY})`;
             synopsis.setAttribute('transform', translateValue);
+            
+            // Store the quadrant information in a data attribute
+            synopsis.setAttribute('data-quadrant', quadrant);
             
             this.log(`Synopsis shown at position: ${translateX}, ${translateY} for quadrant ${quadrant}`, {
                 synopsisVisible: synopsis.classList.contains('visible'),
@@ -1715,10 +1695,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 }
             }
             
-            for (const path of this.openScenePaths) {
-                if (!previousOpenFiles.has(path)) {
+                for (const path of this.openScenePaths) {
+                    if (!previousOpenFiles.has(path)) {
                     addedFiles.push(path);
-                    hasChanged = true;
+                        hasChanged = true;
                 }
             }
             
@@ -1761,6 +1741,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const searchInput = new TextComponent(searchContainer);
         searchInput.setPlaceholder('Enter search term (min 3 characters)');
         searchInput.inputEl.style.flex = '1';
+        
+        // Prepopulate with current search term if one exists
+        if (this.searchActive && this.searchTerm) {
+            searchInput.setValue(this.searchTerm);
+        }
         
         // Create button container
         const buttonContainer = contentEl.createDiv('button-container');
@@ -1810,7 +1795,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
     
     public performSearch(term: string): void {
-        if (term.length < 4) return;
+        if (term.length < 3) return;
         
         this.searchTerm = term;
         this.searchActive = true;
@@ -1865,6 +1850,36 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
         });
     }
+
+    // Function to set CSS variables for RGB colors
+    private setCSSColorVariables() {
+        const root = document.documentElement;
+        const { publishStageColors } = this.settings;
+        
+        // Convert hex colors to RGB for CSS variables
+        Object.entries(publishStageColors).forEach(([stage, color]) => {
+            // Set the main color variable
+            root.style.setProperty(`--publishStageColors-${stage}`, color);
+            
+            // Convert hex to RGB values for rgba() usage
+            const rgbValues = this.hexToRGB(color);
+            if (rgbValues) {
+                root.style.setProperty(`--publishStageColors-${stage}-rgb`, rgbValues);
+            }
+        });
+    }
+
+    // Helper function to convert hex to RGB values without the "rgb()" wrapper
+    private hexToRGB(hex: string): string | null {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (result) {
+            const r = parseInt(result[1], 16);
+            const g = parseInt(result[2], 16);
+            const b = parseInt(result[3], 16);
+            return `${r}, ${g}, ${b}`;
+        }
+        return null;
+    }
 }
 
 class ManuscriptTimelineSettingTab extends PluginSettingTab {
@@ -1877,18 +1892,12 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
 
     // Add color swatch creation function
     private createColorSwatch(container: HTMLElement, color: string): HTMLElement {
-        const swatch = document.createElement('div');
-        swatch.className = 'color-swatch';
-        swatch.style.backgroundColor = color;
-        swatch.style.width = '20px';
-        swatch.style.height = '20px';
-        swatch.style.borderRadius = '3px';
-        swatch.style.display = 'inline-block';
-        swatch.style.marginRight = '8px';
-        swatch.style.border = '1px solid var(--background-modifier-border)';
-        
-        container.appendChild(swatch);
-        return swatch;
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = color;
+            
+            container.appendChild(swatch);
+            return swatch;
     }
 
     // Add color picker function with centered dialog
@@ -1896,75 +1905,43 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         return new Promise((resolve) => {
             // Create a modal container
             const modal = document.createElement('div');
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100%';
-            modal.style.height = '100%';
-            modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-            modal.style.display = 'flex';
-            modal.style.justifyContent = 'center';
-            modal.style.alignItems = 'center';
-            modal.style.zIndex = '1000';
+            modal.className = 'color-picker-modal';
 
             // Create the color picker container
             const pickerContainer = document.createElement('div');
-            pickerContainer.style.backgroundColor = 'var(--background-primary)';
-            pickerContainer.style.padding = '20px';
-            pickerContainer.style.borderRadius = '8px';
-            pickerContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
-            pickerContainer.style.position = 'relative';
-            pickerContainer.style.cursor = 'move';
+            pickerContainer.className = 'color-picker-container';
 
             // Create the color picker input
             const colorPicker = document.createElement('input');
             colorPicker.type = 'color';
             colorPicker.value = currentColor;
-            colorPicker.style.width = '100%';
-            colorPicker.style.height = '40px';
-            colorPicker.style.marginBottom = '10px';
+            colorPicker.className = 'color-picker-input';
 
             // Create hex input
             const hexInput = document.createElement('input');
             hexInput.type = 'text';
             hexInput.value = currentColor;
-            hexInput.style.width = '100%';
-            hexInput.style.marginBottom = '5px';
-            hexInput.style.padding = '5px';
+            hexInput.className = 'color-picker-text-input';
 
             // Create RGB input
             const rgbInput = document.createElement('input');
             rgbInput.type = 'text';
             rgbInput.value = this.hexToRgb(currentColor);
-            rgbInput.style.width = '100%';
-            rgbInput.style.marginBottom = '10px';
-            rgbInput.style.padding = '5px';
+            rgbInput.className = 'color-picker-text-input';
 
             // Create buttons container
             const buttonsContainer = document.createElement('div');
-            buttonsContainer.style.display = 'flex';
-            buttonsContainer.style.gap = '10px';
-            buttonsContainer.style.justifyContent = 'flex-end';
+            buttonsContainer.className = 'color-picker-buttons';
 
             // Create OK button
             const okButton = document.createElement('button');
             okButton.textContent = 'OK';
-            okButton.style.padding = '5px 15px';
-            okButton.style.borderRadius = '4px';
-            okButton.style.border = 'none';
-            okButton.style.backgroundColor = 'var(--interactive-accent)';
-            okButton.style.color = 'white';
-            okButton.style.cursor = 'pointer';
+            okButton.className = 'color-picker-button ok';
 
             // Create Cancel button
             const cancelButton = document.createElement('button');
             cancelButton.textContent = 'Cancel';
-            cancelButton.style.padding = '5px 15px';
-            cancelButton.style.borderRadius = '4px';
-            cancelButton.style.border = 'none';
-            cancelButton.style.backgroundColor = 'var(--background-modifier-error)';
-            cancelButton.style.color = 'white';
-            cancelButton.style.cursor = 'pointer';
+            cancelButton.className = 'color-picker-button cancel';
 
             // Add drag functionality
             let isDragging = false;
@@ -2032,24 +2009,25 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             pickerContainer.appendChild(rgbInput);
             pickerContainer.appendChild(buttonsContainer);
 
-            // Add picker container to modal
+            // Add the picker container to the modal
             modal.appendChild(pickerContainer);
 
-            // Add modal to document
+            // Add the modal to the document body
             document.body.appendChild(modal);
 
-            // Handle button clicks
+            // OK button event
             okButton.addEventListener('click', () => {
                 document.body.removeChild(modal);
                 resolve(colorPicker.value);
             });
 
+            // Cancel button event
             cancelButton.addEventListener('click', () => {
                 document.body.removeChild(modal);
                 resolve(null);
             });
 
-            // Close on modal click
+            // Close if clicking outside the picker
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     document.body.removeChild(modal);
@@ -2101,9 +2079,9 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             .setDesc('Set the folder containing your scene files (e.g., "Book 1" or "Scenes")')
             .addText(text => text
                 .setValue(this.plugin.settings.sourcePath)
-                .onChange(async (value) => {
+                    .onChange(async (value) => {
                     this.plugin.settings.sourcePath = value;
-                    await this.plugin.saveSettings();
+                        await this.plugin.saveSettings();
                 }));
 
         // Add debug mode setting
@@ -2123,19 +2101,19 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         // Create color settings for each stage
         Object.entries(this.plugin.settings.publishStageColors).forEach(([stage, color]) => {
             let textInputRef: TextComponent | undefined;
-            new Setting(containerEl)
+        new Setting(containerEl)
                 .setName(stage)
                 .addText(textInput => {
                     textInputRef = textInput;
                     textInput.setValue(color)
-                        .onChange(async (value) => {
+                    .onChange(async (value) => {
                             if (this.isValidHex(value)) {
                                 (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = value;
-                                await this.plugin.saveSettings();
+                        await this.plugin.saveSettings();
                                 // Update the color swatch
                                 const swatch = textInput.inputEl.parentElement?.querySelector('.color-swatch') as HTMLElement;
-                                if (swatch) {
-                                    swatch.style.backgroundColor = value;
+                        if (swatch) {
+                            swatch.style.backgroundColor = value;
                                 }
                             }
                         });
@@ -2172,8 +2150,8 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                     swatchContainer.appendChild(swatch);
                 }
             }
-        });
-
+            });
+            
         // Add horizontal rule to separate settings from documentation
         containerEl.createEl('hr', { cls: 'settings-separator' });
         
@@ -2198,7 +2176,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             })
             .catch(error => {
                 documentationContainer.createEl('p', { text: 'Error loading documentation. Please check your internet connection.' });
-            });
+        });
     }
 }
 
@@ -2215,7 +2193,8 @@ export class ManuscriptTimelineView extends ItemView {
     }
     
     private log(message: string, data?: any) {
-        this.plugin.log(`[ManuscriptTimelineView] ${message}`, data);
+        // Disable all debug logging
+        return;
     }
     
     getViewType(): string {
@@ -2229,7 +2208,7 @@ export class ManuscriptTimelineView extends ItemView {
     getIcon(): string {
         return "shell";
     }
-    
+
     // Add this method to handle search indicator clicks
     private setupSearchControls(): void {
         const clearSearchBtn = this.contentEl.querySelector('.clear-search-btn');
@@ -2319,10 +2298,10 @@ export class ManuscriptTimelineView extends ItemView {
                 }
             }
             
-            for (const path of this.openScenePaths) {
-                if (!previousOpenFiles.has(path)) {
+                for (const path of this.openScenePaths) {
+                    if (!previousOpenFiles.has(path)) {
                     addedFiles.push(path);
-                    hasChanged = true;
+                        hasChanged = true;
                 }
             }
             
@@ -2343,7 +2322,7 @@ export class ManuscriptTimelineView extends ItemView {
             this.log('No changes in open files detected');
         }
     }
-    
+
     refreshTimeline() {
         if (!this.plugin) return;
 
@@ -2377,8 +2356,13 @@ export class ManuscriptTimelineView extends ItemView {
                 }
             });
 
-        // Add this after rendering the timeline
+        // Setup search controls
         this.setupSearchControls();
+        
+        // Add highlight rectangles if search is active
+        if (this.plugin.searchActive) {
+            setTimeout(() => this.addHighlightRectangles(), 100);
+        }
     }
     
     async onOpen(): Promise<void> {
@@ -2436,7 +2420,6 @@ export class ManuscriptTimelineView extends ItemView {
             try {
                 // Try to create the folder if it doesn't exist
                 await this.plugin.app.vault.createFolder(sourcePath);
-                console.log(`Created folder: ${sourcePath}`);
             } catch (error) {
                 console.error(`Failed to create folder: ${sourcePath}`, error);
                 new Notice(`Failed to create folder: ${sourcePath}`);
@@ -2476,7 +2459,6 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
         try {
             // Create the file
             await this.plugin.app.vault.create(filename, testSceneContent);
-            console.log(`Created test scene file: ${filename}`);
             new Notice(`Created test scene file: ${filename}`);
             
             // Refresh the timeline after a short delay to allow metadata cache to update
@@ -2790,6 +2772,83 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 cls: "error-message",
                 text: `Error rendering timeline: ${error.message}`
             });
+        }
+    }
+    
+    // Add a method to create highlight rectangles
+    private addHighlightRectangles(): void {
+        if (!this.plugin.searchActive) {
+            return;
+        }
+        
+        // Get all search term tspans
+        const searchTerms = this.contentEl.querySelectorAll('.search-term');
+        
+        // Apply direct styling to each search term
+        // (Most styling now comes from CSS in styles.css)
+        searchTerms.forEach(term => {
+            try {
+                // Apply background directly to the tspan if needed
+                const tspan = term as SVGTSpanElement;
+                
+                // Apply paint order and ensure text is on top of highlight
+                tspan.setAttribute('paint-order', 'stroke');
+                
+                // For compatibility with older browsers, we can add these directly
+                // (but most styling should come from CSS)
+                if (!tspan.hasAttribute('font-weight')) {
+                    tspan.setAttribute('font-weight', 'bold');
+                }
+            } catch (error) {
+                // Silently skip any errors
+            }
+        });
+    }
+
+    // Test function to manually trigger highlights
+    testHighlights() {
+        // Temporarily save the current state
+        const wasSearchActive = this.plugin.searchActive;
+        const prevSearchTerm = this.plugin.searchTerm;
+        
+        // Force search to be active
+        this.plugin.searchActive = true;
+        this.plugin.searchTerm = "test"; // Use a simple test term
+        
+        // Create test search terms
+        const contentContainer = this.contentEl.querySelector('.manuscript-timeline-container');
+        if (contentContainer) {
+            // Test approach: Find text elements in each quadrant to test highlighting
+            const quadrants = ['Q1', 'Q2', 'Q3', 'Q4'];
+            
+            quadrants.forEach(quadrant => {
+                // Find text elements in this quadrant
+                const quadrantTexts = contentContainer.querySelectorAll(`[data-quadrant="${quadrant}"] text`);
+                
+                if (quadrantTexts.length > 0) {
+                    // Only test the first text element in each quadrant
+                    const textEl = quadrantTexts[0] as SVGTextElement;
+                    
+                    // Add search-term class to the first word
+                    const text = textEl.textContent || "";
+                    if (text.length > 0) {
+                        const firstWord = text.split(' ')[0];
+                        if (firstWord && firstWord.length > 0) {
+                            const newHTML = text.replace(firstWord, `<tspan class="search-term">${firstWord}</tspan>`);
+                            textEl.innerHTML = newHTML;
+                        }
+                    }
+                }
+            });
+            
+            // Apply the highlights
+            this.addHighlightRectangles();
+            
+            // Restore original state after 5 seconds
+            setTimeout(() => {
+                this.plugin.searchActive = wasSearchActive;
+                this.plugin.searchTerm = prevSearchTerm;
+            }, 5000);
         }
     }
 }

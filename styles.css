@@ -98,6 +98,12 @@ path.scene-path[fill="#EEEEEE"] {
   transition: opacity 0.15s;
   pointer-events: none;
   z-index: 100;
+  color: #333333;
+}
+
+/* Ensure all text within scene-info inherits the color */
+.scene-info text {
+  fill: #333333;
 }
 
 /* Quadrant-specific positioning for synopses */
@@ -147,47 +153,53 @@ path.scene-path[fill="#EEEEEE"] {
   opacity: 1;
 }
 
-/* Synopsis text container */
-.synopsis-text {
-  fill: var(--text-normal, #333333);
-  font-size: 28px;
-  text-anchor: middle;
-  opacity: 0;
-  transition: opacity 0.15s;
-  pointer-events: none;
-  max-width: 250px;
-}
-
 .scene-info.visible .synopsis-text {
   opacity: 1;
 }
 
-/* Remove synopsis background and improve text visibility */
-/* Title text styling */
-.title-text-main {
+/* Title text in synopsis */
+.synopsis-title {
   font-size: 24px;
-  font-weight: bold;
-  fill: var(--text-normal, #333333);
-  stroke: white;
-  stroke-width: 3px;
-  paint-order: stroke;
+  font-weight: 700;
+  margin-bottom: 10px;
 }
 
-.title-text-secondary {
-  font-size: 16px;
-  fill: var(--text-normal, #333333);
-  stroke: white;
-  stroke-width: 2px;
-  paint-order: stroke;
+/* Allow title text to inherit color from inline styling */
+.scene-info text.info-text.title-text-main {
+  font-size: 24px;
+  font-weight: 700;
+  /* No fill property to allow the inline fill attribute to take effect */
+  text-anchor: start;
+}
+
+/* Body text in synopsis */
+.synopsis-body {
+  font-size: 18px;
+  margin-top: 5px;
+}
+
+/* Spacer in synopsis */
+.synopsis-spacer {
+  height: 10px;
+}
+
+/* Metadata text in synopsis (subplots and characters) */
+.synopsis-metadata {
+  font-size: 18px;
+  color: #666;
 }
 
 /* Synopsis text styling */
-/* Divider line */
-.synopsis-divider {
-  stroke: var(--text-accent, #705DCF);
-  stroke-width: 2;
-  stroke-opacity: 0.8;
-  stroke-linecap: round;
+/* Remove divider line class since we no longer use it */
+
+/* Force text alignment for Q1 and Q4 */
+.synopsis-q1 text, .synopsis-q4 text {
+    text-anchor: end !important;
+}
+
+/* Force text alignment for Q2 and Q3 */
+.synopsis-q2 text, .synopsis-q3 text {
+    text-anchor: start;
 }
 
 /* Synopsis cells */
@@ -311,7 +323,6 @@ path.scene-path[fill="#EEEEEE"] {
   position: relative;
   top: -0.4em;
   font-weight: normal;
-  baseline-shift: super;
 }
 
 /* Documentation styling */
@@ -414,7 +425,7 @@ svg text.info-text {
 svg text.info-text.title-text-main {
   font-size: 24px;
   font-weight: 700;
-  fill: var(--text-normal);
+  /* Removed fill property to allow inline styling */
   text-anchor: start;
 }
 
@@ -454,7 +465,7 @@ tspan.character-text {
 .scene-info text.info-text.title-text-main {
   font-size: 24px;
   font-weight: 700;
-  fill: var(--text-normal);
+  /* Removed fill property to allow inline styling */
   text-anchor: start;
 }
 
@@ -505,7 +516,8 @@ tspan.character-text {
 .scene-info text.info-text.title-text-main {
   font-size: 24px;
   font-weight: 700;
-  fill: var(--text-normal);
+  /* Removed fill property to allow inline styling */
+  text-anchor: start;
 }
 
 .scene-info text.info-text.title-text-secondary {
@@ -513,21 +525,6 @@ tspan.character-text {
   fill: var(--text-muted);
   text-transform: uppercase;
   font-weight: normal;
-}
-
-/* Ensure synopsis divider line matches text alignment */
-.synopsis-q1 .synopsis-divider, .synopsis-q4 .synopsis-divider {
-  transform: translateX(100%);
-}
-
-/* Force global overrides for Q1 and Q4 */
-.synopsis-q1 text, .synopsis-q4 text {
-  text-anchor: end !important;  
-}
-
-/* Force global overrides for Q2 and Q3 */
-.synopsis-q2 text, .synopsis-q3 text {
-  text-anchor: start;
 }
 
 /* Center number styles */
@@ -732,31 +729,142 @@ tspan.character-text {
 /* Search clear button */
 .clear-search-btn {
   cursor: pointer;
-}
-
-/* Search highlight styles */
-.search-highlight {
-    fill: #FFD700;
-    font-weight: bold;
-    stroke: #000000;
-    stroke-width: 0.5;
-    stroke-opacity: 0.3;
-}
-
-/* Clear search button styles */
-.clear-search-btn {
-    cursor: pointer;
-    transition: transform 0.2s;
+  transition: transform 0.2s;
 }
 
 .clear-search-btn:hover {
-    transform: scale(1.1);
+  transform: scale(1.1);
 }
 
 .clear-search-btn circle {
-    transition: fill 0.2s;
+  transition: fill 0.2s;
 }
 
 .clear-search-btn:hover circle {
-    fill: #FFE5E5;
+  fill: #FFE5E5;
+}
+
+/* Search styles - simple approach */
+.search-term {
+  font-weight: bold;
+  stroke: #FFCC00;
+  stroke-width: 0.5em;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke;
+  fill: #000000;
+}
+
+/* Search term highlight styles based on publish stage */
+.title-stage-zero .search-term {
+  stroke: #808080; /* Default gray */
+  fill: #FFFFFF;
+}
+
+.title-stage-author .search-term {
+  stroke: #4285F4; /* Default blue */
+  fill: #FFFFFF;
+}
+
+.title-stage-house .search-term {
+  stroke: #34A853; /* Default green */
+  fill: #FFFFFF;
+}
+
+.title-stage-press .search-term {
+  stroke: #EA4335; /* Default red */
+  fill: #FFFFFF;
+}
+
+/* Highlight rectangle */
+.highlight-rect {
+  fill: #FFCC00;
+  rx: 3;
+  ry: 3;
+  opacity: 0.3;
+}
+
+/* Highlight rectangles for different publish stages - simplified */
+.highlight-rect.stage-zero {
+  fill: #808080; /* Default gray */
+}
+
+.highlight-rect.stage-author {
+  fill: #4285F4; /* Default blue */
+}
+
+.highlight-rect.stage-house {
+  fill: #34A853; /* Default green */
+}
+
+.highlight-rect.stage-press {
+  fill: #EA4335; /* Default red */
+}
+
+/* Color picker styles */
+.color-picker-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.color-picker-container {
+  background-color: var(--background-primary);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  position: relative;
+  cursor: move;
+}
+
+.color-picker-input {
+  width: 100%;
+  height: 40px;
+  margin-bottom: 10px;
+}
+
+.color-picker-text-input {
+  width: 100%;
+  margin-bottom: 5px;
+  padding: 5px;
+}
+
+.color-picker-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.color-picker-button {
+  padding: 5px 15px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.color-picker-button.ok {
+  background-color: var(--interactive-accent);
+  color: white;
+}
+
+.color-picker-button.cancel {
+  background-color: var(--background-modifier-error);
+  color: white;
+}
+
+/* Color swatch */
+.color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-right: 8px;
+  border: 1px solid var(--background-modifier-border);
 }
