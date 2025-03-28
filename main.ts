@@ -504,7 +504,8 @@ class SynopsisManager {
             
             if (decodedMetadataItems[0] && decodedMetadataItems[0].trim() !== '\u00A0') {
                 if (decodedMetadataItems[0].startsWith('<tspan')) {
-                    // This is pre-formatted HTML
+                    // This is pre-formatted HTML that might contain search highlights
+                    // Only use it for export/preview mode, otherwise create fresh elements
                     const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
                     subplotTextElement.setAttribute("class", "info-text metadata-text");
                     subplotTextElement.setAttribute("x", "0");
@@ -523,6 +524,11 @@ class SynopsisManager {
                         Array.from(tspan.attributes).forEach(attr => {
                             svgTspan.setAttribute(attr.name, attr.value);
                         });
+                        
+                        // Remove any existing search-term classes to prevent duplication
+                        if (svgTspan.classList && svgTspan.classList.contains('search-term')) {
+                            svgTspan.classList.remove('search-term');
+                        }
                         
                         svgTspan.textContent = tspan.textContent;
                         subplotTextElement.appendChild(svgTspan);
@@ -551,25 +557,9 @@ class SynopsisManager {
                             tspan.setAttribute("data-item-type", "subplot");
                             tspan.setAttribute("style", `fill: ${color} !important;`);
                             
-                            // Apply search highlighting if active
-                            if (this.plugin.searchActive && this.plugin.searchTerm) {
-                                const regex = new RegExp(`(${this.escapeRegExp(this.plugin.searchTerm)})`, 'gi');
-                                const parts = subplotText.split(regex);
-                                
-                                parts.forEach((part, i) => {
-                                    if (i % 2 === 1) { // This is a matched part
-                                        const searchTerm = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                                        searchTerm.setAttribute("class", "search-term");
-                                        searchTerm.setAttribute("fill", color);
-                                        searchTerm.textContent = part;
-                                        tspan.appendChild(searchTerm);
-                                    } else if (part) {
-                                        tspan.appendChild(document.createTextNode(part));
-                                    }
-                                });
-                            } else {
-                                tspan.textContent = subplotText;
-                            }
+                            // Don't apply highlighting directly in the text - use a single text node for each subplot
+                            // This ensures we won't get duplicate terms when applying highlights later
+                            tspan.textContent = subplotText;
                             
                             subplotTextElement.appendChild(tspan);
                             
@@ -593,7 +583,8 @@ class SynopsisManager {
                 const characterY = metadataY + lineHeight;
                 
                 if (decodedMetadataItems[1].startsWith('<tspan')) {
-                    // This is pre-formatted HTML
+                    // This is pre-formatted HTML that might contain search highlights
+                    // Only use it for export/preview mode, otherwise create fresh elements
                     const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
                     characterTextElement.setAttribute("class", "info-text metadata-text");
                     characterTextElement.setAttribute("x", "0");
@@ -612,6 +603,11 @@ class SynopsisManager {
                         Array.from(tspan.attributes).forEach(attr => {
                             svgTspan.setAttribute(attr.name, attr.value);
                         });
+                        
+                        // Remove any existing search-term classes to prevent duplication
+                        if (svgTspan.classList && svgTspan.classList.contains('search-term')) {
+                            svgTspan.classList.remove('search-term');
+                        }
                         
                         svgTspan.textContent = tspan.textContent;
                         characterTextElement.appendChild(svgTspan);
@@ -640,25 +636,9 @@ class SynopsisManager {
                             tspan.setAttribute("data-item-type", "character");
                             tspan.setAttribute("style", `fill: ${color} !important;`);
                             
-                            // Apply search highlighting if active
-                            if (this.plugin.searchActive && this.plugin.searchTerm) {
-                                const regex = new RegExp(`(${this.escapeRegExp(this.plugin.searchTerm)})`, 'gi');
-                                const parts = characterText.split(regex);
-                                
-                                parts.forEach((part, i) => {
-                                    if (i % 2 === 1) { // This is a matched part
-                                        const searchTerm = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                                        searchTerm.setAttribute("class", "search-term");
-                                        searchTerm.setAttribute("fill", color);
-                                        searchTerm.textContent = part;
-                                        tspan.appendChild(searchTerm);
-                                    } else if (part) {
-                                        tspan.appendChild(document.createTextNode(part));
-                                    }
-                                });
-                            } else {
-                                tspan.textContent = characterText;
-                            }
+                            // Don't apply search highlighting here - we'll do it in addHighlightRectangles
+                            // This prevents duplicate highlighting when the search term appears in characters
+                            tspan.textContent = characterText;
                             
                             characterTextElement.appendChild(tspan);
                             
@@ -1043,24 +1023,18 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     
     // Add helper method to highlight search terms
     public highlightSearchTerm(text: string): string {
-        // Skip if no search or inactive search
-        if (!this.searchTerm || this.searchTerm.trim() === '' || !this.searchActive) {
+        if (!this.searchActive || !this.searchTerm || !text) {
             return text;
         }
 
         // First decode any HTML entities that might be in the text
         const decodedText = decodeHtmlEntities(text);
 
-        // For debugging
-        console.log(`Highlighting term "${this.searchTerm}" in text: ${decodedText.substring(0, 50)}${decodedText.length > 50 ? '...' : ''}`);
-
         const regex = new RegExp(`(${this.escapeRegExp(this.searchTerm)})`, 'gi');
         
         // Special handling for title lines containing scene number and date
         // Title format is typically: "SceneNumber SceneTitle   Date"
         if (decodedText.includes('   ') && !decodedText.includes('<tspan')) {
-            console.log(`HIGHLIGHT: Processing title line: ${decodedText}`);
-            
             // First split by the triple space that separates title from date
             const [titlePart, datePart] = decodedText.split(/\s{3,}/);
             
@@ -1082,7 +1056,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 
                 // Rebuild the title structure with highlighting - ensure consistent spacing
                 const result = `${escapedSceneNumber} ${highlightedTitle}   ${escapedDate}`;
-                console.log(`HIGHLIGHT: Title result: ${result.substring(0, 50)}`);
                 return result;
             } else {
                 // No scene number, just title + date
@@ -1094,7 +1067,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 
                 // Rebuild with date - ensure consistent spacing
                 const result = `${highlightedTitle}   ${escapedDate}`;
-                console.log(`HIGHLIGHT: Simple title result: ${result.substring(0, 50)}`);
                 return result;
             }
         }
@@ -1102,7 +1074,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Special handling for metadata text (subplots and characters)
         if (decodedText.includes(',') && !decodedText.includes('<tspan') && !decodedText.includes('<')) {
             // This is a raw metadata line (comma-separated items)
-            console.log(`HIGHLIGHT: Processing raw metadata line: ${decodedText.substring(0, 50)}`);
             
             // First, escape the text to prevent HTML injection
             const escapedText = escapeXml(decodedText);
@@ -1122,14 +1093,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             // Join the processed items back with commas
             const result = processedItems.join(', ');
-            console.log(`HIGHLIGHT: Metadata result: ${result.substring(0, 50)}`);
             return result;
         }
         
         // Check if text already contains tspan with fill attributes (metadata lines)
         if (decodedText.includes('<tspan') && decodedText.includes('fill=')) {
             // Use a DOM parser to preserve the fill attributes
-            console.log(`HIGHLIGHT: Processing complex HTML with tspans: ${decodedText.substring(0, 50)}`);
             const tempContainer = document.createElement('div');
             tempContainer.innerHTML = `<text>${decodedText}</text>`;
             const tspans = tempContainer.querySelectorAll('tspan');
@@ -1147,12 +1116,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             });
             
             const result = tempContainer.querySelector('text')?.innerHTML || decodedText;
-            console.log(`HIGHLIGHT: Complex result: ${result.substring(0, 50)}`);
             return result;
         }
         
         // Regular processing for text without tspans (synopsis lines)
-        console.log(`HIGHLIGHT: Processing synopsis text: ${decodedText.substring(0, 50)}`);
         
         // First escape the text to prevent HTML injection
         const escapedText = escapeXml(decodedText);
@@ -1161,7 +1128,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Directly replace occurrences of the search term with highlighted version using only class for styling
         const result = escapedText.replace(regex, '<tspan class="search-term">$1</tspan>');
         
-        console.log(`HIGHLIGHT: Synopsis result: ${result.substring(0, 50)}`);
         return result;
     }
 
@@ -1782,11 +1748,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     // Create HTML directly for each subplot
                     const color = `hsl(${Math.floor(Math.random() * 360)}, 70%, 35%)`;
                     
-                    // Apply search highlighting if needed
+                    // Don't apply search highlighting here - it will be done by addHighlightRectangles
                     let subplotText = escapeXml(subplot || ''); // Handle undefined subplot
-                    if (regex && this.searchActive) {
-                        subplotText = subplotText.replace(regex, '<tspan class="search-term">$1</tspan>');
-                    }
                     
                     subplotsHtml += `<tspan fill="${color}" data-item-type="subplot" style="fill: ${color} !important;">${subplotText}</tspan>`;
                     
@@ -1814,8 +1777,13 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     
                     // Apply search highlighting if needed
                     let characterText = escapeXml(character || ''); // Handle undefined character
+                    
+                    // Only apply direct highlighting if search is active but DON'T apply here if it contains the search term
+                    // This prevents double highlighting since the text is processed again in addSearchHighlights
                     if (regex && this.searchActive) {
-                        characterText = characterText.replace(regex, '<tspan class="search-term">$1</tspan>');
+                        // Instead of replacing the term with a span, just keep the original text
+                        // The highlighting will be added later by addSearchHighlights function
+                        characterText = characterText; // No replacement here
                     }
                     
                     charactersHtml += `<tspan fill="${color}" data-item-type="character" style="fill: ${color} !important;">${characterText}</tspan>`;
@@ -2830,8 +2798,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
     
     public performSearch(term: string): void {
-        console.log("SEARCH: Starting search for:", term);
-        
         if (!term || term.trim().length === 0) {
             this.clearSearch();
             return;
@@ -2844,45 +2810,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         // Find matching scenes
         const regex = new RegExp(this.escapeRegExp(term), 'gi');
-        
-        // For debugging, create a test with direct HTML to see if styling works
-        console.log("SEARCH: Creating test element for debugging");
-        const debugContainer = document.createElement('div');
-        debugContainer.innerHTML = `
-            <svg width="300" height="200">
-                <text class="info-text metadata-text" x="10" y="50">
-                    <tspan fill="hsl(120, 70%, 35%)" data-item-type="subplot">Test Subplot</tspan>
-                </text>
-                <text class="info-text metadata-text" x="10" y="100">
-                    <tspan fill="hsl(240, 80%, 35%)" data-item-type="character">Test Character</tspan>
-                </text>
-            </svg>
-        `;
-        document.body.appendChild(debugContainer);
-        
-        // Apply search highlight to test elements
-        setTimeout(() => {
-            const testSubplot = debugContainer.querySelector('tspan[data-item-type="subplot"]');
-            const testCharacter = debugContainer.querySelector('tspan[data-item-type="character"]');
-            
-            if (testSubplot) {
-                const innerHTML = testSubplot.innerHTML;
-                testSubplot.innerHTML = innerHTML.replace(/Test/, '<tspan class="search-term">Test</tspan>');
-                console.log("SEARCH: Applied highlight to test subplot");
-            }
-            
-            if (testCharacter) {
-                const innerHTML = testCharacter.innerHTML;
-                testCharacter.innerHTML = innerHTML.replace(/Test/, '<tspan class="search-term">Test</tspan>');
-                console.log("SEARCH: Applied highlight to test character");
-            }
-            
-            // Remove the test container after 5 seconds
-            setTimeout(() => {
-                document.body.removeChild(debugContainer);
-                console.log("SEARCH: Removed test elements");
-            }, 5000);
-        }, 500);
         
         // Populate searchResults with matching scene paths
         this.getSceneData().then(scenes => {
@@ -2900,22 +2827,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 if (regex.test(searchableContent)) {
                     if (scene.path) {
                         this.searchResults.add(scene.path);
-                        console.log(`SEARCH: Found match in scene ${scene.title}`);
-                        
-                        // Additional debug for metadata fields
-                        if (scene.subplot && regex.test(scene.subplot)) {
-                            console.log(`SEARCH: Match in subplot "${scene.subplot}" for term "${term}"`);
-                        }
-                        
-                        if (scene.Character && scene.Character.some(c => regex.test(c))) {
-                            console.log(`SEARCH: Match in characters "${scene.Character.join(', ')}" for term "${term}"`);
-                        }
                     }
                 }
             });
-            
-            // Log the results count
-            console.log(`SEARCH: Found ${this.searchResults.size} matching scenes`);
             
             // Get all timeline views and refresh them
             const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
@@ -2923,11 +2837,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 .filter(view => view instanceof ManuscriptTimelineView);
                 
             if (timelineViews.length > 0) {
-                console.log(`SEARCH: Found ${timelineViews.length} timeline views to update`);
                 // Update all timeline views with the new search results
                 timelineViews.forEach(view => {
                     if (view) {
-                        console.log("SEARCH: Refreshing timeline view");
                         view.refreshTimeline();
                     }
                 });
@@ -2935,16 +2847,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 // Update active view reference
                 if (!this.activeTimelineView && timelineViews.length > 0) {
                     this.activeTimelineView = timelineViews[0];
-                    console.log("SEARCH: Set active timeline view");
                 }
-            } else {
-                console.log("SEARCH: No timeline views found!");
             }
         });
     }
     
     public clearSearch(): void {
-        console.log("SEARCH: Clearing search");
         this.searchActive = false;
         this.searchTerm = '';
         this.searchResults.clear();
@@ -2955,15 +2863,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             .filter(view => view instanceof ManuscriptTimelineView);
 
         if (timelineViews.length > 0) {
-            console.log(`SEARCH: Refreshing ${timelineViews.length} timeline views after clearing search`);
             // Refresh each view
             timelineViews.forEach(view => {
                 if (view) {
                     view.refreshTimeline();
                 }
             });
-        } else {
-            console.log("SEARCH: No timeline views found to clear search");
         }
     }
 
@@ -3677,17 +3582,10 @@ Pending Edits:
 
 This is a test scene created to help troubleshoot the Manuscript Timeline plugin.
 
-## Scene Details
-- Title: Test Scene
-- When: ${today}
-- Act: 1
-- Subplot: Main Plot
-- Character: Protagonist
-- Status: Working
 `;
         
         // Generate a unique filename
-        const filename = `${targetPath ? targetPath + "/" : ""}1_test_scene.md`;
+        const filename = `${targetPath ? targetPath + "/" : ""}1 Test Scene.md`;
         
         try {
             // Create the file
@@ -4062,17 +3960,126 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
         
         this.log(`Adding highlight rectangles for search term: "${this.plugin.searchTerm}" with ${this.plugin.searchResults.size} results`);
         
-        // Log the actual search results paths
-        if (this.plugin.settings.debug) {
-            this.log("Search result paths:", Array.from(this.plugin.searchResults));
-        }
+        // A simple approach - iterate through all text elements and replace their content
+        // This ensures we completely replace any previous search highlighting
         
-        // Get all search term tspans
-        const searchTerms = this.contentEl.querySelectorAll('.search-term');
+        // First, find all subplots to highlight
+        const subplotTspans = this.contentEl.querySelectorAll('tspan[data-item-type="subplot"]');
+        const searchTerm = this.plugin.searchTerm;
         
-        if (this.plugin.settings.debug) {
-            this.log(`Found ${searchTerms.length} search terms to highlight in the DOM`);
-        }
+        // Create a word boundary regex for exact matches only
+        const escapeRegExp = (string: string): string => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedPattern = escapeRegExp(searchTerm);
+        const wordBoundaryRegex = new RegExp(`\\b(${escapedPattern})\\b`, 'gi');
+        
+        // Process all subplots - we'll completely replace their content
+        subplotTspans.forEach(tspan => {
+            // Get the original text content
+            const originalText = tspan.textContent || '';
+            
+            // Skip if there's no match
+            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) {
+                return;
+            }
+            
+            // Get the fill color for consistency
+            const fillColor = tspan.getAttribute('fill');
+            
+            // Test if we need a word boundary match
+            const useWordBoundary = originalText.match(wordBoundaryRegex);
+            const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
+            
+            // Clear previous content
+            while (tspan.firstChild) {
+                tspan.removeChild(tspan.firstChild);
+            }
+            
+            // Reset regex
+            regex.lastIndex = 0;
+            
+            // Process the text parts
+            let lastIndex = 0;
+            let match;
+            
+            while ((match = regex.exec(originalText)) !== null) {
+                // Add text before match
+                if (match.index > lastIndex) {
+                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
+                    tspan.appendChild(textBefore);
+                }
+                
+                // Add the highlighted match
+                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                highlightSpan.setAttribute("class", "search-term");
+                highlightSpan.setAttribute("fill", fillColor || "");
+                highlightSpan.textContent = match[0];
+                tspan.appendChild(highlightSpan);
+                
+                lastIndex = match.index + match[0].length;
+            }
+            
+            // Add any remaining text
+            if (lastIndex < originalText.length) {
+                const textAfter = document.createTextNode(originalText.substring(lastIndex));
+                tspan.appendChild(textAfter);
+            }
+        });
+        
+        // Now, process all character elements
+        const characterTspans = this.contentEl.querySelectorAll('tspan[data-item-type="character"]');
+        
+        // Process all characters - we'll completely replace their content
+        characterTspans.forEach(tspan => {
+            // Get the original text content
+            const originalText = tspan.textContent || '';
+            
+            // Skip if there's no match
+            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) {
+                return;
+            }
+            
+            // Get the fill color for consistency
+            const fillColor = tspan.getAttribute('fill');
+            
+            // Test if we need a word boundary match
+            const useWordBoundary = originalText.match(wordBoundaryRegex);
+            const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
+            
+            // Clear previous content
+            while (tspan.firstChild) {
+                tspan.removeChild(tspan.firstChild);
+            }
+            
+            // Reset regex
+            regex.lastIndex = 0;
+            
+            // Process the text parts
+            let lastIndex = 0;
+            let match;
+            
+            while ((match = regex.exec(originalText)) !== null) {
+                // Add text before match
+                if (match.index > lastIndex) {
+                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
+                    tspan.appendChild(textBefore);
+                }
+                
+                // Add the highlighted match
+                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                highlightSpan.setAttribute("class", "search-term");
+                highlightSpan.setAttribute("fill", fillColor || "");
+                highlightSpan.textContent = match[0];
+                tspan.appendChild(highlightSpan);
+                
+                lastIndex = match.index + match[0].length;
+            }
+            
+            // Add any remaining text
+            if (lastIndex < originalText.length) {
+                const textAfter = document.createTextNode(originalText.substring(lastIndex));
+                tspan.appendChild(textAfter);
+            }
+        });
         
         // Check for scene elements that should be highlighted
         const allSceneGroups = this.contentEl.querySelectorAll('.scene-group');
@@ -4094,57 +4101,6 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 if (numberText) {
                     numberText.classList.add('search-result');
                 }
-            }
-        });
-        
-        // We will NOT apply direct styling to search terms anymore
-        // Instead, all styling will come from CSS classes for consistency
-        
-        // If needed, we can still handle special cases for parent-child relationships
-        searchTerms.forEach(term => {
-            try {
-                const tspan = term as SVGTSpanElement;
-                
-                // Find parent text element to determine context
-                const parentText = tspan.closest('text');
-                const isMetadataText = parentText?.classList.contains('metadata-text');
-                const isTitleText = parentText?.classList.contains('title-text-main');
-                const isSecondaryText = parentText?.classList.contains('title-text-secondary');
-                
-                // Check if this is a metadata item with data-item-type
-                // or is a child of an element with data-item-type
-                const hasItemType = tspan.hasAttribute('data-item-type') || 
-                                   (tspan.parentElement && tspan.parentElement.hasAttribute('data-item-type'));
-                
-                // Ensure we preserve fills from parent elements where needed
-                if (hasItemType) {
-                    // For metadata items, ensure we preserve the original fill
-                    // The fill is either on this element or inherited from parent
-                    const parentFill = tspan.parentElement?.getAttribute('fill');
-                    if (parentFill) {
-                        tspan.setAttribute('fill', parentFill);
-                    }
-                }
-                
-                // For title text, we may need to apply the title color
-                if (isTitleText) {
-                    // Find the title color from the parent text element
-                    const titleColorStyle = (parentText as unknown as HTMLElement).style.getPropertyValue('--title-color');
-                    if (titleColorStyle) {
-                        // Set the fill directly to the title color
-                        tspan.setAttribute('fill', titleColorStyle);
-                    }
-                }
-                
-                // Log highlight details in debug mode
-                if (this.plugin.settings.debug) {
-                    this.log(`Highlighted search term: ${tspan.textContent}`, {
-                        context: isMetadataText ? 'metadata' : (isTitleText ? 'title' : 'synopsis'),
-                        fill: tspan.getAttribute('fill')
-                    });
-                }
-            } catch (error) {
-                console.error("Error handling search highlighting:", error);
             }
         });
     }
