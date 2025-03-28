@@ -1,5 +1,41 @@
 import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent } from "obsidian";
 
+/*
+ * OBSIDIAN PLUGIN DEVELOPMENT GUIDELINES - TYPESCRIPT
+ * ==================================================
+ *
+ * 1. SECURITY: Never use innerHTML, outerHTML, or string concatenation to create HTML/SVG content
+ *    - Always use proper DOM methods: document.createElement(), document.createElementNS(), etc.
+ *    - Use element.appendChild() to build the DOM hierarchy
+ *    - Set content with element.textContent, not innerHTML
+ *    - Set attributes with element.setAttribute()
+ *
+ * 2. SVG CREATION:
+ *    - Always use document.createElementNS("http://www.w3.org/2000/svg", "element-name")
+ *    - Use the helper functions at the top of this file (createSvgElement, etc.)
+ *
+ * 3. STYLING:
+ *    - Keep all CSS in styles.css, not inline in the JavaScript/TypeScript
+ *    - Use classList methods to add/remove classes instead of manipulating className
+ *    - Avoid inline styles when possible; use CSS classes instead
+ *
+ * 4. CODING STYLE:
+ *    - Use TypeScript interfaces and types for better code safety
+ *    - Document public methods and non-obvious code with JSDoc comments
+ *    - Keep methods focused and not too long (split complex logic)
+ *    - Use meaningful variable and method names
+ *
+ * 5. OBSIDIAN API:
+ *    - Follow Obsidian's API patterns and lifecycle methods
+ *    - Handle plugin load/unload gracefully to prevent memory leaks
+ *    - Use Workspace events appropriately
+ *
+ * 6. PERFORMANCE:
+ *    - Minimize DOM operations, batch them when possible
+ *    - Cache DOM selections that are used repeatedly
+ *    - Be mindful of event listeners - always remove them when no longer needed
+ */
+
 // Helper functions for safe SVG creation - add at the top of the file
 function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
     const element = document.createElementNS("http://www.w3.org/2000/svg", tag);

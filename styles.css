@@ -1,3 +1,19 @@
+/* 
+ * OBSIDIAN PLUGIN DEVELOPMENT GUIDELINES - CSS
+ * ============================================
+ *
+ * 1. ALL styling should be contained in this CSS file, not inline in the JS/TS code
+ * 2. Use Obsidian's CSS variables (--var-name) for colors and styling whenever possible
+ * 3. Follow Obsidian's class naming conventions when creating new classes
+ * 4. Ensure all styles have appropriate scoping to avoid conflicts with other plugins
+ * 5. Use the :root selector for custom properties, not inline CSS variables
+ * 6. Prefer using standard CSS properties over vendor-specific ones
+ * 7. Include dark theme and light theme variants where appropriate
+ * 8. Keep selectors as simple as possible to maintain performance
+ * 9. Consider using SVG for icons instead of icon fonts when possible
+ * 10. Add comments for complex styling sections to aid maintenance
+ */
+
 /* Manuscript Timeline Plugin Styles */
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap');
 
