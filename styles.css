@@ -121,7 +121,7 @@ path.scene-path[fill="#EEEEEE"] {
 .scene-info text {
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   stroke: white;
-  stroke-width: 2px;
+  stroke-width: 3px;
   paint-order: stroke;
   padding: 0 !important;
   margin: 0 !important;
@@ -167,21 +167,24 @@ text.info-text.title-text-main tspan.search-term,
 text.info-text.title-text-secondary tspan.search-term {
   /* Only override stroke properties for highlighting */
   stroke: #FFCC00 !important;
-  stroke-width: 0.5em;
-  stroke-opacity: 0.5;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  paint-order: stroke;
+  stroke-width: 0.5em !important;
+  stroke-opacity: 0.5 !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+  paint-order: stroke !important;
   /* Always preserve the original fill */
   fill: inherit !important;
+  /* Keep font style consistent */
+  font-family: inherit !important;
+  font-size: inherit !important;
 }
 
 /* Fix for search terms in title - explicitly make the stroke yellow */
 text.info-text.title-text-main .search-term {
   stroke: #FFCC00 !important;
-  stroke-width: 0.5em;
-  stroke-opacity: 0.5;
-  paint-order: stroke;
+  stroke-width: 0.5em !important;
+  stroke-opacity: 0.5 !important;
+  paint-order: stroke !important;
   /* Use the title color */
   fill: var(--title-color) !important;
 }
@@ -189,10 +192,23 @@ text.info-text.title-text-main .search-term {
 /* Override for search terms in secondary text */
 text.info-text.title-text-secondary .search-term {
   stroke: #FFCC00 !important;
-  stroke-width: 0.5em;
-  stroke-opacity: 0.5;
-  paint-order: stroke;
+  stroke-width: 0.5em !important;
+  stroke-opacity: 0.5 !important;
+  paint-order: stroke !important;
   fill: inherit !important; 
+}
+
+/* Search terms in standard synopsis text - ensure consistent styling */
+text.info-text tspan.search-term:not([data-item-type]) {
+  stroke: #FFCC00 !important;
+  stroke-width: 0.5em !important;
+  stroke-opacity: 0.5 !important;
+  paint-order: stroke !important;
+  font-weight: bold !important;
+  /* Inherit regular text style */
+  font-family: inherit !important;
+  font-size: inherit !important;
+  fill: inherit !important;
 }
 
 /* Override for search terms in metadata text to preserve random colors */
@@ -290,7 +306,7 @@ tspan .search-term {
 .scene-info text.info-text {
   font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   stroke: white;
-  stroke-width: 2px;
+  stroke-width: 3px;
   paint-order: stroke;
 }
 
@@ -300,6 +316,15 @@ tspan .search-term {
   font-weight: 700;
   margin-bottom: 8px; /* Add space after the title */
   /* No fill property to allow the inline fill attribute to take effect */
+}
+
+/* Style for the synopsis date text */
+.scene-info text.info-text.title-text-main tspan.date-text {
+  font-weight: 600;
+  font-size: 18px;
+  stroke-width: 2.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 /* Style for synopsis text (second line onward) */
@@ -318,35 +343,6 @@ tspan .search-term {
   text-transform: none; /* Allow mixed case */
 }
 
-/* Synopsis cells */
-.synopsis-cell {
-  opacity: 0;
-  transition: opacity 0.15s, transform 0.15s;
-  filter: brightness(1.1) contrast(0.9);
-  stroke: var(--text-accent, #705DCF);
-  stroke-width: 1.5;
-  stroke-opacity: 0;
-  transform: scale(0.95);
-}
-
-.synopsis-cell.revealed {
-  opacity: 0.92;
-  stroke-opacity: 1;
-  transform: scale(1);
-}
-
-/* Simplify cell transitions - reduce or remove delay */
-.synopsis-cell.cell-0 { transition-delay: 0s; }
-.synopsis-cell.cell-1 { transition-delay: 0.02s; }
-.synopsis-cell.cell-2 { transition-delay: 0.04s; }
-.synopsis-cell.cell-3 { transition-delay: 0.06s; }
-.synopsis-cell.cell-4 { transition-delay: 0.08s; }
-.synopsis-cell.cell-5 { transition-delay: 0.1s; }
-.synopsis-cell.cell-6 { transition-delay: 0.12s; }
-.synopsis-cell.cell-7 { transition-delay: 0.14s; }
-.synopsis-cell.cell-8 { transition-delay: 0.16s; }
-.synopsis-cell.cell-9 { transition-delay: 0.18s; }
-
 /* Number elements basic styling */
 .number-square, .number-text {
   transition: opacity 0.1s, fill 0.1s, transform 0.1s;
@@ -357,13 +353,6 @@ tspan .search-term {
   opacity: 0.2;
 }
 
-/* Mouseover styling - high specificity for scene title */ 
-.scene-title.non-selected:not(.scene-is-open) {
-  fill: #FFFFFF;
-  font-weight: normal;
-  stroke: none;
-  stroke-width: 0;
-}
 
 .scene-title.selected {
   stroke: #000000;
@@ -389,7 +378,7 @@ tspan .search-term {
 .number-square.selected {
   transform: scale(1.2);
   z-index: 10;
-  stroke-width: 2px;
+  stroke-width: 3px;
   /* Use the scene color if available, otherwise fall back to accent color */
   stroke: var(--scene-color, #705DCF);
 }
@@ -630,29 +619,19 @@ tspan .search-term {
 
 /* Rules for open scenes - minimal, simplified approach */
 
-/* When no hover is happening - default state for open scenes */
-.scene-title.scene-is-open {
-  fill: #000000;
-  font-weight: normal;
+
+/* Base style for scene-is-open - using theme accent color */
+.number-square.scene-is-open {
+  fill: var(--interactive-accent, #705DCF);
+  stroke: none;
 }
 
-.number-square.scene-is-open {
-  stroke: #000000;
-  stroke-width: 1px;
-  transform: scale(1.2);
-}
 
 .number-text.scene-is-open {
   font-weight: normal;
-  fill: #000000;
+  fill: #FFFFFF;
 }
 
-/* When another scene is being hovered - open scenes should look non-selected */
-.scene-title.scene-is-open.non-selected {
-  fill: #FFFFFF!important;
-  stroke: none;
-  stroke-width: 0;
-}
 
 .number-square.scene-is-open.non-selected {
   fill: #EFEFEF;
@@ -664,17 +643,9 @@ tspan .search-term {
 .number-text.scene-is-open.non-selected {
   fill: #ffffff;
   opacity: 1;
-  font-weight: normal;
   transition: fill 0.1s;
 }
 
-/* When hovering the open scene itself */
-.scene-title.scene-is-open.selected {
-  fill: #000000;
-  stroke: #FFFFFF;
-  stroke-width: 5px;
-  paint-order: stroke;
-}
 
 .number-square.scene-is-open.selected {
   stroke: #705DCF;
@@ -686,12 +657,24 @@ tspan .search-term {
 .number-text.scene-is-open.selected {
   fill: #000000;
   font-weight: bold;
+  transition: fill 0.1s;
 }
 
 /* Number squares for search results */
 .number-square.search-result {
   fill: #FFCC00;
 }
+
+/* Number squares for search results */
+.number-text.search-result {
+  fill: #000000;
+}
+
+/* Number squares for search results */
+.number-text.search-result.non-selected {
+  fill: #FFFFFF !important;
+}
+
 
 /* When a scene is both open and a search result */
 .number-square.search-result.non-selected {
@@ -890,10 +873,17 @@ tspan .search-term {
 /* Make sure title text has strong yellow highlight when searched */
 .scene-info text.info-text.title-text-main .search-term {
   stroke: #FFCC00 !important;
-  stroke-width: 0.6em !important;
-  stroke-opacity: 0.65 !important;
+  stroke-width: 1em !important;
   paint-order: stroke !important;
   font-weight: bold !important;
   /* Use the title color */
   fill: var(--title-color) !important;
+}
+
+/* Spacer element to enforce proper vertical gaps */
+.synopsis-spacer {
+  line-height: 1.5em;
+  min-height: 1.5em;
+  display: block;
+  visibility: visible !important;
 }

@@ -177,6 +177,19 @@ function escapeXml(unsafe: string): string {
     });
 }
 
+// Helper function to decode HTML entities (like &#039; to ')
+function decodeHtmlEntities(text: string): string {
+    if (!text) return '';
+    
+    // Create a temporary element to use the browser's built-in HTML entity decoding
+    const tempElement = document.createElement('div');
+    // Use textContent to avoid executing scripts
+    tempElement.innerHTML = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Get the decoded text
+    const decoded = tempElement.textContent || '';
+    return decoded;
+}
+
 // Add this class after the helper functions at the top of the file
 class SynopsisManager {
     private plugin: ManuscriptTimelinePlugin;
@@ -214,6 +227,9 @@ class SynopsisManager {
         // Get metadata items - everything after the separator
         const metadataItems = contentLines.slice(synopsisEndIndex + 1);
         
+        // Process all content lines to decode any HTML entities
+        const decodedContentLines = contentLines.map(line => decodeHtmlEntities(line));
+        
         // Create truly random color mappings for subplots and characters
         // These will generate new colors on every reload
         const getSubplotColor = (subplot: string): string => {
@@ -248,7 +264,7 @@ class SynopsisManager {
         containerGroup.appendChild(synopsisTextGroup);
         
         // Add the title with publish stage color - at origin (0,0)
-        const titleContent = contentLines[0];
+        const titleContent = decodedContentLines[0];
         const titleTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
         titleTextElement.setAttribute("class", `info-text title-text-main ${stageClass}`);
         titleTextElement.setAttribute("x", "0");
@@ -262,19 +278,112 @@ class SynopsisManager {
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = titleContent;
             
-            // Extract the tspan content and create equivalent SVG elements
-            const tspans = tempDiv.querySelectorAll('tspan');
-            tspans.forEach(tspan => {
-                const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                
-                // Copy attributes from HTML to SVG element
-                Array.from(tspan.attributes).forEach(attr => {
-                    svgTspan.setAttribute(attr.name, attr.value);
+            // Check if this is a title with scene number and date that's been search highlighted
+            if (titleContent.includes('   ') && this.plugin.searchActive) {
+                // Extract parts using original structure (preserving scene number + date)
+                const parts = titleContent.split('   ');
+                if (parts.length >= 2) {
+                    // The title part (with scene number) is before the triple space
+                    const titlePart = parts[0];
+                    // Date part is everything after the triple space
+                    const datePart = parts.slice(1).join('   ');
+                    
+                    // Parse HTML of title part to get scene number and highlighted title
+                    tempDiv.innerHTML = titlePart;
+                    
+                    // Create new elements for each part
+                    if (titlePart) {
+                        // Get all elements from the title part
+                        const titleNodes = Array.from(tempDiv.childNodes);
+                        
+                        // Add all nodes from title part to the text element
+                        titleNodes.forEach(node => {
+                            if (node.nodeType === Node.TEXT_NODE) {
+                                // Text node - create tspan with title color
+                                const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                tspan.setAttribute("fill", titleColor);
+                                tspan.textContent = node.textContent || '';
+                                titleTextElement.appendChild(tspan);
+                            } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.toLowerCase() === 'tspan') {
+                                // tspan node - copy it and its attributes
+                                const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                Array.from((node as Element).attributes).forEach(attr => {
+                                    svgTspan.setAttribute(attr.name, attr.value);
+                                });
+                                
+                                // Ensure title color is applied to search terms
+                                if (svgTspan.classList.contains('search-term')) {
+                                    svgTspan.setAttribute("fill", titleColor);
+                                }
+                                
+                                svgTspan.textContent = node.textContent || '';
+                                titleTextElement.appendChild(svgTspan);
+                            }
+                        });
+                    }
+                    
+                    // Add date part if present
+                    if (datePart) {
+                        // Add a space tspan to ensure proper separation between title and date
+                        const spaceTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        spaceTspan.setAttribute("fill", titleColor);
+                        spaceTspan.textContent = "   "; // Triple space separator
+                        titleTextElement.appendChild(spaceTspan);
+                        
+                        const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        dateTspan.setAttribute("fill", titleColor);
+                        dateTspan.setAttribute("class", "date-text");
+                        
+                        // Check if date part has any search highlighting
+                        if (datePart.includes('<tspan')) {
+                            // Parse the date HTML
+                            const dateDiv = document.createElement('div');
+                            dateDiv.innerHTML = datePart;
+                            const dateNodes = Array.from(dateDiv.childNodes);
+                            
+                            // Process each node in the date
+                            dateNodes.forEach(node => {
+                                if (node.nodeType === Node.TEXT_NODE) {
+                                    dateTspan.appendChild(document.createTextNode(node.textContent || ''));
+                                } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.toLowerCase() === 'tspan') {
+                                    const dateSvgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                    Array.from((node as Element).attributes).forEach(attr => {
+                                        dateSvgTspan.setAttribute(attr.name, attr.value);
+                                    });
+                                    
+                                    // Ensure proper styling for search terms in date
+                                    if (dateSvgTspan.classList.contains('search-term')) {
+                                        dateSvgTspan.setAttribute("fill", titleColor);
+                                    }
+                                    
+                                    dateSvgTspan.textContent = node.textContent || '';
+                                    dateTspan.appendChild(dateSvgTspan);
+                                }
+                            });
+                        } else {
+                            // No highlighting in date - simple text
+                            dateTspan.textContent = datePart;
+                        }
+                        
+                        titleTextElement.appendChild(dateTspan);
+                    }
+                }
+            } else {
+                // Standard handling for tspans that aren't title+date format
+                // Extract the tspan content and create equivalent SVG elements
+                const tspans = tempDiv.querySelectorAll('tspan');
+                tspans.forEach(tspan => {
+                    const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    
+                    // Copy attributes from HTML to SVG element
+                    Array.from(tspan.attributes).forEach(attr => {
+                        svgTspan.setAttribute(attr.name, attr.value);
+                    });
+                    
+                    svgTspan.textContent = tspan.textContent;
+                    titleTextElement.appendChild(svgTspan);
                 });
-                
-                svgTspan.textContent = tspan.textContent;
-                titleTextElement.appendChild(svgTspan);
-            });
+            }
         } else {
             // Handle title and date with different styling
             const parts = titleContent.split('  ');
@@ -290,7 +399,7 @@ class SynopsisManager {
                 
                 const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                 dateTspan.setAttribute("fill", titleColor);
-                dateTspan.setAttribute("opacity", "0.65");
+                dateTspan.setAttribute("class", "date-text");
                 dateTspan.textContent = date;
                 titleTextElement.appendChild(dateTspan);
             } else {
@@ -305,7 +414,7 @@ class SynopsisManager {
         
         // Add synopsis lines with precise vertical spacing
         for (let i = 1; i < synopsisEndIndex; i++) {
-            const lineContent = contentLines[i];
+            const lineContent = decodedContentLines[i];
             const lineY = i * lineHeight; // Simplified vertical spacing
             
             const synopsisLineElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -319,19 +428,51 @@ class SynopsisManager {
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = lineContent;
                 
-                // Extract the tspan content and create equivalent SVG elements
-                const tspans = tempDiv.querySelectorAll('tspan');
-                tspans.forEach(tspan => {
-                    const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                    
-                    // Copy attributes from HTML to SVG element
-                    Array.from(tspan.attributes).forEach(attr => {
-                        svgTspan.setAttribute(attr.name, attr.value);
-                    });
-                    
-                    svgTspan.textContent = tspan.textContent;
-                    synopsisLineElement.appendChild(svgTspan);
+                // First see if there's any text nodes (not wrapped in elements)
+                let hasDirectTextNodes = false;
+                tempDiv.childNodes.forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+                        hasDirectTextNodes = true;
+                    }
                 });
+                
+                if (hasDirectTextNodes) {
+                    // There are direct text nodes, handle them carefully
+                    tempDiv.childNodes.forEach(node => {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            // Add the text directly
+                            if (node.textContent?.trim()) {
+                                synopsisLineElement.appendChild(document.createTextNode(node.textContent));
+                            }
+                        } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName.toLowerCase() === 'tspan') {
+                            // Handle tspan element (search highlighting)
+                            const tspan = node as Element;
+                            const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                            
+                            // Copy attributes from HTML to SVG element
+                            Array.from(tspan.attributes).forEach(attr => {
+                                svgTspan.setAttribute(attr.name, attr.value);
+                            });
+                            
+                            svgTspan.textContent = tspan.textContent;
+                            synopsisLineElement.appendChild(svgTspan);
+                        }
+                    });
+                } else {
+                    // Extract the tspan content and create equivalent SVG elements
+                    const tspans = tempDiv.querySelectorAll('tspan');
+                    tspans.forEach(tspan => {
+                        const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        
+                        // Copy attributes from HTML to SVG element
+                        Array.from(tspan.attributes).forEach(attr => {
+                            svgTspan.setAttribute(attr.name, attr.value);
+                        });
+                        
+                        svgTspan.textContent = tspan.textContent;
+                        synopsisLineElement.appendChild(svgTspan);
+                    });
+                }
             } else {
                 synopsisLineElement.textContent = lineContent;
             }
@@ -341,29 +482,28 @@ class SynopsisManager {
         
         // Process metadata items with consistent vertical spacing
         if (metadataItems.length > 0) {
-            // Add a visual separator line at the bottom of the synopsis section
-            const separatorY = (synopsisEndIndex * lineHeight) + 15;
-            const separatorLength = 120; // Length of the separator line
-            
-            const separatorLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            separatorLine.setAttribute("x1", String(-separatorLength/2));
-            separatorLine.setAttribute("y1", String(separatorY));
-            separatorLine.setAttribute("x2", String(separatorLength/2));
-            separatorLine.setAttribute("y2", String(separatorY));
-            separatorLine.setAttribute("stroke", "#D0D0D0");
-            separatorLine.setAttribute("stroke-width", "1.5");
-            separatorLine.setAttribute("opacity", "0.5");
-            
-            synopsisTextGroup.appendChild(separatorLine);
-            
             // Add extra large vertical space between synopsis and metadata
             const metadataY = (synopsisEndIndex * lineHeight) + 45; // Big gap below the synopsis
             
-            this.plugin.log(`Added separator line at Y=${separatorY} and metadata Y=${metadataY}`);
+            this.plugin.log(`Metadata Y=${metadataY}`);
+            
+            // Add invisible spacer element to ensure the gap is preserved
+            const spacerY = (synopsisEndIndex * lineHeight) + 25;
+            const spacerElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            spacerElement.setAttribute("x", "0");
+            spacerElement.setAttribute("y", String(spacerY));
+            spacerElement.setAttribute("font-size", "14px");
+            spacerElement.setAttribute("opacity", "0");
+            spacerElement.textContent = "\u00A0"; // Non-breaking space
+            synopsisTextGroup.appendChild(spacerElement);
+            
+            this.plugin.log(`Metadata Y=${metadataY} with spacer at Y=${spacerY}`);
             
             // Process subplots if first metadata item exists
-            if (metadataItems[0] && metadataItems[0].trim() !== '\u00A0') {
-                if (metadataItems[0].startsWith('<tspan')) {
+            const decodedMetadataItems = metadataItems.map(item => decodeHtmlEntities(item));
+            
+            if (decodedMetadataItems[0] && decodedMetadataItems[0].trim() !== '\u00A0') {
+                if (decodedMetadataItems[0].startsWith('<tspan')) {
                     // This is pre-formatted HTML
                     const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
                     subplotTextElement.setAttribute("class", "info-text metadata-text");
@@ -372,7 +512,7 @@ class SynopsisManager {
                     subplotTextElement.setAttribute("text-anchor", "start");
                     
                     const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = metadataItems[0];
+                    tempDiv.innerHTML = decodedMetadataItems[0];
                     
                     // Extract the tspan content and create equivalent SVG elements
                     const tspans = tempDiv.querySelectorAll('tspan');
@@ -391,7 +531,7 @@ class SynopsisManager {
                     synopsisTextGroup.appendChild(subplotTextElement);
                 } else {
                     // Extract subplots and apply colors
-                    const subplots = metadataItems[0].split(', ').filter(s => s.trim().length > 0);
+                    const subplots = decodedMetadataItems[0].split(', ').filter(s => s.trim().length > 0);
                     
                     if (subplots.length > 0) {
                         const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -448,11 +588,11 @@ class SynopsisManager {
             }
             
             // Process characters - second metadata item
-            if (metadataItems.length > 1 && metadataItems[1] && metadataItems[1].trim() !== '') {
+            if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim() !== '') {
                 // Standard spacing between subplot and character lines
                 const characterY = metadataY + lineHeight;
                 
-                if (metadataItems[1].startsWith('<tspan')) {
+                if (decodedMetadataItems[1].startsWith('<tspan')) {
                     // This is pre-formatted HTML
                     const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
                     characterTextElement.setAttribute("class", "info-text metadata-text");
@@ -461,7 +601,7 @@ class SynopsisManager {
                     characterTextElement.setAttribute("text-anchor", "start");
                     
                     const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = metadataItems[1];
+                    tempDiv.innerHTML = decodedMetadataItems[1];
                     
                     // Extract the tspan content and create equivalent SVG elements
                     const tspans = tempDiv.querySelectorAll('tspan');
@@ -480,7 +620,7 @@ class SynopsisManager {
                     synopsisTextGroup.appendChild(characterTextElement);
                 } else {
                     // Extract characters and apply colors
-                    const characters = metadataItems[1].split(', ').filter(c => c.trim().length > 0);
+                    const characters = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
                     
                     if (characters.length > 0) {
                         const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -908,18 +1048,64 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             return text;
         }
 
+        // First decode any HTML entities that might be in the text
+        const decodedText = decodeHtmlEntities(text);
+
         // For debugging
-        console.log(`Highlighting term "${this.searchTerm}" in text: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`);
+        console.log(`Highlighting term "${this.searchTerm}" in text: ${decodedText.substring(0, 50)}${decodedText.length > 50 ? '...' : ''}`);
 
         const regex = new RegExp(`(${this.escapeRegExp(this.searchTerm)})`, 'gi');
         
+        // Special handling for title lines containing scene number and date
+        // Title format is typically: "SceneNumber SceneTitle   Date"
+        if (decodedText.includes('   ') && !decodedText.includes('<tspan')) {
+            console.log(`HIGHLIGHT: Processing title line: ${decodedText}`);
+            
+            // First split by the triple space that separates title from date
+            const [titlePart, datePart] = decodedText.split(/\s{3,}/);
+            
+            // Then extract scene number from title (if it exists)
+            const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
+            
+            if (titleMatch) {
+                // We have scene number + title + date format
+                const sceneNumber = titleMatch[1];
+                const sceneTitle = titleMatch[3];
+                
+                // Escape all parts to prevent HTML injection
+                const escapedSceneNumber = escapeXml(sceneNumber);
+                const escapedSceneTitle = escapeXml(sceneTitle);
+                const escapedDate = datePart ? escapeXml(datePart) : '';
+                
+                // Apply highlighting only to the scene title
+                const highlightedTitle = escapedSceneTitle.replace(regex, '<tspan class="search-term">$1</tspan>');
+                
+                // Rebuild the title structure with highlighting - ensure consistent spacing
+                const result = `${escapedSceneNumber} ${highlightedTitle}   ${escapedDate}`;
+                console.log(`HIGHLIGHT: Title result: ${result.substring(0, 50)}`);
+                return result;
+            } else {
+                // No scene number, just title + date
+                const escapedTitle = escapeXml(titlePart);
+                const escapedDate = datePart ? escapeXml(datePart) : '';
+                
+                // Apply highlighting to the title part
+                const highlightedTitle = escapedTitle.replace(regex, '<tspan class="search-term">$1</tspan>');
+                
+                // Rebuild with date - ensure consistent spacing
+                const result = `${highlightedTitle}   ${escapedDate}`;
+                console.log(`HIGHLIGHT: Simple title result: ${result.substring(0, 50)}`);
+                return result;
+            }
+        }
+        
         // Special handling for metadata text (subplots and characters)
-        if (text.includes(',') && !text.includes('<tspan') && !text.includes('<')) {
+        if (decodedText.includes(',') && !decodedText.includes('<tspan') && !decodedText.includes('<')) {
             // This is a raw metadata line (comma-separated items)
-            console.log(`HIGHLIGHT: Processing raw metadata line: ${text.substring(0, 50)}`);
+            console.log(`HIGHLIGHT: Processing raw metadata line: ${decodedText.substring(0, 50)}`);
             
             // First, escape the text to prevent HTML injection
-            const escapedText = escapeXml(text);
+            const escapedText = escapeXml(decodedText);
             
             // Then create a temporary container to properly handle HTML
             const tempElement = document.createElement('div');
@@ -929,8 +1115,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             // Process each item and join back with commas
             const processedItems = items.map(item => {
-                // Apply search term highlighting to the item
-                const highlighted = item.replace(regex, '<tspan class="search-term" style="stroke: #FFCC00 !important; stroke-width: 0.6em !important; stroke-opacity: 0.6 !important;">$1</tspan>');
+                // Apply search term highlighting to the item - use CSS classes for styling consistency
+                const highlighted = item.replace(regex, '<tspan class="search-term">$1</tspan>');
                 return highlighted;
             });
             
@@ -941,11 +1127,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         }
         
         // Check if text already contains tspan with fill attributes (metadata lines)
-        if (text.includes('<tspan') && text.includes('fill=')) {
+        if (decodedText.includes('<tspan') && decodedText.includes('fill=')) {
             // Use a DOM parser to preserve the fill attributes
-            console.log(`HIGHLIGHT: Processing complex HTML with tspans: ${text.substring(0, 50)}`);
+            console.log(`HIGHLIGHT: Processing complex HTML with tspans: ${decodedText.substring(0, 50)}`);
             const tempContainer = document.createElement('div');
-            tempContainer.innerHTML = `<text>${text}</text>`;
+            tempContainer.innerHTML = `<text>${decodedText}</text>`;
             const tspans = tempContainer.querySelectorAll('tspan');
             
             // Process each tspan separately
@@ -956,18 +1142,26 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 // Replace matched content with highlighted version
                 if (originalContent && this.searchTerm) {
                     tspan.innerHTML = originalContent.replace(regex, 
-                        `<tspan class="search-term" fill="${fillColor}" style="stroke: #FFCC00 !important; stroke-width: 0.6em !important; stroke-opacity: 0.6 !important;">$1</tspan>`);
+                        `<tspan class="search-term" fill="${fillColor}">$1</tspan>`);
                 }
             });
             
-            const result = tempContainer.querySelector('text')?.innerHTML || text;
+            const result = tempContainer.querySelector('text')?.innerHTML || decodedText;
             console.log(`HIGHLIGHT: Complex result: ${result.substring(0, 50)}`);
             return result;
         }
         
-        // Regular processing for text without tspans
-        console.log(`HIGHLIGHT: Processing regular text: ${text.substring(0, 50)}`);
-        const result = text.replace(regex, '<tspan class="search-term">$1</tspan>');
+        // Regular processing for text without tspans (synopsis lines)
+        console.log(`HIGHLIGHT: Processing synopsis text: ${decodedText.substring(0, 50)}`);
+        
+        // First escape the text to prevent HTML injection
+        const escapedText = escapeXml(decodedText);
+        
+        // Use a more careful approach to highlight without breaking sentences
+        // Directly replace occurrences of the search term with highlighted version using only class for styling
+        const result = escapedText.replace(regex, '<tspan class="search-term">$1</tspan>');
+        
+        console.log(`HIGHLIGHT: Synopsis result: ${result.substring(0, 50)}`);
         return result;
     }
 
@@ -2193,11 +2387,127 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     /// Helper function to split text into balanced lines
     private splitIntoBalancedLines(text: string, maxWidth: number): string[] {
-        // First, handle any existing tspan elements by temporarily replacing them
-        const tspanRegex = /<tspan[^>]*>([^<]*)<\/tspan>/g;
-        const tempText = text.replace(tspanRegex, (_, content) => content);
+        // Check if the text already contains tspan elements (like search highlights)
+        if (text.includes('<tspan')) {
+            this.log(`Using DOM-based line splitting for text with tspans: ${text.substring(0, 50)}...`);
+            
+            // Create a temporary div to parse the HTML
+            const div = document.createElement('div');
+            
+            // Wrap in a text element to ensure proper parsing
+            div.innerHTML = `<text>${text}</text>`;
+            
+            // Get the text content without the tags for measuring
+            const plainText = div.textContent || '';
+            
+            // Split the plain text into lines based on length
+            const plainLines = this.splitPlainTextIntoLines(plainText, maxWidth);
+            
+            if (plainLines.length <= 1) {
+                // If we only have one line, just return the original text
+                return [text];
+            }
+            
+            // Now we need to map the plain text lines back to HTML
+            // This is complex because we need to maintain the tspan tags
+            
+            // Get all text nodes and tspan elements in order
+            const nodes: (Text | Element)[] = [];
+            const collectNodes = (parent: Node) => {
+                for (const child of Array.from(parent.childNodes)) {
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        nodes.push(child as Text);
+                    } else if (child.nodeType === Node.ELEMENT_NODE && child.nodeName.toLowerCase() === 'tspan') {
+                        nodes.push(child as Element);
+                        // Also collect text nodes inside tspans
+                        collectNodes(child);
+                    }
+                }
+            };
+            
+            // Start with the text element
+            collectNodes(div.firstChild!);
+            
+            // Now reconstruct lines with HTML tags intact
+            const htmlLines: string[] = [];
+            let currentHtmlLine = '';
+            let currentPlainLine = '';
+            let nodeIndex = 0;
+            
+            for (const line of plainLines) {
+                currentHtmlLine = '';
+                currentPlainLine = '';
+                
+                // Keep adding nodes until we reach the end of this line
+                while (nodeIndex < nodes.length && currentPlainLine.length < line.length) {
+                    const node = nodes[nodeIndex];
+                    
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        // Text node
+                        const text = node.textContent || '';
+                        
+                        // How much of this text node do we need to add to the current line?
+                        const remainingLineLength = line.length - currentPlainLine.length;
+                        
+                        if (text.length <= remainingLineLength) {
+                            // The whole text node fits
+                            currentHtmlLine += text;
+                            currentPlainLine += text;
+                            nodeIndex++;
+                        } else {
+                            // Only part of the text node fits
+                            currentHtmlLine += text.substring(0, remainingLineLength);
+                            currentPlainLine += text.substring(0, remainingLineLength);
+                            
+                            // Update the text node with the remaining text
+                            node.textContent = text.substring(remainingLineLength);
+                            break;
+                        }
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        // Element node (tspan)
+                        const tspan = node as Element;
+                        const tspanText = tspan.textContent || '';
+                        
+                        // Clone the tspan so we can serialize it
+                        const tspanClone = tspan.cloneNode(true) as Element;
+                        
+                        // How much of this tspan content do we need?
+                        const remainingLineLength = line.length - currentPlainLine.length;
+                        
+                        if (tspanText.length <= remainingLineLength) {
+                            // The whole tspan fits
+                            const serializer = new XMLSerializer();
+                            currentHtmlLine += serializer.serializeToString(tspanClone);
+                            currentPlainLine += tspanText;
+                            nodeIndex++;
+                        } else {
+                            // Only part of the tspan fits
+                            // This is tricky - we need to modify the content but keep the tag
+                            tspanClone.textContent = tspanText.substring(0, remainingLineLength);
+                            const serializer = new XMLSerializer();
+                            currentHtmlLine += serializer.serializeToString(tspanClone);
+                            currentPlainLine += tspanText.substring(0, remainingLineLength);
+                            
+                            // Update the original tspan with the remaining text
+                            tspan.textContent = tspanText.substring(remainingLineLength);
+                            break;
+                        }
+                    }
+                }
+                
+                htmlLines.push(currentHtmlLine);
+            }
+            
+            return htmlLines;
+        }
         
-        const words = tempText.split(/\s+/);
+        // Regular plain text handling (no tspans)
+        return this.splitPlainTextIntoLines(text, maxWidth);
+    }
+    
+    // Helper method to split plain text into lines
+    private splitPlainTextIntoLines(text: string, maxWidth: number): string[] {
+        const words = text.split(/\s+/);
         const lines: string[] = [];
         let currentLine = '';
         let currentWidth = 0;
@@ -2211,7 +2521,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 lines.push(currentLine.trim());
                 currentLine = word;
                 currentWidth = wordWidth;
-                } else {
+            } else {
                 currentLine += (currentLine ? ' ' : '') + word;
                 currentWidth += wordWidth + (currentLine ? 1 : 0); // Add space width
             }
@@ -2221,20 +2531,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             lines.push(currentLine.trim());
         }
         
-        // Restore tspan elements in the final lines
-        return lines.map(line => {
-            let restoredLine = line;
-            const tspanMatches = text.match(tspanRegex) || [];
-            
-            tspanMatches.forEach(tspan => {
-                const content = tspan.replace(/<[^>]*>/g, '');
-                if (line.includes(content)) {
-                    restoredLine = restoredLine.replace(content, tspan);
-                }
-            });
-            
-            return restoredLine;
-        });
+        return lines;
     }
 
     // Add a helper method for hyphenation
@@ -2690,14 +2987,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Helper function to convert hex to RGB values without the "rgb()" wrapper
     private hexToRGB(hex: string): string | null {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        if (result) {
-            const r = parseInt(result[1], 16);
-            const g = parseInt(result[2], 16);
-            const b = parseInt(result[3], 16);
-            return `${r}, ${g}, ${b}`;
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        
+        if (isNaN(r) || isNaN(g) || isNaN(b)) {
+            return null;
         }
-        return null;
+        
+        return `${r}, ${g}, ${b}`;
     }
 }
 
@@ -3355,13 +3653,24 @@ export class ManuscriptTimelineView extends ItemView {
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
         const testSceneContent = `---
 Class: Scene
-Title: 1 Test Scene
-When: ${today}
+Synopsis: What happens in this scene briefly.
+Subplot:
+  - Main Plot
+  - Second Arc
 Act: 1
-Subplot: Main Plot
-Character: [Protagonist]
-Status: Working
-Synopsis: This is a test scene created to troubleshoot the timeline view.
+When: 1969-04-17
+Character:
+  - Janet Rollins
+Place:
+  - Earth
+  - San Diego
+Words: 1
+Publish Stage: Zero
+Status: Complete
+Due: 2025-05-17
+Total Time: 2
+Revision: 2
+Pending Edits: 
 ---
 
 # Test Scene
@@ -3788,82 +4097,54 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             }
         });
         
-        // Apply direct styling to each search term
+        // We will NOT apply direct styling to search terms anymore
+        // Instead, all styling will come from CSS classes for consistency
+        
+        // If needed, we can still handle special cases for parent-child relationships
         searchTerms.forEach(term => {
             try {
-                // Apply styling directly to the tspan 
                 const tspan = term as SVGTSpanElement;
                 
-                // Find parent text element to check if this is in metadata
+                // Find parent text element to determine context
                 const parentText = tspan.closest('text');
                 const isMetadataText = parentText?.classList.contains('metadata-text');
+                const isTitleText = parentText?.classList.contains('title-text-main');
+                const isSecondaryText = parentText?.classList.contains('title-text-secondary');
                 
-                // Apply different styling based on the type of text
-                if (isMetadataText) {
-                    // For metadata text (subplot/character), use a more visible highlight
-                    tspan.setAttribute('stroke', '#FFCC00');
-                    tspan.setAttribute('stroke-width', '0.5em');
-                    tspan.setAttribute('stroke-opacity', '0.4');
-                    tspan.setAttribute('paint-order', 'stroke');
-                    tspan.setAttribute('font-weight', 'bold');
-                    
-                    // For metadata, never overwrite the fill - it should inherit
-                    // or use the original color assigned to it
-                    
-                    if (this.plugin.settings.debug) {
-                        this.log(`Highlighted metadata search term: ${tspan.textContent}`);
+                // Check if this is a metadata item with data-item-type
+                // or is a child of an element with data-item-type
+                const hasItemType = tspan.hasAttribute('data-item-type') || 
+                                   (tspan.parentElement && tspan.parentElement.hasAttribute('data-item-type'));
+                
+                // Ensure we preserve fills from parent elements where needed
+                if (hasItemType) {
+                    // For metadata items, ensure we preserve the original fill
+                    // The fill is either on this element or inherited from parent
+                    const parentFill = tspan.parentElement?.getAttribute('fill');
+                    if (parentFill) {
+                        tspan.setAttribute('fill', parentFill);
                     }
-                } else {
-                    // Regular styling for non-metadata text
-                    tspan.setAttribute('stroke', '#FFCC00');
-                    tspan.setAttribute('stroke-width', '0.5em');
-                    tspan.setAttribute('stroke-opacity', '0.5');
-                    tspan.setAttribute('paint-order', 'stroke');
-                    tspan.setAttribute('font-weight', 'bold');
-                    
-                    // Check if this is a metadata item with data-item-type
-                    // or is a child of an element with data-item-type
-                    const hasItemType = tspan.hasAttribute('data-item-type') || 
-                                       (tspan.parentElement && tspan.parentElement.hasAttribute('data-item-type'));
-                                       
-                    if (hasItemType) {
-                        // For metadata items, ensure we preserve the original fill
-                        // The fill is either on this element or inherited from parent
-                        const parentFill = tspan.parentElement?.getAttribute('fill');
-                        if (parentFill) {
-                            tspan.setAttribute('fill', parentFill);
-                        }
-                        this.log('Preserving fill color for metadata item: ' + tspan.textContent);
-                        return;
-                    }
-                    
-                    // Special handling for title text only
-                    const titleTextParent = tspan.closest('.title-text-main');
-                    if (titleTextParent) {
-                        // For title text, use a more intense highlight
-                        tspan.setAttribute('stroke', '#FFCC00');
-                        tspan.setAttribute('stroke-width', '0.6em');
-                        tspan.setAttribute('stroke-opacity', '0.65');
-                        tspan.setAttribute('paint-order', 'stroke');
-                        tspan.setAttribute('font-weight', 'bold');
-                        
-                        // Find the title color from the parent text element
-                        const titleColorStyle = (titleTextParent as unknown as HTMLElement).style.getPropertyValue('--title-color');
-                        if (titleColorStyle) {
-                            // Set the fill directly to the title color
-                            tspan.setAttribute('fill', titleColorStyle);
-                        }
+                }
+                
+                // For title text, we may need to apply the title color
+                if (isTitleText) {
+                    // Find the title color from the parent text element
+                    const titleColorStyle = (parentText as unknown as HTMLElement).style.getPropertyValue('--title-color');
+                    if (titleColorStyle) {
+                        // Set the fill directly to the title color
+                        tspan.setAttribute('fill', titleColorStyle);
                     }
                 }
                 
                 // Log highlight details in debug mode
                 if (this.plugin.settings.debug) {
                     this.log(`Highlighted search term: ${tspan.textContent}`, {
+                        context: isMetadataText ? 'metadata' : (isTitleText ? 'title' : 'synopsis'),
                         fill: tspan.getAttribute('fill')
                     });
                 }
             } catch (error) {
-                console.error("Error applying search highlighting:", error);
+                console.error("Error handling search highlighting:", error);
             }
         });
     }
