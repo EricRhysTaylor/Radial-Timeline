@@ -127,6 +127,512 @@ function parseSceneTitle(title: string): { number: string; text: string } {
     };
 }
 
+// Helper function for XML escaping (moved outside class to be accessible to all)
+function escapeXml(unsafe: string): string {
+    return unsafe.replace(/[&<>"']/g, function (c) {
+        switch (c) {
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case "'": return '&#039;';
+            default: return c;
+        }
+    });
+}
+
+// Add this class after the helper functions at the top of the file
+class SynopsisManager {
+    private plugin: ManuscriptTimelinePlugin;
+    
+    constructor(plugin: ManuscriptTimelinePlugin) {
+        this.plugin = plugin;
+    }
+    
+    /**
+     * Escapes special characters in a string for use in a regular expression
+     */
+    escapeRegExp(string: string): string {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
+    /**
+     * Generate the HTML for a scene synopsis with consistent formatting
+     */
+    generateHTML(scene: Scene, contentLines: string[], sceneId: string): string {
+        // Map the publish stage to a CSS class
+        const stage = scene["Publish Stage"] || 'Zero';
+        const stageClass = `title-stage-${String(stage).toLowerCase()}`;
+        
+        // Get the title color from the publish stage
+        const titleColor = this.plugin.settings.publishStageColors[stage as keyof typeof this.plugin.settings.publishStageColors] || '#808080';
+        
+        // Determine where the synopsis content ends and metadata begins
+        let synopsisEndIndex = contentLines.findIndex(line => line === '\u00A0' || line === '');
+        if (synopsisEndIndex === -1) {
+            // If no separator found, assume last two lines are metadata (subplots & characters)
+            synopsisEndIndex = Math.max(0, contentLines.length - 2);
+        }
+        
+        // Get metadata items - everything after the separator
+        const metadataItems = contentLines.slice(synopsisEndIndex + 1);
+        
+        // Create truly random color mappings for subplots and characters
+        // These will generate new colors on every reload
+        const getSubplotColor = (subplot: string): string => {
+            // Generate a random dark color with good contrast (HSL: random hue, high saturation, low lightness)
+            const hue = Math.floor(Math.random() * 360);
+            const saturation = 60 + Math.floor(Math.random() * 20); // 60-80%
+            const lightness = 25 + Math.floor(Math.random() * 15);  // 25-40% - dark enough for contrast
+            this.plugin.log(`Generated subplot color for '${subplot}': hsl(${hue}, ${saturation}%, ${lightness}%)`);
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        };
+        
+        const getCharacterColor = (character: string): string => {
+            // Similar to subplot colors but with slightly different ranges
+            const hue = Math.floor(Math.random() * 360);
+            const saturation = 60 + Math.floor(Math.random() * 30); // 60-90%
+            const lightness = 30 + Math.floor(Math.random() * 15);  // 30-45%
+            this.plugin.log(`Generated character color for '${character}': hsl(${hue}, ${saturation}%, ${lightness}%)`);
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        };
+        
+        // Set the line height
+        const lineHeight = 26;
+        
+        // Start building the HTML - use a group for the whole synopsis
+        // Ensure we're creating a clean structure for positioning
+        let html = `
+            <g class="scene-info info-container" data-for-scene="${sceneId}">
+                <g class="synopsis-text">`;
+        
+        // Add the title with publish stage color - at origin (0,0)
+        const titleContent = contentLines[0];
+        if (titleContent.includes('<tspan')) {
+            html += `<text class="info-text title-text-main ${stageClass}" x="0" y="0" text-anchor="start" style="--title-color: ${titleColor};">${titleContent}</text>`;
+        } else {
+            // Handle title and date with different styling
+            const parts = titleContent.split('  ');
+            if (parts.length > 1) {
+                const title = parts[0];
+                const date = parts.slice(1).join('  ');
+                html += `<text class="info-text title-text-main ${stageClass}" x="0" y="0" text-anchor="start" style="--title-color: ${titleColor};">
+                    <tspan fill="${titleColor}" font-weight="bold">${escapeXml(title)}</tspan>
+                    <tspan fill="${titleColor}" opacity="0.65">${escapeXml(date)}</tspan>
+                </text>`;
+            } else {
+                html += `<text class="info-text title-text-main ${stageClass}" x="0" y="0" text-anchor="start" style="--title-color: ${titleColor};"><tspan fill="${titleColor}">${escapeXml(titleContent)}</tspan></text>`;
+            }
+        }
+        
+        // Add synopsis lines with precise vertical spacing
+        for (let i = 1; i < synopsisEndIndex; i++) {
+            const lineContent = contentLines[i];
+            const lineY = i * lineHeight; // Simplified vertical spacing
+            
+            html += `<text class="info-text title-text-secondary" x="0" y="${lineY}" text-anchor="start">${
+                lineContent.includes('<tspan') ? lineContent : escapeXml(lineContent)
+            }</text>`;
+        }
+        
+        // Process metadata items with consistent vertical spacing
+        if (metadataItems.length > 0) {
+            // Add a visual separator line at the bottom of the synopsis section
+            const separatorY = (synopsisEndIndex * lineHeight) + 15;
+            const separatorLength = 120; // Length of the separator line
+            html += `<line x1="-${separatorLength/2}" y1="${separatorY}" x2="${separatorLength/2}" y2="${separatorY}" stroke="#D0D0D0" stroke-width="1.5" opacity="0.5" />`;
+            
+            // Add extra large vertical space between synopsis and metadata
+            const metadataY = (synopsisEndIndex * lineHeight) + 45; // Big gap below the synopsis
+            
+            this.plugin.log(`Added separator line at Y=${separatorY} and metadata Y=${metadataY}`);
+            
+            // Process subplots if first metadata item exists
+            if (metadataItems[0] && metadataItems[0].trim() !== '\u00A0') {
+                if (metadataItems[0].startsWith('<tspan')) {
+                    // This is pre-formatted HTML
+                    html += `<text class="info-text metadata-text" x="0" y="${metadataY}" text-anchor="start">${metadataItems[0]}</text>`;
+                } else {
+                    // Extract subplots and apply colors
+                    const subplots = metadataItems[0].split(', ').filter(s => s.trim().length > 0);
+                    
+                    if (subplots.length > 0) {
+                        let subplotHtml = `<text class="info-text metadata-text" x="0" y="${metadataY}" text-anchor="start">`;
+                        
+                        // Format each subplot with its own color
+                        subplots.forEach((subplot, j) => {
+                            const color = getSubplotColor(subplot.trim());
+                            const subplotText = subplot.trim();
+                            
+                            // Apply search highlighting if active
+                            let formattedText = escapeXml(subplotText);
+                            if (this.plugin.searchActive && this.plugin.searchTerm) {
+                                const regex = new RegExp(`(${this.escapeRegExp(this.plugin.searchTerm)})`, 'gi');
+                                formattedText = formattedText.replace(regex, 
+                                    `<tspan class="search-term" fill="${color}">$1</tspan>`);
+                            }
+                            
+                            subplotHtml += `<tspan fill="${color}" data-item-type="subplot" style="fill: ${color} !important;">${formattedText}</tspan>`;
+                            
+                            if (j < subplots.length - 1) {
+                                subplotHtml += '<tspan fill="var(--text-muted)">, </tspan>';
+                            }
+                        });
+                        
+                        subplotHtml += '</text>';
+                        html += subplotHtml;
+                    }
+                }
+            }
+            
+            // Process characters - second metadata item
+            if (metadataItems.length > 1 && metadataItems[1] && metadataItems[1].trim() !== '') {
+                // Standard spacing between subplot and character lines
+                const characterY = metadataY + lineHeight;
+                
+                if (metadataItems[1].startsWith('<tspan')) {
+                    // This is pre-formatted HTML
+                    html += `<text class="info-text metadata-text" x="0" y="${characterY}" text-anchor="start">${metadataItems[1]}</text>`;
+                } else {
+                    // Extract characters and apply colors
+                    const characters = metadataItems[1].split(', ').filter(c => c.trim().length > 0);
+                    
+                    if (characters.length > 0) {
+                        let characterHtml = `<text class="info-text metadata-text" x="0" y="${characterY}" text-anchor="start">`;
+                        
+                        // Format each character with its own color
+                        characters.forEach((character, j) => {
+                            const color = getCharacterColor(character.trim());
+                            const characterText = character.trim();
+                            
+                            // Apply search highlighting if active
+                            let formattedText = escapeXml(characterText);
+                            if (this.plugin.searchActive && this.plugin.searchTerm) {
+                                const regex = new RegExp(`(${this.escapeRegExp(this.plugin.searchTerm)})`, 'gi');
+                                formattedText = formattedText.replace(regex, 
+                                    `<tspan class="search-term" fill="${color}">$1</tspan>`);
+                            }
+                            
+                            characterHtml += `<tspan fill="${color}" data-item-type="character" style="fill: ${color} !important;">${formattedText}</tspan>`;
+                            
+                            if (j < characters.length - 1) {
+                                characterHtml += '<tspan fill="var(--text-muted)">, </tspan>';
+                            }
+                        });
+                        
+                        characterHtml += '</text>';
+                        html += characterHtml;
+                    }
+                }
+            }
+        }
+        
+        // Close the group tags
+        html += `</g></g>`;
+        
+        return html;
+    }
+    
+    /**
+     * Update the position of a synopsis based on mouse position
+     */
+    updatePosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
+        if (!synopsis || !svg) {
+            this.plugin.log("updatePosition: missing synopsis or svg element", {synopsis, svg});
+            return;
+        }
+        
+        try {
+            // Get SVG coordinates from mouse position
+            const pt = svg.createSVGPoint();
+            pt.x = event.clientX;
+            pt.y = event.clientY;
+            const ctm = svg.getScreenCTM();
+            if (!ctm) {
+                this.plugin.log("updatePosition: No SVG CTM available");
+                return;
+            }
+            
+            const svgP = pt.matrixTransform(ctm.inverse());
+            
+            // Determine which quadrant the mouse is in
+            const quadrant = this.getQuadrant(svgP.x, svgP.y);
+            
+            // Calculate positioning parameters
+            const size = 1600; // SVG size
+            const margin = 30;
+            const outerRadius = size / 2 - margin;
+            const adjustedRadius = outerRadius - 20; // Reduce radius by 20px to move synopsis closer to center
+            
+            // Debug info
+            if (this.plugin.settings.debug) {
+                this.plugin.log(`Mouse position: SVG(${svgP.x.toFixed(0)}, ${svgP.y.toFixed(0)}), Quadrant: ${quadrant}`);
+            }
+            
+            // Reset styles and classes
+            (synopsis as SVGElement).removeAttribute('style');
+            synopsis.classList.remove('synopsis-q1', 'synopsis-q2', 'synopsis-q3', 'synopsis-q4');
+            
+            // Configure position based on quadrant
+            const position = this.getPositionForQuadrant(quadrant, adjustedRadius);
+            
+            // Apply the position class and base transform
+            synopsis.classList.add(`synopsis-${position.quadrantClass}`);
+            
+            // Calculate the initial x-position based on Pythagorean theorem
+            const y = position.y;
+            let x = 0;
+            
+            // Pythagorean calculation for the base x-position
+            // For y-coordinate on circle: x² + y² = r²
+            if (Math.abs(y) < adjustedRadius) {
+                x = Math.sqrt(adjustedRadius * adjustedRadius - y * y);
+                
+                // FIXED: Apply direction based on alignment - same convention as text positioning
+                // For right-aligned text (Q1, Q4), x should be positive
+                // For left-aligned text (Q2, Q3), x should be negative
+                x = position.isRightAligned ? x : -x;
+            }
+            
+            // Set the base transformation to position the synopsis correctly
+            this.plugin.log(`[DEBUG] Setting transform: translate(${x}, ${y})`);
+            synopsis.setAttribute('transform', `translate(${x}, ${y})`);
+            
+            // Ensure the synopsis is visible
+            synopsis.classList.add('visible');
+            synopsis.setAttribute('opacity', '1');
+            synopsis.setAttribute('pointer-events', 'all');
+            
+            // Position text elements to follow the arc
+            this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf);
+            
+            // Check final state of text elements
+            if (this.plugin.settings.debug) {
+                const textElements = Array.from(synopsis.querySelectorAll('text'));
+                textElements.forEach((el, idx) => {
+                    if (idx <= 2) { // Only log first few elements
+                        this.plugin.log(`[DEBUG] Final text position ${idx}: x=${el.getAttribute('x')}, y=${el.getAttribute('y')}, anchor=${el.getAttribute('text-anchor')}`);
+                    }
+                });
+            }
+            
+        } catch (e) {
+            this.plugin.log("Error in updatePosition:", e);
+        }
+    }
+    
+    /**
+     * Determine which quadrant a point is in
+     * SVG coordinate system: (0,0) is at center
+     * Q1: Bottom-Right (+x, +y)
+     * Q2: Bottom-Left (-x, +y)
+     * Q3: Top-Left (-x, -y)
+     * Q4: Top-Right (+x, -y)
+     */
+    private getQuadrant(x: number, y: number): string {
+        // Debug log to troubleshoot
+        this.plugin.log(`Raw coordinates: x=${x}, y=${y}`);
+        
+        // Define quadrants based on SVG coordinates
+        if (x >= 0 && y >= 0) return "Q1";      // Bottom Right (+x, +y)
+        else if (x < 0 && y >= 0) return "Q2";  // Bottom Left (-x, +y)
+        else if (x < 0 && y < 0) return "Q3";   // Top Left (-x, -y)
+        else return "Q4";                       // Top Right (+x, -y)
+    }
+    
+    /**
+     * Get position configuration for a specific quadrant
+     */
+    private getPositionForQuadrant(quadrant: string, outerRadius: number): {
+        x: number,
+        y: number,
+        quadrantClass: string,
+        isRightAligned: boolean,
+        isTopHalf: boolean
+    } {
+        // Place synopsis in opposite quadrant from mouse position (same half)
+        let result = {
+            x: 0,
+            y: 0,
+            quadrantClass: "",
+            isRightAligned: false,
+            isTopHalf: false
+        };
+        
+        // Fixed vertical positions
+        const topHalfOffset = -550; // Fixed vertical position from center for top half
+        const bottomHalfOffset = 400; // Updated value for bottom half (Q1, Q2)
+        
+        // Debug log to troubleshoot
+        this.plugin.log(`Processing quadrant: ${quadrant}`);
+        
+        switch (quadrant) {
+            case "Q1": // Mouse in Bottom Right -> Synopsis in Q2 (Bottom Left)
+                result.x = 0;
+                result.y = bottomHalfOffset; // Bottom half with updated value
+                result.quadrantClass = "q2";
+                result.isRightAligned = false; // Left aligned
+                result.isTopHalf = false;
+                break;
+                
+            case "Q2": // Mouse in Bottom Left -> Synopsis in Q1 (Bottom Right)
+                result.x = 0;
+                result.y = bottomHalfOffset; // Bottom half with updated value
+                result.quadrantClass = "q1";
+                result.isRightAligned = true; // Right aligned
+                result.isTopHalf = false;
+                break;
+                
+            case "Q3": // Mouse in Top Left -> Synopsis in Q4 (Top Right)
+                result.x = 0;
+                result.y = topHalfOffset; // Top half (unchanged)
+                result.quadrantClass = "q4";
+                result.isRightAligned = true; // Right aligned
+                result.isTopHalf = true;
+                break;
+                
+            case "Q4": // Mouse in Top Right -> Synopsis in Q3 (Top Left)
+                result.x = 0;
+                result.y = topHalfOffset; // Top half (unchanged)
+                result.quadrantClass = "q3";
+                result.isRightAligned = false; // Left aligned
+                result.isTopHalf = true;
+                break;
+        }
+        
+        // Debug log the result for troubleshooting
+        this.plugin.log(`Synopsis positioning: quadrant=${result.quadrantClass}, isRightAligned=${result.isRightAligned}, y=${result.y}`);
+        
+        return result;
+    }
+    
+    /**
+     * Position text elements along an arc
+     */
+    private positionTextElements(synopsis: Element, isRightAligned: boolean, isTopHalf: boolean): void {
+        // Find all text elements
+        const textElements = Array.from(synopsis.querySelectorAll('text'));
+        if (textElements.length === 0) return;
+        
+        // Set text anchor alignment based on quadrant
+        const textAnchor = isRightAligned ? 'end' : 'start';
+        textElements.forEach(textEl => {
+            textEl.setAttribute('text-anchor', textAnchor);
+        });
+        
+        // Get the synopsis text group
+        const synopsisTextGroup = synopsis.querySelector('.synopsis-text');
+        if (!synopsisTextGroup) {
+            this.plugin.log("Error: Could not find synopsis text group");
+            return;
+        }
+        
+        // Reset any previous transforms
+        (synopsisTextGroup as SVGElement).removeAttribute('transform');
+        
+        // Circle parameters
+        const titleLineHeight = 32; // Increased spacing for title/date line
+        const synopsisLineHeight = 22; // Reduced spacing for synopsis text
+        const radius = 750; // Reduced from 770 by 20px to match the adjustedRadius in updatePosition
+        
+        // Calculate starting y-position from synopsis position
+        const synopsisTransform = (synopsis as SVGElement).getAttribute('transform') || '';
+        const translateMatch = synopsisTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+        
+        if (!translateMatch || translateMatch.length < 3) {
+            this.plugin.log("Error: Could not parse synopsis transform", synopsisTransform);
+            return;
+        }
+        
+        const baseX = parseFloat(translateMatch[1]);
+        const baseY = parseFloat(translateMatch[2]);
+        
+        this.plugin.log(`Base position parsed: x=${baseX}, y=${baseY}`);
+        
+        // Position each text element using Pythagorean theorem relative to circle center
+        textElements.forEach((textEl, index) => {
+            // Calculate absolute position for this line with variable line heights
+            let yOffset = 0;
+            
+            if (index === 0) {
+                // Title line - position at origin
+                yOffset = 0;
+            } else {
+                // All other lines use the synopsis line height with title spacing
+                yOffset = titleLineHeight + (index - 1) * synopsisLineHeight;
+            }
+            
+            const absoluteY = baseY + yOffset;
+            
+            // First line (index 0) should be positioned at the circle's edge
+            if (index === 0) {
+                textEl.setAttribute('x', '0');
+                textEl.setAttribute('y', '0');
+                
+                if (this.plugin.settings.debug) {
+                    this.plugin.log(`Title positioned at x=0, y=0, (absolute: ${baseX}, ${baseY})`);
+                }
+            } else {
+                // For subsequent lines, calculate x-position using Pythagorean theorem
+                // This makes text follow the circle's arc
+                // For a point on a circle: x² + y² = r²
+                let xOffset = 0;
+                
+                // Calculate distance for debugging
+                const distanceFromCenter = Math.sqrt(baseX * baseX + absoluteY * absoluteY);
+                this.plugin.log(`Line ${index} distance check: distanceFromCenter=${distanceFromCenter.toFixed(2)}, radius=${radius}`);
+                
+                // Calculate what the x-coordinate would be if this point were on the circle
+                try {
+                    const circleX = Math.sqrt(radius * radius - absoluteY * absoluteY);
+                    
+                    // DEBUG: Log the values we're using
+                    this.plugin.log(`Calculation for line ${index}: isTopHalf=${isTopHalf}, isRightAligned=${isRightAligned}, circleX=${circleX.toFixed(2)}, baseX=${baseX.toFixed(2)}`);
+                    
+                    // Calculate the x-offset for this line based on quadrant
+                    if (isTopHalf) {
+                        // Top half (Q3, Q4) - KEEP EXISTING BEHAVIOR
+                        if (isRightAligned) {
+                            // Q4 (top right) - text flows left
+                            xOffset = Math.abs(circleX) - Math.abs(baseX);
+                        } else {
+                            // Q3 (top left) - text flows right
+                            xOffset = Math.abs(baseX) - Math.abs(circleX);
+                        }
+                    } else {
+                        // Bottom half (Q1, Q2) - FIXED CALCULATION
+                        if (isRightAligned) {
+                            // Q1 (bottom right) - text flows left
+                            // Match Q4 formula with adjusted sign for bottom half
+                            xOffset = -(Math.abs(baseX) - Math.abs(circleX));
+                        } else {
+                            // Q2 (bottom left) - text flows right
+                            // Match Q3 formula that works correctly
+                            xOffset = Math.abs(baseX) - Math.abs(circleX);
+                        }
+                    }
+                    
+                    // DEBUG: Log the calculated offset
+                    this.plugin.log(`Calculated xOffset for line ${index}: ${xOffset.toFixed(2)}`);
+                } catch (e) {
+                    // If calculation fails (e.g. sqrt of negative), use a fixed offset
+                    this.plugin.log(`Error calculating offset for line ${index}: ${e.message}`);
+                    xOffset = 0;
+                }
+                
+                // Apply calculated coordinates relative to the base position
+                textEl.setAttribute('x', String(Math.round(xOffset)));
+                textEl.setAttribute('y', String(yOffset));
+            }
+            
+            // Debug logging
+            if (this.plugin.settings.debug && index <= 3) {
+                this.plugin.log(`Text ${index} positioned at x=${textEl.getAttribute('x')}, y=${textEl.getAttribute('y')}, absoluteY=${absoluteY}`);
+            }
+        });
+    }
+}
+
 export default class ManuscriptTimelinePlugin extends Plugin {
     settings: ManuscriptTimelineSettings;
     
@@ -141,21 +647,112 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
     
+    // Add a synopsisManager instance
+    private synopsisManager: SynopsisManager;
+    
+    /**
+     * Position and curve the text elements in the SVG
+     * @param container The container element with the SVG
+     */
+    curveTextElements(container: Element, curveFactor: number, angleToCenter: number): void {
+        // Find all text elements inside the container
+        const textElements = container.querySelectorAll('text');
+        if (!textElements.length) return;
+    
+        // Apply the curvature to each text element
+        textElements.forEach((textEl) => {
+            try {
+                // Create a curved path effect for this text
+                const pathId = `path-${Math.random().toString(36).substring(2, 9)}`;
+                
+                // Create a curved path element
+                const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathElement.setAttribute('id', pathId);
+                pathElement.setAttribute('d', `M 0,0 Q ${Math.cos(angleToCenter) * 500},${Math.sin(angleToCenter) * 500 * curveFactor} 1000,0`);
+                pathElement.setAttribute('fill', 'none');
+                pathElement.style.display = 'none'; // Hide the path
+                
+                // Add the path to the container before the text
+                textEl.parentNode?.insertBefore(pathElement, textEl);
+                
+                // Link the text to the path
+                textEl.setAttribute('path', `url(#${pathId})`);
+                textEl.setAttribute('pathLength', '1');
+                textEl.setAttribute('startOffset', '0');
+            } catch (error) {
+                console.error('Error applying text curvature:', error);
+            }
+        });
+    }
+    
     // Add helper method to highlight search terms
-    private highlightSearchTerm(text: string): string {
-        if (!this.searchActive || !this.searchTerm) return text;
-        
+    public highlightSearchTerm(text: string): string {
+        // Skip if no search or inactive search
+        if (!this.searchTerm || this.searchTerm.trim() === '' || !this.searchActive) {
+            return text;
+        }
+
+        // For debugging
+        console.log(`Highlighting term "${this.searchTerm}" in text: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}`);
+
         const regex = new RegExp(`(${this.escapeRegExp(this.searchTerm)})`, 'gi');
         
-        // Check if the text already contains tspan elements
-        if (text.includes('<tspan')) {
-            // For text that already has tspan tags, we need to be careful not to break them
-            // This is a simplified approach - a more robust solution would use DOM parsing
-            return text.replace(regex, (match) => `<tspan class="search-term">${match}</tspan>`);
-        } else {
-            // Simple case - just wrap the matched text in a tspan
-            return text.replace(regex, `<tspan class="search-term">$1</tspan>`);
+        // Special handling for metadata text (subplots and characters)
+        if (text.includes(',') && !text.includes('<tspan') && !text.includes('<')) {
+            // This is a raw metadata line (comma-separated items)
+            console.log(`HIGHLIGHT: Processing raw metadata line: ${text.substring(0, 50)}`);
+            
+            // First, escape the text to prevent HTML injection
+            const escapedText = escapeXml(text);
+            
+            // Then create a temporary container to properly handle HTML
+            const tempElement = document.createElement('div');
+            
+            // Split by commas to process each item separately
+            const items = escapedText.split(/, */);
+            
+            // Process each item and join back with commas
+            const processedItems = items.map(item => {
+                // Apply search term highlighting to the item
+                const highlighted = item.replace(regex, '<tspan class="search-term" style="stroke: #FFCC00 !important; stroke-width: 0.6em !important; stroke-opacity: 0.6 !important;">$1</tspan>');
+                return highlighted;
+            });
+            
+            // Join the processed items back with commas
+            const result = processedItems.join(', ');
+            console.log(`HIGHLIGHT: Metadata result: ${result.substring(0, 50)}`);
+            return result;
         }
+        
+        // Check if text already contains tspan with fill attributes (metadata lines)
+        if (text.includes('<tspan') && text.includes('fill=')) {
+            // Use a DOM parser to preserve the fill attributes
+            console.log(`HIGHLIGHT: Processing complex HTML with tspans: ${text.substring(0, 50)}`);
+            const tempContainer = document.createElement('div');
+            tempContainer.innerHTML = `<text>${text}</text>`;
+            const tspans = tempContainer.querySelectorAll('tspan');
+            
+            // Process each tspan separately
+            Array.from(tspans).forEach(tspan => {
+                const originalContent = tspan.textContent || '';
+                const fillColor = tspan.getAttribute('fill');
+                
+                // Replace matched content with highlighted version
+                if (originalContent && this.searchTerm) {
+                    tspan.innerHTML = originalContent.replace(regex, 
+                        `<tspan class="search-term" fill="${fillColor}" style="stroke: #FFCC00 !important; stroke-width: 0.6em !important; stroke-opacity: 0.6 !important;">$1</tspan>`);
+                }
+            });
+            
+            const result = tempContainer.querySelector('text')?.innerHTML || text;
+            console.log(`HIGHLIGHT: Complex result: ${result.substring(0, 50)}`);
+            return result;
+        }
+        
+        // Regular processing for text without tspans
+        console.log(`HIGHLIGHT: Processing regular text: ${text.substring(0, 50)}`);
+        const result = text.replace(regex, '<tspan class="search-term">$1</tspan>');
+        return result;
     }
 
     // Add helper method to escape special characters in regex
@@ -165,6 +762,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     async onload() {
         await this.loadSettings();
+        
+        // Initialize the synopsis manager
+        this.synopsisManager = new SynopsisManager(this);
         
         // Set CSS variables for publish stage colors
         this.setCSSColorVariables();
@@ -204,6 +804,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         // Add settings tab
         this.addSettingTab(new ManuscriptTimelineSettingTab(this.app, this));
+        
+        // Register event for metadata changes
+        this.registerEvent(
+            this.app.metadataCache.on('changed', (file) => {
+                this.log('Metadata changed for file: ' + file.path);
+                // Refresh timeline when metadata changes
+                this.refreshTimelineIfNeeded(file);
+            })
+        );
     }
     
     // Helper to activate the timeline view
@@ -278,7 +887,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         }
                         // Clean up the internal link format (remove [[ and ]])
                         characters = characters.map((char: string) => char.replace(/[\[\]]/g, ''));
-                        } else {
+                    } else {
                             characters = [];
                     }
     
@@ -343,9 +952,20 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const margin = 30;
         const innerRadius = 200; // the first ring is 200px from the center
         const outerRadius = size / 2 - margin;
+        const maxTextWidth = 500; // Define maxTextWidth for the synopsis text
     
         // Create SVG with styles now in external CSS file
         let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg">`;
+        
+        // Add debug coordinate display if debug mode is enabled
+        if (this.settings.debug) {
+            svg += `
+                <g class="debug-info-container" style="pointer-events:none;">
+                    <rect class="debug-info-background" x="-790" y="-790" width="230" height="40" rx="5" ry="5" fill="rgba(255,255,255,0.9)" stroke="#333333" stroke-width="1" />
+                    <text class="debug-info-text" id="mouse-coords-text" x="-780" y="-765" fill="#ff3300" font-size="20px" font-weight="bold" stroke="white" stroke-width="0.5px" paint-order="stroke">Mouse: X=0, Y=0</text>
+                </g>
+            `;
+        }
         
         // Add search results indicator if search is active
         if (this.searchActive && this.searchResults.size > 0) {
@@ -715,19 +1335,13 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
             const sceneIndex = scenesInActAndSubplot.indexOf(scene);
             
-            const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
-            const numberInfo = sceneNumbersMap.get(sceneId);
+            const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`; // Keep the old ID format
             
-            const lineHeight = 26; // Reduced for tighter spacing
-            const size = 1600;
-            const maxTextWidth = 500;
-            const topOffset = -size / 2;
-
-            // Generate random colors for characters
-            const characterColors = scene.Character?.map(char => 
-                '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
-            ) || [];
-
+            // Skip content generation for placeholder scenes
+            if (!scene.title) {
+                return;
+            }
+            
             // Find all subplots this scene belongs to
             const allSceneSubplots = scenes
                 .filter(s => s.path === scene.path)
@@ -738,168 +1352,81 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 scene.subplot,
                 ...allSceneSubplots.filter(s => s !== scene.subplot)
             ];
-
+            
             // Prepare text content with modified format
             const contentLines = [
-                this.highlightSearchTerm(`${scene.title} - ${scene.when?.toLocaleDateString()}`),
+                // Format title and date on same line with spacing
+                this.highlightSearchTerm(`${scene.title}   ${scene.when?.toLocaleDateString() || ''}`),
                 ...(scene.synopsis ? this.splitIntoBalancedLines(scene.synopsis, maxTextWidth).map(line => this.highlightSearchTerm(line)) : []),
                 '\u00A0',
-                this.highlightSearchTerm(orderedSubplots.join(', ')),
-                scene.Character && scene.Character.length > 0 ? 
-                    this.highlightSearchTerm(scene.Character.join(', ')) : '',
-            ].filter(line => line);
-
-            const totalHeight = contentLines.length * lineHeight;
-
-            // Determine which text block to show based on Act number
-            const displayActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-            const showLeftText = displayActNumber <= 2;
-            const showRightText = displayActNumber === 3;
-
-            synopsesHTML.push(`
-                <g class="scene-info info-container" 
-                   data-for-scene="${sceneId}">
+            ];
+            
+            // Handle subplot and character lines differently
+            if (orderedSubplots.length > 0) {
+                // Apply search highlighting to each subplot separately
+                let subplotsHtml = '';
+                orderedSubplots.forEach((subplot, i) => {
+                    const term = this.searchTerm;
+                    const regex = term ? new RegExp(`(${this.escapeRegExp(term)})`, 'gi') : null;
                     
-                    ${(() => {
-                        // Get the scene's act and subplot to determine its position
-                        const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-                        const actIndex = sceneActNumber - 1;
-                        const subplot = scene.subplot || "Main Plot";
-                        const ring = NUM_RINGS - 1 - masterSubplotOrder.indexOf(subplot);
-                        
-                        // Calculate angles from act index
-                        const startAngle = (actIndex * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                        const endAngle = ((actIndex + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                        
-                        // Calculate radius from ring index
-                        const innerRadius = ringStartRadii[ring];
-                        const outerRadius = innerRadius + ringWidths[ring];
-                        
-                        // Find the angular position of this scene
-                        const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
-                        const sceneIndex = scenesInActAndSubplot.indexOf(scene);
-                        const sceneAngleSize = (endAngle - startAngle) / scenesInActAndSubplot.length;
-                        const sceneStartAngle = startAngle + (sceneIndex * sceneAngleSize);
-                        const sceneEndAngle = sceneStartAngle + sceneAngleSize;
-                        
-                        // Calculate the source point (where the scene is)
-                        const sceneAngleMidpoint = (sceneStartAngle + sceneEndAngle) / 2;
-                        const sourceX = (innerRadius + outerRadius) / 2 * Math.cos(sceneAngleMidpoint);
-                        const sourceY = (innerRadius + outerRadius) / 2 * Math.sin(sceneAngleMidpoint);
-                        
-                        // For fixed position, we don't need to calculate quadrants or edge points
-                        // We'll just use the center of the scene cell for the connector
-                        const edgeX = sourceX;
-                        const edgeY = sourceY;
-
-                        // Prepare the content measurement
-                        const titleFontSize = 24;
-                        const bodyFontSize = 18;
-                        
-                        // Prepare the complete text content to measure
-                        let fullText = `<div class="synopsis-title">${this.escapeXml(contentLines[0])}</div>`;
-                        
-                        // Add synopsis lines
-                        const synopsisEndIndex = contentLines.length - 2; // -2 to exclude the spacer and subplot/character lines
-                        for (let i = 1; i < synopsisEndIndex; i++) {
-                            fullText += `<div class="synopsis-body">${this.escapeXml(contentLines[i])}</div>`;
-                        }
-                        
-                        // Add spacer
-                        fullText += `<div class="synopsis-spacer"></div>`;
-                        
-                        // Add subplot and character info
-                        if (contentLines[contentLines.length - 2]) {
-                            fullText += `<div class="synopsis-metadata">${this.escapeXml(contentLines[contentLines.length - 2])}</div>`;
-                        }
-                        if (contentLines[contentLines.length - 1]) {
-                            fullText += `<div class="synopsis-metadata">${this.escapeXml(contentLines[contentLines.length - 1])}</div>`;
-                        }
-                        
-                        // Add metadata items
-                        const metadataItems = contentLines.slice(synopsisEndIndex);
-                        metadataItems.forEach(line => {
-                            // Handle tspan elements by removing tags for measurement
-                            const plainText = line.replace(/<[^>]*>/g, '');
-                            fullText += `<div class="synopsis-body">${this.escapeXml(plainText)}</div>`;
-                        });
-                        
-                        // Use a fixed width for the text
-                        const textWidth = 250;
-                        
-                        // Get accurate text dimensions for height
-                        const textDimensions = this.measureTextDimensions(fullText, textWidth, bodyFontSize);
-                        const textHeight = textDimensions.height;
-                        
-                        // Use fixed position for the synopsis at the center of the SVG
-                        // No need for connector path since we're using fixed HTML positioning
-                        
-                        // Text alignment (always left-justified)
-                        const textAlign = 'left';
-                        
-                        // No connector path needed for fixed positioning
-                        const connectorPath = '';
-                        
-                        // Calculate text anchor point with standard offset
-                        const textAnchorOffset = 0;
-                        
-                        // Create HTML for synopsis content - now with fixed positioning via CSS
-                        let textHTML = `<g class="synopsis-text">`;
-                        
-                        // Title - don't escape XML if it contains tspan elements
-                        const titleContent = contentLines[0];
-                        
-                        // Get the Publish Stage color for the title
-                        const publishStage = scene["Publish Stage"] || 'Zero';
-                        const titleColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || 
-                                          PUBLISH_STAGE_COLORS.Zero;
-                        
-                        // Add debug logging to see the color values
-                        if (this.settings.debug) {
-                            this.log(`Synopsis title color for ${scene.title}: Stage=${publishStage}, Color=${titleColor}`);
-                        }
-                        
-                        // Ensure publishStage is a string and create a valid class name
-                        const stageClass = `title-stage-${String(publishStage).toLowerCase()}`;
-                        
-                        // Add the title with the publish stage color using tspan to ensure color is applied
-                        if (titleContent.includes('<tspan')) {
-                            // If it already has tspan tags, preserve them but add our color
-                            textHTML += `<text class="info-text title-text-main ${stageClass}" x="0" y="0" text-anchor="${textAlign}" style="--title-color: ${titleColor};">${titleContent}</text>`;
-                        } else {
-                            // Wrap the entire content in a tspan with explicit fill color
-                            textHTML += `<text class="info-text title-text-main ${stageClass}" x="0" y="0" text-anchor="${textAlign}" style="--title-color: ${titleColor};"><tspan fill="${titleColor}">${this.escapeXml(titleContent)}</tspan></text>`;
-                        }
-                        
-                        // Add synopsis lines - adjust y position since we removed the divider
-                        for (let i = 1; i < synopsisEndIndex; i++) {
-                            const lineContent = contentLines[i];
-                            if (lineContent.includes('<tspan')) {
-                                textHTML += `<text class="info-text title-text-secondary" x="0" y="${30 + ((i-1) * lineHeight)}" text-anchor="${textAlign}">${lineContent}</text>`;
-                            } else {
-                                textHTML += `<text class="info-text title-text-secondary" x="0" y="${30 + ((i-1) * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(lineContent)}</text>`;
-                            }
-                        }
-                        
-                        // Metadata (subplots, characters)
-                        const metadataStartY = 40 + ((synopsisEndIndex-1) * lineHeight) + 15;
-                        metadataItems.forEach((line, i) => {
-                            // Create a containing text element to ensure proper alignment
-                            if (line.includes('<tspan')) {
-                                // For lines with tspan elements (subplots, characters)
-                                // Don't escape the line content since we need the tspan elements to be rendered as HTML
-                                textHTML += `<text class="info-text metadata-text" x="0" y="${metadataStartY + (i * lineHeight)}" text-anchor="${textAlign}">${line}</text>`;
-                            } else {
-                                textHTML += `<text class="info-text title-text-secondary" x="0" y="${metadataStartY + (i * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(line)}</text>`;
-                            }
-                        });
-                        
-                        textHTML += `</g>`;
-                        
-                        return connectorPath + textHTML;
-                    })()}
-                </g>
-            `);
+                    // Create HTML directly for each subplot
+                    const color = `hsl(${Math.floor(Math.random() * 360)}, 70%, 35%)`;
+                    
+                    // Apply search highlighting if needed
+                    let subplotText = escapeXml(subplot || ''); // Handle undefined subplot
+                    if (regex && this.searchActive) {
+                        subplotText = subplotText.replace(regex, '<tspan class="search-term">$1</tspan>');
+                    }
+                    
+                    subplotsHtml += `<tspan fill="${color}" data-item-type="subplot" style="fill: ${color} !important;">${subplotText}</tspan>`;
+                    
+                    // Add comma separator if not the last item
+                    if (i < orderedSubplots.length - 1) {
+                        subplotsHtml += '<tspan fill="var(--text-muted)">, </tspan>';
+                    }
+                });
+                
+                // Add the fully-formatted subplot line
+                contentLines.push(subplotsHtml);
+            } else {
+                contentLines.push(''); // Empty placeholder
+            }
+            
+            // Handle character list with similar approach
+            if (scene.Character && scene.Character.length > 0) {
+                let charactersHtml = '';
+                scene.Character.forEach((character, i) => {
+                    const term = this.searchTerm;
+                    const regex = term ? new RegExp(`(${this.escapeRegExp(term)})`, 'gi') : null;
+                    
+                    // Create HTML directly for each character
+                    const color = `hsl(${Math.floor(Math.random() * 360)}, 80%, 35%)`;
+                    
+                    // Apply search highlighting if needed
+                    let characterText = escapeXml(character || ''); // Handle undefined character
+                    if (regex && this.searchActive) {
+                        characterText = characterText.replace(regex, '<tspan class="search-term">$1</tspan>');
+                    }
+                    
+                    charactersHtml += `<tspan fill="${color}" data-item-type="character" style="fill: ${color} !important;">${characterText}</tspan>`;
+                    
+                    // Add comma separator if not the last item
+                    if (i < (scene.Character?.length || 0) - 1) {
+                        charactersHtml += '<tspan fill="var(--text-muted)">, </tspan>';
+                    }
+                });
+                
+                // Add the fully-formatted character line
+                contentLines.push(charactersHtml);
+            } else {
+                contentLines.push(''); // Empty placeholder
+            }
+            
+            // Filter out empty lines
+            const filteredContentLines = contentLines.filter(line => line);
+            
+            // Generate the synopsis HTML using our new helper function
+            synopsesHTML.push(this.generateSynopsisHTML(scene, filteredContentLines, sceneId));
         });
 
         // Draw scenes and dummy scenes (existing code remains as is)
@@ -1169,7 +1696,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="end"
                                 class="center-key-text"
-                            >${stage.toUpperCase()} <tspan class="status-count">${statusCounts[stage] || 0}</tspan></text>
+                            >${stage.toUpperCase()} <tspan class="status-count" dy="-7" baseline-shift="super">${statusCounts[stage] || 0}</tspan></text>
                             
                             <!-- Color SWATCH to the right of text -->
                             <rect 
@@ -1215,7 +1742,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="start"
                                 class="center-key-text"
-                            >${status.toUpperCase()} <tspan class="status-count">${statusCounts[status] || 0}</tspan></text>
+                            >${status.toUpperCase()} <tspan class="status-count" dy="-7" baseline-shift="super">${statusCounts[status] || 0}</tspan></text>
                         </g>
                     `;
                 }).join('')}
@@ -1348,9 +1875,63 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             });
         </script>`;
 
-        svg += `
-            ${scriptSection}
-        </svg>`;
+        // Add debug coordinate display
+        if (this.settings.debug) {
+            svg += `
+                <g class="debug-info-container" style="pointer-events:none;">
+                    <rect class="debug-info-background" x="-790" y="-790" width="230" height="40" rx="5" ry="5" fill="rgba(255,255,255,0.9)" stroke="#333333" stroke-width="1" />
+                    <text class="debug-info-text" id="mouse-coords-text" x="-780" y="-765" fill="#ff3300" font-size="20px" font-weight="bold" stroke="white" stroke-width="0.5px" paint-order="stroke">Mouse: X=0, Y=0</text>
+                </g>
+                <script>
+                    (function() {
+                        // Wait for DOM to be ready
+                        window.addEventListener('DOMContentLoaded', function() {
+                            console.log("Setting up mouse coordinate tracking");
+                            
+                            // Get SVG element and coordinate text
+                            const svg = document.querySelector('.manuscript-timeline-svg');
+                            const coordText = document.getElementById('mouse-coords-text');
+                            
+                            if (!svg || !coordText) {
+                                console.error("Couldn't find SVG or coordinate text element");
+                                return;
+                            }
+                            
+                            // Add mousemove handler to the main SVG element
+                            svg.addEventListener('mousemove', function(e) {
+                                try {
+                                    const pt = svg.createSVGPoint();
+                                    pt.x = e.clientX;
+                                    pt.y = e.clientY;
+                                    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+                                    coordText.textContent = 'Mouse: X=' + Math.round(svgP.x) + ', Y=' + Math.round(svgP.y);
+                                } catch (err) {
+                                    console.error("Error calculating coordinates:", err);
+                                }
+                            });
+                            
+                            // Also log coordinates on click
+                            svg.addEventListener('click', function(e) {
+                                try {
+                                    const pt = svg.createSVGPoint();
+                                    pt.x = e.clientX;
+                                    pt.y = e.clientY;
+                                    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+                                    console.log('Clicked at:', Math.round(svgP.x), Math.round(svgP.y));
+                                } catch (err) {
+                                    console.error("Error calculating coordinates:", err);
+                                }
+                            });
+                            
+                            console.log("Mouse coordinate tracking initialized");
+                        });
+                    })();
+                </script>
+            `;
+        }
+
+        // If not in debug mode, close SVG normally
+        svg += `${scriptSection}</svg>`;
         return svg;
     }
     private darkenColor(color: string, percent: number): string {
@@ -1439,19 +2020,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         return [firstPart, secondPart];
     }
 
-    private formatSynopsis(text: string, innerRadius: number, fontSize: number): string {
-        const maxTextWidth = 400; // Fixed width for all text elements
-        const maxCharsPerLine = 50; // Approximately 400px at 16px font size
-    
-        // Split text into lines with balanced word count
-        const lines = this.splitIntoBalancedLines(text, maxCharsPerLine);
-    
-        // Prepare the formatted text to render inside the SVG
-        return lines.map((line, i) => {
-            return `<text class="synopsis-text" x="0" y="${20 + i * 25}" text-anchor="middle" style="max-width: ${maxTextWidth}px;">${line}</text>`;
-        }).join(' ');
+    private generateSynopsisHTML(scene: Scene, contentLines: string[], sceneId: string): string {
+        return this.synopsisManager.generateHTML(scene, contentLines, sceneId);
     }
-
 
     private formatSubplot(subplots: string): string {
         // Split the subplots into separate lines if there are multiple subplots
@@ -1488,8 +2059,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     public log(message: string, data?: any) {
-        // Disable all debug logging
-        return;
+        if (this.settings.debug) {
+            console.log(`[Manuscript Timeline] ${message}`, data || '');
+        }
     }
 
     // Method to refresh the timeline if the active view exists
@@ -1516,20 +2088,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         }
     }
 
-    // Add this helper function for escaping XML/HTML special characters
-    private escapeXml(unsafe: string): string {
-        return unsafe.replace(/[<>&'"]/g, c => {
-            switch (c) {
-                case '<': return '&lt;';
-                case '>': return '&gt;';
-                case '&': return '&amp;';
-                case '\'': return '&apos;';
-                case '"': return '&quot;';
-                default: return c;
-            }
-        });
-    }
-    
     /**
      * Measures text dimensions using an offscreen DOM element
      * This provides much more accurate text sizing than estimation
@@ -1564,74 +2122,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Add this function near the top of the class, after refreshTimelineIfNeeded 
     public updateSynopsisPosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
-        if (!synopsis || !svg) {
-            this.log("updateSynopsisPosition: missing synopsis or svg element", {synopsis, svg});
-            return;
-        }
-        
-        try {
-            const pt = svg.createSVGPoint();
-            pt.x = event.clientX;
-            pt.y = event.clientY;
-            const ctm = svg.getScreenCTM();
-            if (!ctm) {
-                this.log("updateSynopsisPosition: No SVG CTM available");
-                return;
-            }
-            
-            const svgP = pt.matrixTransform(ctm.inverse());
-            
-            // Determine which quadrant the mouse is in
-            const quadrant = 
-                svgP.x >= 0 && svgP.y >= 0 ? "Q1" :  // Bottom Right
-                svgP.x < 0 && svgP.y >= 0 ? "Q2" :   // Bottom Left
-                svgP.x < 0 && svgP.y < 0 ? "Q3" :    // Top Left
-                "Q4";                                // Top Right
-            
-            // Place the synopsis in the appropriate position based on quadrant
-            // Note: The synopsis is displayed in the OPPOSITE quadrant from the mouse position
-            // with specific justification for each display location
-            let translateX, translateY;
-            synopsis.classList.remove('synopsis-q1', 'synopsis-q2', 'synopsis-q3', 'synopsis-q4');
-            
-            if (quadrant === 'Q1') { // Mouse in Bottom Right (Q1)
-                translateX = -600;    // Place at X = -600 (Q2 area - left side)
-                translateY = 150;     // Place at Y = 150 (bottom half)
-                synopsis.classList.add('synopsis-q2'); // Left justify in Q2
-            } else if (quadrant === 'Q2') { // Mouse in Bottom Left (Q2)
-                translateX = 600;     // Place at X = 600 (Q1 area - right side)
-                translateY = 150;     // Place at Y = 150 (bottom half)
-                synopsis.classList.add('synopsis-q1'); // Right justify in Q1
-            } else if (quadrant === 'Q3') { // Mouse in Top Left (Q3)
-                translateX = 500;     // Place at X = 500 (Q4 area - right side)
-                translateY = -550;    // Place at Y = -550 (top half)
-                synopsis.classList.add('synopsis-q4'); // Right justify in Q4
-            } else { // Mouse in Top Right (Q4)
-                translateX = -500;    // Place at X = -500 (Q3 area - left side)
-                translateY = -550;    // Place at Y = -550 (top half)
-                synopsis.classList.add('synopsis-q3'); // Left justify in Q3
-            }
-            
-            // Make sure the synopsis is visible by applying both class and style changes
-            synopsis.classList.add('visible');
-            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
-            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
-            
-            // Position based on calculated values
-            const translateValue = `translate(${translateX}, ${translateY})`;
-            synopsis.setAttribute('transform', translateValue);
-            
-            // Store the quadrant information in a data attribute
-            synopsis.setAttribute('data-quadrant', quadrant);
-            
-            this.log(`Synopsis shown at position: ${translateX}, ${translateY} for quadrant ${quadrant}`, {
-                synopsisVisible: synopsis.classList.contains('visible'),
-                transform: synopsis.getAttribute('transform'),
-                quadrant: quadrant
-            });
-        } catch (error) {
-            console.error("Error in updateSynopsisPosition:", error);
-        }
+        this.synopsisManager.updatePosition(synopsis, event, svg, sceneId);
     }
 
     // Add method to update open files tracking
@@ -1814,45 +2305,121 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
     
     public performSearch(term: string): void {
-        if (term.length < 3) return;
+        console.log("SEARCH: Starting search for:", term);
         
+        if (!term || term.trim().length === 0) {
+            this.clearSearch();
+            return;
+        }
+        
+        // Set search state
         this.searchTerm = term;
         this.searchActive = true;
         this.searchResults.clear();
         
-        // Get scene data and find matches
+        // Find matching scenes
+        const regex = new RegExp(this.escapeRegExp(term), 'gi');
+        
+        // For debugging, create a test with direct HTML to see if styling works
+        console.log("SEARCH: Creating test element for debugging");
+        const debugContainer = document.createElement('div');
+        debugContainer.innerHTML = `
+            <svg width="300" height="200">
+                <text class="info-text metadata-text" x="10" y="50">
+                    <tspan fill="hsl(120, 70%, 35%)" data-item-type="subplot">Test Subplot</tspan>
+                </text>
+                <text class="info-text metadata-text" x="10" y="100">
+                    <tspan fill="hsl(240, 80%, 35%)" data-item-type="character">Test Character</tspan>
+                </text>
+            </svg>
+        `;
+        document.body.appendChild(debugContainer);
+        
+        // Apply search highlight to test elements
+        setTimeout(() => {
+            const testSubplot = debugContainer.querySelector('tspan[data-item-type="subplot"]');
+            const testCharacter = debugContainer.querySelector('tspan[data-item-type="character"]');
+            
+            if (testSubplot) {
+                const innerHTML = testSubplot.innerHTML;
+                testSubplot.innerHTML = innerHTML.replace(/Test/, '<tspan class="search-term">Test</tspan>');
+                console.log("SEARCH: Applied highlight to test subplot");
+            }
+            
+            if (testCharacter) {
+                const innerHTML = testCharacter.innerHTML;
+                testCharacter.innerHTML = innerHTML.replace(/Test/, '<tspan class="search-term">Test</tspan>');
+                console.log("SEARCH: Applied highlight to test character");
+            }
+            
+            // Remove the test container after 5 seconds
+            setTimeout(() => {
+                document.body.removeChild(debugContainer);
+                console.log("SEARCH: Removed test elements");
+            }, 5000);
+        }, 500);
+        
+        // Populate searchResults with matching scene paths
         this.getSceneData().then(scenes => {
             scenes.forEach(scene => {
-                const searchableText = [
-                    scene.title || '',
-                    scene.synopsis || '',
-                    scene.subplot || '',
-                    ...(scene.characters || []),
-                    ...(scene.Character || [])  // Backward compatibility
-                ].join(' ').toLowerCase();
+                // Check scene properties for matches
+                const searchableContent = [
+                    scene.title,
+                    scene.synopsis,
+                    ...(scene.Character || []),
+                    scene.subplot,
+                    scene.location,
+                    scene.pov
+                ].filter(Boolean).join(' ');
                 
-                if (searchableText.includes(term.toLowerCase())) {
+                if (regex.test(searchableContent)) {
                     if (scene.path) {
                         this.searchResults.add(scene.path);
+                        console.log(`SEARCH: Found match in scene ${scene.title}`);
+                        
+                        // Additional debug for metadata fields
+                        if (scene.subplot && regex.test(scene.subplot)) {
+                            console.log(`SEARCH: Match in subplot "${scene.subplot}" for term "${term}"`);
+                        }
+                        
+                        if (scene.Character && scene.Character.some(c => regex.test(c))) {
+                            console.log(`SEARCH: Match in characters "${scene.Character.join(', ')}" for term "${term}"`);
+                        }
                     }
                 }
             });
+            
+            // Log the results count
+            console.log(`SEARCH: Found ${this.searchResults.size} matching scenes`);
             
             // Get all timeline views and refresh them
             const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
                 .map(leaf => leaf.view as ManuscriptTimelineView)
                 .filter(view => view instanceof ManuscriptTimelineView);
-
-            // Refresh each view
-            timelineViews.forEach(view => {
-                if (view) {
-                    view.refreshTimeline();
+                
+            if (timelineViews.length > 0) {
+                console.log(`SEARCH: Found ${timelineViews.length} timeline views to update`);
+                // Update all timeline views with the new search results
+                timelineViews.forEach(view => {
+                    if (view) {
+                        console.log("SEARCH: Refreshing timeline view");
+                        view.refreshTimeline();
+                    }
+                });
+                
+                // Update active view reference
+                if (!this.activeTimelineView && timelineViews.length > 0) {
+                    this.activeTimelineView = timelineViews[0];
+                    console.log("SEARCH: Set active timeline view");
                 }
-            });
+            } else {
+                console.log("SEARCH: No timeline views found!");
+            }
         });
     }
     
     public clearSearch(): void {
+        console.log("SEARCH: Clearing search");
         this.searchActive = false;
         this.searchTerm = '';
         this.searchResults.clear();
@@ -1862,12 +2429,17 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             .map(leaf => leaf.view as ManuscriptTimelineView)
             .filter(view => view instanceof ManuscriptTimelineView);
 
-        // Refresh each view
-        timelineViews.forEach(view => {
-            if (view) {
-                view.refreshTimeline();
-            }
-        });
+        if (timelineViews.length > 0) {
+            console.log(`SEARCH: Refreshing ${timelineViews.length} timeline views after clearing search`);
+            // Refresh each view
+            timelineViews.forEach(view => {
+                if (view) {
+                    view.refreshTimeline();
+                }
+            });
+        } else {
+            console.log("SEARCH: No timeline views found to clear search");
+        }
     }
 
     // Function to set CSS variables for RGB colors
@@ -1900,6 +2472,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         return null;
     }
 }
+
 
 class ManuscriptTimelineSettingTab extends PluginSettingTab {
     plugin: ManuscriptTimelinePlugin;
@@ -2201,8 +2774,13 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
 
 // Timeline View implementation
 export class ManuscriptTimelineView extends ItemView {
+    static readonly viewType = TIMELINE_VIEW_TYPE;
     plugin: ManuscriptTimelinePlugin;
+    
+    // Scene data (scenes)
     sceneData: Scene[] = [];
+    
+    // Set of open scene paths (for tracking open files)
     openScenePaths: Set<string> = new Set<string>();
     
     constructor(leaf: WorkspaceLeaf, plugin: ManuscriptTimelinePlugin) {
@@ -2366,6 +2944,11 @@ export class ManuscriptTimelineView extends ItemView {
                 
                 // Render the timeline with the scene data
                 this.renderTimeline(container, this.sceneData);
+                
+                // Add mouse coordinate tracking if debug mode is enabled
+                if (this.plugin.settings.debug) {
+                    this.setupMouseCoordinateTracking(container);
+                }
             })
             .catch(error => {
                 loadingEl.textContent = `Error: ${error.message}`;
@@ -2374,7 +2957,7 @@ export class ManuscriptTimelineView extends ItemView {
                     console.error("Failed to load timeline data", error);
                 }
             });
-
+        
         // Setup search controls
         this.setupSearchControls();
         
@@ -2382,6 +2965,91 @@ export class ManuscriptTimelineView extends ItemView {
         if (this.plugin.searchActive) {
             setTimeout(() => this.addHighlightRectangles(), 100);
         }
+    }
+    
+    private setupMouseCoordinateTracking(container: HTMLElement) {
+        // Wait a bit for the SVG to be fully rendered
+        setTimeout(() => {
+            // Get SVG and text elements
+            const svg = container.querySelector('.manuscript-timeline-svg') as SVGSVGElement;
+            const debugText = svg?.querySelector('#mouse-coords-text') as SVGTextElement;
+            const debugContainer = svg?.querySelector('.debug-info-container') as SVGGElement;
+            
+            if (!svg) {
+                console.error('Could not find SVG element');
+                return;
+            }
+            
+            if (!debugText || !debugContainer) {
+                console.error('Could not find debug elements');
+                return;
+            }
+            
+            // Function to update coordinates
+            const updateCoordinates = (e: MouseEvent) => {
+                // Check if debug mode is still enabled
+                if (!this.plugin.settings.debug) {
+                    // Hide debug display if debug mode disabled
+                    debugContainer.style.display = 'none';
+                    return;
+                } else {
+                    // Ensure display is visible
+                    debugContainer.style.display = '';
+                }
+                
+                try {
+                    const pt = svg.createSVGPoint();
+                    pt.x = e.clientX;
+                    pt.y = e.clientY;
+                    
+                    const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+                    if (svgP) {
+                        debugText.textContent = `Mouse: X=${Math.round(svgP.x)}, Y=${Math.round(svgP.y)}`;
+                    }
+                } catch (err) {
+                    console.error('Error updating coordinates:', err);
+                }
+            };
+            
+            // Remove any existing listeners and add new one
+            svg.removeEventListener('mousemove', updateCoordinates as any);
+            svg.addEventListener('mousemove', updateCoordinates);
+            
+            // Also log coordinates on click
+            svg.addEventListener('click', (e: MouseEvent) => {
+                // Only log if debug mode is active
+                if (!this.plugin.settings.debug) return;
+                
+                try {
+                    const pt = svg.createSVGPoint();
+                    pt.x = e.clientX;
+                    pt.y = e.clientY;
+                    
+                    const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+                    if (svgP) {
+                        console.log('Clicked at SVG coordinates:', Math.round(svgP.x), Math.round(svgP.y));
+                    }
+                } catch (err) {
+                    console.error('Error capturing click coordinates:', err);
+                }
+            });
+            
+            // Create a MutationObserver to watch for changes to settings
+            const settingsObserver = new MutationObserver((mutations) => {
+                // Check current debug setting and update visibility accordingly
+                debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+            });
+            
+            // Initial visibility check
+            debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+            
+            // For changes that might happen outside mutation observer
+            document.addEventListener('visibilitychange', () => {
+                debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+            });
+            
+            console.log('Mouse coordinate tracking initialized');
+        }, 500); // Wait 500ms to ensure SVG is fully rendered
     }
     
     async onOpen(): Promise<void> {
@@ -2416,6 +3084,15 @@ export class ManuscriptTimelineView extends ItemView {
             this.app.workspace.on('quick-preview', () => {
                 this.log('Quick preview event');
                 this.updateOpenFilesTracking();
+            })
+        );
+        
+        // Register for metadata changes to refresh the timeline
+        this.registerEvent(
+            this.app.metadataCache.on('changed', (file) => {
+                this.log('Metadata changed event for file: ' + file.path);
+                // Refresh the timeline view immediately when metadata changes
+                this.refreshTimeline();
             })
         );
         
@@ -2627,9 +3304,54 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                         
                         // Add mouseover effects for synopses
                         const sceneId = path.id;
-                        const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
-                        
+                        // Get the data-for-scene attribute value that matches our scene path ID
+                        let synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+
+                        // Add comprehensive debug logging
+                        if (this.plugin.settings.debug) {
+                            this.log(`Looking for synopsis with data-for-scene="${sceneId}"`);
+                            
+                            // List all available synopsis elements to help debug
+                            const allSynopses = svgElement.querySelectorAll('.scene-info');
+                            this.log(`Found ${allSynopses.length} total synopses`);
+                            
+                            // Show the first few for debugging
+                            allSynopses.forEach((syn, i) => {
+                                if (i < 5) { // Just show first 5 to avoid flooding logs
+                                    this.log(`Synopsis ${i}: data-for-scene="${syn.getAttribute('data-for-scene')}"`);
+                                }
+                            });
+                        }
+
+                        // If no synopsis found by exact ID match, try to find one with the scene path
+                        if (!synopsis && group.hasAttribute("data-path") && group.getAttribute("data-path")) {
+                            const encodedPath = group.getAttribute("data-path");
+                            if (encodedPath) {
+                                const path = decodeURIComponent(encodedPath);
+                                const matchingSceneIndex = scenes.findIndex(s => s.path === path);
+                                
+                                if (matchingSceneIndex > -1) {
+                                    // Use the index to match against any available synopsis
+                                    const allSynopses = Array.from(svgElement.querySelectorAll('.scene-info'));
+                                    
+                                    // As a fallback, just use the synopsis at the same index if available
+                                    if (matchingSceneIndex < allSynopses.length) {
+                                        synopsis = allSynopses[matchingSceneIndex];
+                                        
+                                        if (this.plugin.settings.debug) {
+                                            this.log(`Using fallback synopsis matching by path index: ${matchingSceneIndex}`);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         if (synopsis) {
+                            // Add debug logging for troubleshooting
+                            if (this.plugin.settings.debug) {
+                                this.log(`Found synopsis for scene ID: ${sceneId}`);
+                            }
+                            
                             // Apply mouseover effects for the group/path
                             group.addEventListener("mouseenter", (event: MouseEvent) => {
                                 // Reset all previous mouseover effects to ensure clean state
@@ -2648,12 +3370,13 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                                 (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
                                 (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
                                 
-                                this.log("Synopsis shown", {
-                                    synopsisVisible: synopsis.classList.contains('visible'),
-                                    opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
-                                });
-                                
-                                this.log("Mouseover triggered for scene:", sceneId);
+                                if (this.plugin.settings.debug) {
+                                    this.log("Synopsis shown", {
+                                        id: sceneId,
+                                        synopsisVisible: synopsis.classList.contains('visible'),
+                                        opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
+                                    });
+                                }
                                 
                                 // Reveal the file in navigation
                                 const encodedPath = group.getAttribute("data-path");
@@ -2800,74 +3523,201 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             return;
         }
         
+        this.log(`Adding highlight rectangles for search term: "${this.plugin.searchTerm}" with ${this.plugin.searchResults.size} results`);
+        
+        // Log the actual search results paths
+        if (this.plugin.settings.debug) {
+            this.log("Search result paths:", Array.from(this.plugin.searchResults));
+        }
+        
         // Get all search term tspans
         const searchTerms = this.contentEl.querySelectorAll('.search-term');
         
+        if (this.plugin.settings.debug) {
+            this.log(`Found ${searchTerms.length} search terms to highlight in the DOM`);
+        }
+        
+        // Check for scene elements that should be highlighted
+        const allSceneGroups = this.contentEl.querySelectorAll('.scene-group');
+        this.log(`Found ${allSceneGroups.length} scene groups to check for search matches`);
+        
+        // Add search-result class to all matching scene paths
+        allSceneGroups.forEach(group => {
+            const pathAttr = group.getAttribute('data-path');
+            if (pathAttr && this.plugin.searchResults.has(decodeURIComponent(pathAttr))) {
+                // Find the number square in this group
+                const numberSquare = group.querySelector('.number-square');
+                const numberText = group.querySelector('.number-text');
+                
+                if (numberSquare) {
+                    numberSquare.classList.add('search-result');
+                    this.log(`Added search-result class to number square for ${pathAttr}`);
+                }
+                
+                if (numberText) {
+                    numberText.classList.add('search-result');
+                }
+            }
+        });
+        
         // Apply direct styling to each search term
-        // (Most styling now comes from CSS in styles.css)
         searchTerms.forEach(term => {
             try {
-                // Apply background directly to the tspan if needed
+                // Apply styling directly to the tspan 
                 const tspan = term as SVGTSpanElement;
                 
-                // Apply paint order and ensure text is on top of highlight
-                tspan.setAttribute('paint-order', 'stroke');
+                // Find parent text element to check if this is in metadata
+                const parentText = tspan.closest('text');
+                const isMetadataText = parentText?.classList.contains('metadata-text');
                 
-                // For compatibility with older browsers, we can add these directly
-                // (but most styling should come from CSS)
-                if (!tspan.hasAttribute('font-weight')) {
+                // Apply different styling based on the type of text
+                if (isMetadataText) {
+                    // For metadata text (subplot/character), use a more visible highlight
+                    tspan.setAttribute('stroke', '#FFCC00');
+                    tspan.setAttribute('stroke-width', '0.5em');
+                    tspan.setAttribute('stroke-opacity', '0.4');
+                    tspan.setAttribute('paint-order', 'stroke');
                     tspan.setAttribute('font-weight', 'bold');
+                    
+                    // For metadata, never overwrite the fill - it should inherit
+                    // or use the original color assigned to it
+                    
+                    if (this.plugin.settings.debug) {
+                        this.log(`Highlighted metadata search term: ${tspan.textContent}`);
+                    }
+                } else {
+                    // Regular styling for non-metadata text
+                    tspan.setAttribute('stroke', '#FFCC00');
+                    tspan.setAttribute('stroke-width', '0.5em');
+                    tspan.setAttribute('stroke-opacity', '0.5');
+                    tspan.setAttribute('paint-order', 'stroke');
+                    tspan.setAttribute('font-weight', 'bold');
+                    
+                    // Check if this is a metadata item with data-item-type
+                    // or is a child of an element with data-item-type
+                    const hasItemType = tspan.hasAttribute('data-item-type') || 
+                                       (tspan.parentElement && tspan.parentElement.hasAttribute('data-item-type'));
+                                       
+                    if (hasItemType) {
+                        // For metadata items, ensure we preserve the original fill
+                        // The fill is either on this element or inherited from parent
+                        const parentFill = tspan.parentElement?.getAttribute('fill');
+                        if (parentFill) {
+                            tspan.setAttribute('fill', parentFill);
+                        }
+                        this.log('Preserving fill color for metadata item: ' + tspan.textContent);
+                        return;
+                    }
+                    
+                    // Special handling for title text only
+                    const titleTextParent = tspan.closest('.title-text-main');
+                    if (titleTextParent) {
+                        // For title text, use a more intense highlight
+                        tspan.setAttribute('stroke', '#FFCC00');
+                        tspan.setAttribute('stroke-width', '0.6em');
+                        tspan.setAttribute('stroke-opacity', '0.65');
+                        tspan.setAttribute('paint-order', 'stroke');
+                        tspan.setAttribute('font-weight', 'bold');
+                        
+                        // Find the title color from the parent text element
+                        const titleColorStyle = (titleTextParent as unknown as HTMLElement).style.getPropertyValue('--title-color');
+                        if (titleColorStyle) {
+                            // Set the fill directly to the title color
+                            tspan.setAttribute('fill', titleColorStyle);
+                        }
+                    }
+                }
+                
+                // Log highlight details in debug mode
+                if (this.plugin.settings.debug) {
+                    this.log(`Highlighted search term: ${tspan.textContent}`, {
+                        fill: tspan.getAttribute('fill')
+                    });
                 }
             } catch (error) {
-                // Silently skip any errors
+                console.error("Error applying search highlighting:", error);
             }
         });
     }
 
-    // Test function to manually trigger highlights
-    testHighlights() {
-        // Temporarily save the current state
-        const wasSearchActive = this.plugin.searchActive;
-        const prevSearchTerm = this.plugin.searchTerm;
+    /**
+     * Position and curve the text elements in the SVG
+     */
+    positionTextElements(container: HTMLElement) {
+        const textContainers = container.querySelectorAll('.scene-info');
+        this.log(`Positioning ${textContainers.length} text elements`);
         
-        // Force search to be active
-        this.plugin.searchActive = true;
-        this.plugin.searchTerm = "test"; // Use a simple test term
+        if (textContainers.length === 0) return;
         
-        // Create test search terms
-        const contentContainer = this.contentEl.querySelector('.manuscript-timeline-container');
-        if (contentContainer) {
-            // Test approach: Find text elements in each quadrant to test highlighting
-            const quadrants = ['Q1', 'Q2', 'Q3', 'Q4'];
+        // Get the container dimensions and center
+        const svgElement = container.closest('svg');
+        if (!svgElement) return;
+        
+        const svgWidth = svgElement.clientWidth;
+        const svgHeight = svgElement.clientHeight;
+        
+        const centerX = svgWidth / 2;
+        const centerY = svgHeight / 2;
+        
+        this.log(`SVG dimensions: ${svgWidth}x${svgHeight}, center: ${centerX},${centerY}`);
+        
+        // Use a constant for circle radius instead of settings
+        const CIRCLE_RADIUS = 800; // Consistent value based on the timeline size
+        
+        // For each scene's text element
+        textContainers.forEach((container) => {
+            // Get the scene id from the data attribute
+            const sceneId = container.getAttribute('data-for-scene');
+            if (!sceneId) return;
             
-            quadrants.forEach(quadrant => {
-                // Find text elements in this quadrant
-                const quadrantTexts = contentContainer.querySelectorAll(`[data-quadrant="${quadrant}"] text`);
+            // Find the scene element for this text
+            const sceneElement = svgElement.querySelector(`.scene-element[data-scene-id="${sceneId}"]`);
+            if (!sceneElement) return;
+            
+            // Get the scene's position
+            const sceneX = parseFloat(sceneElement.getAttribute('cx') || '0');
+            const sceneY = parseFloat(sceneElement.getAttribute('cy') || '0');
+            
+            // Calculate the position for the text - offset from the scene dot
+            const textOffsetX = CIRCLE_RADIUS * 0.05; // Scaled offset for text positioning
+            const textOffsetY = -CIRCLE_RADIUS * 0.02; // Scaled offset for text positioning
+            
+            // Set the container's position
+            (container as SVGGElement).setAttribute('transform', `translate(${sceneX + textOffsetX}, ${sceneY + textOffsetY})`);
+            
+            try {
+                // Calculate distance from center
+                const distanceFromCenter = Math.sqrt(
+                    Math.pow(sceneX - centerX, 2) + 
+                    Math.pow(sceneY - centerY, 2)
+                );
                 
-                if (quadrantTexts.length > 0) {
-                    // Only test the first text element in each quadrant
-                    const textEl = quadrantTexts[0] as SVGTextElement;
+                // Calculate the direct distance of the placement from the circle center (Pythagorean theorem)
+                const placementDistanceFromCenter = Math.sqrt(
+                    Math.pow(sceneX + textOffsetX - centerX, 2) + 
+                    Math.pow(sceneY + textOffsetY - centerY, 2)
+                );
+                
+                // Calculate the offset based on distance
+                const maxDistanceFactor = 0.85; // Maximum percentage of radius to consider
+                
+                // Only curve text if it's inside a certain percentage of the circle radius
+                if (placementDistanceFromCenter < CIRCLE_RADIUS * maxDistanceFactor) {
+                    // Calculate how much to curve the text based on distance from center
+                    // (closer to center = more curve, closer to edge = less curve)
+                    const distanceFactor = (CIRCLE_RADIUS - placementDistanceFromCenter) / CIRCLE_RADIUS;
+                    const maxCurve = 0.0010; // Maximum curvature factor
+                    const curveFactor = maxCurve * distanceFactor;
                     
-                    // Add search-term class to the first word
-                    const text = textEl.textContent || "";
-                    if (text.length > 0) {
-                        const firstWord = text.split(' ')[0];
-                        if (firstWord && firstWord.length > 0) {
-                            const newHTML = text.replace(firstWord, `<tspan class="search-term">${firstWord}</tspan>`);
-                            textEl.innerHTML = newHTML;
-                        }
-                    }
+                    // Calculate the angle to center
+                    const angleToCenter = Math.atan2(centerY - (sceneY + textOffsetY), centerX - (sceneX + textOffsetX));
+                    
+                    // Apply different positioning and transforms to text elements
+                    this.plugin.curveTextElements(container, curveFactor, angleToCenter);
                 }
-            });
-            
-            // Apply the highlights
-            this.addHighlightRectangles();
-            
-            // Restore original state after 5 seconds
-            setTimeout(() => {
-                this.plugin.searchActive = wasSearchActive;
-                this.plugin.searchTerm = prevSearchTerm;
-            }, 5000);
-        }
+            } catch (error) {
+                this.log(`Error positioning text: ${error}`);
+            }
+        });
     }
 }

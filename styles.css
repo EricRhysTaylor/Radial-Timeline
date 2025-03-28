@@ -96,8 +96,9 @@ path.scene-path[fill="#EEEEEE"] {
 .scene-info {
   opacity: 0;
   transition: opacity 0.15s;
-  pointer-events: none;
+  pointer-events: none !important;
   z-index: 100;
+  vector-effect: non-scaling-stroke;
 }
 
 /* Global text rule - apply only basic styling */
@@ -106,89 +107,160 @@ path.scene-path[fill="#EEEEEE"] {
   stroke: white;
   stroke-width: 2px;
   paint-order: stroke;
+  padding: 0 !important;
+  margin: 0 !important;
+  pointer-events: none !important;
 }
 
-/* Ensure that inline colors are preserved */
-text.info-text.title-text-main tspan {
-  fill: inherit; /* Inherit the color from parent or inline attribute */
+/* Text color handling */
+text.info-text.title-text-main {
+  fill: var(--title-color) !important;
 }
 
-/* For tspans with explicit fill attribute */
-text.info-text.title-text-main tspan[fill] {
-  /* Use the explicitly set fill color */
-}
-
-/* General rule for all title text tspans */
 text.info-text.title-text-main tspan:not(.search-term) {
   fill: var(--title-color) !important; /* Use the inline color variable */
 }
 
-/* Additional stage-specific styling if needed */
-text.info-text.title-text-main.title-stage-zero tspan,
-text.info-text.title-text-main.title-stage-author tspan, 
-text.info-text.title-text-main.title-stage-house tspan,
-text.info-text.title-text-main.title-stage-press tspan {
-  /* These rules are now handled by the general rule above */
+/* Search term base styling */
+.search-term {
+  fill: inherit !important;
+  stroke: #FFCC00 !important;
+  stroke-width: 0.5em !important;
+  stroke-opacity: 0.5 !important;
+  paint-order: stroke !important;
+  font-weight: bold !important;
 }
 
-/* Override for search terms */
-text.info-text.title-text-main tspan.search-term {
-  /* Search term styling overrides fill but preserves visibility */
-  stroke: currentColor; /* Use the current text color for the stroke */
+/* Special styling for search terms in metadata text (subplots and characters) */
+.metadata-text .search-term,
+text.info-text.metadata-text .search-term,
+.info-text.metadata-text tspan.search-term {
+  fill: inherit !important;
+  stroke: #FFCC00 !important;
+  stroke-width: 0.6em !important; /* Slightly wider stroke for better visibility */
+  stroke-opacity: 0.6 !important; /* Higher opacity for better visibility */
+  paint-order: stroke !important;
+  font-weight: bold !important;
+}
+
+/* Clear any overrides to ensure colors are preserved */
+tspan.search-term,
+text.info-text tspan.search-term,
+text.info-text.metadata-text tspan.search-term,
+text.info-text.title-text-main tspan.search-term,
+text.info-text.title-text-secondary tspan.search-term {
+  /* Only override stroke properties for highlighting */
+  stroke: #FFCC00 !important;
+  stroke-width: 0.5em;
+  stroke-opacity: 0.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke;
+  /* Always preserve the original fill */
+  fill: inherit !important;
+}
+
+/* Fix for search terms in title - explicitly make the stroke yellow */
+text.info-text.title-text-main .search-term {
+  stroke: #FFCC00 !important;
   stroke-width: 0.5em;
   stroke-opacity: 0.5;
   paint-order: stroke;
+  /* Use the title color */
+  fill: var(--title-color) !important;
 }
 
-/* Quadrant-specific positioning for synopses */
-.synopsis-q1 .info-text {
-  text-anchor: end; /* Right justify for Q1 */
+/* Override for search terms in secondary text */
+text.info-text.title-text-secondary .search-term {
+  stroke: #FFCC00 !important;
+  stroke-width: 0.5em;
+  stroke-opacity: 0.5;
+  paint-order: stroke;
+  fill: inherit !important; 
 }
 
-.synopsis-q2 .info-text {
-  text-anchor: start; /* Left justify for Q2 */
+/* Override for search terms in metadata text to preserve random colors */
+text.info-text.metadata-text tspan[data-item-type] {
+  /* Never lose fill colors */
+  fill: inherit !important;
 }
 
-.synopsis-q3 .info-text {
-  text-anchor: start; /* Left justify for Q3 */
+/* Strengthen rules for metadata items to ensure colors are preserved */
+.info-text.metadata-text tspan[data-item-type="subplot"],
+.info-text.metadata-text tspan[data-item-type="character"] {
+  /* Ensure colors are explicitly preserved with the highest priority */
+  fill: inherit !important;
+  stroke: white;
+  stroke-width: 0.07em;
+  paint-order: stroke;
 }
 
-.synopsis-q4 .info-text {
-  text-anchor: end; /* Right justify for Q4 */
+/* When a tspan with data-item-type gets search-term class */
+text.info-text.metadata-text tspan[data-item-type].search-term {
+  stroke: #FFCC00 !important;
+  stroke-width: 0.5em;
+  stroke-opacity: 0.5;
+  paint-order: stroke;
+  font-weight: bold;
 }
 
-/* Override for title text elements */
-.synopsis-q1 .title-text-main, .synopsis-q1 .title-text-secondary, .synopsis-q1 .metadata-text {
+/* Make sure search terms preserve fill colors from their parent tspans */
+tspan[fill] .search-term,
+tspan[fill].search-term,
+tspan .search-term {
+  fill: inherit !important;
+}
+
+/* Quadrant-specific text alignment for synopses */
+.synopsis-q1 .info-text,
+.synopsis-q1 .title-text-main, 
+.synopsis-q1 .title-text-secondary, 
+.synopsis-q1 .metadata-text {
   text-anchor: end;
 }
 
-.synopsis-q2 .title-text-main, .synopsis-q2 .title-text-secondary, .synopsis-q2 .metadata-text {
+.synopsis-q2 .info-text,
+.synopsis-q2 .title-text-main, 
+.synopsis-q2 .title-text-secondary, 
+.synopsis-q2 .metadata-text {
   text-anchor: start;
 }
 
-.synopsis-q3 .title-text-main, .synopsis-q3 .title-text-secondary, .synopsis-q3 .metadata-text {
+.synopsis-q3 .info-text,
+.synopsis-q3 .title-text-main, 
+.synopsis-q3 .title-text-secondary, 
+.synopsis-q3 .metadata-text {
   text-anchor: start;
 }
 
-.synopsis-q4 .title-text-main, .synopsis-q4 .title-text-secondary, .synopsis-q4 .metadata-text {
+.synopsis-q4 .info-text,
+.synopsis-q4 .title-text-main, 
+.synopsis-q4 .title-text-secondary, 
+.synopsis-q4 .metadata-text {
   text-anchor: end;
 }
 
-.scene-info.visible {
-  opacity: 1;
-  pointer-events: all;
-  /* Ensure no other style is overriding this */
-  visibility: visible;
-  display: block;
+/* Force text alignment with high specificity */
+.scene-info.synopsis-q1 text, 
+.scene-info.synopsis-q4 text {
+  text-anchor: end !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
-
-.scene-info.visible {
-  opacity: 1;
+.scene-info.synopsis-q2 text, 
+.scene-info.synopsis-q3 text {
+  text-anchor: start !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
-.scene-info.visible .synopsis-text {
-  opacity: 1;
+/* Make sure scene info is consistently visible when active */
+.scene-info.visible {
+  opacity: 1 !important;
+  pointer-events: all !important;
+  visibility: visible !important;
+  display: block !important;
 }
 
 /* Title text in synopsis */
@@ -198,42 +270,36 @@ text.info-text.title-text-main tspan.search-term {
   margin-bottom: 10px;
 }
 
-/* Allow title text to inherit color from inline styling */
+/* Text styling in synopsis */
+.scene-info text.info-text {
+  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  stroke: white;
+  stroke-width: 2px;
+  paint-order: stroke;
+}
+
+/* Style for title text */
 .scene-info text.info-text.title-text-main {
   font-size: 24px;
   font-weight: 700;
+  margin-bottom: 8px; /* Add space after the title */
   /* No fill property to allow the inline fill attribute to take effect */
-  text-anchor: start;
 }
 
-/* Body text in synopsis */
-.synopsis-body {
+/* Style for synopsis text (second line onward) */
+.scene-info text.info-text.title-text-secondary {
   font-size: 18px;
-  margin-top: 5px;
+  fill: #666666; /* Grey color for synopsis text */
+  text-transform: uppercase;
+  font-weight: normal;
 }
 
-/* Spacer in synopsis */
-.synopsis-spacer {
-  height: 10px;
-}
-
-/* Metadata text in synopsis (subplots and characters) */
-.synopsis-metadata {
+/* Metadata text (subplots and characters) */
+.scene-info text.info-text.metadata-text {
   font-size: 18px;
-  color: #666;
-}
-
-/* Synopsis text styling */
-/* Remove divider line class since we no longer use it */
-
-/* Force text alignment for Q1 and Q4 */
-.synopsis-q1 text, .synopsis-q4 text {
-    text-anchor: end !important;
-}
-
-/* Force text alignment for Q2 and Q3 */
-.synopsis-q2 text, .synopsis-q3 text {
-    text-anchor: start;
+  fill: var(--text-muted);
+  font-weight: normal;
+  text-transform: none; /* Allow mixed case */
 }
 
 /* Synopsis cells */
@@ -312,8 +378,6 @@ text.info-text.title-text-main tspan.search-term {
   stroke: var(--scene-color, #705DCF);
 }
 
-/* Note: We can't use attr() reliably in CSS for colors, so the color is applied via inline CSS var in JavaScript */
-
 .number-text.selected {
   font-weight: bold;
 }
@@ -348,15 +412,15 @@ text.info-text.title-text-main tspan.search-term {
   font-size: 18px;
 }
 
-
-
 .status-count {
-  font-size: 75%;
-  opacity: 0.85;
+  font-size: 80%; 
+  opacity: 1;
   vertical-align: super;
-  position: relative;
-  top: -0.4em;
+  position: relative; 
+  top: -0.7em;
   font-weight: normal;
+  line-height: 0;
+  dominant-baseline: inherit;
 }
 
 /* Documentation styling */
@@ -442,128 +506,6 @@ text.info-text.title-text-main tspan.search-term {
 .bmc-button {
   height: 60px;
   width: 217px;
-}
-
-/* Global container styling to ensure colors are applied correctly */
-.manuscript-timeline-container .scene-info {
-  /* Force colors to be respected regardless of theme */
-  color: inherit !important;
-}
-
-/* Make sure SVG text elements receive these styles */
-svg text.info-text {
-  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 16px;
-  /* Remove the fill property to allow inline styling */
-  white-space: pre-wrap;
-  max-width: 250px; /* Added max-width constraint */
-  stroke: white;
-  stroke-width: 2px;
-  paint-order: stroke;
-}
-
-svg text.info-text.title-text-main {
-  font-size: 24px;
-  font-weight: 700;
-  /* No fill property to allow the inline fill attribute to take effect */
-  text-anchor: start;
-}
-
-svg text.info-text.title-text-secondary {
-  font-size: 18px;
-  fill: var(--text-muted, #888888);  /* Use a lighter color that won't conflict with title text */
-  text-transform: uppercase;
-  font-weight: normal;
-  text-anchor: start;
-}
-
-/* Text styling for subplots and characters in synopsis */
-tspan.subplot-text {
-  font-size: 16px;
-  fill: #555555;
-  font-weight: normal;
-}
-
-tspan.connector-text {
-  font-size: 18px;
-  fill: #555555;
-}
-
-tspan.character-text {
-  font-size: 18px;
-  font-weight: normal;
-}
-
-/* Text styling in synopsis */
-.scene-info text.info-text {
-  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-  stroke: white;
-  stroke-width: 2px;
-  paint-order: stroke;
-}
-
-.scene-info text.info-text.title-text-main {
-  font-size: 24px;
-  font-weight: 700;
-  /* No fill property to allow the inline fill attribute to take effect */
-  text-anchor: start;
-}
-
-.scene-info text.info-text.title-text-secondary {
-  font-size: 18px;
-  fill: var(--text-muted, #888888);  /* Use a lighter color that won't conflict with title text */
-  text-transform: uppercase;
-  font-weight: normal;
-}
-
-/* Metadata text (subplots and characters) */
-.scene-info text.info-text.metadata-text {
-  font-size: 18px;
-  fill: var(--text-muted);
-  text-anchor: start;
-  font-weight: normal;
-  text-transform: none; /* Allow mixed case */
-}
-
-/* Style for the "SUBPLOTS:" and "CHARACTERS:" labels */
-
-/* Debug information styling */
-.debug-info-container {
-  pointer-events: none;
-  z-index: 1000;
-}
-
-.debug-info-background {
-  fill: rgba(255,255,255,0.8);
-  rx: 5px;
-  ry: 5px;
-  stroke: #333333;
-  stroke-width: 1px;
-}
-
-.debug-info-text {
-  font-size: 20px;
-  fill: #ff3300;
-  font-weight: bold;
-  stroke: white;
-  stroke-width: 0.5px;
-  paint-order: stroke;
-  pointer-events: none;
-}
-
-/* Scene-info specific overrides to ensure proper text justification */
-.scene-info text.info-text.title-text-main {
-  font-size: 24px;
-  font-weight: 700;
-  /* No fill property to allow the inline fill attribute to take effect */
-  text-anchor: start;
-}
-
-.scene-info text.info-text.title-text-secondary {
-  font-size: 18px;
-  fill: var(--text-muted, #888888);  /* Use a lighter color that won't conflict with title text */
-  text-transform: uppercase;
-  font-weight: normal;
 }
 
 /* Center number styles */
@@ -676,7 +618,6 @@ tspan.character-text {
 .scene-title.scene-is-open {
   fill: #000000;
   font-weight: normal;
-
 }
 
 .number-square.scene-is-open {
@@ -701,7 +642,6 @@ tspan.character-text {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
-  transform: scale(1);
   transition: fill 0.1s;
 }
 
@@ -739,12 +679,9 @@ tspan.character-text {
 
 /* When a scene is both open and a search result */
 .number-square.search-result.non-selected {
-  fill: #EFEFEF;
-}
-
-/* When a scene is both open and a search result */
-.number-square.search-result.non-selected {
-  fill: #EFEFEF;
+  fill: #EFEFEF !important;
+  stroke: #EFEFEF;
+  stroke-width: 2px;
 }
 
 /* Number squares with pending edits */
@@ -783,36 +720,25 @@ tspan.character-text {
   fill: #FFE5E5;
 }
 
-/* Search styles - simple approach */
-.search-term {
-  font-weight: bold;
-  stroke: #FFCC00;
-  stroke-width: 0.5em;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  paint-order: stroke;
-  fill: #000000;
-}
-
-/* Search term highlight styles based on publish stage */
+/* Search term highlighting based on publish stage */
 .title-stage-zero .search-term {
-  stroke: #808080; /* Default gray */
-  fill: #FFFFFF;
+  stroke: #FFCC00 !important; /* Keep yellow stroke */
+  fill: inherit !important; /* Keep the original color */
 }
 
 .title-stage-author .search-term {
-  stroke: #4285F4; /* Default blue */
-  fill: #FFFFFF;
+  stroke: #FFCC00 !important; /* Keep yellow stroke */
+  fill: inherit !important; /* Keep the original color */
 }
 
 .title-stage-house .search-term {
-  stroke: #34A853; /* Default green */
-  fill: #FFFFFF;
+  stroke: #FFCC00 !important; /* Keep yellow stroke */
+  fill: inherit !important; /* Keep the original color */
 }
 
 .title-stage-press .search-term {
-  stroke: #EA4335; /* Default red */
-  fill: #FFFFFF;
+  stroke: #FFCC00 !important; /* Keep yellow stroke */
+  fill: inherit !important; /* Keep the original color */
 }
 
 /* Highlight rectangle */
@@ -908,12 +834,50 @@ tspan.character-text {
   border: 1px solid var(--background-modifier-border);
 }
 
-/* Ensure color is never overridden - most specific rule */
-svg .scene-info text.info-text.title-text-main[fill] {
-  fill: attr(fill) !important; /* This ensures the inline fill attribute is always respected */
+/* Debug information styling */
+.debug-info-container {
+  pointer-events: none;
+  z-index: 1000;
 }
 
-/* Set color directly on text elements */
-text.info-text.title-text-main {
-  fill: var(--title-color) !important; /* Use the inline color variable */
+.debug-info-background {
+  fill: rgba(255,255,255,0.8);
+  rx: 5px;
+  ry: 5px;
+  stroke: #333333;
+  stroke-width: 1px;
+}
+
+.debug-info-text {
+  font-size: 20px;
+  fill: #ff3300;
+  font-weight: bold;
+  stroke: white;
+  stroke-width: 0.5px;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+/* Preserve fill color for search terms within subplot and character spans */
+.info-text.metadata-text tspan[data-item-type="subplot"] .search-term,
+.info-text.metadata-text tspan[data-item-type="subplot"].search-term,
+.info-text.metadata-text tspan[data-item-type="character"] .search-term,
+.info-text.metadata-text tspan[data-item-type="character"].search-term {
+  fill: inherit !important;
+  stroke: #FFCC00 !important;
+  stroke-width: 0.5em;
+  stroke-opacity: 0.5;
+  paint-order: stroke;
+  font-weight: bold;
+}
+
+/* Make sure title text has strong yellow highlight when searched */
+.scene-info text.info-text.title-text-main .search-term {
+  stroke: #FFCC00 !important;
+  stroke-width: 0.6em !important;
+  stroke-opacity: 0.65 !important;
+  paint-order: stroke !important;
+  font-weight: bold !important;
+  /* Use the title color */
+  fill: var(--title-color) !important;
 }
