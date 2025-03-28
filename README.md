@@ -2,6 +2,8 @@
 
 A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.
 
+This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in chronological order to depict each scene. Various cues and interactions are available through a search feature that highlights the search term throughout and mouse-over functionality, revealing summary information in a colorful style. Hopefully, this will provide another method for tracking the progress of your manuscript and making it easier to stay on schedule and focused on what is truly a monumental task.
+
 ## Features
 
 - Creates an interactive radial timeline visualization of your scenes
@@ -45,19 +47,17 @@ These settings can be accessed from Settings → Community Plugins → Manuscrip
 ### Required Scene Metadata
 
 Scene files must have the following frontmatter:
-- Class: Scene - Identifies the file as a scene
-- When - Date of the scene (required)
-- Title - Scene title
-- Subplot - Subplot(s) the scene belongs to
-- Act - Act number (1-3)
-- Status - Scene status (Complete, Working, Todo, etc.)
+- Class: Scene - Identifies the file as a scene and part of the manuscript
 - Synopsis - Brief description of the scene
+- Subplot - Subplot(s) the scene belongs to (default if empty is Main Plot)
+- Act - Act number (1-3) (if empty then 1)
+- When - Date of the scene (required)
 - Character - Characters in the scene
-- Due - Optional due date for the scene
-- Pending Edits - Optional editing notes (scenes with Edits will display with purple number boxes)
-- Publish Stage - Publishing stage (Zero, Author, House, Press)
+- Publish Stage - (Zero, Author, House, Press)
+- Status - Scene status (Todo, Working, Complete)
+- Due - Due date for the scene of Completion Date
+- Pending Edits - Optional future editing notes
 
-#### Example Metadata (use "Paste and Match Style" when copying to avoid formatting issues)
 
 ```yaml
 ---
@@ -67,15 +67,13 @@ Subplot:
   - The Great War
   - Jinnis Pickle
 Act: 1
-When: 2023-05-15
+When: 2023-02-15
 Character:
   - John Mars
   - Celon Tim
-Place:
-  - Diego
-  - Earth
 Publish Stage: Zero
 Status: Complete
+Due: 2025-05-15
 Pending Edits:
 ---
 ```
