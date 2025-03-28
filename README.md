@@ -138,15 +138,11 @@ Any modifications or derivative works require explicit permission from the autho
 
 ### License
 
-© 2025 Eric Rhys Taylor. All Rights Reserved.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-This Obsidian plugin is proprietary software.
-- You may use this plugin for personal use only.
-- You may not copy, modify, distribute, sublicense, or resell any part of this plugin.
-- Commercial use of this software (e.g., as part of a paid product or service) is strictly prohibited without a separate license agreement.
-- Attribution is required in any mention or reference to this plugin.
-
-For licensing inquiries, please contact via GitHub.
+MIT License means:
+- You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software.
+- The only requirement is that you include the original copyright notice and permission notice in all copies or substantial portions of the software.
 
 ### Author
 
