@@ -157,9 +157,10 @@ class SynopsisManager {
     }
     
     /**
-     * Generate the HTML for a scene synopsis with consistent formatting
+     * Create a DOM element for a scene synopsis with consistent formatting
+     * @returns An SVG group element containing the formatted synopsis
      */
-    generateHTML(scene: Scene, contentLines: string[], sceneId: string): string {
+    generateElement(scene: Scene, contentLines: string[], sceneId: string): SVGGElement {
         // Map the publish stage to a CSS class
         const stage = scene["Publish Stage"] || 'Zero';
         const stageClass = `title-stage-${String(stage).toLowerCase()}`;
@@ -200,39 +201,106 @@ class SynopsisManager {
         // Set the line height
         const lineHeight = 26;
         
-        // Start building the HTML - use a group for the whole synopsis
-        // Ensure we're creating a clean structure for positioning
-        let html = `
-            <g class="scene-info info-container" data-for-scene="${sceneId}">
-                <g class="synopsis-text">`;
+        // Create the main container group
+        const containerGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        containerGroup.setAttribute("class", "scene-info info-container");
+        containerGroup.setAttribute("data-for-scene", sceneId);
+        
+        // Create the synopsis text group
+        const synopsisTextGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        synopsisTextGroup.setAttribute("class", "synopsis-text");
+        containerGroup.appendChild(synopsisTextGroup);
         
         // Add the title with publish stage color - at origin (0,0)
         const titleContent = contentLines[0];
+        const titleTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        titleTextElement.setAttribute("class", `info-text title-text-main ${stageClass}`);
+        titleTextElement.setAttribute("x", "0");
+        titleTextElement.setAttribute("y", "0");
+        titleTextElement.setAttribute("text-anchor", "start");
+        titleTextElement.setAttribute("style", `--title-color: ${titleColor};`);
+        
         if (titleContent.includes('<tspan')) {
-            html += `<text class="info-text title-text-main ${stageClass}" x="0" y="0" text-anchor="start" style="--title-color: ${titleColor};">${titleContent}</text>`;
+            // For pre-formatted HTML, we need to parse and create elements
+            // This is a temporary div to parse HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = titleContent;
+            
+            // Extract the tspan content and create equivalent SVG elements
+            const tspans = tempDiv.querySelectorAll('tspan');
+            tspans.forEach(tspan => {
+                const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                
+                // Copy attributes from HTML to SVG element
+                Array.from(tspan.attributes).forEach(attr => {
+                    svgTspan.setAttribute(attr.name, attr.value);
+                });
+                
+                svgTspan.textContent = tspan.textContent;
+                titleTextElement.appendChild(svgTspan);
+            });
         } else {
             // Handle title and date with different styling
             const parts = titleContent.split('  ');
             if (parts.length > 1) {
                 const title = parts[0];
                 const date = parts.slice(1).join('  ');
-                html += `<text class="info-text title-text-main ${stageClass}" x="0" y="0" text-anchor="start" style="--title-color: ${titleColor};">
-                    <tspan fill="${titleColor}" font-weight="bold">${escapeXml(title)}</tspan>
-                    <tspan fill="${titleColor}" opacity="0.65">${escapeXml(date)}</tspan>
-                </text>`;
+                
+                const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                titleTspan.setAttribute("fill", titleColor);
+                titleTspan.setAttribute("font-weight", "bold");
+                titleTspan.textContent = title;
+                titleTextElement.appendChild(titleTspan);
+                
+                const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                dateTspan.setAttribute("fill", titleColor);
+                dateTspan.setAttribute("opacity", "0.65");
+                dateTspan.textContent = date;
+                titleTextElement.appendChild(dateTspan);
             } else {
-                html += `<text class="info-text title-text-main ${stageClass}" x="0" y="0" text-anchor="start" style="--title-color: ${titleColor};"><tspan fill="${titleColor}">${escapeXml(titleContent)}</tspan></text>`;
+                const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                tspan.setAttribute("fill", titleColor);
+                tspan.textContent = titleContent;
+                titleTextElement.appendChild(tspan);
             }
         }
+        
+        synopsisTextGroup.appendChild(titleTextElement);
         
         // Add synopsis lines with precise vertical spacing
         for (let i = 1; i < synopsisEndIndex; i++) {
             const lineContent = contentLines[i];
             const lineY = i * lineHeight; // Simplified vertical spacing
             
-            html += `<text class="info-text title-text-secondary" x="0" y="${lineY}" text-anchor="start">${
-                lineContent.includes('<tspan') ? lineContent : escapeXml(lineContent)
-            }</text>`;
+            const synopsisLineElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            synopsisLineElement.setAttribute("class", "info-text title-text-secondary");
+            synopsisLineElement.setAttribute("x", "0");
+            synopsisLineElement.setAttribute("y", String(lineY));
+            synopsisLineElement.setAttribute("text-anchor", "start");
+            
+            if (lineContent.includes('<tspan')) {
+                // For pre-formatted HTML, we need to parse and create elements
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = lineContent;
+                
+                // Extract the tspan content and create equivalent SVG elements
+                const tspans = tempDiv.querySelectorAll('tspan');
+                tspans.forEach(tspan => {
+                    const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    
+                    // Copy attributes from HTML to SVG element
+                    Array.from(tspan.attributes).forEach(attr => {
+                        svgTspan.setAttribute(attr.name, attr.value);
+                    });
+                    
+                    svgTspan.textContent = tspan.textContent;
+                    synopsisLineElement.appendChild(svgTspan);
+                });
+            } else {
+                synopsisLineElement.textContent = lineContent;
+            }
+            
+            synopsisTextGroup.appendChild(synopsisLineElement);
         }
         
         // Process metadata items with consistent vertical spacing
@@ -240,7 +308,17 @@ class SynopsisManager {
             // Add a visual separator line at the bottom of the synopsis section
             const separatorY = (synopsisEndIndex * lineHeight) + 15;
             const separatorLength = 120; // Length of the separator line
-            html += `<line x1="-${separatorLength/2}" y1="${separatorY}" x2="${separatorLength/2}" y2="${separatorY}" stroke="#D0D0D0" stroke-width="1.5" opacity="0.5" />`;
+            
+            const separatorLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            separatorLine.setAttribute("x1", String(-separatorLength/2));
+            separatorLine.setAttribute("y1", String(separatorY));
+            separatorLine.setAttribute("x2", String(separatorLength/2));
+            separatorLine.setAttribute("y2", String(separatorY));
+            separatorLine.setAttribute("stroke", "#D0D0D0");
+            separatorLine.setAttribute("stroke-width", "1.5");
+            separatorLine.setAttribute("opacity", "0.5");
+            
+            synopsisTextGroup.appendChild(separatorLine);
             
             // Add extra large vertical space between synopsis and metadata
             const metadataY = (synopsisEndIndex * lineHeight) + 45; // Big gap below the synopsis
@@ -251,36 +329,84 @@ class SynopsisManager {
             if (metadataItems[0] && metadataItems[0].trim() !== '\u00A0') {
                 if (metadataItems[0].startsWith('<tspan')) {
                     // This is pre-formatted HTML
-                    html += `<text class="info-text metadata-text" x="0" y="${metadataY}" text-anchor="start">${metadataItems[0]}</text>`;
+                    const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    subplotTextElement.setAttribute("class", "info-text metadata-text");
+                    subplotTextElement.setAttribute("x", "0");
+                    subplotTextElement.setAttribute("y", String(metadataY));
+                    subplotTextElement.setAttribute("text-anchor", "start");
+                    
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = metadataItems[0];
+                    
+                    // Extract the tspan content and create equivalent SVG elements
+                    const tspans = tempDiv.querySelectorAll('tspan');
+                    tspans.forEach(tspan => {
+                        const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        
+                        // Copy attributes from HTML to SVG element
+                        Array.from(tspan.attributes).forEach(attr => {
+                            svgTspan.setAttribute(attr.name, attr.value);
+                        });
+                        
+                        svgTspan.textContent = tspan.textContent;
+                        subplotTextElement.appendChild(svgTspan);
+                    });
+                    
+                    synopsisTextGroup.appendChild(subplotTextElement);
                 } else {
                     // Extract subplots and apply colors
                     const subplots = metadataItems[0].split(', ').filter(s => s.trim().length > 0);
                     
                     if (subplots.length > 0) {
-                        let subplotHtml = `<text class="info-text metadata-text" x="0" y="${metadataY}" text-anchor="start">`;
+                        const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        subplotTextElement.setAttribute("class", "info-text metadata-text");
+                        subplotTextElement.setAttribute("x", "0");
+                        subplotTextElement.setAttribute("y", String(metadataY));
+                        subplotTextElement.setAttribute("text-anchor", "start");
                         
                         // Format each subplot with its own color
                         subplots.forEach((subplot, j) => {
                             const color = getSubplotColor(subplot.trim());
                             const subplotText = subplot.trim();
                             
+                            // Create tspan for subplot
+                            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                            tspan.setAttribute("fill", color);
+                            tspan.setAttribute("data-item-type", "subplot");
+                            tspan.setAttribute("style", `fill: ${color} !important;`);
+                            
                             // Apply search highlighting if active
-                            let formattedText = escapeXml(subplotText);
                             if (this.plugin.searchActive && this.plugin.searchTerm) {
                                 const regex = new RegExp(`(${this.escapeRegExp(this.plugin.searchTerm)})`, 'gi');
-                                formattedText = formattedText.replace(regex, 
-                                    `<tspan class="search-term" fill="${color}">$1</tspan>`);
+                                const parts = subplotText.split(regex);
+                                
+                                parts.forEach((part, i) => {
+                                    if (i % 2 === 1) { // This is a matched part
+                                        const searchTerm = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                        searchTerm.setAttribute("class", "search-term");
+                                        searchTerm.setAttribute("fill", color);
+                                        searchTerm.textContent = part;
+                                        tspan.appendChild(searchTerm);
+                                    } else if (part) {
+                                        tspan.appendChild(document.createTextNode(part));
+                                    }
+                                });
+                            } else {
+                                tspan.textContent = subplotText;
                             }
                             
-                            subplotHtml += `<tspan fill="${color}" data-item-type="subplot" style="fill: ${color} !important;">${formattedText}</tspan>`;
+                            subplotTextElement.appendChild(tspan);
                             
+                            // Add comma separator if not the last item
                             if (j < subplots.length - 1) {
-                                subplotHtml += '<tspan fill="var(--text-muted)">, </tspan>';
+                                const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                comma.setAttribute("fill", "var(--text-muted)");
+                                comma.textContent = ", ";
+                                subplotTextElement.appendChild(comma);
                             }
                         });
                         
-                        subplotHtml += '</text>';
-                        html += subplotHtml;
+                        synopsisTextGroup.appendChild(subplotTextElement);
                     }
                 }
             }
@@ -292,45 +418,99 @@ class SynopsisManager {
                 
                 if (metadataItems[1].startsWith('<tspan')) {
                     // This is pre-formatted HTML
-                    html += `<text class="info-text metadata-text" x="0" y="${characterY}" text-anchor="start">${metadataItems[1]}</text>`;
+                    const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    characterTextElement.setAttribute("class", "info-text metadata-text");
+                    characterTextElement.setAttribute("x", "0");
+                    characterTextElement.setAttribute("y", String(characterY));
+                    characterTextElement.setAttribute("text-anchor", "start");
+                    
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = metadataItems[1];
+                    
+                    // Extract the tspan content and create equivalent SVG elements
+                    const tspans = tempDiv.querySelectorAll('tspan');
+                    tspans.forEach(tspan => {
+                        const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        
+                        // Copy attributes from HTML to SVG element
+                        Array.from(tspan.attributes).forEach(attr => {
+                            svgTspan.setAttribute(attr.name, attr.value);
+                        });
+                        
+                        svgTspan.textContent = tspan.textContent;
+                        characterTextElement.appendChild(svgTspan);
+                    });
+                    
+                    synopsisTextGroup.appendChild(characterTextElement);
                 } else {
                     // Extract characters and apply colors
                     const characters = metadataItems[1].split(', ').filter(c => c.trim().length > 0);
                     
                     if (characters.length > 0) {
-                        let characterHtml = `<text class="info-text metadata-text" x="0" y="${characterY}" text-anchor="start">`;
+                        const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        characterTextElement.setAttribute("class", "info-text metadata-text");
+                        characterTextElement.setAttribute("x", "0");
+                        characterTextElement.setAttribute("y", String(characterY));
+                        characterTextElement.setAttribute("text-anchor", "start");
                         
                         // Format each character with its own color
                         characters.forEach((character, j) => {
                             const color = getCharacterColor(character.trim());
                             const characterText = character.trim();
                             
+                            // Create tspan for character
+                            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                            tspan.setAttribute("fill", color);
+                            tspan.setAttribute("data-item-type", "character");
+                            tspan.setAttribute("style", `fill: ${color} !important;`);
+                            
                             // Apply search highlighting if active
-                            let formattedText = escapeXml(characterText);
                             if (this.plugin.searchActive && this.plugin.searchTerm) {
                                 const regex = new RegExp(`(${this.escapeRegExp(this.plugin.searchTerm)})`, 'gi');
-                                formattedText = formattedText.replace(regex, 
-                                    `<tspan class="search-term" fill="${color}">$1</tspan>`);
+                                const parts = characterText.split(regex);
+                                
+                                parts.forEach((part, i) => {
+                                    if (i % 2 === 1) { // This is a matched part
+                                        const searchTerm = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                        searchTerm.setAttribute("class", "search-term");
+                                        searchTerm.setAttribute("fill", color);
+                                        searchTerm.textContent = part;
+                                        tspan.appendChild(searchTerm);
+                                    } else if (part) {
+                                        tspan.appendChild(document.createTextNode(part));
+                                    }
+                                });
+                            } else {
+                                tspan.textContent = characterText;
                             }
                             
-                            characterHtml += `<tspan fill="${color}" data-item-type="character" style="fill: ${color} !important;">${formattedText}</tspan>`;
+                            characterTextElement.appendChild(tspan);
                             
+                            // Add comma separator if not the last item
                             if (j < characters.length - 1) {
-                                characterHtml += '<tspan fill="var(--text-muted)">, </tspan>';
+                                const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                comma.setAttribute("fill", "var(--text-muted)");
+                                comma.textContent = ", ";
+                                characterTextElement.appendChild(comma);
                             }
                         });
                         
-                        characterHtml += '</text>';
-                        html += characterHtml;
+                        synopsisTextGroup.appendChild(characterTextElement);
                     }
                 }
             }
         }
         
-        // Close the group tags
-        html += `</g></g>`;
-        
-        return html;
+        return containerGroup;
+    }
+    
+    /**
+     * Generate SVG string from DOM element (temporary compatibility method)
+     */
+    generateHTML(scene: Scene, contentLines: string[], sceneId: string): string {
+        const element = this.generateElement(scene, contentLines, sceneId);
+        const serializer = new XMLSerializer();
+        return serializer.serializeToString(element);
     }
     
     /**
@@ -1319,7 +1499,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         })();
 
         // Synopses at end to be above all other elements
-        const synopsesHTML: string[] = [];
+        const synopsesElements: SVGGElement[] = [];
         scenes.forEach((scene) => {
             // Handle undefined subplot with a default "Main Plot"
             const subplot = scene.subplot || "Main Plot";
@@ -1425,8 +1605,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             // Filter out empty lines
             const filteredContentLines = contentLines.filter(line => line);
             
-            // Generate the synopsis HTML using our new helper function
-            synopsesHTML.push(this.generateSynopsisHTML(scene, filteredContentLines, sceneId));
+            // Generate the synopsis element using our new DOM-based method
+            // Instead of collecting HTML strings, store the DOM elements directly
+            const synopsisElement = this.synopsisManager.generateElement(scene, filteredContentLines, sceneId);
+            synopsesElements.push(synopsisElement);
         });
 
         // Draw scenes and dummy scenes (existing code remains as is)
@@ -1845,11 +2027,21 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         });
         svg += `</g>`;
         
-        // Add all synopses at the end of the SVG
-        svg += `            <g class="synopses-container">
-                ${synopsesHTML.join('\n')}
-            </g>
-        `;
+        // Create container for all synopses
+        const synopsesContainer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        synopsesContainer.setAttribute("class", "synopses-container");
+
+        // Add all synopsis elements to the container
+        synopsesElements.forEach(element => {
+            synopsesContainer.appendChild(element);
+        });
+
+        // Serialize the synopses container to SVG string
+        const serializer = new XMLSerializer();
+        const synopsesHTML = serializer.serializeToString(synopsesContainer);
+
+        // Add it to the SVG output
+        svg += synopsesHTML;
 
         // Add JavaScript to handle synopsis visibility
         const scriptSection = `
