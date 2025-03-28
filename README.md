@@ -155,3 +155,42 @@ Created by Eric Rhys Taylor
 ### Questions & Support
 
 For questions, issues, or feature requests, please [open an issue on GitHub](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues).
+
+## Developer Notes
+
+### Security Best Practices
+
+1. **Avoid `innerHTML` and `outerHTML`**: For security reasons, never use `innerHTML` or `outerHTML` to create or modify content. These methods can lead to Cross-Site Scripting (XSS) vulnerabilities.
+
+2. **Use DOM Manipulation Instead**:
+   ```javascript
+   // AVOID THIS:
+   element.innerHTML = '<span>' + content + '</span>';
+   
+   // DO THIS INSTEAD:
+   const span = document.createElement('span');
+   span.textContent = content;
+   element.appendChild(span);
+   ```
+
+3. **For SVG Elements**:
+   ```javascript
+   // AVOID THIS:
+   svgContainer.innerHTML = svgContent;
+   
+   // DO THIS INSTEAD:
+   const parser = new DOMParser();
+   const svgDoc = parser.parseFromString(svgContent, "image/svg+xml");
+   
+   // Clear existing content
+   while (svgContainer.firstChild) {
+     svgContainer.removeChild(svgContainer.firstChild);
+   }
+   
+   // Append the new SVG
+   if (svgDoc.documentElement) {
+     svgContainer.appendChild(document.importNode(svgDoc.documentElement, true));
+   }
+   ```
+
+4. **Always Sanitize User Input**: If you must process HTML content, use a proper sanitization library.
