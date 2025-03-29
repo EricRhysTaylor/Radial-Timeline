@@ -99,7 +99,7 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Style for open scenes when they're not the hovered scene */
 .scene-path.scene-is-open.non-selected {
-  fill: rgba(112, 93, 207, 0.3) !important; /* Use a faded version of the accent color */
+  fill: #EFEFEF !important; /* Light gray like other non-selected items */
   transition: fill 0.15s ease-out;
 }
 
@@ -331,13 +331,16 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Style for open scene number squares that are not the current selection */
 .number-square.scene-is-open.non-selected {
-  fill: rgba(112, 93, 207, 0.3) !important;
+  fill: #EFEFEF !important;
   stroke: none;
+  stroke-width: 0;
 }
 
 /* Style for open scene number text that are not the current selection */
 .number-text.scene-is-open.non-selected {
-  fill: #333333 !important;
+  fill: #FFFFFF !important;
+  opacity: 1;
+  transition: fill 0.1s;
 }
 
 .number-square.selected {
