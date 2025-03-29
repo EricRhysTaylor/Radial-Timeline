@@ -97,6 +97,12 @@ path.scene-path[fill="#EEEEEE"] {
   transition: fill 0.15s ease-out;
 }
 
+/* Style for open scenes when they're not the hovered scene */
+.scene-path.scene-is-open.non-selected {
+  fill: rgba(112, 93, 207, 0.3) !important; /* Use a faded version of the accent color */
+  transition: fill 0.15s ease-out;
+}
+
 /* Selected scene during mouseover */
 .scene-path.selected {
   filter: saturate(1.2) brightness(1.1); /* Simpler filter for better performance */
@@ -323,19 +329,15 @@ path.scene-path[fill="#EEEEEE"] {
   paint-order: stroke;
 }
 
-/* Number elements during mouseover with high specificity */
-.number-square.non-selected {
-  fill: #EFEFEF;
+/* Style for open scene number squares that are not the current selection */
+.number-square.scene-is-open.non-selected {
+  fill: rgba(112, 93, 207, 0.3) !important;
   stroke: none;
-  stroke-width: 0;
-  transition: fill 0.2s ease-out,
-              stroke 0.2s ease-out,
-              stroke-width 0.2s ease-out,
-              transform 0.2s ease-out;
 }
 
-.number-text.non-selected {
-  fill: #FFFFFF;
+/* Style for open scene number text that are not the current selection */
+.number-text.scene-is-open.non-selected {
+  fill: #333333 !important;
 }
 
 .number-square.selected {
@@ -819,4 +821,19 @@ tspan .search-term {
   min-height: 1.5em;
   display: block;
   visibility: visible !important;
+}
+
+/* Number elements during mouseover with high specificity */
+.number-square.non-selected {
+  fill: #EFEFEF;
+  stroke: none;
+  stroke-width: 0;
+  transition: fill 0.2s ease-out,
+              stroke 0.2s ease-out,
+              stroke-width 0.2s ease-out,
+              transform 0.2s ease-out;
+}
+
+.number-text.non-selected {
+  fill: #FFFFFF;
 }

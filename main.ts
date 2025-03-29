@@ -4436,8 +4436,8 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 
                 // Make other scenes less prominent
                 allElements.forEach(element => {
-                    if (!element.classList.contains('selected') && 
-                        !element.classList.contains('scene-is-open')) {
+                    if (!element.classList.contains('selected')) {
+                        // Apply non-selected class even to open scenes when hovering other scenes
                         element.classList.add('non-selected');
                     }
                 });
