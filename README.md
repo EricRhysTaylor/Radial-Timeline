@@ -15,6 +15,10 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 - Visually highlights currently open scene tabs in the radial timeline with special styling
 - Fully integrated into Obsidian's interface - no external plugins required
 
+## Development
+
+This project follows strict code quality guidelines to ensure security and maintainability. If you're interested in contributing, please review our [Code Quality Guidelines](CODE_QUALITY.md) which includes information about pre-commit hooks and safe alternatives to innerHTML/outerHTML.
+
 <a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
   <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #444;" />
 </a>
