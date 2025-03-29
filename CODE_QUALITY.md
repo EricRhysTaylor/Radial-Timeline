@@ -8,14 +8,26 @@ We use [Husky](https://typicode.github.io/husky/) and [lint-staged](https://gith
 
 ### Security Checks
 
-One of the primary checks is to prevent the use of unsafe DOM manipulation methods:
+Our primary checks focus on preventing unsafe coding practices:
+
+#### DOM Manipulation Safety
 
 - `innerHTML` assignment
 - `outerHTML` assignment
 
 These methods can lead to Cross-Site Scripting (XSS) vulnerabilities and are generally considered unsafe.
 
+#### CSS Organization
+
+- Inline style assignments (element.style.property = value)
+- Inline style attributes (style="...")
+- Style objects in JavaScript
+
+All styling should be kept in the `styles.css` file for consistency, maintainability, and performance.
+
 ## Safe Alternatives
+
+### For DOM Manipulation
 
 Instead of using `innerHTML` or `outerHTML`, please use these safer alternatives:
 
@@ -47,13 +59,55 @@ Instead of using `innerHTML` or `outerHTML`, please use these safer alternatives
    const safeContent = parseHtmlSafely(htmlString);
    ```
 
+### For CSS Styling
+
+Instead of inline styles, follow these practices:
+
+1. Define styles in `styles.css`:
+   ```css
+   .my-custom-element {
+     background-color: var(--background-primary);
+     color: var(--text-normal);
+     padding: 10px;
+   }
+   ```
+
+2. Apply styles using classList:
+   ```javascript
+   element.classList.add('my-custom-element');
+   ```
+
+3. For dynamic styling, use CSS variables:
+   ```css
+   .dynamic-element {
+     --element-color: blue;
+     color: var(--element-color);
+   }
+   ```
+   
+   ```javascript
+   // Change the CSS variable value
+   element.style.setProperty('--element-color', 'red');
+   ```
+
+4. Use Obsidian's CSS variables for consistent theming:
+   ```css
+   .my-element {
+     background-color: var(--background-primary);
+     color: var(--text-normal);
+   }
+   ```
+
 ## Exempting Code from Checks
 
-If you have a legitimate reason to use `innerHTML` or `outerHTML`, you can exempt the line by adding a special comment:
+If you have a legitimate reason to use a normally prohibited pattern, you can exempt the line by adding a special comment:
 
 ```javascript
 // SAFE: innerHTML used for rendering SVG from server-validated content
 element.innerHTML = safeContent;
+
+// SAFE: inline style used for dynamic positioning that can't be achieved with CSS
+element.style.top = `${position}px`;
 ```
 
 ## Development Setup
@@ -80,4 +134,4 @@ node code-quality-check.mjs path/to/file.js
 
 ## Understanding the Checks
 
-The code quality checks are defined in `code-quality-check.mjs`. This script scans JavaScript and TypeScript files for patterns that indicate unsafe DOM manipulation and blocks commits that violate these guidelines. 
+The code quality checks are defined in `code-quality-check.mjs`. This script scans JavaScript and TypeScript files for patterns that indicate unsafe DOM manipulation or inline styling and blocks commits that violate these guidelines. 
