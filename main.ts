@@ -3077,24 +3077,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Helper method to ensure text is safe for SVG
     private safeSvgText(text: string): string {
-        if (!text) return '';
-        
-        // First decode HTML entities that might be in the text to prevent double-escaping
-        const decodedText = decodeHtmlEntities(text);
-        
-        // Handle special case: If the text already contains tspan tags
-        if (decodedText.includes('<tspan') && !decodedText.includes('&lt;tspan')) {
-            // This is a bit tricky - we want to preserve tspan tags but escape everything else
-            // Return as is for now - we'll handle this specially when creating SVG elements
-            return decodedText;
-        }
-        
-        // Otherwise, escape all special characters
-        return escapeXml(decodedText);
+        return (text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
     // Find the SVG element
-    private createSvgElement(svgContent: string, container: HTMLElement): SVGSVGElement | null {
+    public createSvgElement(svgContent: string, container: HTMLElement): SVGSVGElement | null {
         try {
             // Performance optimization: Track parsing time
             const startTime = performance.now();
@@ -4005,6 +3992,154 @@ export class ManuscriptTimelineView extends ItemView {
     
     async onClose(): Promise<void> {
         // Clean up any event listeners or resources
+    }
+    
+    // Add the missing createSvgElement method
+    private createSvgElement(svgContent: string, container: HTMLElement): SVGSVGElement | null {
+        // Delegate to the plugin's implementation
+        return this.plugin.createSvgElement(svgContent, container);
+    }
+    
+    // Add missing addHighlightRectangles method
+    private addHighlightRectangles(): void {
+        if (!this.plugin.searchActive) {
+            return;
+        }
+        
+        this.log(`Adding highlight rectangles for search term: "${this.plugin.searchTerm}" with ${this.plugin.searchResults.size} results`);
+        
+        // Iterate through all text elements and replace their content
+        // This ensures we completely replace any previous search highlighting
+        
+        // First, find all subplots to highlight
+        const subplotTspans = this.contentEl.querySelectorAll('tspan[data-item-type="subplot"]');
+        const searchTerm = this.plugin.searchTerm;
+        
+        // Create a word boundary regex for exact matches only
+        const escapeRegExp = (string: string): string => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedPattern = escapeRegExp(searchTerm);
+        const wordBoundaryRegex = new RegExp(`\\b(${escapedPattern})\\b`, 'gi');
+        
+        // Process all subplots
+        subplotTspans.forEach((tspan: Element) => {
+            // Get the original text content
+            const originalText = tspan.textContent || '';
+            
+            // Skip if there's no match
+            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) {
+                return;
+            }
+            
+            // Apply highlighting
+            const fillColor = tspan.getAttribute('fill');
+            
+            // Test if we need a word boundary match
+            const useWordBoundary = originalText.match(wordBoundaryRegex);
+            const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
+            
+            // Clear previous content
+            while (tspan.firstChild) {
+                tspan.removeChild(tspan.firstChild);
+            }
+            
+            // Reset regex
+            regex.lastIndex = 0;
+            
+            // Process the text parts
+            let lastIndex = 0;
+            let match;
+            
+            while ((match = regex.exec(originalText)) !== null) {
+                // Add text before match
+                if (match.index > lastIndex) {
+                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
+                    tspan.appendChild(textBefore);
+                }
+                
+                // Add the highlighted match
+                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                highlightSpan.setAttribute("class", "search-term");
+                highlightSpan.setAttribute("fill", fillColor || "");
+                highlightSpan.textContent = match[0];
+                tspan.appendChild(highlightSpan);
+                
+                lastIndex = match.index + match[0].length;
+            }
+            
+            // Add any remaining text
+            if (lastIndex < originalText.length) {
+                const textAfter = document.createTextNode(originalText.substring(lastIndex));
+                tspan.appendChild(textAfter);
+            }
+        });
+        
+        // Now, process all character elements
+        const characterTspans = this.contentEl.querySelectorAll('tspan[data-item-type="character"]');
+        
+        // Process all characters
+        characterTspans.forEach((tspan: Element) => {
+            // Same logic as for subplots
+            const originalText = tspan.textContent || '';
+            
+            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) {
+                return;
+            }
+            
+            const fillColor = tspan.getAttribute('fill');
+            const useWordBoundary = originalText.match(wordBoundaryRegex);
+            const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
+            
+            while (tspan.firstChild) {
+                tspan.removeChild(tspan.firstChild);
+            }
+            
+            regex.lastIndex = 0;
+            let lastIndex = 0;
+            let match;
+            
+            while ((match = regex.exec(originalText)) !== null) {
+                if (match.index > lastIndex) {
+                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
+                    tspan.appendChild(textBefore);
+                }
+                
+                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                highlightSpan.setAttribute("class", "search-term");
+                highlightSpan.setAttribute("fill", fillColor || "");
+                highlightSpan.textContent = match[0];
+                tspan.appendChild(highlightSpan);
+                
+                lastIndex = match.index + match[0].length;
+            }
+            
+            if (lastIndex < originalText.length) {
+                const textAfter = document.createTextNode(originalText.substring(lastIndex));
+                tspan.appendChild(textAfter);
+            }
+        });
+        
+        // Check for scene groups that should be highlighted
+        const allSceneGroups = this.contentEl.querySelectorAll('.scene-group');
+        this.log(`Found ${allSceneGroups.length} scene groups to check for search matches`);
+        
+        // Add search-result class to all matching scene paths
+        allSceneGroups.forEach((group: Element) => {
+            const pathAttr = group.getAttribute('data-path');
+            if (pathAttr && this.plugin.searchResults.has(decodeURIComponent(pathAttr))) {
+                // Find the number square in this group
+                const numberSquare = group.querySelector('.number-square');
+                const numberText = group.querySelector('.number-text');
+                
+                if (numberSquare) {
+                    numberSquare.classList.add('search-result');
+                    this.log(`Added search-result class to number square for ${pathAttr}`);
+                }
+                
+                if (numberText) {
+                    numberText.classList.add('search-result');
+                }
+            }
+        });
     }
     
     async createTestSceneFile(): Promise<void> {

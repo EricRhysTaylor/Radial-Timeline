@@ -25,12 +25,11 @@
   justify-content: center;
   height: 100%;
   width: 100%;
-  overflow: hidden; /* Change from auto to hidden to prevent scrollbars during rendering */
+  overflow: hidden;
   position: relative;
   box-sizing: border-box;
   padding: 0;
   margin: 0;
-  will-change: contents; /* Performance hint for browser rendering */
 }
 
 /* Loading and error messages */
@@ -47,22 +46,17 @@
 
 /* SVG styling */
 .manuscript-timeline-container svg {
-  width: 100% !important;
-  height: 100% !important;
-  max-height: none;
-  margin: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 95vw; 
+  max-height: 95vh;
+  margin: 0 auto;
   padding: 0;
   transform-origin: center;
+  object-fit: contain;
   cursor: default;
   background-color: transparent;
   font-family: 'Lato', sans-serif;
-  display: block;
-  overflow: visible;
-  will-change: transform; /* Performance hint for browser rendering */
-  /* Use hardware acceleration for SVG */
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
 }
 
 /* Scene elements */
