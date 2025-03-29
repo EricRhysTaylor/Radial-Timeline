@@ -160,7 +160,7 @@ path.scene-path[fill="#EEEEEE"] {
 /* Month and act labels */
 .month-label, .month-label-outer, .act-label {
   font-family: 'Lato', sans-serif;
-  font-size: 14px;
+  font-size: 18px;
   fill: var(--text-normal);
   text-anchor: middle;
   dominant-baseline: middle;
@@ -169,17 +169,17 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Optimize month lines */
 .month-spoke-line {
-  stroke: var(--background-modifier-border);
+  stroke: var(--text-normal);
   stroke-width: 1px;
   stroke-dasharray: 2,2; /* Simpler dash pattern */
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 .month-spoke-line.act-boundary {
   stroke: var(--text-normal);
-  stroke-width: 1.5px;
+  stroke-width: 2px;
   stroke-dasharray: none;
-  opacity: 0.9;
+  opacity: 1;
 }
 
 /* Scene title text with variable font size */
@@ -846,21 +846,21 @@ tspan .search-term {
 
 /* Progress ring styling */
 .progress-ring-base {
-  fill: none;
-  stroke: #DDDDDD;
-  stroke-width: 1px;
+  fill: rgba(30, 30, 30, 0.1);
+  stroke: var(--background-modifier-border);
+  stroke-width: 2px;
 }
 
 .progress-ring-fill {
   fill: none;
-  stroke-width: 5px;
+  stroke-width: 8px;
   stroke-linecap: round;
 }
 
 /* Center key text styling */
 .center-key-text {
   font-family: 'Lato', sans-serif;
-  font-size: 14px;
+  font-size: 18px;
   fill: var(--text-normal, #333333);
   font-weight: bold;
   text-transform: uppercase;
