@@ -1068,7 +1068,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Title format is typically: "SceneNumber SceneTitle   Date" 
         if (decodedText.includes('   ') && !decodedText.includes('<tspan')) {
             // First split by the triple space that separates title from date
-            const [titlePart, datePart] = decodedText.split(/\s{3,}/);
+            const parts = decodedText.split(/\s{3,}/);
+            const titlePart = parts[0];
+            const date = parts.length > 1 ? parts.slice(1).join('  ') : '';
             
             // Then extract scene number from title (if it exists)
             const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
@@ -1078,8 +1080,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 const sceneNumber = titleMatch[1];
                 const sceneTitle = titleMatch[3];
                 
+                // Add scene number and bolded text to maintain consistency with non-search case
+                const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                titleTspan.setAttribute("font-weight", "bold");
+                
                 // Add scene number as regular text
-                fragment.appendChild(document.createTextNode(`${sceneNumber} `));
+                titleTspan.textContent = `${sceneNumber} `;
+                
+                // Create a text node to hold the highlighted content
+                fragment.appendChild(titleTspan);
                 
                 // Split the title by search term and create highlighted spans
                 const titleParts = sceneTitle.split(regex);
@@ -1096,18 +1105,24 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     }
                 });
                 
-                // Add spacer and date part
-                if (datePart) {
+                // Add date part, using same format as addTitleContent method
+                if (date) {
+                    // Add spacer first
                     fragment.appendChild(document.createTextNode('   '));
-                    // Create a date tspan to position it properly
+                    
+                    // Create a date tspan with the same class as in addTitleContent
                     const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                     dateTspan.setAttribute("class", "date-text");
-                    dateTspan.setAttribute("dy", "-0.2em"); // Adjust to align better with the top of the title
-                    dateTspan.textContent = datePart;
+                    dateTspan.textContent = date;
                     fragment.appendChild(dateTspan);
                 }
             } else {
                 // No scene number, just title + date
+                
+                // Create a bold tspan for the title
+                const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                titleTspan.setAttribute("font-weight", "bold");
+                fragment.appendChild(titleTspan);
                 
                 // Split the title by search term and create highlighted spans
                 const titleParts = titlePart.split(regex);
@@ -1117,21 +1132,22 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                         highlight.setAttribute("class", "search-term");
                         highlight.textContent = part;
-                        fragment.appendChild(highlight);
+                        titleTspan.appendChild(highlight);
                     } else if (part) {
                         // This is regular text
-                        fragment.appendChild(document.createTextNode(part));
+                        titleTspan.appendChild(document.createTextNode(part));
                     }
                 });
                 
-                // Add spacer and date part
-                if (datePart) {
+                // Add date part, using same format as addTitleContent method
+                if (date) {
+                    // Add spacer first
                     fragment.appendChild(document.createTextNode('   '));
-                    // Create a date tspan to position it properly
+                    
+                    // Create a date tspan with the same class as in addTitleContent
                     const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                     dateTspan.setAttribute("class", "date-text");
-                    dateTspan.setAttribute("dy", "-0.2em"); // Adjust to align better with the top of the title
-                    dateTspan.textContent = datePart;
+                    dateTspan.textContent = date;
                     fragment.appendChild(dateTspan);
                 }
             }
