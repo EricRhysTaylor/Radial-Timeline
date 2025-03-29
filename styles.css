@@ -25,7 +25,12 @@
   justify-content: center;
   height: 100%;
   width: 100%;
-  overflow: auto;
+  overflow: hidden; /* Change from auto to hidden to prevent scrollbars during rendering */
+  position: relative;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  will-change: contents; /* Performance hint for browser rendering */
 }
 
 /* Loading and error messages */
@@ -42,27 +47,35 @@
 
 /* SVG styling */
 .manuscript-timeline-container svg {
-  width: 100%;
-  height: 100%;
-  max-height: calc(100vh - 100px);
-  max-width: 100%;
-  margin: 0 auto;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none;
+  margin: 0;
+  padding: 0;
   transform-origin: center;
   cursor: default;
   background-color: transparent;
   font-family: 'Lato', sans-serif;
+  display: block;
+  overflow: visible;
+  will-change: transform; /* Performance hint for browser rendering */
+  /* Use hardware acceleration for SVG */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 /* Scene elements */
 .scene-path {
   cursor: pointer;
-  transition: opacity 0.1s, fill 0.1s;
+  transition: opacity 0.1s ease-out, fill 0.1s ease-out;
+  will-change: opacity, fill; /* Performance hint for transitions */
 }
 
 /* Scene act elements */
 .scene-act {
   fill-opacity: 0;
-  transition: fill-opacity 0.2s;
+  transition: fill-opacity 0.2s ease-out;
 }
 
 .scene-act:hover {
@@ -86,13 +99,14 @@ path.scene-path[fill="#EEEEEE"] {
 
 /* Non-selected scene during mouseover - these should have high priority */
 .scene-path.non-selected {
-  fill: #EFEFEF;
-  transition: fill 0.2s ease-out;
+  fill: #EEEEEE !important; /* Use lighter grey for better contrast */
+  transition: fill 0.15s ease-out;
 }
 
 /* Selected scene during mouseover */
 .scene-path.selected {
-  filter: saturate(1.3) contrast(1.2);
+  filter: saturate(1.2) brightness(1.1); /* Simpler filter for better performance */
+  transition: filter 0.15s ease-out;
 }
 
 /* Basic scene title styling */
@@ -101,7 +115,7 @@ path.scene-path[fill="#EEEEEE"] {
   fill: white;
   opacity: 1;
   pointer-events: none;
-  transition: fill 0.1s, opacity 0.1s;
+  transition: fill 0.1s ease-out, opacity 0.1s ease-out;
 }
 
 .scene-title.faded {
@@ -111,7 +125,7 @@ path.scene-path[fill="#EEEEEE"] {
 /* Scene info tooltip */
 .scene-info {
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s ease-out;
   pointer-events: none !important;
   z-index: 100;
   vector-effect: non-scaling-stroke;
@@ -126,6 +140,220 @@ path.scene-path[fill="#EEEEEE"] {
   padding: 0 !important;
   margin: 0 !important;
   pointer-events: none !important;
+}
+
+/* Performance class for large scenes  */
+.simplified-rendering .scene-path {
+  transition: none; /* Disable transitions in simplified mode */
+}
+
+.simplified-rendering .scene-title {
+  transition: none; /* Disable transitions in simplified mode */
+}
+
+.simplified-rendering .scene-info {
+  transition: opacity 0.1s ease-out; /* Faster transition in simplified mode */
+}
+
+/* Month and act labels */
+.month-label, .month-label-outer, .act-label {
+  font-family: 'Lato', sans-serif;
+  font-size: 14px;
+  fill: var(--text-normal);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* Optimize month lines */
+.month-spoke-line {
+  stroke: var(--background-modifier-border);
+  stroke-width: 1px;
+  stroke-dasharray: 2,2; /* Simpler dash pattern */
+  opacity: 0.7;
+}
+
+.month-spoke-line.act-boundary {
+  stroke: var(--text-normal);
+  stroke-width: 1.5px;
+  stroke-dasharray: none;
+  opacity: 0.9;
+}
+
+/* Scene title text with variable font size */
+.scene-title-small {
+  font-size: 9px;
+}
+
+.scene-title-medium {
+  font-size: 16px;
+}
+
+.scene-title-large {
+  font-size: 18px;
+}
+
+.status-count {
+  font-size: 80%; 
+  opacity: 1;
+  vertical-align: super;
+  position: relative; 
+  top: -0.7em;
+  font-weight: normal;
+  line-height: 0;
+  dominant-baseline: inherit;
+}
+
+/* Documentation styling */
+.settings-separator {
+  margin: 1em 0 2em 0;
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.documentation-container {
+  padding: 0 1em;
+}
+
+.documentation-container h1 {
+  font-size: 1.8em;
+  margin-top: 0.5em;
+}
+
+.documentation-container h2 {
+  font-size: 1.5em;
+  margin-top: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.documentation-container h3 {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+
+.documentation-container img {
+  max-width: 100%;
+  border-radius: 5px;
+  margin: 1em 0;
+}
+
+.documentation-container code {
+  background-color: var(--background-primary);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+.documentation-container pre {
+  background-color: var(--background-primary);
+  padding: 1em;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.metadata-example {
+  line-height: 2em;
+  white-space: pre;
+  font-family: monospace;
+  user-select: all;
+  cursor: text;
+  background-color: var(--background-secondary);
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+/* Screenshot styling */
+.screenshot-link {
+  display: inline-block;
+  cursor: pointer;
+}
+
+.screenshot-image {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.screenshot-caption {
+  text-align: center;
+  font-size: 0.8em;
+  margin-top: 5px;
+  color: #888;
+}
+
+/* Buy me a coffee button */
+.bmc-button {
+  height: 60px;
+  width: 217px;
+}
+
+/* Center number styles */
+.center-number-text {
+  fill: var(--text-normal, #333333);
+  font-size: 140px;
+  pointer-events: none;
+  font-weight: 900;
+}
+
+/* Text styling for SVG elements */
+.subplot-text {
+  font-size: 16px;
+  fill: #555555;
+  font-weight: normal;
+}
+
+.connector-text {
+  font-size: 18px;
+  fill: #555555;
+}
+
+.character-text {
+  font-size: 18px;
+  font-weight: normal;
+}
+
+/* Number elements basic styling */
+.number-square, .number-text {
+  transition: opacity 0.1s, fill 0.1s, transform 0.1s;
+  pointer-events: none;
+}
+
+.number-square.faded, .number-text.faded {
+  opacity: 0.2;
+}
+
+.scene-title.selected {
+  stroke: #000000;
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+/* Number elements during mouseover with high specificity */
+.number-square.non-selected {
+  fill: #EFEFEF;
+  stroke: none;
+  stroke-width: 0;
+  transition: fill 0.2s ease-out,
+              stroke 0.2s ease-out,
+              stroke-width 0.2s ease-out,
+              transform 0.2s ease-out;
+}
+
+.number-text.non-selected {
+  fill: #FFFFFF;
+}
+
+.number-square.selected {
+  transform: scale(1.2);
+  z-index: 10;
+  stroke-width: 3px;
+  /* Use the scene color if available, otherwise fall back to accent color */
+  stroke: var(--scene-color, #705DCF);
+}
+
+.number-text.selected {
+  font-weight: bold;
 }
 
 /* Text color handling */
@@ -302,14 +530,6 @@ tspan .search-term {
   margin-bottom: 10px;
 }
 
-/* Text styling in synopsis */
-.scene-info text.info-text {
-  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-  stroke: white;
-  stroke-width: 3px;
-  paint-order: stroke;
-}
-
 /* Style for title text */
 .scene-info text.info-text.title-text-main {
   font-size: 24px;
@@ -344,294 +564,15 @@ tspan .search-term {
 }
 
 /* Number elements basic styling */
-.number-square, .number-text {
-  transition: opacity 0.1s, fill 0.1s, transform 0.1s;
-  pointer-events: none;
-}
-
-.number-square.faded, .number-text.faded {
-  opacity: 0.2;
-}
-
-
-.scene-title.selected {
-  stroke: #000000;
-  stroke-width: 3px;
-  paint-order: stroke;
-}
-
-/* Number elements during mouseover with high specificity */
-.number-square.non-selected {
-  fill: #EFEFEF;
-  stroke: none;
-  stroke-width: 0;
-  transition: fill 0.2s ease-out,
-              stroke 0.2s ease-out,
-              stroke-width 0.2s ease-out,
-              transform 0.2s ease-out;
-}
-
-.number-text.non-selected {
-  fill: #FFFFFF;
-}
-
-.number-square.selected {
-  transform: scale(1.2);
-  z-index: 10;
-  stroke-width: 3px;
-  /* Use the scene color if available, otherwise fall back to accent color */
-  stroke: var(--scene-color, #705DCF);
-}
-
-.number-text.selected {
-  font-weight: bold;
-}
-
-/* Text styling for SVG elements */
-.subplot-text {
-  font-size: 16px;
-  fill: #555555;
-  font-weight: normal;
-}
-
-.connector-text {
-  font-size: 18px;
-  fill: #555555;
-}
-
-.character-text {
-  font-size: 18px;
-  font-weight: normal;
-}
-
-/* Scene title text with variable font size */
-.scene-title-small {
-  font-size: 9px;
-}
-
-.scene-title-medium {
-  font-size: 16px;
-}
-
-.scene-title-large {
-  font-size: 18px;
-}
-
-.status-count {
-  font-size: 80%; 
-  opacity: 1;
-  vertical-align: super;
-  position: relative; 
-  top: -0.7em;
-  font-weight: normal;
-  line-height: 0;
-  dominant-baseline: inherit;
-}
-
-/* Documentation styling */
-.settings-separator {
-  margin: 1em 0 2em 0;
-  border: none;
-  border-top: 1px solid var(--background-modifier-border);
-}
-
-.documentation-container {
-  padding: 0 1em;
-}
-
-.documentation-container h1 {
-  font-size: 1.8em;
-  margin-top: 0.5em;
-}
-
-.documentation-container h2 {
-  font-size: 1.5em;
-  margin-top: 1.5em;
-  padding-bottom: 0.3em;
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.documentation-container h3 {
-  font-size: 1.2em;
-  margin-top: 1em;
-}
-
-.documentation-container img {
-  max-width: 100%;
-  border-radius: 5px;
-  margin: 1em 0;
-}
-
-.documentation-container code {
-  background-color: var(--background-primary);
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-}
-
-.documentation-container pre {
-  background-color: var(--background-primary);
-  padding: 1em;
-  border-radius: 5px;
-  overflow-x: auto;
-  margin: 1em 0;
-}
-
-.metadata-example {
-  line-height: 2em;
-  white-space: pre;
-  font-family: monospace;
-  user-select: all;
-  cursor: text;
-  background-color: var(--background-secondary);
-  padding: 10px;
-  border-radius: 5px;
-  overflow-x: auto;
-}
-
-/* Screenshot styling */
-.screenshot-link {
-  display: inline-block;
-  cursor: pointer;
-}
-
-.screenshot-image {
-  max-width: 100%;
-  border-radius: 8px;
-  border: 1px solid #444;
-}
-
-.screenshot-caption {
-  text-align: center;
-  font-size: 0.8em;
-  margin-top: 5px;
-  color: #888;
-}
-
-/* Buy me a coffee button */
-.bmc-button {
-  height: 60px;
-  width: 217px;
-}
-
-/* Center number styles */
-.center-number-text {
-  fill: var(--text-normal, #333333);
-  font-size: 140px;
-  pointer-events: none;
-  font-weight: 900;
-}
-
-/* Month and Act Label Styles */
-.month-label {
-  fill: var(--text-normal, #333333);
-  font-size: 16px;
-  pointer-events: none;
-  dominant-baseline: middle;
-}
-
-.month-label-outer {
-  fill: var(--text-normal, #333333);
-  font-size: 20px;
-  pointer-events: none;
-  dominant-baseline: middle;
-}
-
-.act-label {
-  fill: var(--text-normal, #333333);
-  font-size: 20px;
-  font-weight: bold;
-  pointer-events: none;
-  dominant-baseline: middle;
-}
-
-.month-spoke-line {
-  stroke: var(--text-normal, #333333);
-  stroke-width: 1;
-}
-
-.month-spoke-line.act-boundary {
-  stroke: #FFFFFF;
-  stroke-width: 3;
-}
-
-/* Act Borders and Progress Ring */
-.act-border {
-  stroke: #FFFFFF;
-  stroke-width: 5;
-  fill: none;
-}
-
-.progress-ring-base {
-  stroke: var(--background-modifier-border, #dddddd);
-  stroke-width: 10;
-  fill: none;
-}
-
-.progress-ring-fill {
-  /* Stroke color is applied via gradient in the SVG */
-  stroke-width: 10;
-  fill: none;
-}
-
-/* Key and Information Text Styles */
-.key-text {
-  fill: var(--text-normal, #333333);
-  font-size: 16px;
-  transition: fill 0.2s ease;
-}
-
-.theme-dark .key-text {
-  fill: #ffffff;
-}
-
-.theme-light .key-text {
-  fill: #333333;
-}
-
-.info-text {
-  dominant-baseline: hanging;
-  text-anchor: start;
-  /* Remove global fill to allow inline attributes to work */
-}
-
-.info-title {
-  fill: var(--text-normal, #333333);
-  font-size: 28px;
-  text-anchor: middle;
-}
-
-.info-container {
-  fill: var(--text-normal, #333333);
-  font-size: 24px;
-}
-
-.color-key-center {
-  opacity: 1;
-  pointer-events: none;
-}
-
-.center-key-text {
-  fill: var(--text-normal, #333333);
-  font-size: 18px;
-  text-transform: uppercase;
-  opacity: 0.85; /* Slightly transparent */
-}
-
-/* Rules for open scenes - minimal, simplified approach */
-
-
-/* Base style for scene-is-open - using theme accent color */
 .number-square.scene-is-open {
   fill: var(--interactive-accent, #705DCF);
   stroke: none;
 }
 
-
 .number-text.scene-is-open {
   font-weight: normal;
   fill: #FFFFFF;
 }
-
 
 .number-square.scene-is-open.non-selected {
   fill: #EFEFEF;
@@ -645,7 +586,6 @@ tspan .search-term {
   opacity: 1;
   transition: fill 0.1s;
 }
-
 
 .number-square.scene-is-open.selected {
   stroke: #705DCF;
@@ -674,7 +614,6 @@ tspan .search-term {
 .number-text.search-result.non-selected {
   fill: #FFFFFF !important;
 }
-
 
 /* When a scene is both open and a search result */
 .number-square.search-result.non-selected {
