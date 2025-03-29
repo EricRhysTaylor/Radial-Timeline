@@ -2,6 +2,8 @@
 
 A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.
 
+This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in chronological order to depict each scene. Various cues and interactions are available through a search feature that highlights the search term throughout and mouse-over functionality, revealing summary information in a colorful style. Hopefully, this will provide another method for tracking the progress of your manuscript and making it easier to stay on schedule and focused on what is truly a monumental task.
+
 ## Features
 
 - Creates an interactive radial timeline visualization of your scenes
@@ -12,6 +14,10 @@ A manuscript timeline for creative fiction writing projects that displays scenes
 - Allows clicking on scenes to open the corresponding file
 - Visually highlights currently open scene tabs in the radial timeline with special styling
 - Fully integrated into Obsidian's interface - no external plugins required
+
+## Development
+
+This project follows strict code quality guidelines to ensure security and maintainability. If you're interested in contributing, please review our [Code Quality Guidelines](CODE_QUALITY.md) which includes information about pre-commit hooks and safe alternatives to innerHTML/outerHTML.
 
 <a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
   <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #444;" />
@@ -45,19 +51,17 @@ These settings can be accessed from Settings → Community Plugins → Manuscrip
 ### Required Scene Metadata
 
 Scene files must have the following frontmatter:
-- Class: Scene - Identifies the file as a scene
-- When - Date of the scene (required)
-- Title - Scene title
-- Subplot - Subplot(s) the scene belongs to
-- Act - Act number (1-3)
-- Status - Scene status (Complete, Working, Todo, etc.)
+- Class: Scene - Identifies the file as a scene and part of the manuscript
 - Synopsis - Brief description of the scene
+- Subplot - Subplot(s) the scene belongs to (default if empty is Main Plot)
+- Act - Act number (1-3) (if empty then 1)
+- When - Date of the scene (required)
 - Character - Characters in the scene
-- Due - Optional due date for the scene
-- Pending Edits - Optional editing notes (scenes with Edits will display with purple number boxes)
-- Publish Stage - Publishing stage (Zero, Author, House, Press)
+- Publish Stage - (Zero, Author, House, Press)
+- Status - Scene status (Todo, Working, Complete)
+- Due - Due date for the scene of Completion Date
+- Pending Edits - Optional future editing notes
 
-#### Example Metadata (use "Paste and Match Style" when copying to avoid formatting issues)
 
 ```yaml
 ---
@@ -67,15 +71,13 @@ Subplot:
   - The Great War
   - Jinnis Pickle
 Act: 1
-When: 2023-05-15
+When: 2023-02-15
 Character:
   - John Mars
   - Celon Tim
-Place:
-  - Diego
-  - Earth
 Publish Stage: Zero
 Status: Complete
+Due: 2025-05-15
 Pending Edits:
 ---
 ```
@@ -140,15 +142,11 @@ Any modifications or derivative works require explicit permission from the autho
 
 ### License
 
-© 2025 Eric Rhys Taylor. All Rights Reserved.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-This Obsidian plugin is proprietary software.
-- You may use this plugin for personal use only.
-- You may not copy, modify, distribute, sublicense, or resell any part of this plugin.
-- Commercial use of this software (e.g., as part of a paid product or service) is strictly prohibited without a separate license agreement.
-- Attribution is required in any mention or reference to this plugin.
-
-For licensing inquiries, please contact via GitHub.
+MIT License means:
+- You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software.
+- The only requirement is that you include the original copyright notice and permission notice in all copies or substantial portions of the software.
 
 ### Author
 
@@ -157,3 +155,42 @@ Created by Eric Rhys Taylor
 ### Questions & Support
 
 For questions, issues, or feature requests, please [open an issue on GitHub](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues).
+
+## Developer Notes
+
+### Security Best Practices
+
+1. **Avoid `innerHTML` and `outerHTML`**: For security reasons, never use `innerHTML` or `outerHTML` to create or modify content. These methods can lead to Cross-Site Scripting (XSS) vulnerabilities.
+
+2. **Use DOM Manipulation Instead**:
+   ```javascript
+   // AVOID THIS:
+   element.innerHTML = '<span>' + content + '</span>';
+   
+   // DO THIS INSTEAD:
+   const span = document.createElement('span');
+   span.textContent = content;
+   element.appendChild(span);
+   ```
+
+3. **For SVG Elements**:
+   ```javascript
+   // AVOID THIS:
+   svgContainer.innerHTML = svgContent;
+   
+   // DO THIS INSTEAD:
+   const parser = new DOMParser();
+   const svgDoc = parser.parseFromString(svgContent, "image/svg+xml");
+   
+   // Clear existing content
+   while (svgContainer.firstChild) {
+     svgContainer.removeChild(svgContainer.firstChild);
+   }
+   
+   // Append the new SVG
+   if (svgDoc.documentElement) {
+     svgContainer.appendChild(document.importNode(svgDoc.documentElement, true));
+   }
+   ```
+
+4. **Always Sanitize User Input**: If you must process HTML content, use a proper sanitization library.

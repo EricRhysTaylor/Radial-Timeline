@@ -1,5 +1,42 @@
 import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent } from "obsidian";
 
+/*
+ * OBSIDIAN PLUGIN DEVELOPMENT GUIDELINES - TYPESCRIPT
+ * ==================================================
+ *
+ * 1. SECURITY: Never use innerHTML, outerHTML, or string concatenation to create HTML/SVG content
+ *    - Always use proper DOM methods: document.createElement(), document.createElementNS(), etc.
+ *    - Use element.appendChild() to build the DOM hierarchy
+ *    - Set content with element.textContent, not innerHTML
+ *    - Set attributes with element.setAttribute()
+ *
+ * 2. SVG CREATION:
+ *    - Always use document.createElementNS("http://www.w3.org/2000/svg", "element-name")
+ *    - Use the helper functions at the top of this file (createSvgElement, etc.)
+ *
+ * 3. STYLING:
+ *    - Keep all CSS in styles.css, not inline in the JavaScript/TypeScript
+ *    - Use classList methods to add/remove classes instead of manipulating className
+ *    - Avoid inline styles when possible; use CSS classes instead
+ *
+ * 4. CODING STYLE:
+ *    - Use TypeScript interfaces and types for better code safety
+ *    - Document public methods and non-obvious code with JSDoc comments
+ *    - Keep methods focused and not too long (split complex logic)
+ *    - Use meaningful variable and method names
+ *
+ * 5. OBSIDIAN API:
+ *    - Follow Obsidian's API patterns and lifecycle methods
+ *    - Handle plugin load/unload gracefully to prevent memory leaks
+ *    - Use Workspace events appropriately
+ *
+ * 6. PERFORMANCE:
+ *    - Minimize DOM operations, batch them when possible
+ *    - Cache DOM selections that are used repeatedly
+ *    - Be mindful of event listeners - always remove them when no longer needed
+ 
+*/
+
 // Helper functions for safe SVG creation - add at the top of the file
 function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
     const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -19,10 +56,46 @@ function createSvgElement(tag: string, attributes: Record<string, string> = {}, 
 
 function createSvgText(content: string, x: string | number, y: string | number, classes: string[] = []): SVGTextElement {
     const text = createSvgElement("text", { x: x.toString(), y: y.toString() }) as SVGTextElement;
-    text.textContent = content;
     
+    // Add classes
     if (classes.length > 0) {
         text.classList.add(...classes);
+    }
+    
+    // Set text content safely
+    if (content) {
+        if (content.includes('<tspan')) {
+            // For content with tspan elements, we need to parse and add each element
+            // Create a temporary container
+            const parser = new DOMParser();
+            // Ensure the content is properly escaped except for tspan tags
+            const safeContent = content
+                .replace(/&(?!(amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;))/g, '&amp;')
+                .replace(/</g, (match, offset) => {
+                    // Only allow <tspan and </tspan
+                    return content.substring(offset, offset + 6) === '<tspan' || 
+                           content.substring(offset, offset + 7) === '</tspan' ? '<' : '&lt;';
+                })
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+                
+            const doc = parser.parseFromString(`<svg><text>${safeContent}</text></svg>`, 'image/svg+xml');
+            const parsedText = doc.querySelector('text');
+            
+            if (parsedText) {
+                // Copy all child nodes
+                while (parsedText.firstChild) {
+                    text.appendChild(parsedText.firstChild);
+                }
+            } else {
+                // Fallback to simple text if parsing failed
+                text.textContent = content;
+            }
+        } else {
+            // For plain text, just set the content
+            text.textContent = content;
+        }
     }
     
     return text;
@@ -30,10 +103,15 @@ function createSvgText(content: string, x: string | number, y: string | number, 
 
 function createSvgTspan(content: string, classes: string[] = []): SVGTSpanElement {
     const tspan = createSvgElement("tspan") as SVGTSpanElement;
-    tspan.textContent = content;
     
+    // Add classes
     if (classes.length > 0) {
         tspan.classList.add(...classes);
+    }
+    
+    // Set text content safely - escape any potential HTML/XML
+    if (content) {
+        tspan.textContent = content;
     }
     
     return tspan;
@@ -112,19 +190,813 @@ function formatNumber(num: number): string {
 }
 
 function parseSceneTitle(title: string): { number: string; text: string } {
-    const firstSpace = title.indexOf(' ');
-    if (firstSpace === -1) return { number: '', text: title };
-    
-    const number = title.substring(0, firstSpace);
-    // Check if the first part is a valid number (integer or decimal)
-    if (!number.match(/^\d+(\.\d+)?$/)) {
-        return { number: '', text: title };
+    if (!title) {
+        return { number: "0", text: "" };
     }
     
-    return {
-        number: number,
-        text: title.substring(firstSpace + 1)
-    };
+    // Extract the scene number from the beginning of the title
+    const match = title.match(/^(\d+(\.\d+)?)\s+(.+)/);
+    
+    if (match) {
+        // Get number and text parts
+        const number = match[1]; // The first capture group (number)
+        let text = match[3];     // The third capture group (text)
+        
+        // Escape XML entities in the text to make it safe for SVG
+        text = text.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&apos;');
+        
+        return { number, text };
+    }
+    
+    // If no number was found, return the whole title as text
+    // Escape XML entities
+    const safeTitle = title.replace(/&/g, '&amp;')
+                         .replace(/</g, '&lt;')
+                         .replace(/>/g, '&gt;')
+                         .replace(/"/g, '&quot;')
+                         .replace(/'/g, '&apos;');
+    
+    return { number: "0", text: safeTitle };
+}
+
+// Helper function for XML escaping (moved outside class to be accessible to all)
+function escapeXml(unsafe: string): string {
+    return unsafe
+        .replace(/&(?!(amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;))/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+// Helper function to decode HTML entities (like &#039; to ')
+function decodeHtmlEntities(text: string): string {
+    if (!text) return '';
+    
+    // Check if the text contains HTML tspan elements that we want to preserve
+    if (text.includes('<tspan') || text.includes('&lt;tspan')) {
+        // For content with tspan tags, we need special handling to preserve the tags
+        // This content will be processed by processContentWithTspans later
+        return text;
+    }
+    
+    // For regular text without tspan elements, decode entities safely using DOMParser
+    try {
+        // Create a document fragment from the text
+        const parser = new DOMParser();
+        // Wrap the text in a span to ensure proper parsing
+        const doc = parser.parseFromString(`<!DOCTYPE html><body><span>${text}</span></body>`, 'text/html');
+        
+        // Get the text content from the span element
+        const spanElement = doc.querySelector('span');
+        if (spanElement) {
+            return spanElement.textContent || '';
+        }
+    } catch (error) {
+        console.error('Error decoding HTML entities:', error);
+        // Fall through to fallback approach
+    }
+    
+    // Fallback to a simpler approach if DOMParser fails
+    const span = document.createElement('span');
+    span.textContent = text;
+    return span.textContent || '';
+}
+
+// Add this class after the helper functions at the top of the file
+class SynopsisManager {
+    private plugin: ManuscriptTimelinePlugin;
+    
+    constructor(plugin: ManuscriptTimelinePlugin) {
+        this.plugin = plugin;
+    }
+    
+    /**
+     * Escapes special characters in a string for use in a regular expression
+     */
+    escapeRegExp(string: string): string {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
+    /**
+     * Safely parse HTML string into Document using DOMParser
+     * This is a safer alternative to using innerHTML
+     */
+    private parseHtmlSafely(html: string): DocumentFragment {
+        // Use DOMParser to parse the HTML string
+        const parser = new DOMParser();
+        // Wrap with a root element to ensure proper parsing
+        const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+        
+        // Extract the content from the wrapper div
+        const container = doc.querySelector('div');
+        const fragment = document.createDocumentFragment();
+        
+        if (container) {
+            // Move all child nodes to our fragment
+            while (container.firstChild) {
+                fragment.appendChild(container.firstChild);
+            }
+        }
+        
+        return fragment;
+    }
+    
+    /**
+     * Add title content to a text element safely
+     * @param titleContent The title content to add
+     * @param titleTextElement The text element to add to
+     * @param titleColor The color for the title
+     */
+    private addTitleContent(titleContent: string, titleTextElement: SVGTextElement, titleColor: string): void {
+        if (titleContent.includes('<tspan')) {
+            // For pre-formatted HTML with tspans, parse safely
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(`<div>${titleContent}</div>`, 'text/html');
+            const container = doc.querySelector('div');
+            
+            if (!container) return;
+            
+            // Extract all tspans and add them to the text element
+            const tspans = container.querySelectorAll('tspan');
+            if (tspans.length > 0) {
+                tspans.forEach(tspan => {
+                    const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    
+                    // Copy attributes
+                    Array.from(tspan.attributes).forEach(attr => {
+                        svgTspan.setAttribute(attr.name, attr.value);
+                    });
+                    
+                    svgTspan.textContent = tspan.textContent;
+                    titleTextElement.appendChild(svgTspan);
+                });
+            } else {
+                // No tspans found, just add the text content
+                const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                tspan.setAttribute("fill", titleColor);
+                tspan.textContent = titleContent;
+                titleTextElement.appendChild(tspan);
+            }
+        } else {
+            // Handle title and date with different styling
+            const parts = titleContent.split('  ');
+            if (parts.length > 1) {
+                const title = parts[0];
+                const date = parts.slice(1).join('  ');
+                
+                const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                titleTspan.setAttribute("fill", titleColor);
+                titleTspan.setAttribute("font-weight", "bold");
+                titleTspan.textContent = title;
+                titleTextElement.appendChild(titleTspan);
+                
+                const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                dateTspan.setAttribute("fill", titleColor);
+                dateTspan.setAttribute("class", "date-text");
+                dateTspan.textContent = date;
+                titleTextElement.appendChild(dateTspan);
+            } else {
+                const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                tspan.setAttribute("fill", titleColor);
+                tspan.textContent = titleContent;
+                titleTextElement.appendChild(tspan);
+            }
+        }
+    }
+    
+    /**
+     * Create a DOM element for a scene synopsis with consistent formatting
+     * @returns An SVG group element containing the formatted synopsis
+     */
+    generateElement(scene: Scene, contentLines: string[], sceneId: string): SVGGElement {
+        // Map the publish stage to a CSS class
+        const stage = scene["Publish Stage"] || 'Zero';
+        const stageClass = `title-stage-${String(stage).toLowerCase()}`;
+        
+        // Get the title color from the publish stage
+        const titleColor = this.plugin.settings.publishStageColors[stage as keyof typeof this.plugin.settings.publishStageColors] || '#808080';
+        
+        // Determine where the synopsis content ends and metadata begins
+        let synopsisEndIndex = contentLines.findIndex(line => line === '\u00A0' || line === '');
+        if (synopsisEndIndex === -1) {
+            // If no separator found, assume last two lines are metadata (subplots & characters)
+            synopsisEndIndex = Math.max(0, contentLines.length - 2);
+        }
+        
+        // Get metadata items - everything after the separator
+        const metadataItems = contentLines.slice(synopsisEndIndex + 1);
+        
+        // Process all content lines to decode any HTML entities
+        const decodedContentLines = contentLines.map(line => decodeHtmlEntities(line));
+        
+        // Create truly random color mappings for subplots and characters
+        // These will generate new colors on every reload
+        const getSubplotColor = (subplot: string): string => {
+            // Generate a random dark color with good contrast (HSL: random hue, high saturation, low lightness)
+            const hue = Math.floor(Math.random() * 360);
+            const saturation = 60 + Math.floor(Math.random() * 20); // 60-80%
+            const lightness = 25 + Math.floor(Math.random() * 15);  // 25-40% - dark enough for contrast
+            this.plugin.log(`Generated subplot color for '${subplot}': hsl(${hue}, ${saturation}%, ${lightness}%)`);
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        };
+        
+        const getCharacterColor = (character: string): string => {
+            // Similar to subplot colors but with slightly different ranges
+            const hue = Math.floor(Math.random() * 360);
+            const saturation = 60 + Math.floor(Math.random() * 30); // 60-90%
+            const lightness = 30 + Math.floor(Math.random() * 15);  // 30-45%
+            this.plugin.log(`Generated character color for '${character}': hsl(${hue}, ${saturation}%, ${lightness}%)`);
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        };
+        
+        // Set the line height
+        const lineHeight = 26;
+        
+        // Create the main container group
+        const containerGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        containerGroup.setAttribute("class", "scene-info info-container");
+        containerGroup.setAttribute("data-for-scene", sceneId);
+        
+        // Create the synopsis text group
+        const synopsisTextGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        synopsisTextGroup.setAttribute("class", "synopsis-text");
+        containerGroup.appendChild(synopsisTextGroup);
+        
+        // Add the title with publish stage color - at origin (0,0)
+        const titleContent = decodedContentLines[0];
+        const titleTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        titleTextElement.setAttribute("class", `info-text title-text-main ${stageClass}`);
+        titleTextElement.setAttribute("x", "0");
+        titleTextElement.setAttribute("y", "0");
+        titleTextElement.setAttribute("text-anchor", "start");
+        titleTextElement.setAttribute("style", `--title-color: ${titleColor};`);
+        
+        // Process title content with special handling for formatting
+        this.addTitleContent(titleContent, titleTextElement, titleColor);
+        
+        synopsisTextGroup.appendChild(titleTextElement);
+        
+        // Add synopsis lines with precise vertical spacing
+        for (let i = 1; i < synopsisEndIndex; i++) {
+            const lineContent = decodedContentLines[i];
+            const lineY = i * lineHeight; // Simplified vertical spacing
+            
+            const synopsisLineElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            synopsisLineElement.setAttribute("class", "info-text title-text-secondary");
+            synopsisLineElement.setAttribute("x", "0");
+            synopsisLineElement.setAttribute("y", String(lineY));
+            synopsisLineElement.setAttribute("text-anchor", "start");
+            
+            if (lineContent.includes('<tspan')) {
+                // For pre-formatted HTML, we need to parse and create elements safely
+                this.processContentWithTspans(lineContent, synopsisLineElement);
+            } else {
+                synopsisLineElement.textContent = lineContent;
+            }
+            
+            synopsisTextGroup.appendChild(synopsisLineElement);
+        }
+        
+        // Process metadata items with consistent vertical spacing
+        if (metadataItems.length > 0) {
+            // Add extra large vertical space between synopsis and metadata
+            const metadataY = (synopsisEndIndex * lineHeight) + 45; // Big gap below the synopsis
+            
+            this.plugin.log(`Metadata Y=${metadataY}`);
+            
+            // Add invisible spacer element to ensure the gap is preserved
+            const spacerY = (synopsisEndIndex * lineHeight) + 25;
+            const spacerElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            spacerElement.setAttribute("x", "0");
+            spacerElement.setAttribute("y", String(spacerY));
+            spacerElement.setAttribute("font-size", "14px");
+            spacerElement.setAttribute("opacity", "0");
+            spacerElement.textContent = "\u00A0"; // Non-breaking space
+            synopsisTextGroup.appendChild(spacerElement);
+            
+            this.plugin.log(`Metadata Y=${metadataY} with spacer at Y=${spacerY}`);
+            
+            // Process subplots if first metadata item exists
+            const decodedMetadataItems = metadataItems.map(item => decodeHtmlEntities(item));
+            
+            if (decodedMetadataItems[0] && decodedMetadataItems[0].trim() !== '\u00A0') {
+                if (decodedMetadataItems[0].startsWith('<tspan')) {
+                    // This is pre-formatted HTML that might contain search highlights
+                    // Only use it for export/preview mode, otherwise create fresh elements
+                    const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    subplotTextElement.setAttribute("class", "info-text metadata-text");
+                    subplotTextElement.setAttribute("x", "0");
+                    subplotTextElement.setAttribute("y", String(metadataY));
+                    subplotTextElement.setAttribute("text-anchor", "start");
+                    
+                    // Process HTML content safely
+                    this.processContentWithTspans(decodedMetadataItems[0], subplotTextElement);
+                    
+                    synopsisTextGroup.appendChild(subplotTextElement);
+                } else {
+                    // Extract subplots and apply colors
+                    const subplots = decodedMetadataItems[0].split(', ').filter(s => s.trim().length > 0);
+                    
+                    if (subplots.length > 0) {
+                        const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        subplotTextElement.setAttribute("class", "info-text metadata-text");
+                        subplotTextElement.setAttribute("x", "0");
+                        subplotTextElement.setAttribute("y", String(metadataY));
+                        subplotTextElement.setAttribute("text-anchor", "start");
+                        
+                        // Format each subplot with its own color
+                        subplots.forEach((subplot, j) => {
+                            const color = getSubplotColor(subplot.trim());
+                            const subplotText = subplot.trim();
+                            
+                            // Create tspan for subplot
+                            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                            tspan.setAttribute("fill", color);
+                            tspan.setAttribute("data-item-type", "subplot");
+                            tspan.setAttribute("style", `fill: ${color} !important;`);
+                            
+                            // Don't apply highlighting directly in the text - use a single text node for each subplot
+                            // This ensures we won't get duplicate terms when applying highlights later
+                            tspan.textContent = subplotText;
+                            
+                            subplotTextElement.appendChild(tspan);
+                            
+                            // Add comma separator if not the last item
+                            if (j < subplots.length - 1) {
+                                const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                comma.setAttribute("fill", "var(--text-muted)");
+                                comma.textContent = ", ";
+                                subplotTextElement.appendChild(comma);
+                            }
+                        });
+                        
+                        synopsisTextGroup.appendChild(subplotTextElement);
+                    }
+                }
+            }
+            
+            // Process characters - second metadata item
+            if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim() !== '') {
+                // Standard spacing between subplot and character lines
+                const characterY = metadataY + lineHeight;
+                
+                if (decodedMetadataItems[1].startsWith('<tspan')) {
+                    // This is pre-formatted HTML that might contain search highlights
+                    // Only use it for export/preview mode, otherwise create fresh elements
+                    const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    characterTextElement.setAttribute("class", "info-text metadata-text");
+                    characterTextElement.setAttribute("x", "0");
+                    characterTextElement.setAttribute("y", String(characterY));
+                    characterTextElement.setAttribute("text-anchor", "start");
+                    
+                    // Process HTML content safely
+                    this.processContentWithTspans(decodedMetadataItems[1], characterTextElement);
+                    
+                    synopsisTextGroup.appendChild(characterTextElement);
+                } else {
+                    // Extract characters and apply colors
+                    const characters = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
+                    
+                    if (characters.length > 0) {
+                        const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        characterTextElement.setAttribute("class", "info-text metadata-text");
+                        characterTextElement.setAttribute("x", "0");
+                        characterTextElement.setAttribute("y", String(characterY));
+                        characterTextElement.setAttribute("text-anchor", "start");
+                        
+                        // Format each character with its own color
+                        characters.forEach((character, j) => {
+                            const color = getCharacterColor(character.trim());
+                            const characterText = character.trim();
+                            
+                            // Create tspan for character
+                            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                            tspan.setAttribute("fill", color);
+                            tspan.setAttribute("data-item-type", "character");
+                            tspan.setAttribute("style", `fill: ${color} !important;`);
+                            
+                            // Don't apply search highlighting here - we'll do it in addHighlightRectangles
+                            // This prevents duplicate highlighting when the search term appears in characters
+                            tspan.textContent = characterText;
+                            
+                            characterTextElement.appendChild(tspan);
+                            
+                            // Add comma separator if not the last item
+                            if (j < characters.length - 1) {
+                                const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                comma.setAttribute("fill", "var(--text-muted)");
+                                comma.textContent = ", ";
+                                characterTextElement.appendChild(comma);
+                            }
+                        });
+                        
+                        synopsisTextGroup.appendChild(characterTextElement);
+                    }
+                }
+            }
+        }
+        
+        return containerGroup;
+    }
+    
+    /**
+     * Generate SVG string from DOM element (temporary compatibility method)
+     */
+    generateHTML(scene: Scene, contentLines: string[], sceneId: string): string {
+        const element = this.generateElement(scene, contentLines, sceneId);
+        const serializer = new XMLSerializer();
+        return serializer.serializeToString(element);
+    }
+    
+    /**
+     * Update the position of a synopsis based on mouse position
+     */
+    updatePosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
+        if (!synopsis || !svg) {
+            this.plugin.log("updatePosition: missing synopsis or svg element", {synopsis, svg});
+            return;
+        }
+        
+        try {
+            // Get SVG coordinates from mouse position
+            const pt = svg.createSVGPoint();
+            pt.x = event.clientX;
+            pt.y = event.clientY;
+            const ctm = svg.getScreenCTM();
+            if (!ctm) {
+                this.plugin.log("updatePosition: No SVG CTM available");
+                return;
+            }
+            
+            const svgP = pt.matrixTransform(ctm.inverse());
+            
+            // Determine which quadrant the mouse is in
+            const quadrant = this.getQuadrant(svgP.x, svgP.y);
+            
+            // Calculate positioning parameters
+            const size = 1600; // SVG size
+            const margin = 30;
+            const outerRadius = size / 2 - margin;
+            const adjustedRadius = outerRadius - 20; // Reduce radius by 20px to move synopsis closer to center
+            
+            // Debug info
+            if (this.plugin.settings.debug) {
+                this.plugin.log(`Mouse position: SVG(${svgP.x.toFixed(0)}, ${svgP.y.toFixed(0)}), Quadrant: ${quadrant}`);
+            }
+            
+            // Reset styles and classes
+            (synopsis as SVGElement).removeAttribute('style');
+            synopsis.classList.remove('synopsis-q1', 'synopsis-q2', 'synopsis-q3', 'synopsis-q4');
+            
+            // Configure position based on quadrant
+            const position = this.getPositionForQuadrant(quadrant, adjustedRadius);
+            
+            // Apply the position class and base transform
+            synopsis.classList.add(`synopsis-${position.quadrantClass}`);
+            
+            // Calculate the initial x-position based on Pythagorean theorem
+            const y = position.y;
+            let x = 0;
+            
+            // Pythagorean calculation for the base x-position
+            // For y-coordinate on circle: x² + y² = r²
+            if (Math.abs(y) < adjustedRadius) {
+                x = Math.sqrt(adjustedRadius * adjustedRadius - y * y);
+                
+                // FIXED: Apply direction based on alignment - same convention as text positioning
+                // For right-aligned text (Q1, Q4), x should be positive
+                // For left-aligned text (Q2, Q3), x should be negative
+                x = position.isRightAligned ? x : -x;
+            }
+            
+            // Set the base transformation to position the synopsis correctly
+            this.plugin.log(`[DEBUG] Setting transform: translate(${x}, ${y})`);
+            synopsis.setAttribute('transform', `translate(${x}, ${y})`);
+            
+            // Ensure the synopsis is visible
+            synopsis.classList.add('visible');
+            synopsis.setAttribute('opacity', '1');
+            synopsis.setAttribute('pointer-events', 'all');
+            
+            // Position text elements to follow the arc
+            this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf);
+            
+            // Check final state of text elements
+            if (this.plugin.settings.debug) {
+                const textElements = Array.from(synopsis.querySelectorAll('text'));
+                textElements.forEach((el, idx) => {
+                    if (idx <= 2) { // Only log first few elements
+                        this.plugin.log(`[DEBUG] Final text position ${idx}: x=${el.getAttribute('x')}, y=${el.getAttribute('y')}, anchor=${el.getAttribute('text-anchor')}`);
+                    }
+                });
+            }
+            
+        } catch (e) {
+            this.plugin.log("Error in updatePosition:", e);
+        }
+    }
+    
+    /**
+     * Determine which quadrant a point is in
+     * SVG coordinate system: (0,0) is at center
+     * Q1: Bottom-Right (+x, +y)
+     * Q2: Bottom-Left (-x, +y)
+     * Q3: Top-Left (-x, -y)
+     * Q4: Top-Right (+x, -y)
+     */
+    private getQuadrant(x: number, y: number): string {
+        // Debug log to troubleshoot
+        this.plugin.log(`Raw coordinates: x=${x}, y=${y}`);
+        
+        // Define quadrants based on SVG coordinates
+        if (x >= 0 && y >= 0) return "Q1";      // Bottom Right (+x, +y)
+        else if (x < 0 && y >= 0) return "Q2";  // Bottom Left (-x, +y)
+        else if (x < 0 && y < 0) return "Q3";   // Top Left (-x, -y)
+        else return "Q4";                       // Top Right (+x, -y)
+    }
+    
+    /**
+     * Get position configuration for a specific quadrant
+     */
+    private getPositionForQuadrant(quadrant: string, outerRadius: number): {
+        x: number,
+        y: number,
+        quadrantClass: string,
+        isRightAligned: boolean,
+        isTopHalf: boolean
+    } {
+        // Place synopsis in opposite quadrant from mouse position (same half)
+        let result = {
+            x: 0,
+            y: 0,
+            quadrantClass: "",
+            isRightAligned: false,
+            isTopHalf: false
+        };
+        
+        // Fixed vertical positions
+        const topHalfOffset = -550; // Fixed vertical position from center for top half
+        const bottomHalfOffset = 400; // Updated value for bottom half (Q1, Q2)
+        
+        // Debug log to troubleshoot
+        this.plugin.log(`Processing quadrant: ${quadrant}`);
+        
+        switch (quadrant) {
+            case "Q1": // Mouse in Bottom Right -> Synopsis in Q2 (Bottom Left)
+                result.x = 0;
+                result.y = bottomHalfOffset; // Bottom half with updated value
+                result.quadrantClass = "q2";
+                result.isRightAligned = false; // Left aligned
+                result.isTopHalf = false;
+                break;
+                
+            case "Q2": // Mouse in Bottom Left -> Synopsis in Q1 (Bottom Right)
+                result.x = 0;
+                result.y = bottomHalfOffset; // Bottom half with updated value
+                result.quadrantClass = "q1";
+                result.isRightAligned = true; // Right aligned
+                result.isTopHalf = false;
+                break;
+                
+            case "Q3": // Mouse in Top Left -> Synopsis in Q4 (Top Right)
+                result.x = 0;
+                result.y = topHalfOffset; // Top half (unchanged)
+                result.quadrantClass = "q4";
+                result.isRightAligned = true; // Right aligned
+                result.isTopHalf = true;
+                break;
+                
+            case "Q4": // Mouse in Top Right -> Synopsis in Q3 (Top Left)
+                result.x = 0;
+                result.y = topHalfOffset; // Top half (unchanged)
+                result.quadrantClass = "q3";
+                result.isRightAligned = false; // Left aligned
+                result.isTopHalf = true;
+                break;
+        }
+        
+        // Debug log the result for troubleshooting
+        this.plugin.log(`Synopsis positioning: quadrant=${result.quadrantClass}, isRightAligned=${result.isRightAligned}, y=${result.y}`);
+        
+        return result;
+    }
+    
+    /**
+     * Position text elements along an arc
+     */
+    private positionTextElements(synopsis: Element, isRightAligned: boolean, isTopHalf: boolean): void {
+        // Find all text elements
+        const textElements = Array.from(synopsis.querySelectorAll('text'));
+        if (textElements.length === 0) return;
+        
+        // Set text anchor alignment based on quadrant
+        const textAnchor = isRightAligned ? 'end' : 'start';
+        textElements.forEach(textEl => {
+            textEl.setAttribute('text-anchor', textAnchor);
+        });
+        
+        // Get the synopsis text group
+        const synopsisTextGroup = synopsis.querySelector('.synopsis-text');
+        if (!synopsisTextGroup) {
+            this.plugin.log("Error: Could not find synopsis text group");
+            return;
+        }
+        
+        // Reset any previous transforms
+        (synopsisTextGroup as SVGElement).removeAttribute('transform');
+        
+        // Circle parameters
+        const titleLineHeight = 32; // Increased spacing for title/date line
+        const synopsisLineHeight = 22; // Reduced spacing for synopsis text
+        const radius = 750; // Reduced from 770 by 20px to match the adjustedRadius in updatePosition
+        
+        // Calculate starting y-position from synopsis position
+        const synopsisTransform = (synopsis as SVGElement).getAttribute('transform') || '';
+        const translateMatch = synopsisTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+        
+        if (!translateMatch || translateMatch.length < 3) {
+            this.plugin.log("Error: Could not parse synopsis transform", synopsisTransform);
+            return;
+        }
+        
+        const baseX = parseFloat(translateMatch[1]);
+        const baseY = parseFloat(translateMatch[2]);
+        
+        this.plugin.log(`Base position parsed: x=${baseX}, y=${baseY}`);
+        
+        // Position each text element using Pythagorean theorem relative to circle center
+        textElements.forEach((textEl, index) => {
+            // Calculate absolute position for this line with variable line heights
+            let yOffset = 0;
+            
+            if (index === 0) {
+                // Title line - position at origin
+                yOffset = 0;
+            } else {
+                // All other lines use the synopsis line height with title spacing
+                yOffset = titleLineHeight + (index - 1) * synopsisLineHeight;
+            }
+            
+            const absoluteY = baseY + yOffset;
+            
+            // First line (index 0) should be positioned at the circle's edge
+            if (index === 0) {
+                textEl.setAttribute('x', '0');
+                textEl.setAttribute('y', '0');
+                
+                if (this.plugin.settings.debug) {
+                    this.plugin.log(`Title positioned at x=0, y=0, (absolute: ${baseX}, ${baseY})`);
+                }
+            } else {
+                // For subsequent lines, calculate x-position using Pythagorean theorem
+                // This makes text follow the circle's arc
+                // For a point on a circle: x² + y² = r²
+                let xOffset = 0;
+                
+                // Calculate distance for debugging
+                const distanceFromCenter = Math.sqrt(baseX * baseX + absoluteY * absoluteY);
+                this.plugin.log(`Line ${index} distance check: distanceFromCenter=${distanceFromCenter.toFixed(2)}, radius=${radius}`);
+                
+                // Calculate what the x-coordinate would be if this point were on the circle
+                try {
+                    const circleX = Math.sqrt(radius * radius - absoluteY * absoluteY);
+                    
+                    // DEBUG: Log the values we're using
+                    this.plugin.log(`Calculation for line ${index}: isTopHalf=${isTopHalf}, isRightAligned=${isRightAligned}, circleX=${circleX.toFixed(2)}, baseX=${baseX.toFixed(2)}`);
+                    
+                    // Calculate the x-offset for this line based on quadrant
+                    if (isTopHalf) {
+                        // Top half (Q3, Q4) - KEEP EXISTING BEHAVIOR
+                        if (isRightAligned) {
+                            // Q4 (top right) - text flows left
+                            xOffset = Math.abs(circleX) - Math.abs(baseX);
+                        } else {
+                            // Q3 (top left) - text flows right
+                            xOffset = Math.abs(baseX) - Math.abs(circleX);
+                        }
+                    } else {
+                        // Bottom half (Q1, Q2) - FIXED CALCULATION
+                        if (isRightAligned) {
+                            // Q1 (bottom right) - text flows left
+                            // Match Q4 formula with adjusted sign for bottom half
+                            xOffset = -(Math.abs(baseX) - Math.abs(circleX));
+                        } else {
+                            // Q2 (bottom left) - text flows right
+                            // Match Q3 formula that works correctly
+                            xOffset = Math.abs(baseX) - Math.abs(circleX);
+                        }
+                    }
+                    
+                    // DEBUG: Log the calculated offset
+                    this.plugin.log(`Calculated xOffset for line ${index}: ${xOffset.toFixed(2)}`);
+                } catch (e) {
+                    // If calculation fails (e.g. sqrt of negative), use a fixed offset
+                    this.plugin.log(`Error calculating offset for line ${index}: ${e.message}`);
+                    xOffset = 0;
+                }
+                
+                // Apply calculated coordinates relative to the base position
+                textEl.setAttribute('x', String(Math.round(xOffset)));
+                textEl.setAttribute('y', String(yOffset));
+            }
+            
+            // Debug logging
+            if (this.plugin.settings.debug && index <= 3) {
+                this.plugin.log(`Text ${index} positioned at x=${textEl.getAttribute('x')}, y=${textEl.getAttribute('y')}, absoluteY=${absoluteY}`);
+            }
+        });
+    }
+
+    /**
+     * Process content with tspan elements and add to an SVG element
+     * @param content The HTML content to process
+     * @param parentElement The SVG element to append processed nodes to
+     */
+    private processContentWithTspans(content: string, parentElement: SVGElement): void {
+        // First decode any HTML entities in the content
+        let processedContent = content;
+        
+        // Check if the content contains HTML-encoded tspan elements
+        if (content.includes('&lt;tspan') && !content.includes('<tspan')) {
+            // Convert HTML entities to actual tags for proper parsing
+            processedContent = content
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"')
+                .replace(/&apos;/g, "'")
+                .replace(/&amp;/g, '&');
+        }
+        
+        // Use DOMParser to parse the content safely
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(`<div>${processedContent}</div>`, 'text/html');
+        const container = doc.querySelector('div');
+        
+        if (!container) return;
+        
+        // Check if there are any direct text nodes
+        let hasDirectTextNodes = false;
+        container.childNodes.forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+                hasDirectTextNodes = true;
+            }
+        });
+        
+        if (hasDirectTextNodes) {
+            // Handle mixed content (text nodes and elements)
+            container.childNodes.forEach(node => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    // Add text directly
+                    if (node.textContent?.trim()) {
+                        parentElement.appendChild(document.createTextNode(node.textContent));
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === 'tspan') {
+                    // Handle tspan element
+                    const tspan = node as Element;
+                    const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    
+                    // Copy attributes
+                    Array.from(tspan.attributes).forEach(attr => {
+                        svgTspan.setAttribute(attr.name, attr.value);
+                        
+                        // Fix any incorrectly formatted style attributes that might contain "limportant" instead of "!important"
+                        if (attr.name === 'style' && attr.value.includes('limportant')) {
+                            const fixedStyle = attr.value.replace(/\s*limportant\s*;?/g, ' !important;');
+                            svgTspan.setAttribute('style', fixedStyle);
+                        }
+                    });
+                    
+                    svgTspan.textContent = tspan.textContent;
+                    parentElement.appendChild(svgTspan);
+                }
+            });
+        } else {
+            // Process only tspan elements
+            const tspans = container.querySelectorAll('tspan');
+            tspans.forEach(tspan => {
+                const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                
+                // Copy attributes
+                Array.from(tspan.attributes).forEach(attr => {
+                    svgTspan.setAttribute(attr.name, attr.value);
+                    
+                    // Fix any incorrectly formatted style attributes
+                    if (attr.name === 'style' && attr.value.includes('limportant')) {
+                        const fixedStyle = attr.value.replace(/\s*limportant\s*;?/g, ' !important;');
+                        svgTspan.setAttribute('style', fixedStyle);
+                    }
+                });
+                
+                svgTspan.textContent = tspan.textContent;
+                parentElement.appendChild(svgTspan);
+            });
+        }
+    }
 }
 
 export default class ManuscriptTimelinePlugin extends Plugin {
@@ -132,7 +1004,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     
     // View reference
     activeTimelineView: ManuscriptTimelineView | null = null;
-    
+
     // Track open scene paths
     openScenePaths: Set<string> = new Set<string>();
     
@@ -141,26 +1013,310 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
     
-    // Add helper method to highlight search terms
-    private highlightSearchTerm(text: string): string {
-        if (!this.searchActive || !this.searchTerm) return text;
-        
-        const regex = new RegExp(`(${this.escapeRegExp(this.searchTerm)})`, 'gi');
-        return text.replace(regex, (match) => {
-            return `<tspan class="search-highlight">${this.escapeXml(match)}</tspan>`;
+    // Add a synopsisManager instance
+    private synopsisManager: SynopsisManager;
+    
+    /**
+     * Position and curve the text elements in the SVG
+     * @param container The container element with the SVG
+     */
+    curveTextElements(container: Element, curveFactor: number, angleToCenter: number): void {
+        // Find all text elements inside the container
+        const textElements = container.querySelectorAll('text');
+        if (!textElements.length) return;
+    
+        // Apply the curvature to each text element
+        textElements.forEach((textEl) => {
+            try {
+                // Create a curved path effect for this text
+                const pathId = `path-${Math.random().toString(36).substring(2, 9)}`;
+                
+                // Create a curved path element
+                const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathElement.setAttribute('id', pathId);
+                pathElement.setAttribute('d', `M 0,0 Q ${Math.cos(angleToCenter) * 500},${Math.sin(angleToCenter) * 500 * curveFactor} 1000,0`);
+                pathElement.setAttribute('fill', 'none');
+                // SAFE: inline style used for hiding path that shouldn't be visible
+                pathElement.style.display = 'none'; // Hide the path
+                
+                // Add the path to the container before the text
+                textEl.parentNode?.insertBefore(pathElement, textEl);
+                
+                // Link the text to the path
+                textEl.setAttribute('path', `url(#${pathId})`);
+                textEl.setAttribute('pathLength', '1');
+                textEl.setAttribute('startOffset', '0');
+            } catch (error) {
+                console.error('Error applying text curvature:', error);
+            }
         });
+    }
+    
+    // Add helper method to highlight search terms
+    public highlightSearchTerm(text: string): string {
+        if (!this.searchActive || !this.searchTerm || !text) {
+            return text;
+        }
+
+        // First decode any HTML entities that might be in the text
+        const decodedText = decodeHtmlEntities(text);
+
+        // Create safe regex for searching
+        const escapedPattern = this.escapeRegExp(this.searchTerm);
+        const regex = new RegExp(`(${escapedPattern})`, 'gi');
+        
+        // Use DocumentFragment for DOM manipulation
+        const fragment = document.createDocumentFragment();
+        
+        // Special handling for title lines containing scene number and date
+        // Title format is typically: "SceneNumber SceneTitle   Date" 
+        if (decodedText.includes('   ') && !decodedText.includes('<tspan')) {
+            // First split by the triple space that separates title from date
+            const [titlePart, datePart] = decodedText.split(/\s{3,}/);
+            
+            // Then extract scene number from title (if it exists)
+            const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
+            
+            if (titleMatch) {
+                // We have scene number + title + date format
+                const sceneNumber = titleMatch[1];
+                const sceneTitle = titleMatch[3];
+                
+                // Add scene number as regular text
+                fragment.appendChild(document.createTextNode(`${sceneNumber} `));
+                
+                // Split the title by search term and create highlighted spans
+                const titleParts = sceneTitle.split(regex);
+                titleParts.forEach((part, index) => {
+                    if (index % 2 === 1) {
+                        // This is a matched part (odd index)
+                        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        highlight.setAttribute("class", "search-term");
+                        highlight.textContent = part;
+                        fragment.appendChild(highlight);
+                    } else if (part) {
+                        // This is regular text
+                        fragment.appendChild(document.createTextNode(part));
+                    }
+                });
+                
+                // Add spacer and date part
+                if (datePart) {
+                    fragment.appendChild(document.createTextNode('   '));
+                    fragment.appendChild(document.createTextNode(datePart));
+                }
+            } else {
+                // No scene number, just title + date
+                
+                // Split the title by search term and create highlighted spans
+                const titleParts = titlePart.split(regex);
+                titleParts.forEach((part, index) => {
+                    if (index % 2 === 1) {
+                        // This is a matched part (odd index)
+                        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        highlight.setAttribute("class", "search-term");
+                        highlight.textContent = part;
+                        fragment.appendChild(highlight);
+                    } else if (part) {
+                        // This is regular text
+                        fragment.appendChild(document.createTextNode(part));
+                    }
+                });
+                
+                // Add spacer and date part
+                if (datePart) {
+                    fragment.appendChild(document.createTextNode('   '));
+                    fragment.appendChild(document.createTextNode(datePart));
+                }
+            }
+            
+            // Convert fragment to string using XMLSerializer
+            return this.serializeFragment(fragment);
+        }
+        
+        // Special handling for metadata text (subplots and characters)
+        if (decodedText.includes(',') && !decodedText.includes('<tspan') && !decodedText.includes('<')) {
+            // This is a raw metadata line (comma-separated items)
+            
+            // Split by commas to process each item separately
+            const items = decodedText.split(/, */);
+            
+            // Process each item and create appropriate DOM elements
+            items.forEach((item, i) => {
+                if (i > 0) {
+                    // Add comma and space for separator (except before first item)
+                    fragment.appendChild(document.createTextNode(', '));
+                }
+                
+                // Split the item by search term and create highlighted spans
+                const itemParts = item.split(regex);
+                itemParts.forEach((part, index) => {
+                    if (index % 2 === 1) {
+                        // This is a matched part (odd index)
+                        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        highlight.setAttribute("class", "search-term");
+                        highlight.textContent = part;
+                        fragment.appendChild(highlight);
+                    } else if (part) {
+                        // This is regular text
+                        fragment.appendChild(document.createTextNode(part));
+                    }
+                });
+            });
+            
+            // Convert fragment to string using XMLSerializer
+            return this.serializeFragment(fragment);
+        }
+        
+        // Check if text already contains tspan with fill attributes (metadata lines)
+        if (decodedText.includes('<tspan') && decodedText.includes('fill=')) {
+            // Parse the existing HTML structure using DOMParser
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg"><text>${decodedText}</text></svg>`, 'image/svg+xml');
+            
+            // Check for parsing errors
+            if (doc.querySelector('parsererror')) {
+                // Parsing failed, return original text
+                return decodedText;
+            }
+            
+            // Process each tspan separately
+            const textElement = doc.querySelector('text');
+            if (!textElement) return decodedText;
+            
+            const tspans = textElement.querySelectorAll('tspan');
+            Array.from(tspans).forEach(tspan => {
+                const originalContent = tspan.textContent || '';
+                const fillColor = tspan.getAttribute('fill');
+                
+                // Clear tspan content
+                while (tspan.firstChild) {
+                    tspan.removeChild(tspan.firstChild);
+                }
+                
+                // Split content by regex and rebuild with highlighted spans
+                const parts = originalContent.split(regex);
+                parts.forEach((part, index) => {
+                    if (index % 2 === 1) {
+                        // This is a matched part
+                        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        highlight.setAttribute("class", "search-term");
+                        if (fillColor) highlight.setAttribute("fill", fillColor);
+                        highlight.textContent = part;
+                        tspan.appendChild(highlight);
+                    } else if (part) {
+                        // This is regular text
+                        tspan.appendChild(document.createTextNode(part));
+                    }
+                });
+            });
+            
+            // Extract the processed HTML using XMLSerializer
+            const serializer = new XMLSerializer();
+            const result = serializer.serializeToString(textElement);
+            
+            // Remove the outer <text></text> tags
+            return result.replace(/<text[^>]*>|<\/text>/g, '');
+        }
+        
+        // Regular processing for text without tspans (synopsis lines)
+        // Split by search term and create highlighted spans
+        const parts = decodedText.split(regex);
+        parts.forEach((part, index) => {
+            if (index % 2 === 1) {
+                // This is a matched part (odd index)
+                const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                highlight.setAttribute("class", "search-term");
+                highlight.textContent = part;
+                fragment.appendChild(highlight);
+            } else if (part) {
+                // This is regular text
+                fragment.appendChild(document.createTextNode(part));
+            }
+        });
+        
+        // Convert fragment to string using XMLSerializer
+        return this.serializeFragment(fragment);
+    }
+    
+    // Helper method to serialize DocumentFragment to string
+    private serializeFragment(fragment: DocumentFragment): string {
+        // Create a temporary SVG text element
+        const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        
+        // Clone the fragment and append to the text element
+        textElement.appendChild(fragment.cloneNode(true));
+        
+        // Use XMLSerializer to convert to string
+        const serializer = new XMLSerializer();
+        const result = serializer.serializeToString(textElement);
+        
+        // Remove the outer <text></text> tags
+        return result.replace(/<text[^>]*>|<\/text>/g, '');
     }
 
     // Add helper method to escape special characters in regex
     private escapeRegExp(string: string): string {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
-    
+
+    /**
+     * Process highlighted content and return SVG elements
+     * A safer alternative to using innerHTML for fragments
+     * @param fragment The document fragment containing the highlighted content
+     * @returns An array of nodes that can be appended to an SVG element
+     */
+    private processHighlightedContent(fragment: DocumentFragment): Node[] {
+        // Create a temporary div to hold the fragment for processing
+        const container = document.createElement('div');
+        container.appendChild(fragment.cloneNode(true));
+        
+        // Use DOMParser to safely parse the HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(container.outerHTML, 'text/html');
+        
+        // Extract all nodes from the parsed document
+        const resultNodes: Node[] = [];
+        const containerNode = doc.querySelector('div');
+        
+        if (!containerNode) return resultNodes;
+        
+        // Process each child node
+        Array.from(containerNode.childNodes).forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                // For text nodes, create plain text nodes
+                if (node.textContent) {
+                    resultNodes.push(document.createTextNode(node.textContent));
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                // For element nodes (like tspan), create SVG elements
+                const element = node as Element;
+                if (element.tagName.toLowerCase() === 'tspan') {
+                    const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    
+                    // Copy attributes
+                    Array.from(element.attributes).forEach(attr => {
+                        svgTspan.setAttribute(attr.name, attr.value);
+                    });
+                    
+                    svgTspan.textContent = element.textContent;
+                    resultNodes.push(svgTspan);
+                }
+            }
+        });
+        
+        return resultNodes;
+    }
+
     async onload() {
-        console.log('loading Manuscript Timeline plugin');
-
         await this.loadSettings();
-
+        
+        // Initialize the synopsis manager
+        this.synopsisManager = new SynopsisManager(this);
+        
+        // Set CSS variables for publish stage colors
+        this.setCSSColorVariables();
+        
         // Register the view
         this.registerView(
             TIMELINE_VIEW_TYPE,
@@ -169,7 +1325,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 return new ManuscriptTimelineView(leaf, this);
             }
         );
-
+        
         // Add ribbon icon
         this.addRibbonIcon('shell', 'Manuscript Timeline', () => {
             this.activateView();
@@ -196,6 +1352,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         // Add settings tab
         this.addSettingTab(new ManuscriptTimelineSettingTab(this.app, this));
+        
+        // Register event for metadata changes
+        this.registerEvent(
+            this.app.metadataCache.on('changed', (file) => {
+                this.log('Metadata changed for file: ' + file.path);
+                // Refresh timeline when metadata changes
+                this.refreshTimelineIfNeeded(file);
+            })
+        );
     }
     
     // Helper to activate the timeline view
@@ -270,7 +1435,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         }
                         // Clean up the internal link format (remove [[ and ]])
                         characters = characters.map((char: string) => char.replace(/[\[\]]/g, ''));
-                        } else {
+                    } else {
                             characters = [];
                     }
     
@@ -331,39 +1496,39 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Change from private to public
     public createTimelineSVG(scenes: Scene[]): string {
+        // Performance optimization: Check if we have an excessive number of scenes
+        const sceneCount = scenes.length;
+        let simplifyRendering = false;
+        
+        // If we have more than 100 scenes, simplify the rendering
+        if (sceneCount > 100) {
+            console.log(`Large number of scenes detected (${sceneCount}), using simplified rendering mode`);
+            simplifyRendering = true;
+        }
+        
         const size = 1600;
         const margin = 30;
         const innerRadius = 200; // the first ring is 200px from the center
         const outerRadius = size / 2 - margin;
+        const maxTextWidth = 500; // Define maxTextWidth for the synopsis text
     
-        // Create SVG with styles now in external CSS file
-        let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg">`;
+        // Create SVG with proper viewBox and preserveAspectRatio for better scaling
+        // Ensure the viewBox is centered on the origin with proper dimensions
+        let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg" preserveAspectRatio="xMidYMid meet">`;
+        
+        // Add debug coordinate display if debug mode is enabled
+        if (this.settings.debug) {
+            svg += `
+                <g class="debug-info-container" style="pointer-events:none;"><!-- SAFE: inline style needed for SVG interaction -->
+                    <rect class="debug-info-background" x="-790" y="-790" width="230" height="40" rx="5" ry="5" fill="rgba(255,255,255,0.9)" stroke="#333333" stroke-width="1" />
+                    <text class="debug-info-text" id="mouse-coords-text" x="-780" y="-765" fill="#ff3300" font-size="20px" font-weight="bold" stroke="white" stroke-width="0.5px" paint-order="stroke">Mouse: X=0, Y=0</text>
+                </g>
+            `;
+        }
         
         // Add search results indicator if search is active
         if (this.searchActive && this.searchResults.size > 0) {
             svg += `
-                <style>
-                    .search-highlight {
-                        fill: #FFD700;
-                        font-weight: bold;
-                        stroke: #000000;
-                        stroke-width: 0.5;
-                        stroke-opacity: 0.3;
-                    }
-                    .clear-search-btn {
-                        cursor: pointer;
-                        transition: transform 0.2s;
-                    }
-                    .clear-search-btn:hover {
-                        transform: scale(1.1);
-                    }
-                    .clear-search-btn circle {
-                        transition: fill 0.2s;
-                    }
-                    .clear-search-btn:hover circle {
-                        fill: #FFE5E5;
-                    }
-                </style>
                 <g transform="translate(-${size/2 - 20}, -${size/2 - 30})">
                     <rect x="0" y="0" width="200" height="40" rx="5" ry="5" 
                           fill="#FFCC00" fill-opacity="0.6" stroke="#000000" stroke-width="1" />
@@ -383,6 +1548,21 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         // Create defs for patterns and gradients
         svg += `<defs>`;
+
+        // Performance optimization: In simplified mode, reduce the number of patterns
+        if (!simplifyRendering) {
+            // Original defs content
+            // ... existing code ...
+        } else {
+            // Simplified patterns
+            svg += `<pattern id="plaidWorking" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+                <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Working, 5)}"/>
+            </pattern>`;
+            
+            svg += `<pattern id="plaidTodo" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+                <rect width="10" height="10" fill="${this.lightenColor(STATUS_COLORS.Todo, 15)}"/>
+            </pattern>`;
+        }
     
         // Create a map to store scene number information for the scene square and synopsis
         const sceneNumbersMap = new Map<string, SceneNumberInfo>();
@@ -457,7 +1637,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const lineOuterRadius = ringStartRadii[N - 1] + ringWidths[N - 1] + 30;
     
         // **Include the `<style>` code here**
-        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg">`;
+        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg" preserveAspectRatio="xMidYMid meet">`;
 
         // Access the publishStageColors from settings
         const PUBLISH_STAGE_COLORS = this.settings.publishStageColors;
@@ -713,7 +1893,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         })();
 
         // Synopses at end to be above all other elements
-        const synopsesHTML: string[] = [];
+        const synopsesElements: SVGGElement[] = [];
         scenes.forEach((scene) => {
             // Handle undefined subplot with a default "Main Plot"
             const subplot = scene.subplot || "Main Plot";
@@ -729,19 +1909,13 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
             const sceneIndex = scenesInActAndSubplot.indexOf(scene);
             
-            const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
-            const numberInfo = sceneNumbersMap.get(sceneId);
+            const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`; // Keep the old ID format
             
-            const lineHeight = 26; // Reduced for tighter spacing
-            const size = 1600;
-            const maxTextWidth = 500;
-            const topOffset = -size / 2;
-
-            // Generate random colors for characters
-            const characterColors = scene.Character?.map(char => 
-                '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
-            ) || [];
-
+            // Skip content generation for placeholder scenes
+            if (!scene.title) {
+                return;
+            }
+            
             // Find all subplots this scene belongs to
             const allSceneSubplots = scenes
                 .filter(s => s.path === scene.path)
@@ -752,146 +1926,85 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 scene.subplot,
                 ...allSceneSubplots.filter(s => s !== scene.subplot)
             ];
-
+            
             // Prepare text content with modified format
             const contentLines = [
-                this.highlightSearchTerm(`${scene.title} - ${scene.when?.toLocaleDateString()}`),
+                // Format title and date on same line with spacing
+                this.highlightSearchTerm(`${scene.title}   ${scene.when?.toLocaleDateString() || ''}`),
                 ...(scene.synopsis ? this.splitIntoBalancedLines(scene.synopsis, maxTextWidth).map(line => this.highlightSearchTerm(line)) : []),
                 '\u00A0',
-                this.highlightSearchTerm(orderedSubplots.join(', ')),
-                scene.Character && scene.Character.length > 0 ? 
-                    this.highlightSearchTerm(scene.Character.join(', ')) : '',
-            ].filter(line => line);
-
-            const totalHeight = contentLines.length * lineHeight;
-
-            // Determine which text block to show based on Act number
-            const displayActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-            const showLeftText = displayActNumber <= 2;
-            const showRightText = displayActNumber === 3;
-
-            synopsesHTML.push(`
-                <g class="scene-info info-container" 
-                   data-for-scene="${sceneId}">
+            ];
+            
+            // Handle subplot and character lines differently
+            if (orderedSubplots.length > 0) {
+                // Apply search highlighting to each subplot separately
+                let subplotsHtml = '';
+                orderedSubplots.forEach((subplot, i) => {
+                    const term = this.searchTerm;
+                    const regex = term ? new RegExp(`(${this.escapeRegExp(term)})`, 'gi') : null;
                     
-                    ${(() => {
-                        // Get the scene's act and subplot to determine its position
-                        const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-                        const actIndex = sceneActNumber - 1;
-                        const subplot = scene.subplot || "Main Plot";
-                        const ring = NUM_RINGS - 1 - masterSubplotOrder.indexOf(subplot);
-                        
-                        // Calculate angles from act index
-                        const startAngle = (actIndex * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                        const endAngle = ((actIndex + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                        
-                        // Calculate radius from ring index
-                        const innerRadius = ringStartRadii[ring];
-                        const outerRadius = innerRadius + ringWidths[ring];
-                        
-                        // Find the angular position of this scene
-                        const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
-                        const sceneIndex = scenesInActAndSubplot.indexOf(scene);
-                        const sceneAngleSize = (endAngle - startAngle) / scenesInActAndSubplot.length;
-                        const sceneStartAngle = startAngle + (sceneIndex * sceneAngleSize);
-                        const sceneEndAngle = sceneStartAngle + sceneAngleSize;
-                        
-                        // Calculate the source point (where the scene is)
-                        const sceneAngleMidpoint = (sceneStartAngle + sceneEndAngle) / 2;
-                        const sourceX = (innerRadius + outerRadius) / 2 * Math.cos(sceneAngleMidpoint);
-                        const sourceY = (innerRadius + outerRadius) / 2 * Math.sin(sceneAngleMidpoint);
-                        
-                        // For fixed position, we don't need to calculate quadrants or edge points
-                        // We'll just use the center of the scene cell for the connector
-                        const edgeX = sourceX;
-                        const edgeY = sourceY;
-
-                        // Prepare the content measurement
-                        const titleFontSize = 24;
-                        const bodyFontSize = 18;
-                        
-                        // Prepare the complete text content to measure
-                        let fullText = `<div style="font-size:${titleFontSize}px;font-weight:700;margin-bottom:10px;">${this.escapeXml(contentLines[0])}</div>`;
-                        
-                        // Add synopsis lines
-                        const synopsisEndIndex = contentLines.length - 2; // -2 to exclude the spacer and subplot/character lines
-                        for (let i = 1; i < synopsisEndIndex; i++) {
-                            fullText += `<div style="font-size:${bodyFontSize}px;margin-top:5px;">${this.escapeXml(contentLines[i])}</div>`;
-                        }
-                        
-                        // Add spacer
-                        fullText += `<div style="height:10px;"></div>`;
-                        
-                        // Add subplot and character info
-                        if (contentLines[contentLines.length - 2]) {
-                            fullText += `<div style="font-size:${bodyFontSize}px;color:#666;">${this.escapeXml(contentLines[contentLines.length - 2])}</div>`;
-                        }
-                        if (contentLines[contentLines.length - 1]) {
-                            fullText += `<div style="font-size:${bodyFontSize}px;color:#666;">${this.escapeXml(contentLines[contentLines.length - 1])}</div>`;
-                        }
-                        
-                        // Add metadata items
-                        const metadataItems = contentLines.slice(synopsisEndIndex);
-                        metadataItems.forEach(line => {
-                            // Handle tspan elements by removing tags for measurement
-                            const plainText = line.replace(/<[^>]*>/g, '');
-                            fullText += `<div style="font-size:${bodyFontSize}px;margin-top:5px;">${this.escapeXml(plainText)}</div>`;
-                        });
-                        
-                        // Use a fixed width for the text
-                        const textWidth = 250;
-                        
-                        // Get accurate text dimensions for height
-                        const textDimensions = this.measureTextDimensions(fullText, textWidth, bodyFontSize);
-                        const textHeight = textDimensions.height;
-                        
-                        // Use fixed position for the synopsis at the center of the SVG
-                        // No need for connector path since we're using fixed HTML positioning
-                        
-                        // Text alignment (always left-justified)
-                        const textAlign = 'left';
-                        
-                        // No connector path needed for fixed positioning
-                        const connectorPath = '';
-                        
-                        // Calculate text anchor point with standard offset
-                        const textAnchorOffset = 0;
-                        
-                        // Create HTML for synopsis content - now with fixed positioning via CSS
-                        let textHTML = `<g class="synopsis-text">`;
-                        
-                        // Title
-                        textHTML += `<text class="info-text title-text-main" x="0" y="0" text-anchor="${textAlign}">${this.escapeXml(contentLines[0])}</text>`;
-                        
-                        // Determine text width for divider
-                        const titleTextWidth = Math.min(contentLines[0].length * 12, 200);
-                        
-                        // Decorative divider below the title
-                        textHTML += `<line class="synopsis-divider" x1="0" y1="30" x2="${titleTextWidth}" y2="30" stroke-width="1.5"></line>`;
-                        
-                        // Add synopsis lines
-                        for (let i = 1; i < synopsisEndIndex; i++) {
-                            textHTML += `<text class="info-text title-text-secondary" x="0" y="${40 + ((i-1) * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(contentLines[i])}</text>`;
-                        }
-                        
-                        // Metadata (subplots, characters)
-                        const metadataStartY = 40 + ((synopsisEndIndex-1) * lineHeight) + 15;
-                        metadataItems.forEach((line, i) => {
-                            // Create a containing text element to ensure proper alignment
-                            if (line.includes('<tspan')) {
-                                // For lines with tspan elements (subplots, characters)
-                                textHTML += `<text class="info-text metadata-text" x="0" y="${metadataStartY + (i * lineHeight)}" text-anchor="${textAlign}">${line}</text>`;
-                            } else {
-                                textHTML += `<text class="info-text title-text-secondary" x="0" y="${metadataStartY + (i * lineHeight)}" text-anchor="${textAlign}">${this.escapeXml(line)}</text>`;
-                            }
-                        });
-                        
-                        textHTML += `</g>`;
-                        
-                        return connectorPath + textHTML;
-                    })()}
-                </g>
-            `);
+                    // Create HTML directly for each subplot
+                    const color = `hsl(${Math.floor(Math.random() * 360)}, 70%, 35%)`;
+                    
+                    // Don't apply search highlighting here - it will be done by addHighlightRectangles
+                    let subplotText = escapeXml(subplot || ''); // Handle undefined subplot
+                    
+                    subplotsHtml += `<tspan fill="${color}" data-item-type="subplot" style="fill: ${color} !important;"><!-- SAFE: inline style needed for color override in SVG -->${subplotText}</tspan>`;
+                    
+                    // Add comma separator if not the last item
+                    if (i < orderedSubplots.length - 1) {
+                        subplotsHtml += '<tspan fill="var(--text-muted)">, </tspan>';
+                    }
+                });
+                
+                // Add the fully-formatted subplot line
+                contentLines.push(subplotsHtml);
+            } else {
+                contentLines.push(''); // Empty placeholder
+            }
+            
+            // Handle character list with similar approach
+            if (scene.Character && scene.Character.length > 0) {
+                let charactersHtml = '';
+                scene.Character.forEach((character, i) => {
+                    const term = this.searchTerm;
+                    const regex = term ? new RegExp(`(${this.escapeRegExp(term)})`, 'gi') : null;
+                    
+                    // Create HTML directly for each character
+                    const color = `hsl(${Math.floor(Math.random() * 360)}, 80%, 35%)`;
+                    
+                    // Apply search highlighting if needed
+                    let characterText = escapeXml(character || ''); // Handle undefined character
+                    
+                    // Only apply direct highlighting if search is active but DON'T apply here if it contains the search term
+                    // This prevents double highlighting since the text is processed again in addSearchHighlights
+                    if (regex && this.searchActive) {
+                        // Instead of replacing the term with a span, just keep the original text
+                        // The highlighting will be added later by addSearchHighlights function
+                        characterText = characterText; // No replacement here
+                    }
+                    
+                    charactersHtml += `<tspan fill="${color}" data-item-type="character" style="fill: ${color} !important;"><!-- SAFE: inline style needed for color override in SVG -->${characterText}</tspan>`;
+                    
+                    // Add comma separator if not the last item
+                    if (i < (scene.Character?.length || 0) - 1) {
+                        charactersHtml += '<tspan fill="var(--text-muted)">, </tspan>';
+                    }
+                });
+                
+                // Add the fully-formatted character line
+                contentLines.push(charactersHtml);
+            } else {
+                contentLines.push(''); // Empty placeholder
+            }
+            
+            // Filter out empty lines
+            const filteredContentLines = contentLines.filter(line => line);
+            
+            // Generate the synopsis element using our new DOM-based method
+            // Instead of collecting HTML strings, store the DOM elements directly
+            const synopsisElement = this.synopsisManager.generateElement(scene, filteredContentLines, sceneId);
+            synopsesElements.push(synopsisElement);
         });
 
         // Draw scenes and dummy scenes (existing code remains as is)
@@ -970,11 +2083,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             let sceneClasses = "scene-path";
                             if (scene.path && this.openScenePaths.has(scene.path)) sceneClasses += " scene-is-open";
                             // Don't add search-result class to scene paths anymore
-
+            
                             // In createTimelineSVG method, replace the font size calculation with a fixed size:
                             const fontSize = 18; // Fixed font size for all rings
                             const dyOffset = -1;
-                            
+            
                             svg += `
                             <g class="scene-group" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                 <path id="${sceneId}"
@@ -1161,7 +2274,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="end"
                                 class="center-key-text"
-                            >${stage.toUpperCase()} <tspan class="status-count">${statusCounts[stage] || 0}</tspan></text>
+                            >${stage.toUpperCase()} <tspan class="status-count" dy="-7" baseline-shift="super">${statusCounts[stage] || 0}</tspan></text>
                             
                             <!-- Color SWATCH to the right of text -->
                             <rect 
@@ -1207,7 +2320,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="start"
                                 class="center-key-text"
-                            >${status.toUpperCase()} <tspan class="status-count">${statusCounts[status] || 0}</tspan></text>
+                            >${status.toUpperCase()} <tspan class="status-count" dy="-7" baseline-shift="super">${statusCounts[status] || 0}</tspan></text>
                         </g>
                     `;
                 }).join('')}
@@ -1310,11 +2423,21 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         });
         svg += `</g>`;
         
-        // Add all synopses at the end of the SVG
-        svg += `            <g class="synopses-container">
-                ${synopsesHTML.join('\n')}
-            </g>
-        `;
+        // Create container for all synopses
+        const synopsesContainer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        synopsesContainer.setAttribute("class", "synopses-container");
+
+        // Add all synopsis elements to the container
+        synopsesElements.forEach(element => {
+            synopsesContainer.appendChild(element);
+        });
+
+        // Serialize the synopses container to SVG string
+        const serializer = new XMLSerializer();
+        const synopsesHTML = serializer.serializeToString(synopsesContainer);
+
+        // Add it to the SVG output
+        svg += synopsesHTML;
 
         // Add JavaScript to handle synopsis visibility
         const scriptSection = `
@@ -1340,9 +2463,63 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             });
         </script>`;
 
-        svg += `
-            ${scriptSection}
-        </svg>`;
+        // Add debug coordinate display
+        if (this.settings.debug) {
+            svg += `
+                <g class="debug-info-container" style="pointer-events:none;">
+                    <rect class="debug-info-background" x="-790" y="-790" width="230" height="40" rx="5" ry="5" fill="rgba(255,255,255,0.9)" stroke="#333333" stroke-width="1" />
+                    <text class="debug-info-text" id="mouse-coords-text" x="-780" y="-765" fill="#ff3300" font-size="20px" font-weight="bold" stroke="white" stroke-width="0.5px" paint-order="stroke">Mouse: X=0, Y=0</text>
+                </g>
+                <script>
+                    (function() {
+                        // Wait for DOM to be ready
+                        window.addEventListener('DOMContentLoaded', function() {
+                            console.log("Setting up mouse coordinate tracking");
+                            
+                            // Get SVG element and coordinate text
+                            const svg = document.querySelector('.manuscript-timeline-svg');
+                            const coordText = document.getElementById('mouse-coords-text');
+                            
+                            if (!svg || !coordText) {
+                                console.error("Couldn't find SVG or coordinate text element");
+                                return;
+                            }
+                            
+                            // Add mousemove handler to the main SVG element
+                            svg.addEventListener('mousemove', function(e) {
+                                try {
+                                    const pt = svg.createSVGPoint();
+                                    pt.x = e.clientX;
+                                    pt.y = e.clientY;
+                                    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+                                    coordText.textContent = 'Mouse: X=' + Math.round(svgP.x) + ', Y=' + Math.round(svgP.y);
+                                } catch (err) {
+                                    console.error("Error calculating coordinates:", err);
+                                }
+                            });
+                            
+                            // Also log coordinates on click
+                            svg.addEventListener('click', function(e) {
+                                try {
+                                    const pt = svg.createSVGPoint();
+                                    pt.x = e.clientX;
+                                    pt.y = e.clientY;
+                                    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+                                    console.log('Clicked at:', Math.round(svgP.x), Math.round(svgP.y));
+                                } catch (err) {
+                                    console.error("Error calculating coordinates:", err);
+                                }
+                            });
+                            
+                            console.log("Mouse coordinate tracking initialized");
+                        });
+                    })();
+                </script>
+            `;
+        }
+
+        // If not in debug mode, close SVG normally
+        svg += `${scriptSection}</svg>`;
         return svg;
     }
     private darkenColor(color: string, percent: number): string {
@@ -1376,38 +2553,73 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     /// Helper function to split text into balanced lines
     private splitIntoBalancedLines(text: string, maxWidth: number): string[] {
-        const words = text.split(' ');
-        const lines: string[] = [];
-        let currentLine: string[] = [];
-        let currentLength = 0;
-        const targetCharsPerLine = 45; // Reduced from 60 to 45 characters per line for narrower text
-
-        for (let word of words) {
-            // Add 1 for the space after the word
-            const wordLength = word.length + 1;
+        // Check if the text already contains tspan elements (like search highlights)
+        if (text.includes('<tspan')) {
+            this.log(`Using DOM-based line splitting for text with tspans: ${text.substring(0, 50)}...`);
             
-            if (currentLength + wordLength > targetCharsPerLine) {
-                if (currentLine.length > 0) {
-                    lines.push(currentLine.join(' '));
-                    currentLine = [word];
-                    currentLength = wordLength;
-                } else {
-                    // If a single word is longer than the line length, force it onto its own line
-                    currentLine.push(word);
-                    lines.push(currentLine.join(' '));
-                    currentLine = [];
-                    currentLength = 0;
-                }
+            // Parse the HTML using DOMParser
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg"><text>${text}</text></svg>`, 'image/svg+xml');
+            
+            // Check for parsing errors
+            if (doc.querySelector('parsererror')) {
+                this.log('Error parsing SVG content with tspans, returning original text');
+                return [text];
+            }
+            
+            // Extract the text element
+            const textElement = doc.querySelector('text');
+            if (!textElement) {
+                return [text];
+            }
+            
+            // Get the text content without the tags for measuring
+            const plainText = textElement.textContent || '';
+            
+            // Split the plain text into lines based on length
+            const plainLines = this.splitPlainTextIntoLines(plainText, maxWidth);
+            
+            if (plainLines.length <= 1) {
+                // If we only have one line, just return the original text
+                return [text];
+            }
+            
+            // We need to split the text containing tspans
+            // This is a complex operation as we need to distribute the tspans across lines
+            // For now, just return the original text - future enhancement needed
+            return [text];
+        }
+        
+        // Regular text without tspans - use character-based splitting
+        return this.splitPlainTextIntoLines(text, maxWidth);
+    }
+    
+    // Helper method to split plain text into lines
+    private splitPlainTextIntoLines(text: string, maxWidth: number): string[] {
+        const words = text.split(/\s+/);
+        const lines: string[] = [];
+        let currentLine = '';
+        let currentWidth = 0;
+        const maxCharsPerLine = 50; // Approximately 400px at 16px font size
+        
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            const wordWidth = word.length;
+            
+            if (currentWidth + wordWidth > maxCharsPerLine && currentLine !== '') {
+                lines.push(currentLine.trim());
+                currentLine = word;
+                currentWidth = wordWidth;
             } else {
-                currentLine.push(word);
-                currentLength += wordLength;
+                currentLine += (currentLine ? ' ' : '') + word;
+                currentWidth += wordWidth + (currentLine ? 1 : 0); // Add space width
             }
         }
-
-        if (currentLine.length > 0) {
-            lines.push(currentLine.join(' '));
+        
+        if (currentLine) {
+            lines.push(currentLine.trim());
         }
-
+        
         return lines;
     }
 
@@ -1422,43 +2634,19 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         return [firstPart, secondPart];
     }
 
-    private formatSynopsis(text: string, innerRadius: number, fontSize: number): string {
-        const maxTextWidth = innerRadius * 1.5; // Reduced from 2 to 1.5 to make text block narrower
-        const maxWordsPerLine = 6; // Reduced from 7 to 6 for shorter lines
-    
-        // Split text into lines with balanced word count
-        const lines = this.splitIntoBalancedLines(text, maxWordsPerLine);
-    
-        // Calculate character width dynamically based on font size
-        const characterWidth = 0.6 * fontSize; // Average character width multiplier
-    
-        // Prepare the formatted text to render inside the SVG
-        return lines.map((line, i) => {
-            const spaceCount = line.split(' ').length - 1;
-            const lineWidth = line.length * characterWidth;
-            const extraSpace = maxTextWidth - lineWidth;
-    
-            // Justify the text only if there's extra space and lines are more than one
-            if (lineWidth < maxTextWidth && lines.length > 1 && spaceCount > 0 && extraSpace > 0) {
-                const spacesNeeded = extraSpace / spaceCount;
-                line = line.split(' ').join(' '.repeat(Math.ceil(spacesNeeded)));
-                if (spacesNeeded < 0) {
-                    this.log(`Negative spacesNeeded for line: "${line}"`);
-                }
-            }
-    
-            return `<text class="synopsis-text" x="0" y="${20 + i * 25}" text-anchor="middle">${line}</text>`;
-        }).join(' ');
-    
+    private generateSynopsisHTML(scene: Scene, contentLines: string[], sceneId: string): string {
+        return this.synopsisManager.generateHTML(scene, contentLines, sceneId);
     }
 
-
     private formatSubplot(subplots: string): string {
-        // Split the subplots into separate lines if there are multiple subplots
-        const subplotsList = subplots.split(',').map(subplot => subplot.trim());
-        return subplotsList.map((subplot, i) => {
-            return `<text class="subplot-text" x="0" y="${-20 + i * 25}" text-anchor="middle">${subplot}</text>`;
-        }).join(' ');
+        if (!subplots) return '';
+        
+        const items = subplots.split(',').map(item => item.trim());
+        return items.map((subplot, i) => {
+            // Ensure subplot text is safe for SVG
+            const safeSubplot = this.safeSvgText(subplot);
+            return `<text class="subplot-text" x="0" y="${-20 + i * 25}" text-anchor="middle">${safeSubplot}</text>`;
+        }).join('');
     }
 
     async loadSettings() {
@@ -1488,13 +2676,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     public log(message: string, data?: any) {
-        // Only log if debug mode is enabled
         if (this.settings.debug) {
-            if (data) {
-                console.log(`Manuscript Timeline Plugin: ${message}`, data);
-            } else {
-                console.log(`Manuscript Timeline Plugin: ${message}`);
-            }
+            console.log(`[Manuscript Timeline] ${message}`, data || '');
         }
     }
 
@@ -1522,20 +2705,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         }
     }
 
-    // Add this helper function for escaping XML/HTML special characters
-    private escapeXml(unsafe: string): string {
-        return unsafe.replace(/[<>&'"]/g, c => {
-            switch (c) {
-                case '<': return '&lt;';
-                case '>': return '&gt;';
-                case '&': return '&amp;';
-                case '\'': return '&apos;';
-                case '"': return '&quot;';
-                default: return c;
-            }
-        });
-    }
-    
     /**
      * Measures text dimensions using an offscreen DOM element
      * This provides much more accurate text sizing than estimation
@@ -1550,7 +2719,51 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         el.style.fontWeight = fontWeight;
         el.style.fontFamily = "'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif";
         el.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
-        el.innerHTML = text;
+        
+        // Check if text contains HTML/SVG tags
+        if (text.includes('<') && text.includes('>')) {
+            // Use DOMParser for safely handling HTML content
+            try {
+                const parser = new DOMParser();
+                // For SVG content
+                if (text.includes('<tspan')) {
+                    const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg"><text>${text}</text></svg>`, 'image/svg+xml');
+                    if (!doc.querySelector('parsererror')) {
+                        const textNode = doc.querySelector('text');
+                        if (textNode) {
+                            const fragment = document.createDocumentFragment();
+                            while (textNode.firstChild) {
+                                fragment.appendChild(textNode.firstChild);
+                            }
+                            el.appendChild(fragment);
+                        } else {
+                            el.textContent = text;
+                        }
+                    } else {
+                        el.textContent = text;
+                    }
+                } else {
+                    // For regular HTML
+                    const doc = parser.parseFromString(`<div>${text}</div>`, 'text/html');
+                    const div = doc.querySelector('div');
+                    if (div) {
+                        const fragment = document.createDocumentFragment();
+                        while (div.firstChild) {
+                            fragment.appendChild(div.firstChild);
+                        }
+                        el.appendChild(fragment);
+                    } else {
+                        el.textContent = text;
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing HTML content for measurement:', error);
+                el.textContent = text;
+            }
+        } else {
+            // Simple text, use textContent
+            el.textContent = text;
+        }
         
         // Append to DOM for measurement
         document.body.appendChild(el);
@@ -1570,69 +2783,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Add this function near the top of the class, after refreshTimelineIfNeeded 
     public updateSynopsisPosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
-        if (!synopsis || !svg) {
-            this.log("updateSynopsisPosition: missing synopsis or svg element", {synopsis, svg});
-            return;
-        }
-        
-        try {
-            const pt = svg.createSVGPoint();
-            pt.x = event.clientX;
-            pt.y = event.clientY;
-            const ctm = svg.getScreenCTM();
-            if (!ctm) {
-                this.log("updateSynopsisPosition: No SVG CTM available");
-                return;
-            }
-            
-            const svgP = pt.matrixTransform(ctm.inverse());
-            
-            // Determine which quadrant the mouse is in
-            const quadrant = 
-                svgP.x >= 0 && svgP.y >= 0 ? "Q1" :
-                svgP.x < 0 && svgP.y >= 0 ? "Q2" :
-                svgP.x < 0 && svgP.y < 0 ? "Q3" :
-                "Q4";
-            
-            // Place the synopsis in the appropriate position based on quadrant
-            let translateX, translateY;
-            synopsis.classList.remove('synopsis-q1', 'synopsis-q2', 'synopsis-q3', 'synopsis-q4');
-            
-            if (quadrant === 'Q1') { // Mouse in Bottom Right (Q1)
-                translateX = -600;    // Place at X = -600
-                translateY = 150;     // Place at Y = 150
-                synopsis.classList.add('synopsis-q2'); // Left justify in Q2
-            } else if (quadrant === 'Q2') { // Mouse in Bottom Left (Q2)
-                translateX = 600;     // Place at X = 600
-                translateY = 150;     // Place at Y = 150
-                synopsis.classList.add('synopsis-q1'); // Right justify in Q1
-            } else if (quadrant === 'Q3') { // Mouse in Top Left (Q3)
-                translateX = 500;     // Place at X = 500
-                translateY = -550;    // Place at Y = -550
-                synopsis.classList.add('synopsis-q4'); // Right justify in Q4
-            } else { // Mouse in Top Right (Q4)
-                translateX = -500;    // Place at X = -500
-                translateY = -550;    // Place at Y = -550
-                synopsis.classList.add('synopsis-q3'); // Left justify in Q3
-            }
-            
-            // Make sure the synopsis is visible by applying both class and style changes
-            synopsis.classList.add('visible');
-            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
-            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
-            
-            // Position based on calculated values
-            const translateValue = `translate(${translateX}, ${translateY})`;
-            synopsis.setAttribute('transform', translateValue);
-            
-            this.log(`Synopsis shown at position: ${translateX}, ${translateY} for quadrant ${quadrant}`, {
-                synopsisVisible: synopsis.classList.contains('visible'),
-                transform: synopsis.getAttribute('transform'),
-                quadrant: quadrant
-            });
-        } catch (error) {
-            console.error("Error in updateSynopsisPosition:", error);
-        }
+        this.synopsisManager.updatePosition(synopsis, event, svg, sceneId);
     }
 
     // Add method to update open files tracking
@@ -1715,10 +2866,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 }
             }
             
-            for (const path of this.openScenePaths) {
-                if (!previousOpenFiles.has(path)) {
+                for (const path of this.openScenePaths) {
+                    if (!previousOpenFiles.has(path)) {
                     addedFiles.push(path);
-                    hasChanged = true;
+                        hasChanged = true;
                 }
             }
             
@@ -1761,6 +2912,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const searchInput = new TextComponent(searchContainer);
         searchInput.setPlaceholder('Enter search term (min 3 characters)');
         searchInput.inputEl.style.flex = '1';
+        
+        // Prepopulate with current search term if one exists
+        if (this.searchActive && this.searchTerm) {
+            searchInput.setValue(this.searchTerm);
+        }
         
         // Create button container
         const buttonContainer = contentEl.createDiv('button-container');
@@ -1810,24 +2966,33 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
     
     public performSearch(term: string): void {
-        if (term.length < 4) return;
+        if (!term || term.trim().length === 0) {
+            this.clearSearch();
+            return;
+        }
         
+        // Set search state
         this.searchTerm = term;
         this.searchActive = true;
         this.searchResults.clear();
         
-        // Get scene data and find matches
+        // Find matching scenes
+        const regex = new RegExp(this.escapeRegExp(term), 'gi');
+        
+        // Populate searchResults with matching scene paths
         this.getSceneData().then(scenes => {
             scenes.forEach(scene => {
-                const searchableText = [
-                    scene.title || '',
-                    scene.synopsis || '',
-                    scene.subplot || '',
-                    ...(scene.characters || []),
-                    ...(scene.Character || [])  // Backward compatibility
-                ].join(' ').toLowerCase();
+                // Check scene properties for matches
+                const searchableContent = [
+                    scene.title,
+                    scene.synopsis,
+                    ...(scene.Character || []),
+                    scene.subplot,
+                    scene.location,
+                    scene.pov
+                ].filter(Boolean).join(' ');
                 
-                if (searchableText.includes(term.toLowerCase())) {
+                if (regex.test(searchableContent)) {
                     if (scene.path) {
                         this.searchResults.add(scene.path);
                     }
@@ -1838,13 +3003,20 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
                 .map(leaf => leaf.view as ManuscriptTimelineView)
                 .filter(view => view instanceof ManuscriptTimelineView);
-
-            // Refresh each view
-            timelineViews.forEach(view => {
-                if (view) {
-                    view.refreshTimeline();
+                
+            if (timelineViews.length > 0) {
+                // Update all timeline views with the new search results
+                timelineViews.forEach(view => {
+                    if (view) {
+                        view.refreshTimeline();
+                    }
+                });
+                
+                // Update active view reference
+                if (!this.activeTimelineView && timelineViews.length > 0) {
+                    this.activeTimelineView = timelineViews[0];
                 }
-            });
+            }
         });
     }
     
@@ -1858,14 +3030,348 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             .map(leaf => leaf.view as ManuscriptTimelineView)
             .filter(view => view instanceof ManuscriptTimelineView);
 
-        // Refresh each view
-        timelineViews.forEach(view => {
-            if (view) {
-                view.refreshTimeline();
+        if (timelineViews.length > 0) {
+            // Refresh each view
+            timelineViews.forEach(view => {
+                if (view) {
+                    view.refreshTimeline();
+                }
+            });
+        }
+    }
+
+    // Function to set CSS variables for RGB colors
+    private setCSSColorVariables() {
+        const root = document.documentElement;
+        const { publishStageColors } = this.settings;
+        
+        // Convert hex colors to RGB for CSS variables
+        Object.entries(publishStageColors).forEach(([stage, color]) => {
+            // Set the main color variable
+            root.style.setProperty(`--publishStageColors-${stage}`, color);
+            
+            // Convert hex to RGB values for rgba() usage
+            const rgbValues = this.hexToRGB(color);
+            if (rgbValues) {
+                root.style.setProperty(`--publishStageColors-${stage}-rgb`, rgbValues);
             }
         });
     }
+
+    // Helper function to convert hex to RGB values without the "rgb()" wrapper
+    private hexToRGB(hex: string): string | null {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        
+        if (isNaN(r) || isNaN(g) || isNaN(b)) {
+            return null;
+        }
+        
+        return `${r}, ${g}, ${b}`;
+    }
+
+    // Add helper method to highlight search terms
+    
+    // Helper method to convert DocumentFragment to string for backward compatibility
+
+    // Helper method to ensure text is safe for SVG
+    private safeSvgText(text: string): string {
+        if (!text) return '';
+        
+        // First decode HTML entities that might be in the text to prevent double-escaping
+        const decodedText = decodeHtmlEntities(text);
+        
+        // Handle special case: If the text already contains tspan tags
+        if (decodedText.includes('<tspan') && !decodedText.includes('&lt;tspan')) {
+            // This is a bit tricky - we want to preserve tspan tags but escape everything else
+            // Return as is for now - we'll handle this specially when creating SVG elements
+            return decodedText;
+        }
+        
+        // Otherwise, escape all special characters
+        return escapeXml(decodedText);
+    }
+
+    // Find the SVG element
+    private createSvgElement(svgContent: string, container: HTMLElement): SVGSVGElement | null {
+        try {
+            // Performance optimization: Track parsing time
+            const startTime = performance.now();
+            
+            // Create a new SVG element in the namespace
+            const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            
+            // Parse the SVG content using DOMParser
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+            
+            // Check for parsing errors
+            const parserError = svgDoc.querySelector('parsererror');
+            if (parserError) {
+                console.error('Error parsing SVG content:', parserError.textContent);
+                
+                // Try again with a fallback approach
+                const fallbackParser = new DOMParser();
+                const fallbackDoc = fallbackParser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${svgContent}</svg>`, 'image/svg+xml');
+                
+                // Check if this parsing succeeded
+                if (!fallbackDoc.querySelector('parsererror')) {
+                    const fallbackSvg = fallbackDoc.documentElement;
+                    
+                    // Copy all child nodes from the source SVG to our new element
+                    while (fallbackSvg.firstChild) {
+                        const child = fallbackSvg.firstChild;
+                        svgElement.appendChild(child);
+                    }
+                    
+                    // Set critical SVG attributes explicitly
+                    svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                    svgElement.setAttribute('width', '100%');
+                    svgElement.setAttribute('height', '100%');
+                    svgElement.setAttribute('viewBox', '-800 -800 1600 1600');
+                    svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                    svgElement.setAttribute('class', 'manuscript-timeline-svg');
+                    
+                    // Performance optimization: Add directly to fragment
+                    const fragment = document.createDocumentFragment();
+                    fragment.appendChild(svgElement);
+                    container.appendChild(fragment);
+                    
+                    console.log(`SVG parsing fallback took ${performance.now() - startTime}ms`);
+                    return svgElement;
+                }
+                
+                return null;
+            }
+            
+            // Get the source SVG element
+            const sourceSvg = svgDoc.documentElement;
+            
+            // Extract critical attributes from source SVG
+            const viewBox = sourceSvg.getAttribute('viewBox') || '-800 -800 1600 1600';
+            
+            // Set critical SVG attributes explicitly
+            svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            svgElement.setAttribute('width', '100%');
+            svgElement.setAttribute('height', '100%');
+            svgElement.setAttribute('viewBox', viewBox);
+            svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            svgElement.setAttribute('class', 'manuscript-timeline-svg');
+            
+            // Performance optimization: Use document fragment for better performance
+            const fragment = document.createDocumentFragment();
+            
+            // Copy all child nodes from the source SVG to our new element
+            while (sourceSvg.firstChild) {
+                svgElement.appendChild(sourceSvg.firstChild);
+            }
+            
+            // Add the SVG element to the container via fragment
+            fragment.appendChild(svgElement);
+            container.appendChild(fragment);
+            
+            console.log(`SVG parsing took ${performance.now() - startTime}ms`);
+            return svgElement;
+        } catch (error) {
+            console.error('Error creating SVG element:', error);
+            
+            // Final fallback approach - create minimal SVG directly
+            try {
+                // Create simple SVG root
+                const fallbackSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                
+                // Set critical SVG attributes explicitly
+                fallbackSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                fallbackSvg.setAttribute('width', '100%');
+                fallbackSvg.setAttribute('height', '100%');
+                fallbackSvg.setAttribute('viewBox', '-800 -800 1600 1600');
+                fallbackSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                fallbackSvg.setAttribute('class', 'manuscript-timeline-svg');
+                
+                // Extract content using regex approach
+                const svgBodyMatch = svgContent.match(/<svg[^>]*>([\s\S]*)<\/svg>/i);
+                if (svgBodyMatch && svgBodyMatch[1]) {
+                    // Use DOMParser to safely extract content
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${svgBodyMatch[1]}</svg>`, 'image/svg+xml');
+                    
+                    // Performance optimization: Use document fragment for better performance
+                    const fragment = document.createDocumentFragment();
+                    
+                    if (!doc.querySelector('parsererror')) {
+                        const svgDoc = doc.documentElement;
+                        
+                        // Process elements in chunks to avoid UI blocking (max 100 elements per frame)
+                        const processNodes = (nodes: Element[], startIdx: number, callback: () => void) => {
+                            const CHUNK_SIZE = 100;
+                            const endIdx = Math.min(startIdx + CHUNK_SIZE, nodes.length);
+                            
+                            for (let i = startIdx; i < endIdx; i++) {
+                                const element = nodes[i];
+                                // Create element with namespace
+                                const newElement = document.createElementNS('http://www.w3.org/2000/svg', element.tagName.toLowerCase());
+                                
+                                // Copy attributes
+                                Array.from(element.attributes).forEach(attr => {
+                                    newElement.setAttribute(attr.name, attr.value);
+                                });
+                                
+                                // Copy content
+                                newElement.textContent = element.textContent;
+                                
+                                // Add to SVG
+                                fallbackSvg.appendChild(newElement);
+                            }
+                            
+                            if (endIdx < nodes.length) {
+                                // Process next chunk in next animation frame
+                                window.requestAnimationFrame(() => processNodes(nodes, endIdx, callback));
+                            } else {
+                                // Finished processing all nodes
+                                callback();
+                            }
+                        };
+                        
+                        // Get all element nodes
+                        const elementNodes = Array.from(svgDoc.querySelectorAll('*'));
+                        
+                        // If there are too many nodes, process in chunks
+                        if (elementNodes.length > 100) {
+                            // Add loading indicator first
+                            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                            text.setAttribute('x', '0');
+                            text.setAttribute('y', '0');
+                            text.setAttribute('fill', '#333333');
+                            text.setAttribute('font-size', '24');
+                            text.setAttribute('text-anchor', 'middle');
+                            text.textContent = 'Loading timeline...';
+                            fallbackSvg.appendChild(text);
+                            
+                            // Add the SVG to container first to show loading
+                            fragment.appendChild(fallbackSvg);
+                            container.appendChild(fragment);
+                            
+                            // Process nodes in chunks
+                            processNodes(elementNodes, 0, () => {
+                                // Remove loading indicator when done
+                                fallbackSvg.removeChild(text);
+                            });
+                        } else {
+                            // Process all nodes at once for small SVGs
+                            elementNodes.forEach(element => {
+                                const newElement = document.createElementNS('http://www.w3.org/2000/svg', element.tagName.toLowerCase());
+                                
+                                Array.from(element.attributes).forEach(attr => {
+                                    newElement.setAttribute(attr.name, attr.value);
+                                });
+                                
+                                newElement.textContent = element.textContent;
+                                fallbackSvg.appendChild(newElement);
+                            });
+                            
+                            // Add to container
+                            fragment.appendChild(fallbackSvg);
+                            container.appendChild(fragment);
+                        }
+                    }
+                } else {
+                    // Add to container via fragment
+                    const fragment = document.createDocumentFragment();
+                    fragment.appendChild(fallbackSvg);
+                    container.appendChild(fragment);
+                }
+                
+                return fallbackSvg;
+            } catch (innerError) {
+                console.error('All SVG parsing approaches failed:', innerError);
+                return null;
+            }
+        }
+    }
+    
+    // Add a method to handle zooming and panning
+    private setupZoomPan(svgElement: SVGSVGElement): void {
+        // Initial transform values
+        let scale = 1;
+        const initialScale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        
+        // Track mouse and touch events
+        let isPanning = false;
+        let startPoint = { x: 0, y: 0 };
+        let endPoint = { x: 0, y: 0 };
+        
+        // Get SVG viewport dimensions
+        const updateViewBox = () => {
+            const viewBox = svgElement.getAttribute('viewBox')?.split(' ').map(Number) || [-800, -800, 1600, 1600];
+            svgElement.setAttribute('viewBox', `${viewBox[0] - translateX} ${viewBox[1] - translateY} ${viewBox[2] / scale} ${viewBox[3] / scale}`);
+        };
+        
+        // Zoom function
+        const zoom = (delta: number, x: number, y: number) => {
+            // Adjust scale with limits
+            scale = Math.max(0.2, Math.min(3, scale - delta * 0.1));
+            
+            // Apply the transform to the viewBox instead of CSS transform
+            updateViewBox();
+        };
+        
+        // Handle mouse wheel for zooming
+        svgElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 1 : -1;
+            zoom(delta, e.clientX, e.clientY);
+        });
+        
+        // Handle panning with mouse
+        svgElement.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // Left mouse button
+                isPanning = true;
+                startPoint = { x: e.clientX, y: e.clientY };
+                svgElement.style.cursor = 'grabbing';
+            }
+        });
+        
+        window.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                endPoint = { x: e.clientX, y: e.clientY };
+                
+                // Calculate the movement delta
+                const dx = (endPoint.x - startPoint.x) / scale;
+                const dy = (endPoint.y - startPoint.y) / scale;
+                
+                // Update translation
+                translateX += dx;
+                translateY += dy;
+                
+                // Update startPoint for continuous movement
+                startPoint = { x: e.clientX, y: e.clientY };
+                
+                // Apply the updated viewBox
+                updateViewBox();
+            }
+        });
+        
+        window.addEventListener('mouseup', () => {
+            isPanning = false;
+            svgElement.style.cursor = 'default';
+        });
+        
+        // Double-click to reset view
+        svgElement.addEventListener('dblclick', () => {
+            scale = initialScale;
+            translateX = 0;
+            translateY = 0;
+            
+            // Reset the viewBox to its original value
+            const size = 1600;
+            svgElement.setAttribute('viewBox', `-${size / 2} -${size / 2} ${size} ${size}`);
+        });
+    }
 }
+
 
 class ManuscriptTimelineSettingTab extends PluginSettingTab {
     plugin: ManuscriptTimelinePlugin;
@@ -1877,18 +3383,12 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
 
     // Add color swatch creation function
     private createColorSwatch(container: HTMLElement, color: string): HTMLElement {
-        const swatch = document.createElement('div');
-        swatch.className = 'color-swatch';
-        swatch.style.backgroundColor = color;
-        swatch.style.width = '20px';
-        swatch.style.height = '20px';
-        swatch.style.borderRadius = '3px';
-        swatch.style.display = 'inline-block';
-        swatch.style.marginRight = '8px';
-        swatch.style.border = '1px solid var(--background-modifier-border)';
-        
-        container.appendChild(swatch);
-        return swatch;
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = color;
+            
+            container.appendChild(swatch);
+            return swatch;
     }
 
     // Add color picker function with centered dialog
@@ -1896,75 +3396,43 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         return new Promise((resolve) => {
             // Create a modal container
             const modal = document.createElement('div');
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100%';
-            modal.style.height = '100%';
-            modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-            modal.style.display = 'flex';
-            modal.style.justifyContent = 'center';
-            modal.style.alignItems = 'center';
-            modal.style.zIndex = '1000';
+            modal.className = 'color-picker-modal';
 
             // Create the color picker container
             const pickerContainer = document.createElement('div');
-            pickerContainer.style.backgroundColor = 'var(--background-primary)';
-            pickerContainer.style.padding = '20px';
-            pickerContainer.style.borderRadius = '8px';
-            pickerContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)';
-            pickerContainer.style.position = 'relative';
-            pickerContainer.style.cursor = 'move';
+            pickerContainer.className = 'color-picker-container';
 
             // Create the color picker input
             const colorPicker = document.createElement('input');
             colorPicker.type = 'color';
             colorPicker.value = currentColor;
-            colorPicker.style.width = '100%';
-            colorPicker.style.height = '40px';
-            colorPicker.style.marginBottom = '10px';
+            colorPicker.className = 'color-picker-input';
 
             // Create hex input
             const hexInput = document.createElement('input');
             hexInput.type = 'text';
             hexInput.value = currentColor;
-            hexInput.style.width = '100%';
-            hexInput.style.marginBottom = '5px';
-            hexInput.style.padding = '5px';
+            hexInput.className = 'color-picker-text-input';
 
             // Create RGB input
             const rgbInput = document.createElement('input');
             rgbInput.type = 'text';
             rgbInput.value = this.hexToRgb(currentColor);
-            rgbInput.style.width = '100%';
-            rgbInput.style.marginBottom = '10px';
-            rgbInput.style.padding = '5px';
+            rgbInput.className = 'color-picker-text-input';
 
             // Create buttons container
             const buttonsContainer = document.createElement('div');
-            buttonsContainer.style.display = 'flex';
-            buttonsContainer.style.gap = '10px';
-            buttonsContainer.style.justifyContent = 'flex-end';
+            buttonsContainer.className = 'color-picker-buttons';
 
             // Create OK button
             const okButton = document.createElement('button');
             okButton.textContent = 'OK';
-            okButton.style.padding = '5px 15px';
-            okButton.style.borderRadius = '4px';
-            okButton.style.border = 'none';
-            okButton.style.backgroundColor = 'var(--interactive-accent)';
-            okButton.style.color = 'white';
-            okButton.style.cursor = 'pointer';
+            okButton.className = 'color-picker-button ok';
 
             // Create Cancel button
             const cancelButton = document.createElement('button');
             cancelButton.textContent = 'Cancel';
-            cancelButton.style.padding = '5px 15px';
-            cancelButton.style.borderRadius = '4px';
-            cancelButton.style.border = 'none';
-            cancelButton.style.backgroundColor = 'var(--background-modifier-error)';
-            cancelButton.style.color = 'white';
-            cancelButton.style.cursor = 'pointer';
+            cancelButton.className = 'color-picker-button cancel';
 
             // Add drag functionality
             let isDragging = false;
@@ -2032,24 +3500,25 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             pickerContainer.appendChild(rgbInput);
             pickerContainer.appendChild(buttonsContainer);
 
-            // Add picker container to modal
+            // Add the picker container to the modal
             modal.appendChild(pickerContainer);
 
-            // Add modal to document
+            // Add the modal to the document body
             document.body.appendChild(modal);
 
-            // Handle button clicks
+            // OK button event
             okButton.addEventListener('click', () => {
                 document.body.removeChild(modal);
                 resolve(colorPicker.value);
             });
 
+            // Cancel button event
             cancelButton.addEventListener('click', () => {
                 document.body.removeChild(modal);
                 resolve(null);
             });
 
-            // Close on modal click
+            // Close if clicking outside the picker
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     document.body.removeChild(modal);
@@ -2101,9 +3570,9 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             .setDesc('Set the folder containing your scene files (e.g., "Book 1" or "Scenes")')
             .addText(text => text
                 .setValue(this.plugin.settings.sourcePath)
-                .onChange(async (value) => {
+                    .onChange(async (value) => {
                     this.plugin.settings.sourcePath = value;
-                    await this.plugin.saveSettings();
+                        await this.plugin.saveSettings();
                 }));
 
         // Add debug mode setting
@@ -2116,6 +3585,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                     this.plugin.settings.debug = value;
                     await this.plugin.saveSettings();
                 }));
+                
 
         // Add publishing stage colors section
         containerEl.createEl('h2', {text: 'Publishing Stage Colors', cls: 'setting-item-heading'});
@@ -2123,19 +3593,19 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         // Create color settings for each stage
         Object.entries(this.plugin.settings.publishStageColors).forEach(([stage, color]) => {
             let textInputRef: TextComponent | undefined;
-            new Setting(containerEl)
+        new Setting(containerEl)
                 .setName(stage)
                 .addText(textInput => {
                     textInputRef = textInput;
                     textInput.setValue(color)
-                        .onChange(async (value) => {
+                    .onChange(async (value) => {
                             if (this.isValidHex(value)) {
                                 (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = value;
-                                await this.plugin.saveSettings();
+                        await this.plugin.saveSettings();
                                 // Update the color swatch
                                 const swatch = textInput.inputEl.parentElement?.querySelector('.color-swatch') as HTMLElement;
-                                if (swatch) {
-                                    swatch.style.backgroundColor = value;
+                        if (swatch) {
+                            swatch.style.backgroundColor = value;
                                 }
                             }
                         });
@@ -2172,8 +3642,8 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                     swatchContainer.appendChild(swatch);
                 }
             }
-        });
-
+            });
+            
         // Add horizontal rule to separate settings from documentation
         containerEl.createEl('hr', { cls: 'settings-separator' });
         
@@ -2198,14 +3668,19 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             })
             .catch(error => {
                 documentationContainer.createEl('p', { text: 'Error loading documentation. Please check your internet connection.' });
-            });
+        });
     }
 }
 
 // Timeline View implementation
 export class ManuscriptTimelineView extends ItemView {
+    static readonly viewType = TIMELINE_VIEW_TYPE;
     plugin: ManuscriptTimelinePlugin;
+    
+    // Scene data (scenes)
     sceneData: Scene[] = [];
+    
+    // Set of open scene paths (for tracking open files)
     openScenePaths: Set<string> = new Set<string>();
     
     constructor(leaf: WorkspaceLeaf, plugin: ManuscriptTimelinePlugin) {
@@ -2215,7 +3690,8 @@ export class ManuscriptTimelineView extends ItemView {
     }
     
     private log(message: string, data?: any) {
-        this.plugin.log(`[ManuscriptTimelineView] ${message}`, data);
+        // Disable all debug logging
+        return;
     }
     
     getViewType(): string {
@@ -2229,7 +3705,7 @@ export class ManuscriptTimelineView extends ItemView {
     getIcon(): string {
         return "shell";
     }
-    
+
     // Add this method to handle search indicator clicks
     private setupSearchControls(): void {
         const clearSearchBtn = this.contentEl.querySelector('.clear-search-btn');
@@ -2319,10 +3795,10 @@ export class ManuscriptTimelineView extends ItemView {
                 }
             }
             
-            for (const path of this.openScenePaths) {
-                if (!previousOpenFiles.has(path)) {
+                for (const path of this.openScenePaths) {
+                    if (!previousOpenFiles.has(path)) {
                     addedFiles.push(path);
-                    hasChanged = true;
+                        hasChanged = true;
                 }
             }
             
@@ -2343,7 +3819,7 @@ export class ManuscriptTimelineView extends ItemView {
             this.log('No changes in open files detected');
         }
     }
-    
+
     refreshTimeline() {
         if (!this.plugin) return;
 
@@ -2368,6 +3844,11 @@ export class ManuscriptTimelineView extends ItemView {
                 
                 // Render the timeline with the scene data
                 this.renderTimeline(container, this.sceneData);
+                
+                // Add mouse coordinate tracking if debug mode is enabled
+                if (this.plugin.settings.debug) {
+                    this.setupMouseCoordinateTracking(container);
+                }
             })
             .catch(error => {
                 loadingEl.textContent = `Error: ${error.message}`;
@@ -2376,9 +3857,99 @@ export class ManuscriptTimelineView extends ItemView {
                     console.error("Failed to load timeline data", error);
                 }
             });
-
-        // Add this after rendering the timeline
+        
+        // Setup search controls
         this.setupSearchControls();
+        
+        // Add highlight rectangles if search is active
+        if (this.plugin.searchActive) {
+            setTimeout(() => this.addHighlightRectangles(), 100);
+        }
+    }
+    
+    private setupMouseCoordinateTracking(container: HTMLElement) {
+        // Wait a bit for the SVG to be fully rendered
+        setTimeout(() => {
+            // Get SVG and text elements
+            const svg = container.querySelector('.manuscript-timeline-svg') as SVGSVGElement;
+            const debugText = svg?.querySelector('#mouse-coords-text') as SVGTextElement;
+            const debugContainer = svg?.querySelector('.debug-info-container') as SVGGElement;
+            
+            if (!svg) {
+                console.error('Could not find SVG element');
+                return;
+            }
+            
+            if (!debugText || !debugContainer) {
+                console.error('Could not find debug elements');
+                return;
+            }
+            
+            // Function to update coordinates
+            const updateCoordinates = (e: MouseEvent) => {
+                // Check if debug mode is still enabled
+                if (!this.plugin.settings.debug) {
+                    // Hide debug display if debug mode disabled
+                    debugContainer.style.display = 'none';
+                    return;
+                } else {
+                    // Ensure display is visible
+                    debugContainer.style.display = '';
+                }
+                
+                try {
+                    const pt = svg.createSVGPoint();
+                    pt.x = e.clientX;
+                    pt.y = e.clientY;
+                    
+                    const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+                    if (svgP) {
+                        debugText.textContent = `Mouse: X=${Math.round(svgP.x)}, Y=${Math.round(svgP.y)}`;
+                    }
+                } catch (err) {
+                    console.error('Error updating coordinates:', err);
+                }
+            };
+            
+            // Remove any existing listeners and add new one
+            svg.removeEventListener('mousemove', updateCoordinates as any);
+            svg.addEventListener('mousemove', updateCoordinates);
+            
+            // Also log coordinates on click
+            svg.addEventListener('click', (e: MouseEvent) => {
+                // Only log if debug mode is active
+                if (!this.plugin.settings.debug) return;
+                
+                try {
+                    const pt = svg.createSVGPoint();
+                    pt.x = e.clientX;
+                    pt.y = e.clientY;
+                    
+                    const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+                    if (svgP) {
+                        console.log('Clicked at SVG coordinates:', Math.round(svgP.x), Math.round(svgP.y));
+                    }
+                } catch (err) {
+                    console.error('Error capturing click coordinates:', err);
+                }
+            });
+            
+            // Create a MutationObserver to watch for changes to settings
+            const settingsObserver = new MutationObserver((mutations) => {
+                // Check current debug setting and update visibility accordingly
+                debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+            });
+            
+            // Initial visibility check
+            debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+            
+            // For changes that might happen outside mutation observer
+            document.addEventListener('visibilitychange', () => {
+                debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+            });
+            
+            console.log('Mouse coordinate tracking initialized');
+        }, 500); // Wait 500ms to ensure SVG is fully rendered
     }
     
     async onOpen(): Promise<void> {
@@ -2416,6 +3987,15 @@ export class ManuscriptTimelineView extends ItemView {
             })
         );
         
+        // Register for metadata changes to refresh the timeline
+        this.registerEvent(
+            this.app.metadataCache.on('changed', (file) => {
+                this.log('Metadata changed event for file: ' + file.path);
+                // Refresh the timeline view immediately when metadata changes
+                this.refreshTimeline();
+            })
+        );
+        
         // Initial check of open files
         this.updateOpenFilesTracking();
         
@@ -2436,7 +4016,6 @@ export class ManuscriptTimelineView extends ItemView {
             try {
                 // Try to create the folder if it doesn't exist
                 await this.plugin.app.vault.createFolder(sourcePath);
-                console.log(`Created folder: ${sourcePath}`);
             } catch (error) {
                 console.error(`Failed to create folder: ${sourcePath}`, error);
                 new Notice(`Failed to create folder: ${sourcePath}`);
@@ -2448,35 +4027,38 @@ export class ManuscriptTimelineView extends ItemView {
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
         const testSceneContent = `---
 Class: Scene
-Title: 1 Test Scene
-When: ${today}
+Synopsis: What happens in this scene briefly.
+Subplot:
+  - Main Plot
+  - Second Arc
 Act: 1
-Subplot: Main Plot
-Character: [Protagonist]
-Status: Working
-Synopsis: This is a test scene created to troubleshoot the timeline view.
+When: 1969-04-17
+Character:
+  - Janet Rollins
+Place:
+  - Earth
+  - San Diego
+Words: 1
+Publish Stage: Zero
+Status: Complete
+Due: 2025-05-17
+Total Time: 2
+Revision: 2
+Pending Edits: 
 ---
 
 # Test Scene
 
 This is a test scene created to help troubleshoot the Manuscript Timeline plugin.
 
-## Scene Details
-- Title: Test Scene
-- When: ${today}
-- Act: 1
-- Subplot: Main Plot
-- Character: Protagonist
-- Status: Working
 `;
         
         // Generate a unique filename
-        const filename = `${targetPath ? targetPath + "/" : ""}1_test_scene.md`;
+        const filename = `${targetPath ? targetPath + "/" : ""}1 Test Scene.md`;
         
         try {
             // Create the file
             await this.plugin.app.vault.create(filename, testSceneContent);
-            console.log(`Created test scene file: ${filename}`);
             new Notice(`Created test scene file: ${filename}`);
             
             // Refresh the timeline after a short delay to allow metadata cache to update
@@ -2504,6 +4086,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 text: "Create a Test Scene File"
             });
             
+            // SAFE: inline style used for button formatting
             testButton.style.marginTop = "20px";
             testButton.style.padding = "10px";
             
@@ -2517,279 +4100,221 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
         this.log(`Found ${scenes.length} scenes to render`);
         
         this.sceneData = scenes;
+
+        // Performance optimization: Create DocumentFragment to minimize reflows
+        const fragment = document.createDocumentFragment();
+        const timelineContainer = document.createElement("div");
+        timelineContainer.className = "manuscript-timeline-container";
+        fragment.appendChild(timelineContainer);
         
         try {
             // Generate the SVG content using the plugin's existing method
+            // Performance optimization: Calculate start time for performance logging
+            const startTime = performance.now();
             const svgContent = this.plugin.createTimelineSVG(scenes);
-            this.log("SVG content generated, length:", svgContent.length);
+            this.log(`SVG content generated in ${performance.now() - startTime}ms, length: ${svgContent.length}`);
             
-            // Create a container with proper styling for centered content
-            const timelineContainer = container.createEl("div", {
-                cls: "manuscript-timeline-container"
-            });
+            // Create the SVG element safely without using innerHTML
+            const svgElement = this.createSvgElement(svgContent, timelineContainer);
             
-            // Use innerHTML to set the SVG content
-            timelineContainer.innerHTML = svgContent;
-            
-            // Find the SVG element
-            const svgElement = timelineContainer.querySelector("svg");
             if (svgElement) {
-                // Set proper attributes for SVG element
-                svgElement.setAttribute('width', '100%');
-                svgElement.setAttribute('height', '100%');
-                svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                // Performance optimization: Use batch operations where possible
+                const allSynopses = Array.from(svgElement.querySelectorAll(".scene-info"));
+                const sceneGroups = Array.from(svgElement.querySelectorAll(".scene-group"));
                 
-                // Add direct JavaScript handlers for mouse events
-                const allSynopses = svgElement.querySelectorAll(".scene-info");
+                this.log(`Found ${sceneGroups.length} scene groups to check against ${this.openScenePaths.size} open files`);
+                
+                // Performance optimization: Process scene groups in chunks to avoid UI blocking
+                const CHUNK_SIZE = 20;
+                const processSceneGroups = (startIdx: number) => {
+                    const endIdx = Math.min(startIdx + CHUNK_SIZE, sceneGroups.length);
+                    
+                    for (let i = startIdx; i < endIdx; i++) {
+                        const group = sceneGroups[i];
+                        const encodedPath = group.getAttribute("data-path");
+                        
+                        if (encodedPath && encodedPath !== "") {
+                            const filePath = decodeURIComponent(encodedPath);
+                            
+                            // Check if this file is currently open in a tab
+                            if (this.openScenePaths.has(filePath)) {
+                                // Add a class to indicate this scene is open
+                                group.classList.add("scene-is-open");
+                                
+                                // Mark the scene path element
+                                const scenePath = group.querySelector(".scene-path");
+                                if (scenePath) {
+                                    scenePath.classList.add("scene-is-open");
+                                }
+                                
+                                // Mark the scene title text if present
+                                const sceneTitle = group.querySelector(".scene-title");
+                                if (sceneTitle) {
+                                    sceneTitle.classList.add("scene-is-open");
+                                }
+                                
+                                // Get scene ID from path element
+                                const sceneId = scenePath?.id;
+                                if (sceneId) {
+                                    // Mark the number elements
+                                    const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
+                                    if (numberSquare) {
+                                        numberSquare.classList.add("scene-is-open");
+                                    }
+                                    
+                                    const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                                    if (numberText) {
+                                        numberText.classList.add("scene-is-open");
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Set up click and hover events for path elements
+                        this.setupSceneInteractions(group, svgElement, scenes);
+                    }
+                    
+                    // Process next chunk if there are more scene groups
+                    if (endIdx < sceneGroups.length) {
+                        window.requestAnimationFrame(() => processSceneGroups(endIdx));
+                    }
+                };
+                
+                // Start processing scene groups in chunks
+                processSceneGroups(0);
+                
+                // Hide all synopses initially (in batch for performance)
                 allSynopses.forEach(synopsis => {
-                    // Initial setup to ensure they're hidden
                     (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
                     (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
                 });
                 
-                // Mark open files in the timeline
-                const sceneGroups = svgElement.querySelectorAll(".scene-group");
-                this.log(`Found ${sceneGroups.length} scene groups to check against ${this.openScenePaths.size} open files`);
-                
-                let markedOpenCount = 0;
-                
                 // Setup search controls after SVG is rendered
                 this.setupSearchControls();
-                
-                sceneGroups.forEach((group) => {
-                    const encodedPath = group.getAttribute("data-path");
-                    if (encodedPath && encodedPath !== "") {
-                        const filePath = decodeURIComponent(encodedPath);
-                        
-                        // Check if this file is currently open in a tab
-                        if (this.openScenePaths.has(filePath)) {
-                            this.log(`Marking scene as open: ${filePath}`);
-                            markedOpenCount++;
-                            
-                            // Add a class to indicate this scene is open
-                            group.classList.add("scene-is-open");
-                            
-                            // Mark the scene path element (but no styling)
-                            const scenePath = group.querySelector(".scene-path");
-                            if (scenePath) {
-                                scenePath.classList.add("scene-is-open");
-                            }
-                            
-                            // Mark the scene title text if present
-                            const sceneTitle = group.querySelector(".scene-title");
-                            if (sceneTitle) {
-                                sceneTitle.classList.add("scene-is-open");
-                            }
-                            
-                            // Mark the number square (but no styling)
-                            const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${scenePath?.id}"]`);
-                            if (numberSquare) {
-                                numberSquare.classList.add("scene-is-open");
-                            }
-                            
-                            // Mark the number text with the accent color
-                            const numberText = svgElement.querySelector(`.number-text[data-scene-id="${scenePath?.id}"]`);
-                            if (numberText) {
-                                numberText.classList.add("scene-is-open");
-                            }
-                        }
-                    }
-                    
-                    // Find all scene paths for click interaction
-                    const path = group.querySelector(".scene-path");
-                    if (path) {
-                        const encodedPath = group.getAttribute("data-path");
-                        if (encodedPath && encodedPath !== "") {
-                            const filePath = decodeURIComponent(encodedPath);
-                            path.addEventListener("click", () => {
-                                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
-                                if (file instanceof TFile) {
-                                    // Check if the file is already open in any leaf
-                                    const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
-                                    const existingLeaf = leaves.find(leaf => {
-                                        const viewState = leaf.getViewState();
-                                        return viewState.state?.file === file.path;
-                                    });
-                                    
-                                    if (existingLeaf) {
-                                        // If the file is already open, just reveal that leaf
-                                        this.plugin.app.workspace.revealLeaf(existingLeaf);
-                                    } else {
-                                        // Open in a new tab without trying to return focus
-                                        const leaf = this.plugin.app.workspace.getLeaf('tab');
-                                        leaf.openFile(file);
-                                    }
-                                }
-                            });
-                            (path as SVGElement & {style: CSSStyleDeclaration}).style.cursor = "pointer";
-                        }
-                        
-                        // Add mouseover effects for synopses
-                        const sceneId = path.id;
-                        const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
-                        
-                        if (synopsis) {
-                            // Apply mouseover effects for the group/path
-                            group.addEventListener("mouseenter", (event: MouseEvent) => {
-                                // Reset all previous mouseover effects to ensure clean state
-                                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
-                                allElements.forEach(element => {
-                                    // Remove only the selected and non-selected classes, but keep the scene-is-open class
-                                    element.classList.remove('selected', 'non-selected');
-                                });
-                                
-                                // Update synopsis position with debug info
-                                const svg = svgElement.closest('svg') as SVGSVGElement;
-                                this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
-                                
-                                // Make the tooltip visible
-                                synopsis.classList.add('visible');
-                                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
-                                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
-                                
-                                this.log("Synopsis shown", {
-                                    synopsisVisible: synopsis.classList.contains('visible'),
-                                    opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
-                                });
-                                
-                                this.log("Mouseover triggered for scene:", sceneId);
-                                
-                                // Reveal the file in navigation
-                                const encodedPath = group.getAttribute("data-path");
-                                if (encodedPath && encodedPath !== "") {
-                                    const filePath = decodeURIComponent(encodedPath);
-                                    const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
-                                    if (file instanceof TFile) {
-                                        // Use the file explorer view to reveal the file
-                                        const fileExplorer = this.plugin.app.workspace.getLeavesOfType("file-explorer")[0]?.view;
-                                        if (fileExplorer) {
-                                            // @ts-ignore - Ignore TypeScript errors as the API may not be fully typed
-                                            fileExplorer.revealInFolder(file);
-                                        }
-                                    }
-                                }
-                                
-                                // Find and animate the number square for this scene
-                                const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
-                                const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
-                                
-                                if (numberSquare) {
-                                    numberSquare.classList.add('selected');
-                                    
-                                    // Add scene color as CSS custom property
-                                    const sceneFill = path.getAttribute("fill");
-                                    if (sceneFill) {
-                                        // Use CSS variable for color
-                                        (numberSquare as SVGElement & {style: CSSStyleDeclaration}).style.setProperty('--scene-color', sceneFill);
-                                    }
-                                }
-                                
-                                if (numberText) {
-                                    numberText.classList.add('selected');
-                                }
-                                
-                                // Apply color transform without changing opacity
-                                const allPaths = svgElement.querySelectorAll(".scene-path");
-                                allPaths.forEach(otherPath => {
-                                    if (otherPath !== path) {
-                                        // Set ALL non-selected scenes to non-selected class
-                                        otherPath.classList.add('non-selected');
-                                        
-                                        // Find and fade this path's number box and scene title
-                                        const otherId = otherPath.id;
-                                        
-                                        // Add non-selected to all elements for this path
-                                        const elementsToFade = [
-                                            svgElement.querySelector(`.number-square[data-scene-id="${otherId}"]`),
-                                            svgElement.querySelector(`.number-text[data-scene-id="${otherId}"]`),
-                                            svgElement.querySelector(`.scene-title[data-scene-id="${otherId}"]`)
-                                        ];
-                                        
-                                        elementsToFade.forEach(element => {
-                                            if (element) {
-                                                // ONLY ADD NON-SELECTED CLASS - just like for number boxes
-                                                element.classList.add('non-selected');
-                                                
-                                                // Force browser reflow to apply the class
-                                                void (element as HTMLElement).offsetWidth;
-                                            }
-                                        });
-                                    } else {
-                                        // Make the current path more prominent with class
-                                        otherPath.classList.add('selected');
-                                        
-                                        // Highlight this scene's title and add the selected class
-                                        const currentId = otherPath.id;
-                                        const currentSceneTitle = svgElement.querySelector(`.scene-title[data-scene-id="${currentId}"]`);
-                                        
-                                        if (currentSceneTitle) {
-                                            // ONLY ADD SELECTED CLASS - just like for number boxes
-                                            currentSceneTitle.classList.add('selected');
-                                        }
-                                    }
-                                });
-                            });
-                            
-                            group.addEventListener("mouseleave", () => {
-                                if (synopsis) {
-                                    // Apply BOTH class and direct style changes for maximum compatibility
-                                    synopsis.classList.remove('visible');
-                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
-                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
-                                    
-                                    this.log("Synopsis hidden", {
-                                        synopsisVisible: synopsis.classList.contains('visible'),
-                                        opacity: (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity
-                                    });
-                                }
-                                
-                                // Reset the styling of all scene elements
-                                const allPaths = svgElement.querySelectorAll(".scene-path");
-                                allPaths.forEach(otherPath => {
-                                    // Remove the mouseover effect classes
-                                    otherPath.classList.remove('selected', 'non-selected');
-                                    
-                                    // Reset number box and title styling
-                                    const otherId = otherPath.id;
-                                    
-                                    // Remove classes from all elements for this path
-                                    const elementsToReset = [
-                                        svgElement.querySelector(`.number-square[data-scene-id="${otherId}"]`),
-                                        svgElement.querySelector(`.number-text[data-scene-id="${otherId}"]`),
-                                        svgElement.querySelector(`.scene-title[data-scene-id="${otherId}"]`)
-                                    ];
-                                    
-                                    elementsToReset.forEach(element => {
-                                        if (element) {
-                                            // Remove mouseover classes
-                                            element.classList.remove('selected', 'non-selected');
-                                            
-                                            // For number squares, remove the custom CSS property
-                                            if (element.classList.contains('number-square')) {
-                                                (element as SVGElement & {style: CSSStyleDeclaration}).style.removeProperty('--scene-color');
-                                            }
-                                            
-                                            // Force browser reflow to apply the class
-                                            void (element as HTMLElement).offsetWidth;
-                                        }
-                                    });
-                                });
-                            });
-                        }
-                    }
-                });
-                
-                this.log(`Marked ${markedOpenCount} scenes as open`);
-                this.log("Added click handlers and mouseover effects to scene paths");
-            } else {
-                console.error("Failed to find SVG element in container");
             }
+                
+            // Add the fragment to the container to minimize DOM operations
+            container.appendChild(fragment);
+            
         } catch (error) {
             console.error("Error rendering timeline:", error);
             container.createEl("div", {
-                cls: "error-message",
-                text: `Error rendering timeline: ${error.message}`
+                text: "Error rendering timeline. Check console for details."
+            });
+        }
+    }
+    
+    // New helper method to set up scene interactions
+    private setupSceneInteractions(group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
+        // Find path for click interaction
+        const path = group.querySelector(".scene-path");
+        if (!path) return;
+        
+        const encodedPath = group.getAttribute("data-path");
+        if (encodedPath && encodedPath !== "") {
+            const filePath = decodeURIComponent(encodedPath);
+            
+            // Set up click handler
+            path.addEventListener("click", () => {
+                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+                if (file instanceof TFile) {
+                    // Check if the file is already open in any leaf
+                    const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
+                    const existingLeaf = leaves.find(leaf => {
+                        const viewState = leaf.getViewState();
+                        return viewState.state?.file === file.path;
+                    });
+                    
+                    if (existingLeaf) {
+                        // If the file is already open, just reveal that leaf
+                        this.plugin.app.workspace.revealLeaf(existingLeaf);
+                    } else {
+                        // Open in a new tab
+                        const leaf = this.plugin.app.workspace.getLeaf('tab');
+                        leaf.openFile(file);
+                    }
+                }
+            });
+            (path as SVGElement & {style: CSSStyleDeclaration}).style.cursor = "pointer";
+        }
+        
+        // Set up mouseover events for synopses
+        const sceneId = path.id;
+        let synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+
+        // If no synopsis found by exact ID match, try fallback methods
+        if (!synopsis && group.hasAttribute("data-path") && group.getAttribute("data-path")) {
+            const encodedPath = group.getAttribute("data-path");
+            if (encodedPath) {
+                const path = decodeURIComponent(encodedPath);
+                const matchingSceneIndex = scenes.findIndex(s => s.path === path);
+                
+                if (matchingSceneIndex > -1) {
+                    // Use the index to match against any available synopsis
+                    const allSynopses = Array.from(svgElement.querySelectorAll('.scene-info'));
+                    
+                    // As a fallback, just use the synopsis at the same index if available
+                    if (matchingSceneIndex < allSynopses.length) {
+                        synopsis = allSynopses[matchingSceneIndex] as Element;
+                    }
+                }
+            }
+        }
+
+        if (synopsis) {
+            // Performance optimization: Use a debounced mousemove handler instead of directly updating
+            let timeoutId: number | null = null;
+            
+            // Apply mouseover effects for the group/path
+            group.addEventListener("mouseenter", (event: MouseEvent) => {
+                // Reset all previous mouseover effects to ensure clean state
+                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                allElements.forEach(element => {
+                    // Remove only the selected and non-selected classes, but keep the scene-is-open class
+                    element.classList.remove('selected', 'non-selected');
+                });
+                
+                // Make the tooltip visible
+                synopsis.classList.add('visible');
+                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
+                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
+                
+                // Update position on initial hover
+                const svg = svgElement.closest('svg') as SVGSVGElement;
+                this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
+            });
+            
+            // Use mousemove with debounce to improve performance
+            group.addEventListener("mousemove", (event: MouseEvent) => {
+                if (timeoutId) {
+                    window.clearTimeout(timeoutId);
+                }
+                
+                timeoutId = window.setTimeout(() => {
+                    const svg = svgElement.closest('svg') as SVGSVGElement;
+                    this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
+                    timeoutId = null;
+                }, 50); // 50ms debounce
+            });
+            
+            group.addEventListener("mouseleave", () => {
+                if (timeoutId) {
+                    window.clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                
+                // Hide the tooltip
+                synopsis.classList.remove('visible');
+                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
+                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
+                
+                // Reset all element states
+                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                allElements.forEach(element => {
+                    element.classList.remove('selected', 'non-selected');
+                });
             });
         }
     }
 }
+

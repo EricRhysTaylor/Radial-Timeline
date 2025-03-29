@@ -18,6 +18,27 @@
       "@typescript-eslint/no-unused-vars": ["error", { "args": "none" }],
       "@typescript-eslint/ban-ts-comment": "off",
       "no-prototype-builtins": "off",
-      "@typescript-eslint/no-empty-function": "off"
+      "@typescript-eslint/no-empty-function": "off",
+      "no-restricted-properties": [
+        "error",
+        {
+          "object": "Element",
+          "property": "innerHTML",
+          "message": "For security reasons, use DOM manipulation methods instead of innerHTML"
+        },
+        {
+          "object": "Element", 
+          "property": "outerHTML",
+          "message": "For security reasons, use DOM manipulation methods instead of outerHTML"
+        },
+        {
+          "property": "innerHTML",
+          "message": "For security reasons, use DOM manipulation methods instead of innerHTML"
+        },
+        {
+          "property": "outerHTML",
+          "message": "For security reasons, use DOM manipulation methods instead of outerHTML"
+        }
+      ]
     } 
   }

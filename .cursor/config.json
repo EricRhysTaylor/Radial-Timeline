@@ -1,0 +1,6 @@
+{
+  "projectId": "obsidian-manuscript-timeline",
+  "projectName": "Obsidian Manuscript Timeline",
+  "projectType": "Obsidian Plugin",
+  "customInstructions": "This is an Obsidian.md plugin project. Please follow these critical guidelines when suggesting code changes:\n\n1. SECURITY: Never use innerHTML, outerHTML, or string concatenation to create HTML/SVG content. These methods can introduce security vulnerabilities.\n\n2. Always use proper DOM manipulation methods:\n   - Create elements with document.createElement() or document.createElementNS()\n   - Set content with element.textContent, not innerHTML\n   - Append elements with appendChild() or insertBefore()\n\n3. For SVG content, use proper SVG namespace: http://www.w3.org/2000/svg\n\n4. For parsing SVG strings, use DOMParser instead of setting innerHTML\n\n5. Follow Obsidian plugin conventions in package.json, manifest.json and version management\n\nThese instructions override any conflicting default behavior."
+} 
