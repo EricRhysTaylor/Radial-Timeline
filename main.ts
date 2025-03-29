@@ -1099,7 +1099,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 // Add spacer and date part
                 if (datePart) {
                     fragment.appendChild(document.createTextNode('   '));
-                    fragment.appendChild(document.createTextNode(datePart));
+                    // Create a date tspan to position it properly
+                    const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    dateTspan.setAttribute("class", "date-text");
+                    dateTspan.setAttribute("dy", "-0.3em"); // Move date slightly higher
+                    dateTspan.textContent = datePart;
+                    fragment.appendChild(dateTspan);
                 }
             } else {
                 // No scene number, just title + date
@@ -1122,7 +1127,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 // Add spacer and date part
                 if (datePart) {
                     fragment.appendChild(document.createTextNode('   '));
-                    fragment.appendChild(document.createTextNode(datePart));
+                    // Create a date tspan to position it properly
+                    const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    dateTspan.setAttribute("class", "date-text");
+                    dateTspan.setAttribute("dy", "-0.3em"); // Move date slightly higher
+                    dateTspan.textContent = datePart;
+                    fragment.appendChild(dateTspan);
                 }
             }
             
