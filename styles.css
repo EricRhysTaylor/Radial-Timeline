@@ -30,6 +30,7 @@
   box-sizing: border-box;
   padding: 0;
   margin: 0;
+  background-color: transparent;
 }
 
 /* Loading and error messages */
@@ -55,8 +56,9 @@
   transform-origin: center;
   object-fit: contain;
   cursor: default;
-  background-color: transparent;
+  background-color: transparent; /* Ensure SVG background is transparent */
   font-family: 'Lato', sans-serif;
+  fill: none; /* Don't fill the SVG background */
 }
 
 /* Scene elements */
@@ -162,6 +164,7 @@ path.scene-path[fill="#EEEEEE"] {
   fill: var(--text-normal);
   text-anchor: middle;
   dominant-baseline: middle;
+  opacity: 0.85; /* Slightly transparent for better visibility */
 }
 
 /* Optimize month lines */
@@ -843,7 +846,7 @@ tspan .search-term {
 
 /* Progress ring styling */
 .progress-ring-base {
-  fill: #EEEEEE;
+  fill: none;
   stroke: #DDDDDD;
   stroke-width: 1px;
 }
@@ -860,4 +863,6 @@ tspan .search-term {
   font-size: 14px;
   fill: var(--text-normal, #333333);
   font-weight: bold;
+  text-transform: uppercase;
+  opacity: 0.85; /* Match the opacity from the old styles */
 }
