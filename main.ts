@@ -4409,6 +4409,39 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     element.classList.remove('selected', 'non-selected');
                 });
                 
+                // Highlight the current scene path and related elements
+                const currentPath = group.querySelector('.scene-path');
+                if (currentPath) {
+                    currentPath.classList.add('selected');
+                    
+                    // Also highlight the number square and text
+                    const sceneId = path.id;
+                    const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
+                    const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                    
+                    if (numberSquare) {
+                        numberSquare.classList.add('selected');
+                    }
+                    
+                    if (numberText) {
+                        numberText.classList.add('selected');
+                    }
+                    
+                    // Highlight the scene title
+                    const sceneTitle = group.querySelector('.scene-title');
+                    if (sceneTitle) {
+                        sceneTitle.classList.add('selected');
+                    }
+                }
+                
+                // Make other scenes less prominent
+                allElements.forEach(element => {
+                    if (!element.classList.contains('selected') && 
+                        !element.classList.contains('scene-is-open')) {
+                        element.classList.add('non-selected');
+                    }
+                });
+                
                 // Make the tooltip visible
                 synopsis.classList.add('visible');
                 (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
