@@ -422,7 +422,7 @@ tspan .search-term {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   vertical-align: super;
-  baseline-shift: -0.3em;
+  baseline-shift: -0.2em;
 }
 .scene-info text.info-text.title-text-secondary {
   font-size: 18px;

@@ -1102,7 +1102,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     // Create a date tspan to position it properly
                     const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                     dateTspan.setAttribute("class", "date-text");
-                    dateTspan.setAttribute("dy", "-0.3em"); // Move date slightly higher
+                    dateTspan.setAttribute("dy", "-0.2em"); // Adjust to align better with the top of the title
                     dateTspan.textContent = datePart;
                     fragment.appendChild(dateTspan);
                 }
@@ -1130,7 +1130,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     // Create a date tspan to position it properly
                     const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                     dateTspan.setAttribute("class", "date-text");
-                    dateTspan.setAttribute("dy", "-0.3em"); // Move date slightly higher
+                    dateTspan.setAttribute("dy", "-0.2em"); // Adjust to align better with the top of the title
                     dateTspan.textContent = datePart;
                     fragment.appendChild(dateTspan);
                 }
