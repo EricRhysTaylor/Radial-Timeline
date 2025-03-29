@@ -467,8 +467,6 @@ class SynopsisManager {
             // Add extra large vertical space between synopsis and metadata
             const metadataY = (synopsisEndIndex * lineHeight) + 45; // Big gap below the synopsis
             
-            this.plugin.log(`Metadata Y=${metadataY}`);
-            
             // Add invisible spacer element to ensure the gap is preserved
             const spacerY = (synopsisEndIndex * lineHeight) + 25;
             const spacerElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -478,8 +476,6 @@ class SynopsisManager {
             spacerElement.setAttribute("opacity", "0");
             spacerElement.textContent = "\u00A0"; // Non-breaking space
             synopsisTextGroup.appendChild(spacerElement);
-            
-            this.plugin.log(`Metadata Y=${metadataY} with spacer at Y=${spacerY}`);
             
             // Process subplots if first metadata item exists
             const decodedMetadataItems = metadataItems.map(item => decodeHtmlEntities(item));
@@ -3832,8 +3828,9 @@ export class ManuscriptTimelineView extends ItemView {
                 // Render the timeline with the scene data
                 this.renderTimeline(container, this.sceneData);
                 
-                // Add mouse coordinate tracking if debug mode is enabled
+                // Count SVG elements if debug mode is enabled
                 if (this.plugin.settings.debug) {
+                    this.countSvgElements(container);
                     this.setupMouseCoordinateTracking(container);
                 }
             })
@@ -3852,6 +3849,45 @@ export class ManuscriptTimelineView extends ItemView {
         if (this.plugin.searchActive) {
             setTimeout(() => this.addHighlightRectangles(), 100);
         }
+    }
+    
+    /**
+     * Count all SVG elements and log to console for debugging
+     */
+    private countSvgElements(container: HTMLElement) {
+        setTimeout(() => {
+            const svg = container.querySelector('.manuscript-timeline-svg') as SVGSVGElement;
+            
+            if (!svg) {
+                console.log('Could not find SVG element for counting');
+                return;
+            }
+            
+            // Count all SVG elements by type
+            const elementCounts: Record<string, number> = {};
+            const allElements = svg.querySelectorAll('*');
+            let totalCount = 0;
+            
+            allElements.forEach(el => {
+                const tagName = el.tagName.toLowerCase();
+                elementCounts[tagName] = (elementCounts[tagName] || 0) + 1;
+                totalCount++;
+            });
+            
+            // Log the counts
+            console.log(`SVG Elements Count (Total: ${totalCount}):`);
+            Object.entries(elementCounts)
+                .sort((a, b) => b[1] - a[1]) // Sort by count, descending
+                .forEach(([tagName, count]) => {
+                    console.log(`  ${tagName}: ${count}`);
+                });
+            
+            // Add count to debug display if it exists
+            const debugText = svg.querySelector('#element-count-text');
+            if (debugText) {
+                (debugText as SVGTextElement).textContent = `SVG Elements: ${totalCount}`;
+            }
+        }, 500); // Wait for SVG to fully render
     }
     
     private setupMouseCoordinateTracking(container: HTMLElement) {
