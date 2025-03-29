@@ -840,3 +840,24 @@ tspan .search-term {
 .number-text.non-selected {
   fill: #FFFFFF;
 }
+
+/* Progress ring styling */
+.progress-ring-base {
+  fill: #EEEEEE;
+  stroke: #DDDDDD;
+  stroke-width: 1px;
+}
+
+.progress-ring-fill {
+  fill: none;
+  stroke-width: 5px;
+  stroke-linecap: round;
+}
+
+/* Center key text styling */
+.center-key-text {
+  font-family: 'Lato', sans-serif;
+  font-size: 14px;
+  fill: var(--text-normal, #333333);
+  font-weight: bold;
+}
