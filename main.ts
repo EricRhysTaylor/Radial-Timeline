@@ -1084,11 +1084,14 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                 titleTspan.setAttribute("font-weight", "bold");
                 
-                // Add scene number as regular text
+                // Add scene number as regular text (keeping this in the bold tspan)
                 titleTspan.textContent = `${sceneNumber} `;
-                
-                // Create a text node to hold the highlighted content
                 fragment.appendChild(titleTspan);
+                
+                // Create a title tspan to hold the main title text
+                const mainTitleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                mainTitleTspan.setAttribute("font-weight", "bold");
+                fragment.appendChild(mainTitleTspan);
                 
                 // Split the title by search term and create highlighted spans
                 const titleParts = sceneTitle.split(regex);
@@ -1098,10 +1101,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                         highlight.setAttribute("class", "search-term");
                         highlight.textContent = part;
-                        fragment.appendChild(highlight);
+                        mainTitleTspan.appendChild(highlight);
                     } else if (part) {
                         // This is regular text
-                        fragment.appendChild(document.createTextNode(part));
+                        mainTitleTspan.appendChild(document.createTextNode(part));
                     }
                 });
                 
