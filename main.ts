@@ -275,6 +275,8 @@ function decodeHtmlEntities(text: string): string {
 function parseSceneTitleComponents(titleText: string): { sceneNumber: string, title: string, date: string } {
     const result = { sceneNumber: "", title: "", date: "" };
     
+    if (!titleText) return result;
+    
     // First decode any HTML entities
     const decodedText = decodeHtmlEntities(titleText);
     
@@ -285,25 +287,32 @@ function parseSceneTitleComponents(titleText: string): { sceneNumber: string, ti
         return result;
     }
     
-    // Split by triple spaces which separate the date
-    const parts = decodedText.split(/\s{3,}/);
-    const titlePart = parts[0];
-    
-    // If we have a date part, store it
-    if (parts.length > 1) {
-        result.date = parts[1].trim();
-    }
-    
-    // Extract scene number from the title part if it exists
-    const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
-    
-    if (titleMatch) {
-        // We have a scene number + title format
-        result.sceneNumber = titleMatch[1];
-        result.title = titleMatch[3]; // Note: this is just the title without scene number
+    // First, check if there's a date at the end (typically after 3+ spaces)
+    // The date is usually a date format, often at the end after multiple spaces
+    const dateMatch = decodedText.match(/\s{3,}(.+?)$/);
+    if (dateMatch) {
+        result.date = dateMatch[1].trim();
+        
+        // Get just the title part without the date
+        const titlePart = decodedText.substring(0, dateMatch.index).trim();
+        
+        // Extract scene number if present at beginning of title
+        const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
+        if (titleMatch) {
+            result.sceneNumber = titleMatch[1];
+            result.title = titleMatch[3]; // Just the title text, no number
+        } else {
+            result.title = titlePart; // No scene number, use entire title part
+        }
     } else {
-        // No scene number, just title
-        result.title = titlePart;
+        // No date found, check for scene number in the full text
+        const titleMatch = decodedText.match(/^(\d+(\.\d+)?)\s+(.+)$/);
+        if (titleMatch) {
+            result.sceneNumber = titleMatch[1];
+            result.title = titleMatch[3];
+        } else {
+            result.title = decodedText;
+        }
     }
     
     return result;
