@@ -1110,8 +1110,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 
                 // Add date part, using same format as addTitleContent method
                 if (date) {
-                    // Add spacer first
-                    fragment.appendChild(document.createTextNode('   '));
+                    // Add spacer first (add extra space after title for better readability)
+                    fragment.appendChild(document.createTextNode('    '));
                     
                     // Create a date tspan with the same class as in addTitleContent
                     const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
@@ -1144,8 +1144,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 
                 // Add date part, using same format as addTitleContent method
                 if (date) {
-                    // Add spacer first
-                    fragment.appendChild(document.createTextNode('   '));
+                    // Add spacer first (add extra space after title for better readability)
+                    fragment.appendChild(document.createTextNode('    '));
                     
                     // Create a date tspan with the same class as in addTitleContent
                     const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
