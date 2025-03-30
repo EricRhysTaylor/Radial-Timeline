@@ -1080,33 +1080,51 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 const sceneNumber = titleMatch[1];
                 const sceneTitle = titleMatch[3];
                 
+                // Create a title container tspan element
+                const titleContainer = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                fragment.appendChild(titleContainer);
+                
                 // Add scene number and bolded text to maintain consistency with non-search case
                 const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                 titleTspan.setAttribute("font-weight", "bold");
                 
                 // Add scene number as regular text (keeping this in the bold tspan)
                 titleTspan.textContent = `${sceneNumber} `;
-                fragment.appendChild(titleTspan);
+                titleContainer.appendChild(titleTspan);
                 
-                // Create a title tspan to hold the main title text
+                // Split the title by search term and create highlighted spans within the main title tspan
                 const mainTitleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                 mainTitleTspan.setAttribute("font-weight", "bold");
-                fragment.appendChild(mainTitleTspan);
+                titleContainer.appendChild(mainTitleTspan);
                 
-                // Split the title by search term and create highlighted spans
-                const titleParts = sceneTitle.split(regex);
-                titleParts.forEach((part, index) => {
-                    if (index % 2 === 1) {
-                        // This is a matched part (odd index)
-                        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                        highlight.setAttribute("class", "search-term");
-                        highlight.textContent = part;
-                        mainTitleTspan.appendChild(highlight);
-                    } else if (part) {
-                        // This is regular text
-                        mainTitleTspan.appendChild(document.createTextNode(part));
+                // Reset regex to start from beginning
+                regex.lastIndex = 0;
+                
+                // Process the title content character by character to ensure highlighting works correctly
+                let lastIndex = 0;
+                let match;
+                
+                while ((match = regex.exec(sceneTitle)) !== null) {
+                    // Add text before match
+                    if (match.index > lastIndex) {
+                        const textBefore = document.createTextNode(sceneTitle.substring(lastIndex, match.index));
+                        mainTitleTspan.appendChild(textBefore);
                     }
-                });
+                    
+                    // Add the highlighted match
+                    const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    highlight.setAttribute("class", "search-term");
+                    highlight.textContent = match[0];
+                    mainTitleTspan.appendChild(highlight);
+                    
+                    lastIndex = match.index + match[0].length;
+                }
+                
+                // Add any remaining text
+                if (lastIndex < sceneTitle.length) {
+                    const textAfter = document.createTextNode(sceneTitle.substring(lastIndex));
+                    mainTitleTspan.appendChild(textAfter);
+                }
                 
                 // Add date part, using same format as addTitleContent method
                 if (date) {
@@ -1122,25 +1140,43 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             } else {
                 // No scene number, just title + date
                 
+                // Create a title container tspan element
+                const titleContainer = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                fragment.appendChild(titleContainer);
+                
                 // Create a bold tspan for the title
                 const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                 titleTspan.setAttribute("font-weight", "bold");
-                fragment.appendChild(titleTspan);
+                titleContainer.appendChild(titleTspan);
                 
-                // Split the title by search term and create highlighted spans
-                const titleParts = titlePart.split(regex);
-                titleParts.forEach((part, index) => {
-                    if (index % 2 === 1) {
-                        // This is a matched part (odd index)
-                        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                        highlight.setAttribute("class", "search-term");
-                        highlight.textContent = part;
-                        titleTspan.appendChild(highlight);
-                    } else if (part) {
-                        // This is regular text
-                        titleTspan.appendChild(document.createTextNode(part));
+                // Reset regex to start from beginning
+                regex.lastIndex = 0;
+                
+                // Process the title content character by character to ensure highlighting works correctly
+                let lastIndex = 0;
+                let match;
+                
+                while ((match = regex.exec(titlePart)) !== null) {
+                    // Add text before match
+                    if (match.index > lastIndex) {
+                        const textBefore = document.createTextNode(titlePart.substring(lastIndex, match.index));
+                        titleTspan.appendChild(textBefore);
                     }
-                });
+                    
+                    // Add the highlighted match
+                    const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    highlight.setAttribute("class", "search-term");
+                    highlight.textContent = match[0];
+                    titleTspan.appendChild(highlight);
+                    
+                    lastIndex = match.index + match[0].length;
+                }
+                
+                // Add any remaining text
+                if (lastIndex < titlePart.length) {
+                    const textAfter = document.createTextNode(titlePart.substring(lastIndex));
+                    titleTspan.appendChild(textAfter);
+                }
                 
                 // Add date part, using same format as addTitleContent method
                 if (date) {
