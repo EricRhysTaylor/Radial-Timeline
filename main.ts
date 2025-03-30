@@ -273,29 +273,26 @@ function decodeHtmlEntities(text: string): string {
  * @returns An object with the parsed components
  */
 function parseSceneTitleComponents(titleText: string): { sceneNumber: string, title: string, date: string } {
-    // Default return values
-    const result = {
-        sceneNumber: '',
-        title: '',
-        date: ''
-    };
+    const result = { sceneNumber: "", title: "", date: "" };
     
-    if (!titleText) return result;
-    
-    // First decode any HTML entities in the title text
+    // First decode any HTML entities
     const decodedText = decodeHtmlEntities(titleText);
     
-    // Check for tspan content which needs special handling
+    // Handle the case where text might already contain tspan elements
     if (decodedText.includes('<tspan')) {
-        // For preformatted HTML, we'll just return the raw content
-        // This case is typically handled by specialized methods
+        // If complex formatting is present, return the title as-is
+        result.title = decodedText;
         return result;
     }
     
-    // Split the title and date parts (separated by 3 or more spaces)
+    // Split by triple spaces which separate the date
     const parts = decodedText.split(/\s{3,}/);
     const titlePart = parts[0];
-    result.date = parts.length > 1 ? parts.slice(1).join('  ') : '';
+    
+    // If we have a date part, store it
+    if (parts.length > 1) {
+        result.date = parts[1].trim();
+    }
     
     // Extract scene number from the title part if it exists
     const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
@@ -303,7 +300,7 @@ function parseSceneTitleComponents(titleText: string): { sceneNumber: string, ti
     if (titleMatch) {
         // We have a scene number + title format
         result.sceneNumber = titleMatch[1];
-        result.title = titleMatch[3];
+        result.title = titleMatch[3]; // Note: this is just the title without scene number
     } else {
         // No scene number, just title
         result.title = titlePart;
