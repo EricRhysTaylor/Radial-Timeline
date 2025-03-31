@@ -1,7 +1,7 @@
 {
 	"id": "manuscript-timeline",
 	"name": "Manuscript Timeline",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"minAppVersion": "1.4.0",
 	"description": "A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.",
 	"author": "Eric Rhys Taylor",
