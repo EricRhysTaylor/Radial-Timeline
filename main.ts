@@ -1241,11 +1241,48 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Special handling for title lines containing scene number and date
         // Title format is typically: "SceneNumber SceneTitle   Date" 
         if (decodedText.includes('   ') && !decodedText.includes('<tspan')) {
-            // Parse the title content into components
-            const titleComponents = parseSceneTitleComponents(decodedText);
+            // Handle title lines directly with the same approach as other text
+            // Split the title and date
+            const dateMatch = decodedText.match(/\s{3,}(.+?)$/);
             
-            // Render the title components with search highlighting
-            renderSceneTitleComponents(titleComponents, fragment, this.searchTerm);
+            if (dateMatch) {
+                // Get title part without the date
+                const titlePart = decodedText.substring(0, dateMatch.index).trim();
+                const datePart = dateMatch[1].trim();
+                
+                // Add the title part with search term highlighting
+                highlightSearchTermsInText(titlePart, this.searchTerm, fragment);
+                
+                // Add spacer between title and date
+                fragment.appendChild(document.createTextNode('    '));
+                
+                // Add the date part
+                const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                dateTspan.setAttribute("class", "date-text");
+                
+                // Add date content directly
+                dateTspan.textContent = datePart;
+                
+                // Check if the date part contains the search term
+                if (this.searchTerm && datePart.toLowerCase().includes(this.searchTerm.toLowerCase())) {
+                    // If it contains the search term, we need a more complex approach
+                    const dateFragment = document.createDocumentFragment();
+                    highlightSearchTermsInText(datePart, this.searchTerm, dateFragment);
+                    
+                    // Clear the tspan
+                    while (dateTspan.firstChild) {
+                        dateTspan.removeChild(dateTspan.firstChild);
+                    }
+                    
+                    // Copy the highlighted content to the tspan
+                    dateTspan.appendChild(dateFragment);
+                }
+                
+                fragment.appendChild(dateTspan);
+            } else {
+                // No date separator, just highlight the full text
+                highlightSearchTermsInText(decodedText, this.searchTerm, fragment);
+            }
             
             // Convert fragment to string using XMLSerializer
             return this.serializeFragment(fragment);
