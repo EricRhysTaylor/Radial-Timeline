@@ -1269,8 +1269,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     titleTspan.textContent = titleText;
                     fragment.appendChild(titleTspan);
                     
-                    // Add single space between title and date (consistent with the scene number case)
-                    fragment.appendChild(document.createTextNode(' '));
+                    // Add 4 spaces between title and date to match the non-search case
+                    fragment.appendChild(document.createTextNode('    '));
                     
                     // Add the date part
                     const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
@@ -1282,7 +1282,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     fragment.appendChild(document.createTextNode(titlePart));
                     
                     // Add spacer between title and date (consistent with the scene number case)
-                    fragment.appendChild(document.createTextNode(' '));
+                    // Changed from single space to 4 spaces to match the scene number case
+                    fragment.appendChild(document.createTextNode('    '));
                     
                     // Add the date part
                     const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
