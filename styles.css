@@ -285,12 +285,8 @@ text.info-text.title-text-main tspan:not(.search-term) {
   fill: var(--title-color) !important;
 }
 .search-term {
-  fill: inherit !important;
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em !important;
-  stroke-opacity: 0.5 !important;
-  paint-order: stroke !important;
-  font-weight: bold !important;
+  fill: var(--text-highlight-bg);
+  font-weight: bold;
 }
 .metadata-text .search-term,
 text.info-text.metadata-text .search-term,
@@ -422,7 +418,7 @@ tspan .search-term {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   vertical-align: super;
-  baseline-shift: -0.2em;
+  baseline-shift: .3em;
 }
 .scene-info text.info-text.title-text-secondary {
   font-size: 18px;
@@ -589,16 +585,16 @@ tspan .search-term {
   color: white;
 }
 .color-swatch {
+  display: inline-block;
   width: 20px;
   height: 20px;
-  border-radius: 3px;
-  display: inline-block;
-  margin-right: 8px;
+  background-color: var(--swatch-color);
   border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+  margin-left: 8px;
 }
 .debug-info-container {
   pointer-events: none;
-  z-index: 1000;
 }
 .debug-info-background {
   fill: rgba(255, 255, 255, 0.8);
@@ -670,4 +666,255 @@ tspan .search-term {
   font-weight: bold;
   text-transform: uppercase;
   opacity: 0.85;
+}
+
+/* Debug container styles */
+.debug-info-container {
+    pointer-events: none;
+}
+
+/* Search term highlight styles */
+.search-term {
+    fill: var(--text-highlight-bg);
+    font-weight: bold;
+}
+
+/* Color swatch styles */
+.color-swatch {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: var(--swatch-color);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+/* Debug container visibility */
+.debug-container {
+    display: none;
+}
+
+.debug-container.visible {
+    display: block;
+}
+
+/* Search container styles */
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Button container styles */
+.button-container {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Test button styles */
+.test-button {
+    padding: 10px;
+}
+
+/* Path element visibility */
+.path-element {
+    display: none;
+}
+
+/* Absolute positioning for dynamic elements */
+.dynamic-element {
+    position: absolute;
+}
+
+/* Dynamic font size elements */
+.font-size-element {
+    font-size: var(--dynamic-font-size);
+}
+
+/* Subplot and character text styles */
+.subplot-text,
+.character-text {
+    fill: var(--dynamic-color);
+}
+
+/* Dynamic color elements */
+[data-item-type="subplot"],
+[data-item-type="character"] {
+    fill: var(--dynamic-color);
+}
+
+/* Dynamic font size elements */
+.dynamic-font-size {
+    font-size: var(--dynamic-font-size);
+}
+
+/* SVG interaction elements */
+.svg-interaction {
+    pointer-events: none;
+}
+
+/* Layout containers */
+.flex-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Button styles */
+.action-button {
+    padding: 10px;
+    margin-top: 20px;
+}
+
+/* Dynamic positioning */
+.dynamic-position {
+    position: absolute;
+}
+
+/* SVG Element Styles */
+.svg-path {
+    display: none;
+}
+
+.svg-text {
+    font-weight: bold;
+}
+
+/* Dynamic Color Elements */
+[data-item-type="subplot"],
+[data-item-type="character"] {
+    fill: var(--dynamic-color);
+}
+
+/* Dynamic Font Size Elements */
+.dynamic-font-size {
+    font-size: var(--dynamic-font-size);
+}
+
+/* SVG Interaction Elements */
+.svg-interaction {
+    pointer-events: none;
+}
+
+/* Layout Containers */
+.flex-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Button Styles */
+.action-button {
+    padding: 10px;
+    margin-top: 20px;
+}
+
+/* Dynamic Positioning */
+.dynamic-position {
+    position: absolute;
+}
+
+/* Color Swatch Styles */
+.color-swatch {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: var(--swatch-color);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+/* Debug Container Styles */
+.debug-container {
+    display: none;
+}
+
+.debug-container.visible {
+    display: block;
+}
+
+/* Search Container Styles */
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Button Container Styles */
+.button-container {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Test Button Styles */
+.test-button {
+    padding: 10px;
+}
+
+/* Path Element Visibility */
+.path-element {
+    display: none;
+}
+
+/* Dynamic Color Variables */
+:root {
+    --dynamic-color: inherit;
+    --dynamic-font-size: inherit;
+}
+
+/* SVG path styles */
+.svg-path {
+    display: none;
+}
+
+/* Element for text measurements */
+.text-measure {
+    position: absolute;
+    visibility: hidden;
+    max-width: var(--max-width);
+    font-size: var(--font-size);
+    font-weight: var(--font-weight);
+    font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    white-space: pre-wrap;
+}
+
+/* Container layouts */
+.flex-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+/* Button container */
+.button-container {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Input field styles */
+.search-input {
+    flex: 1;
+}
+
+/* Color swatch for settings */
+.color-swatch {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: var(--swatch-color);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+/* Button styles */
+.action-button {
+    padding: 10px;
+    margin-top: 20px;
 }

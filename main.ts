@@ -1206,8 +1206,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 pathElement.setAttribute('id', pathId);
                 pathElement.setAttribute('d', `M 0,0 Q ${Math.cos(angleToCenter) * 500},${Math.sin(angleToCenter) * 500 * curveFactor} 1000,0`);
                 pathElement.setAttribute('fill', 'none');
-                // SAFE: inline style used for hiding path that shouldn't be visible
-                pathElement.style.display = 'none'; // Hide the path
+                // Use CSS class instead of inline style
+                pathElement.classList.add('svg-path');
                 
                 // Add the path to the container before the text
                 textEl.parentNode?.insertBefore(pathElement, textEl);
@@ -1264,42 +1264,35 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     numberTspan.textContent = `${sceneNumber} `;
                     fragment.appendChild(numberTspan);
                     
-                    // Add the title text with search term highlighting
-                    highlightSearchTermsInText(titleText, this.searchTerm, fragment);
+                    // Add the complete title text
+                    const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    titleTspan.textContent = titleText;
+                    fragment.appendChild(titleTspan);
+                    
+                    // Add single space between title and date (consistent with the scene number case)
+                    fragment.appendChild(document.createTextNode(' '));
+                    
+                    // Add the date part
+                    const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    dateTspan.setAttribute("class", "date-text");
+                    dateTspan.textContent = datePart;
+                    fragment.appendChild(dateTspan);
                 } else {
-                    // No scene number, just highlight the full title
-                    highlightSearchTermsInText(titlePart, this.searchTerm, fragment);
-                }
-                
-                // Add spacer between title and date
-                fragment.appendChild(document.createTextNode('    '));
-                
-                // Add the date part
-                const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                dateTspan.setAttribute("class", "date-text");
-                
-                // Add date content directly
-                dateTspan.textContent = datePart;
-                
-                // Check if the date part contains the search term
-                if (this.searchTerm && datePart.toLowerCase().includes(this.searchTerm.toLowerCase())) {
-                    // If it contains the search term, we need a more complex approach
-                    const dateFragment = document.createDocumentFragment();
-                    highlightSearchTermsInText(datePart, this.searchTerm, dateFragment);
+                    // No scene number, just add the full title text
+                    fragment.appendChild(document.createTextNode(titlePart));
                     
-                    // Clear the tspan
-                    while (dateTspan.firstChild) {
-                        dateTspan.removeChild(dateTspan.firstChild);
-                    }
+                    // Add spacer between title and date (consistent with the scene number case)
+                    fragment.appendChild(document.createTextNode(' '));
                     
-                    // Copy the highlighted content to the tspan
-                    dateTspan.appendChild(dateFragment);
+                    // Add the date part
+                    const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    dateTspan.setAttribute("class", "date-text");
+                    dateTspan.textContent = datePart;
+                    fragment.appendChild(dateTspan);
                 }
-                
-                fragment.appendChild(dateTspan);
             } else {
-                // No date separator, just highlight the full text
-                highlightSearchTermsInText(decodedText, this.searchTerm, fragment);
+                // No date separator, just add the full text
+                fragment.appendChild(document.createTextNode(decodedText));
             }
             
             // Convert fragment to string using XMLSerializer
@@ -1667,7 +1660,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Add debug coordinate display if debug mode is enabled
         if (this.settings.debug) {
             svg += `
-                <g class="debug-info-container" style="pointer-events:none;"><!-- SAFE: inline style needed for SVG interaction -->
+                <g class="debug-info-container svg-interaction"><!-- SAFE: class-based SVG interaction -->
                     <rect class="debug-info-background" x="-790" y="-790" width="230" height="40" rx="5" ry="5" fill="rgba(255,255,255,0.9)" stroke="#333333" stroke-width="1" />
                     <text class="debug-info-text" id="mouse-coords-text" x="-780" y="-765" fill="#ff3300" font-size="20px" font-weight="bold" stroke="white" stroke-width="0.5px" paint-order="stroke">Mouse: X=0, Y=0</text>
                 </g>
@@ -2097,7 +2090,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     // Don't apply search highlighting here - it will be done by addHighlightRectangles
                     let subplotText = escapeXml(subplot || ''); // Handle undefined subplot
                     
-                    subplotsHtml += `<tspan fill="${color}" data-item-type="subplot" style="fill: ${color} !important;"><!-- SAFE: inline style needed for color override in SVG -->${subplotText}</tspan>`;
+                    subplotsHtml += `<tspan fill="${color}" data-item-type="subplot" class="dynamic-color">${subplotText}</tspan>`;
                     
                     // Add comma separator if not the last item
                     if (i < orderedSubplots.length - 1) {
@@ -2132,7 +2125,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         characterText = characterText; // No replacement here
                     }
                     
-                    charactersHtml += `<tspan fill="${color}" data-item-type="character" style="fill: ${color} !important;"><!-- SAFE: inline style needed for color override in SVG -->${characterText}</tspan>`;
+                    charactersHtml += `<tspan fill="${color}" data-item-type="character" class="dynamic-color">${characterText}</tspan>`;
                     
                     // Add comma separator if not the last item
                     if (i < (scene.Character?.length || 0) - 1) {
@@ -2614,7 +2607,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Add debug coordinate display
         if (this.settings.debug) {
             svg += `
-                <g class="debug-info-container" style="pointer-events:none;">
+                <g class="debug-info-container svg-interaction"><!-- SAFE: class-based SVG interaction -->
                     <rect class="debug-info-background" x="-790" y="-790" width="230" height="40" rx="5" ry="5" fill="rgba(255,255,255,0.9)" stroke="#333333" stroke-width="1" />
                     <text class="debug-info-text" id="mouse-coords-text" x="-780" y="-765" fill="#ff3300" font-size="20px" font-weight="bold" stroke="white" stroke-width="0.5px" paint-order="stroke">Mouse: X=0, Y=0</text>
                 </g>
@@ -2860,13 +2853,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     private measureTextDimensions(text: string, maxWidth: number, fontSize: number, fontWeight: string = 'normal'): {width: number, height: number} {
         // Create an offscreen element for measurement
         const el = document.createElement('div');
-        el.style.position = 'absolute';
-        el.style.visibility = 'hidden';
-        el.style.maxWidth = `${maxWidth}px`;
-        el.style.fontSize = `${fontSize}px`;
-        el.style.fontWeight = fontWeight;
-        el.style.fontFamily = "'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif";
-        el.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
+        el.classList.add('text-measure');
+        el.style.setProperty('--max-width', `${maxWidth}px`);
+        el.style.setProperty('--font-size', `${fontSize}px`);
+        el.style.setProperty('--font-weight', fontWeight);
         
         // Check if text contains HTML/SVG tags
         if (text.includes('<') && text.includes('>')) {
@@ -3052,14 +3042,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         // Create search input container
         const searchContainer = contentEl.createDiv('search-container');
-        searchContainer.style.display = 'flex';
-        searchContainer.style.gap = '10px';
-        searchContainer.style.marginBottom = '15px';
+        searchContainer.classList.add('flex-container');
         
         // Create search input
         const searchInput = new TextComponent(searchContainer);
         searchInput.setPlaceholder('Enter search term (min 3 characters)');
-        searchInput.inputEl.style.flex = '1';
+        searchInput.inputEl.classList.add('search-input');
         
         // Prepopulate with current search term if one exists
         if (this.searchActive && this.searchTerm) {
@@ -3068,9 +3056,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         // Create button container
         const buttonContainer = contentEl.createDiv('button-container');
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.gap = '10px';
-        buttonContainer.style.justifyContent = 'flex-end';
+        buttonContainer.classList.add('button-container');
+        // All styles now defined in CSS
         
         // Create search button
         const searchButton = new ButtonComponent(buttonContainer)
@@ -3518,12 +3505,12 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
 
     // Add color swatch creation function
     private createColorSwatch(container: HTMLElement, color: string): HTMLElement {
-            const swatch = document.createElement('div');
-            swatch.className = 'color-swatch';
-            swatch.style.backgroundColor = color;
-            
-            container.appendChild(swatch);
-            return swatch;
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        swatch.style.setProperty('--swatch-color', color);
+        
+        container.appendChild(swatch);
+        return swatch;
     }
 
     // Add color picker function with centered dialog
@@ -3740,7 +3727,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                                 // Update the color swatch
                                 const swatch = textInput.inputEl.parentElement?.querySelector('.color-swatch') as HTMLElement;
                         if (swatch) {
-                            swatch.style.backgroundColor = value;
+                            swatch.style.setProperty('--swatch-color', value);
                                 }
                             }
                         });
@@ -3756,7 +3743,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                             // Update the color swatch
                             const swatch = textInputRef?.inputEl.parentElement?.querySelector('.color-swatch') as HTMLElement;
                             if (swatch) {
-                                swatch.style.backgroundColor = defaultColor;
+                                swatch.style.setProperty('--swatch-color', defaultColor);
                             }
                         });
                 });
@@ -3767,13 +3754,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                 if (swatchContainer) {
                     const swatch = document.createElement('div');
                     swatch.className = 'color-swatch';
-                    swatch.style.backgroundColor = color;
-                    swatch.style.width = '20px';
-                    swatch.style.height = '20px';
-                    swatch.style.borderRadius = '3px';
-                    swatch.style.display = 'inline-block';
-                    swatch.style.marginLeft = '8px';
-                    swatch.style.border = '1px solid var(--background-modifier-border)';
+                    swatch.style.setProperty('--swatch-color', color);
                     swatchContainer.appendChild(swatch);
                 }
             }
@@ -4065,11 +4046,15 @@ export class ManuscriptTimelineView extends ItemView {
                 // Check if debug mode is still enabled
                 if (!this.plugin.settings.debug) {
                     // Hide debug display if debug mode disabled
-                    debugContainer.style.display = 'none';
+                    debugContainer.classList.add('debug-container');
+                    if (this.plugin.settings.debug) {
+                        debugContainer.classList.add('visible');
+                    }
                     return;
                 } else {
                     // Ensure display is visible
-                    debugContainer.style.display = '';
+                    debugContainer.classList.remove('debug-container');
+                    debugContainer.classList.add('visible');
                 }
                 
                 try {
@@ -4112,15 +4097,18 @@ export class ManuscriptTimelineView extends ItemView {
             // Create a MutationObserver to watch for changes to settings
             const settingsObserver = new MutationObserver((mutations) => {
                 // Check current debug setting and update visibility accordingly
-                debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+                debugContainer.classList.remove('debug-container');
+                debugContainer.classList.add('visible');
             });
             
             // Initial visibility check
-            debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+            debugContainer.classList.remove('debug-container');
+            debugContainer.classList.add('visible');
             
             // For changes that might happen outside mutation observer
             document.addEventListener('visibilitychange', () => {
-                debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+                debugContainer.classList.remove('debug-container');
+                debugContainer.classList.add('visible');
             });
             
             console.log('Mouse coordinate tracking initialized');
@@ -4406,12 +4394,11 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             
             // Add button to create a test scene file
             const testButton = container.createEl("button", {
-                text: "Create a Test Scene File"
+                text: "Create a Test Scene File",
+                cls: "action-button"
             });
             
-            // SAFE: inline style used for button formatting
-            testButton.style.marginTop = "20px";
-            testButton.style.padding = "10px";
+            // Styles now defined in CSS
             
             testButton.addEventListener("click", async () => {
                 await this.createTestSceneFile();
