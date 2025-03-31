@@ -1250,8 +1250,26 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 const titlePart = decodedText.substring(0, dateMatch.index).trim();
                 const datePart = dateMatch[1].trim();
                 
-                // Add the title part with search term highlighting
-                highlightSearchTermsInText(titlePart, this.searchTerm, fragment);
+                // Extract scene number from title part
+                const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
+                
+                if (titleMatch) {
+                    // We have a scene number + title format
+                    const sceneNumber = titleMatch[1];
+                    const titleText = titleMatch[3];
+                    
+                    // Add scene number as a separate tspan
+                    const numberTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    numberTspan.setAttribute("font-weight", "bold");
+                    numberTspan.textContent = `${sceneNumber} `;
+                    fragment.appendChild(numberTspan);
+                    
+                    // Add the title text with search term highlighting
+                    highlightSearchTermsInText(titleText, this.searchTerm, fragment);
+                } else {
+                    // No scene number, just highlight the full title
+                    highlightSearchTermsInText(titlePart, this.searchTerm, fragment);
+                }
                 
                 // Add spacer between title and date
                 fragment.appendChild(document.createTextNode('    '));
