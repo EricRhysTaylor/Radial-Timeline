@@ -1272,12 +1272,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     numberTspan.textContent = `${sceneNumber} `;
                     fragment.appendChild(numberTspan);
                     
-                    // Add the complete title text
-                    const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                    titleTspan.textContent = titleText;
-                    fragment.appendChild(titleTspan);
+                    // Highlight the title text and append directly to the main fragment
+                    highlightSearchTermsInText(titleText, this.searchTerm, fragment);
                     
-                    // Add 4 spaces between title and date to match the non-search case
+                    // Add 4 spaces *after* the highlighted title content
                     fragment.appendChild(document.createTextNode('    '));
                     
                     // Add the date part
@@ -1286,11 +1284,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     dateTspan.textContent = datePart;
                     fragment.appendChild(dateTspan);
                 } else {
-                    // No scene number, just add the full title text
-                    fragment.appendChild(document.createTextNode(titlePart));
+                    // No scene number, just the title text and date
+                    // Highlight the title text and append directly to the main fragment
+                    highlightSearchTermsInText(titlePart, this.searchTerm, fragment);
                     
-                    // Add spacer between title and date (consistent with the scene number case)
-                    // Changed from single space to 4 spaces to match the scene number case
+                    // Add spacer *after* the highlighted title content
                     fragment.appendChild(document.createTextNode('    '));
                     
                     // Add the date part
@@ -1300,8 +1298,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     fragment.appendChild(dateTspan);
                 }
             } else {
-                // No date separator, just add the full text
-                fragment.appendChild(document.createTextNode(decodedText));
+                // No date separator found, treat as regular text and highlight
+                highlightSearchTermsInText(decodedText, this.searchTerm, fragment);
             }
             
             // Convert fragment to string using XMLSerializer
