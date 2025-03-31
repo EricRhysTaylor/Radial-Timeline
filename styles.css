@@ -650,13 +650,13 @@ tspan .search-term {
   fill: #FFFFFF;
 }
 .progress-ring-base {
-  fill: rgba(30, 30, 30, 0.1);
-  stroke: var(--background-modifier-border);
-  stroke-width: 2px;
+  fill: none;
+  stroke: #44007F;
+  stroke-width: 10;
 }
 .progress-ring-fill {
   fill: none;
-  stroke-width: 8px;
+  stroke-width: 10;
   stroke-linecap: butt;
 }
 .center-key-text {
