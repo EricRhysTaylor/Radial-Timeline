@@ -41,12 +41,10 @@
 }
 .scene-path {
   cursor: pointer;
-  transition: opacity 0.1s ease-out, fill 0.1s ease-out;
   will-change: opacity, fill;
 }
 .scene-act {
   fill-opacity: 0;
-  transition: fill-opacity 0.2s ease-out;
 }
 .scene-act:hover {
   fill-opacity: 0.3;
@@ -63,22 +61,18 @@ path.scene-path[fill="#EEEEEE"] {
 }
 .scene-path.non-selected {
   fill: #EEEEEE !important;
-  transition: fill 0.15s ease-out;
 }
 .scene-path.scene-is-open.non-selected {
   fill: #EFEFEF !important;
-  transition: fill 0.15s ease-out;
 }
 .scene-path.selected {
   filter: saturate(1.2) brightness(1.1);
-  transition: filter 0.15s ease-out;
 }
 .scene-title {
   cursor: pointer;
   fill: white;
   opacity: 1;
   pointer-events: none;
-  transition: fill 0.1s ease-out, opacity 0.1s ease-out;
 }
 .scene-title.faded {
   opacity: 0.2;
@@ -261,10 +255,6 @@ path.scene-path[fill="#EEEEEE"] {
 }
 .number-square,
 .number-text {
-  transition:
-    opacity 0.1s,
-    fill 0.1s,
-    transform 0.1s;
   pointer-events: none;
 }
 .number-square.faded,
@@ -290,12 +280,10 @@ path.scene-path[fill="#EEEEEE"] {
   fill: #EFEFEF !important;
   stroke: none;
   stroke-width: 0;
-  transition: fill 0.1s;
 }
 .number-text.scene-is-open.non-selected {
   fill: #ffffff !important;
   opacity: 1;
-  transition: fill 0.1s;
 }
 .number-square.selected {
   transform: scale(1.2);
@@ -311,12 +299,10 @@ path.scene-path[fill="#EEEEEE"] {
   stroke: var(--interactive-accent);
   stroke-width: 3px;
   fill: #FFFFFF;
-  transition: fill 0.1s, transform 0.1s;
 }
 .number-text.scene-is-open.selected {
   fill: #000000;
   font-weight: bold;
-  transition: fill 0.1s;
 }
 .number-square.search-result {
   fill: #FFCC00;
@@ -618,11 +604,6 @@ tspan .search-term {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
-  transition:
-    fill 0.2s ease-out,
-    stroke 0.2s ease-out,
-    stroke-width 0.2s ease-out,
-    transform 0.2s ease-out;
 }
 .number-text.non-selected {
   fill: #FFFFFF;
