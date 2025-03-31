@@ -662,119 +662,79 @@ class SynopsisManager {
             // Process subplots if first metadata item exists
             const decodedMetadataItems = metadataItems.map(item => decodeHtmlEntities(item));
             
-            if (decodedMetadataItems[0] && decodedMetadataItems[0].trim() !== '\u00A0') {
-                if (decodedMetadataItems[0].startsWith('<tspan')) {
-                    // This is pre-formatted HTML that might contain search highlights
-                    // Only use it for export/preview mode, otherwise create fresh elements
+            if (decodedMetadataItems.length > 0 && decodedMetadataItems[0] && decodedMetadataItems[0].trim().length > 0) {
+                const subplots = decodedMetadataItems[0].split(', ').filter(s => s.trim().length > 0);
+                
+                if (subplots.length > 0) {
                     const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
                     subplotTextElement.setAttribute("class", "info-text metadata-text");
                     subplotTextElement.setAttribute("x", "0");
                     subplotTextElement.setAttribute("y", String(metadataY));
                     subplotTextElement.setAttribute("text-anchor", "start");
                     
-                    // Process HTML content safely
-                    this.processContentWithTspans(decodedMetadataItems[0], subplotTextElement);
+                    // Format each subplot with its own color
+                    subplots.forEach((subplot, j) => {
+                        const color = getSubplotColor(subplot.trim());
+                        const subplotText = subplot.trim();
+                        
+                        // Create tspan for subplot
+                        const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        tspan.setAttribute("data-item-type", "subplot");
+                        tspan.setAttribute("style", `fill: ${color} !important;`); // Apply inline style
+                        
+                        tspan.textContent = subplotText;
+                        
+                        subplotTextElement.appendChild(tspan);
+                        
+                        // Add comma separator if not the last item
+                        if (j < subplots.length - 1) {
+                            const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                            comma.setAttribute("fill", "var(--text-muted)");
+                            comma.textContent = ", ";
+                            subplotTextElement.appendChild(comma);
+                        }
+                    });
                     
                     synopsisTextGroup.appendChild(subplotTextElement);
-                } else {
-                    // Extract subplots and apply colors
-                    const subplots = decodedMetadataItems[0].split(', ').filter(s => s.trim().length > 0);
-                    
-                    if (subplots.length > 0) {
-                        const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                        subplotTextElement.setAttribute("class", "info-text metadata-text");
-                        subplotTextElement.setAttribute("x", "0");
-                        subplotTextElement.setAttribute("y", String(metadataY));
-                        subplotTextElement.setAttribute("text-anchor", "start");
-                        
-                        // Format each subplot with its own color
-                        subplots.forEach((subplot, j) => {
-                            const color = getSubplotColor(subplot.trim());
-                            const subplotText = subplot.trim();
-                            
-                            // Create tspan for subplot
-                            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                            tspan.setAttribute("fill", color);
-                            tspan.setAttribute("data-item-type", "subplot");
-                            tspan.setAttribute("style", `fill: ${color} !important;`);
-                            
-                            // Don't apply highlighting directly in the text - use a single text node for each subplot
-                            // This ensures we won't get duplicate terms when applying highlights later
-                            tspan.textContent = subplotText;
-                            
-                            subplotTextElement.appendChild(tspan);
-                            
-                            // Add comma separator if not the last item
-                            if (j < subplots.length - 1) {
-                                const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                                comma.setAttribute("fill", "var(--text-muted)");
-                                comma.textContent = ", ";
-                                subplotTextElement.appendChild(comma);
-                            }
-                        });
-                        
-                        synopsisTextGroup.appendChild(subplotTextElement);
-                    }
                 }
             }
             
             // Process characters - second metadata item
-            if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim() !== '') {
-                // Standard spacing between subplot and character lines
+            if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim().length > 0) {
                 const characterY = metadataY + lineHeight;
+                const characters = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
                 
-                if (decodedMetadataItems[1].startsWith('<tspan')) {
-                    // This is pre-formatted HTML that might contain search highlights
-                    // Only use it for export/preview mode, otherwise create fresh elements
+                if (characters.length > 0) {
                     const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
                     characterTextElement.setAttribute("class", "info-text metadata-text");
                     characterTextElement.setAttribute("x", "0");
                     characterTextElement.setAttribute("y", String(characterY));
                     characterTextElement.setAttribute("text-anchor", "start");
                     
-                    // Process HTML content safely
-                    this.processContentWithTspans(decodedMetadataItems[1], characterTextElement);
+                    // Format each character with its own color
+                    characters.forEach((character, j) => {
+                        const color = getCharacterColor(character.trim());
+                        const characterText = character.trim();
+                        
+                        // Create tspan for character
+                        const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        tspan.setAttribute("data-item-type", "character");
+                        tspan.setAttribute("style", `fill: ${color} !important;`); // Apply inline style
+                        
+                        tspan.textContent = characterText;
+                        
+                        characterTextElement.appendChild(tspan);
+                        
+                        // Add comma separator if not the last item
+                        if (j < characters.length - 1) {
+                            const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                            comma.setAttribute("fill", "var(--text-muted)");
+                            comma.textContent = ", ";
+                            characterTextElement.appendChild(comma);
+                        }
+                    });
                     
                     synopsisTextGroup.appendChild(characterTextElement);
-                } else {
-                    // Extract characters and apply colors
-                    const characters = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
-                    
-                    if (characters.length > 0) {
-                        const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                        characterTextElement.setAttribute("class", "info-text metadata-text");
-                        characterTextElement.setAttribute("x", "0");
-                        characterTextElement.setAttribute("y", String(characterY));
-                        characterTextElement.setAttribute("text-anchor", "start");
-                        
-                        // Format each character with its own color
-                        characters.forEach((character, j) => {
-                            const color = getCharacterColor(character.trim());
-                            const characterText = character.trim();
-                            
-                            // Create tspan for character
-                            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                            tspan.setAttribute("fill", color);
-                            tspan.setAttribute("data-item-type", "character");
-                            tspan.setAttribute("style", `fill: ${color} !important;`);
-                            
-                            // Don't apply search highlighting here - we'll do it in addHighlightRectangles
-                            // This prevents duplicate highlighting when the search term appears in characters
-                            tspan.textContent = characterText;
-                            
-                            characterTextElement.appendChild(tspan);
-                            
-                            // Add comma separator if not the last item
-                            if (j < characters.length - 1) {
-                                const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                                comma.setAttribute("fill", "var(--text-muted)");
-                                comma.textContent = ", ";
-                                characterTextElement.appendChild(comma);
-                            }
-                        });
-                        
-                        synopsisTextGroup.appendChild(characterTextElement);
-                    }
                 }
             }
         }
@@ -2080,77 +2040,26 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 // Format title and date on same line with spacing
                 this.highlightSearchTerm(`${scene.title}   ${scene.when?.toLocaleDateString() || ''}`),
                 ...(scene.synopsis ? this.splitIntoBalancedLines(scene.synopsis, maxTextWidth).map(line => this.highlightSearchTerm(line)) : []),
-                '\u00A0',
+                '\u00A0', // Separator
             ];
             
-            // Handle subplot and character lines differently
-            if (orderedSubplots.length > 0) {
-                // Apply search highlighting to each subplot separately
-                let subplotsHtml = '';
-                orderedSubplots.forEach((subplot, i) => {
-                    const term = this.searchTerm;
-                    const regex = term ? new RegExp(`(${this.escapeRegExp(term)})`, 'gi') : null;
-                    
-                    // Create HTML directly for each subplot
-                    const color = `hsl(${Math.floor(Math.random() * 360)}, 70%, 35%)`;
-                    
-                    // Don't apply search highlighting here - it will be done by addHighlightRectangles
-                    let subplotText = escapeXml(subplot || ''); // Handle undefined subplot
-                    
-                    subplotsHtml += `<tspan fill="${color}" data-item-type="subplot" class="dynamic-color">${subplotText}</tspan>`;
-                    
-                    // Add comma separator if not the last item
-                    if (i < orderedSubplots.length - 1) {
-                        subplotsHtml += '<tspan fill="var(--text-muted)">, </tspan>';
-                    }
-                });
-                
-                // Add the fully-formatted subplot line
-                contentLines.push(subplotsHtml);
-            } else {
-                contentLines.push(''); // Empty placeholder
-            }
+            // --- Subplots --- 
+            // Remove the loop generating subplotsHtml
+            // Just push the raw subplot string (or empty string if none)
+            const rawSubplots = orderedSubplots.join(', ');
+            contentLines.push(rawSubplots);
             
-            // Handle character list with similar approach
-            if (scene.Character && scene.Character.length > 0) {
-                let charactersHtml = '';
-                scene.Character.forEach((character, i) => {
-                    const term = this.searchTerm;
-                    const regex = term ? new RegExp(`(${this.escapeRegExp(term)})`, 'gi') : null;
-                    
-                    // Create HTML directly for each character
-                    const color = `hsl(${Math.floor(Math.random() * 360)}, 80%, 35%)`;
-                    
-                    // Apply search highlighting if needed
-                    let characterText = escapeXml(character || ''); // Handle undefined character
-                    
-                    // Only apply direct highlighting if search is active but DON'T apply here if it contains the search term
-                    // This prevents double highlighting since the text is processed again in addSearchHighlights
-                    if (regex && this.searchActive) {
-                        // Instead of replacing the term with a span, just keep the original text
-                        // The highlighting will be added later by addSearchHighlights function
-                        characterText = characterText; // No replacement here
-                    }
-                    
-                    charactersHtml += `<tspan fill="${color}" data-item-type="character" class="dynamic-color">${characterText}</tspan>`;
-                    
-                    // Add comma separator if not the last item
-                    if (i < (scene.Character?.length || 0) - 1) {
-                        charactersHtml += '<tspan fill="var(--text-muted)">, </tspan>';
-                    }
-                });
-                
-                // Add the fully-formatted character line
-                contentLines.push(charactersHtml);
-            } else {
-                contentLines.push(''); // Empty placeholder
-            }
+            // --- Characters ---
+            // Remove the loop generating charactersHtml
+            // Just push the raw character string (or empty string if none)
+            const rawCharacters = (scene.Character || []).join(', ');
+            contentLines.push(rawCharacters);
             
-            // Filter out empty lines
-            const filteredContentLines = contentLines.filter(line => line);
+            // Filter out empty lines AFTER generating raw strings
+            const filteredContentLines = contentLines.filter(line => line && line.trim() !== '\u00A0');
             
             // Generate the synopsis element using our new DOM-based method
-            // Instead of collecting HTML strings, store the DOM elements directly
+            // This will now always receive raw text for subplots/characters
             const synopsisElement = this.synopsisManager.generateElement(scene, filteredContentLines, sceneId);
             synopsesElements.push(synopsisElement);
         });
