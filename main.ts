@@ -502,15 +502,27 @@ class SynopsisManager {
         if (titleContent.includes('<tspan')) {
             // For pre-formatted HTML with tspans, parse safely
             const parser = new DOMParser();
-            const doc = parser.parseFromString(`<div>${titleContent}</div>`, 'text/html');
-            const container = doc.querySelector('div');
-            
-            if (!container) return;
-            
-            // Extract all tspans and add them to the text element
-            const tspans = container.querySelectorAll('tspan');
-            if (tspans.length > 0) {
-                tspans.forEach(tspan => {
+            // Wrap in SVG text element for potentially better parsing of SVG tspans/text nodes
+            const doc = parser.parseFromString(`<svg><text>${titleContent}</text></svg>`, 'image/svg+xml');
+            const textNode = doc.querySelector('text');
+
+            if (!textNode) {
+                // Fallback: If parsing fails, add raw content (less safe, but preserves something)
+                console.warn("Failed to parse title content with tspans, adding raw:", titleContent);
+                const fallbackTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                fallbackTspan.setAttribute("fill", titleColor);
+                // Avoid setting textContent directly with potentially complex HTML
+                // Instead, append the raw string as a text node for basic display
+                fallbackTspan.appendChild(document.createTextNode(titleContent)); 
+                titleTextElement.appendChild(fallbackTspan);
+                return;
+            }
+
+            // Iterate through all child nodes (tspans and text nodes)
+            Array.from(textNode.childNodes).forEach(node => {
+                if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === 'tspan') {
+                    // Handle tspan element
+                    const tspan = node as Element;
                     const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                     
                     // Copy attributes
@@ -520,25 +532,21 @@ class SynopsisManager {
                     
                     svgTspan.textContent = tspan.textContent;
                     titleTextElement.appendChild(svgTspan);
-                });
-            } else {
-                // No tspans found, just add the text content
-                const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                tspan.setAttribute("fill", titleColor);
-                tspan.textContent = titleContent;
-                titleTextElement.appendChild(tspan);
-            }
+                    
+                } else if (node.nodeType === Node.TEXT_NODE) {
+                    // Handle text node (e.g., spaces)
+                    if (node.textContent) { // Check if textContent is not null or empty
+                        titleTextElement.appendChild(document.createTextNode(node.textContent));
+                    }
+                }
+                // Ignore other node types (like comments)
+            });
+
         } else {
-            // Create a document fragment to hold the processed title elements
+            // Non-search case (uses renderSceneTitleComponents which correctly handles spaces)
             const fragment = document.createDocumentFragment();
-            
-            // Parse the title content into components
             const titleComponents = parseSceneTitleComponents(titleContent);
-            
-            // Render the title components without search highlighting
             renderSceneTitleComponents(titleComponents, fragment, undefined, titleColor);
-            
-            // Append all the processed elements to the title text element
             titleTextElement.appendChild(fragment);
         }
     }
