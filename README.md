@@ -194,3 +194,12 @@ For questions, issues, or feature requests, please [open an issue on GitHub](htt
    ```
 
 4. **Always Sanitize User Input**: If you must process HTML content, use a proper sanitization library.
+
+## Related Plugins
+
+Looking for a more compact way to track scene progress and key dates?
+Check out the complementary [Manuscript Calendar](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Calendar) plugin!
+It provides a compact calendar view in the sidebar, showing revision status and key dates.
+
+You can find it on GitHub or by searching for "Manuscript Calendar" in the Obsidian Community Plugins browser.
+

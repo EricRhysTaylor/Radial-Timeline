@@ -1,23 +1,6 @@
-/* 
- * OBSIDIAN PLUGIN DEVELOPMENT GUIDELINES - CSS
- * ============================================
- *
- * 1. ALL styling should be contained in this CSS file, not inline in the JS/TS code
- * 2. Use Obsidian's CSS variables (--var-name) for colors and styling whenever possible
- * 3. Follow Obsidian's class naming conventions when creating new classes
- * 4. Ensure all styles have appropriate scoping to avoid conflicts with other plugins
- * 5. Use the :root selector for custom properties, not inline CSS variables
- * 6. Prefer using standard CSS properties over vendor-specific ones
- * 7. Include dark theme and light theme variants where appropriate
- * 8. Keep selectors as simple as possible to maintain performance
- * 9. Consider using SVG for icons instead of icon fonts when possible
- * 10. Add comments for complex styling sections to aid maintenance
- */
+@import "https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap";
 
-/* Manuscript Timeline Plugin Styles */
-@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap');
-
-/* Timeline container */
+/* styles.css */
 .manuscript-timeline-container {
   display: flex;
   flex-direction: column;
@@ -25,91 +8,71 @@
   justify-content: center;
   height: 100%;
   width: 100%;
-  overflow: hidden; /* Change from auto to hidden to prevent scrollbars during rendering */
+  overflow: hidden;
   position: relative;
   box-sizing: border-box;
   padding: 0;
   margin: 0;
-  will-change: contents; /* Performance hint for browser rendering */
+  background-color: transparent;
 }
-
-/* Loading and error messages */
-.loading-message, .error-message {
+.loading-message,
+.error-message {
   padding: 20px;
   text-align: center;
   font-size: 1.2em;
   color: var(--text-muted);
 }
-
 .error-message {
   color: var(--text-error);
 }
-
-/* SVG styling */
 .manuscript-timeline-container svg {
-  width: 100% !important;
-  height: 100% !important;
-  max-height: none;
-  margin: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0 auto;
   padding: 0;
   transform-origin: center;
+  object-fit: contain;
   cursor: default;
   background-color: transparent;
-  font-family: 'Lato', sans-serif;
-  display: block;
-  overflow: visible;
-  will-change: transform; /* Performance hint for browser rendering */
-  /* Use hardware acceleration for SVG */
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  perspective: 1000px;
+  font-family: "Lato", sans-serif;
+  fill: none;
 }
-
-/* Scene elements */
 .scene-path {
   cursor: pointer;
   transition: opacity 0.1s ease-out, fill 0.1s ease-out;
-  will-change: opacity, fill; /* Performance hint for transitions */
+  will-change: opacity, fill;
 }
-
-/* Scene act elements */
 .scene-act {
   fill-opacity: 0;
   transition: fill-opacity 0.2s ease-out;
 }
-
 .scene-act:hover {
   fill-opacity: 0.3;
   cursor: pointer;
 }
-
-/* Scene group hover behaviors */
 .scene-group:hover .scene-info {
   opacity: 1;
 }
-
-/* Void cells styling - remove pointer cursor */
 path.scene-path[fill="#EEEEEE"] {
   cursor: default;
 }
-
 .scene-path.faded {
   opacity: 0.3;
 }
-
-/* Non-selected scene during mouseover - these should have high priority */
 .scene-path.non-selected {
-  fill: #EEEEEE !important; /* Use lighter grey for better contrast */
+  fill: #EEEEEE !important;
   transition: fill 0.15s ease-out;
 }
-
-/* Selected scene during mouseover */
+.scene-path.scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+  transition: fill 0.15s ease-out;
+}
 .scene-path.selected {
-  filter: saturate(1.2) brightness(1.1); /* Simpler filter for better performance */
+  filter: saturate(1.2) brightness(1.1);
   transition: filter 0.15s ease-out;
 }
-
-/* Basic scene title styling */
 .scene-title {
   cursor: pointer;
   fill: white;
@@ -117,12 +80,9 @@ path.scene-path[fill="#EEEEEE"] {
   pointer-events: none;
   transition: fill 0.1s ease-out, opacity 0.1s ease-out;
 }
-
 .scene-title.faded {
   opacity: 0.2;
 }
-
-/* Scene info tooltip */
 .scene-info {
   opacity: 0;
   transition: opacity 0.15s ease-out;
@@ -130,10 +90,13 @@ path.scene-path[fill="#EEEEEE"] {
   z-index: 100;
   vector-effect: non-scaling-stroke;
 }
-
-/* Global text rule - apply only basic styling */
 .scene-info text {
-  font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Inter",
+    "Segoe UI",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   stroke: white;
   stroke-width: 3px;
   paint-order: stroke;
@@ -141,108 +104,88 @@ path.scene-path[fill="#EEEEEE"] {
   margin: 0 !important;
   pointer-events: none !important;
 }
-
-/* Performance class for large scenes  */
 .simplified-rendering .scene-path {
-  transition: none; /* Disable transitions in simplified mode */
+  transition: none;
 }
-
 .simplified-rendering .scene-title {
-  transition: none; /* Disable transitions in simplified mode */
+  transition: none;
 }
-
 .simplified-rendering .scene-info {
-  transition: opacity 0.1s ease-out; /* Faster transition in simplified mode */
+  transition: opacity 0.1s ease-out;
 }
-
-/* Month and act labels */
-.month-label, .month-label-outer, .act-label {
-  font-family: 'Lato', sans-serif;
-  font-size: 14px;
+.month-label,
+.month-label-outer,
+.act-label {
+  font-family: "Lato", sans-serif;
+  font-size: 18px;
   fill: var(--text-normal);
   text-anchor: middle;
   dominant-baseline: middle;
+  opacity: 0.85;
 }
-
-/* Optimize month lines */
 .month-spoke-line {
-  stroke: var(--background-modifier-border);
+  stroke: var(--text-normal);
   stroke-width: 1px;
-  stroke-dasharray: 2,2; /* Simpler dash pattern */
-  opacity: 0.7;
+  stroke-dasharray: 2, 2;
+  opacity: 1;
 }
-
 .month-spoke-line.act-boundary {
   stroke: var(--text-normal);
-  stroke-width: 1.5px;
+  stroke-width: 2px;
   stroke-dasharray: none;
-  opacity: 0.9;
+  opacity: 1;
 }
-
-/* Scene title text with variable font size */
 .scene-title-small {
   font-size: 9px;
 }
-
 .scene-title-medium {
   font-size: 16px;
 }
-
 .scene-title-large {
   font-size: 18px;
 }
-
 .status-count {
-  font-size: 80%; 
+  font-size: 80%;
   opacity: 1;
   vertical-align: super;
-  position: relative; 
+  position: relative;
   top: -0.7em;
   font-weight: normal;
   line-height: 0;
   dominant-baseline: inherit;
 }
-
-/* Documentation styling */
 .settings-separator {
   margin: 1em 0 2em 0;
   border: none;
   border-top: 1px solid var(--background-modifier-border);
 }
-
 .documentation-container {
   padding: 0 1em;
 }
-
 .documentation-container h1 {
   font-size: 1.8em;
   margin-top: 0.5em;
 }
-
 .documentation-container h2 {
   font-size: 1.5em;
   margin-top: 1.5em;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--background-modifier-border);
 }
-
 .documentation-container h3 {
   font-size: 1.2em;
   margin-top: 1em;
 }
-
 .documentation-container img {
   max-width: 100%;
   border-radius: 5px;
   margin: 1em 0;
 }
-
 .documentation-container code {
   background-color: var(--background-primary);
   padding: 0.2em 0.4em;
   border-radius: 3px;
 }
-
 .documentation-container pre {
   background-color: var(--background-primary);
   padding: 1em;
@@ -250,7 +193,6 @@ path.scene-path[fill="#EEEEEE"] {
   overflow-x: auto;
   margin: 1em 0;
 }
-
 .metadata-example {
   line-height: 2em;
   white-space: pre;
@@ -262,449 +204,294 @@ path.scene-path[fill="#EEEEEE"] {
   border-radius: 5px;
   overflow-x: auto;
 }
-
-/* Screenshot styling */
 .screenshot-link {
   display: inline-block;
   cursor: pointer;
 }
-
 .screenshot-image {
   max-width: 100%;
   border-radius: 8px;
   border: 1px solid #444;
 }
-
 .screenshot-caption {
   text-align: center;
   font-size: 0.8em;
   margin-top: 5px;
   color: #888;
 }
-
-/* Buy me a coffee button */
 .bmc-button {
   height: 60px;
   width: 217px;
 }
-
-/* Center number styles */
 .center-number-text {
   fill: var(--text-normal, #333333);
   font-size: 140px;
   pointer-events: none;
   font-weight: 900;
 }
-
-/* Text styling for SVG elements */
 .subplot-text {
   font-size: 16px;
   fill: #555555;
   font-weight: normal;
 }
-
 .connector-text {
   font-size: 18px;
   fill: #555555;
 }
-
 .character-text {
   font-size: 18px;
   font-weight: normal;
 }
-
-/* Number elements basic styling */
-.number-square, .number-text {
-  transition: opacity 0.1s, fill 0.1s, transform 0.1s;
+.number-square,
+.number-text {
+  transition:
+    opacity 0.1s,
+    fill 0.1s,
+    transform 0.1s;
   pointer-events: none;
 }
-
-.number-square.faded, .number-text.faded {
+.number-square.faded,
+.number-text.faded {
   opacity: 0.2;
 }
-
 .scene-title.selected {
   stroke: #000000;
   stroke-width: 3px;
   paint-order: stroke;
 }
-
-/* Number elements during mouseover with high specificity */
-.number-square.non-selected {
-  fill: #EFEFEF;
+.number-square.scene-is-open.non-selected {
+  fill: #EFEFEF !important;
   stroke: none;
   stroke-width: 0;
-  transition: fill 0.2s ease-out,
-              stroke 0.2s ease-out,
-              stroke-width 0.2s ease-out,
-              transform 0.2s ease-out;
 }
-
-.number-text.non-selected {
-  fill: #FFFFFF;
+.number-text.scene-is-open.non-selected {
+  fill: #FFFFFF !important;
+  opacity: 1;
+  transition: fill 0.1s;
 }
-
 .number-square.selected {
   transform: scale(1.2);
   z-index: 10;
   stroke-width: 3px;
-  /* Use the scene color if available, otherwise fall back to accent color */
   stroke: var(--scene-color, #705DCF);
 }
-
 .number-text.selected {
   font-weight: bold;
 }
-
-/* Text color handling */
 text.info-text.title-text-main {
   fill: var(--title-color) !important;
 }
-
 text.info-text.title-text-main tspan:not(.search-term) {
-  fill: var(--title-color) !important; /* Use the inline color variable */
+  fill: var(--title-color) !important;
 }
-
-/* Search term base styling */
 .search-term {
-  fill: inherit !important;
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em !important;
-  stroke-opacity: 0.5 !important;
-  paint-order: stroke !important;
-  font-weight: bold !important;
+  fill: var(--text-highlight-bg);
+  font-weight: bold;
 }
-
-/* Special styling for search terms in metadata text (subplots and characters) */
 .metadata-text .search-term,
 text.info-text.metadata-text .search-term,
 .info-text.metadata-text tspan.search-term {
   fill: inherit !important;
   stroke: #FFCC00 !important;
-  stroke-width: 0.6em !important; /* Slightly wider stroke for better visibility */
-  stroke-opacity: 0.6 !important; /* Higher opacity for better visibility */
+  stroke-width: 0.6em !important;
+  stroke-opacity: 0.6 !important;
   paint-order: stroke !important;
   font-weight: bold !important;
 }
-
-/* Clear any overrides to ensure colors are preserved */
 tspan.search-term,
 text.info-text tspan.search-term,
 text.info-text.metadata-text tspan.search-term,
 text.info-text.title-text-main tspan.search-term,
 text.info-text.title-text-secondary tspan.search-term {
-  /* Only override stroke properties for highlighting */
   stroke: #FFCC00 !important;
   stroke-width: 0.5em !important;
   stroke-opacity: 0.5 !important;
   stroke-linejoin: round !important;
   stroke-linecap: round !important;
   paint-order: stroke !important;
-  /* Always preserve the original fill */
   fill: inherit !important;
-  /* Keep font style consistent */
   font-family: inherit !important;
   font-size: inherit !important;
 }
 
-/* Fix for search terms in title - explicitly make the stroke yellow */
-text.info-text.title-text-main .search-term {
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em !important;
-  stroke-opacity: 0.5 !important;
-  paint-order: stroke !important;
-  /* Use the title color */
-  fill: var(--title-color) !important;
-}
 
-/* Override for search terms in secondary text */
-text.info-text.title-text-secondary .search-term {
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em !important;
-  stroke-opacity: 0.5 !important;
-  paint-order: stroke !important;
-  fill: inherit !important; 
-}
-
-/* Search terms in standard synopsis text - ensure consistent styling */
-text.info-text tspan.search-term:not([data-item-type]) {
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em !important;
-  stroke-opacity: 0.5 !important;
-  paint-order: stroke !important;
-  font-weight: bold !important;
-  /* Inherit regular text style */
-  font-family: inherit !important;
-  font-size: inherit !important;
-  fill: inherit !important;
-}
-
-/* Override for search terms in metadata text to preserve random colors */
 text.info-text.metadata-text tspan[data-item-type] {
-  /* Never lose fill colors */
   fill: inherit !important;
 }
-
-/* Strengthen rules for metadata items to ensure colors are preserved */
-.info-text.metadata-text tspan[data-item-type="subplot"],
-.info-text.metadata-text tspan[data-item-type="character"] {
-  /* Ensure colors are explicitly preserved with the highest priority */
+.info-text.metadata-text tspan[data-item-type=subplot],
+.info-text.metadata-text tspan[data-item-type=character] {
   fill: inherit !important;
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;
 }
 
-/* When a tspan with data-item-type gets search-term class */
-text.info-text.metadata-text tspan[data-item-type].search-term {
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em;
-  stroke-opacity: 0.5;
-  paint-order: stroke;
-  font-weight: bold;
-}
-
-/* Make sure search terms preserve fill colors from their parent tspans */
 tspan[fill] .search-term,
 tspan[fill].search-term,
 tspan .search-term {
   fill: inherit !important;
 }
-
-/* Quadrant-specific text alignment for synopses */
 .synopsis-q1 .info-text,
-.synopsis-q1 .title-text-main, 
-.synopsis-q1 .title-text-secondary, 
+.synopsis-q1 .title-text-main,
+.synopsis-q1 .title-text-secondary,
 .synopsis-q1 .metadata-text {
   text-anchor: end;
 }
-
 .synopsis-q2 .info-text,
-.synopsis-q2 .title-text-main, 
-.synopsis-q2 .title-text-secondary, 
+.synopsis-q2 .title-text-main,
+.synopsis-q2 .title-text-secondary,
 .synopsis-q2 .metadata-text {
   text-anchor: start;
 }
-
 .synopsis-q3 .info-text,
-.synopsis-q3 .title-text-main, 
-.synopsis-q3 .title-text-secondary, 
+.synopsis-q3 .title-text-main,
+.synopsis-q3 .title-text-secondary,
 .synopsis-q3 .metadata-text {
   text-anchor: start;
 }
-
 .synopsis-q4 .info-text,
-.synopsis-q4 .title-text-main, 
-.synopsis-q4 .title-text-secondary, 
+.synopsis-q4 .title-text-main,
+.synopsis-q4 .title-text-secondary,
 .synopsis-q4 .metadata-text {
   text-anchor: end;
 }
-
-/* Force text alignment with high specificity */
-.scene-info.synopsis-q1 text, 
+.scene-info.synopsis-q1 text,
 .scene-info.synopsis-q4 text {
   text-anchor: end !important;
   padding: 0 !important;
   margin: 0 !important;
 }
-
-.scene-info.synopsis-q2 text, 
+.scene-info.synopsis-q2 text,
 .scene-info.synopsis-q3 text {
   text-anchor: start !important;
   padding: 0 !important;
   margin: 0 !important;
 }
-
-/* Make sure scene info is consistently visible when active */
 .scene-info.visible {
   opacity: 1 !important;
   pointer-events: all !important;
   visibility: visible !important;
   display: block !important;
 }
-
-/* Title text in synopsis */
 .synopsis-title {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 10px;
 }
-
-/* Style for title text */
 .scene-info text.info-text.title-text-main {
   font-size: 24px;
   font-weight: 700;
-  margin-bottom: 8px; /* Add space after the title */
-  /* No fill property to allow the inline fill attribute to take effect */
+  margin-bottom: 8px;
 }
-
-/* Style for the synopsis date text */
 .scene-info text.info-text.title-text-main tspan.date-text {
   font-weight: 600;
   font-size: 18px;
   stroke-width: 2.5px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  vertical-align: super;
+  baseline-shift: .3em;
 }
-
-/* Style for synopsis text (second line onward) */
 .scene-info text.info-text.title-text-secondary {
   font-size: 18px;
-  fill: #666666; /* Grey color for synopsis text */
+  fill: #666666;
   text-transform: uppercase;
   font-weight: normal;
 }
-
-/* Metadata text (subplots and characters) */
 .scene-info text.info-text.metadata-text {
   font-size: 18px;
   fill: var(--text-muted);
   font-weight: normal;
-  text-transform: none; /* Allow mixed case */
+  text-transform: none;
 }
-
-/* Number elements basic styling */
 .number-square.scene-is-open {
   fill: var(--interactive-accent, #705DCF);
   stroke: none;
 }
-
 .number-text.scene-is-open {
   font-weight: normal;
   fill: #FFFFFF;
 }
-
 .number-square.scene-is-open.non-selected {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
   transition: fill 0.1s;
 }
-
 .number-text.scene-is-open.non-selected {
   fill: #ffffff;
   opacity: 1;
   transition: fill 0.1s;
 }
-
 .number-square.scene-is-open.selected {
   stroke: #705DCF;
   stroke-width: 3px;
   fill: #FFFFFF;
   transition: fill 0.1s, transform 0.1s;
 }
-
 .number-text.scene-is-open.selected {
   fill: #000000;
   font-weight: bold;
   transition: fill 0.1s;
 }
-
-/* Number squares for search results */
 .number-square.search-result {
   fill: #FFCC00;
 }
-
-/* Number squares for search results */
 .number-text.search-result {
   fill: #000000;
 }
-
-/* Number squares for search results */
 .number-text.search-result.non-selected {
   fill: #FFFFFF !important;
 }
-
-/* When a scene is both open and a search result */
 .number-square.search-result.non-selected {
   fill: #EFEFEF !important;
   stroke: #EFEFEF;
   stroke-width: 2px;
 }
-
-/* Number squares with pending edits */
-.number-square[data-has-edits="true"] {
+.number-square[data-has-edits=true] {
   fill: #8875ff;
 }
-
-.number-square[data-has-edits="true"] + .number-text {
+.number-square[data-has-edits=true] + .number-text {
   fill: #000000;
 }
-
-/* When a scene with pending edits is non-selected */
-.number-square[data-has-edits="true"].non-selected {
+.number-square[data-has-edits=true].non-selected {
   fill: #EFEFEF;
 }
-
-.number-square[data-has-edits="true"].non-selected + .number-text {
+.number-square[data-has-edits=true].non-selected + .number-text {
   fill: #ffffff;
 }
-
-/* Search clear button */
 .clear-search-btn {
   cursor: pointer;
   transition: transform 0.2s;
 }
-
 .clear-search-btn:hover {
   transform: scale(1.1);
 }
-
 .clear-search-btn circle {
   transition: fill 0.2s;
 }
-
 .clear-search-btn:hover circle {
   fill: #FFE5E5;
 }
 
-/* Search term highlighting based on publish stage */
-.title-stage-zero .search-term {
-  stroke: #FFCC00 !important; /* Keep yellow stroke */
-  fill: inherit !important; /* Keep the original color */
-}
-
-.title-stage-author .search-term {
-  stroke: #FFCC00 !important; /* Keep yellow stroke */
-  fill: inherit !important; /* Keep the original color */
-}
-
-.title-stage-house .search-term {
-  stroke: #FFCC00 !important; /* Keep yellow stroke */
-  fill: inherit !important; /* Keep the original color */
-}
-
-.title-stage-press .search-term {
-  stroke: #FFCC00 !important; /* Keep yellow stroke */
-  fill: inherit !important; /* Keep the original color */
-}
-
-/* Highlight rectangle */
 .highlight-rect {
   fill: #FFCC00;
   rx: 3;
   ry: 3;
   opacity: 0.3;
 }
-
-/* Highlight rectangles for different publish stages - simplified */
 .highlight-rect.stage-zero {
-  fill: #808080; /* Default gray */
+  fill: #808080;
 }
-
 .highlight-rect.stage-author {
-  fill: #4285F4; /* Default blue */
+  fill: #4285F4;
 }
-
 .highlight-rect.stage-house {
-  fill: #34A853; /* Default green */
+  fill: #34A853;
 }
-
 .highlight-rect.stage-press {
-  fill: #EA4335; /* Default red */
+  fill: #EA4335;
 }
-
-/* Color picker styles */
 .color-picker-modal {
   position: fixed;
   top: 0;
@@ -717,7 +504,6 @@ tspan .search-term {
   align-items: center;
   z-index: 1000;
 }
-
 .color-picker-container {
   background-color: var(--background-primary);
   padding: 20px;
@@ -726,66 +512,54 @@ tspan .search-term {
   position: relative;
   cursor: move;
 }
-
 .color-picker-input {
   width: 100%;
   height: 40px;
   margin-bottom: 10px;
 }
-
 .color-picker-text-input {
   width: 100%;
   margin-bottom: 5px;
   padding: 5px;
 }
-
 .color-picker-buttons {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
 }
-
 .color-picker-button {
   padding: 5px 15px;
   border-radius: 4px;
   border: none;
   cursor: pointer;
 }
-
 .color-picker-button.ok {
   background-color: var(--interactive-accent);
   color: white;
 }
-
 .color-picker-button.cancel {
   background-color: var(--background-modifier-error);
   color: white;
 }
-
-/* Color swatch */
 .color-swatch {
+  display: inline-block;
   width: 20px;
   height: 20px;
-  border-radius: 3px;
-  display: inline-block;
-  margin-right: 8px;
+  background-color: var(--swatch-color);
   border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+  margin-left: 8px;
 }
-
-/* Debug information styling */
 .debug-info-container {
   pointer-events: none;
-  z-index: 1000;
 }
-
 .debug-info-background {
-  fill: rgba(255,255,255,0.8);
+  fill: rgba(255, 255, 255, 0.8);
   rx: 5px;
   ry: 5px;
   stroke: #333333;
   stroke-width: 1px;
 }
-
 .debug-info-text {
   font-size: 20px;
   fill: #ff3300;
@@ -796,33 +570,293 @@ tspan .search-term {
   pointer-events: none;
 }
 
-/* Preserve fill color for search terms within subplot and character spans */
-.info-text.metadata-text tspan[data-item-type="subplot"] .search-term,
-.info-text.metadata-text tspan[data-item-type="subplot"].search-term,
-.info-text.metadata-text tspan[data-item-type="character"] .search-term,
-.info-text.metadata-text tspan[data-item-type="character"].search-term {
-  fill: inherit !important;
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em;
-  stroke-opacity: 0.5;
-  paint-order: stroke;
-  font-weight: bold;
-}
-
-/* Make sure title text has strong yellow highlight when searched */
 .scene-info text.info-text.title-text-main .search-term {
   stroke: #FFCC00 !important;
-  stroke-width: 1em !important;
+  stroke-width: .2em !important;
   paint-order: stroke !important;
   font-weight: bold !important;
-  /* Use the title color */
   fill: var(--title-color) !important;
 }
-
-/* Spacer element to enforce proper vertical gaps */
 .synopsis-spacer {
   line-height: 1.5em;
   min-height: 1.5em;
   display: block;
   visibility: visible !important;
+}
+.number-square.non-selected {
+  fill: #EFEFEF;
+  stroke: none;
+  stroke-width: 0;
+  transition:
+    fill 0.2s ease-out,
+    stroke 0.2s ease-out,
+    stroke-width 0.2s ease-out,
+    transform 0.2s ease-out;
+}
+.number-text.non-selected {
+  fill: #FFFFFF;
+}
+.progress-ring-base {
+  fill: none;
+  stroke: #6612af;
+  stroke-width: 10;
+}
+.progress-ring-fill {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: butt;
+}
+.center-key-text {
+  font-size: 16px;
+  fill: var(--text-normal, #333333);
+  font-weight: 200;
+  text-transform: uppercase;
+}
+
+/* Debug container styles */
+.debug-info-container {
+    pointer-events: none;
+}
+
+/* Color swatch styles */
+.color-swatch {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: var(--swatch-color);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+/* Debug container visibility */
+.debug-container {
+    display: none;
+}
+
+.debug-container.visible {
+    display: block;
+}
+
+/* Search container styles */
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Button container styles */
+.button-container {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Test button styles */
+.test-button {
+    padding: 10px;
+}
+
+/* Path element visibility */
+.path-element {
+    display: none;
+}
+
+/* Absolute positioning for dynamic elements */
+.dynamic-element {
+    position: absolute;
+}
+
+/* Dynamic font size elements */
+.font-size-element {
+    font-size: var(--dynamic-font-size);
+}
+
+/* Subplot and character text styles */
+.subplot-text,
+.character-text {
+    fill: var(--dynamic-color);
+}
+
+/* Dynamic color elements */
+[data-item-type="subplot"],
+[data-item-type="character"] {
+    fill: inherit;
+    stroke: white;
+    stroke-width: 0.07em;
+    paint-order: stroke;
+}
+
+/* Dynamic font size elements */
+.dynamic-font-size {
+    font-size: var(--dynamic-font-size);
+}
+
+/* SVG interaction elements */
+.svg-interaction {
+    pointer-events: none;
+}
+
+/* Layout containers */
+.flex-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Button styles */
+.action-button {
+    padding: 10px;
+    margin-top: 20px;
+}
+
+/* Dynamic positioning */
+.dynamic-position {
+    position: absolute;
+}
+
+/* SVG Element Styles */
+.svg-path {
+    display: none;
+}
+
+.svg-text {
+    font-weight: bold;
+}
+
+/* Dynamic Color Elements */
+[data-item-type="subplot"],
+[data-item-type="character"] {
+    fill: var(--dynamic-color);
+}
+
+/* Dynamic Font Size Elements */
+.dynamic-font-size {
+    font-size: var(--dynamic-font-size);
+}
+
+/* SVG Interaction Elements */
+.svg-interaction {
+    pointer-events: none;
+}
+
+/* Layout Containers */
+.flex-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Button Styles */
+.action-button {
+    padding: 10px;
+    margin-top: 20px;
+}
+
+/* Dynamic Positioning */
+.dynamic-position {
+    position: absolute;
+}
+
+/* Color Swatch Styles */
+.color-swatch {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: var(--swatch-color);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+/* Debug Container Styles */
+.debug-container {
+    display: none;
+}
+
+.debug-container.visible {
+    display: block;
+}
+
+/* Search Container Styles */
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Button Container Styles */
+.button-container {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Test Button Styles */
+.test-button {
+    padding: 10px;
+}
+
+/* Path Element Visibility */
+.path-element {
+    display: none;
+}
+
+/* Dynamic Color Variables */
+:root {
+    --dynamic-color: inherit;
+    --dynamic-font-size: inherit;
+}
+
+/* SVG path styles */
+.svg-path {
+    display: none;
+}
+
+/* Element for text measurements */
+.text-measure {
+    position: absolute;
+    visibility: hidden;
+    max-width: var(--max-width);
+    font-size: var(--font-size);
+    font-weight: var(--font-weight);
+    font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    white-space: pre-wrap;
+}
+
+/* Container layouts */
+.flex-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+/* Button container */
+.button-container {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Input field styles */
+.search-input {
+    flex: 1;
+}
+
+/* Color swatch for settings */
+.color-swatch {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: var(--swatch-color);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+/* Button styles */
+.action-button {
+    padding: 10px;
+    margin-top: 20px;
 }

@@ -35,7 +35,7 @@ import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, W
  *    - Cache DOM selections that are used repeatedly
  *    - Be mindful of event listeners - always remove them when no longer needed
  
-*/
+ */
 
 // Helper functions for safe SVG creation - add at the top of the file
 function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
@@ -267,6 +267,192 @@ function decodeHtmlEntities(text: string): string {
     return span.textContent || '';
 }
 
+/**
+ * Utility function to parse scene title text into its components
+ * @param titleText The raw scene title text
+ * @returns An object with the parsed components
+ */
+function parseSceneTitleComponents(titleText: string): { sceneNumber: string, title: string, date: string } {
+    const result = { sceneNumber: "", title: "", date: "" };
+    
+    if (!titleText) return result;
+    
+    // First decode any HTML entities
+    const decodedText = decodeHtmlEntities(titleText);
+    
+    // Handle the case where text might already contain tspan elements
+    if (decodedText.includes('<tspan')) {
+        // If complex formatting is present, return the title as-is
+        result.title = decodedText;
+        return result;
+    }
+    
+    // First, check if there's a date at the end (typically after 3+ spaces)
+    // The date is usually a date format, often at the end after multiple spaces
+    const dateMatch = decodedText.match(/\s{3,}(.+?)$/);
+    if (dateMatch) {
+        result.date = dateMatch[1].trim();
+        
+        // Get just the title part without the date
+        const titlePart = decodedText.substring(0, dateMatch.index).trim();
+        
+        // Extract scene number if present at beginning of title
+        const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
+        if (titleMatch) {
+            result.sceneNumber = titleMatch[1];
+            result.title = titleMatch[3]; // Just the title text, no number
+        } else {
+            result.title = titlePart; // No scene number, use entire title part
+        }
+    } else {
+        // No date found, check for scene number in the full text
+        const titleMatch = decodedText.match(/^(\d+(\.\d+)?)\s+(.+)$/);
+        if (titleMatch) {
+            result.sceneNumber = titleMatch[1];
+            result.title = titleMatch[3];
+        } else {
+            result.title = decodedText;
+        }
+    }
+    
+    return result;
+}
+
+/**
+ * Create SVG elements for scene title with optional search highlighting
+ * @param titleComponents The parsed title components
+ * @param fragment The document fragment to append elements to
+ * @param searchTerm Optional search term for highlighting
+ * @param titleColor Optional color for the title text
+ */
+function renderSceneTitleComponents(
+    titleComponents: { sceneNumber: string, title: string, date: string },
+    fragment: DocumentFragment,
+    searchTerm?: string,
+    titleColor?: string
+): void {
+    // Create a title container tspan element to hold all parts
+    const titleContainer = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    fragment.appendChild(titleContainer);
+    
+    // Create a tspan for the scene number if it exists
+    if (titleComponents.sceneNumber) {
+        const titleNumberTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        titleNumberTspan.setAttribute("font-weight", "bold");
+        if (titleColor) titleNumberTspan.setAttribute("fill", titleColor);
+        
+        // Add scene number as regular text
+        titleNumberTspan.textContent = `${titleComponents.sceneNumber} `;
+        titleContainer.appendChild(titleNumberTspan);
+    }
+    
+    // Create a tspan for the main title text
+    const mainTitleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    mainTitleTspan.setAttribute("font-weight", "bold");
+    if (titleColor) mainTitleTspan.setAttribute("fill", titleColor);
+    titleContainer.appendChild(mainTitleTspan);
+    
+    // If we have a search term, process the title for highlighting
+    if (searchTerm && titleComponents.title) {
+        // Create safe regex for searching
+        const escapedPattern = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedPattern})`, 'gi');
+        
+        // Reset regex to start from beginning
+        regex.lastIndex = 0;
+        
+        // Process the title content character by character for highlighting
+        let lastIndex = 0;
+        let match;
+        
+        while ((match = regex.exec(titleComponents.title)) !== null) {
+            // Add text before match
+            if (match.index > lastIndex) {
+                const textBefore = document.createTextNode(titleComponents.title.substring(lastIndex, match.index));
+                mainTitleTspan.appendChild(textBefore);
+            }
+            
+            // Add the highlighted match
+            const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+            highlight.setAttribute("class", "search-term");
+            if (titleColor) highlight.setAttribute("fill", titleColor);
+            highlight.textContent = match[0];
+            mainTitleTspan.appendChild(highlight);
+            
+            lastIndex = match.index + match[0].length;
+        }
+        
+        // Add any remaining text
+        if (lastIndex < titleComponents.title.length) {
+            const textAfter = document.createTextNode(titleComponents.title.substring(lastIndex));
+            mainTitleTspan.appendChild(textAfter);
+        }
+    } else {
+        // No search highlighting, just add the title text
+        mainTitleTspan.textContent = titleComponents.title;
+    }
+    
+    // Add date part if it exists
+    if (titleComponents.date) {
+        // Add spacer first (add extra space after title for better readability)
+        fragment.appendChild(document.createTextNode('    '));
+        
+        // Create a date tspan with consistent styling
+        const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        dateTspan.setAttribute("class", "date-text");
+        if (titleColor) dateTspan.setAttribute("fill", titleColor);
+        dateTspan.textContent = titleComponents.date;
+        fragment.appendChild(dateTspan);
+    }
+}
+
+/**
+ * Highlights search terms in regular text content
+ * @param text The text to highlight search terms in
+ * @param searchTerm The search term to highlight
+ * @param fragment The document fragment to append elements to
+ */
+function highlightSearchTermsInText(text: string, searchTerm: string, fragment: DocumentFragment): void {
+    if (!text || !searchTerm) {
+        // If no text or search term, just add the text as is
+        if (text) fragment.appendChild(document.createTextNode(text));
+        return;
+    }
+    
+    // Create safe regex for searching
+    const escapedPattern = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedPattern})`, 'gi');
+    
+    // Process character by character for precise highlighting
+    let lastIndex = 0;
+    let match;
+    
+    // Reset regex to start from beginning
+    regex.lastIndex = 0;
+    
+    while ((match = regex.exec(text)) !== null) {
+        // Add text before match
+        if (match.index > lastIndex) {
+            const textBefore = document.createTextNode(text.substring(lastIndex, match.index));
+            fragment.appendChild(textBefore);
+        }
+        
+        // Add the highlighted match
+        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        highlight.setAttribute("class", "search-term");
+        highlight.textContent = match[0];
+        fragment.appendChild(highlight);
+        
+        lastIndex = match.index + match[0].length;
+    }
+    
+    // Add any remaining text
+    if (lastIndex < text.length) {
+        const textAfter = document.createTextNode(text.substring(lastIndex));
+        fragment.appendChild(textAfter);
+    }
+}
+
 // Add this class after the helper functions at the top of the file
 class SynopsisManager {
     private plugin: ManuscriptTimelinePlugin;
@@ -316,15 +502,27 @@ class SynopsisManager {
         if (titleContent.includes('<tspan')) {
             // For pre-formatted HTML with tspans, parse safely
             const parser = new DOMParser();
-            const doc = parser.parseFromString(`<div>${titleContent}</div>`, 'text/html');
-            const container = doc.querySelector('div');
-            
-            if (!container) return;
-            
-            // Extract all tspans and add them to the text element
-            const tspans = container.querySelectorAll('tspan');
-            if (tspans.length > 0) {
-                tspans.forEach(tspan => {
+            // Wrap in SVG text element for potentially better parsing of SVG tspans/text nodes
+            const doc = parser.parseFromString(`<svg><text>${titleContent}</text></svg>`, 'image/svg+xml');
+            const textNode = doc.querySelector('text');
+
+            if (!textNode) {
+                // Fallback: If parsing fails, add raw content (less safe, but preserves something)
+                console.warn("Failed to parse title content with tspans, adding raw:", titleContent);
+                const fallbackTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                fallbackTspan.setAttribute("fill", titleColor);
+                // Avoid setting textContent directly with potentially complex HTML
+                // Instead, append the raw string as a text node for basic display
+                fallbackTspan.appendChild(document.createTextNode(titleContent)); 
+                titleTextElement.appendChild(fallbackTspan);
+                return;
+            }
+
+            // Iterate through all child nodes (tspans and text nodes)
+            Array.from(textNode.childNodes).forEach(node => {
+                if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === 'tspan') {
+                    // Handle tspan element
+                    const tspan = node as Element;
                     const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                     
                     // Copy attributes
@@ -334,38 +532,22 @@ class SynopsisManager {
                     
                     svgTspan.textContent = tspan.textContent;
                     titleTextElement.appendChild(svgTspan);
-                });
-            } else {
-                // No tspans found, just add the text content
-                const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                tspan.setAttribute("fill", titleColor);
-                tspan.textContent = titleContent;
-                titleTextElement.appendChild(tspan);
-            }
+                    
+                } else if (node.nodeType === Node.TEXT_NODE) {
+                    // Handle text node (e.g., spaces)
+                    if (node.textContent) { // Check if textContent is not null or empty
+                        titleTextElement.appendChild(document.createTextNode(node.textContent));
+                    }
+                }
+                // Ignore other node types (like comments)
+            });
+
         } else {
-            // Handle title and date with different styling
-            const parts = titleContent.split('  ');
-            if (parts.length > 1) {
-                const title = parts[0];
-                const date = parts.slice(1).join('  ');
-                
-                const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                titleTspan.setAttribute("fill", titleColor);
-                titleTspan.setAttribute("font-weight", "bold");
-                titleTspan.textContent = title;
-                titleTextElement.appendChild(titleTspan);
-                
-                const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                dateTspan.setAttribute("fill", titleColor);
-                dateTspan.setAttribute("class", "date-text");
-                dateTspan.textContent = date;
-                titleTextElement.appendChild(dateTspan);
-            } else {
-                const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                tspan.setAttribute("fill", titleColor);
-                tspan.textContent = titleContent;
-                titleTextElement.appendChild(tspan);
-            }
+            // Non-search case (uses renderSceneTitleComponents which correctly handles spaces)
+            const fragment = document.createDocumentFragment();
+            const titleComponents = parseSceneTitleComponents(titleContent);
+            renderSceneTitleComponents(titleComponents, fragment, undefined, titleColor);
+            titleTextElement.appendChild(fragment);
         }
     }
     
@@ -467,8 +649,6 @@ class SynopsisManager {
             // Add extra large vertical space between synopsis and metadata
             const metadataY = (synopsisEndIndex * lineHeight) + 45; // Big gap below the synopsis
             
-            this.plugin.log(`Metadata Y=${metadataY}`);
-            
             // Add invisible spacer element to ensure the gap is preserved
             const spacerY = (synopsisEndIndex * lineHeight) + 25;
             const spacerElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -479,28 +659,11 @@ class SynopsisManager {
             spacerElement.textContent = "\u00A0"; // Non-breaking space
             synopsisTextGroup.appendChild(spacerElement);
             
-            this.plugin.log(`Metadata Y=${metadataY} with spacer at Y=${spacerY}`);
-            
             // Process subplots if first metadata item exists
             const decodedMetadataItems = metadataItems.map(item => decodeHtmlEntities(item));
             
-            if (decodedMetadataItems[0] && decodedMetadataItems[0].trim() !== '\u00A0') {
-                if (decodedMetadataItems[0].startsWith('<tspan')) {
-                    // This is pre-formatted HTML that might contain search highlights
-                    // Only use it for export/preview mode, otherwise create fresh elements
-                    const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                    subplotTextElement.setAttribute("class", "info-text metadata-text");
-                    subplotTextElement.setAttribute("x", "0");
-                    subplotTextElement.setAttribute("y", String(metadataY));
-                    subplotTextElement.setAttribute("text-anchor", "start");
-                    
-                    // Process HTML content safely
-                    this.processContentWithTspans(decodedMetadataItems[0], subplotTextElement);
-                    
-                    synopsisTextGroup.appendChild(subplotTextElement);
-                } else {
-                    // Extract subplots and apply colors
-                    const subplots = decodedMetadataItems[0].split(', ').filter(s => s.trim().length > 0);
+            if (decodedMetadataItems.length > 0 && decodedMetadataItems[0] && decodedMetadataItems[0].trim().length > 0) {
+                const subplots = decodedMetadataItems[0].split(', ').filter(s => s.trim().length > 0);
                     
                     if (subplots.length > 0) {
                         const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -516,13 +679,10 @@ class SynopsisManager {
                             
                             // Create tspan for subplot
                             const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                            tspan.setAttribute("fill", color);
                             tspan.setAttribute("data-item-type", "subplot");
-                            tspan.setAttribute("style", `fill: ${color} !important;`);
-                            
-                            // Don't apply highlighting directly in the text - use a single text node for each subplot
-                            // This ensures we won't get duplicate terms when applying highlights later
-                            tspan.textContent = subplotText;
+                        tspan.setAttribute("style", `fill: ${color} !important;`); // Apply inline style
+                        
+                                tspan.textContent = subplotText;
                             
                             subplotTextElement.appendChild(tspan);
                             
@@ -536,31 +696,13 @@ class SynopsisManager {
                         });
                         
                         synopsisTextGroup.appendChild(subplotTextElement);
-                    }
                 }
             }
             
             // Process characters - second metadata item
-            if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim() !== '') {
-                // Standard spacing between subplot and character lines
+            if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim().length > 0) {
                 const characterY = metadataY + lineHeight;
-                
-                if (decodedMetadataItems[1].startsWith('<tspan')) {
-                    // This is pre-formatted HTML that might contain search highlights
-                    // Only use it for export/preview mode, otherwise create fresh elements
-                    const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                    characterTextElement.setAttribute("class", "info-text metadata-text");
-                    characterTextElement.setAttribute("x", "0");
-                    characterTextElement.setAttribute("y", String(characterY));
-                    characterTextElement.setAttribute("text-anchor", "start");
-                    
-                    // Process HTML content safely
-                    this.processContentWithTspans(decodedMetadataItems[1], characterTextElement);
-                    
-                    synopsisTextGroup.appendChild(characterTextElement);
-                } else {
-                    // Extract characters and apply colors
-                    const characters = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
+                const characters = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
                     
                     if (characters.length > 0) {
                         const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -576,13 +718,10 @@ class SynopsisManager {
                             
                             // Create tspan for character
                             const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                            tspan.setAttribute("fill", color);
                             tspan.setAttribute("data-item-type", "character");
-                            tspan.setAttribute("style", `fill: ${color} !important;`);
-                            
-                            // Don't apply search highlighting here - we'll do it in addHighlightRectangles
-                            // This prevents duplicate highlighting when the search term appears in characters
-                            tspan.textContent = characterText;
+                        tspan.setAttribute("style", `fill: ${color} !important;`); // Apply inline style
+                        
+                                tspan.textContent = characterText;
                             
                             characterTextElement.appendChild(tspan);
                             
@@ -596,7 +735,6 @@ class SynopsisManager {
                         });
                         
                         synopsisTextGroup.appendChild(characterTextElement);
-                    }
                 }
             }
         }
@@ -1036,8 +1174,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 pathElement.setAttribute('id', pathId);
                 pathElement.setAttribute('d', `M 0,0 Q ${Math.cos(angleToCenter) * 500},${Math.sin(angleToCenter) * 500 * curveFactor} 1000,0`);
                 pathElement.setAttribute('fill', 'none');
-                // SAFE: inline style used for hiding path that shouldn't be visible
-                pathElement.style.display = 'none'; // Hide the path
+                // Use CSS class instead of inline style
+                pathElement.classList.add('svg-path');
                 
                 // Add the path to the container before the text
                 textEl.parentNode?.insertBefore(pathElement, textEl);
@@ -1069,65 +1207,59 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const fragment = document.createDocumentFragment();
         
         // Special handling for title lines containing scene number and date
-        // Title format is typically: "SceneNumber SceneTitle   Date" 
+        // Title format is typically: "SceneNumber SceneTitle   Date"
         if (decodedText.includes('   ') && !decodedText.includes('<tspan')) {
-            // First split by the triple space that separates title from date
-            const [titlePart, datePart] = decodedText.split(/\s{3,}/);
+            // Handle title lines directly with the same approach as other text
+            // Split the title and date
+            const dateMatch = decodedText.match(/\s{3,}(.+?)$/);
             
-            // Then extract scene number from title (if it exists)
+            if (dateMatch) {
+                // Get title part without the date
+                const titlePart = decodedText.substring(0, dateMatch.index).trim();
+                const datePart = dateMatch[1].trim();
+                
+                // Extract scene number from title part
             const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
             
             if (titleMatch) {
-                // We have scene number + title + date format
+                    // We have a scene number + title format
                 const sceneNumber = titleMatch[1];
-                const sceneTitle = titleMatch[3];
-                
-                // Add scene number as regular text
-                fragment.appendChild(document.createTextNode(`${sceneNumber} `));
-                
-                // Split the title by search term and create highlighted spans
-                const titleParts = sceneTitle.split(regex);
-                titleParts.forEach((part, index) => {
-                    if (index % 2 === 1) {
-                        // This is a matched part (odd index)
-                        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                        highlight.setAttribute("class", "search-term");
-                        highlight.textContent = part;
-                        fragment.appendChild(highlight);
-                    } else if (part) {
-                        // This is regular text
-                        fragment.appendChild(document.createTextNode(part));
-                    }
-                });
-                
-                // Add spacer and date part
-                if (datePart) {
-                    fragment.appendChild(document.createTextNode('   '));
-                    fragment.appendChild(document.createTextNode(datePart));
+                    const titleText = titleMatch[3];
+                    
+                    // Add scene number as a separate tspan
+                    const numberTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    numberTspan.setAttribute("font-weight", "bold");
+                    numberTspan.textContent = `${sceneNumber} `;
+                    fragment.appendChild(numberTspan);
+                    
+                    // Highlight the title text and append directly to the main fragment
+                    highlightSearchTermsInText(titleText, this.searchTerm, fragment);
+                    
+                    // Add 4 spaces *after* the highlighted title content
+                    fragment.appendChild(document.createTextNode('    '));
+                    
+                    // Add the date part
+                    const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    dateTspan.setAttribute("class", "date-text");
+                    dateTspan.textContent = datePart;
+                    fragment.appendChild(dateTspan);
+            } else {
+                    // No scene number, just the title text and date
+                    // Highlight the title text and append directly to the main fragment
+                    highlightSearchTermsInText(titlePart, this.searchTerm, fragment);
+                    
+                    // Add spacer *after* the highlighted title content
+                    fragment.appendChild(document.createTextNode('    '));
+                    
+                    // Add the date part
+                    const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    dateTspan.setAttribute("class", "date-text");
+                    dateTspan.textContent = datePart;
+                    fragment.appendChild(dateTspan);
                 }
             } else {
-                // No scene number, just title + date
-                
-                // Split the title by search term and create highlighted spans
-                const titleParts = titlePart.split(regex);
-                titleParts.forEach((part, index) => {
-                    if (index % 2 === 1) {
-                        // This is a matched part (odd index)
-                        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                        highlight.setAttribute("class", "search-term");
-                        highlight.textContent = part;
-                        fragment.appendChild(highlight);
-                    } else if (part) {
-                        // This is regular text
-                        fragment.appendChild(document.createTextNode(part));
-                    }
-                });
-                
-                // Add spacer and date part
-                if (datePart) {
-                    fragment.appendChild(document.createTextNode('   '));
-                    fragment.appendChild(document.createTextNode(datePart));
-                }
+                // No date separator found, treat as regular text and highlight
+                highlightSearchTermsInText(decodedText, this.searchTerm, fragment);
             }
             
             // Convert fragment to string using XMLSerializer
@@ -1148,20 +1280,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     fragment.appendChild(document.createTextNode(', '));
                 }
                 
-                // Split the item by search term and create highlighted spans
-                const itemParts = item.split(regex);
-                itemParts.forEach((part, index) => {
-                    if (index % 2 === 1) {
-                        // This is a matched part (odd index)
-                        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                        highlight.setAttribute("class", "search-term");
-                        highlight.textContent = part;
-                        fragment.appendChild(highlight);
-                    } else if (part) {
-                        // This is regular text
-                        fragment.appendChild(document.createTextNode(part));
-                    }
-                });
+                // Highlight search terms in this item
+                highlightSearchTermsInText(item, this.searchTerm, fragment);
             });
             
             // Convert fragment to string using XMLSerializer
@@ -1194,21 +1314,22 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     tspan.removeChild(tspan.firstChild);
                 }
                 
-                // Split content by regex and rebuild with highlighted spans
-                const parts = originalContent.split(regex);
-                parts.forEach((part, index) => {
-                    if (index % 2 === 1) {
-                        // This is a matched part
-                        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                        highlight.setAttribute("class", "search-term");
-                        if (fillColor) highlight.setAttribute("fill", fillColor);
-                        highlight.textContent = part;
-                        tspan.appendChild(highlight);
-                    } else if (part) {
-                        // This is regular text
-                        tspan.appendChild(document.createTextNode(part));
-                    }
-                });
+                // Create a temporary fragment for this tspan's content
+                const tspanFragment = document.createDocumentFragment();
+                
+                // Highlight search terms in this tspan's content
+                highlightSearchTermsInText(originalContent, this.searchTerm, tspanFragment);
+                
+                // Apply the fill color to all highlight spans if needed
+                if (fillColor) {
+                    const highlights = tspanFragment.querySelectorAll('.search-term');
+                    Array.from(highlights).forEach(highlight => {
+                        highlight.setAttribute('fill', fillColor);
+                    });
+                }
+                
+                // Add the processed content to the tspan
+                tspan.appendChild(tspanFragment);
             });
             
             // Extract the processed HTML using XMLSerializer
@@ -1220,20 +1341,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         }
         
         // Regular processing for text without tspans (synopsis lines)
-        // Split by search term and create highlighted spans
-        const parts = decodedText.split(regex);
-        parts.forEach((part, index) => {
-            if (index % 2 === 1) {
-                // This is a matched part (odd index)
-                const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                highlight.setAttribute("class", "search-term");
-                highlight.textContent = part;
-                fragment.appendChild(highlight);
-            } else if (part) {
-                // This is regular text
-                fragment.appendChild(document.createTextNode(part));
-            }
-        });
+        highlightSearchTermsInText(decodedText, this.searchTerm, fragment);
         
         // Convert fragment to string using XMLSerializer
         return this.serializeFragment(fragment);
@@ -1498,14 +1606,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     public createTimelineSVG(scenes: Scene[]): string {
         // Performance optimization: Check if we have an excessive number of scenes
         const sceneCount = scenes.length;
-        let simplifyRendering = false;
-        
-        // If we have more than 100 scenes, simplify the rendering
-        if (sceneCount > 100) {
-            console.log(`Large number of scenes detected (${sceneCount}), using simplified rendering mode`);
-            simplifyRendering = true;
-        }
-        
         const size = 1600;
         const margin = 30;
         const innerRadius = 200; // the first ring is 200px from the center
@@ -1519,7 +1619,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Add debug coordinate display if debug mode is enabled
         if (this.settings.debug) {
             svg += `
-                <g class="debug-info-container" style="pointer-events:none;"><!-- SAFE: inline style needed for SVG interaction -->
+                <g class="debug-info-container svg-interaction"><!-- SAFE: class-based SVG interaction -->
                     <rect class="debug-info-background" x="-790" y="-790" width="230" height="40" rx="5" ry="5" fill="rgba(255,255,255,0.9)" stroke="#333333" stroke-width="1" />
                     <text class="debug-info-text" id="mouse-coords-text" x="-780" y="-765" fill="#ff3300" font-size="20px" font-weight="bold" stroke="white" stroke-width="0.5px" paint-order="stroke">Mouse: X=0, Y=0</text>
                 </g>
@@ -1549,21 +1649,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Create defs for patterns and gradients
         svg += `<defs>`;
 
-        // Performance optimization: In simplified mode, reduce the number of patterns
-        if (!simplifyRendering) {
-            // Original defs content
-            // ... existing code ...
-        } else {
-            // Simplified patterns
-            svg += `<pattern id="plaidWorking" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Working, 5)}"/>
-            </pattern>`;
-            
-            svg += `<pattern id="plaidTodo" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="${this.lightenColor(STATUS_COLORS.Todo, 15)}"/>
-            </pattern>`;
-        }
-    
         // Create a map to store scene number information for the scene square and synopsis
         const sceneNumbersMap = new Map<string, SceneNumberInfo>();
     
@@ -1932,77 +2017,26 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 // Format title and date on same line with spacing
                 this.highlightSearchTerm(`${scene.title}   ${scene.when?.toLocaleDateString() || ''}`),
                 ...(scene.synopsis ? this.splitIntoBalancedLines(scene.synopsis, maxTextWidth).map(line => this.highlightSearchTerm(line)) : []),
-                '\u00A0',
+                '\u00A0', // Separator
             ];
             
-            // Handle subplot and character lines differently
-            if (orderedSubplots.length > 0) {
-                // Apply search highlighting to each subplot separately
-                let subplotsHtml = '';
-                orderedSubplots.forEach((subplot, i) => {
-                    const term = this.searchTerm;
-                    const regex = term ? new RegExp(`(${this.escapeRegExp(term)})`, 'gi') : null;
-                    
-                    // Create HTML directly for each subplot
-                    const color = `hsl(${Math.floor(Math.random() * 360)}, 70%, 35%)`;
-                    
-                    // Don't apply search highlighting here - it will be done by addHighlightRectangles
-                    let subplotText = escapeXml(subplot || ''); // Handle undefined subplot
-                    
-                    subplotsHtml += `<tspan fill="${color}" data-item-type="subplot" style="fill: ${color} !important;"><!-- SAFE: inline style needed for color override in SVG -->${subplotText}</tspan>`;
-                    
-                    // Add comma separator if not the last item
-                    if (i < orderedSubplots.length - 1) {
-                        subplotsHtml += '<tspan fill="var(--text-muted)">, </tspan>';
-                    }
-                });
-                
-                // Add the fully-formatted subplot line
-                contentLines.push(subplotsHtml);
-            } else {
-                contentLines.push(''); // Empty placeholder
-            }
+            // --- Subplots --- 
+            // Remove the loop generating subplotsHtml
+            // Just push the raw subplot string (or empty string if none)
+            const rawSubplots = orderedSubplots.join(', ');
+            contentLines.push(rawSubplots);
             
-            // Handle character list with similar approach
-            if (scene.Character && scene.Character.length > 0) {
-                let charactersHtml = '';
-                scene.Character.forEach((character, i) => {
-                    const term = this.searchTerm;
-                    const regex = term ? new RegExp(`(${this.escapeRegExp(term)})`, 'gi') : null;
-                    
-                    // Create HTML directly for each character
-                    const color = `hsl(${Math.floor(Math.random() * 360)}, 80%, 35%)`;
-                    
-                    // Apply search highlighting if needed
-                    let characterText = escapeXml(character || ''); // Handle undefined character
-                    
-                    // Only apply direct highlighting if search is active but DON'T apply here if it contains the search term
-                    // This prevents double highlighting since the text is processed again in addSearchHighlights
-                    if (regex && this.searchActive) {
-                        // Instead of replacing the term with a span, just keep the original text
-                        // The highlighting will be added later by addSearchHighlights function
-                        characterText = characterText; // No replacement here
-                    }
-                    
-                    charactersHtml += `<tspan fill="${color}" data-item-type="character" style="fill: ${color} !important;"><!-- SAFE: inline style needed for color override in SVG -->${characterText}</tspan>`;
-                    
-                    // Add comma separator if not the last item
-                    if (i < (scene.Character?.length || 0) - 1) {
-                        charactersHtml += '<tspan fill="var(--text-muted)">, </tspan>';
-                    }
-                });
-                
-                // Add the fully-formatted character line
-                contentLines.push(charactersHtml);
-            } else {
-                contentLines.push(''); // Empty placeholder
-            }
+            // --- Characters ---
+            // Remove the loop generating charactersHtml
+            // Just push the raw character string (or empty string if none)
+            const rawCharacters = (scene.Character || []).join(', ');
+            contentLines.push(rawCharacters);
             
-            // Filter out empty lines
-            const filteredContentLines = contentLines.filter(line => line);
+            // Filter out empty lines AFTER generating raw strings
+            const filteredContentLines = contentLines.filter(line => line && line.trim() !== '\u00A0');
             
             // Generate the synopsis element using our new DOM-based method
-            // Instead of collecting HTML strings, store the DOM elements directly
+            // This will now always receive raw text for subplots/characters
             const synopsisElement = this.synopsisManager.generateElement(scene, filteredContentLines, sceneId);
             synopsesElements.push(synopsisElement);
         });
@@ -2052,8 +2086,36 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                     // Do not apply any modifications to the color to ensure it matches the legend
                                     return stageColor;
                                 }
-                                if (scene.due && new Date() > new Date(scene.due)) {
-                                    return STATUS_COLORS.Due; // Use Due color if past due date
+                                if (scene.due) {
+                                    // --- Robust Date Comparison --- 
+                                    // Parse due date - handle potential UTC interpretation by reconstructing
+                                    const dueDateRaw = new Date(scene.due);
+                                    const dueDateMidnightLocal = new Date(
+                                        dueDateRaw.getFullYear(),
+                                        dueDateRaw.getMonth(),
+                                        dueDateRaw.getDate() // Defaults to 00:00:00 in local timezone
+                                    );
+
+                                    // Get today's date at midnight local time
+                                    const todayMidnightLocal = new Date();
+                                    todayMidnightLocal.setHours(0, 0, 0, 0);
+
+                                    // Compare timestamps of the dates at midnight
+                                    const isOverdue = todayMidnightLocal.getTime() > dueDateMidnightLocal.getTime();
+                                    // --- End Robust Date Comparison ---
+                                    
+                                    if (isOverdue) {
+                                        if (this.settings.debug) {
+                                            console.log(`DEBUG: Scene marked DUE: "${scene.title || scene.path}"`, {
+                                                dueString: scene.due,
+                                                dueDateObjParsed: dueDateMidnightLocal, // Log the date used for comparison
+                                                todayObjCompared: todayMidnightLocal,   // Log the date used for comparison
+                                                comparisonResult: isOverdue,
+                                                status: scene.status
+                                            });
+                                        }
+                                        return STATUS_COLORS.Due; // Use Due color if past due date
+                                    }
                                 }
                                 
                                 // Check for working or todo status to use plaid pattern
@@ -2466,7 +2528,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Add debug coordinate display
         if (this.settings.debug) {
             svg += `
-                <g class="debug-info-container" style="pointer-events:none;">
+                <g class="debug-info-container svg-interaction"><!-- SAFE: class-based SVG interaction -->
                     <rect class="debug-info-background" x="-790" y="-790" width="230" height="40" rx="5" ry="5" fill="rgba(255,255,255,0.9)" stroke="#333333" stroke-width="1" />
                     <text class="debug-info-text" id="mouse-coords-text" x="-780" y="-765" fill="#ff3300" font-size="20px" font-weight="bold" stroke="white" stroke-width="0.5px" paint-order="stroke">Mouse: X=0, Y=0</text>
                 </g>
@@ -2712,13 +2774,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     private measureTextDimensions(text: string, maxWidth: number, fontSize: number, fontWeight: string = 'normal'): {width: number, height: number} {
         // Create an offscreen element for measurement
         const el = document.createElement('div');
-        el.style.position = 'absolute';
-        el.style.visibility = 'hidden';
-        el.style.maxWidth = `${maxWidth}px`;
-        el.style.fontSize = `${fontSize}px`;
-        el.style.fontWeight = fontWeight;
-        el.style.fontFamily = "'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif";
-        el.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
+        el.classList.add('text-measure');
+        el.style.setProperty('--max-width', `${maxWidth}px`);
+        el.style.setProperty('--font-size', `${fontSize}px`);
+        el.style.setProperty('--font-weight', fontWeight);
         
         // Check if text contains HTML/SVG tags
         if (text.includes('<') && text.includes('>')) {
@@ -2904,14 +2963,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         // Create search input container
         const searchContainer = contentEl.createDiv('search-container');
-        searchContainer.style.display = 'flex';
-        searchContainer.style.gap = '10px';
-        searchContainer.style.marginBottom = '15px';
+        searchContainer.classList.add('flex-container');
         
         // Create search input
         const searchInput = new TextComponent(searchContainer);
         searchInput.setPlaceholder('Enter search term (min 3 characters)');
-        searchInput.inputEl.style.flex = '1';
+        searchInput.inputEl.classList.add('search-input');
         
         // Prepopulate with current search term if one exists
         if (this.searchActive && this.searchTerm) {
@@ -2920,9 +2977,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         // Create button container
         const buttonContainer = contentEl.createDiv('button-container');
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.gap = '10px';
-        buttonContainer.style.justifyContent = 'flex-end';
+        buttonContainer.classList.add('button-container');
+        // All styles now defined in CSS
         
         // Create search button
         const searchButton = new ButtonComponent(buttonContainer)
@@ -3068,8 +3124,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             return null;
         }
         
-        return `${r}, ${g}, ${b}`;
-    }
+            return `${r}, ${g}, ${b}`;
+        }
 
     // Add helper method to highlight search terms
     
@@ -3077,24 +3133,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Helper method to ensure text is safe for SVG
     private safeSvgText(text: string): string {
-        if (!text) return '';
-        
-        // First decode HTML entities that might be in the text to prevent double-escaping
-        const decodedText = decodeHtmlEntities(text);
-        
-        // Handle special case: If the text already contains tspan tags
-        if (decodedText.includes('<tspan') && !decodedText.includes('&lt;tspan')) {
-            // This is a bit tricky - we want to preserve tspan tags but escape everything else
-            // Return as is for now - we'll handle this specially when creating SVG elements
-            return decodedText;
-        }
-        
-        // Otherwise, escape all special characters
-        return escapeXml(decodedText);
+        return (text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
     // Find the SVG element
-    private createSvgElement(svgContent: string, container: HTMLElement): SVGSVGElement | null {
+    public createSvgElement(svgContent: string, container: HTMLElement): SVGSVGElement | null {
         try {
             // Performance optimization: Track parsing time
             const startTime = performance.now();
@@ -3142,8 +3185,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     return svgElement;
                 }
                 
-                return null;
-            }
+        return null;
+    }
             
             // Get the source SVG element
             const sourceSvg = svgDoc.documentElement;
@@ -3171,7 +3214,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             fragment.appendChild(svgElement);
             container.appendChild(fragment);
             
-            console.log(`SVG parsing took ${performance.now() - startTime}ms`);
+           
             return svgElement;
         } catch (error) {
             console.error('Error creating SVG element:', error);
@@ -3385,7 +3428,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
     private createColorSwatch(container: HTMLElement, color: string): HTMLElement {
             const swatch = document.createElement('div');
             swatch.className = 'color-swatch';
-            swatch.style.backgroundColor = color;
+        swatch.style.setProperty('--swatch-color', color);
             
             container.appendChild(swatch);
             return swatch;
@@ -3605,7 +3648,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                                 // Update the color swatch
                                 const swatch = textInput.inputEl.parentElement?.querySelector('.color-swatch') as HTMLElement;
                         if (swatch) {
-                            swatch.style.backgroundColor = value;
+                            swatch.style.setProperty('--swatch-color', value);
                                 }
                             }
                         });
@@ -3621,7 +3664,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                             // Update the color swatch
                             const swatch = textInputRef?.inputEl.parentElement?.querySelector('.color-swatch') as HTMLElement;
                             if (swatch) {
-                                swatch.style.backgroundColor = defaultColor;
+                                swatch.style.setProperty('--swatch-color', defaultColor);
                             }
                         });
                 });
@@ -3632,13 +3675,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                 if (swatchContainer) {
                     const swatch = document.createElement('div');
                     swatch.className = 'color-swatch';
-                    swatch.style.backgroundColor = color;
-                    swatch.style.width = '20px';
-                    swatch.style.height = '20px';
-                    swatch.style.borderRadius = '3px';
-                    swatch.style.display = 'inline-block';
-                    swatch.style.marginLeft = '8px';
-                    swatch.style.border = '1px solid var(--background-modifier-border)';
+                    swatch.style.setProperty('--swatch-color', color);
                     swatchContainer.appendChild(swatch);
                 }
             }
@@ -3845,8 +3882,9 @@ export class ManuscriptTimelineView extends ItemView {
                 // Render the timeline with the scene data
                 this.renderTimeline(container, this.sceneData);
                 
-                // Add mouse coordinate tracking if debug mode is enabled
+                // Count SVG elements if debug mode is enabled
                 if (this.plugin.settings.debug) {
+                    this.countSvgElements(container);
                     this.setupMouseCoordinateTracking(container);
                 }
             })
@@ -3865,6 +3903,45 @@ export class ManuscriptTimelineView extends ItemView {
         if (this.plugin.searchActive) {
             setTimeout(() => this.addHighlightRectangles(), 100);
         }
+    }
+    
+    /**
+     * Count all SVG elements and log to console for debugging
+     */
+    private countSvgElements(container: HTMLElement) {
+        setTimeout(() => {
+            const svg = container.querySelector('.manuscript-timeline-svg') as SVGSVGElement;
+            
+            if (!svg) {
+                console.log('Could not find SVG element for counting');
+                return;
+            }
+            
+            // Count all SVG elements by type
+            const elementCounts: Record<string, number> = {};
+            const allElements = svg.querySelectorAll('*');
+            let totalCount = 0;
+            
+            allElements.forEach(el => {
+                const tagName = el.tagName.toLowerCase();
+                elementCounts[tagName] = (elementCounts[tagName] || 0) + 1;
+                totalCount++;
+            });
+            
+            // Log the counts
+            console.log(`SVG Elements Count (Total: ${totalCount}):`);
+            Object.entries(elementCounts)
+                .sort((a, b) => b[1] - a[1]) // Sort by count, descending
+                .forEach(([tagName, count]) => {
+                    console.log(`  ${tagName}: ${count}`);
+                });
+            
+            // Add count to debug display if it exists
+            const debugText = svg.querySelector('#element-count-text');
+            if (debugText) {
+                (debugText as SVGTextElement).textContent = `SVG Elements: ${totalCount}`;
+            }
+        }, 500); // Wait for SVG to fully render
     }
     
     private setupMouseCoordinateTracking(container: HTMLElement) {
@@ -3890,11 +3967,15 @@ export class ManuscriptTimelineView extends ItemView {
                 // Check if debug mode is still enabled
                 if (!this.plugin.settings.debug) {
                     // Hide debug display if debug mode disabled
-                    debugContainer.style.display = 'none';
+                    debugContainer.classList.add('debug-container');
+                    if (this.plugin.settings.debug) {
+                        debugContainer.classList.add('visible');
+                    }
                     return;
                 } else {
                     // Ensure display is visible
-                    debugContainer.style.display = '';
+                    debugContainer.classList.remove('debug-container');
+                    debugContainer.classList.add('visible');
                 }
                 
                 try {
@@ -3937,15 +4018,18 @@ export class ManuscriptTimelineView extends ItemView {
             // Create a MutationObserver to watch for changes to settings
             const settingsObserver = new MutationObserver((mutations) => {
                 // Check current debug setting and update visibility accordingly
-                debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+                debugContainer.classList.remove('debug-container');
+                debugContainer.classList.add('visible');
             });
             
             // Initial visibility check
-            debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+            debugContainer.classList.remove('debug-container');
+            debugContainer.classList.add('visible');
             
             // For changes that might happen outside mutation observer
             document.addEventListener('visibilitychange', () => {
-                debugContainer.style.display = this.plugin.settings.debug ? '' : 'none';
+                debugContainer.classList.remove('debug-container');
+                debugContainer.classList.add('visible');
             });
             
             console.log('Mouse coordinate tracking initialized');
@@ -4005,6 +4089,154 @@ export class ManuscriptTimelineView extends ItemView {
     
     async onClose(): Promise<void> {
         // Clean up any event listeners or resources
+    }
+    
+    // Add the missing createSvgElement method
+    private createSvgElement(svgContent: string, container: HTMLElement): SVGSVGElement | null {
+        // Delegate to the plugin's implementation
+        return this.plugin.createSvgElement(svgContent, container);
+    }
+    
+    // Add missing addHighlightRectangles method
+    private addHighlightRectangles(): void {
+        if (!this.plugin.searchActive) {
+            return;
+        }
+        
+        this.log(`Adding highlight rectangles for search term: "${this.plugin.searchTerm}" with ${this.plugin.searchResults.size} results`);
+        
+        // Iterate through all text elements and replace their content
+        // This ensures we completely replace any previous search highlighting
+        
+        // First, find all subplots to highlight
+        const subplotTspans = this.contentEl.querySelectorAll('tspan[data-item-type="subplot"]');
+        const searchTerm = this.plugin.searchTerm;
+        
+        // Create a word boundary regex for exact matches only
+        const escapeRegExp = (string: string): string => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedPattern = escapeRegExp(searchTerm);
+        const wordBoundaryRegex = new RegExp(`\\b(${escapedPattern})\\b`, 'gi');
+        
+        // Process all subplots
+        subplotTspans.forEach((tspan: Element) => {
+            // Get the original text content
+            const originalText = tspan.textContent || '';
+            
+            // Skip if there's no match
+            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) {
+                return;
+            }
+            
+            // Apply highlighting
+            const fillColor = tspan.getAttribute('fill');
+            
+            // Test if we need a word boundary match
+            const useWordBoundary = originalText.match(wordBoundaryRegex);
+            const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
+            
+            // Clear previous content
+            while (tspan.firstChild) {
+                tspan.removeChild(tspan.firstChild);
+            }
+            
+            // Reset regex
+            regex.lastIndex = 0;
+            
+            // Process the text parts
+            let lastIndex = 0;
+            let match;
+            
+            while ((match = regex.exec(originalText)) !== null) {
+                // Add text before match
+                if (match.index > lastIndex) {
+                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
+                    tspan.appendChild(textBefore);
+                }
+                
+                // Add the highlighted match
+                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                highlightSpan.setAttribute("class", "search-term");
+                highlightSpan.setAttribute("fill", fillColor || "");
+                highlightSpan.textContent = match[0];
+                tspan.appendChild(highlightSpan);
+                
+                lastIndex = match.index + match[0].length;
+            }
+            
+            // Add any remaining text
+            if (lastIndex < originalText.length) {
+                const textAfter = document.createTextNode(originalText.substring(lastIndex));
+                tspan.appendChild(textAfter);
+            }
+        });
+        
+        // Now, process all character elements
+        const characterTspans = this.contentEl.querySelectorAll('tspan[data-item-type="character"]');
+        
+        // Process all characters
+        characterTspans.forEach((tspan: Element) => {
+            // Same logic as for subplots
+            const originalText = tspan.textContent || '';
+            
+            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) {
+                return;
+            }
+            
+            const fillColor = tspan.getAttribute('fill');
+            const useWordBoundary = originalText.match(wordBoundaryRegex);
+            const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
+            
+            while (tspan.firstChild) {
+                tspan.removeChild(tspan.firstChild);
+            }
+            
+            regex.lastIndex = 0;
+            let lastIndex = 0;
+            let match;
+            
+            while ((match = regex.exec(originalText)) !== null) {
+                if (match.index > lastIndex) {
+                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
+                    tspan.appendChild(textBefore);
+                }
+                
+                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                highlightSpan.setAttribute("class", "search-term");
+                highlightSpan.setAttribute("fill", fillColor || "");
+                highlightSpan.textContent = match[0];
+                tspan.appendChild(highlightSpan);
+                
+                lastIndex = match.index + match[0].length;
+            }
+            
+            if (lastIndex < originalText.length) {
+                const textAfter = document.createTextNode(originalText.substring(lastIndex));
+                tspan.appendChild(textAfter);
+            }
+        });
+        
+        // Check for scene groups that should be highlighted
+        const allSceneGroups = this.contentEl.querySelectorAll('.scene-group');
+        this.log(`Found ${allSceneGroups.length} scene groups to check for search matches`);
+        
+        // Add search-result class to all matching scene paths
+        allSceneGroups.forEach((group: Element) => {
+            const pathAttr = group.getAttribute('data-path');
+            if (pathAttr && this.plugin.searchResults.has(decodeURIComponent(pathAttr))) {
+                // Find the number square in this group
+                const numberSquare = group.querySelector('.number-square');
+                const numberText = group.querySelector('.number-text');
+                
+                if (numberSquare) {
+                    numberSquare.classList.add('search-result');
+                    this.log(`Added search-result class to number square for ${pathAttr}`);
+                }
+                
+                if (numberText) {
+                    numberText.classList.add('search-result');
+                }
+            }
+        });
     }
     
     async createTestSceneFile(): Promise<void> {
@@ -4083,12 +4315,11 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             
             // Add button to create a test scene file
             const testButton = container.createEl("button", {
-                text: "Create a Test Scene File"
+                text: "Create a Test Scene File",
+                cls: "action-button"
             });
             
-            // SAFE: inline style used for button formatting
-            testButton.style.marginTop = "20px";
-            testButton.style.padding = "10px";
+            // Styles now defined in CSS
             
             testButton.addEventListener("click", async () => {
                 await this.createTestSceneFile();
@@ -4131,40 +4362,40 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     
                     for (let i = startIdx; i < endIdx; i++) {
                         const group = sceneGroups[i];
-                        const encodedPath = group.getAttribute("data-path");
+                    const encodedPath = group.getAttribute("data-path");
                         
-                        if (encodedPath && encodedPath !== "") {
-                            const filePath = decodeURIComponent(encodedPath);
+                    if (encodedPath && encodedPath !== "") {
+                        const filePath = decodeURIComponent(encodedPath);
+                        
+                        // Check if this file is currently open in a tab
+                        if (this.openScenePaths.has(filePath)) {
+                            // Add a class to indicate this scene is open
+                            group.classList.add("scene-is-open");
                             
-                            // Check if this file is currently open in a tab
-                            if (this.openScenePaths.has(filePath)) {
-                                // Add a class to indicate this scene is open
-                                group.classList.add("scene-is-open");
-                                
                                 // Mark the scene path element
-                                const scenePath = group.querySelector(".scene-path");
-                                if (scenePath) {
-                                    scenePath.classList.add("scene-is-open");
-                                }
-                                
-                                // Mark the scene title text if present
-                                const sceneTitle = group.querySelector(".scene-title");
-                                if (sceneTitle) {
-                                    sceneTitle.classList.add("scene-is-open");
-                                }
-                                
+                            const scenePath = group.querySelector(".scene-path");
+                            if (scenePath) {
+                                scenePath.classList.add("scene-is-open");
+                            }
+                            
+                            // Mark the scene title text if present
+                            const sceneTitle = group.querySelector(".scene-title");
+                            if (sceneTitle) {
+                                sceneTitle.classList.add("scene-is-open");
+                            }
+                            
                                 // Get scene ID from path element
                                 const sceneId = scenePath?.id;
                                 if (sceneId) {
                                     // Mark the number elements
                                     const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
-                                    if (numberSquare) {
-                                        numberSquare.classList.add("scene-is-open");
-                                    }
-                                    
+                            if (numberSquare) {
+                                numberSquare.classList.add("scene-is-open");
+                            }
+                            
                                     const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
-                                    if (numberText) {
-                                        numberText.classList.add("scene-is-open");
+                            if (numberText) {
+                                numberText.classList.add("scene-is-open");
                                     }
                                 }
                             }
@@ -4207,71 +4438,104 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
     // New helper method to set up scene interactions
     private setupSceneInteractions(group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
         // Find path for click interaction
-        const path = group.querySelector(".scene-path");
+                    const path = group.querySelector(".scene-path");
         if (!path) return;
         
-        const encodedPath = group.getAttribute("data-path");
-        if (encodedPath && encodedPath !== "") {
-            const filePath = decodeURIComponent(encodedPath);
+                        const encodedPath = group.getAttribute("data-path");
+                        if (encodedPath && encodedPath !== "") {
+                            const filePath = decodeURIComponent(encodedPath);
             
             // Set up click handler
-            path.addEventListener("click", () => {
-                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
-                if (file instanceof TFile) {
-                    // Check if the file is already open in any leaf
-                    const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
-                    const existingLeaf = leaves.find(leaf => {
-                        const viewState = leaf.getViewState();
-                        return viewState.state?.file === file.path;
-                    });
-                    
-                    if (existingLeaf) {
-                        // If the file is already open, just reveal that leaf
-                        this.plugin.app.workspace.revealLeaf(existingLeaf);
-                    } else {
+                            path.addEventListener("click", () => {
+                                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+                                if (file instanceof TFile) {
+                                    // Check if the file is already open in any leaf
+                                    const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
+                                    const existingLeaf = leaves.find(leaf => {
+                                        const viewState = leaf.getViewState();
+                                        return viewState.state?.file === file.path;
+                                    });
+                                    
+                                    if (existingLeaf) {
+                                        // If the file is already open, just reveal that leaf
+                                        this.plugin.app.workspace.revealLeaf(existingLeaf);
+                                    } else {
                         // Open in a new tab
-                        const leaf = this.plugin.app.workspace.getLeaf('tab');
-                        leaf.openFile(file);
-                    }
-                }
-            });
-            (path as SVGElement & {style: CSSStyleDeclaration}).style.cursor = "pointer";
-        }
-        
+                                        const leaf = this.plugin.app.workspace.getLeaf('tab');
+                                        leaf.openFile(file);
+                                    }
+                                }
+                            });
+                            (path as SVGElement & {style: CSSStyleDeclaration}).style.cursor = "pointer";
+                        }
+                        
         // Set up mouseover events for synopses
-        const sceneId = path.id;
-        let synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+                        const sceneId = path.id;
+                        let synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
 
         // If no synopsis found by exact ID match, try fallback methods
-        if (!synopsis && group.hasAttribute("data-path") && group.getAttribute("data-path")) {
-            const encodedPath = group.getAttribute("data-path");
-            if (encodedPath) {
-                const path = decodeURIComponent(encodedPath);
-                const matchingSceneIndex = scenes.findIndex(s => s.path === path);
-                
-                if (matchingSceneIndex > -1) {
-                    // Use the index to match against any available synopsis
-                    const allSynopses = Array.from(svgElement.querySelectorAll('.scene-info'));
-                    
-                    // As a fallback, just use the synopsis at the same index if available
-                    if (matchingSceneIndex < allSynopses.length) {
+                        if (!synopsis && group.hasAttribute("data-path") && group.getAttribute("data-path")) {
+                            const encodedPath = group.getAttribute("data-path");
+                            if (encodedPath) {
+                                const path = decodeURIComponent(encodedPath);
+                                const matchingSceneIndex = scenes.findIndex(s => s.path === path);
+                                
+                                if (matchingSceneIndex > -1) {
+                                    // Use the index to match against any available synopsis
+                                    const allSynopses = Array.from(svgElement.querySelectorAll('.scene-info'));
+                                    
+                                    // As a fallback, just use the synopsis at the same index if available
+                                    if (matchingSceneIndex < allSynopses.length) {
                         synopsis = allSynopses[matchingSceneIndex] as Element;
-                    }
-                }
-            }
-        }
+                                    }
+                                }
+                            }
+                        }
 
-        if (synopsis) {
+                        if (synopsis) {
             // Performance optimization: Use a debounced mousemove handler instead of directly updating
             let timeoutId: number | null = null;
-            
-            // Apply mouseover effects for the group/path
-            group.addEventListener("mouseenter", (event: MouseEvent) => {
-                // Reset all previous mouseover effects to ensure clean state
-                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                            
+                            // Apply mouseover effects for the group/path
+                            group.addEventListener("mouseenter", (event: MouseEvent) => {
+                                // Reset all previous mouseover effects to ensure clean state
+                                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                                allElements.forEach(element => {
+                                    // Remove only the selected and non-selected classes, but keep the scene-is-open class
+                                    element.classList.remove('selected', 'non-selected');
+                                });
+                                
+                // Highlight the current scene path and related elements
+                const currentPath = group.querySelector('.scene-path');
+                if (currentPath) {
+                    currentPath.classList.add('selected');
+                    
+                    // Also highlight the number square and text
+                    const sceneId = path.id;
+                                const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
+                                const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                                
+                                if (numberSquare) {
+                                    numberSquare.classList.add('selected');
+                                }
+                                
+                                if (numberText) {
+                                    numberText.classList.add('selected');
+                                }
+                                
+                    // Highlight the scene title
+                    const sceneTitle = group.querySelector('.scene-title');
+                    if (sceneTitle) {
+                        sceneTitle.classList.add('selected');
+                    }
+                }
+                
+                // Make other scenes less prominent
                 allElements.forEach(element => {
-                    // Remove only the selected and non-selected classes, but keep the scene-is-open class
-                    element.classList.remove('selected', 'non-selected');
+                    if (!element.classList.contains('selected')) {
+                        // Apply non-selected class even to open scenes when hovering other scenes
+                                                element.classList.add('non-selected');
+                    }
                 });
                 
                 // Make the tooltip visible
@@ -4295,26 +4559,26 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
                     timeoutId = null;
                 }, 50); // 50ms debounce
-            });
-            
-            group.addEventListener("mouseleave", () => {
+                            });
+                            
+                            group.addEventListener("mouseleave", () => {
                 if (timeoutId) {
                     window.clearTimeout(timeoutId);
                     timeoutId = null;
                 }
                 
                 // Hide the tooltip
-                synopsis.classList.remove('visible');
-                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
-                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
-                
+                                    synopsis.classList.remove('visible');
+                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
+                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
+                                    
                 // Reset all element states
                 const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
                 allElements.forEach(element => {
-                    element.classList.remove('selected', 'non-selected');
-                });
-            });
-        }
+                                            element.classList.remove('selected', 'non-selected');
+                                });
+                            });
+                        }
     }
 }
 
