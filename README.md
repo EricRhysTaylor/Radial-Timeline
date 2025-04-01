@@ -138,15 +138,13 @@ The visualizations are built using pure SVG and JavaScript, offering a lightweig
 - Extract the files to your vault's `.obsidian/plugins/manuscript-timeline` folder
 - Enable the plugin in Obsidian's Community Plugins settings
 
-### Required Plugins
-
-This plugin is completely self-contained and does not require any additional plugins to function properly. It integrates directly into Obsidian's interface and renders the timeline visualization in a native Obsidian tab.
-
 ## Feedback and Support
 
 Found a bug or have a suggestion? Please open an issue on the [GitHub issues page](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues).
 
 Your feedback helps improve the plugin for everyone!
+
+If you find the Manuscript Timeline plugin useful and would like to support continued development, or simply want to say thanks for the many hours of work that went into creating this visualization tool for writers, please consider buying me a coffee. Your support is greatly appreciated and helps motivate future improvements!
 
 <a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="width: 150px;" >
