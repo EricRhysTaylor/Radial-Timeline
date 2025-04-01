@@ -31,11 +31,6 @@ You can find it on GitHub or by searching for "Manuscript Calendar" in the Obsid
 * **Search Timeline**: Opens a modal to search scenes by title, synopsis, character, subplot, location, or POV
 * **Clear Timeline Search**: Clears the current search results
 
-## Development
-
-This project follows strict code quality guidelines to ensure security and maintainability. If you're interested in contributing, please review our [Code Quality Guidelines](CODE_QUALITY.md) which includes information about pre-commit hooks and safe alternatives to innerHTML/outerHTML.
-
-<a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
   <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #444;" />
 </a>
 <div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
