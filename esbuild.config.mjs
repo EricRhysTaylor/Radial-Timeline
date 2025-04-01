@@ -22,7 +22,8 @@ const destDirs = [
 // Files to copy (in addition to the built JS)
 const filesToCopy = [
 	"manifest.json",
-	"styles.css"
+	"styles.css",
+	"README.md"
 ];
 
 // Function to copy files
