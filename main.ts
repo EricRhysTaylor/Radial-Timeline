@@ -35,7 +35,7 @@ import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, W
  *    - Cache DOM selections that are used repeatedly
  *    - Be mindful of event listeners - always remove them when no longer needed
  
-*/
+ */
 
 // Helper functions for safe SVG creation - add at the top of the file
 function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
@@ -664,38 +664,38 @@ class SynopsisManager {
             
             if (decodedMetadataItems.length > 0 && decodedMetadataItems[0] && decodedMetadataItems[0].trim().length > 0) {
                 const subplots = decodedMetadataItems[0].split(', ').filter(s => s.trim().length > 0);
-                
-                if (subplots.length > 0) {
-                    const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                    subplotTextElement.setAttribute("class", "info-text metadata-text");
-                    subplotTextElement.setAttribute("x", "0");
-                    subplotTextElement.setAttribute("y", String(metadataY));
-                    subplotTextElement.setAttribute("text-anchor", "start");
                     
-                    // Format each subplot with its own color
-                    subplots.forEach((subplot, j) => {
-                        const color = getSubplotColor(subplot.trim());
-                        const subplotText = subplot.trim();
+                    if (subplots.length > 0) {
+                        const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        subplotTextElement.setAttribute("class", "info-text metadata-text");
+                        subplotTextElement.setAttribute("x", "0");
+                        subplotTextElement.setAttribute("y", String(metadataY));
+                        subplotTextElement.setAttribute("text-anchor", "start");
                         
-                        // Create tspan for subplot
-                        const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                        tspan.setAttribute("data-item-type", "subplot");
+                        // Format each subplot with its own color
+                        subplots.forEach((subplot, j) => {
+                            const color = getSubplotColor(subplot.trim());
+                            const subplotText = subplot.trim();
+                            
+                            // Create tspan for subplot
+                            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                            tspan.setAttribute("data-item-type", "subplot");
                         tspan.setAttribute("style", `fill: ${color} !important;`); // Apply inline style
                         
-                        tspan.textContent = subplotText;
+                                tspan.textContent = subplotText;
+                            
+                            subplotTextElement.appendChild(tspan);
+                            
+                            // Add comma separator if not the last item
+                            if (j < subplots.length - 1) {
+                                const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                comma.setAttribute("fill", "var(--text-muted)");
+                                comma.textContent = ", ";
+                                subplotTextElement.appendChild(comma);
+                            }
+                        });
                         
-                        subplotTextElement.appendChild(tspan);
-                        
-                        // Add comma separator if not the last item
-                        if (j < subplots.length - 1) {
-                            const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                            comma.setAttribute("fill", "var(--text-muted)");
-                            comma.textContent = ", ";
-                            subplotTextElement.appendChild(comma);
-                        }
-                    });
-                    
-                    synopsisTextGroup.appendChild(subplotTextElement);
+                        synopsisTextGroup.appendChild(subplotTextElement);
                 }
             }
             
@@ -703,38 +703,38 @@ class SynopsisManager {
             if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim().length > 0) {
                 const characterY = metadataY + lineHeight;
                 const characters = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
-                
-                if (characters.length > 0) {
-                    const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                    characterTextElement.setAttribute("class", "info-text metadata-text");
-                    characterTextElement.setAttribute("x", "0");
-                    characterTextElement.setAttribute("y", String(characterY));
-                    characterTextElement.setAttribute("text-anchor", "start");
                     
-                    // Format each character with its own color
-                    characters.forEach((character, j) => {
-                        const color = getCharacterColor(character.trim());
-                        const characterText = character.trim();
+                    if (characters.length > 0) {
+                        const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        characterTextElement.setAttribute("class", "info-text metadata-text");
+                        characterTextElement.setAttribute("x", "0");
+                        characterTextElement.setAttribute("y", String(characterY));
+                        characterTextElement.setAttribute("text-anchor", "start");
                         
-                        // Create tspan for character
-                        const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                        tspan.setAttribute("data-item-type", "character");
+                        // Format each character with its own color
+                        characters.forEach((character, j) => {
+                            const color = getCharacterColor(character.trim());
+                            const characterText = character.trim();
+                            
+                            // Create tspan for character
+                            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                            tspan.setAttribute("data-item-type", "character");
                         tspan.setAttribute("style", `fill: ${color} !important;`); // Apply inline style
                         
-                        tspan.textContent = characterText;
+                                tspan.textContent = characterText;
+                            
+                            characterTextElement.appendChild(tspan);
+                            
+                            // Add comma separator if not the last item
+                            if (j < characters.length - 1) {
+                                const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                                comma.setAttribute("fill", "var(--text-muted)");
+                                comma.textContent = ", ";
+                                characterTextElement.appendChild(comma);
+                            }
+                        });
                         
-                        characterTextElement.appendChild(tspan);
-                        
-                        // Add comma separator if not the last item
-                        if (j < characters.length - 1) {
-                            const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                            comma.setAttribute("fill", "var(--text-muted)");
-                            comma.textContent = ", ";
-                            characterTextElement.appendChild(comma);
-                        }
-                    });
-                    
-                    synopsisTextGroup.appendChild(characterTextElement);
+                        synopsisTextGroup.appendChild(characterTextElement);
                 }
             }
         }
@@ -1207,7 +1207,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const fragment = document.createDocumentFragment();
         
         // Special handling for title lines containing scene number and date
-        // Title format is typically: "SceneNumber SceneTitle   Date" 
+        // Title format is typically: "SceneNumber SceneTitle   Date"
         if (decodedText.includes('   ') && !decodedText.includes('<tspan')) {
             // Handle title lines directly with the same approach as other text
             // Split the title and date
@@ -1219,11 +1219,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 const datePart = dateMatch[1].trim();
                 
                 // Extract scene number from title part
-                const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
-                
-                if (titleMatch) {
+            const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
+            
+            if (titleMatch) {
                     // We have a scene number + title format
-                    const sceneNumber = titleMatch[1];
+                const sceneNumber = titleMatch[1];
                     const titleText = titleMatch[3];
                     
                     // Add scene number as a separate tspan
@@ -1243,7 +1243,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     dateTspan.setAttribute("class", "date-text");
                     dateTspan.textContent = datePart;
                     fragment.appendChild(dateTspan);
-                } else {
+            } else {
                     // No scene number, just the title text and date
                     // Highlight the title text and append directly to the main fragment
                     highlightSearchTermsInText(titlePart, this.searchTerm, fragment);
@@ -1606,14 +1606,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     public createTimelineSVG(scenes: Scene[]): string {
         // Performance optimization: Check if we have an excessive number of scenes
         const sceneCount = scenes.length;
-        let simplifyRendering = false;
-        
-        // If we have more than 100 scenes, simplify the rendering
-        if (sceneCount > 100) {
-            console.log(`Large number of scenes detected (${sceneCount}), using simplified rendering mode`);
-            simplifyRendering = true;
-        }
-        
         const size = 1600;
         const margin = 30;
         const innerRadius = 200; // the first ring is 200px from the center
@@ -1657,21 +1649,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Create defs for patterns and gradients
         svg += `<defs>`;
 
-        // Performance optimization: In simplified mode, reduce the number of patterns
-        if (!simplifyRendering) {
-            // Original defs content
-            // ... existing code ...
-        } else {
-            // Simplified patterns
-            svg += `<pattern id="plaidWorking" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Working, 5)}"/>
-            </pattern>`;
-            
-            svg += `<pattern id="plaidTodo" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="${this.lightenColor(STATUS_COLORS.Todo, 15)}"/>
-            </pattern>`;
-        }
-    
         // Create a map to store scene number information for the scene square and synopsis
         const sceneNumbersMap = new Map<string, SceneNumberInfo>();
     
@@ -2109,8 +2086,36 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                     // Do not apply any modifications to the color to ensure it matches the legend
                                     return stageColor;
                                 }
-                                if (scene.due && new Date() > new Date(scene.due)) {
-                                    return STATUS_COLORS.Due; // Use Due color if past due date
+                                if (scene.due) {
+                                    // --- Robust Date Comparison --- 
+                                    // Parse due date - handle potential UTC interpretation by reconstructing
+                                    const dueDateRaw = new Date(scene.due);
+                                    const dueDateMidnightLocal = new Date(
+                                        dueDateRaw.getFullYear(),
+                                        dueDateRaw.getMonth(),
+                                        dueDateRaw.getDate() // Defaults to 00:00:00 in local timezone
+                                    );
+
+                                    // Get today's date at midnight local time
+                                    const todayMidnightLocal = new Date();
+                                    todayMidnightLocal.setHours(0, 0, 0, 0);
+
+                                    // Compare timestamps of the dates at midnight
+                                    const isOverdue = todayMidnightLocal.getTime() > dueDateMidnightLocal.getTime();
+                                    // --- End Robust Date Comparison ---
+                                    
+                                    if (isOverdue) {
+                                        if (this.settings.debug) {
+                                            console.log(`DEBUG: Scene marked DUE: "${scene.title || scene.path}"`, {
+                                                dueString: scene.due,
+                                                dueDateObjParsed: dueDateMidnightLocal, // Log the date used for comparison
+                                                todayObjCompared: todayMidnightLocal,   // Log the date used for comparison
+                                                comparisonResult: isOverdue,
+                                                status: scene.status
+                                            });
+                                        }
+                                        return STATUS_COLORS.Due; // Use Due color if past due date
+                                    }
                                 }
                                 
                                 // Check for working or todo status to use plaid pattern
@@ -3119,8 +3124,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             return null;
         }
         
-        return `${r}, ${g}, ${b}`;
-    }
+            return `${r}, ${g}, ${b}`;
+        }
 
     // Add helper method to highlight search terms
     
@@ -3180,8 +3185,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     return svgElement;
                 }
                 
-                return null;
-            }
+        return null;
+    }
             
             // Get the source SVG element
             const sourceSvg = svgDoc.documentElement;
@@ -3209,7 +3214,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             fragment.appendChild(svgElement);
             container.appendChild(fragment);
             
-            console.log(`SVG parsing took ${performance.now() - startTime}ms`);
+           
             return svgElement;
         } catch (error) {
             console.error('Error creating SVG element:', error);
@@ -3421,12 +3426,12 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
 
     // Add color swatch creation function
     private createColorSwatch(container: HTMLElement, color: string): HTMLElement {
-        const swatch = document.createElement('div');
-        swatch.className = 'color-swatch';
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
         swatch.style.setProperty('--swatch-color', color);
-        
-        container.appendChild(swatch);
-        return swatch;
+            
+            container.appendChild(swatch);
+            return swatch;
     }
 
     // Add color picker function with centered dialog
@@ -4357,40 +4362,40 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     
                     for (let i = startIdx; i < endIdx; i++) {
                         const group = sceneGroups[i];
-                        const encodedPath = group.getAttribute("data-path");
+                    const encodedPath = group.getAttribute("data-path");
                         
-                        if (encodedPath && encodedPath !== "") {
-                            const filePath = decodeURIComponent(encodedPath);
+                    if (encodedPath && encodedPath !== "") {
+                        const filePath = decodeURIComponent(encodedPath);
+                        
+                        // Check if this file is currently open in a tab
+                        if (this.openScenePaths.has(filePath)) {
+                            // Add a class to indicate this scene is open
+                            group.classList.add("scene-is-open");
                             
-                            // Check if this file is currently open in a tab
-                            if (this.openScenePaths.has(filePath)) {
-                                // Add a class to indicate this scene is open
-                                group.classList.add("scene-is-open");
-                                
                                 // Mark the scene path element
-                                const scenePath = group.querySelector(".scene-path");
-                                if (scenePath) {
-                                    scenePath.classList.add("scene-is-open");
-                                }
-                                
-                                // Mark the scene title text if present
-                                const sceneTitle = group.querySelector(".scene-title");
-                                if (sceneTitle) {
-                                    sceneTitle.classList.add("scene-is-open");
-                                }
-                                
+                            const scenePath = group.querySelector(".scene-path");
+                            if (scenePath) {
+                                scenePath.classList.add("scene-is-open");
+                            }
+                            
+                            // Mark the scene title text if present
+                            const sceneTitle = group.querySelector(".scene-title");
+                            if (sceneTitle) {
+                                sceneTitle.classList.add("scene-is-open");
+                            }
+                            
                                 // Get scene ID from path element
                                 const sceneId = scenePath?.id;
                                 if (sceneId) {
                                     // Mark the number elements
                                     const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
-                                    if (numberSquare) {
-                                        numberSquare.classList.add("scene-is-open");
-                                    }
-                                    
+                            if (numberSquare) {
+                                numberSquare.classList.add("scene-is-open");
+                            }
+                            
                                     const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
-                                    if (numberText) {
-                                        numberText.classList.add("scene-is-open");
+                            if (numberText) {
+                                numberText.classList.add("scene-is-open");
                                     }
                                 }
                             }
@@ -4433,73 +4438,73 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
     // New helper method to set up scene interactions
     private setupSceneInteractions(group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
         // Find path for click interaction
-        const path = group.querySelector(".scene-path");
+                    const path = group.querySelector(".scene-path");
         if (!path) return;
         
-        const encodedPath = group.getAttribute("data-path");
-        if (encodedPath && encodedPath !== "") {
-            const filePath = decodeURIComponent(encodedPath);
+                        const encodedPath = group.getAttribute("data-path");
+                        if (encodedPath && encodedPath !== "") {
+                            const filePath = decodeURIComponent(encodedPath);
             
             // Set up click handler
-            path.addEventListener("click", () => {
-                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
-                if (file instanceof TFile) {
-                    // Check if the file is already open in any leaf
-                    const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
-                    const existingLeaf = leaves.find(leaf => {
-                        const viewState = leaf.getViewState();
-                        return viewState.state?.file === file.path;
-                    });
-                    
-                    if (existingLeaf) {
-                        // If the file is already open, just reveal that leaf
-                        this.plugin.app.workspace.revealLeaf(existingLeaf);
-                    } else {
+                            path.addEventListener("click", () => {
+                                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+                                if (file instanceof TFile) {
+                                    // Check if the file is already open in any leaf
+                                    const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
+                                    const existingLeaf = leaves.find(leaf => {
+                                        const viewState = leaf.getViewState();
+                                        return viewState.state?.file === file.path;
+                                    });
+                                    
+                                    if (existingLeaf) {
+                                        // If the file is already open, just reveal that leaf
+                                        this.plugin.app.workspace.revealLeaf(existingLeaf);
+                                    } else {
                         // Open in a new tab
-                        const leaf = this.plugin.app.workspace.getLeaf('tab');
-                        leaf.openFile(file);
-                    }
-                }
-            });
-            (path as SVGElement & {style: CSSStyleDeclaration}).style.cursor = "pointer";
-        }
-        
+                                        const leaf = this.plugin.app.workspace.getLeaf('tab');
+                                        leaf.openFile(file);
+                                    }
+                                }
+                            });
+                            (path as SVGElement & {style: CSSStyleDeclaration}).style.cursor = "pointer";
+                        }
+                        
         // Set up mouseover events for synopses
-        const sceneId = path.id;
-        let synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+                        const sceneId = path.id;
+                        let synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
 
         // If no synopsis found by exact ID match, try fallback methods
-        if (!synopsis && group.hasAttribute("data-path") && group.getAttribute("data-path")) {
-            const encodedPath = group.getAttribute("data-path");
-            if (encodedPath) {
-                const path = decodeURIComponent(encodedPath);
-                const matchingSceneIndex = scenes.findIndex(s => s.path === path);
-                
-                if (matchingSceneIndex > -1) {
-                    // Use the index to match against any available synopsis
-                    const allSynopses = Array.from(svgElement.querySelectorAll('.scene-info'));
-                    
-                    // As a fallback, just use the synopsis at the same index if available
-                    if (matchingSceneIndex < allSynopses.length) {
+                        if (!synopsis && group.hasAttribute("data-path") && group.getAttribute("data-path")) {
+                            const encodedPath = group.getAttribute("data-path");
+                            if (encodedPath) {
+                                const path = decodeURIComponent(encodedPath);
+                                const matchingSceneIndex = scenes.findIndex(s => s.path === path);
+                                
+                                if (matchingSceneIndex > -1) {
+                                    // Use the index to match against any available synopsis
+                                    const allSynopses = Array.from(svgElement.querySelectorAll('.scene-info'));
+                                    
+                                    // As a fallback, just use the synopsis at the same index if available
+                                    if (matchingSceneIndex < allSynopses.length) {
                         synopsis = allSynopses[matchingSceneIndex] as Element;
-                    }
-                }
-            }
-        }
+                                    }
+                                }
+                            }
+                        }
 
-        if (synopsis) {
+                        if (synopsis) {
             // Performance optimization: Use a debounced mousemove handler instead of directly updating
             let timeoutId: number | null = null;
-            
-            // Apply mouseover effects for the group/path
-            group.addEventListener("mouseenter", (event: MouseEvent) => {
-                // Reset all previous mouseover effects to ensure clean state
-                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
-                allElements.forEach(element => {
-                    // Remove only the selected and non-selected classes, but keep the scene-is-open class
-                    element.classList.remove('selected', 'non-selected');
-                });
-                
+                            
+                            // Apply mouseover effects for the group/path
+                            group.addEventListener("mouseenter", (event: MouseEvent) => {
+                                // Reset all previous mouseover effects to ensure clean state
+                                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                                allElements.forEach(element => {
+                                    // Remove only the selected and non-selected classes, but keep the scene-is-open class
+                                    element.classList.remove('selected', 'non-selected');
+                                });
+                                
                 // Highlight the current scene path and related elements
                 const currentPath = group.querySelector('.scene-path');
                 if (currentPath) {
@@ -4507,17 +4512,17 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     
                     // Also highlight the number square and text
                     const sceneId = path.id;
-                    const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
-                    const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
-                    
-                    if (numberSquare) {
-                        numberSquare.classList.add('selected');
-                    }
-                    
-                    if (numberText) {
-                        numberText.classList.add('selected');
-                    }
-                    
+                                const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
+                                const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                                
+                                if (numberSquare) {
+                                    numberSquare.classList.add('selected');
+                                }
+                                
+                                if (numberText) {
+                                    numberText.classList.add('selected');
+                                }
+                                
                     // Highlight the scene title
                     const sceneTitle = group.querySelector('.scene-title');
                     if (sceneTitle) {
@@ -4529,7 +4534,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 allElements.forEach(element => {
                     if (!element.classList.contains('selected')) {
                         // Apply non-selected class even to open scenes when hovering other scenes
-                        element.classList.add('non-selected');
+                                                element.classList.add('non-selected');
                     }
                 });
                 
@@ -4554,26 +4559,26 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
                     timeoutId = null;
                 }, 50); // 50ms debounce
-            });
-            
-            group.addEventListener("mouseleave", () => {
+                            });
+                            
+                            group.addEventListener("mouseleave", () => {
                 if (timeoutId) {
                     window.clearTimeout(timeoutId);
                     timeoutId = null;
                 }
                 
                 // Hide the tooltip
-                synopsis.classList.remove('visible');
-                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
-                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
-                
+                                    synopsis.classList.remove('visible');
+                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
+                                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
+                                    
                 // Reset all element states
                 const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
                 allElements.forEach(element => {
-                    element.classList.remove('selected', 'non-selected');
-                });
-            });
-        }
+                                            element.classList.remove('selected', 'non-selected');
+                                });
+                            });
+                        }
     }
 }
 

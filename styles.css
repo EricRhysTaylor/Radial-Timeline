@@ -313,30 +313,8 @@ text.info-text.title-text-secondary tspan.search-term {
   font-family: inherit !important;
   font-size: inherit !important;
 }
-text.info-text.title-text-main .search-term {
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em !important;
-  stroke-opacity: 0.5 !important;
-  paint-order: stroke !important;
-  fill: var(--title-color) !important;
-}
-text.info-text.title-text-secondary .search-term {
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em !important;
-  stroke-opacity: 0.5 !important;
-  paint-order: stroke !important;
-  fill: inherit !important;
-}
-text.info-text tspan.search-term:not([data-item-type]) {
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em !important;
-  stroke-opacity: 0.5 !important;
-  paint-order: stroke !important;
-  font-weight: bold !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  fill: inherit !important;
-}
+
+
 text.info-text.metadata-text tspan[data-item-type] {
   fill: inherit !important;
 }
@@ -347,13 +325,7 @@ text.info-text.metadata-text tspan[data-item-type] {
   stroke-width: 0.07em;
   paint-order: stroke;
 }
-text.info-text.metadata-text tspan[data-item-type].search-term {
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em;
-  stroke-opacity: 0.5;
-  paint-order: stroke;
-  font-weight: bold;
-}
+
 tspan[fill] .search-term,
 tspan[fill].search-term,
 tspan .search-term {
@@ -501,22 +473,7 @@ tspan .search-term {
 .clear-search-btn:hover circle {
   fill: #FFE5E5;
 }
-.title-stage-zero .search-term {
-  stroke: #FFCC00 !important;
-  fill: inherit !important;
-}
-.title-stage-author .search-term {
-  stroke: #FFCC00 !important;
-  fill: inherit !important;
-}
-.title-stage-house .search-term {
-  stroke: #FFCC00 !important;
-  fill: inherit !important;
-}
-.title-stage-press .search-term {
-  stroke: #FFCC00 !important;
-  fill: inherit !important;
-}
+
 .highlight-rect {
   fill: #FFCC00;
   rx: 3;
@@ -612,20 +569,10 @@ tspan .search-term {
   paint-order: stroke;
   pointer-events: none;
 }
-.info-text.metadata-text tspan[data-item-type=subplot] .search-term,
-.info-text.metadata-text tspan[data-item-type=subplot].search-term,
-.info-text.metadata-text tspan[data-item-type=character] .search-term,
-.info-text.metadata-text tspan[data-item-type=character].search-term {
-  fill: inherit !important;
-  stroke: #FFCC00 !important;
-  stroke-width: 0.5em;
-  stroke-opacity: 0.5;
-  paint-order: stroke;
-  font-weight: bold;
-}
+
 .scene-info text.info-text.title-text-main .search-term {
   stroke: #FFCC00 !important;
-  stroke-width: 1em !important;
+  stroke-width: .2em !important;
   paint-order: stroke !important;
   font-weight: bold !important;
   fill: var(--title-color) !important;
@@ -669,12 +616,6 @@ tspan .search-term {
 /* Debug container styles */
 .debug-info-container {
     pointer-events: none;
-}
-
-/* Search term highlight styles */
-.search-term {
-    fill: var(--text-highlight-bg);
-    font-weight: bold;
 }
 
 /* Color swatch styles */
