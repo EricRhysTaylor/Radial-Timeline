@@ -3681,11 +3681,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             }
             });
             
-        // Add horizontal rule to separate settings from documentation
-        containerEl.createEl('hr', { cls: 'settings-separator' });
-        
-        containerEl.createEl('h2', {text: 'Documentation', cls: 'setting-item-heading'});
-        
+           
         // Create documentation section
         const documentationContainer = containerEl.createDiv('documentation-container');
         documentationContainer.style.marginLeft = '0';

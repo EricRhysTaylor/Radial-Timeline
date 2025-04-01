@@ -1,4 +1,4 @@
-## Obsidian Manuscript Timeline
+## Documentation
 
 A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.
 
@@ -31,8 +31,10 @@ You can find it on GitHub or by searching for "Manuscript Calendar" in the Obsid
 * **Search Timeline**: Opens a modal to search scenes by title, synopsis, character, subplot, location, or POV
 * **Clear Timeline Search**: Clears the current search results
 
+<a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
   <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #444;" />
 </a>
+
 <div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
   Click image to view full size in browser
 </div>
@@ -70,7 +72,7 @@ Scene files must have the following frontmatter:
 - Character - Characters in the scene
 - Publish Stage - (Zero, Author, House, Press)
 - Status - Scene status (Todo, Working, Complete)
-- Due - Due date for the scene of Completion Date
+- Due - Due date for the scene
 - Pending Edits - Optional future editing notes
 
 
@@ -101,7 +103,7 @@ The timeline displays:
 - Subplots organized in concentric rings
 - Scene numbers in small boxes
 - Color-coded scenes based on status
-- Month markers around the perimeter
+- Month markers around the perimeter are more about keeping track of your progress thru the year and not about when a scene took place in time
 - Progress ring showing year progress
 
 Hover over a scene to see its details and click to open the corresponding file.
@@ -127,21 +129,34 @@ The Manuscript Timeline visualization was inspired by and draws on principles fr
 
 The visualizations are built using pure SVG and JavaScript, offering a lightweight solution that maintains the elegance and interactivity of D3-style visualizations while being fully compatible with Obsidian's rendering capabilities.
 
-### Installation
+## Installation
 
-- Download the latest release
-- Extract the files to your vault's `.obsidian/plugins/manuscript-timeline` folder
-- Enable the plugin in Obsidian's Community Plugins settings
+### From Obsidian
+
+1.  Open Settings > Community plugins.
+2.  Turn off Safe mode if it's on.
+3.  Click Browse and search for "Manuscript Calendar".
+4.  Click Install and then Enable.
+
+### Manual Installation
+
+1.  Download the latest `main.js`, `styles.css`, `manifest.json`, `Readme.md` from the [Releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page of the GitHub repository.
+2.  Extract the files to your vault's `.obsidian/plugins/manuscript-timeline`
+
+## Author
+
+Created by Eric Rhys Taylor
+
+This plugin adheres to Obsidian.md development best practices, including secure DOM manipulation and API compliance.
 
 ## Feedback and Support
 
-Found a bug or have a suggestion? Please open an issue on the [GitHub issues page](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues).
-
-Your feedback helps improve the plugin for everyone!
-
-If you find the Manuscript Timeline plugin useful and would like to support continued development, or simply want to say thanks for the many hours of work that went into creating this visualization tool for writers, please consider buying me a coffee. Your support is greatly appreciated and helps motivate future improvements!
+If you encounter any issues or have feature requests, please file an issue on the [GitHub repository issues page](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues). If you find the Manuscript Calendar plugin useful and would like to support continued development, please consider buying me a coffee:
 
 <a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="width: 150px;" >
 </a>
 
+## License
+
+This project is licensed under the MIT License - see the `LICENSE` file for details.
