@@ -3684,7 +3684,6 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         // Add horizontal rule to separate settings from documentation
         containerEl.createEl('hr', { cls: 'settings-separator' });
         
-        // Add documentation section
         containerEl.createEl('h2', {text: 'Documentation', cls: 'setting-item-heading'});
         
         // Create documentation section
@@ -3706,6 +3705,29 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             .catch(error => {
                 documentationContainer.createEl('p', { text: 'Error loading documentation. Please check your internet connection.' });
         });
+
+        // Load README.md content from local plugin directory
+        const adapter = this.app.vault.adapter;
+        const pluginDir = this.plugin.manifest.dir || '';
+        const readmePath = `${pluginDir}/README.md`;
+        
+        adapter.read(readmePath)
+            .then(content => {
+                // Empty the container in case we loaded something from GitHub already
+                documentationContainer.empty();
+                
+                // Render the local README content
+                MarkdownRenderer.renderMarkdown(
+                    content,
+                    documentationContainer,
+                    '',
+                    this.plugin
+                );
+            })
+            .catch(error => {
+                this.plugin.log('Error loading local README: ' + error);
+                documentationContainer.createEl('p', { text: 'Error loading documentation from local plugin directory.' });
+            });
     }
 }
 
