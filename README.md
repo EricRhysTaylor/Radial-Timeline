@@ -15,6 +15,12 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 - Visually highlights currently open scene tabs in the radial timeline with special styling
 - Fully integrated into Obsidian's interface - no external plugins required
 
+## Commands
+
+* **Open Manuscript Timeline**: Opens the timeline view in the center area
+* **Search Timeline**: Opens a modal to search scenes by title, synopsis, character, subplot, location, or POV
+* **Clear Timeline Search**: Clears the current search results
+
 ## Development
 
 This project follows strict code quality guidelines to ensure security and maintainability. If you're interested in contributing, please review our [Code Quality Guidelines](CODE_QUALITY.md) which includes information about pre-commit hooks and safe alternatives to innerHTML/outerHTML.
@@ -125,75 +131,6 @@ The visualizations are built using pure SVG and JavaScript, offering a lightweig
 ### Required Plugins
 
 This plugin is completely self-contained and does not require any additional plugins to function properly. It integrates directly into Obsidian's interface and renders the timeline visualization in a native Obsidian tab.
-
-### Development
-
-Development of this plugin is private. The source code is provided for transparency and to allow users to verify its functionality, but it is not licensed for derivative works.
-
-If you find this plugin useful, consider supporting its continued development:
-
-<a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
-
-If you wish to contribute to the development of this plugin or report issues:
-- [Open an issue on GitHub](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues) to report bugs or suggest features
-- Contact the author via GitHub for potential collaboration opportunities
-
-Any modifications or derivative works require explicit permission from the author.
-
-### License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-MIT License means:
-- You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software.
-- The only requirement is that you include the original copyright notice and permission notice in all copies or substantial portions of the software.
-
-### Author
-
-Created by Eric Rhys Taylor
-
-### Questions & Support
-
-For questions, issues, or feature requests, please [open an issue on GitHub](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues).
-
-## Developer Notes
-
-### Security Best Practices
-
-1. **Avoid `innerHTML` and `outerHTML`**: For security reasons, never use `innerHTML` or `outerHTML` to create or modify content. These methods can lead to Cross-Site Scripting (XSS) vulnerabilities.
-
-2. **Use DOM Manipulation Instead**:
-   ```javascript
-   // AVOID THIS:
-   element.innerHTML = '<span>' + content + '</span>';
-   
-   // DO THIS INSTEAD:
-   const span = document.createElement('span');
-   span.textContent = content;
-   element.appendChild(span);
-   ```
-
-3. **For SVG Elements**:
-   ```javascript
-   // AVOID THIS:
-   svgContainer.innerHTML = svgContent;
-   
-   // DO THIS INSTEAD:
-   const parser = new DOMParser();
-   const svgDoc = parser.parseFromString(svgContent, "image/svg+xml");
-   
-   // Clear existing content
-   while (svgContainer.firstChild) {
-     svgContainer.removeChild(svgContainer.firstChild);
-   }
-   
-   // Append the new SVG
-   if (svgDoc.documentElement) {
-     svgContainer.appendChild(document.importNode(svgDoc.documentElement, true));
-   }
-   ```
-
-4. **Always Sanitize User Input**: If you must process HTML content, use a proper sanitization library.
 
 ## Related Plugins
 
