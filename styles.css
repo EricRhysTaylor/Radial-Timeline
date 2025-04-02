@@ -302,7 +302,6 @@ text.info-text.metadata-text tspan[data-item-type] {
 }
 .info-text.metadata-text tspan[data-item-type=subplot],
 .info-text.metadata-text tspan[data-item-type=character] {
-  fill: inherit !important;
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;
@@ -382,7 +381,6 @@ tspan .search-term {
 }
 .scene-info text.info-text.metadata-text {
   font-size: 18px;
-  fill: var(--text-muted);
   font-weight: normal;
   text-transform: none;
 }
@@ -419,8 +417,10 @@ tspan .search-term {
 .number-square.search-result {
   fill: #FFCC00;
 }
-
 .number-text.search-result.non-selected {
+  fill: #FFFFFF !important;
+}
+.number-text.scene-is-open.search-result.non-selected {
   fill: #FFFFFF !important;
 }
 .number-text.scene-is-open.search-result {
@@ -432,21 +432,29 @@ tspan .search-term {
   stroke-width: 2px;
 }
 .number-square.search-result.selected {
+  fill: #FFCC00;
   stroke: #ff9500;
   stroke-width: 2px;
 }
-.number-square[data-has-edits=true] {
+.number-square.has-edits {
   fill: #8875ff;
 }
+.number-square.has-edits.search-result {
+  fill: #FFCC00;
+}
 
-.number-square[data-has-edits=true].non-selected {
+.number-square.has-edits.scene-is-open.non-selected {
   fill: #EFEFEF;
 }
-.number-square[data-has-edits=true].non-selected + .number-text {
+.number-text.has-edits.scene-is-open.non-selected {
   fill: #ffffff;
 }
-.number-text[data-has-edits=true].search-result {
-  fill: #FFCC00;
+.number-text.has-edits.scene-is-open.non-selected {
+  fill: #FFFFFF;
+}
+.number-text.has-edits.search-result.selected {
+  fill: #000000;
+  font-weight: bold;
 }
 .clear-search-btn {
   cursor: pointer;
@@ -668,7 +676,6 @@ tspan .search-term {
 /* Dynamic color elements */
 [data-item-type="subplot"],
 [data-item-type="character"] {
-    fill: inherit;
     stroke: white;
     stroke-width: 0.07em;
     paint-order: stroke;
@@ -714,7 +721,9 @@ tspan .search-term {
 /* Dynamic Color Elements */
 [data-item-type="subplot"],
 [data-item-type="character"] {
-    fill: var(--dynamic-color);
+    stroke: white;
+    stroke-width: 0.07em;
+    paint-order: stroke;
 }
 
 /* Dynamic Font Size Elements */
@@ -846,7 +855,9 @@ tspan .search-term {
 /* Subplot and character text styles */
 [data-item-type="subplot"],
 [data-item-type="character"] {
-    fill: var(--item-color) !important;
+    stroke: white;
+    stroke-width: 0.07em;
+    paint-order: stroke;
 }
 
 /* Date text styles */
@@ -874,5 +885,34 @@ tspan .search-term {
 /* Metadata text styles */
 .metadata-text {
     font-size: 12px;
-    fill: var(--text-muted);
+    /* fill: var(--text-muted); */ /* Keep commented out */
+}
+
+/* Ensure search terms maintain their color */
+[data-item-type="subplot"] .search-term,
+[data-item-type="character"] .search-term {
+  fill: inherit !important;
+  stroke: #FFCC00 !important;
+  stroke-width: 0.6em !important;
+  stroke-opacity: 0.6 !important;
+  paint-order: stroke !important;
+  font-weight: bold !important;
+}
+
+/* Apply the randomized colors from the CSS variable */
+[data-item-type="subplot"],
+[data-item-type="character"] {
+  stroke: white;
+  stroke-width: 0.07em;
+  paint-order: stroke;
+}
+
+/* Ensure search terms within subplots/characters maintain highlighting style */
+.metadata-text tspan[data-item-type="subplot"] .search-term,
+.metadata-text tspan[data-item-type="character"] .search-term {
+  stroke: #FFCC00 !important;
+  stroke-width: 0.6em !important;
+  stroke-opacity: 0.6 !important;
+  paint-order: stroke !important;
+  font-weight: bold !important;
 }

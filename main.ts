@@ -558,7 +558,8 @@ class SynopsisManager {
         };
         
         // Set the line height
-        const lineHeight = 26;
+        const lineHeight = 24;
+        let metadataY = 0;
         
         // Create the main container group
         const containerGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -609,7 +610,7 @@ class SynopsisManager {
         // Process metadata items with consistent vertical spacing
         if (metadataItems.length > 0) {
             // Add extra large vertical space between synopsis and metadata
-            const metadataY = (synopsisEndIndex * lineHeight) + 45; // Big gap below the synopsis
+            metadataY = (synopsisEndIndex * lineHeight) + 45; // Big gap below the synopsis
             
             // Add invisible spacer element to ensure the gap is preserved
             const spacerY = (synopsisEndIndex * lineHeight) + 25;
@@ -636,18 +637,15 @@ class SynopsisManager {
                         
                         // Format each subplot with its own color
                         subplots.forEach((subplot, j) => {
-                            const color = getSubplotColor(subplot.trim());
+                            const color = getSubplotColor(subplot.trim()); // Restore random color
                             const subplotText = subplot.trim();
-                            
-                            // Create tspan for subplot
                             const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                             tspan.setAttribute("data-item-type", "subplot");
-                            tspan.style.setProperty('--item-color', color);
+                            tspan.setAttribute("fill", color);
+                            tspan.setAttribute("style", `fill: ${color} !important`); // Use random color with !important
+                            this.plugin.log(`DEBUG: Setting subplot color to ${color} for "${subplotText}"`);
                             tspan.textContent = subplotText;
-                            
                             subplotTextElement.appendChild(tspan);
-                            
-                            // Add comma separator if not the last item
                             if (j < subplots.length - 1) {
                                 const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                                 comma.setAttribute("fill", "var(--text-muted)");
@@ -665,36 +663,33 @@ class SynopsisManager {
                 const characterY = metadataY + lineHeight;
                 const characters = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
                     
-                    if (characters.length > 0) {
-                        const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                        characterTextElement.setAttribute("class", "info-text metadata-text");
-                        characterTextElement.setAttribute("x", "0");
-                        characterTextElement.setAttribute("y", String(characterY));
-                        characterTextElement.setAttribute("text-anchor", "start");
+                if (characters.length > 0) {
+                    const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    characterTextElement.setAttribute("class", "info-text metadata-text");
+                    characterTextElement.setAttribute("x", "0");
+                    characterTextElement.setAttribute("y", String(characterY));
+                    characterTextElement.setAttribute("text-anchor", "start");
                         
-                        // Format each character with its own color
-                        characters.forEach((character, j) => {
-                            const color = getCharacterColor(character.trim());
-                            const characterText = character.trim();
-                            
-                            // Create tspan for character
-                            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                            tspan.setAttribute("data-item-type", "character");
-                            tspan.style.setProperty('--item-color', color);
-                            tspan.textContent = characterText;
-                            
-                            characterTextElement.appendChild(tspan);
-                            
-                            // Add comma separator if not the last item
-                            if (j < characters.length - 1) {
-                                const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                                comma.setAttribute("fill", "var(--text-muted)");
-                                comma.textContent = ", ";
-                                characterTextElement.appendChild(comma);
-                            }
-                        });
+                    // Format each character with its own color
+                    characters.forEach((character, j) => {
+                        const color = getCharacterColor(character.trim()); // Restore random color
+                        const characterText = character.trim();
+                        const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                        tspan.setAttribute("data-item-type", "character");
+                        tspan.setAttribute("fill", color);
+                        tspan.setAttribute("style", `fill: ${color} !important`); // Use random color with !important
+                        this.plugin.log(`DEBUG: Setting character color to ${color} for "${characterText}"`);
+                        tspan.textContent = characterText;
+                        characterTextElement.appendChild(tspan);
+                        if (j < characters.length - 1) {
+                            const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                            comma.setAttribute("fill", "var(--text-muted)");
+                            comma.textContent = ", ";
+                            characterTextElement.appendChild(comma);
+                        }
+                    });
                         
-                        synopsisTextGroup.appendChild(characterTextElement);
+                    synopsisTextGroup.appendChild(characterTextElement);
                 }
             }
         }
@@ -1689,7 +1684,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         </pattern>`;
         
         svg += `<pattern id="plaidTodo" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-            <rect width="10" height="10" fill="${this.lightenColor(STATUS_COLORS.Todo, 15)}"/>
+            <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Todo, 10)}"/>
             <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
             <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
         </pattern>`;
@@ -1706,7 +1701,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             </pattern>
             
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="${this.lightenColor(color, 20)}"/>
+                <rect width="10" height="10" fill="${this.darkenColor(color, 10)}"/>
                 <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
                 <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
             </pattern>
@@ -2413,9 +2408,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             width="${squareSize.width}" 
                             height="${squareSize.height}" 
                             fill="white"
-                            class="${squareClasses}"
+                            class="${squareClasses}${hasEdits ? ' has-edits' : ''}"
                             data-scene-id="${sceneId}"
-                            data-has-edits="${hasEdits}"
                         />
                         <text 
                             x="0" 
