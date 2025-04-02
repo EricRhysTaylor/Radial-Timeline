@@ -204,25 +204,7 @@ path.scene-path[fill="#EEEEEE"] {
   border-radius: 5px;
   overflow-x: auto;
 }
-.screenshot-link {
-  display: inline-block;
-  cursor: pointer;
-}
-.screenshot-image {
-  max-width: 100%;
-  border-radius: 8px;
-  border: 1px solid #444;
-}
-.screenshot-caption {
-  text-align: center;
-  font-size: 0.8em;
-  margin-top: 5px;
-  color: #888;
-}
-.bmc-button {
-  height: 60px;
-  width: 217px;
-}
+
 .center-number-text {
   fill: var(--text-normal, #333333);
   font-size: 140px;
@@ -234,16 +216,16 @@ path.scene-path[fill="#EEEEEE"] {
   fill: #555555;
   font-weight: normal;
 }
-.connector-text {
-  font-size: 18px;
-  fill: #555555;
+
+.number-square{
+  transition:
+    opacity 0.1s,
+    fill 0.1s,
+    transform 0.1s;
+  pointer-events: none;
 }
-.character-text {
-  font-size: 18px;
-  font-weight: normal;
-}
-.number-square,
 .number-text {
+  fill: #000000;
   transition:
     opacity 0.1s,
     fill 0.1s,
@@ -285,7 +267,7 @@ text.info-text.title-text-main tspan:not(.search-term) {
   fill: var(--title-color) !important;
 }
 .search-term {
-  fill: var(--text-highlight-bg);
+  fill: #FFCC00;
   font-weight: bold;
 }
 .metadata-text .search-term,
@@ -437,28 +419,34 @@ tspan .search-term {
 .number-square.search-result {
   fill: #FFCC00;
 }
-.number-text.search-result {
-  fill: #000000;
-}
+
 .number-text.search-result.non-selected {
   fill: #FFFFFF !important;
+}
+.number-text.scene-is-open.search-result {
+  fill: #000000 !important;
 }
 .number-square.search-result.non-selected {
   fill: #EFEFEF !important;
   stroke: #EFEFEF;
   stroke-width: 2px;
 }
+.number-square.search-result.selected {
+  stroke: #ff9500;
+  stroke-width: 2px;
+}
 .number-square[data-has-edits=true] {
   fill: #8875ff;
 }
-.number-square[data-has-edits=true] + .number-text {
-  fill: #000000;
-}
+
 .number-square[data-has-edits=true].non-selected {
   fill: #EFEFEF;
 }
 .number-square[data-has-edits=true].non-selected + .number-text {
   fill: #ffffff;
+}
+.number-text[data-has-edits=true].search-result {
+  fill: #FFCC00;
 }
 .clear-search-btn {
   cursor: pointer;
@@ -673,8 +661,7 @@ tspan .search-term {
 }
 
 /* Subplot and character text styles */
-.subplot-text,
-.character-text {
+.subplot-text {
     fill: var(--dynamic-color);
 }
 
@@ -813,16 +800,6 @@ tspan .search-term {
     display: none;
 }
 
-/* Element for text measurements */
-.text-measure {
-    position: absolute;
-    visibility: hidden;
-    max-width: var(--max-width);
-    font-size: var(--font-size);
-    font-weight: var(--font-weight);
-    font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    white-space: pre-wrap;
-}
 
 /* Container layouts */
 .flex-container {
@@ -859,4 +836,43 @@ tspan .search-term {
 .action-button {
     padding: 10px;
     margin-top: 20px;
+}
+
+/* Title text styles */
+.title-text-main {
+    --title-color: var(--text-normal);
+}
+
+/* Subplot and character text styles */
+[data-item-type="subplot"],
+[data-item-type="character"] {
+    fill: var(--item-color) !important;
+}
+
+/* Date text styles */
+.date-text {
+    fill: var(--text-muted);
+}
+
+/* Search term highlighting */
+.search-term {
+    fill: #FFCC00;
+    font-weight: bold;
+}
+
+/* Info container styles */
+.info-container {
+    cursor: pointer;
+}
+
+/* Synopsis text styles */
+.synopsis-text {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Metadata text styles */
+.metadata-text {
+    font-size: 12px;
+    fill: var(--text-muted);
 }

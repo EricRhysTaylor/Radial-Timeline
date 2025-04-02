@@ -143,6 +143,16 @@ The visualizations are built using pure SVG and JavaScript, offering a lightweig
 1.  Download the latest `main.js`, `styles.css`, `manifest.json`, `Readme.md` from the [Releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page of the GitHub repository.
 2.  Extract the files to your vault's `.obsidian/plugins/manuscript-timeline`
 
+## Screen Resolution Requirements
+
+The Manuscript Timeline is designed for high pixel density displays (around 200 PPI or higher) for optimal visual quality. This means:
+
+- All Apple Retina displays (MacBooks, iMacs, etc.) will work perfectly
+- Windows systems with 4K displays (when properly scaled) will work well
+- Lower resolution displays or Windows systems not properly configured for 4K scaling may show some visual artifacts or less crisp rendering
+
+If you're experiencing visual quality issues on Windows, please check your display scaling settings in Windows Settings > System > Display > Scale and layout.
+
 ## Author
 
 Created by Eric Rhys Taylor

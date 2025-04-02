@@ -1,41 +1,5 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl } from "obsidian";
 
-/*
- * OBSIDIAN PLUGIN DEVELOPMENT GUIDELINES - TYPESCRIPT
- * ==================================================
- *
- * 1. SECURITY: Never use innerHTML, outerHTML, or string concatenation to create HTML/SVG content
- *    - Always use proper DOM methods: document.createElement(), document.createElementNS(), etc.
- *    - Use element.appendChild() to build the DOM hierarchy
- *    - Set content with element.textContent, not innerHTML
- *    - Set attributes with element.setAttribute()
- *
- * 2. SVG CREATION:
- *    - Always use document.createElementNS("http://www.w3.org/2000/svg", "element-name")
- *    - Use the helper functions at the top of this file (createSvgElement, etc.)
- *
- * 3. STYLING:
- *    - Keep all CSS in styles.css, not inline in the JavaScript/TypeScript
- *    - Use classList methods to add/remove classes instead of manipulating className
- *    - Avoid inline styles when possible; use CSS classes instead
- *
- * 4. CODING STYLE:
- *    - Use TypeScript interfaces and types for better code safety
- *    - Document public methods and non-obvious code with JSDoc comments
- *    - Keep methods focused and not too long (split complex logic)
- *    - Use meaningful variable and method names
- *
- * 5. OBSIDIAN API:
- *    - Follow Obsidian's API patterns and lifecycle methods
- *    - Handle plugin load/unload gracefully to prevent memory leaks
- *    - Use Workspace events appropriately
- *
- * 6. PERFORMANCE:
- *    - Minimize DOM operations, batch them when possible
- *    - Cache DOM selections that are used repeatedly
- *    - Be mindful of event listeners - always remove them when no longer needed
- 
- */
 
 // Helper functions for safe SVG creation - add at the top of the file
 function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
@@ -468,10 +432,7 @@ class SynopsisManager {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
     
-    /**
-     * Safely parse HTML string into Document using DOMParser
-     * This is a safer alternative to using innerHTML
-     */
+
     private parseHtmlSafely(html: string): DocumentFragment {
         // Use DOMParser to parse the HTML string
         const parser = new DOMParser();
@@ -616,7 +577,8 @@ class SynopsisManager {
         titleTextElement.setAttribute("x", "0");
         titleTextElement.setAttribute("y", "0");
         titleTextElement.setAttribute("text-anchor", "start");
-        titleTextElement.setAttribute("style", `--title-color: ${titleColor};`);
+        // Remove style attribute and use CSS variable
+        titleTextElement.style.setProperty('--title-color', titleColor);
         
         // Process title content with special handling for formatting
         this.addTitleContent(titleContent, titleTextElement, titleColor);
@@ -680,9 +642,8 @@ class SynopsisManager {
                             // Create tspan for subplot
                             const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                             tspan.setAttribute("data-item-type", "subplot");
-                        tspan.setAttribute("style", `fill: ${color} !important;`); // Apply inline style
-                        
-                                tspan.textContent = subplotText;
+                            tspan.style.setProperty('--item-color', color);
+                            tspan.textContent = subplotText;
                             
                             subplotTextElement.appendChild(tspan);
                             
@@ -719,9 +680,8 @@ class SynopsisManager {
                             // Create tspan for character
                             const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                             tspan.setAttribute("data-item-type", "character");
-                        tspan.setAttribute("style", `fill: ${color} !important;`); // Apply inline style
-                        
-                                tspan.textContent = characterText;
+                            tspan.style.setProperty('--item-color', color);
+                            tspan.textContent = characterText;
                             
                             characterTextElement.appendChild(tspan);
                             
@@ -1368,29 +1328,17 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
-    /**
-     * Process highlighted content and return SVG elements
-     * A safer alternative to using innerHTML for fragments
-     * @param fragment The document fragment containing the highlighted content
-     * @returns An array of nodes that can be appended to an SVG element
-     */
+
     private processHighlightedContent(fragment: DocumentFragment): Node[] {
-        // Create a temporary div to hold the fragment for processing
+        // Create a temporary container using Obsidian's createEl
         const container = document.createElement('div');
         container.appendChild(fragment.cloneNode(true));
         
-        // Use DOMParser to safely parse the HTML
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(container.outerHTML, 'text/html');
-        
-        // Extract all nodes from the parsed document
+        // Extract all nodes from the container
         const resultNodes: Node[] = [];
-        const containerNode = doc.querySelector('div');
-        
-        if (!containerNode) return resultNodes;
         
         // Process each child node
-        Array.from(containerNode.childNodes).forEach(node => {
+        Array.from(container.childNodes).forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
                 // For text nodes, create plain text nodes
                 if (node.textContent) {
@@ -3687,10 +3635,11 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         documentationContainer.style.marginLeft = '0';
         documentationContainer.style.paddingLeft = '0';
         
-        // Fetch README.md content from GitHub
-        fetch('https://raw.githubusercontent.com/ericrhystaylor/Obsidian-Manuscript-Timeline/refs/heads/master/README.md')
-            .then(response => response.text())
+        // Fetch README.md content using requestUrl
+        requestUrl('https://raw.githubusercontent.com/ericrhystaylor/Obsidian-Manuscript-Timeline/refs/heads/master/README.md')
+            .then(response => response.text)
             .then(content => {
+                // Process the content
                 MarkdownRenderer.renderMarkdown(
                     content,
                     documentationContainer,
@@ -3699,8 +3648,9 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                 );
             })
             .catch(error => {
-                documentationContainer.createEl('p', { text: 'Error loading documentation. Please check your internet connection.' });
-        });
+                console.error('Error loading README:', error);
+                documentationContainer.createEl('p', { text: 'Error loading documentation.' });
+            });
 
         // Load README.md content from local plugin directory
         const adapter = this.app.vault.adapter;
@@ -4363,7 +4313,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             const svgContent = this.plugin.createTimelineSVG(scenes);
             this.log(`SVG content generated in ${performance.now() - startTime}ms, length: ${svgContent.length}`);
             
-            // Create the SVG element safely without using innerHTML
+        
             const svgElement = this.createSvgElement(svgContent, timelineContainer);
             
             if (svgElement) {
