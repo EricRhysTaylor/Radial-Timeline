@@ -1693,39 +1693,22 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Begin defs act
         svg += `<defs>`;
         
-        // Define plaid patterns for Working and Todo status
-        svg += `<pattern id="plaidWorking" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-            <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Working, 5)}"/>
-            <circle cx="5" cy="5" r="2" fill="#ffffff" fill-opacity="0.4"/>
-            <circle cx="0" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
-            <circle cx="10" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
-            <circle cx="0" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
-            <circle cx="10" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
-        </pattern>`;
-        
-        svg += `<pattern id="plaidTodo" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-            <rect width="10" height="10" fill="${this.darkenColor(STATUS_COLORS.Todo, 10)}"/>
-            <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
-            <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
-        </pattern>`;
-        
         // Define patterns for Working and Todo states with Publish Stage colors
-        svg += `${Object.entries(PUBLISH_STAGE_COLORS).map(([stage, color]) => `
-            <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="${this.darkenColor(color, 5)}"/>
-                <circle cx="5" cy="5" r="2" fill="#ffffff" fill-opacity="0.4"/>
-                <circle cx="0" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
-                <circle cx="10" cy="0" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
-                <circle cx="0" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
-                <circle cx="10" cy="10" r="1.5" fill="#ffffff" fill-opacity="0.3"/>
+        svg += `${Object.entries(PUBLISH_STAGE_COLORS).map(([stage, color]) => {
+            // Desaturate the stage color for the 'Working' background - REMOVED
+            // const desaturatedColor = this.desaturateColor(color, 0.75); // Desaturate by 75%
+            return `
+            <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="20" height="20" patternTransform="rotate(45)">
+                <rect width="20" height="20" fill="${color}"/> // Use original stage color
+                <text x="10" y="10" font-size="18" font-weight="100" fill="#ffffff" fill-opacity="0.8" text-anchor="middle" dominant-baseline="middle">W</text>
             </pattern>
             
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="${this.darkenColor(color, 5)}"/>
-                <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
-                <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
+                <rect width="10" height="10" fill="#CCCCCC"/>
+                <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="1" stroke-opacity="0.8"/>
+                <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="1" stroke-opacity="0.8"/>
             </pattern>
-        `).join('')}`;
+        `;}).join('')}`;
         
         // Define outer arc paths for months
         months.forEach(({ name, angle }, index) => {
