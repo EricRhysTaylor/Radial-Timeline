@@ -23,7 +23,8 @@ const destDirs = [
 const filesToCopy = [
 	"manifest.json",
 	"styles.css",
-	"README.md"
+	"README.md",
+	"screenshot.png"
 ];
 
 // Function to copy files

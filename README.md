@@ -108,8 +108,7 @@ The timeline displays:
 - Color-coded scenes based on status
 - Month markers around the perimeter showing calendar months of the year
 - Rainbow progress ring showing elapsed portion of the current calendar year (not related to story timeline)
-- Estimated completion date arc (red) showing projected completion timeline
-- Red tick mark indicating the exact projected completion date
+- Estimated completion date arc (dark purple) showing projected completion timeline with Red Tick Mark
 - Central legend showing counts for each status and publish stage
 
 Hover over a scene to see its details and click to open the corresponding file.

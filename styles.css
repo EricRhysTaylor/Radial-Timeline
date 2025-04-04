@@ -592,16 +592,32 @@ tspan .search-term {
 .number-text.non-selected {
   fill: #FFFFFF;
 }
+/* styles.css */
+
+/* ... existing styles ... */
+
+/* Progress Ring Base (thin gray track underneath) */
 .progress-ring-base {
   fill: none;
-  stroke: #6612af;
-  stroke-width: 10;
+  stroke: #000000; /* Light gray background */
+  stroke-width: 10px; /* Base width */
 }
+
+/* Year Progress Ring (Rainbow Segments) */
 .progress-ring-fill {
   fill: none;
-  stroke-width: 10;
-  stroke-linecap: butt;
+  stroke-width: 6px; /* Make rainbow ring thinner */
+  stroke-linecap: round; /* Optional: round ends */
 }
+
+/* New Estimation Arc Ring */
+.estimation-arc {
+  fill: none;
+  stroke: #6612af; /* Purple color (matches 'Zero' stage) #6612af;*/
+  stroke-width: 10px; /* Wider than rainbow ring */
+}
+
+/* ... rest of existing styles ... */
 .center-key-text {
   font-size: 16px;
   fill: var(--text-normal, #333333);
@@ -925,7 +941,7 @@ tspan .search-term {
 
 .subplot-label-text {
     fill: var(--max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
-    opacity: 0.4; /* Corrected opacity back to 30% */
+    opacity: .7; /* Corrected opacity back to 30% */
     font-weight: 700; /* Corrected font-weight back to 700 */
     font-size: var(--subplot-font-size);
     dominant-baseline: central; /* Try central for potentially better vertical centering */
@@ -935,8 +951,7 @@ tspan .search-term {
 
 /* Use .non-selected class for faded state (consistent with other elements) */
 .subplot-label-text.non-selected {
-    fill: #ffffff;
-    opacity: 1.0; /* Corrected opacity back to 30% */
+    opacity: .1; /* Corrected opacity back to 30% */
 }
 
 /* SVG Act Labels */
