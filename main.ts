@@ -1029,7 +1029,7 @@ class SynopsisManager {
         const parser = new DOMParser();
         const doc = parser.parseFromString(`<div>${processedContent}</div>`, 'text/html');
         const container = doc.querySelector('div');
-        
+
         if (!container) return;
         
         // Check if there are any direct text nodes
@@ -1546,7 +1546,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     // Change from private to public
-    public createTimelineSVG(scenes: Scene[]): string {
+    public createTimelineSVG(scenes: Scene[]): { svgString: string; maxStageColor: string; } {
         // Performance optimization: Check if we have an excessive number of scenes
         const sceneCount = scenes.length;
         const size = 1600;
@@ -1555,10 +1555,30 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const outerRadius = size / 2 - margin;
         const maxTextWidth = 500; // Define maxTextWidth for the synopsis text
     
-        // Create SVG with proper viewBox and preserveAspectRatio for better scaling
-        // Ensure the viewBox is centered on the origin with proper dimensions
-        let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg" preserveAspectRatio="xMidYMid meet">`;
+        // --- Find Max Publish Stage --- START ---
+        const stageOrder = ["Zero", "Author", "House", "Press"];
+        let maxStageIndex = 0; // Default to Zero index
+        scenes.forEach(scene => {
+            const stage = scene["Publish Stage"] || "Zero";
+            const currentIndex = stageOrder.indexOf(stage);
+            if (currentIndex > maxStageIndex) {
+                maxStageIndex = currentIndex;
+            }
+        });
+        const maxStageName = stageOrder[maxStageIndex];
+        // Add check before accessing settings potentially
+        const maxStageColor = this.settings.publishStageColors[maxStageName as keyof typeof this.settings.publishStageColors] || DEFAULT_SETTINGS.publishStageColors.Zero;
+ 
+        // --- Find Max Publish Stage --- END ---
+
+        // Create SVG - REMOVE data-max-stage-color attribute
+        let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
+                       xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg" 
+                       preserveAspectRatio="xMidYMid meet">`; // Removed data-max-stage-color
         
+        // REMOVE placeholder element
+        // svg += `<g id="timeline-config-data" data-max-stage-color="${maxStageColor}"></g>`;
+
         // Add debug coordinate display if debug mode is enabled
         if (this.settings.debug) {
             svg += `
@@ -1701,7 +1721,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             </pattern>
             
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="${this.darkenColor(color, 10)}"/>
+                <rect width="10" height="10" fill="${this.darkenColor(color, 5)}"/>
                 <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
                 <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="1" stroke-opacity="0.3"/>
             </pattern>
@@ -2001,7 +2021,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 
                 // Use the subplot from the master order instead of the current act's order
                 const subplot = masterSubplotOrder[ringOffset];
-                
+
                 if (subplot) {
                     const currentScenes = scenesByActAndSubplot[act][subplot] || [];
 
@@ -2279,7 +2299,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="end"
                                 class="center-key-text"
-                            >${stage.toUpperCase()} <tspan class="status-count" dy="-7" baseline-shift="super">${statusCounts[stage] || 0}</tspan></text>
+                            >${stage.toUpperCase()}<tspan dx="0.15em" class="status-count" dy="-7" baseline-shift="super">${statusCounts[stage] || 0}</tspan></text>
                             
                             <!-- Color SWATCH to the right of text -->
                             <rect 
@@ -2325,14 +2345,81 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="start"
                                 class="center-key-text"
-                            >${status.toUpperCase()} <tspan class="status-count" dy="-7" baseline-shift="super">${statusCounts[status] || 0}</tspan></text>
+                            >${status.toUpperCase()}<tspan dx="0.15em" class="status-count" dy="-7" baseline-shift="super">${statusCounts[status] || 0}</tspan></text>
                         </g>
                     `;
                 }).join('')}
             </g>
         `;
 
-        // Add number squares after all other elements but before synopses
+        // First, add the background layer with subplot labels
+        // --- START: Subplot Label Generation ---
+        // Wrap subplot labels in a background layer for proper z-index
+        svg += `<g class="background-layer">`;
+        
+        // Only show subplot labels in Act 3 (top position)
+        const act = 3; // Act 3 is at the top (12 o'clock)
+        const totalRings = NUM_RINGS;
+        const subplotCount = masterSubplotOrder.length;
+        const ringsToUse = Math.min(subplotCount, totalRings);
+        
+        for (let ringOffset = 0; ringOffset < ringsToUse; ringOffset++) {
+            const ring = totalRings - ringOffset - 1; // Start from the outermost ring
+            const subplot = masterSubplotOrder[ringOffset];
+            
+            // Skip empty subplots
+            if (!subplot) continue;
+            
+            const innerR = ringStartRadii[ring];
+            const outerR = innerR + ringWidths[ring];
+            
+            // Create a unique ID for the label path
+            const labelPathId = `subplot-label-path-${ring}`;
+            const labelRadius = (innerR + outerR) / 2; // Center of the ring
+            
+            // Calculate available height for text (y-axis distance)
+            const availableHeight = ringWidths[ring];
+            
+            // Calculate dynamic font size based on available height
+            // Use 95% of available height to fill more space
+            const fontSize = Math.floor(availableHeight * 0.95);
+            
+            // Define arc to END at 270 degrees (12 o'clock) for right justification start
+            // Use 90 degrees for the arc length to span Act 3
+            const arcLength = Math.PI / 2; // 90 degrees span
+            const endAngle = -Math.PI / 2; // End at 12 o'clock position
+            const startAngle = endAngle - arcLength; // Start 90 degrees earlier (180 deg)
+            
+            // Calculate the actual length of the arc path in pixels
+            const arcPixelLength = labelRadius * arcLength; 
+            
+            // Ensure subplot text is properly escaped
+            const safeSubplotText = this.safeSvgText(subplot.toUpperCase());
+            
+            // Create the path for the label - Add data-font-size attribute instead of inline style
+            svg += `
+                <g class="subplot-label-group" data-font-size="${fontSize}">
+                    <path id="${labelPathId}"
+                        d="M ${formatNumber(labelRadius * Math.cos(startAngle))} ${formatNumber(labelRadius * Math.sin(startAngle))}
+                        A ${formatNumber(labelRadius)} ${formatNumber(labelRadius)} 0 0 1 
+                        ${formatNumber(labelRadius * Math.cos(endAngle))} ${formatNumber(labelRadius * Math.sin(endAngle))}"
+                        class="subplot-ring-label-path"
+                    />
+                    <text class="subplot-label-text">
+                        <textPath href="#${labelPathId}" startOffset="100%" text-anchor="end"
+                                textLength="${arcPixelLength}" lengthAdjust="spacingAndGlyphs">
+                            ${safeSubplotText}
+                        </textPath>
+                    </text>
+                </g>
+            `;
+        }
+        
+        // Close the background layer group
+        svg += `</g>`;
+        // --- END: Subplot Label Generation ---
+
+        // Add number squares after background layer but before synopses
         svg += `<g class="number-squares">`;
         scenes.forEach((scene) => {
             const { number } = parseSceneTitle(scene.title || '');
@@ -2440,7 +2527,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const serializer = new XMLSerializer();
         const synopsesHTML = serializer.serializeToString(synopsesContainer);
 
-        // Add it to the SVG output
+        // Then add the synopses on top
         svg += synopsesHTML;
 
         // Add JavaScript to handle synopsis visibility
@@ -2524,7 +2611,14 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         // If not in debug mode, close SVG normally
         svg += `${scriptSection}</svg>`;
-        return svg;
+
+        const generatedSvgString = svg; // Assuming svg holds the final string
+
+        // Find the max stage color (assuming maxStageColor variable exists here)
+        // const maxStageColor = ... // Needs to be defined/calculated earlier
+
+        // Return both the string and the color
+        return { svgString: generatedSvgString, maxStageColor: maxStageColor };
     }
     private darkenColor(color: string, percent: number): string {
         const num = parseInt(color.replace("#", ""), 16);
@@ -3132,8 +3226,19 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             // Get the source SVG element
             const sourceSvg = svgDoc.documentElement;
+
+            // Copy attributes from the parsed SVG root to the new SVG element
+            for (const attr of Array.from(sourceSvg.attributes)) {
+
+                // Skip xmlns as it's set manually, handle class separately
+                if (attr.name !== 'xmlns' && attr.name !== 'class') {
+                    svgElement.setAttribute(attr.name, attr.value);
+                }
+            }
+            // Merge classes
+            svgElement.classList.add(...Array.from(sourceSvg.classList));
             
-            // Extract critical attributes from source SVG
+            // Extract critical attributes from source SVG (already done, keep for safety)
             const viewBox = sourceSvg.getAttribute('viewBox') || '-800 -800 1600 1600';
             
             // Set critical SVG attributes explicitly
@@ -3156,6 +3261,14 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             fragment.appendChild(svgElement);
             container.appendChild(fragment);
             
+            // Final check before returning
+            // if (this.settings.debug) { // REMOVE BLOCK
+            //     const finalPlaceholder = svgElement.querySelector('#timeline-config-data');
+            //     console.log('[Timeline Debug] Final check in createSvgElement: Placeholder exists?', !!finalPlaceholder);
+            //     if (finalPlaceholder) {
+            //         console.log('[Timeline Debug] Final check in createSvgElement: Placeholder attribute value:', finalPlaceholder.getAttribute('data-max-stage-color'));
+            //     }
+            // }
            
             return svgElement;
         } catch (error) {
@@ -3355,6 +3468,75 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             svgElement.setAttribute('viewBox', `-${size / 2} -${size / 2} ${size} ${size}`);
         });
     }
+
+    // --- START: Color Conversion & Desaturation Helpers ---
+    // Ensure these are PUBLIC
+    public hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+
+    public rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+        r /= 255, g /= 255, b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0, l = (max + min) / 2;
+
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return { h, s, l };
+    }
+
+    public hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+        let r, g, b;
+        if (s === 0) {
+            r = g = b = l; // achromatic
+        } else {
+            const hue2rgb = (p: number, q: number, t: number) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            };
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
+        }
+        return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+    }
+
+    public rgbToHex(r: number, g: number, b: number): string {
+        return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    public desaturateColor(hexColor: string, amount: number): string {
+        const rgb = this.hexToRgb(hexColor);
+        if (!rgb) return hexColor; // Return original if invalid hex
+
+        const hsl = this.rgbToHsl(rgb.r, rgb.g, rgb.b);
+        
+        // Reduce saturation by the specified amount (e.g., amount=0.5 means 50% less saturation)
+        hsl.s = Math.max(0, hsl.s * (1 - amount)); 
+
+        const desaturatedRgb = this.hslToRgb(hsl.h, hsl.s, hsl.l);
+        return this.rgbToHex(desaturatedRgb.r, desaturatedRgb.g, desaturatedRgb.b);
+    }
+    // --- END: Color Conversion & Desaturation Helpers ---
 }
 
 
@@ -3628,46 +3810,93 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         const documentationContainer = containerEl.createDiv('documentation-container');
         documentationContainer.style.marginLeft = '0';
         documentationContainer.style.paddingLeft = '0';
-        
-        // Fetch README.md content using requestUrl
-        requestUrl('https://raw.githubusercontent.com/ericrhystaylor/Obsidian-Manuscript-Timeline/refs/heads/master/README.md')
-            .then(response => response.text)
-            .then(content => {
-                // Process the content
-                MarkdownRenderer.renderMarkdown(
-                    content,
-                    documentationContainer,
-                    '',
-                    this.plugin
-                );
-            })
-            .catch(error => {
-                console.error('Error loading README:', error);
-                documentationContainer.createEl('p', { text: 'Error loading documentation.' });
-            });
+        documentationContainer.createEl('p', { text: 'Loading documentation...' }); // Loading indicator
 
-        // Load README.md content from local plugin directory
-        const adapter = this.app.vault.adapter;
-        const pluginDir = this.plugin.manifest.dir || '';
-        const readmePath = `${pluginDir}/README.md`;
-        
-        adapter.read(readmePath)
-            .then(content => {
-                // Empty the container in case we loaded something from GitHub already
-                documentationContainer.empty();
-                
-                // Render the local README content
-                MarkdownRenderer.renderMarkdown(
-                    content,
+        // --- Refactored README Loading --- 
+        (async () => {
+            const adapter = this.app.vault.adapter;
+            const pluginDir = this.plugin.manifest.dir || '';
+            const localReadmePath = `${pluginDir}/README.md`;
+            const githubReadmeUrl = 'https://raw.githubusercontent.com/ericrhystaylor/Obsidian-Manuscript-Timeline/refs/heads/master/README.md';
+            let contentLoaded = false;
+
+            // Try local first
+            try {
+                const localContent = await adapter.read(localReadmePath);
+                documentationContainer.empty(); // Clear loading message
+                await MarkdownRenderer.renderMarkdown(
+                    localContent,
                     documentationContainer,
-                    '',
+                    pluginDir, // Use plugin directory as base path for relative links/images
                     this.plugin
                 );
-            })
-            .catch(error => {
-                this.plugin.log('Error loading local README: ' + error);
-                documentationContainer.createEl('p', { text: 'Error loading documentation from local plugin directory.' });
-            });
+                contentLoaded = true;
+                this.plugin.log('Successfully loaded local README.');
+            } catch (localError) {
+                this.plugin.log('Error loading local README: ' + localError);
+                // Optionally try GitHub if local fails
+                try {
+                    const githubResponse = await requestUrl(githubReadmeUrl);
+                    const githubContent = githubResponse.text;
+                    documentationContainer.empty(); // Clear loading message
+                    await MarkdownRenderer.renderMarkdown(
+                        githubContent,
+                        documentationContainer,
+                        '', // No base path for GitHub content
+                        this.plugin
+                    );
+                    contentLoaded = true;
+                    this.plugin.log('Successfully loaded README from GitHub.');
+                } catch (githubError) {
+                    this.plugin.log('Error loading README from GitHub: ' + githubError);
+                    // Both failed
+                    documentationContainer.empty(); // Clear loading message
+                    documentationContainer.createEl('p', { text: 'Error loading documentation from both local file and GitHub.' });
+                }
+            }
+        })();
+        // --- End Refactored README Loading --- 
+
+        // REMOVE OLD LOADING LOGIC
+        // // Fetch README.md content using requestUrl
+        // requestUrl('https://raw.githubusercontent.com/ericrhystaylor/Obsidian-Manuscript-Timeline/refs/heads/master/README.md')
+        //     .then(response => response.text)
+        //     .then(content => {
+        //         // Process the content
+        //         MarkdownRenderer.renderMarkdown(
+        //             content,
+        //             documentationContainer,
+        //             '',
+        //             this.plugin
+        //         );
+        //     })
+        //     .catch(error => {
+        //         console.error('Error loading README:', error);
+        //         // documentationContainer.createEl('p', { text: 'Error loading documentation.' });
+        //     });
+
+        // // Load README.md content from local plugin directory
+        // const adapter = this.app.vault.adapter;
+        // const pluginDir = this.plugin.manifest.dir || '';
+        // const readmePath = `${pluginDir}/README.md`;
+        
+        // adapter.read(readmePath)
+        //     .then(content => {
+        //         // Empty the container in case we loaded something from GitHub already
+        //         documentationContainer.empty();
+                
+        //         // Render the local README content
+        //         MarkdownRenderer.renderMarkdown(
+        //             content,
+        //             documentationContainer,
+        //             '',
+        //             this.plugin
+        //         );
+        //     })
+        //     .catch(error => {
+        //         this.plugin.log('Error loading local README: ' + error);
+        //         // documentationContainer.createEl('p', { text: 'Error loading documentation from local plugin directory.' });
+        //     });
     }
 }
 
@@ -4301,14 +4530,13 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
         fragment.appendChild(timelineContainer);
         
         try {
-            // Generate the SVG content using the plugin's existing method
-            // Performance optimization: Calculate start time for performance logging
+            // Generate the SVG content and get the max stage color
             const startTime = performance.now();
-            const svgContent = this.plugin.createTimelineSVG(scenes);
-            this.log(`SVG content generated in ${performance.now() - startTime}ms, length: ${svgContent.length}`);
+            const { svgString, maxStageColor: calculatedMaxStageColor } = this.plugin.createTimelineSVG(scenes); // Destructure the result
+            this.log(`SVG content generated in ${performance.now() - startTime}ms, length: ${svgString.length}`); // Use svgString.length
             
-        
-            const svgElement = this.createSvgElement(svgContent, timelineContainer);
+            // Create the SVG element from the string
+            const svgElement = this.createSvgElement(svgString, timelineContainer); // Pass svgString
             
             if (svgElement) {
                 // Performance optimization: Use batch operations where possible
@@ -4384,9 +4612,58 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 
                 // Setup search controls after SVG is rendered
                 this.setupSearchControls();
+
+                // Apply dynamic font size for subplot labels after SVG is in the DOM
+                const subplotLabelGroups = svgElement.querySelectorAll('.subplot-label-group');
+                subplotLabelGroups.forEach(group => {
+                    const fontSize = group.getAttribute('data-font-size');
+                    if (fontSize) {
+                        (group as HTMLElement).style.setProperty('--subplot-font-size', `${fontSize}px`);
+                    }
+                });
+
+                // --- Set Max Stage Color Variable --- START ---
+                // Use the color returned directly from createTimelineSVG
+                const originalMaxStageColor = calculatedMaxStageColor; 
+                
+                if (originalMaxStageColor) {
+                    // Desaturate the color by 50%
+                    // Correctly call the public method on the plugin instance
+                    const desaturatedColor = this.plugin.desaturateColor(originalMaxStageColor, 0.5);
+                    if (this.plugin.settings.debug) console.log(`[Timeline Debug] Original color: ${originalMaxStageColor}, Desaturated color: ${desaturatedColor}`);
+                    
+                    svgElement.style.setProperty('--max-publish-stage-color', desaturatedColor);
+                } else {
+                    if (this.plugin.settings.debug) console.log('[Timeline Debug] No max stage color received to desaturate.');
+                }
+                // --- Set Max Stage Color Variable --- END ---
+
+                // --- START: Add hover effect for scene paths to fade subplot labels ---
+                // Reuse the existing sceneGroups variable declared earlier
+                // const sceneGroups = svgElement.querySelectorAll('.scene-group'); // REMOVE this redeclaration
+                const subplotLabels = svgElement.querySelectorAll<SVGTextElement>('.subplot-label-text'); // Use type assertion
+
+                if (subplotLabels.length > 0) { // Only add listeners if subplot labels exist
+                    // Attach listeners to GROUPS (using the existing sceneGroups variable)
+                    sceneGroups.forEach(group => {
+                        group.addEventListener('mouseenter', () => {
+                            subplotLabels.forEach(label => {
+                                label.classList.add('non-selected'); // Use standard class
+                            });
+                        });
+
+                        group.addEventListener('mouseleave', () => {
+                            subplotLabels.forEach(label => {
+                                label.classList.remove('non-selected'); // Use standard class
+                            });
+                        });
+                    });
+                    if (this.plugin.settings.debug) this.plugin.log(`Added hover listeners to ${sceneGroups.length} scene groups to fade ${subplotLabels.length} subplot labels using .non-selected.`);
+                }
+                // --- END: Add hover effect for scene paths ---
             }
                 
-            // Add the fragment to the container to minimize DOM operations
+            // Add the fragment to the container
             container.appendChild(fragment);
             
         } catch (error) {

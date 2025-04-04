@@ -36,7 +36,6 @@
   object-fit: contain;
   cursor: default;
   background-color: transparent;
-  font-family: "Lato", sans-serif;
   fill: none;
 }
 .scene-path {
@@ -91,12 +90,6 @@ path.scene-path[fill="#EEEEEE"] {
   vector-effect: non-scaling-stroke;
 }
 .scene-info text {
-  font-family:
-    "Inter",
-    "Segoe UI",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
   stroke: white;
   stroke-width: 3px;
   paint-order: stroke;
@@ -113,15 +106,24 @@ path.scene-path[fill="#EEEEEE"] {
 .simplified-rendering .scene-info {
   transition: opacity 0.1s ease-out;
 }
-.month-label,
-.month-label-outer,
-.act-label {
-  font-family: "Lato", sans-serif;
-  font-size: 18px;
+.month-label {  
+  font-size: 16px;
   fill: var(--text-normal);
   text-anchor: middle;
   dominant-baseline: middle;
-  opacity: 0.85;
+}
+.month-label-outer {
+font-size: 18px;
+fill: var(--text-normal);
+text-anchor: middle;
+dominant-baseline: middle;
+}
+.act-label {
+  font-size: 20px;
+  font-weight: bold;
+  fill: var(--text-normal);
+  text-anchor: middle;
+  dominant-baseline: middle;
 }
 .month-spoke-line {
   stroke: var(--text-normal);
@@ -196,7 +198,6 @@ path.scene-path[fill="#EEEEEE"] {
 .metadata-example {
   line-height: 2em;
   white-space: pre;
-  font-family: monospace;
   user-select: all;
   cursor: text;
   background-color: var(--background-secondary);
@@ -292,7 +293,6 @@ text.info-text.title-text-secondary tspan.search-term {
   stroke-linecap: round !important;
   paint-order: stroke !important;
   fill: inherit !important;
-  font-family: inherit !important;
   font-size: inherit !important;
 }
 
@@ -915,4 +915,33 @@ tspan .search-term {
   stroke-opacity: 0.6 !important;
   paint-order: stroke !important;
   font-weight: bold !important;
+}
+
+.subplot-ring-label-path {
+  fill: none;
+  stroke: none;
+  pointer-events: none;
+}
+
+.subplot-label-text {
+    fill: var(--max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
+    opacity: 0.4; /* Corrected opacity back to 30% */
+    font-weight: 700; /* Corrected font-weight back to 700 */
+    font-size: var(--subplot-font-size);
+    dominant-baseline: central; /* Try central for potentially better vertical centering */
+    text-transform: uppercase;
+    pointer-events: none; /* Ignore mouse events */
+}
+
+/* Use .non-selected class for faded state (consistent with other elements) */
+.subplot-label-text.non-selected {
+    fill: #ffffff;
+    opacity: 1.0; /* Corrected opacity back to 30% */
+}
+
+/* SVG Act Labels */
+.svg-act-label {
+  fill: none;
+  stroke: none;
+  pointer-events: none;
 }
