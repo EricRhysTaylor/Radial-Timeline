@@ -23,6 +23,9 @@ You can find it on GitHub or by searching for "Manuscript Calendar" in the Obsid
 - Supports both light and dark themes
 - Allows clicking on scenes to open the corresponding file
 - Visually highlights currently open scene tabs in the radial timeline with special styling
+- Displays estimated completion date based on remaining Todo/Working scenes and your recent progress rate
+- Shows a visual arc and marker indicating the estimated completion timeframe
+- Labels subplot rings with descriptive titles for easy identification
 - Fully integrated into Obsidian's interface - no external plugins required
 
 ## Commands
@@ -100,11 +103,14 @@ Pending Edits:
 The timeline displays:
 - Scenes arranged in a circular pattern
 - Acts divided into sections
-- Subplots organized in concentric rings
+- Subplots organized in concentric rings with descriptive titles at the top
 - Scene numbers in small boxes
 - Color-coded scenes based on status
-- Month markers around the perimeter are more about keeping track of your progress thru the year and not about when a scene took place in time
-- Progress ring showing year progress
+- Month markers around the perimeter showing calendar months of the year
+- Rainbow progress ring showing elapsed portion of the current calendar year (not related to story timeline)
+- Estimated completion date arc (red) showing projected completion timeline
+- Red tick mark indicating the exact projected completion date
+- Central legend showing counts for each status and publish stage
 
 Hover over a scene to see its details and click to open the corresponding file.
 

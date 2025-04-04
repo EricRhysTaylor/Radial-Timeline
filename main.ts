@@ -197,6 +197,15 @@ function escapeXml(unsafe: string): string {
         .replace(/'/g, '&apos;');
 }
 
+// Helper function to calculate angle for a given date
+function dateToAngle(date: Date): number {
+    const startOfYear = new Date(date.getFullYear(), 0, 1);
+    const dayOfYear = (date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24);
+    const daysInYear = (new Date(date.getFullYear(), 11, 31).getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24) + 1;
+    const progress = dayOfYear / daysInYear;
+    return (progress * 2 * Math.PI) - (Math.PI / 2); // Offset by -90deg to start at top
+}
+
 // Helper function to decode HTML entities (like &#039; to ')
 function decodeHtmlEntities(text: string): string {
     if (!text) return '';
@@ -1109,6 +1118,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     // Add a synopsisManager instance
     private synopsisManager: SynopsisManager;
     
+    // Add property to store the latest status counts for completion estimate
+    latestStatusCounts: Record<string, number> | null = null;
+    
     /**
      * Position and curve the text elements in the SVG
      * @param container The container element with the SVG
@@ -1698,9 +1710,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             // Desaturate the stage color for the 'Working' background - REMOVED
             // const desaturatedColor = this.desaturateColor(color, 0.75); // Desaturate by 75%
             return `
-            <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="20" height="20" patternTransform="rotate(45)">
-                <rect width="20" height="20" fill="${color}"/> // Use original stage color
-                <text x="10" y="10" font-size="18" font-weight="100" fill="#ffffff" fill-opacity="0.8" text-anchor="middle" dominant-baseline="middle">W</text>
+            <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="80" height="20" patternTransform="rotate(45)">
+                <rect width="80" height="20" fill="${color}"/> // Use original stage color
+                <path d="M 0 10 Q 2.5 -5, 5 10 Q 7.5 25, 10 10 Q 12.5 5, 15 10 Q 17.5 25, 20 10 Q 22.5 -5, 25 10 Q 27.5 25, 30 10 Q 32.5 5, 35 10 Q 37.5 25, 40 10 Q 42.5 -5, 45 10 Q 47.5 25, 50 10 Q 52.5 5, 55 10 Q 57.5 25, 60 10 Q 62.5 -5, 65 10 Q 67.5 25, 70 10 Q 72.5 5, 75 10 Q 77.5 25, 80 10" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1.5" fill="none" />
             </pattern>
             
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
@@ -1759,9 +1771,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Create progress ring
         const progressRadius = lineInnerRadius + 15;
         const circumference = 2 * Math.PI * progressRadius;
-        const progressLength = circumference * yearProgress;
-        const startAngle = -Math.PI / 2; // Start at 12 o'clock
-        const endAngle = startAngle + (2 * Math.PI * yearProgress);
+        // const progressLength = circumference * yearProgress; // No longer needed for arc calc
+        const currentYearStartAngle = -Math.PI / 2; // Start at 12 o'clock
+        const currentYearEndAngle = currentYearStartAngle + (2 * Math.PI * yearProgress);
 
         // Define rainbow gradients for the segments
         svg += `<defs>
@@ -1801,7 +1813,193 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             />
         `;
 
-        // Create six segments for the rainbow
+        // --- Draw Estimation Arc --- START ---
+        const estimatedCompletionDate = this.calculateCompletionEstimate(scenes);
+        if (estimatedCompletionDate) {
+            // Start from 12 o'clock position
+            const startAngle = -Math.PI/2; // 12 o'clock position
+            
+            // Debug logs
+            if (this.settings.debug) {
+                this.log(`[Timeline Estimate] Calculating arc for date: ${estimatedCompletionDate.toISOString().split('T')[0]}`);
+            }
+            
+            // Calculate how many years between now and completion date
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const currentDay = now.getDate();
+            
+            const estimatedYear = estimatedCompletionDate.getFullYear();
+            const estimatedMonth = estimatedCompletionDate.getMonth(); // 0-11
+            const estimatedDay = estimatedCompletionDate.getDate(); // 1-31
+            
+            // Calculate years difference
+            let yearsDiff = estimatedYear - currentYear;
+            
+            // Calculate current position in year as fraction
+            const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const currentMonthFraction = currentMonth / 12;
+            const currentDayFraction = currentDay / daysInCurrentMonth / 12;
+            const currentYearFraction = currentMonthFraction + currentDayFraction;
+            
+            // Calculate estimated position in year as fraction
+            const daysInEstimatedMonth = new Date(estimatedYear, estimatedMonth + 1, 0).getDate();
+            const estimatedMonthFraction = estimatedMonth / 12;
+            const estimatedDayFraction = estimatedDay / daysInEstimatedMonth / 12;
+            const estimatedYearFraction = estimatedMonthFraction + estimatedDayFraction;
+            
+            // If the estimated month+day is earlier in the year than current month+day,
+            // and years are different, we need to adjust for full cycle
+            if (yearsDiff > 0 && estimatedYearFraction < currentYearFraction) {
+                yearsDiff--;
+            }
+            
+            // Total sweep is years difference + difference in year fraction
+            const totalYearFraction = yearsDiff + (estimatedYearFraction - currentYearFraction);
+            
+            // Map to angle - start from -π/2 (12 o'clock)
+            // For June, we need to map properly to circle position
+            // June is month 5 (0-indexed), so it's 5/12 + (day/daysInMonth)/12 of the way through the year
+            // Convert this to angle from 12 o'clock (-PI/2)
+            
+            // Simpler mapping for estimated date position:
+            // January = -Math.PI/2 (12 o'clock)
+            // July = 0 (3 o'clock)
+            // December = Math.PI (6 o'clock)
+            
+            // Map month directly to circle position (0.0 to 1.0)
+            const yearPosEstimated = estimatedMonth/12 + estimatedDay/daysInEstimatedMonth/12;
+            
+            // Convert year position to angle (add 0.75 to start at 12 o'clock)
+            const estimatedPos = ((yearPosEstimated + 0.75) % 1) * Math.PI * 2;
+            
+            if (this.settings.debug) {
+                this.log(`[Timeline Estimate] Date position: Month=${estimatedMonth}, Day=${estimatedDay}, YearPos=${yearPosEstimated.toFixed(4)}, Angle=${estimatedPos.toFixed(2)}`);
+            }
+            
+            // Determine if the arc is large based on sweep
+            // For multi-year estimates, we'll draw complete circles plus the final arc
+            const fullCirclesCount = Math.floor(totalYearFraction);
+            const finalArcFraction = totalYearFraction - fullCirclesCount;
+            const largeArcFlag = finalArcFraction > 0.5 ? 1 : 0;
+            
+            // For logging
+            const diffDays = (estimatedCompletionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+            
+            // Log only when debug mode is on
+            if (this.settings.debug) {
+                this.log(`[Timeline Estimate] Calculated Estimated Completion Date: ${estimatedCompletionDate.toISOString().split('T')[0]}`);
+                this.log(`[Timeline Estimate] Years difference: ${yearsDiff}, Total year fraction: ${totalYearFraction.toFixed(4)}`);
+            }
+            
+            // Multi-year handling requires different approach for drawing the arc
+            if (fullCirclesCount >= 1) {
+                // First, draw complete circles for each full year
+                for (let i = 0; i < fullCirclesCount; i++) {
+                    svg += `
+                        <circle
+                            cx="0"
+                            cy="0"
+                            r="${progressRadius}"
+                            fill="none"
+                            stroke="#ff0000"
+                            stroke-width="12"
+                            class="estimation-arc estimation-full-year"
+                        />
+                    `;
+                }
+                
+                // Then draw the final partial arc
+                const finalArcEndAngle = startAngle + (finalArcFraction * 2 * Math.PI);
+                
+                svg += `
+                    <path
+                        d="
+                            M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
+                            A ${progressRadius} ${progressRadius} 0 ${largeArcFlag} 1 
+                            ${progressRadius * Math.cos(finalArcEndAngle)} ${progressRadius * Math.sin(finalArcEndAngle)}
+                        "
+                        class="estimation-arc"
+                    />
+                `;
+                
+                // For the tick mark, use the final angle
+                const tickOuterRadius = progressRadius - 5; 
+                const tickInnerRadius = tickOuterRadius - 30;
+                const tickOuterX = tickOuterRadius * Math.cos(finalArcEndAngle);
+                const tickOuterY = tickOuterRadius * Math.sin(finalArcEndAngle);
+                const tickInnerX = tickInnerRadius * Math.cos(finalArcEndAngle);
+                const tickInnerY = tickInnerRadius * Math.sin(finalArcEndAngle);
+            
+                svg += `
+                    <line 
+                        x1="${formatNumber(tickOuterX)}" 
+                        y1="${formatNumber(tickOuterY)}" 
+                        x2="${formatNumber(tickInnerX)}" 
+                        y2="${formatNumber(tickInnerY)}" 
+                        class="estimated-date-tick" 
+                        stroke="#ff0000" 
+                        stroke-width="2" 
+                    />
+                    <circle 
+                        cx="${formatNumber(tickInnerX)}" 
+                        cy="${formatNumber(tickInnerY)}" 
+                        r="4" 
+                        fill="#ff0000" 
+                        class="estimated-date-dot" 
+                    />
+                `;
+            } else {
+                // Simple case: less than one year estimation
+                // Use the direct estimated position angle for consistent positioning
+                svg += `
+                    <path
+                        d="
+                            M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
+                            A ${progressRadius} ${progressRadius} 0 ${largeArcFlag} 1 
+                            ${progressRadius * Math.cos(estimatedPos)} ${progressRadius * Math.sin(estimatedPos)}
+                        "
+                        class="estimation-arc"
+                    />
+                `;
+                
+                // Add tick mark at the estimated date position - use the direct position
+                const tickOuterRadius = progressRadius - 5; 
+                const tickInnerRadius = tickOuterRadius - 30;
+                const tickOuterX = tickOuterRadius * Math.cos(estimatedPos);
+                const tickOuterY = tickOuterRadius * Math.sin(estimatedPos);
+                const tickInnerX = tickInnerRadius * Math.cos(estimatedPos);
+                const tickInnerY = tickInnerRadius * Math.sin(estimatedPos);
+                
+                svg += `
+                    <line 
+                        x1="${formatNumber(tickOuterX)}" 
+                        y1="${formatNumber(tickOuterY)}" 
+                        x2="${formatNumber(tickInnerX)}" 
+                        y2="${formatNumber(tickInnerY)}" 
+                        class="estimated-date-tick" 
+                        stroke="#ff0000" 
+                        stroke-width="2" 
+                    />
+                    <circle 
+                        cx="${formatNumber(tickInnerX)}" 
+                        cy="${formatNumber(tickInnerY)}" 
+                        r="4" 
+                        fill="#ff0000" 
+                        class="estimated-date-dot" 
+                    />
+                `;
+            }
+            
+            // Log only when debug mode is on
+            if (this.settings.debug) {
+                this.log(`[Timeline Estimate] Estimation arc: Start Angle=${startAngle.toFixed(2)}, End Angle=${estimatedPos.toFixed(2)}, Days=${diffDays.toFixed(0)}`);
+                this.log(`[Timeline Estimate] Full Circles=${fullCirclesCount}, Final Arc Fraction=${finalArcFraction.toFixed(3)}`);
+            }
+        }
+        // --- Draw Estimation Arc --- END ---
+
+        // Create six segments for the rainbow (Year Progress)
         const segmentCount = 6;
         const fullCircleAngle = 2 * Math.PI;
         const segmentAngle = fullCircleAngle / segmentCount;
@@ -1815,7 +2013,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Draw each segment that should be visible
         for (let i = 0; i < segmentCount; i++) {
             // Calculate this segment's start and end angles
-            const segStart = startAngle + (i * segmentAngle);
+            const segStart = currentYearStartAngle + (i * segmentAngle);
             let segEnd = segStart + segmentAngle;
             
             // If this is beyond what should be shown based on year progress, skip it
@@ -2026,6 +2224,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 // Get the publish stage for pattern selection
                                 const publishStage = scene["Publish Stage"] || 'Zero';
                                 
+                                // If status is empty/undefined/null, treat it as "Todo" with plaid pattern
+                                if (!normalizedStatus || normalizedStatus === '') {
+                                    return `url(#plaidTodo${publishStage})`;
+                                }
+                                
                                 if (normalizedStatus === "complete") {
                                     // For completed scenes, use Publish Stage color with full opacity
                                     const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
@@ -2226,6 +2429,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             const normalizedStatus = scene.status?.toString().trim().toLowerCase() || '';
             
+            // If status is empty/undefined/null, count it as "Todo"
+            if (!normalizedStatus || normalizedStatus === '') {
+                acc["Todo"] = (acc["Todo"] || 0) + 1;
+                return acc;
+            }
+            
             if (normalizedStatus === "complete") {
                 // For completed scenes, count by Publish Stage
                 const publishStage = scene["Publish Stage"] || 'Zero';
@@ -2252,6 +2461,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
             return acc;
         }, {} as Record<string, number>);
+
+        // Save status counts for completion estimate
+        this.latestStatusCounts = statusCounts;
 
         // Add center color key
         const centerRadius = innerRadius * 0.7; // Slightly smaller than innerRadius
@@ -3520,6 +3732,82 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         return this.rgbToHex(desaturatedRgb.r, desaturatedRgb.g, desaturatedRgb.b);
     }
     // --- END: Color Conversion & Desaturation Helpers ---
+
+    // Add this function inside the ManuscriptTimelinePlugin class
+    private calculateCompletionEstimate(scenes: Scene[]): Date | null {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Normalize to start of day
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+
+        // Check if we have status counts from legend
+        if (!this.latestStatusCounts) {
+            this.log("Status counts not available for completion estimate");
+            return null;
+        }
+
+        // Use legend data counts for Working and Todo
+        const todoCount = this.latestStatusCounts['Todo'] || 0;
+        const workingCount = this.latestStatusCounts['Working'] || 0;
+        const remainingScenes = todoCount + workingCount;
+        
+        // Calculate total from all status counts
+        const totalScenes = Object.values(this.latestStatusCounts).reduce((sum, count) => sum + count, 0);
+
+        // Count completed scenes in last 30 days using due dates
+        let completedLast30Days = 0;
+        const completedPathsLast30Days = new Set<string>();
+
+        scenes.forEach(scene => {
+            const dueDateStr = scene.due;
+            const scenePath = scene.path;
+
+            if (dueDateStr && scenePath && !completedPathsLast30Days.has(scenePath)) {
+                try {
+                    const parts = dueDateStr.split('-').map(Number);
+                    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+                        const dueDate = new Date(parts[0], parts[1] - 1, parts[2]);
+                        dueDate.setHours(0,0,0,0);
+
+                        if (dueDate < today && dueDate >= thirtyDaysAgo) {
+                            completedLast30Days++;
+                            completedPathsLast30Days.add(scenePath);
+                        }
+                    }
+                } catch (e) {
+                    // Ignore date parsing errors
+                }
+            }
+        });
+
+        this.log(`Legend data - Total scenes: ${totalScenes}`);
+        this.log(`Legend data - Todo count: ${todoCount}, Working count: ${workingCount}`);
+        this.log(`Legend data - Remaining scenes (Todo + Working): ${remainingScenes}`);
+        this.log(`Scenes completed in last 30 days: ${completedLast30Days}`);
+
+        if (completedLast30Days <= 0) {
+            this.log("Completion rate is zero or negative. Cannot estimate completion date.");
+            return null;
+        }
+
+        const scenesPerDay = completedLast30Days / 30;
+        const daysNeeded = remainingScenes / scenesPerDay;
+
+        if (!isFinite(daysNeeded) || daysNeeded < 0) {
+            this.log("Cannot estimate completion date (infinite or negative days needed).");
+            return null;
+        }
+
+        // Log the inputs using the requested format
+        this.log(`Timeline Estimate| Inputs Received - Total: ${totalScenes}, Todo: ${todoCount}, Working: ${workingCount}, Completed30: ${completedLast30Days}, Rate: ${scenesPerDay.toFixed(2)} scenes/day`);
+        
+        const estimatedDate = new Date(today);
+        estimatedDate.setDate(today.getDate() + Math.ceil(daysNeeded)); // Round up days
+        
+        this.log(`Timeline Estimate| Raw Estimated Date Object: ${estimatedDate.toString()}`);
+        this.log(`Estimated completion date: ${estimatedDate.toISOString().split('T')[0]}`);
+        return estimatedDate;
+    }
 }
 
 
@@ -4803,4 +5091,3 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                         }
     }
 }
-
