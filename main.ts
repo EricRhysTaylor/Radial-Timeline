@@ -197,6 +197,11 @@ function escapeXml(unsafe: string): string {
         .replace(/'/g, '&apos;');
 }
 
+// Shared utility function for escaping regular expression special characters
+function escapeRegExp(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Helper function to calculate angle for a given date
 function dateToAngle(date: Date): number {
     const startOfYear = new Date(date.getFullYear(), 0, 1);
@@ -204,6 +209,21 @@ function dateToAngle(date: Date): number {
     const daysInYear = (new Date(date.getFullYear(), 11, 31).getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24) + 1;
     const progress = dayOfYear / daysInYear;
     return (progress * 2 * Math.PI) - (Math.PI / 2); // Offset by -90deg to start at top
+}
+
+// Helper function to create a properly formatted SVG arc path
+function createSvgArcPath(startAngle: number, endAngle: number, radius: number, largeArcFlag: number = 0): string {
+    // Calculate start and end points
+    const startX = radius * Math.cos(startAngle);
+    const startY = radius * Math.sin(startAngle);
+    const endX = radius * Math.cos(endAngle);
+    const endY = radius * Math.sin(endAngle);
+    
+    // Create standardized arc path
+    return `
+        M ${startX} ${startY}
+        A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}
+    `;
 }
 
 // Helper function to decode HTML entities (like &#039; to ')
@@ -438,7 +458,7 @@ class SynopsisManager {
      * Escapes special characters in a string for use in a regular expression
      */
     escapeRegExp(string: string): string {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return escapeRegExp(string); // Use the shared utility function
     }
     
 
@@ -1332,7 +1352,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     // Add helper method to escape special characters in regex
     private escapeRegExp(string: string): string {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return escapeRegExp(string); // Use the shared utility function
     }
 
 
@@ -2064,9 +2084,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             // Desaturate the stage color for the 'Working' background - REMOVED
             // const desaturatedColor = this.desaturateColor(color, 0.75); // Desaturate by 75%
             return `
-            <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="80" height="20" patternTransform="rotate(45)">
-                <rect width="80" height="20" fill="${color}"/> // Use original stage color
-                <path d="M 0 10 Q 2.5 -5, 5 10 Q 7.5 25, 10 10 Q 12.5 5, 15 10 Q 17.5 25, 20 10 Q 22.5 -5, 25 10 Q 27.5 25, 30 10 Q 32.5 5, 35 10 Q 37.5 25, 40 10 Q 42.5 -5, 45 10 Q 47.5 25, 50 10 Q 52.5 5, 55 10 Q 57.5 25, 60 10 Q 62.5 -5, 65 10 Q 67.5 25, 70 10 Q 72.5 5, 75 10 Q 77.5 25, 80 10" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1.5" fill="none" />
+            <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="80" height="20" patternTransform="rotate(-20)">
+                <rect width="80" height="20" fill="#cccccc"/> // Use original stage color
+                <path d="M 0 10 Q 2.5 -5, 5 10 Q 7.5 25, 10 10 Q 12.5 5, 15 10 Q 17.5 25, 20 10 Q 22.5 -5, 25 10 Q 27.5 25, 30 10 Q 32.5 5, 35 10 Q 37.5 25, 40 10 Q 42.5 -5, 45 10 Q 47.5 25, 50 10 Q 52.5 5, 55 10 Q 57.5 25, 60 10 Q 62.5 -5, 65 10 Q 67.5 25, 70 10 Q 72.5 5, 75 10 Q 77.5 25, 80 10" stroke="${color}" stroke-opacity="0.5" stroke-width="1.5" fill="none" />
             </pattern>
             
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
@@ -2104,11 +2124,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Close defs act
         svg += `</defs>`;
 
+        // Get current month index (0-11)
+        const currentMonthIndex = new Date().getMonth();
+
         //outer months Labels
         months.forEach(({ name }, index) => {
             const pathId = `monthLabelPath-${index}`;
+            const isPastMonth = index < currentMonthIndex;
             svg += `
-                <text class="month-label-outer">
+                <text class="month-label-outer" ${isPastMonth ? 'opacity="0.5"' : ''}>
                     <textPath href="#${pathId}" startOffset="0" text-anchor="start">
                         ${name}
                     </textPath>
@@ -2170,7 +2194,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // --- Draw Estimation Arc --- START ---
         const estimatedCompletionDate = this.calculateCompletionEstimate(scenes);
         if (estimatedCompletionDate) {
-            // Start from 12 o'clock position
+            // Start from 12 o'clock position (January 1)
             const startAngle = -Math.PI/2; // 12 o'clock position
             
             // Debug logs
@@ -2178,177 +2202,72 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 this.log(`[Timeline Estimate] Calculating arc for date: ${estimatedCompletionDate.toISOString().split('T')[0]}`);
             }
             
-            // Calculate how many years between now and completion date
-            const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth();
-            const currentDay = now.getDate();
-            
             const estimatedYear = estimatedCompletionDate.getFullYear();
             const estimatedMonth = estimatedCompletionDate.getMonth(); // 0-11
             const estimatedDay = estimatedCompletionDate.getDate(); // 1-31
             
-            // Calculate years difference
-            let yearsDiff = estimatedYear - currentYear;
-            
-            // Calculate current position in year as fraction
-            const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-            const currentMonthFraction = currentMonth / 12;
-            const currentDayFraction = currentDay / daysInCurrentMonth / 12;
-            const currentYearFraction = currentMonthFraction + currentDayFraction;
-            
-            // Calculate estimated position in year as fraction
-            const daysInEstimatedMonth = new Date(estimatedYear, estimatedMonth + 1, 0).getDate();
-            const estimatedMonthFraction = estimatedMonth / 12;
-            const estimatedDayFraction = estimatedDay / daysInEstimatedMonth / 12;
-            const estimatedYearFraction = estimatedMonthFraction + estimatedDayFraction;
-            
-            // If the estimated month+day is earlier in the year than current month+day,
-            // and years are different, we need to adjust for full cycle
-            if (yearsDiff > 0 && estimatedYearFraction < currentYearFraction) {
-                yearsDiff--;
-            }
-            
-            // Total sweep is years difference + difference in year fraction
-            const totalYearFraction = yearsDiff + (estimatedYearFraction - currentYearFraction);
-            
-            // Map to angle - start from -π/2 (12 o'clock)
-            // For June, we need to map properly to circle position
-            // June is month 5 (0-indexed), so it's 5/12 + (day/daysInMonth)/12 of the way through the year
-            // Convert this to angle from 12 o'clock (-PI/2)
-            
-            // Simpler mapping for estimated date position:
-            // January = -Math.PI/2 (12 o'clock)
-            // July = 0 (3 o'clock)
-            // December = Math.PI (6 o'clock)
-            
-            // Map month directly to circle position (0.0 to 1.0)
-            const yearPosEstimated = estimatedMonth/12 + estimatedDay/daysInEstimatedMonth/12;
+            // Determine the absolute position of the target date on the circle
+            // Map month directly to circle position (0.0 to 1.0) - this represents where this date
+            // would appear on the circle regardless of the current date
+            const estimatedDaysInMonth = new Date(estimatedYear, estimatedMonth + 1, 0).getDate();
+            const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
             
             // Convert year position to angle (add 0.75 to start at 12 o'clock)
-            const estimatedPos = ((yearPosEstimated + 0.75) % 1) * Math.PI * 2;
+            // This is the absolute position on the circle where Jul 25 (or any date) would appear
+            const estimatedDateAngle = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
             
             if (this.settings.debug) {
-                this.log(`[Timeline Estimate] Date position: Month=${estimatedMonth}, Day=${estimatedDay}, YearPos=${yearPosEstimated.toFixed(4)}, Angle=${estimatedPos.toFixed(2)}`);
+                this.log(`[Timeline Estimate] Date absolute position: Month=${estimatedMonth}, Day=${estimatedDay}, YearPos=${estimatedYearPos.toFixed(4)}, Angle=${estimatedDateAngle.toFixed(2)}`);
             }
-            
-            // Determine if the arc is large based on sweep
-            // For multi-year estimates, we'll draw complete circles plus the final arc
-            const fullCirclesCount = Math.floor(totalYearFraction);
-            const finalArcFraction = totalYearFraction - fullCirclesCount;
-            const largeArcFlag = finalArcFraction > 0.5 ? 1 : 0;
             
             // For logging
-            const diffDays = (estimatedCompletionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+            const diffMs = estimatedCompletionDate.getTime() - now.getTime();
+            const diffDays = diffMs / (1000 * 60 * 60 * 24);
             
-            // Log only when debug mode is on
-            if (this.settings.debug) {
-                this.log(`[Timeline Estimate] Calculated Estimated Completion Date: ${estimatedCompletionDate.toISOString().split('T')[0]}`);
-                this.log(`[Timeline Estimate] Years difference: ${yearsDiff}, Total year fraction: ${totalYearFraction.toFixed(4)}`);
+            // Calculate angle span from January 1 (12 o'clock) to the estimated completion date
+            let arcAngleSpan = estimatedDateAngle - startAngle;
+            if (arcAngleSpan < 0) {
+                arcAngleSpan += 2 * Math.PI; // Add full circle if we wrap around
             }
             
-            // Multi-year handling requires different approach for drawing the arc
-            if (fullCirclesCount >= 1) {
-                // First, draw complete circles for each full year
-                for (let i = 0; i < fullCirclesCount; i++) {
-                    svg += `
-                        <circle
-                            cx="0"
-                            cy="0"
-                            r="${progressRadius}"
-                            fill="none"
-                            stroke="#ff0000"
-                            stroke-width="12"
-                            class="estimation-arc estimation-full-year"
-                        />
-                    `;
-                }
-                
-                // Then draw the final partial arc
-                const finalArcEndAngle = startAngle + (finalArcFraction * 2 * Math.PI);
-                
-                svg += `
-                    <path
-                        d="
-                            M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
-                            A ${progressRadius} ${progressRadius} 0 ${largeArcFlag} 1 
-                            ${progressRadius * Math.cos(finalArcEndAngle)} ${progressRadius * Math.sin(finalArcEndAngle)}
-                        "
-                        class="estimation-arc"
-                    />
-                `;
-                
-                // For the tick mark, use the final angle
-                const tickOuterRadius = progressRadius - 5; 
-                const tickInnerRadius = tickOuterRadius - 30;
-                const tickOuterX = tickOuterRadius * Math.cos(finalArcEndAngle);
-                const tickOuterY = tickOuterRadius * Math.sin(finalArcEndAngle);
-                const tickInnerX = tickInnerRadius * Math.cos(finalArcEndAngle);
-                const tickInnerY = tickInnerRadius * Math.sin(finalArcEndAngle);
+            // For year difference, calculate complete years between dates
+            const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
             
+            if (this.settings.debug) {
+                this.log(`[Timeline Estimate] Days until completion: ${diffDays.toFixed(1)}`);
+                this.log(`[Timeline Estimate] Years difference: ${yearsDiff}`);
+                this.log(`[Timeline Estimate] Arc angle span: ${arcAngleSpan.toFixed(2)} radians`);
+            }
+            
+            // First, draw complete circles for each full year if any
+            for (let i = 0; i < yearsDiff; i++) {
                 svg += `
-                    <line 
-                        x1="${formatNumber(tickOuterX)}" 
-                        y1="${formatNumber(tickOuterY)}" 
-                        x2="${formatNumber(tickInnerX)}" 
-                        y2="${formatNumber(tickInnerY)}" 
-                        class="estimated-date-tick" 
-                        stroke="#ff0000" 
-                        stroke-width="2" 
-                    />
-                    <circle 
-                        cx="${formatNumber(tickInnerX)}" 
-                        cy="${formatNumber(tickInnerY)}" 
-                        r="4" 
-                        fill="#ff0000" 
-                        class="estimated-date-dot" 
-                    />
-                `;
-            } else {
-                // Simple case: less than one year estimation
-                // Use the direct estimated position angle for consistent positioning
-                svg += `
-                    <path
-                        d="
-                            M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
-                            A ${progressRadius} ${progressRadius} 0 ${largeArcFlag} 1 
-                            ${progressRadius * Math.cos(estimatedPos)} ${progressRadius * Math.sin(estimatedPos)}
-                        "
-                        class="estimation-arc"
-                    />
-                `;
-                
-                // Add tick mark at the estimated date position - use the direct position
-                const tickOuterRadius = progressRadius - 5; 
-                const tickInnerRadius = tickOuterRadius - 30;
-                const tickOuterX = tickOuterRadius * Math.cos(estimatedPos);
-                const tickOuterY = tickOuterRadius * Math.sin(estimatedPos);
-                const tickInnerX = tickInnerRadius * Math.cos(estimatedPos);
-                const tickInnerY = tickInnerRadius * Math.sin(estimatedPos);
-                
-                svg += `
-                    <line 
-                        x1="${formatNumber(tickOuterX)}" 
-                        y1="${formatNumber(tickOuterY)}" 
-                        x2="${formatNumber(tickInnerX)}" 
-                        y2="${formatNumber(tickInnerY)}" 
-                        class="estimated-date-tick" 
-                        stroke="#ff0000" 
-                        stroke-width="2" 
-                    />
-                    <circle 
-                        cx="${formatNumber(tickInnerX)}" 
-                        cy="${formatNumber(tickInnerY)}" 
-                        r="4" 
-                        fill="#ff0000" 
-                        class="estimated-date-dot" 
+                    <circle
+                        cx="0"
+                        cy="0"
+                        r="${progressRadius}"
+                        fill="none"
+                        class="estimation-arc estimation-full-year"
                     />
                 `;
             }
             
-            // Log only when debug mode is on
+            // Draw the arc from January 1 (12 o'clock) to estimated date position
+            svg += `
+                <path
+                    d="
+                        M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
+                        A ${progressRadius} ${progressRadius} 0 ${arcAngleSpan > Math.PI ? 1 : 0} 1 
+                        ${progressRadius * Math.cos(estimatedDateAngle)} ${progressRadius * Math.sin(estimatedDateAngle)}
+                    "
+                    class="estimation-arc"
+                />
+            `;
+            
+            // Log calculations for debugging
             if (this.settings.debug) {
-                this.log(`[Timeline Estimate] Estimation arc: Start Angle=${startAngle.toFixed(2)}, End Angle=${estimatedPos.toFixed(2)}, Days=${diffDays.toFixed(0)}`);
-                this.log(`[Timeline Estimate] Full Circles=${fullCirclesCount}, Final Arc Fraction=${finalArcFraction.toFixed(3)}`);
+                this.log(`[Timeline Estimate] Arc: Start angle=${startAngle.toFixed(2)}, End angle=${estimatedDateAngle.toFixed(2)}`);
+                this.log(`[Timeline Estimate] Arc sweep: ${arcAngleSpan.toFixed(2)} radians, Large arc: ${arcAngleSpan > Math.PI ? 'yes' : 'no'}`);
             }
         }
         // --- Draw Estimation Arc --- END ---
@@ -2392,6 +2311,86 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             `;
         }
 
+        // Add tick mark and label for the estimated completion date if available
+        if (estimatedCompletionDate) {
+            // We want to use the absolute position of the target date for the marker
+            const estimatedMonth = estimatedCompletionDate.getMonth();
+            const estimatedDay = estimatedCompletionDate.getDate();
+            
+            // Map month directly to circle position (0.0 to 1.0)
+            const estimatedDaysInMonth = new Date(estimatedCompletionDate.getFullYear(), estimatedMonth + 1, 0).getDate();
+            const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
+            
+            // Convert year position to angle (add 0.75 to start at 12 o'clock)
+            const absoluteDatePos = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
+            
+            // Debug
+            if (this.settings.debug) {
+                const dateStr = `${estimatedMonth + 1}/${estimatedDay}`;
+                this.log(`[Timeline Estimate] Placing tick mark for ${dateStr} at angle: ${absoluteDatePos.toFixed(2)} radians`);
+            }
+            
+            // Use the absolute date position for the tick mark
+            const tickOuterRadius = progressRadius + 5; // Start ON the ring
+            const tickInnerRadius = progressRadius - 35; // End 30px inside the ring
+            const tickOuterX = tickOuterRadius * Math.cos(absoluteDatePos);
+            const tickOuterY = tickOuterRadius * Math.sin(absoluteDatePos);
+            const tickInnerX = tickInnerRadius * Math.cos(absoluteDatePos);
+            const tickInnerY = tickInnerRadius * Math.sin(absoluteDatePos);
+            
+            svg += `
+                <line 
+                    x1="${formatNumber(tickOuterX)}" 
+                    y1="${formatNumber(tickOuterY)}" 
+                    x2="${formatNumber(tickInnerX)}" 
+                    y2="${formatNumber(tickInnerY)}" 
+                    class="estimated-date-tick" 
+                />
+                <circle 
+                    cx="${formatNumber(tickInnerX)}" 
+                    cy="${formatNumber(tickInnerY)}" 
+                    r="4" 
+                    class="estimated-date-dot" 
+                />
+            `;
+            
+            // Add formatted date label beside the tick mark
+            const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
+            const dateDisplay = dateFormatter.format(estimatedCompletionDate);
+            
+            // Position the date label at a consistent distance from the tick mark
+            const labelRadius = progressRadius - 45;
+            const labelX = formatNumber(labelRadius * Math.cos(absoluteDatePos));
+            const labelY = formatNumber(labelRadius * Math.sin(absoluteDatePos));
+            const isLeftHalf = Math.abs(absoluteDatePos) > Math.PI/2;
+            const labelAnchor = isLeftHalf ? "end" : "start";
+            
+            svg += `
+                <text
+                    x="${labelX}"
+                    y="${labelY}"
+                    text-anchor="${labelAnchor}"
+                    class="estimation-date-label"
+                >
+                    ${dateDisplay}
+                </text>
+            `;
+            
+            // Log only when debug mode is on
+            if (this.settings.debug) {
+                const diffMs = estimatedCompletionDate.getTime() - now.getTime();
+                const diffDays = diffMs / (1000 * 60 * 60 * 24);
+                
+                // Convert days to fraction of a year (approximate)
+                const yearFraction = diffDays / 365;
+                const fullYears = Math.floor(yearFraction);
+                const remainingFraction = yearFraction - fullYears;
+                
+                this.log(`[Timeline Estimate] Tick mark angle: ${absoluteDatePos.toFixed(2)}, Days until: ${diffDays.toFixed(0)}`);
+                this.log(`[Timeline Estimate] Full Years=${fullYears}, Remaining Fraction=${remainingFraction.toFixed(3)}`);
+            }
+        }
+
         // THEN add the month spokes group (existing code)
         svg += `<g class="month-spokes">`;
         
@@ -2406,6 +2405,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
             // Check if this is an Act boundary (months 0, 4, or 8)
             const isActBoundary = [0, 4, 8].includes(monthIndex);
+            // Check if this month has passed
+            const isPastMonth = monthIndex < currentMonthIndex;
 
             // Draw the spoke line
             svg += `
@@ -2414,7 +2415,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     y1="${y1}"
                     x2="${x2}"
                     y2="${y2}"
-                    class="month-spoke-line${isActBoundary ? ' act-boundary' : ''}"
+                    class="month-spoke-line${isActBoundary ? ' act-boundary' : ''}${isPastMonth ? ' past-month' : ''}"
                 />`;
 
             // Create curved path for inner month labels
@@ -2433,7 +2434,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     "
                     fill="none"
                 />
-                <text class="month-label">
+                <text class="month-label" ${isPastMonth ? 'opacity="0.5"' : ''}>
                     <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
                         ${months[monthIndex].shortName}
                     </textPath>
@@ -4094,10 +4095,60 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const thirtyDaysAgo = new Date(today);
         thirtyDaysAgo.setDate(today.getDate() - 30);
 
-        // Check if we have status counts from legend
+        // Process status counts if not already available
+        // This ensures we have status counts even if the timeline was refreshed without open files
         if (!this.latestStatusCounts) {
-            this.log("Status counts not available for completion estimate");
-            return null;
+            this.log("Status counts not available - calculating from scenes");
+            
+            // Create a set to track processed scenes
+            const processedScenes = new Set<string>();
+            
+            // Count scenes by status
+            const statusCounts = scenes.reduce((acc, scene) => {
+                // Skip if we've already processed this scene
+                if (scene.path && processedScenes.has(scene.path)) {
+                    return acc;
+                }
+                
+                // Mark scene as processed
+                if (scene.path) {
+                    processedScenes.add(scene.path);
+                }
+                
+                const normalizedStatus = scene.status?.toString().trim().toLowerCase() || '';
+                
+                // If status is empty/undefined/null, count it as "Todo"
+                if (!normalizedStatus || normalizedStatus === '') {
+                    acc["Todo"] = (acc["Todo"] || 0) + 1;
+                    return acc;
+                }
+                
+                if (normalizedStatus === "complete") {
+                    // For completed scenes, count by Publish Stage
+                    const publishStage = scene["Publish Stage"] || 'Zero';
+                    acc[publishStage] = (acc[publishStage] || 0) + 1;
+                } else if (scene.due && new Date() > new Date(scene.due)) {
+                    // Non-complete scenes that are past due date are counted as Due
+                    acc["Due"] = (acc["Due"] || 0) + 1;
+                } else {
+                    // All other scenes are counted by their status
+                    let statusKey = "Todo"; // Default to Todo
+                    
+                    if (scene.status) {
+                        if (Array.isArray(scene.status) && scene.status.length > 0) {
+                            statusKey = String(scene.status[0]);
+                        } else if (typeof scene.status === 'string') {
+                            statusKey = scene.status;
+                        }
+                    }
+                    
+                    acc[statusKey] = (acc[statusKey] || 0) + 1;
+                }
+                return acc;
+            }, {} as Record<string, number>);
+            
+            // Save the calculated status counts
+            this.latestStatusCounts = statusCounts;
         }
 
         // Use legend data counts for Working and Todo
@@ -4929,7 +4980,6 @@ export class ManuscriptTimelineView extends ItemView {
         const searchTerm = this.plugin.searchTerm;
         
         // Create a word boundary regex for exact matches only
-        const escapeRegExp = (string: string): string => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const escapedPattern = escapeRegExp(searchTerm);
         const wordBoundaryRegex = new RegExp(`\\b(${escapedPattern})\\b`, 'gi');
         
@@ -5338,14 +5388,14 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     // Verify the file exists before attempting to highlight
                     const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
                     if (file instanceof TFile) {
-                        this.highlightFileInExplorer(filePath, true);
+                        // this.highlightFileInExplorer(filePath, true); // Removed this line
                     }
                 }
             });
             
             group.addEventListener("mouseleave", () => {
                 if (filePath && filePath.trim() !== '') {
-                    this.highlightFileInExplorer(filePath, false);
+                    // this.highlightFileInExplorer(filePath, false); // Removed this line
                 }
             });
         }
