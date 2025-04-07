@@ -1,6 +1,75 @@
 import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl } from "obsidian";
 
 
+interface ManuscriptTimelineSettings {
+    sourcePath: string;
+    publishStageColors: {
+        Zero: string;
+        Author: string;
+        House: string;
+        Press: string;
+    };
+    debug: boolean; // Add debug setting
+    targetCompletionDate?: string; // Optional: Target date as yyyy-mm-dd string
+}
+
+// Constants for the view
+const TIMELINE_VIEW_TYPE = "manuscript-timeline-view";
+const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript Timeline";
+
+interface Scene {
+    title?: string;
+    date: string;
+    path?: string;
+    subplot?: string;
+    act?: string;
+    characters?: string[];
+    pov?: string;
+    location?: string;
+    number?: number;
+    synopsis?: string;
+    when?: Date; // Keep for backward compatibility 
+    actNumber?: number; // Keep for backward compatibility
+    Character?: string[]; // Keep for backward compatibility
+    status?: string | string[]; // Add status property
+    "Publish Stage"?: string; // Add publish stage property
+    due?: string; // Add due date property
+    pendingEdits?: string; // Add pending edits property
+}
+
+// Add this interface to store scene number information for the scene square and synopsis
+interface SceneNumberInfo {
+    number: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
+    sourcePath: 'Book 1',
+    publishStageColors: {
+        "Zero": "var(--color-zero)",      // Reference CSS variable
+        "Author": "var(--color-author)",  // Reference CSS variable
+        "House": "var(--color-house)",    // Reference CSS variable
+        "Press": "var(--color-press)"     // Reference CSS variable
+    },
+    debug: false, // Default to false
+    targetCompletionDate: undefined // Default to undefined
+};
+
+//a primary color for each status - references CSS variables
+const STATUS_COLORS = {
+    "Working": "var(--color-working)",
+    "Todo": "var(--color-todo)",
+    "Empty": "var(--color-empty)",  // Light gray
+    "Due": "var(--color-due)",
+    "Complete": "var(--color-complete)" // Complete status
+};
+
+const NUM_ACTS = 3;
+
+
 // Helper functions for safe SVG creation - add at the top of the file
 function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
     const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -80,73 +149,6 @@ function createSvgTspan(content: string, classes: string[] = []): SVGTSpanElemen
     
     return tspan;
 }
-
-interface ManuscriptTimelineSettings {
-    sourcePath: string;
-    publishStageColors: {
-        Zero: string;
-        Author: string;
-        House: string;
-        Press: string;
-    };
-    debug: boolean; // Add debug setting
-}
-
-// Constants for the view
-const TIMELINE_VIEW_TYPE = "manuscript-timeline-view";
-const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript Timeline";
-
-interface Scene {
-    title?: string;
-    date: string;
-    path?: string;
-    subplot?: string;
-    act?: string;
-    characters?: string[];
-    pov?: string;
-    location?: string;
-    number?: number;
-    synopsis?: string;
-    when?: Date; // Keep for backward compatibility 
-    actNumber?: number; // Keep for backward compatibility
-    Character?: string[]; // Keep for backward compatibility
-    status?: string | string[]; // Add status property
-    "Publish Stage"?: string; // Add publish stage property
-    due?: string; // Add due date property
-    pendingEdits?: string; // Add pending edits property
-}
-
-// Add this interface to store scene number information for the scene square and synopsis
-interface SceneNumberInfo {
-    number: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
-const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
-    sourcePath: 'Book 1',
-    publishStageColors: {
-        "Zero": "#9E70CF",  // Purple
-        "Author": "#5E85CF", // Blue
-        "House": "#DA7847",  // Orange
-        "Press": "#6FB971"   // Green
-    },
-    debug: false // Default to false
-};
-
-//a primary color for each status
-// 6FB971 green, DA7847 orange, 7C6561 flat brown, 9E70CF purple, 5E85CF Blue, bbbbbb gray 
-const STATUS_COLORS = {
-    "Working": "#70b970",
-    "Todo": "#aaaaaa",
-    "Empty": "#f0f0f0", // Light gray (will be replaced with light Zero color)
-    "Due": "#d05e5e",
-    "Complete": "#999999" // Added for complete status
-};
-
-const NUM_ACTS = 3;
 
 function formatNumber(num: number): string {
     if (Math.abs(num) < 0.001) return "0";
@@ -1672,7 +1674,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     // Helper method to highlight a scene in the timeline when hovering over a file
     private highlightSceneInTimeline(filePath: string, isHighlighting: boolean): void {
         if (!filePath || !this.activeTimelineView) {
-            console.log(`DEBUG: highlightSceneInTimeline - Invalid inputs: filePath=${filePath}, activeView=${!!this.activeTimelineView}`);
+            // Wrap this console.log with the debug check
+            if (this.settings.debug) {
+                console.log(`DEBUG: highlightSceneInTimeline - Invalid inputs: filePath=${filePath}, activeView=${!!this.activeTimelineView}`);
+            }
             return;
         }
         
@@ -2085,14 +2090,24 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             // const desaturatedColor = this.desaturateColor(color, 0.75); // Desaturate by 75%
             return `
             <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="80" height="20" patternTransform="rotate(-20)">
-                <rect width="80" height="20" fill="#cccccc"/> // Use original stage color
-                <path d="M 0 10 Q 2.5 -5, 5 10 Q 7.5 25, 10 10 Q 12.5 5, 15 10 Q 17.5 25, 20 10 Q 22.5 -5, 25 10 Q 27.5 25, 30 10 Q 32.5 5, 35 10 Q 37.5 25, 40 10 Q 42.5 -5, 45 10 Q 47.5 25, 50 10 Q 52.5 5, 55 10 Q 57.5 25, 60 10 Q 62.5 -5, 65 10 Q 67.5 25, 70 10 Q 72.5 5, 75 10 Q 77.5 25, 80 10" stroke="${color}" stroke-opacity="0.5" stroke-width="1.5" fill="none" />
+                <rect width="80" height="20" fill="var(--color-working)" opacity="var(--color-plaid-opacity)"/>
+                <path d="M 0 10 Q 2.5 -5, 5 10 Q 7.5 25, 10 10 Q 12.5 5, 15 10 Q 17.5 25, 20 10 Q 22.5 -5, 25 10 Q 27.5 25, 30 10 Q 32.5 5, 35 10 Q 37.5 25, 40 10 Q 42.5 -5, 45 10 Q 47.5 25, 50 10 Q 52.5 5, 55 10 Q 57.5 25, 60 10 Q 62.5 -5, 65 10 Q 67.5 25, 70 10 Q 72.5 5, 75 10 Q 77.5 25, 80 10" 
+                    stroke="${color}" 
+                    stroke-opacity="var(--color-plaid-stroke-opacity)" 
+                    stroke-width="1.5" 
+                    fill="none" />
             </pattern>
             
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="#CCCCCC"/>
-                <line x1="0" y1="0" x2="0" y2="10" stroke="#ffffff" stroke-width="1" stroke-opacity="0.8"/>
-                <line x1="0" y1="0" x2="10" y2="0" stroke="#ffffff" stroke-width="1" stroke-opacity="0.8"/>
+                <rect width="10" height="10" fill="var(--color-todo)" opacity="var(--color-plaid-opacity)"/>
+                <line x1="0" y1="0" x2="0" y2="10" 
+                    stroke="${color}" 
+                    stroke-width="1" 
+                    stroke-opacity="var(--color-plaid-stroke-opacity)"/>
+                <line x1="0" y1="0" x2="10" y2="0" 
+                    stroke="${color}" 
+                    stroke-width="1" 
+                    stroke-opacity="var(--color-plaid-stroke-opacity)"/>
             </pattern>
         `;}).join('')}`;
         
@@ -2191,86 +2206,142 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             />
         `;
 
-        // --- Draw Estimation Arc --- START ---
-        const estimatedCompletionDate = this.calculateCompletionEstimate(scenes);
-        if (estimatedCompletionDate) {
-            // Start from 12 o'clock position (January 1)
-            const startAngle = -Math.PI/2; // 12 o'clock position
-            
-            // Debug logs
-            if (this.settings.debug) {
-                this.log(`[Timeline Estimate] Calculating arc for date: ${estimatedCompletionDate.toISOString().split('T')[0]}`);
-            }
-            
-            const estimatedYear = estimatedCompletionDate.getFullYear();
-            const estimatedMonth = estimatedCompletionDate.getMonth(); // 0-11
-            const estimatedDay = estimatedCompletionDate.getDate(); // 1-31
-            
-            // Determine the absolute position of the target date on the circle
-            // Map month directly to circle position (0.0 to 1.0) - this represents where this date
-            // would appear on the circle regardless of the current date
-            const estimatedDaysInMonth = new Date(estimatedYear, estimatedMonth + 1, 0).getDate();
-            const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
-            
-            // Convert year position to angle (add 0.75 to start at 12 o'clock)
-            // This is the absolute position on the circle where Jul 25 (or any date) would appear
-            const estimatedDateAngle = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
-            
-            if (this.settings.debug) {
-                this.log(`[Timeline Estimate] Date absolute position: Month=${estimatedMonth}, Day=${estimatedDay}, YearPos=${estimatedYearPos.toFixed(4)}, Angle=${estimatedDateAngle.toFixed(2)}`);
-            }
-            
-            // For logging
-            const diffMs = estimatedCompletionDate.getTime() - now.getTime();
-            const diffDays = diffMs / (1000 * 60 * 60 * 24);
-            
-            // Calculate angle span from January 1 (12 o'clock) to the estimated completion date
-            let arcAngleSpan = estimatedDateAngle - startAngle;
-            if (arcAngleSpan < 0) {
-                arcAngleSpan += 2 * Math.PI; // Add full circle if we wrap around
-            }
-            
-            // For year difference, calculate complete years between dates
-            const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
-            
-            if (this.settings.debug) {
-                this.log(`[Timeline Estimate] Days until completion: ${diffDays.toFixed(1)}`);
-                this.log(`[Timeline Estimate] Years difference: ${yearsDiff}`);
-                this.log(`[Timeline Estimate] Arc angle span: ${arcAngleSpan.toFixed(2)} radians`);
-            }
-            
-            // First, draw complete circles for each full year if any
-            for (let i = 0; i < yearsDiff; i++) {
-                svg += `
-                    <circle
-                        cx="0"
-                        cy="0"
-                        r="${progressRadius}"
-                        fill="none"
-                        class="estimation-arc estimation-full-year"
-                    />
-                `;
-            }
-            
-            // Draw the arc from January 1 (12 o'clock) to estimated date position
+         // --- Draw Estimation Arc --- START ---
+         const estimatedCompletionDate = this.calculateCompletionEstimate(scenes);
+         if (estimatedCompletionDate) {
+             // Start from 12 o'clock position (January 1)
+             const startAngle = -Math.PI/2; // 12 o'clock position
+             
+             // Debug logs
+             if (this.settings.debug) {
+                 this.log(`[Timeline Estimate] Calculating arc for date: ${estimatedCompletionDate.toISOString().split('T')[0]}`);
+             }
+             
+             const estimatedYear = estimatedCompletionDate.getFullYear();
+             const estimatedMonth = estimatedCompletionDate.getMonth(); // 0-11
+             const estimatedDay = estimatedCompletionDate.getDate(); // 1-31
+             
+             // Determine the absolute position of the target date on the circle
+             // Map month directly to circle position (0.0 to 1.0) - this represents where this date
+             // would appear on the circle regardless of the current date
+             const estimatedDaysInMonth = new Date(estimatedYear, estimatedMonth + 1, 0).getDate();
+             const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
+             
+             // Convert year position to angle (add 0.75 to start at 12 o'clock)
+             // This is the absolute position on the circle where Jul 25 (or any date) would appear
+             const estimatedDateAngle = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
+             
+             if (this.settings.debug) {
+                 this.log(`[Timeline Estimate] Date absolute position: Month=${estimatedMonth}, Day=${estimatedDay}, YearPos=${estimatedYearPos.toFixed(4)}, Angle=${estimatedDateAngle.toFixed(2)}`);
+             }
+             
+             // For logging
+             const diffMs = estimatedCompletionDate.getTime() - now.getTime();
+             const diffDays = diffMs / (1000 * 60 * 60 * 24);
+             
+             // Calculate angle span from January 1 (12 o'clock) to the estimated completion date
+             let arcAngleSpan = estimatedDateAngle - startAngle;
+             if (arcAngleSpan < 0) {
+                 arcAngleSpan += 2 * Math.PI; // Add full circle if we wrap around
+             }
+             
+             // For year difference, calculate complete years between dates
+             const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
+             
+             if (this.settings.debug) {
+                 this.log(`[Timeline Estimate] Days until completion: ${diffDays.toFixed(1)}`);
+                 this.log(`[Timeline Estimate] Years difference: ${yearsDiff}`);
+                 this.log(`[Timeline Estimate] Arc angle span: ${arcAngleSpan.toFixed(2)} radians`);
+             }
+             
+             // First, draw complete circles for each full year if any
+             for (let i = 0; i < yearsDiff; i++) {
+                 svg += `
+                     <circle
+                         cx="0"
+                         cy="0"
+                         r="${progressRadius}"
+                         fill="none"
+                         class="estimation-arc estimation-full-year"
+                     />
+                 `;
+             }
+             
+             // Draw the arc from January 1 (12 o'clock) to estimated date position
+             svg += `
+                 <path
+                     d="
+                         M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
+                         A ${progressRadius} ${progressRadius} 0 ${arcAngleSpan > Math.PI ? 1 : 0} 1 
+                         ${progressRadius * Math.cos(estimatedDateAngle)} ${progressRadius * Math.sin(estimatedDateAngle)}
+                     "
+                     class="estimation-arc"
+                 />
+             `;
+             
+             // Log calculations for debugging
+             if (this.settings.debug) {
+                 this.log(`[Timeline Estimate] Arc: Start angle=${startAngle.toFixed(2)}, End angle=${estimatedDateAngle.toFixed(2)}`);
+                 this.log(`[Timeline Estimate] Arc sweep: ${arcAngleSpan.toFixed(2)} radians, Large arc: ${arcAngleSpan > Math.PI ? 'yes' : 'no'}`);
+             }
+         }
+         // --- Draw Estimation Arc --- END ---
+
+         
+        // BEGIN add the month spokes group (existing code)
+        svg += `<g class="month-spokes">`;
+
+        // For each month, draw the inner spoke and labels
+    
+        // Then modify the inner month labels to curve along the inner arc
+        months.forEach(({ name, angle }, monthIndex) => {
+            const x1 = formatNumber((lineInnerRadius - 5) * Math.cos(angle));
+            const y1 = formatNumber((lineInnerRadius - 5) * Math.sin(angle));
+            const x2 = formatNumber(lineOuterRadius * Math.cos(angle));
+            const y2 = formatNumber(lineOuterRadius * Math.sin(angle));
+
+            // Check if this is an Act boundary (months 0, 4, or 8)
+            const isActBoundary = [0, 4, 8].includes(monthIndex);
+            // Check if this month has passed
+            const isPastMonth = monthIndex < currentMonthIndex;
+
+            // Draw the spoke line
             svg += `
-                <path
-                    d="
-                        M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
-                        A ${progressRadius} ${progressRadius} 0 ${arcAngleSpan > Math.PI ? 1 : 0} 1 
-                        ${progressRadius * Math.cos(estimatedDateAngle)} ${progressRadius * Math.sin(estimatedDateAngle)}
-                    "
-                    class="estimation-arc"
-                />
-            `;
+                <line  
+                    x1="${x1}"
+                    y1="${y1}"
+                    x2="${x2}"
+                    y2="${y2}"
+                    class="month-spoke-line${isActBoundary ? ' act-boundary' : ''}${isPastMonth ? ' past-month' : ''}"
+                />`;
+
+            // Create curved path for inner month labels
+            const innerLabelRadius = lineInnerRadius;
+            const pixelToRadian = (5 * 2 * Math.PI) / (2 * Math.PI * innerLabelRadius);
+            const startAngle = angle + pixelToRadian;
+            const endAngle = angle + (Math.PI / 6);
             
-            // Log calculations for debugging
-            if (this.settings.debug) {
-                this.log(`[Timeline Estimate] Arc: Start angle=${startAngle.toFixed(2)}, End angle=${estimatedDateAngle.toFixed(2)}`);
-                this.log(`[Timeline Estimate] Arc sweep: ${arcAngleSpan.toFixed(2)} radians, Large arc: ${arcAngleSpan > Math.PI ? 'yes' : 'no'}`);
-            }
-        }
-        // --- Draw Estimation Arc --- END ---
+            const innerPathId = `innerMonthPath-${name}`;
+            
+            svg += `
+                <path id="${innerPathId}"
+                    d="
+                        M ${formatNumber(innerLabelRadius * Math.cos(startAngle))} ${formatNumber(innerLabelRadius * Math.sin(startAngle))}
+                        A ${formatNumber(innerLabelRadius)} ${formatNumber(innerLabelRadius)} 0 0 1 ${formatNumber(innerLabelRadius * Math.cos(endAngle))} ${formatNumber(innerLabelRadius * Math.sin(endAngle))}
+                    "
+                    fill="none"
+                />
+                <text class="month-label" ${isPastMonth ? 'opacity="0.5"' : ''}>
+                    <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
+                        ${months[monthIndex].shortName}
+                    </textPath>
+                </text>
+            `;
+        });
+
+        // Close the month spokes lines and text labels group
+        svg += `</g>`;
+
 
         // Create six segments for the rainbow (Year Progress)
         const segmentCount = 6;
@@ -2360,16 +2431,31 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             // Position the date label at a consistent distance from the tick mark
             const labelRadius = progressRadius - 45;
-            const labelX = formatNumber(labelRadius * Math.cos(absoluteDatePos));
-            const labelY = formatNumber(labelRadius * Math.sin(absoluteDatePos));
-            const isLeftHalf = Math.abs(absoluteDatePos) > Math.PI/2;
-            const labelAnchor = isLeftHalf ? "end" : "start";
             
+            // Calculate position around the circle (normalized from 0 to 1)
+            // 0 = top (12 o'clock), 0.25 = right (3 o'clock), 0.5 = bottom (6 o'clock), 0.75 = left (9 o'clock)
+            // No offset at 12 o'clock or 6 o'clock
+            const normalizedPos = absoluteDatePos / (2 * Math.PI);
+            
+            // Calculate horizontal offset based on position
+            // 0 = top (12 o'clock), -1 = right (3 o'clock), 0 = bottom (6 o'clock), 1 = left (9 o'clock)
+            const maxOffset = 15; // Maximum pixel offset
+            const offsetX = -maxOffset * Math.sin(absoluteDatePos);
+            
+            // Calculate vertical offset based on position
+            // +30 at 12 o'clock (moving down), -30 at 6 o'clock (moving up)
+            const maxYOffset = 15;  
+            const offsetY = -maxYOffset * Math.cos(absoluteDatePos); // Inverted sign for correct direction
+            
+            const labelX = formatNumber(labelRadius * Math.cos(absoluteDatePos) + offsetX);
+            const labelY = formatNumber(labelRadius * Math.sin(absoluteDatePos) + offsetY);
+            
+            // Always use center alignment for the text
             svg += `
                 <text
                     x="${labelX}"
                     y="${labelY}"
-                    text-anchor="${labelAnchor}"
+                    text-anchor="middle"
                     class="estimation-date-label"
                 >
                     ${dateDisplay}
@@ -2391,59 +2477,71 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
         }
 
-        // THEN add the month spokes group (existing code)
-        svg += `<g class="month-spokes">`;
-        
-        // For each month, draw the inner spoke and labels
- 
-        // Then modify the inner month labels to curve along the inner arc
-        months.forEach(({ name, angle }, monthIndex) => {
-            const x1 = formatNumber((lineInnerRadius - 5) * Math.cos(angle));
-            const y1 = formatNumber((lineInnerRadius - 5) * Math.sin(angle));
-            const x2 = formatNumber(lineOuterRadius * Math.cos(angle));
-            const y2 = formatNumber(lineOuterRadius * Math.sin(angle));
+        // --- START: Draw Target Completion Marker ---
+        let targetDateAngle = -Math.PI / 2; // Default to 12 o'clock (top)
 
-            // Check if this is an Act boundary (months 0, 4, or 8)
-            const isActBoundary = [0, 4, 8].includes(monthIndex);
-            // Check if this month has passed
-            const isPastMonth = monthIndex < currentMonthIndex;
+        if (this.settings.targetCompletionDate) {
+            try {
+                // Parse the date string, ensuring it's treated as local time
+                const targetDate = new Date(this.settings.targetCompletionDate + 'T00:00:00');
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Normalize today to the beginning of the day
 
-            // Draw the spoke line
-            svg += `
-                <line  
-                    x1="${x1}"
-                    y1="${y1}"
-                    x2="${x2}"
-                    y2="${y2}"
-                    class="month-spoke-line${isActBoundary ? ' act-boundary' : ''}${isPastMonth ? ' past-month' : ''}"
-                />`;
+                // Only use the date if it's valid and in the future
+                if (!isNaN(targetDate.getTime()) && targetDate > today) {
+                    targetDateAngle = dateToAngle(targetDate);
+                    if (this.settings.debug) {
+                        this.log(`[Timeline Target] Using target date: ${targetDate.toISOString().slice(0,10)}, Angle: ${targetDateAngle.toFixed(2)}`);
+                    }
+                } else {
+                     if (this.settings.debug) {
+                        this.log(`[Timeline Target] Target date ${this.settings.targetCompletionDate} is invalid or not in the future. Using default.`);
+                     }
+                }
+            } catch (e) {
+                if (this.settings.debug) {
+                   this.log(`[Timeline Target] Error parsing target date ${this.settings.targetCompletionDate}. Using default. Error: ${e}`);
+                }
+                // Keep default angle if parsing fails
+            }
+        } else {
+            if (this.settings.debug) {
+                this.log(`[Timeline Target] No target date set. Using default 12 o'clock.`);
+            }
+            // Keep default angle if setting is not present
+        }
 
-            // Create curved path for inner month labels
-            const innerLabelRadius = lineInnerRadius;
-            const pixelToRadian = (5 * 2 * Math.PI) / (2 * Math.PI * innerLabelRadius);
-            const startAngle = angle + pixelToRadian;
-            const endAngle = angle + (Math.PI / 6);
-            
-            const innerPathId = `innerMonthPath-${name}`;
-            
-            svg += `
-                <path id="${innerPathId}"
-                    d="
-                        M ${formatNumber(innerLabelRadius * Math.cos(startAngle))} ${formatNumber(innerLabelRadius * Math.sin(startAngle))}
-                        A ${formatNumber(innerLabelRadius)} ${formatNumber(innerLabelRadius)} 0 0 1 ${formatNumber(innerLabelRadius * Math.cos(endAngle))} ${formatNumber(innerLabelRadius * Math.sin(endAngle))}
-                    "
-                    fill="none"
-                />
-                <text class="month-label" ${isPastMonth ? 'opacity="0.5"' : ''}>
-                    <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
-                        ${months[monthIndex].shortName}
-                    </textPath>
-                </text>
-            `;
-        });
+        // Define radii and size (similar to estimation marker)
+        // const targetTickRadius = progressRadius; // Position relative to the progress ring - REMOVED
+        // const targetTickHalfLength = 8; // How far the tick extends in/out - REMOVED
+        const targetTickOuterRadius = progressRadius + 5; // Match red tick outer radius
+        const targetTickInnerRadius = progressRadius - 35; // Match red tick inner radius
+        const targetMarkerSize = 8; // Size of the square marker
 
-         // Close the month spokes lines and text labels group
-        svg += `</g>`;
+        // Draw the tick mark line
+        svg += `
+            <line
+                x1="${formatNumber(targetTickOuterRadius * Math.cos(targetDateAngle))}"
+                y1="${formatNumber(targetTickOuterRadius * Math.sin(targetDateAngle))}"
+                x2="${formatNumber((targetTickInnerRadius+3) * Math.cos(targetDateAngle))}"
+                y2="${formatNumber((targetTickInnerRadius+3) * Math.sin(targetDateAngle))}"
+                class="target-date-tick"
+            />
+        `;
+
+        // Draw the square marker centered on the INNER radius (to match red dot position)
+        const markerX = formatNumber(targetTickInnerRadius * Math.cos(targetDateAngle) - targetMarkerSize / 2);
+        const markerY = formatNumber(targetTickInnerRadius * Math.sin(targetDateAngle) - targetMarkerSize / 2);
+        svg += `
+            <rect
+                x="${markerX}"
+                y="${markerY}"
+                width="${targetMarkerSize}"
+                height="${targetMarkerSize}"
+                class="target-date-marker"
+            />
+        `;
+        // --- END: Draw Target Completion Marker ---
 
         // Create master subplot order before the act loop
         const masterSubplotOrder = (() => {
@@ -4407,6 +4505,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         // Add settings section
         containerEl.createEl('h2', {text: 'Settings', cls: 'setting-item-heading'});
         
+
         // Add source path setting
         new Setting(containerEl)
             .setName('Source Path')
@@ -4418,6 +4517,44 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                 }));
 
+                 // --- Add Target Completion Date Setting --- START ---
+        new Setting(containerEl)
+        .setName('Target Completion Date')
+        .setDesc('Set your target date for completing the work in progress (optional). Leaving empty will assume a date of January 1st of the upcoming year.')
+        .addText(text => {
+            text.inputEl.type = 'date'; // Use HTML5 date input
+            text.setValue(this.plugin.settings.targetCompletionDate || '')
+                .onChange(async (value) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0); // Normalize today's date
+
+                    // Allow empty value to clear the date
+                    if (!value) {
+                        this.plugin.settings.targetCompletionDate = undefined;
+                        text.inputEl.removeClass('setting-input-error');
+                        await this.plugin.saveSettings();
+                        return; // Exit early if cleared
+                    }
+
+                    // Validate the selected date if a value is provided
+                    const selectedDate = new Date(value + 'T00:00:00'); // Use local time
+                    
+                    if (selectedDate > today) {
+                        this.plugin.settings.targetCompletionDate = value;
+                        text.inputEl.removeClass('setting-input-error');
+                    } else {
+                        // Don't save invalid date, keep existing or undefined
+                        text.inputEl.addClass('setting-input-error');
+                        new Notice('Target date must be in the future.');
+                        // Revert the input value if invalid
+                        text.setValue(this.plugin.settings.targetCompletionDate || ''); 
+                        return; // Don't save invalid date
+                    }
+                    await this.plugin.saveSettings();
+                });
+        });
+        // --- Add Target Completion Date Setting --- END ---
+        
         // Add debug mode setting
         new Setting(containerEl)
             .setName('Debug Mode')
@@ -4531,48 +4668,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                 }
             }
         })();
-        // --- End Refactored README Loading --- 
-
-        // REMOVE OLD LOADING LOGIC
-        // // Fetch README.md content using requestUrl
-        // requestUrl('https://raw.githubusercontent.com/ericrhystaylor/Obsidian-Manuscript-Timeline/refs/heads/master/README.md')
-        //     .then(response => response.text)
-        //     .then(content => {
-        //         // Process the content
-        //         MarkdownRenderer.renderMarkdown(
-        //             content,
-        //             documentationContainer,
-        //             '',
-        //             this.plugin
-        //         );
-        //     })
-        //     .catch(error => {
-        //         console.error('Error loading README:', error);
-        //         // documentationContainer.createEl('p', { text: 'Error loading documentation.' });
-        //     });
-
-        // // Load README.md content from local plugin directory
-        // const adapter = this.app.vault.adapter;
-        // const pluginDir = this.plugin.manifest.dir || '';
-        // const readmePath = `${pluginDir}/README.md`;
         
-        // adapter.read(readmePath)
-        //     .then(content => {
-        //         // Empty the container in case we loaded something from GitHub already
-        //         documentationContainer.empty();
-                
-        //         // Render the local README content
-        //         MarkdownRenderer.renderMarkdown(
-        //             content,
-        //             documentationContainer,
-        //             '',
-        //             this.plugin
-        //         );
-        //     })
-        //     .catch(error => {
-        //         this.plugin.log('Error loading local README: ' + error);
-        //         // documentationContainer.createEl('p', { text: 'Error loading documentation from local plugin directory.' });
-        //     });
     }
 }
 

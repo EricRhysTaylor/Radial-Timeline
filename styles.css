@@ -1,5 +1,31 @@
 @import "https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap";
 
+/* Main color variables for the manuscript timeline */
+:root {
+  /* Publish Stage Colors */
+  --color-zero: #9E70CF;    /* Purple */
+  --color-author: #5E85CF;  /* Blue */
+  --color-house: #DA7847;   /* Orange */
+  --color-press: #6FB971;   /* Green */
+  
+  /* Status Colors */
+  --color-due: #d05e5e;      /* Red */
+  --color-empty: #f0f0f0;    /* Very Light Gray */
+  
+  /* Plaid Colors and Opacity */
+  --color-working: #FF69B4;          /* Match pink color for Working in Manuscript Calendar */
+  --color-todo: #cccccc;             /* Light Gray */
+  --color-plaid-opacity: 1;
+  --color-plaid-stroke-opacity: 1;
+    /* Current Stage Color stroke for working pattern set in SVG patterns*/
+    /* Current Stage Color stroke for todo pattern set in SVG patterns*/
+  
+  /* Estimation Colors */
+  --color-estimation: #ff0000; /* Red not using this right now. defs at bottom of file*/
+}
+
+/* Remove plaid pattern styles - these are now handled in main.ts SVG patterns */
+
 /* styles.css */
 .manuscript-timeline-container {
   display: flex;
@@ -594,30 +620,6 @@ tspan .search-term {
 }
 /* styles.css */
 
-/* ... existing styles ... */
-
-/* Progress Ring Base (thin gray track underneath) */
-.progress-ring-base {
-  fill: none;
-  stroke: #000000; /* Light gray background */
-  stroke-width: 10px; /* Base width */
-}
-
-/* Year Progress Ring (Rainbow Segments) */
-.progress-ring-fill {
-  fill: none;
-  stroke-width: 6px; /* Make rainbow ring thinner */
-  stroke-linecap: round; /* Optional: round ends */
-}
-
-/* New Estimation Arc Ring */
-.estimation-arc {
-  fill: none;
-  stroke: #6612af; /* Purple color (matches 'Zero' stage) #6612af;*/
-  stroke-width: 10px; /* Wider than rainbow ring */
-}
-
-/* ... rest of existing styles ... */
 .center-key-text {
   font-size: 16px;
   fill: var(--text-normal, #333333);
@@ -941,7 +943,7 @@ tspan .search-term {
 
 .subplot-label-text {
     fill: var(--max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
-    opacity: .7; /* Corrected opacity back to 30% */
+    opacity: .2; /* Corrected opacity back to 30% */
     font-weight: 700; /* Corrected font-weight back to 700 */
     font-size: var(--subplot-font-size);
     dominant-baseline: central; /* Try central for potentially better vertical centering */
@@ -959,4 +961,59 @@ tspan .search-term {
   fill: none;
   stroke: none;
   pointer-events: none;
+}
+
+
+/* Progress Ring Base (thin gray track underneath) */
+.progress-ring-base {
+  fill: none;
+  stroke: #000000; /* Light gray background */
+  stroke-width: 10px; /* Base width */
+}
+
+/* Year Progress Ring (Rainbow Segments) */
+.progress-ring-fill {
+  fill: none;
+  stroke-width: 6px; /* Make rainbow ring thinner */
+  stroke-linecap: round; /* Optional: round ends */
+}
+
+/* New Estimation Arc Ring */
+.estimation-arc {
+  fill: none;
+  stroke: #5e0098; /* Purple color #5e0098 */
+  stroke-width: 10px;
+
+}
+
+.estimation-full-year {
+  stroke-opacity: 1;
+  stroke: #ff0000; /* Purple color #5e0098 */
+}
+
+.estimation-date-label {
+    font-size: 14px;
+    fill: #ff0000;
+    font-weight: bold;
+}
+
+.estimated-date-tick {
+    stroke: #ff0000;
+    stroke-width: 2px;
+}
+
+.estimated-date-dot {
+    fill: #ff0000;
+}
+
+/* Target Completion Date Marker Styles */
+.target-date-tick {
+    stroke: #00cc00; /* Bright Green */
+    stroke-width: 2px;
+}
+
+.target-date-marker {
+    fill: none; /* No fill */
+    stroke: #00cc00; /* Bright Green */
+    stroke-width: 2px; /* Outline width */
 }
