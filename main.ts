@@ -2688,39 +2688,64 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                     // Do not apply any modifications to the color to ensure it matches the legend
                                     return stageColor;
                                 }
+                                
+                                // Check due date before checking working/todo
                                 if (scene.due) {
-                                    // --- Robust Date Comparison --- 
-                                    // Parse due date - handle potential UTC interpretation by reconstructing
-                                    const dueDateRaw = new Date(scene.due);
-                                    const dueDateMidnightLocal = new Date(
-                                        dueDateRaw.getFullYear(),
-                                        dueDateRaw.getMonth(),
-                                        dueDateRaw.getDate() // Defaults to 00:00:00 in local timezone
-                                    );
+                                    const originalDueString = scene.due;
+                                    const parts = originalDueString.split('-').map(Number);
 
-                                    // Get today's date at midnight local time
-                                    const todayMidnightLocal = new Date();
-                                    todayMidnightLocal.setHours(0, 0, 0, 0);
-
-                                    // Compare timestamps of the dates at midnight
-                                    const isOverdue = todayMidnightLocal.getTime() > dueDateMidnightLocal.getTime();
-                                    // --- End Robust Date Comparison ---
-                                    
-                                    if (isOverdue) {
+                                    // Ensure we have valid parts before proceeding
+                                    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+                                        const dueYear = parts[0];
+                                        const dueMonth = parts[1] - 1; // Convert 1-based month
+                                        const dueDay = parts[2];
+                                        
+                                        const today = new Date();
+                                        const todayYear = today.getFullYear();
+                                        const todayMonth = today.getMonth();
+                                        const todayDay = today.getDate();
+                                        
+                                        // Compare dates by parts - overdue only if date is strictly before today
+                                        let isOverdue = false;
+                                        if (dueYear < todayYear) {
+                                            isOverdue = true;
+                                        } else if (dueYear === todayYear) {
+                                            if (dueMonth < todayMonth) {
+                                                isOverdue = true;
+                                            } else if (dueMonth === todayMonth) {
+                                                if (dueDay < todayDay) {
+                                                    isOverdue = true;
+                                                }
+                                                // Same day is NOT overdue
+                                            }
+                                        }
+                                        
+                                        // **Specific Debug Log for Scene Coloring**
                                         if (this.settings.debug) {
-                                            console.log(`DEBUG: Scene marked DUE: "${scene.title || scene.path}"`, {
-                                                dueString: scene.due,
-                                                dueDateObjParsed: dueDateMidnightLocal, // Log the date used for comparison
-                                                todayObjCompared: todayMidnightLocal,   // Log the date used for comparison
-                                                comparisonResult: isOverdue,
-                                                status: scene.status
+                                            console.log(`TRACE: Scene Color - Due Date Check for "${scene.title || scene.path}"`, {
+                                                dueString: originalDueString,
+                                                parsedDueYear: dueYear,
+                                                parsedDueMonth: dueMonth + 1, // Log 1-based month
+                                                parsedDueDay: dueDay,
+                                                parsedTodayYear: todayYear,
+                                                parsedTodayMonth: todayMonth + 1, // Log 1-based month
+                                                parsedTodayDay: todayDay,
+                                                comparisonResult_isOverdue: isOverdue
                                             });
                                         }
-                                        return STATUS_COLORS.Due; // Use Due color if past due date
+                                        
+                                        if (isOverdue) {
+                                            return STATUS_COLORS.Due; // Return Due color if overdue
+                                        }
+                                    } else {
+                                        // Handle invalid date format
+                                        if (this.settings.debug) {
+                                            console.warn(`WARN: Invalid date format for scene color: ${originalDueString}`);
+                                        }
                                     }
                                 }
                                 
-                                // Check for working or todo status to use plaid pattern
+                                // If not overdue (or no due date), check for working/todo status
                                 if (normalizedStatus === "working") {
                                     return `url(#plaidWorking${publishStage})`;
                                 }
@@ -2728,7 +2753,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                     return `url(#plaidTodo${publishStage})`;
                                 }
                                 
-                                return STATUS_COLORS[statusList[0] as keyof typeof STATUS_COLORS] || STATUS_COLORS.Todo; // Use status color or default to Todo
+                                // Fallback to other status colors or Todo
+                                return STATUS_COLORS[statusList[0] as keyof typeof STATUS_COLORS] || STATUS_COLORS.Todo;
                             })();
             
                         
@@ -2894,14 +2920,86 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 // Use the publishStage directly with type safety
                 const validStage = publishStage as keyof typeof PUBLISH_STAGE_COLORS;
                 acc[validStage] = (acc[validStage] || 0) + 1;
-            } else if (scene.due && new Date() > new Date(scene.due)) {
-                // Non-complete scenes that are past due date are counted as Due
-                acc["Due"] = (acc["Due"] || 0) + 1;
+            } else if (scene.due) {
+                 // Parse date directly from string components
+                const originalDueString = scene.due;
+                const parts = originalDueString.split('-').map(Number);
+
+                // Ensure we have valid parts before proceeding
+                if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+                    const dueYear = parts[0];
+                    const dueMonth = parts[1] - 1; // Convert 1-based to 0-based month
+                    const dueDay = parts[2];
+                    
+                    // Get today's date parts
+                    const today = new Date();
+                    const todayYear = today.getFullYear();
+                    const todayMonth = today.getMonth();
+                    const todayDay = today.getDate();
+                    
+                    // Compare dates by parts - overdue only if date is strictly before today
+                    let isOverdue = false;
+                    if (dueYear < todayYear) {
+                        isOverdue = true;
+                    } else if (dueYear === todayYear) {
+                        if (dueMonth < todayMonth) {
+                            isOverdue = true;
+                        } else if (dueMonth === todayMonth) {
+                            if (dueDay < todayDay) {
+                                isOverdue = true;
+                            }
+                            // Same day is NOT overdue
+                        }
+                    }
+                    
+                    // Detailed debug logging
+                    if (this.settings.debug) {
+                        console.log(`TRACE: Status Count Due Date Debug for "${scene.title || scene.path}"`, {
+                            dueString: originalDueString,
+                            parsedDueYear: dueYear,
+                            parsedDueMonth: dueMonth + 1, // Log 1-based month
+                            parsedDueDay: dueDay,
+                            parsedTodayYear: todayYear,
+                            parsedTodayMonth: todayMonth + 1, // Log 1-based month
+                            parsedTodayDay: todayDay,
+                            comparisonResult_isOverdue: isOverdue
+                        });
+                    }
+                    
+                    if (isOverdue) {
+                        // Non-complete scenes that are past due date are counted as Due
+                        acc["Due"] = (acc["Due"] || 0) + 1;
+                    } else {
+                        // For files due today or in the future, count them by their status
+                        let statusKey = "Todo"; // Default to Todo
+                        if (scene.status) {
+                            if (Array.isArray(scene.status) && scene.status.length > 0) {
+                                statusKey = String(scene.status[0]);
+                            } else if (typeof scene.status === 'string') {
+                                statusKey = scene.status;
+                            }
+                        }
+                        acc[statusKey] = (acc[statusKey] || 0) + 1;
+                    }
+                } else {
+                    // Handle invalid date format
+                    if (this.settings.debug) {
+                        console.warn(`WARN: Invalid date format in status count: ${originalDueString}`);
+                    }
+                    // Count scenes with invalid due dates by status
+                    let statusKey = "Todo"; 
+                    if (scene.status) {
+                        if (Array.isArray(scene.status) && scene.status.length > 0) {
+                            statusKey = String(scene.status[0]);
+                        } else if (typeof scene.status === 'string') {
+                            statusKey = scene.status;
+                        }
+                    }
+                    acc[statusKey] = (acc[statusKey] || 0) + 1;
+                }
             } else {
-                // All other scenes are counted by their status
-                // First get the status as a string safely
+                // All other scenes (no due date) are counted by their status
                 let statusKey = "Todo"; // Default to Todo
-                
                 if (scene.status) {
                     if (Array.isArray(scene.status) && scene.status.length > 0) {
                         statusKey = String(scene.status[0]);
@@ -2909,7 +3007,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         statusKey = scene.status;
                     }
                 }
-                
                 acc[statusKey] = (acc[statusKey] || 0) + 1;
             }
             return acc;
@@ -4225,13 +4322,86 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     // For completed scenes, count by Publish Stage
                     const publishStage = scene["Publish Stage"] || 'Zero';
                     acc[publishStage] = (acc[publishStage] || 0) + 1;
-                } else if (scene.due && new Date() > new Date(scene.due)) {
-                    // Non-complete scenes that are past due date are counted as Due
-                    acc["Due"] = (acc["Due"] || 0) + 1;
+                } else if (scene.due) {
+                     // Parse date directly from string components
+                    const originalDueString = scene.due;
+                    const parts = originalDueString.split('-').map(Number);
+
+                    // Ensure we have valid parts before proceeding
+                    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+                        const dueYear = parts[0];
+                        const dueMonth = parts[1] - 1; // Convert 1-based to 0-based month
+                        const dueDay = parts[2];
+                        
+                        // Get today's date parts
+                        const today = new Date();
+                        const todayYear = today.getFullYear();
+                        const todayMonth = today.getMonth();
+                        const todayDay = today.getDate();
+                        
+                        // Compare dates by parts - overdue only if date is strictly before today
+                        let isOverdue = false;
+                        if (dueYear < todayYear) {
+                            isOverdue = true;
+                        } else if (dueYear === todayYear) {
+                            if (dueMonth < todayMonth) {
+                                isOverdue = true;
+                            } else if (dueMonth === todayMonth) {
+                                if (dueDay < todayDay) {
+                                    isOverdue = true;
+                                }
+                                // Same day is NOT overdue
+                            }
+                        }
+                        
+                        // Detailed debug logging
+                        if (this.settings.debug) {
+                            console.log(`TRACE: Status Count Due Date Debug for "${scene.title || scene.path}"`, {
+                                dueString: originalDueString,
+                                parsedDueYear: dueYear,
+                                parsedDueMonth: dueMonth + 1, // Log 1-based month
+                                parsedDueDay: dueDay,
+                                parsedTodayYear: todayYear,
+                                parsedTodayMonth: todayMonth + 1, // Log 1-based month
+                                parsedTodayDay: todayDay,
+                                comparisonResult_isOverdue: isOverdue
+                            });
+                        }
+                        
+                        if (isOverdue) {
+                            // Non-complete scenes that are past due date are counted as Due
+                            acc["Due"] = (acc["Due"] || 0) + 1;
+                        } else {
+                            // For files due today or in the future, count them by their status
+                            let statusKey = "Todo"; // Default to Todo
+                            if (scene.status) {
+                                if (Array.isArray(scene.status) && scene.status.length > 0) {
+                                    statusKey = String(scene.status[0]);
+                                } else if (typeof scene.status === 'string') {
+                                    statusKey = scene.status;
+                                }
+                            }
+                            acc[statusKey] = (acc[statusKey] || 0) + 1;
+                        }
+                    } else {
+                        // Handle invalid date format
+                        if (this.settings.debug) {
+                            console.warn(`WARN: Invalid date format in status count: ${originalDueString}`);
+                        }
+                        // Count scenes with invalid due dates by status
+                        let statusKey = "Todo"; 
+                        if (scene.status) {
+                            if (Array.isArray(scene.status) && scene.status.length > 0) {
+                                statusKey = String(scene.status[0]);
+                            } else if (typeof scene.status === 'string') {
+                                statusKey = scene.status;
+                            }
+                        }
+                        acc[statusKey] = (acc[statusKey] || 0) + 1;
+                    }
                 } else {
-                    // All other scenes are counted by their status
+                    // All other scenes (no due date) are counted by their status
                     let statusKey = "Todo"; // Default to Todo
-                    
                     if (scene.status) {
                         if (Array.isArray(scene.status) && scene.status.length > 0) {
                             statusKey = String(scene.status[0]);
@@ -4239,7 +4409,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             statusKey = scene.status;
                         }
                     }
-                    
                     acc[statusKey] = (acc[statusKey] || 0) + 1;
                 }
                 return acc;
@@ -4267,18 +4436,92 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
             if (dueDateStr && scenePath && !completedPathsLast30Days.has(scenePath)) {
                 try {
+                    // Parse date directly from string components
                     const parts = dueDateStr.split('-').map(Number);
+                    
+                    // Ensure we have valid parts before proceeding
                     if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-                        const dueDate = new Date(parts[0], parts[1] - 1, parts[2]);
-                        dueDate.setHours(0,0,0,0);
-
-                        if (dueDate < today && dueDate >= thirtyDaysAgo) {
+                        const dueYear = parts[0];
+                        const dueMonth = parts[1] - 1; // Convert 1-based to 0-based month
+                        const dueDay = parts[2];
+                        
+                        // Get today's date parts
+                        const todayYear = today.getFullYear();
+                        const todayMonth = today.getMonth();
+                        const todayDay = today.getDate();
+                        
+                        // Get 30 days ago date parts
+                        const agoYear = thirtyDaysAgo.getFullYear();
+                        const agoMonth = thirtyDaysAgo.getMonth();
+                        const agoDay = thirtyDaysAgo.getDate();
+                        
+                        // Check if due date is before today (completed)
+                        let isBeforeToday = false;
+                        if (dueYear < todayYear) {
+                            isBeforeToday = true;
+                        } else if (dueYear === todayYear) {
+                            if (dueMonth < todayMonth) {
+                                isBeforeToday = true;
+                            } else if (dueMonth === todayMonth) {
+                                if (dueDay < todayDay) {
+                                    isBeforeToday = true;
+                                }
+                                // Same day is NOT before today
+                            }
+                        }
+                        
+                        // Check if due date is on or after 30 days ago
+                        let isOnOrAfterThirtyDaysAgo = false;
+                        if (dueYear > agoYear) {
+                            isOnOrAfterThirtyDaysAgo = true;
+                        } else if (dueYear === agoYear) {
+                            if (dueMonth > agoMonth) {
+                                isOnOrAfterThirtyDaysAgo = true;
+                            } else if (dueMonth === agoMonth) {
+                                if (dueDay >= agoDay) {
+                                    isOnOrAfterThirtyDaysAgo = true;
+                                }
+                                // Earlier day in same month is NOT on or after
+                            }
+                            // Earlier month in same year is NOT on or after
+                        }
+                        // Earlier year is NOT on or after
+                        
+                        // Detailed debug logging
+                        if (this.settings.debug) {
+                            console.log(`TRACE: Estimate Completion Due Date Debug for "${scene.title || scene.path}"`, {
+                                dueString: dueDateStr,
+                                parsedDueYear: dueYear,
+                                parsedDueMonth: dueMonth + 1, // Log 1-based month
+                                parsedDueDay: dueDay,
+                                parsedTodayYear: todayYear,
+                                parsedTodayMonth: todayMonth + 1, // Log 1-based month
+                                parsedTodayDay: todayDay,
+                                parsedAgoYear: agoYear,
+                                parsedAgoMonth: agoMonth + 1, // Log 1-based month
+                                parsedAgoDay: agoDay,
+                                comparisonResult_isBeforeToday: isBeforeToday,
+                                comparisonResult_isOnOrAfterThirtyDaysAgo: isOnOrAfterThirtyDaysAgo
+                            });
+                        }
+                        
+                        // A scene is considered completed if its due date is before today
+                        // AND it is on or after 30 days ago
+                        if (isBeforeToday && isOnOrAfterThirtyDaysAgo) {
                             completedLast30Days++;
                             completedPathsLast30Days.add(scenePath);
+                        }
+                    } else {
+                        // Handle invalid date format
+                        if (this.settings.debug) {
+                            console.warn(`WARN: Invalid date format in completion estimate: ${dueDateStr}`);
                         }
                     }
                 } catch (e) {
                     // Ignore date parsing errors
+                    if (this.settings.debug) {
+                        console.error(`ERROR: Error parsing date for completion estimate: ${dueDateStr}`, e);
+                    }
                 }
             }
         });
@@ -5669,4 +5912,4 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
     
     // Property to track tab highlight timeout
     private _tabHighlightTimeout: NodeJS.Timeout | null = null;
-}
+                                        }
