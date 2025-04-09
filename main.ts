@@ -4421,18 +4421,25 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Use legend data counts for Working and Todo
         const todoCount = this.latestStatusCounts['Todo'] || 0;
         const workingCount = this.latestStatusCounts['Working'] || 0;
-        const remainingScenes = todoCount + workingCount;
+        const dueCount = this.latestStatusCounts['Due'] || 0; // Get the count for Due scenes
+        const remainingScenes = todoCount + workingCount + dueCount; // Include Due count in remaining scenes
         
         // Calculate total from all status counts
         const totalScenes = Object.values(this.latestStatusCounts).reduce((sum, count) => sum + count, 0);
 
-        // Count completed scenes in last 30 days using due dates
+        // Count completed scenes in last 30 days based on status and due date
         let completedLast30Days = 0;
         const completedPathsLast30Days = new Set<string>();
 
         scenes.forEach(scene => {
             const dueDateStr = scene.due;
             const scenePath = scene.path;
+            const sceneStatus = scene.status?.toString().trim().toLowerCase();
+
+            // Check if scene status is 'complete' or 'done'
+            if (sceneStatus !== 'complete' && sceneStatus !== 'done') {
+                return; // Skip if not completed
+            }
 
             if (dueDateStr && scenePath && !completedPathsLast30Days.has(scenePath)) {
                 try {
@@ -4455,7 +4462,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         const agoMonth = thirtyDaysAgo.getMonth();
                         const agoDay = thirtyDaysAgo.getDate();
                         
-                        // Check if due date is before today (completed)
+                        // Check if due date is before today (was due in the past)
                         let isBeforeToday = false;
                         if (dueYear < todayYear) {
                             isBeforeToday = true;
@@ -4487,26 +4494,28 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         }
                         // Earlier year is NOT on or after
                         
-                        // Detailed debug logging
+                        // Detailed debug logging (optional, kept for context)
                         if (this.settings.debug) {
-                            console.log(`TRACE: Estimate Completion Due Date Debug for "${scene.title || scene.path}"`, {
+                            console.log(`TRACE: Estimate Completion Due Date Debug for COMPLETED "${scene.title || scene.path}"`, {
                                 dueString: dueDateStr,
                                 parsedDueYear: dueYear,
-                                parsedDueMonth: dueMonth + 1, // Log 1-based month
+                                parsedDueMonth: dueMonth + 1, 
                                 parsedDueDay: dueDay,
                                 parsedTodayYear: todayYear,
-                                parsedTodayMonth: todayMonth + 1, // Log 1-based month
+                                parsedTodayMonth: todayMonth + 1, 
                                 parsedTodayDay: todayDay,
                                 parsedAgoYear: agoYear,
-                                parsedAgoMonth: agoMonth + 1, // Log 1-based month
+                                parsedAgoMonth: agoMonth + 1, 
                                 parsedAgoDay: agoDay,
                                 comparisonResult_isBeforeToday: isBeforeToday,
                                 comparisonResult_isOnOrAfterThirtyDaysAgo: isOnOrAfterThirtyDaysAgo
                             });
                         }
                         
-                        // A scene is considered completed if its due date is before today
-                        // AND it is on or after 30 days ago
+                        // A scene is considered completed within the last 30 days if:
+                        // 1. Its status is 'complete' or 'done' (checked earlier)
+                        // 2. Its due date is before today
+                        // 3. Its due date is on or after 30 days ago
                         if (isBeforeToday && isOnOrAfterThirtyDaysAgo) {
                             completedLast30Days++;
                             completedPathsLast30Days.add(scenePath);
@@ -4514,13 +4523,13 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     } else {
                         // Handle invalid date format
                         if (this.settings.debug) {
-                            console.warn(`WARN: Invalid date format in completion estimate: ${dueDateStr}`);
+                            console.warn(`WARN: Invalid date format in completion estimate for completed scene: ${dueDateStr}`);
                         }
                     }
                 } catch (e) {
                     // Ignore date parsing errors
                     if (this.settings.debug) {
-                        console.error(`ERROR: Error parsing date for completion estimate: ${dueDateStr}`, e);
+                        console.error(`ERROR: Error parsing date for completion estimate on completed scene: ${dueDateStr}`, e);
                     }
                 }
             }
