@@ -2221,7 +2221,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         `;
 
          // --- Draw Estimation Arc --- START ---
-            const estimatedCompletionDate = this.calculateCompletionEstimate(scenes);
+         const estimateResult = this.calculateCompletionEstimate(scenes);
 
          // --- TEMPORARY DEBUG OVERRIDE FOR QUADRANT TESTING --- START ---
          // Uncomment ONE of the following lines to force the estimated date for testing positioning.
@@ -2234,60 +2234,37 @@ export default class ManuscriptTimelinePlugin extends Plugin {
          // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 10, 15); // Nov 15 (Quadrant 3 - Top Left)
 
          // --- Cardinal Directions ---
-          // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 0, 1);  // Jan 1 (Top, -90 deg)
-           // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 3, 1);  // Apr 1 (Right, 0 deg)
-          // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 6, 1);  // Jul 1 (Bottom, 90 deg)
-          // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 9, 1);  // Oct 1 (Left, 180 deg)
-
+         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 0, 1);  // Jan 1 (Top, -90 deg)
+         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 3, 1);  // Apr 1 (Right, 0 deg)
+         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 6, 1);  // Jul 1 (Bottom, 90 deg)
+         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 9, 1);  // Oct 1 (Left, 180 deg)
          // --- TEMPORARY DEBUG OVERRIDE FOR QUADRANT TESTING --- END ---
 
+         // Only proceed if estimate calculation was successful
+         if (estimateResult) {
+             // Use estimateResult.date instead of estimatedCompletionDate
+             const estimatedCompletionDate = estimateResult.date;
 
-         if (estimatedCompletionDate) {
-             // Start from 12 o'clock position (January 1)
              const startAngle = -Math.PI/2; // 12 o'clock position
-             
-             // Debug logs
+
              if (this.settings.debug) {
                  this.log(`[Timeline Estimate] Calculating arc for date: ${estimatedCompletionDate.toISOString().split('T')[0]}`);
              }
              
              const estimatedYear = estimatedCompletionDate.getFullYear();
-             const estimatedMonth = estimatedCompletionDate.getMonth(); // 0-11
-             const estimatedDay = estimatedCompletionDate.getDate(); // 1-31
+             const estimatedMonth = estimatedCompletionDate.getMonth();
+             const estimatedDay = estimatedCompletionDate.getDate();
              
-             // Determine the absolute position of the target date on the circle
-             // Map month directly to circle position (0.0 to 1.0) - this represents where this date
-             // would appear on the circle regardless of the current date
              const estimatedDaysInMonth = new Date(estimatedYear, estimatedMonth + 1, 0).getDate();
              const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
-             
-             // Convert year position to angle (add 0.75 to start at 12 o'clock)
-             // This is the absolute position on the circle where Jul 25 (or any date) would appear
              const estimatedDateAngle = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
              
-             if (this.settings.debug) {
-                 this.log(`[Timeline Estimate] Date absolute position: Month=${estimatedMonth}, Day=${estimatedDay}, YearPos=${estimatedYearPos.toFixed(4)}, Angle=${estimatedDateAngle.toFixed(2)}`);
-             }
-             
-             // For logging
+             const now = new Date(); // Need current time for diff calculations
              const diffMs = estimatedCompletionDate.getTime() - now.getTime();
-             const diffDays = diffMs / (1000 * 60 * 60 * 24);
-             
-             // Calculate angle span from January 1 (12 o'clock) to the estimated completion date
              let arcAngleSpan = estimatedDateAngle - startAngle;
-             if (arcAngleSpan < 0) {
-                 arcAngleSpan += 2 * Math.PI; // Add full circle if we wrap around
-             }
-             
-             // For year difference, calculate complete years between dates
+             if (arcAngleSpan < 0) arcAngleSpan += 2 * Math.PI;
              const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
-             
-             if (this.settings.debug) {
-                 this.log(`[Timeline Estimate] Days until completion: ${diffDays.toFixed(1)}`);
-                 this.log(`[Timeline Estimate] Years difference: ${yearsDiff}`);
-                 this.log(`[Timeline Estimate] Arc angle span: ${arcAngleSpan.toFixed(2)} radians`);
-             }
-             
+
              // First, draw complete circles for each full year if any
              for (let i = 0; i < yearsDiff; i++) {
                  svg += `
@@ -2312,12 +2289,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                      class="estimation-arc"
                  />
              `;
-             
-             // Log calculations for debugging
-             if (this.settings.debug) {
-                 this.log(`[Timeline Estimate] Arc: Start angle=${startAngle.toFixed(2)}, End angle=${estimatedDateAngle.toFixed(2)}`);
-                 this.log(`[Timeline Estimate] Arc sweep: ${arcAngleSpan.toFixed(2)} radians, Large arc: ${arcAngleSpan > Math.PI ? 'yes' : 'no'}`);
-             }
+
          }
          // --- Draw Estimation Arc --- END ---
 
@@ -2417,27 +2389,20 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         }
 
         // Add tick mark and label for the estimated completion date if available
-        if (estimatedCompletionDate) {
-            // We want to use the absolute position of the target date for the marker
+        // Use the same estimateResult check
+        if (estimateResult) {
+            const estimatedCompletionDate = estimateResult.date; // Get date again
+
+            // Use estimateResult.date for calculations
             const estimatedMonth = estimatedCompletionDate.getMonth();
             const estimatedDay = estimatedCompletionDate.getDate();
-            
-            // Map month directly to circle position (0.0 to 1.0)
             const estimatedDaysInMonth = new Date(estimatedCompletionDate.getFullYear(), estimatedMonth + 1, 0).getDate();
             const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
-            
-            // Convert year position to angle (add 0.75 to start at 12 o'clock)
             const absoluteDatePos = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
-            
-            // Debug
-            if (this.settings.debug) {
-                const dateStr = `${estimatedMonth + 1}/${estimatedDay}`;
-                this.log(`[Timeline Estimate] Placing tick mark for ${dateStr} at angle: ${absoluteDatePos.toFixed(2)} radians`);
-            }
-            
-            // Use the absolute date position for the tick mark
-            const tickOuterRadius = progressRadius + 5; // Start ON the ring
-            const tickInnerRadius = progressRadius - 35; // End 30px inside the ring
+
+            // ... (calculate tick mark positions using absoluteDatePos) ...
+            const tickOuterRadius = progressRadius + 5;
+            const tickInnerRadius = progressRadius - 35;
             const tickOuterX = tickOuterRadius * Math.cos(absoluteDatePos);
             const tickOuterY = tickOuterRadius * Math.sin(absoluteDatePos);
             const tickInnerX = tickInnerRadius * Math.cos(absoluteDatePos);
@@ -2458,34 +2423,27 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     class="estimated-date-dot" 
                 />
             `;
-            
-            // Add formatted date label beside the tick mark
+
+            // Use estimateResult.date for display format
             const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
             const dateDisplay = dateFormatter.format(estimatedCompletionDate);
             
-            // --- Get stats string --- START ---
-            const total = this.latestTotalScenes || 0;
-            const remaining = this.latestRemainingScenes || 0;
-            const rate = Math.round(this.latestScenesPerWeek || 0); // Round rate to nearest whole number
+            // --- Get stats string from estimateResult --- START ---
+            const total = estimateResult.total;
+            const remaining = estimateResult.remaining;
+            const rate = estimateResult.rate; // Already rounded
             const statsDisplay = `${total}:${remaining}:${rate}`; // Compact format
-            // --- Get stats string --- END ---
+            // --- Get stats string from estimateResult --- END ---
 
-            // Position the date label relative to the inner end of the tick mark (dot)
-            const labelRadius = progressRadius - 45; // Base radius for label position
-            
-            // Calculate offsets to push text away from the dot
-            const maxOffset = -38; // Magnitude for horizontal push (outwards)
-            const offsetX = maxOffset * Math.cos(absoluteDatePos); // Use +cos for outwards horizontal push
-            
-            // Use -sin to push down in top half (Q1,Q4) and up in bottom half (Q2,Q3)
-            const maxYOffset = 5;  // Magnitude for vertical push
-            const offsetY = -maxYOffset * Math.sin(absoluteDatePos); // Keep -sin for up/down push
-            
-            // Remove baselineShift as dynamic offset and dominant-baseline should handle it
+            // ... (calculate label positions using absoluteDatePos) ...
+            const labelRadius = progressRadius - 45;
+            const maxOffset = -38;
+            const offsetX = maxOffset * Math.cos(absoluteDatePos);
+            const maxYOffset = 5;
+            const offsetY = -maxYOffset * Math.sin(absoluteDatePos);
             const labelX = formatNumber(labelRadius * Math.cos(absoluteDatePos) + offsetX);
-            const labelY = formatNumber(labelRadius * Math.sin(absoluteDatePos) + offsetY); // Removed baselineShift
-            
-            // Always use middle alignment for the text
+            const labelY = formatNumber(labelRadius * Math.sin(absoluteDatePos) + offsetY);
+
             svg += `
                 <text
                     x="${labelX}"
@@ -2494,23 +2452,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     dominant-baseline="middle"
                     class="estimation-date-label"
                 >
-                    ${dateDisplay} ${statsDisplay} <!-- Append stats here -->
+                    ${dateDisplay}
                 </text>
             `;
-            
-            // Log only when debug mode is on
-            if (this.settings.debug) {
-                const diffMs = estimatedCompletionDate.getTime() - now.getTime();
-                const diffDays = diffMs / (1000 * 60 * 60 * 24);
-                
-                // Convert days to fraction of a year (approximate)
-                const yearFraction = diffDays / 365;
-                const fullYears = Math.floor(yearFraction);
-                const remainingFraction = yearFraction - fullYears;
-                
-                this.log(`[Timeline Estimate] Tick mark angle: ${absoluteDatePos.toFixed(2)}, Days until: ${diffDays.toFixed(0)}`);
-                this.log(`[Timeline Estimate] Full Years=${fullYears}, Remaining Fraction=${remainingFraction.toFixed(3)}`);
-            }
+
+            //   Replace dateDisplay above for complete stats ${dateDisplay} ${statsDisplay}
         }
 
         // --- START: Draw Target Completion Marker ---
@@ -4320,10 +4266,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     // --- END: Color Conversion & Desaturation Helpers ---
 
     // Add this function inside the ManuscriptTimelinePlugin class
-    private calculateCompletionEstimate(scenes: Scene[]): Date | null {
+    private calculateCompletionEstimate(scenes: Scene[]): {
+        date: Date;
+        total: number;
+        remaining: number;
+        rate: number; // Scenes per week
+    } | null {
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Normalize to start of day
-        
+
         // --- New Calculation Logic --- START ---
         const startOfYear = new Date(today.getFullYear(), 0, 1); // Jan 1st of current year
         const startOfYearTime = startOfYear.getTime();
@@ -4335,36 +4286,27 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         let completedThisYear = 0;
         const completedPathsThisYear = new Set<string>();
 
+        // Calculate completed scenes this year
         scenes.forEach(scene => {
             const dueDateStr = scene.due;
             const scenePath = scene.path;
             const sceneStatus = scene.status?.toString().trim().toLowerCase();
 
-            // Skip if not completed, no path, or already counted
             if (sceneStatus !== 'complete' && sceneStatus !== 'done') return;
             if (!scenePath || completedPathsThisYear.has(scenePath)) return;
             if (!dueDateStr) return;
 
             try {
-                // Parse due date string into a Date object (YYYY-MM-DD format assumed)
-                // Important: Add 'T00:00:00' to ensure it parses in local timezone, not UTC
                 const dueDate = new Date(dueDateStr + 'T00:00:00');
-                dueDate.setHours(0, 0, 0, 0); // Normalize
+                dueDate.setHours(0, 0, 0, 0);
                 const dueTime = dueDate.getTime();
 
-                // Check if the due date is valid, within the current year, and before today
                 if (!isNaN(dueTime) && dueTime >= startOfYearTime && dueTime < todayTime) {
                     completedThisYear++;
                     completedPathsThisYear.add(scenePath);
-                    
-                    if (this.settings.debug) {
-                        console.log(`TRACE: Estimate Count - Including completed scene: ${scene.path} (Due: ${dueDateStr})`);
-                    }
                 }
             } catch (e) {
-                if (this.settings.debug) {
-                    console.error(`ERROR: Estimate Count - Error parsing date: ${dueDateStr} for scene ${scene.path}`, e);
-                }
+                // Ignore errors parsing date during calculation
             }
         });
 
@@ -4375,86 +4317,86 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         const scenesPerDay = completedThisYear / daysPassedThisYear;
 
-        // --- Get Remaining Scenes Count --- START ---
-        // Ensure latestStatusCounts is populated if not already done
-        if (!this.latestStatusCounts) {
-             this.log("Status counts not available - calculating from scenes for remaining count");
-            const processedScenes = new Set<string>();
-            const statusCounts = scenes.reduce((acc, scene) => {
-                if (scene.path && processedScenes.has(scene.path)) return acc;
-                if (scene.path) processedScenes.add(scene.path);
-                
-                const normalizedStatus = scene.status?.toString().trim().toLowerCase() || 'Todo';
-                
-                if (normalizedStatus === "complete" || normalizedStatus === "done") {
-                     // Ignore completed for remaining count
-                } else if (scene.due) {
-                    try {
-                        const dueDate = new Date(scene.due + 'T00:00:00');
-                        if (!isNaN(dueDate.getTime()) && dueDate.getTime() < todayTime) {
-                            acc["Due"] = (acc["Due"] || 0) + 1;
-                        } else {
-                             // Not overdue or invalid date, count by status
-                            acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
-                        }
-                    } catch { 
-                         // Invalid date format, count by status
-                         acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
+        // --- Get Current Status Counts (Necessary for Remaining/Total) ---
+        // Use a fresh calculation based on the provided scenes array
+        const processedPaths = new Set<string>(); // Track unique paths
+        const currentStatusCounts = scenes.reduce((acc, scene) => {
+            // --- Add check for unique path --- START ---
+            if (!scene.path || processedPaths.has(scene.path)) {
+                return acc; // Skip if no path or already counted
+            }
+            processedPaths.add(scene.path);
+            // --- Add check for unique path --- END ---
+
+            const normalizedStatus = scene.status?.toString().trim().toLowerCase() || 'Todo';
+            
+            if (normalizedStatus === "complete" || normalizedStatus === "done") {
+                acc["Completed"] = (acc["Completed"] || 0) + 1;
+            } else if (scene.due) {
+                try {
+                    const dueDate = new Date(scene.due + 'T00:00:00');
+                    if (!isNaN(dueDate.getTime()) && dueDate.getTime() < todayTime) {
+                        acc["Due"] = (acc["Due"] || 0) + 1;
+                    } else {
+                        acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
                     }
-                } else {
-                    // No due date, count by status (Todo, Working etc.)
+                } catch { 
                     acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
                 }
-                return acc;
-            }, {} as Record<string, number>);
-            this.latestStatusCounts = statusCounts;
-        }
+            } else {
+                acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
+            }
+            return acc;
+        }, {} as Record<string, number>);
         
-        const todoCount = this.latestStatusCounts['Todo'] || 0;
-        const workingCount = this.latestStatusCounts['Working'] || 0;
-        const dueCount = this.latestStatusCounts['Due'] || 0; 
-        const remainingScenes = todoCount + workingCount + dueCount; 
-        // --- Get Remaining Scenes Count --- END ---
-        
-        // --- Calculate total scenes AFTER status counts are guaranteed --- START ---
-        const totalScenes = Object.values(this.latestStatusCounts).reduce((sum, count) => sum + count, 0);
-        // --- Calculate total scenes AFTER status counts are guaranteed --- END ---
+        // Calculate remaining and total from these counts
+        const completedCount = currentStatusCounts['Completed'] || 0; // Count completed scenes
+        const totalScenes = Object.values(currentStatusCounts).reduce((sum, count) => sum + count, 0); // Sum all counts for total
+        const remainingScenes = totalScenes - completedCount; // Remaining = Total - Completed
+
+        // --- Remove older remaining calculation ---
+        // const todoCount = currentStatusCounts['Todo'] || 0;
+        // const workingCount = currentStatusCounts['Working'] || 0;
+        // const dueCount = currentStatusCounts['Due'] || 0; 
+        // const remainingScenes = todoCount + workingCount + dueCount;
+        // --- Finished Status Counts ---
 
         if (remainingScenes <= 0) {
-             this.log("Completion estimate: No remaining scenes to estimate.");
+            this.log("Completion estimate: No remaining scenes to estimate.");
             return null;
         }
-        
-        // Calculate days needed first
+
         const daysNeeded = remainingScenes / scenesPerDay;
-        
-        // Check if estimation is possible
+
         if (!isFinite(daysNeeded) || daysNeeded < 0 || scenesPerDay <= 0) {
             this.log(`Completion estimate: Cannot estimate (Rate: ${scenesPerDay.toFixed(3)}, Needed: ${daysNeeded}).`);
             return null;
         }
 
-        // --- Calculate weekly rate --- START ---
         const scenesPerWeek = scenesPerDay * 7;
-        // --- Calculate weekly rate --- END ---
 
-        this.log(`Timeline Estimate| Inputs - Total: ${totalScenes}, Remaining: ${remainingScenes}, CompletedThisYear: ${completedThisYear}, DaysPassed: ${daysPassedThisYear}, Rate: ${scenesPerDay.toFixed(3)} scenes/day (${scenesPerWeek.toFixed(1)}/week)`);
-        
-        // --- Store stats for SVG --- START ---
-        this.latestTotalScenes = totalScenes;
-        this.latestRemainingScenes = remainingScenes;
-        this.latestScenesPerWeek = parseFloat(scenesPerWeek.toFixed(1)); // Store rounded value
-        // --- Store stats for SVG --- END ---
+        // --- REMOVED latest... updates ---
+        // this.latestTotalScenes = totalScenes;
+        // this.latestRemainingScenes = remainingScenes;
+        // this.latestScenesPerWeek = parseFloat(scenesPerWeek.toFixed(1));
 
         const estimatedDate = new Date(today);
-        estimatedDate.setDate(today.getDate() + Math.ceil(daysNeeded)); // Round up days
+        estimatedDate.setDate(today.getDate() + Math.ceil(daysNeeded));
+
+        if (this.settings.debug) {
+            this.log(`Timeline Estimate| Inputs - Total: ${totalScenes}, Remaining: ${remainingScenes}, CompletedThisYear: ${completedThisYear}, DaysPassed: ${daysPassedThisYear}, Rate: ${scenesPerDay.toFixed(3)} scenes/day (${scenesPerWeek.toFixed(1)}/week)`);
+            this.log(`Timeline Estimate| Raw Estimated Date Object: ${estimatedDate.toString()}`);
+            this.log(`Estimated completion date: ${estimatedDate.toISOString().split('T')[0]}`);
+        }
         
-        this.log(`Timeline Estimate| Raw Estimated Date Object: ${estimatedDate.toString()}`);
-        this.log(`Estimated completion date: ${estimatedDate.toISOString().split('T')[0]}`);
-        return estimatedDate;
-        // --- New Calculation Logic --- END ---
+        return {
+            date: estimatedDate,
+            total: totalScenes,
+            remaining: remainingScenes,
+            rate: parseFloat(scenesPerWeek.toFixed(1)) // Use rounded value
+        };
     }
-}
+} // End of ManuscriptTimelinePlugin class
 
 
 class ManuscriptTimelineSettingTab extends PluginSettingTab {
