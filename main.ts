@@ -1,5 +1,7 @@
 import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl } from "obsidian";
 
+// Declare the variable that will be injected by the build process
+declare const EMBEDDED_README_CONTENT: string;
 
 interface ManuscriptTimelineSettings {
     sourcePath: string;
@@ -14,8 +16,8 @@ interface ManuscriptTimelineSettings {
 }
 
 // Constants for the view
-const TIMELINE_VIEW_TYPE = "manuscript-timeline-view";
-const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript Timeline";
+export const TIMELINE_VIEW_TYPE = "manuscript-timeline";
+const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript timeline"; // Use sentence case
 
 interface Scene {
     title?: string;
@@ -1137,6 +1139,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
     
+    // --- Add variables to store latest estimate stats --- START ---
+    latestTotalScenes: number = 0;
+    latestRemainingScenes: number = 0;
+    latestScenesPerWeek: number = 0;
+    // --- Add variables to store latest estimate stats --- END ---
+    
     // Add a synopsisManager instance
     private synopsisManager: SynopsisManager;
     
@@ -1418,21 +1426,27 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         // Add commands
         this.addCommand({
-            id: 'open-timeline',
-            name: 'Open Timeline View',
-            callback: () => this.activateView()
+            id: 'open-timeline-view',
+            name: 'Open timeline view', // Sentence case
+            callback: () => {
+                this.activateView();
+            }
         });
 
         this.addCommand({
             id: 'search-timeline',
-            name: 'Search Timeline',
-            callback: () => this.openSearchPrompt()
+            name: 'Search timeline', // Sentence case
+            callback: () => {
+                this.openSearchPrompt();
+            }
         });
 
         this.addCommand({
             id: 'clear-timeline-search',
-            name: 'Clear Timeline Search',
-            callback: () => this.clearSearch()
+            name: 'Clear timeline search', // Sentence case
+            callback: () => {
+                this.clearSearch();
+            }
         });
 
         // Add settings tab
@@ -1905,7 +1919,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
                             // Only log scene data in debug mode, and avoid the noisy scene details
                             if (this.settings.debug) {
-                                this.log(`Added scene: ${metadata.Title || file.basename}`);
+                                // this.log(`Added scene: ${metadata.Title || file.basename}`); // Commented out due to excessive logging
                             }
                     });
                 }
@@ -2207,7 +2221,27 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         `;
 
          // --- Draw Estimation Arc --- START ---
-         const estimatedCompletionDate = this.calculateCompletionEstimate(scenes);
+            const estimatedCompletionDate = this.calculateCompletionEstimate(scenes);
+
+         // --- TEMPORARY DEBUG OVERRIDE FOR QUADRANT TESTING --- START ---
+         // Uncomment ONE of the following lines to force the estimated date for testing positioning.
+         // Remember to remove or comment out this block when done testing!
+
+         // --- Quadrant Midpoints ---
+         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 1, 15); // Feb 15 (Quadrant 4 - Top Right)
+         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 4, 15); // May 15 (Quadrant 1 - Bottom Right)
+         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 7, 15); // Aug 15 (Quadrant 2 - Bottom Left)
+         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 10, 15); // Nov 15 (Quadrant 3 - Top Left)
+
+         // --- Cardinal Directions ---
+          // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 0, 1);  // Jan 1 (Top, -90 deg)
+           // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 3, 1);  // Apr 1 (Right, 0 deg)
+          // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 6, 1);  // Jul 1 (Bottom, 90 deg)
+          // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 9, 1);  // Oct 1 (Left, 180 deg)
+
+         // --- TEMPORARY DEBUG OVERRIDE FOR QUADRANT TESTING --- END ---
+
+
          if (estimatedCompletionDate) {
              // Start from 12 o'clock position (January 1)
              const startAngle = -Math.PI/2; // 12 o'clock position
@@ -2429,36 +2463,38 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
             const dateDisplay = dateFormatter.format(estimatedCompletionDate);
             
-            // Position the date label at a consistent distance from the tick mark
-            const labelRadius = progressRadius - 45;
+            // --- Get stats string --- START ---
+            const total = this.latestTotalScenes || 0;
+            const remaining = this.latestRemainingScenes || 0;
+            const rate = Math.round(this.latestScenesPerWeek || 0); // Round rate to nearest whole number
+            const statsDisplay = `${total}:${remaining}:${rate}`; // Compact format
+            // --- Get stats string --- END ---
+
+            // Position the date label relative to the inner end of the tick mark (dot)
+            const labelRadius = progressRadius - 45; // Base radius for label position
             
-            // Calculate position around the circle (normalized from 0 to 1)
-            // 0 = top (12 o'clock), 0.25 = right (3 o'clock), 0.5 = bottom (6 o'clock), 0.75 = left (9 o'clock)
-            // No offset at 12 o'clock or 6 o'clock
-            const normalizedPos = absoluteDatePos / (2 * Math.PI);
+            // Calculate offsets to push text away from the dot
+            const maxOffset = -38; // Magnitude for horizontal push (outwards)
+            const offsetX = maxOffset * Math.cos(absoluteDatePos); // Use +cos for outwards horizontal push
             
-            // Calculate horizontal offset based on position
-            // 0 = top (12 o'clock), -1 = right (3 o'clock), 0 = bottom (6 o'clock), 1 = left (9 o'clock)
-            const maxOffset = 15; // Maximum pixel offset
-            const offsetX = -maxOffset * Math.sin(absoluteDatePos);
+            // Use -sin to push down in top half (Q1,Q4) and up in bottom half (Q2,Q3)
+            const maxYOffset = 5;  // Magnitude for vertical push
+            const offsetY = -maxYOffset * Math.sin(absoluteDatePos); // Keep -sin for up/down push
             
-            // Calculate vertical offset based on position
-            // +30 at 12 o'clock (moving down), -30 at 6 o'clock (moving up)
-            const maxYOffset = 15;  
-            const offsetY = -maxYOffset * Math.cos(absoluteDatePos); // Inverted sign for correct direction
-            
+            // Remove baselineShift as dynamic offset and dominant-baseline should handle it
             const labelX = formatNumber(labelRadius * Math.cos(absoluteDatePos) + offsetX);
-            const labelY = formatNumber(labelRadius * Math.sin(absoluteDatePos) + offsetY);
+            const labelY = formatNumber(labelRadius * Math.sin(absoluteDatePos) + offsetY); // Removed baselineShift
             
-            // Always use center alignment for the text
+            // Always use middle alignment for the text
             svg += `
                 <text
                     x="${labelX}"
                     y="${labelY}"
                     text-anchor="middle"
+                    dominant-baseline="middle"
                     class="estimation-date-label"
                 >
-                    ${dateDisplay}
+                    ${dateDisplay} ${statsDisplay} <!-- Append stats here -->
                 </text>
             `;
             
@@ -2861,7 +2897,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             // Position labels slightly to the left of the vertical borders
             const actLabelRadius = actualOuterRadius + 14;
-            const angleOffset = -0.08; // Positive offset moves text clockwise
+            const angleOffset = -0.085; // Positive offset moves text clockwise
             
             // Calculate start and end angles for the curved path
             const startAngle = angle + angleOffset;
@@ -2878,7 +2914,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     "
                     fill="none"
                 />
-                <text class="act-label">
+                <text class="act-label" fill="${maxStageColor}"> <!-- Use overall maxStageColor -->
                     <textPath href="#${actPathId}" startOffset="0" text-anchor="start">
                         ACT ${act + 1}
                     </textPath>
@@ -4287,281 +4323,136 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     private calculateCompletionEstimate(scenes: Scene[]): Date | null {
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Normalize to start of day
-        const thirtyDaysAgo = new Date(today);
-        thirtyDaysAgo.setDate(today.getDate() - 30);
-
-        // Process status counts if not already available
-        // This ensures we have status counts even if the timeline was refreshed without open files
-        if (!this.latestStatusCounts) {
-            this.log("Status counts not available - calculating from scenes");
-            
-            // Create a set to track processed scenes
-            const processedScenes = new Set<string>();
-            
-            // Count scenes by status
-            const statusCounts = scenes.reduce((acc, scene) => {
-                // Skip if we've already processed this scene
-                if (scene.path && processedScenes.has(scene.path)) {
-                    return acc;
-                }
-                
-                // Mark scene as processed
-                if (scene.path) {
-                    processedScenes.add(scene.path);
-                }
-                
-                const normalizedStatus = scene.status?.toString().trim().toLowerCase() || '';
-                
-                // If status is empty/undefined/null, count it as "Todo"
-                if (!normalizedStatus || normalizedStatus === '') {
-                    acc["Todo"] = (acc["Todo"] || 0) + 1;
-                    return acc;
-                }
-                
-                if (normalizedStatus === "complete") {
-                    // For completed scenes, count by Publish Stage
-                    const publishStage = scene["Publish Stage"] || 'Zero';
-                    acc[publishStage] = (acc[publishStage] || 0) + 1;
-                } else if (scene.due) {
-                     // Parse date directly from string components
-                    const originalDueString = scene.due;
-                    const parts = originalDueString.split('-').map(Number);
-
-                    // Ensure we have valid parts before proceeding
-                    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-                        const dueYear = parts[0];
-                        const dueMonth = parts[1] - 1; // Convert 1-based to 0-based month
-                        const dueDay = parts[2];
-                        
-                        // Get today's date parts
-                        const today = new Date();
-                        const todayYear = today.getFullYear();
-                        const todayMonth = today.getMonth();
-                        const todayDay = today.getDate();
-                        
-                        // Compare dates by parts - overdue only if date is strictly before today
-                        let isOverdue = false;
-                        if (dueYear < todayYear) {
-                            isOverdue = true;
-                        } else if (dueYear === todayYear) {
-                            if (dueMonth < todayMonth) {
-                                isOverdue = true;
-                            } else if (dueMonth === todayMonth) {
-                                if (dueDay < todayDay) {
-                                    isOverdue = true;
-                                }
-                                // Same day is NOT overdue
-                            }
-                        }
-                        
-                        // Detailed debug logging
-                        if (this.settings.debug) {
-                            console.log(`TRACE: Status Count Due Date Debug for "${scene.title || scene.path}"`, {
-                                dueString: originalDueString,
-                                parsedDueYear: dueYear,
-                                parsedDueMonth: dueMonth + 1, // Log 1-based month
-                                parsedDueDay: dueDay,
-                                parsedTodayYear: todayYear,
-                                parsedTodayMonth: todayMonth + 1, // Log 1-based month
-                                parsedTodayDay: todayDay,
-                                comparisonResult_isOverdue: isOverdue
-                            });
-                        }
-                        
-                        if (isOverdue) {
-                            // Non-complete scenes that are past due date are counted as Due
-                            acc["Due"] = (acc["Due"] || 0) + 1;
-                        } else {
-                            // For files due today or in the future, count them by their status
-                            let statusKey = "Todo"; // Default to Todo
-                            if (scene.status) {
-                                if (Array.isArray(scene.status) && scene.status.length > 0) {
-                                    statusKey = String(scene.status[0]);
-                                } else if (typeof scene.status === 'string') {
-                                    statusKey = scene.status;
-                                }
-                            }
-                            acc[statusKey] = (acc[statusKey] || 0) + 1;
-                        }
-                    } else {
-                        // Handle invalid date format
-                        if (this.settings.debug) {
-                            console.warn(`WARN: Invalid date format in status count: ${originalDueString}`);
-                        }
-                        // Count scenes with invalid due dates by status
-                        let statusKey = "Todo"; 
-                        if (scene.status) {
-                            if (Array.isArray(scene.status) && scene.status.length > 0) {
-                                statusKey = String(scene.status[0]);
-                            } else if (typeof scene.status === 'string') {
-                                statusKey = scene.status;
-                            }
-                        }
-                        acc[statusKey] = (acc[statusKey] || 0) + 1;
-                    }
-                } else {
-                    // All other scenes (no due date) are counted by their status
-                    let statusKey = "Todo"; // Default to Todo
-                    if (scene.status) {
-                        if (Array.isArray(scene.status) && scene.status.length > 0) {
-                            statusKey = String(scene.status[0]);
-                        } else if (typeof scene.status === 'string') {
-                            statusKey = scene.status;
-                        }
-                    }
-                    acc[statusKey] = (acc[statusKey] || 0) + 1;
-                }
-                return acc;
-            }, {} as Record<string, number>);
-            
-            // Save the calculated status counts
-            this.latestStatusCounts = statusCounts;
-        }
-
-        // Use legend data counts for Working and Todo
-        const todoCount = this.latestStatusCounts['Todo'] || 0;
-        const workingCount = this.latestStatusCounts['Working'] || 0;
-        const dueCount = this.latestStatusCounts['Due'] || 0; // Get the count for Due scenes
-        const remainingScenes = todoCount + workingCount + dueCount; // Include Due count in remaining scenes
         
-        // Calculate total from all status counts
-        const totalScenes = Object.values(this.latestStatusCounts).reduce((sum, count) => sum + count, 0);
+        // --- New Calculation Logic --- START ---
+        const startOfYear = new Date(today.getFullYear(), 0, 1); // Jan 1st of current year
+        const startOfYearTime = startOfYear.getTime();
+        const todayTime = today.getTime();
 
-        // Count completed scenes in last 30 days based on status and due date
-        let completedLast30Days = 0;
-        const completedPathsLast30Days = new Set<string>();
+        // Calculate days passed since start of year (minimum 1 day)
+        const daysPassedThisYear = Math.max(1, Math.round((todayTime - startOfYearTime) / (1000 * 60 * 60 * 24)));
+
+        let completedThisYear = 0;
+        const completedPathsThisYear = new Set<string>();
 
         scenes.forEach(scene => {
             const dueDateStr = scene.due;
             const scenePath = scene.path;
             const sceneStatus = scene.status?.toString().trim().toLowerCase();
 
-            // Check if scene status is 'complete' or 'done'
-            if (sceneStatus !== 'complete' && sceneStatus !== 'done') {
-                return; // Skip if not completed
-            }
+            // Skip if not completed, no path, or already counted
+            if (sceneStatus !== 'complete' && sceneStatus !== 'done') return;
+            if (!scenePath || completedPathsThisYear.has(scenePath)) return;
+            if (!dueDateStr) return;
 
-            if (dueDateStr && scenePath && !completedPathsLast30Days.has(scenePath)) {
-                try {
-                    // Parse date directly from string components
-                    const parts = dueDateStr.split('-').map(Number);
+            try {
+                // Parse due date string into a Date object (YYYY-MM-DD format assumed)
+                // Important: Add 'T00:00:00' to ensure it parses in local timezone, not UTC
+                const dueDate = new Date(dueDateStr + 'T00:00:00');
+                dueDate.setHours(0, 0, 0, 0); // Normalize
+                const dueTime = dueDate.getTime();
+
+                // Check if the due date is valid, within the current year, and before today
+                if (!isNaN(dueTime) && dueTime >= startOfYearTime && dueTime < todayTime) {
+                    completedThisYear++;
+                    completedPathsThisYear.add(scenePath);
                     
-                    // Ensure we have valid parts before proceeding
-                    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-                        const dueYear = parts[0];
-                        const dueMonth = parts[1] - 1; // Convert 1-based to 0-based month
-                        const dueDay = parts[2];
-                        
-                        // Get today's date parts
-                        const todayYear = today.getFullYear();
-                        const todayMonth = today.getMonth();
-                        const todayDay = today.getDate();
-                        
-                        // Get 30 days ago date parts
-                        const agoYear = thirtyDaysAgo.getFullYear();
-                        const agoMonth = thirtyDaysAgo.getMonth();
-                        const agoDay = thirtyDaysAgo.getDate();
-                        
-                        // Check if due date is before today (was due in the past)
-                        let isBeforeToday = false;
-                        if (dueYear < todayYear) {
-                            isBeforeToday = true;
-                        } else if (dueYear === todayYear) {
-                            if (dueMonth < todayMonth) {
-                                isBeforeToday = true;
-                            } else if (dueMonth === todayMonth) {
-                                if (dueDay < todayDay) {
-                                    isBeforeToday = true;
-                                }
-                                // Same day is NOT before today
-                            }
-                        }
-                        
-                        // Check if due date is on or after 30 days ago
-                        let isOnOrAfterThirtyDaysAgo = false;
-                        if (dueYear > agoYear) {
-                            isOnOrAfterThirtyDaysAgo = true;
-                        } else if (dueYear === agoYear) {
-                            if (dueMonth > agoMonth) {
-                                isOnOrAfterThirtyDaysAgo = true;
-                            } else if (dueMonth === agoMonth) {
-                                if (dueDay >= agoDay) {
-                                    isOnOrAfterThirtyDaysAgo = true;
-                                }
-                                // Earlier day in same month is NOT on or after
-                            }
-                            // Earlier month in same year is NOT on or after
-                        }
-                        // Earlier year is NOT on or after
-                        
-                        // Detailed debug logging (optional, kept for context)
-                        if (this.settings.debug) {
-                            console.log(`TRACE: Estimate Completion Due Date Debug for COMPLETED "${scene.title || scene.path}"`, {
-                                dueString: dueDateStr,
-                                parsedDueYear: dueYear,
-                                parsedDueMonth: dueMonth + 1, 
-                                parsedDueDay: dueDay,
-                                parsedTodayYear: todayYear,
-                                parsedTodayMonth: todayMonth + 1, 
-                                parsedTodayDay: todayDay,
-                                parsedAgoYear: agoYear,
-                                parsedAgoMonth: agoMonth + 1, 
-                                parsedAgoDay: agoDay,
-                                comparisonResult_isBeforeToday: isBeforeToday,
-                                comparisonResult_isOnOrAfterThirtyDaysAgo: isOnOrAfterThirtyDaysAgo
-                            });
-                        }
-                        
-                        // A scene is considered completed within the last 30 days if:
-                        // 1. Its status is 'complete' or 'done' (checked earlier)
-                        // 2. Its due date is before today
-                        // 3. Its due date is on or after 30 days ago
-                        if (isBeforeToday && isOnOrAfterThirtyDaysAgo) {
-                            completedLast30Days++;
-                            completedPathsLast30Days.add(scenePath);
-                        }
-                    } else {
-                        // Handle invalid date format
-                        if (this.settings.debug) {
-                            console.warn(`WARN: Invalid date format in completion estimate for completed scene: ${dueDateStr}`);
-                        }
-                    }
-                } catch (e) {
-                    // Ignore date parsing errors
                     if (this.settings.debug) {
-                        console.error(`ERROR: Error parsing date for completion estimate on completed scene: ${dueDateStr}`, e);
+                        console.log(`TRACE: Estimate Count - Including completed scene: ${scene.path} (Due: ${dueDateStr})`);
                     }
+                }
+            } catch (e) {
+                if (this.settings.debug) {
+                    console.error(`ERROR: Estimate Count - Error parsing date: ${dueDateStr} for scene ${scene.path}`, e);
                 }
             }
         });
 
-        this.log(`Legend data - Total scenes: ${totalScenes}`);
-        this.log(`Legend data - Todo count: ${todoCount}, Working count: ${workingCount}`);
-        this.log(`Legend data - Remaining scenes (Todo + Working): ${remainingScenes}`);
-        this.log(`Scenes completed in last 30 days: ${completedLast30Days}`);
-
-        if (completedLast30Days <= 0) {
-            this.log("Completion rate is zero or negative. Cannot estimate completion date.");
+        if (completedThisYear <= 0) {
+            this.log("Completion estimate: No scenes completed this year. Cannot estimate.");
             return null;
         }
 
-        const scenesPerDay = completedLast30Days / 30;
-        const daysNeeded = remainingScenes / scenesPerDay;
+        const scenesPerDay = completedThisYear / daysPassedThisYear;
 
-        if (!isFinite(daysNeeded) || daysNeeded < 0) {
-            this.log("Cannot estimate completion date (infinite or negative days needed).");
-            return null;
+        // --- Get Remaining Scenes Count --- START ---
+        // Ensure latestStatusCounts is populated if not already done
+        if (!this.latestStatusCounts) {
+             this.log("Status counts not available - calculating from scenes for remaining count");
+            const processedScenes = new Set<string>();
+            const statusCounts = scenes.reduce((acc, scene) => {
+                if (scene.path && processedScenes.has(scene.path)) return acc;
+                if (scene.path) processedScenes.add(scene.path);
+                
+                const normalizedStatus = scene.status?.toString().trim().toLowerCase() || 'Todo';
+                
+                if (normalizedStatus === "complete" || normalizedStatus === "done") {
+                     // Ignore completed for remaining count
+                } else if (scene.due) {
+                    try {
+                        const dueDate = new Date(scene.due + 'T00:00:00');
+                        if (!isNaN(dueDate.getTime()) && dueDate.getTime() < todayTime) {
+                            acc["Due"] = (acc["Due"] || 0) + 1;
+                        } else {
+                             // Not overdue or invalid date, count by status
+                            acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
+                        }
+                    } catch { 
+                         // Invalid date format, count by status
+                         acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
+                    }
+                } else {
+                    // No due date, count by status (Todo, Working etc.)
+                    acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
+                }
+                return acc;
+            }, {} as Record<string, number>);
+            this.latestStatusCounts = statusCounts;
         }
-
-        // Log the inputs using the requested format
-        this.log(`Timeline Estimate| Inputs Received - Total: ${totalScenes}, Todo: ${todoCount}, Working: ${workingCount}, Completed30: ${completedLast30Days}, Rate: ${scenesPerDay.toFixed(2)} scenes/day`);
         
+        const todoCount = this.latestStatusCounts['Todo'] || 0;
+        const workingCount = this.latestStatusCounts['Working'] || 0;
+        const dueCount = this.latestStatusCounts['Due'] || 0; 
+        const remainingScenes = todoCount + workingCount + dueCount; 
+        // --- Get Remaining Scenes Count --- END ---
+        
+        // --- Calculate total scenes AFTER status counts are guaranteed --- START ---
+        const totalScenes = Object.values(this.latestStatusCounts).reduce((sum, count) => sum + count, 0);
+        // --- Calculate total scenes AFTER status counts are guaranteed --- END ---
+
+        if (remainingScenes <= 0) {
+             this.log("Completion estimate: No remaining scenes to estimate.");
+            return null;
+        }
+        
+        // Calculate days needed first
+        const daysNeeded = remainingScenes / scenesPerDay;
+        
+        // Check if estimation is possible
+        if (!isFinite(daysNeeded) || daysNeeded < 0 || scenesPerDay <= 0) {
+            this.log(`Completion estimate: Cannot estimate (Rate: ${scenesPerDay.toFixed(3)}, Needed: ${daysNeeded}).`);
+            return null;
+        }
+
+        // --- Calculate weekly rate --- START ---
+        const scenesPerWeek = scenesPerDay * 7;
+        // --- Calculate weekly rate --- END ---
+
+        this.log(`Timeline Estimate| Inputs - Total: ${totalScenes}, Remaining: ${remainingScenes}, CompletedThisYear: ${completedThisYear}, DaysPassed: ${daysPassedThisYear}, Rate: ${scenesPerDay.toFixed(3)} scenes/day (${scenesPerWeek.toFixed(1)}/week)`);
+        
+        // --- Store stats for SVG --- START ---
+        this.latestTotalScenes = totalScenes;
+        this.latestRemainingScenes = remainingScenes;
+        this.latestScenesPerWeek = parseFloat(scenesPerWeek.toFixed(1)); // Store rounded value
+        // --- Store stats for SVG --- END ---
+
         const estimatedDate = new Date(today);
         estimatedDate.setDate(today.getDate() + Math.ceil(daysNeeded)); // Round up days
         
         this.log(`Timeline Estimate| Raw Estimated Date Object: ${estimatedDate.toString()}`);
         this.log(`Estimated completion date: ${estimatedDate.toISOString().split('T')[0]}`);
         return estimatedDate;
+        // --- New Calculation Logic --- END ---
     }
 }
 
@@ -4751,17 +4642,11 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         const {containerEl} = this;
         containerEl.empty();
 
-        // Add horizontal rule to separate settings
-        containerEl.createEl('hr', { cls: 'settings-separator' });
-
-        // Add settings section
-        containerEl.createEl('h2', {text: 'Settings', cls: 'setting-item-heading'});
-        
-
+        // --- Settings Section ---
         // Add source path setting
         new Setting(containerEl)
-            .setName('Source Path')
-            .setDesc('Set the folder containing your scene files (e.g., "Book 1" or "Scenes")')
+            .setName('Source path')
+            .setDesc('Specify the root folder containing your manuscript scene files.')
             .addText(text => text
                 .setValue(this.plugin.settings.sourcePath)
                     .onChange(async (value) => {
@@ -4769,10 +4654,10 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                 }));
 
-                 // --- Add Target Completion Date Setting --- START ---
+         // --- Add Target Completion Date Setting --- START ---
         new Setting(containerEl)
-        .setName('Target Completion Date')
-        .setDesc('Set your target date for completing the work in progress (optional). Leaving empty will assume a date of January 1st of the upcoming year.')
+        .setName('Target completion date') // Sentence case
+        .setDesc('Optional: Set a target date for project completion (YYYY-MM-DD). This will be shown on the timeline.')
         .addText(text => {
             text.inputEl.type = 'date'; // Use HTML5 date input
             text.setValue(this.plugin.settings.targetCompletionDate || '')
@@ -4790,7 +4675,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
 
                     // Validate the selected date if a value is provided
                     const selectedDate = new Date(value + 'T00:00:00'); // Use local time
-                    
+
                     if (selectedDate > today) {
                         this.plugin.settings.targetCompletionDate = value;
                         text.inputEl.removeClass('setting-input-error');
@@ -4799,30 +4684,32 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                         text.inputEl.addClass('setting-input-error');
                         new Notice('Target date must be in the future.');
                         // Revert the input value if invalid
-                        text.setValue(this.plugin.settings.targetCompletionDate || ''); 
+                        text.setValue(this.plugin.settings.targetCompletionDate || '');
                         return; // Don't save invalid date
                     }
                     await this.plugin.saveSettings();
                 });
         });
         // --- Add Target Completion Date Setting --- END ---
-        
+
         // Add debug mode setting
         new Setting(containerEl)
-            .setName('Debug Mode')
-            .setDesc('Enable detailed logging in the console (useful for troubleshooting)')
+            .setName('Debug mode') // Sentence case
+            .setDesc('Enable debug logging to the console.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.debug)
                 .onChange(async (value) => {
                     this.plugin.settings.debug = value;
                     await this.plugin.saveSettings();
                 }));
-                
 
-        // Add publishing stage colors section
-        containerEl.createEl('h2', {text: 'Publishing Stage Colors', cls: 'setting-item-heading'});
-        
-        // Create color settings for each stage
+        // --- Publishing Stage Colors Section ---
+        // Add Separator
+        containerEl.createEl('hr', { cls: 'settings-separator' });
+
+        containerEl.createEl('h2', {text: 'Publishing stage colors', cls: 'setting-item-heading'});
+
+        // Dynamically create color settings based on the interface keys
         Object.entries(this.plugin.settings.publishStageColors).forEach(([stage, color]) => {
             let textInputRef: TextComponent | undefined;
         new Setting(containerEl)
@@ -4857,7 +4744,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                             }
                         });
                 });
-            
+
             // Add color swatch after the text input
             if (textInputRef) {
                 const swatchContainer = textInputRef.inputEl.parentElement;
@@ -4869,59 +4756,28 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                 }
             }
             });
-            
-           
-        // Create documentation section
-        const documentationContainer = containerEl.createDiv('documentation-container');
-        documentationContainer.style.marginLeft = '0';
-        documentationContainer.style.paddingLeft = '0';
-        documentationContainer.createEl('p', { text: 'Loading documentation...' }); // Loading indicator
 
-        // --- Refactored README Loading --- 
-        (async () => {
-            const adapter = this.app.vault.adapter;
-            const pluginDir = this.plugin.manifest.dir || '';
-            const localReadmePath = `${pluginDir}/README.md`;
-            const githubReadmeUrl = 'https://raw.githubusercontent.com/ericrhystaylor/Obsidian-Manuscript-Timeline/refs/heads/master/README.md';
-            let contentLoaded = false;
+        // --- Embedded README Section ---
+        // Add Separator
+        containerEl.createEl('hr', { cls: 'settings-separator' });
 
-            // Try local first
-            try {
-                const localContent = await adapter.read(localReadmePath);
-                documentationContainer.empty(); // Clear loading message
-                await MarkdownRenderer.renderMarkdown(
-                    localContent,
-                    documentationContainer,
-                    pluginDir, // Use plugin directory as base path for relative links/images
-                    this.plugin
-                );
-                contentLoaded = true;
-                this.plugin.log('Successfully loaded local README.');
-            } catch (localError) {
-                this.plugin.log('Error loading local README: ' + localError);
-                // Optionally try GitHub if local fails
-                try {
-                    const githubResponse = await requestUrl(githubReadmeUrl);
-                    const githubContent = githubResponse.text;
-                    documentationContainer.empty(); // Clear loading message
-                    await MarkdownRenderer.renderMarkdown(
-                        githubContent,
-                        documentationContainer,
-                        '', // No base path for GitHub content
-                        this.plugin
-                    );
-                    contentLoaded = true;
-                    this.plugin.log('Successfully loaded README from GitHub.');
-                } catch (githubError) {
-                    this.plugin.log('Error loading README from GitHub: ' + githubError);
-                    // Both failed
-                    documentationContainer.empty(); // Clear loading message
-                    documentationContainer.createEl('p', { text: 'Error loading documentation from both local file and GitHub.' });
-                }
-            }
-        })();
-        
+        const readmeContainer = containerEl.createDiv({ cls: 'manuscript-readme-container' });
+
+        // Check if the content was injected - provide fallback if needed
+        const readmeMarkdown = typeof EMBEDDED_README_CONTENT !== 'undefined'
+            ? EMBEDDED_README_CONTENT
+            : 'README content could not be loaded. Please ensure the plugin was built correctly or view the README.md file directly.';
+
+        // Use Obsidian's current MarkdownRenderer API
+        MarkdownRenderer.render(
+            this.app, // Pass the app instance
+            readmeMarkdown, // The markdown string from the embedded variable
+            readmeContainer, // The HTML element to render into
+            this.plugin.manifest.dir ?? '', // Source path context (optional but good practice)
+            this.plugin // Component context (optional but good practice)
+        );
     }
+
 }
 
 // Timeline View implementation

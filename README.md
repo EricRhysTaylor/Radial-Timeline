@@ -1,10 +1,28 @@
-## Documentation
+<p align="center">
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/master/logo.png" alt="Manuscript Timeline Logo" width="10%">
+</p>
+<p align="center" style="font-family: 'Lato', sans-serif; font-weight: 100; font-size: 14px; margin-top: 12px; margin-bottom: 0; letter-spacing: 8px;">
+  MANUSCRIPT TIMELINE
+</p>
+<p align="center" style="font-family: 'Lato', sans-serif; font-size: 14px; margin-top: 4px;">
+  by Eric Rhys Taylor
+</p>
+
+
+<p align="center">
+    <a href="https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/stargazers"><img src="https://img.shields.io/github/stars/EricRhysTaylor/Obsidian-Manuscript-Timeline?colorA=363a4f&colorB=e0ac00&style=for-the-badge" alt="GitHub star count"></a>
+    <a href="https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues"><img src="https://img.shields.io/github/issues/EricRhysTaylor/Obsidian-Manuscript-Timeline?colorA=363a4f&colorB=e93147&style=for-the-badge" alt="Open issues on GitHub"></a>
+    <br/>
+	<a href="https://obsidian.md/plugins?id=manuscript-timeline"><img src="https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&query=$.manuscript-timeline.downloads&label=Downloads&style=for-the-badge&colorA=363a4f&colorB=d53984" alt="Plugin Downloads"/></a>
+    <a href="https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/blob/master/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&colorA=363a4f&colorB=b7bdf8" alt="MIT license"/></a>
+</p>
+<hr style="margin-bottom: 20px;">
 
 A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.
 
-This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in chronological order to depict each scene. Various cues and interactions are available through a search feature that highlights the search term throughout and mouse-over functionality, revealing summary information in a colorful style. Hopefully, this will provide another method for tracking the progress of your manuscript and making it easier to stay on schedule and focused on what is truly a monumental task.
+This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in chronological order, to depict each scene. Various cues and interactions are available through a search feature that highlights the search term throughout and mouse-over functionality, revealing summary information in a colorful style. Hopefully, this will provide another method for tracking the progress of your manuscript and making it easier to stay on schedule and focused.
 
-<div style="border: 1px solid #444; border-radius: 8px; padding: 15px; margin: 15px 0;">
+<div style="border-radius: 8px; padding: 15px; margin: 15px 0;">
 Sister Plugin Manuscript Calendar
 
 Looking for a more compact way to track scene progress and key dates?
@@ -35,14 +53,14 @@ You can find it on GitHub or by searching for "Manuscript Calendar" in the Obsid
 * **Clear Timeline Search**: Clears the current search results
 
 <a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-  <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px; border: 1px solid #444;" />
+  <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px;" />
 </a>
 
 <div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
   Click image to view full size in browser
 </div>
 
-### How to Use
+## How to Use
 
 1. Install the plugin in your Obsidian vault
 2. Configure the source path in the plugin settings to point to your scenes folder
@@ -53,7 +71,7 @@ You can find it on GitHub or by searching for "Manuscript Calendar" in the Obsid
 7. Use the zoom controls in the top left corner to zoom in/out and reset the view
 8. The timeline automatically updates when you modify, create, or delete scene files
 
-### Settings
+## Settings
 
 The plugin offers several settings to customize its behavior:
 
@@ -64,7 +82,7 @@ The plugin offers several settings to customize its behavior:
 
 These settings can be accessed from Settings → Community Plugins → Manuscript Timeline → Settings.
 
-### Required Scene Metadata
+## Required Scene Metadata
 
 Scene files must have the following frontmatter:
 - Class: Scene - Identifies the file as a scene and part of the manuscript
@@ -98,7 +116,7 @@ Pending Edits:
 ---
 ```
 
-### Timeline Visualization Elements
+## Timeline Visualization Elements
 
 The timeline displays:
 - Scenes arranged in a circular pattern
@@ -113,7 +131,7 @@ The timeline displays:
 
 Hover over a scene to see its details and click to open the corresponding file.
 
-### Scene Ordering and Numbering
+## Scene Ordering and Numbering
 
 - Scenes are ordered chronologically based on the When date in the frontmatter metadata
 - The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")
@@ -121,7 +139,7 @@ Hover over a scene to see its details and click to open the corresponding file.
 - Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer
 - If scenes have the same When date, they are sub-ordered by their scene number
 
-### Technical Implementation
+## Technical Implementation
 
 The Manuscript Timeline visualization was inspired by and draws on principles from [D3.js](https://d3js.org), a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:
 
@@ -136,14 +154,14 @@ The visualizations are built using pure SVG and JavaScript, offering a lightweig
 
 ## Installation
 
-### From Obsidian
+## From Obsidian
 
 1.  Open Settings > Community plugins.
 2.  Turn off Safe mode if it's on.
 3.  Click Browse and search for "Manuscript Calendar".
 4.  Click Install and then Enable.
 
-### Manual Installation
+## Manual Installation
 
 1.  Download the latest `main.js`, `styles.css`, `manifest.json`, `Readme.md` from the [Releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page of the GitHub repository.
 2.  Extract the files to your vault's `.obsidian/plugins/manuscript-timeline`

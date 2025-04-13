@@ -1,4 +1,27 @@
-@import "https://fonts.googleapis.com/css2?family=Lato:wght@400;900&display=swap";
+/* Define local font faces for Lato */
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 100; /* Thin weight */
+  font-display: swap;
+  src: url('./fonts/lato-v24-latin-100.ttf') format('truetype'); /* Use TTF */
+}
+
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap; /* Use swap for better performance */
+  src: url('./fonts/lato-v24-latin-regular.ttf') format('truetype'); /* Use TTF */
+}
+
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap; /* Use swap for better performance */
+  src: url('./fonts/lato-v24-latin-900.ttf') format('truetype'); /* Use TTF */
+}
 
 /* Main color variables for the manuscript timeline */
 :root {
@@ -147,7 +170,7 @@ dominant-baseline: middle;
 .act-label {
   font-size: 20px;
   font-weight: bold;
-  fill: var(--text-normal);
+  /* fill: var(--text-normal); */ /* Color is now set dynamically in SVG */
   text-anchor: middle;
   dominant-baseline: middle;
 }
@@ -956,14 +979,6 @@ tspan .search-term {
     opacity: .1; /* Corrected opacity back to 30% */
 }
 
-/* SVG Act Labels */
-.svg-act-label {
-  fill: none;
-  stroke: none;
-  pointer-events: none;
-}
-
-
 /* Progress Ring Base (thin gray track underneath) */
 .progress-ring-base {
   fill: none;
@@ -1016,4 +1031,30 @@ tspan .search-term {
     fill: none; /* No fill */
     stroke: #00cc00; /* Bright Green */
     stroke-width: 2px; /* Outline width */
+}
+
+/* Add plugin specific class */
+.manuscript-timeline-plugin .button-container {
+    display: flex;
+    gap: 10px; /* Adjust gap as needed */
+}
+
+/* Add plugin specific class */
+.manuscript-timeline-plugin .button-container {
+    display: flex;
+    gap: 10px; /* Adjust gap as needed */
+}
+
+/* Add plugin specific class */
+.manuscript-timeline-plugin .button-container {
+    display: flex;
+    gap: 10px; /* Adjust gap as needed */
+    align-items: center; /* Align items vertically */
+}
+
+/* Styling for the embedded README container in settings */
+.manuscript-readme-container {
+    padding: 0; 
+    margin-top: 15px;
+    margin-bottom: 20px;
 }
