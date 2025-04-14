@@ -39,11 +39,8 @@ const filesToCopy = [
 	// "screenshot.png" // Removed as it should be referenced via absolute URL in README
 ];
 
-// Function to copy files AND the fonts directory
-async function copyFiles() {
-	const sourceFontsDir = path.join(sourceDir, 'fonts'); // Path to source fonts dir
-	const fontsExist = fs.existsSync(sourceFontsDir);
-
+// Function to copy build assets to destination directories
+async function copyBuildAssets() {
 	for (const destDir of destDirs) {
 		// --- Copy individual files ---
 		for (const file of filesToCopy) {
@@ -68,21 +65,6 @@ async function copyFiles() {
 			}
 		}
 		
-		// --- Copy fonts directory recursively --- START ---
-		if (fontsExist) {
-			const destFontsDir = path.join(destDir, 'fonts'); // Path to dest fonts dir
-			try {
-				// Use fs-extra's copySync for simplicity
-				fsExtra.copySync(sourceFontsDir, destFontsDir, { overwrite: true });
-				console.log(`Copied fonts directory to ${destFontsDir}`);
-			} catch (err) {
-				console.error(`Error copying fonts directory to ${destDir}:`, err);
-			}
-		} else {
-			console.warn(`Warning: Source fonts directory ${sourceFontsDir} does not exist, skipping font copy.`);
-		}
-		// --- Copy fonts directory recursively --- END ---
-
 		// --- Copy main.js ---
 		const mainJsPath = path.join(destDirs[0], "main.js");
 		if (fs.existsSync(mainJsPath) && destDir !== destDirs[0]) {
@@ -130,13 +112,13 @@ const context = await esbuild.context({
 
 if (prod) {
 	await context.rebuild();
-	await copyFiles();
+	await copyBuildAssets();
 	console.log("Production build complete!");
 	process.exit(0);
 } else {
 	await context.watch();
 	// Copy files initially
-	await copyFiles();
+	await copyBuildAssets();
 	console.log("Watching for changes...");
 	
 	// Set up file watchers for non-TS files

@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Script to check for Obsidian.md guideline violations
- * This script scans JavaScript and TypeScript files for innerHTML, outerHTML, and inline CSS usage
+ * Script to check for Obsidian.md guideline violations and TypeScript best practices
+ * This script scans JavaScript and TypeScript files for:
+ * 1. innerHTML, outerHTML, and inline CSS usage (Obsidian guidelines)
+ * 2. Usage of 'any' type in TypeScript files (TypeScript best practices)
  */
 
 import fs from 'fs';
@@ -24,6 +26,7 @@ const PATTERNS = [
 const ALLOWLIST = [
   '// SAFE: innerHTML used for',  // Special comment to mark safe usage
   '// SAFE: inline style used for', // Special comment for inline styles
+  '// SAFE: any type used for',   // Special comment for allowed 'any' types
   'document.createElementNS',     // Safe SVG creation pattern
   'createSvgElement',             // Our safe SVG helper
   '.DOMParser',                   // Using DOM parser is safe
@@ -38,9 +41,28 @@ const ALLOWLIST = [
   'classList.toggle',             // Using classList is the recommended approach
 ];
 
+// TypeScript "any" type check pattern
+const ANY_TYPE_PATTERN = { pattern: /: any\b/g, message: 'TypeScript "any" type' };
+
+// List of allowed 'any' type usage contexts (e.g., log functions)
+const ALLOWED_ANY_CONTEXTS = [
+  'log(message: string, data?: any)',
+  'console.log',
+  'console.error',
+];
+
 // Check if a line with a match should be ignored because it's in the allowlist
-function isInAllowlist(line) {
-  return ALLOWLIST.some(allowedPattern => line.includes(allowedPattern));
+function isInAllowlist(line, pattern) {
+  if (ALLOWLIST.some(allowedPattern => line.includes(allowedPattern))) {
+    return true;
+  }
+  
+  // Special handling for 'any' type in allowed contexts
+  if (pattern === ANY_TYPE_PATTERN.pattern) {
+    return ALLOWED_ANY_CONTEXTS.some(context => line.includes(context));
+  }
+  
+  return false;
 }
 
 // Process a single file
@@ -51,9 +73,13 @@ function processFile(filePath) {
     let hasViolations = false;
     let violations = [];
     
+    // For TypeScript files, also check for 'any' type usage
+    const isTypeScript = filePath.endsWith('.ts');
+    
     lines.forEach((line, lineNumber) => {
+      // Check Obsidian guidelines patterns
       PATTERNS.forEach(({ pattern, message }) => {
-        if (pattern.test(line) && !isInAllowlist(line)) {
+        if (pattern.test(line) && !isInAllowlist(line, pattern)) {
           hasViolations = true;
           violations.push({
             line: lineNumber + 1,
@@ -62,6 +88,19 @@ function processFile(filePath) {
           });
         }
       });
+      
+      // Check TypeScript 'any' types for TS files
+      if (isTypeScript) {
+        const { pattern, message } = ANY_TYPE_PATTERN;
+        if (pattern.test(line) && !isInAllowlist(line, pattern)) {
+          hasViolations = true;
+          violations.push({
+            line: lineNumber + 1,
+            content: line.trim(),
+            message
+          });
+        }
+      }
     });
 
     if (hasViolations) {
@@ -106,9 +145,14 @@ function main() {
     console.error('  - Define styles in CSS classes and apply them with classList.add()');
     console.error('  - If dynamic styling is necessary, create CSS classes with CSS variables');
     
+    console.error('\n\x1b[33mFor TypeScript best practices:\x1b[0m');
+    console.error('  - Avoid using the "any" type - use specific types or unknown instead');
+    console.error('  - If you must use "any", add a comment explaining why: // SAFE: any type used for <reason>');
+    
     console.error('\n\x1b[33mIf you believe this is a false positive, you can add a comment:\x1b[0m');
     console.error('  // SAFE: innerHTML used for <reason>');
-    console.error('  // SAFE: inline style used for <reason>\n');
+    console.error('  // SAFE: inline style used for <reason>');
+    console.error('  // SAFE: any type used for <reason>\n');
     process.exit(1);
   }
 
