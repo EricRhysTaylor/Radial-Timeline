@@ -37,6 +37,9 @@ interface Scene {
     "Publish Stage"?: string; // Add publish stage property
     due?: string; // Add due date property
     pendingEdits?: string; // Add pending edits property
+    "1beats"?: string; // Add 1beats property
+    "2beats"?: string; // Add 2beats property 
+    "3beats"?: string; // Add 3beats property
 }
 
 // Add this interface to store scene number information for the scene square and synopsis
@@ -462,7 +465,7 @@ class SynopsisManager {
      * Escapes special characters in a string for use in a regular expression
      */
     escapeRegExp(string: string): string {
-        return escapeRegExp(string); // Use the shared utility function
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
     
 
@@ -642,19 +645,69 @@ class SynopsisManager {
         
         // Process metadata items with consistent vertical spacing
         if (metadataItems.length > 0) {
-            // Add extra large vertical space between synopsis and metadata
-            metadataY = (synopsisEndIndex * lineHeight) + 45; // Big gap below the synopsis
             
-            // Add invisible spacer element to ensure the gap is preserved
-            const spacerY = (synopsisEndIndex * lineHeight) + 25;
-            const spacerElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            spacerElement.setAttribute("x", "0");
-            spacerElement.setAttribute("y", String(spacerY));
-            spacerElement.setAttribute("font-size", "14px");
-            spacerElement.setAttribute("opacity", "0");
-            spacerElement.textContent = "\u00A0"; // Non-breaking space
-            synopsisTextGroup.appendChild(spacerElement);
+            // Helper function to add a spacer element
+            const addSpacer = (yPosition: number, height: number) => {
+                const spacerElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                spacerElement.setAttribute("class", "synopsis-spacer");
+                spacerElement.setAttribute("x", "0");
+                spacerElement.setAttribute("y", String(yPosition));
+                // Setting font-size to 0, as requested, since constants had no effect
+                spacerElement.setAttribute("font-size", `0px`); 
+                spacerElement.textContent = "\u00A0"; // Non-breaking space
+                spacerElement.setAttribute("opacity", "0"); // Make it invisible
+                synopsisTextGroup.appendChild(spacerElement);
+                // Return value now adds 0 height, placing next block immediately after previous
+                // Need to return the original yPosition so next block starts correctly relative to the last *content* block
+                return yPosition; // Return the STARTING yPosition of the spacer
+            };
+
+            // --- Add Spacer IMMEDIATELY after Synopsis Text ---
+            const synopsisBottomY = synopsisEndIndex * lineHeight;
+            // Call addSpacer with height 0, and store the returned start position
+            let currentMetadataY = addSpacer(synopsisBottomY, 0);
+
+            // Process 1beats metadata if it exists
+            if (scene["1beats"]) {
+                const beatsY = currentMetadataY;
+                const beatsText = scene["1beats"] || '';
+                const linesAdded = this.formatBeatsText(beatsText, synopsisTextGroup, beatsY, lineHeight, 0);
+                currentMetadataY = beatsY + (linesAdded * lineHeight);
+                if (linesAdded > 0) {
+                    // Call addSpacer with height 0, update starting point for next block
+                    currentMetadataY = addSpacer(currentMetadataY, 0);
+                }
+            }
             
+            // Process 2beats metadata if it exists
+            if (scene["2beats"]) {
+                const beatsY = currentMetadataY;
+                const beatsText = scene["2beats"] || '';
+                const linesAdded = this.formatBeatsText(beatsText, synopsisTextGroup, beatsY, lineHeight, 0);
+                currentMetadataY = beatsY + (linesAdded * lineHeight);
+                if (linesAdded > 0) {
+                     // Call addSpacer with height 0, update starting point for next block
+                    currentMetadataY = addSpacer(currentMetadataY, 0);
+                }
+            }
+            
+            // Process 3beats metadata if it exists
+            if (scene["3beats"]) {
+                const beatsY = currentMetadataY;
+                const beatsText = scene["3beats"] || '';
+                const linesAdded = this.formatBeatsText(beatsText, synopsisTextGroup, beatsY, lineHeight, 0);
+                currentMetadataY = beatsY + (linesAdded * lineHeight);
+                if (linesAdded > 0) {
+                    // Call addSpacer with height 0, update starting point for next block
+                    currentMetadataY = addSpacer(currentMetadataY, 0);
+                }
+            }
+            
+            // --- Subplot rendering starts here, using the final currentMetadataY ---
+            // currentMetadataY now holds the Y position *before* the last added spacer (if any)
+            // or after the last content block if no spacer was added.
+            const subplotStartY = currentMetadataY; 
+
             // Process subplots if first metadata item exists
             const decodedMetadataItems = metadataItems.map(item => decodeHtmlEntities(item));
             
@@ -665,7 +718,8 @@ class SynopsisManager {
                         const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
                         subplotTextElement.setAttribute("class", "info-text metadata-text");
                         subplotTextElement.setAttribute("x", "0");
-                        subplotTextElement.setAttribute("y", String(metadataY));
+                        // Use the calculated subplotStartY
+                        subplotTextElement.setAttribute("y", String(subplotStartY)); 
                         subplotTextElement.setAttribute("text-anchor", "start");
                         
                         // Format each subplot with its own color
@@ -693,7 +747,8 @@ class SynopsisManager {
             
             // Process characters - second metadata item
             if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim().length > 0) {
-                const characterY = metadataY + lineHeight;
+                 // Calculate character Y based on subplot position plus standard line height
+                const characterY = subplotStartY + lineHeight; 
                 const characters = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
                     
                 if (characters.length > 0) {
@@ -867,7 +922,7 @@ class SynopsisManager {
         
         // Fixed vertical positions
         const topHalfOffset = -550; // Fixed vertical position from center for top half
-        const bottomHalfOffset = 400; // Updated value for bottom half (Q1, Q2)
+        const bottomHalfOffset = 120; // Updated value for bottom half (Q1, Q2)
         
         // Debug log to troubleshoot
         this.plugin.log(`Processing quadrant: ${quadrant}`);
@@ -1044,6 +1099,8 @@ class SynopsisManager {
      * @param parentElement The SVG element to append processed nodes to
      */
     private processContentWithTspans(content: string, parentElement: SVGElement): void {
+        this.plugin.log(`DEBUG: Processing content with tspans: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`);
+        
         // First decode any HTML entities in the content
         let processedContent = content;
         
@@ -1056,6 +1113,8 @@ class SynopsisManager {
                 .replace(/&quot;/g, '"')
                 .replace(/&apos;/g, "'")
                 .replace(/&amp;/g, '&');
+                
+            this.plugin.log(`DEBUG: Decoded HTML entities in content`);
         }
         
         // Use DOMParser to parse the content safely
@@ -1063,7 +1122,10 @@ class SynopsisManager {
         const doc = parser.parseFromString(`<div>${processedContent}</div>`, 'text/html');
         const container = doc.querySelector('div');
 
-        if (!container) return;
+        if (!container) {
+            this.plugin.log(`DEBUG: Failed to parse HTML content: no container found`);
+            return;
+        }
         
         // Check if there are any direct text nodes
         let hasDirectTextNodes = false;
@@ -1073,6 +1135,8 @@ class SynopsisManager {
             }
         });
         
+        this.plugin.log(`DEBUG: Content has direct text nodes: ${hasDirectTextNodes}`);
+        
         if (hasDirectTextNodes) {
             // Handle mixed content (text nodes and elements)
             container.childNodes.forEach(node => {
@@ -1080,6 +1144,7 @@ class SynopsisManager {
                     // Add text directly
                     if (node.textContent?.trim()) {
                         parentElement.appendChild(document.createTextNode(node.textContent));
+                        this.plugin.log(`DEBUG: Added text node: "${node.textContent}"`);
                     }
                 } else if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === 'tspan') {
                     // Handle tspan element
@@ -1098,12 +1163,15 @@ class SynopsisManager {
                     });
                     
                     svgTspan.textContent = tspan.textContent;
+                    this.plugin.log(`DEBUG: Added tspan element with text: "${tspan.textContent}"`);
                     parentElement.appendChild(svgTspan);
                 }
             });
         } else {
             // Process only tspan elements
             const tspans = container.querySelectorAll('tspan');
+            this.plugin.log(`DEBUG: Found ${tspans.length} tspan elements`);
+            
             tspans.forEach(tspan => {
                 const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                 
@@ -1119,9 +1187,210 @@ class SynopsisManager {
                 });
                 
                 svgTspan.textContent = tspan.textContent;
+                this.plugin.log(`DEBUG: Added tspan element with text: "${tspan.textContent}"`);
                 parentElement.appendChild(svgTspan);
             });
         }
+        
+        // If no content was added to the parent element, add the original text as fallback
+        if (!parentElement.hasChildNodes()) {
+            this.plugin.log(`DEBUG: No content was added, using original text as fallback`);
+            parentElement.textContent = content;
+        }
+    }
+
+    // Add this new method for splitting text into lines
+    private splitTextIntoLines(text: string, maxWidth: number): string[] {
+        // Handle null, undefined, or non-string input
+        if (!text || typeof text !== 'string') {
+            this.plugin.log(`DEBUG: splitTextIntoLines received invalid text: ${text}`);
+            return [''];  // Return an array with a single empty string
+        }
+        
+        // Trim the text to remove leading/trailing whitespace
+        const trimmedText = text.trim();
+        
+        // Check if the trimmed text is empty
+        if (!trimmedText) {
+            this.plugin.log(`DEBUG: splitTextIntoLines received empty or whitespace-only text`);
+            return [''];  // Return an array with a single empty string for empty content
+        }
+        
+        // Simple line splitting based on approximate character count
+        const words = trimmedText.split(/\s+/);
+        const lines: string[] = [];
+        let currentLine = '';
+        const maxCharsPerLine = 50; // Approximately 400px at 16px font size
+        
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            const wordWidth = word.length;
+            
+            if (currentLine.length + wordWidth + 1 > maxCharsPerLine && currentLine !== '') {
+                lines.push(currentLine.trim());
+                currentLine = word;
+            } else {
+                currentLine += (currentLine ? ' ' : '') + word;
+            }
+        }
+        
+        if (currentLine) {
+            lines.push(currentLine.trim());
+        }
+        
+        // If we still end up with no lines, ensure we return something
+        if (lines.length === 0) {
+            this.plugin.log(`DEBUG: splitTextIntoLines produced no lines, returning default`);
+            return [trimmedText]; // Return the trimmed text as a single line
+        }
+        
+        this.plugin.log(`DEBUG: splitTextIntoLines produced ${lines.length} lines from text of length ${text.length}`);
+        return lines;
+    }
+
+    /**
+     * Parse and format beats text according to YAML format:
+     * - Handles YAML format with hyphens and newlines
+     * - Can also handle comma-separated text if not in YAML format
+     * - Applies color based on + (green) or - (red) indicators
+     * - Separates by slash (/) for formatting
+     * @param spacerSize Size of the spacer to add after this beats section (0 for none, 5 for small, 12 for medium)
+     */
+    private formatBeatsText(beatsText: string, parentGroup: SVGElement, baseY: number, lineHeight: number, spacerSize: number = 0): number {
+        if (!beatsText || typeof beatsText !== 'string' || beatsText === 'undefined' || beatsText === 'null') {
+            this.plugin.log(`DEBUG: Empty or invalid beats text, returning`);
+            return 0; // Return 0 lines if empty
+        }
+        
+        this.plugin.log(`DEBUG: Raw beats text format check: "${beatsText.substring(0, 20)}..."`);
+        
+        // Remove any "undefined" or "null" strings that might be in the text
+        beatsText = beatsText.replace(/undefined|null/gi, '').trim();
+        
+        // If after cleaning there's nothing left, return
+        if (!beatsText) {
+            return 0;
+        }
+        
+        // Check if the text is already formatted with hyphens
+        let lines: string[] = [];
+        
+        if (beatsText.trim().includes('\n')) {
+            // Split by line breaks for YAML format
+            lines = beatsText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        } else {
+            // No newlines. Check if it looks like a single YAML-style entry.
+            const trimmedText = beatsText.trim();
+            if (trimmedText.startsWith('-')) {
+                // Starts with '-', treat as a single line, preserving internal commas.
+                if (trimmedText.length > 1) { // Ensure there's content after '-'
+                    lines = [trimmedText];
+                }
+            } else {
+                // No newline, doesn't start with '-': Fallback to splitting by comma for potentially legacy format.
+                lines = trimmedText.split(',').map(item => `- ${item.trim()}`).filter(line => line.length > 2); // Add hyphen prefix here
+                // If splitting by comma yielded nothing useful, but text exists, treat as single item.
+                if (lines.length === 0 && trimmedText.length > 0) {
+                    lines = [`- ${trimmedText}`]; // Add hyphen prefix
+                }
+            }
+        }
+        
+        this.plugin.log(`DEBUG: Processed ${lines.length} beat lines`);
+        
+        let currentY = baseY;
+        let lineCount = 0;
+        
+        // Process each line (either starting with hyphen or converted to start with one)
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            
+            // If line doesn't start with hyphen, add one
+            if (!line.startsWith('-')) {
+                line = `- ${line}`;
+            }
+            
+            // Remove the hyphen and trim
+            let content = line.substring(1).trim();
+            
+            // Skip if empty after removing hyphen
+            if (!content) continue;
+            
+            // Convert to uppercase
+            content = content.toUpperCase();
+            
+            // Check if there's a slash to split the element
+            const slashIndex = content.indexOf('/');
+            let beforeSlash = content;
+            let afterSlash = '';
+            
+            if (slashIndex !== -1) {
+                beforeSlash = content.substring(0, slashIndex).trim();
+                afterSlash = content.substring(slashIndex + 1).trim();
+            }
+            
+            // Create text element for the line
+            const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            textElement.setAttribute("class", "info-text beats-metadata-text");
+            textElement.setAttribute("x", "0");
+            textElement.setAttribute("y", String(currentY));
+            textElement.setAttribute("text-anchor", "start");
+            
+            // Check for + or - for coloring
+            if (beforeSlash.includes('+')) {
+                const positivePart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                positivePart.setAttribute("class", "beats-text-positive");
+                positivePart.textContent = beforeSlash.replace('+', '').trim(); // Remove the + symbol
+                textElement.appendChild(positivePart);
+            } else if (beforeSlash.includes('-')) {
+                const negativePart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                negativePart.setAttribute("class", "beats-text-negative");
+                negativePart.textContent = beforeSlash.replace('-', '').trim(); // Remove the - symbol
+                textElement.appendChild(negativePart);
+            } else {
+                // No + or -, use default styling with solid black
+                const defaultPart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                defaultPart.setAttribute("class", "beats-text-default");
+                defaultPart.textContent = beforeSlash;
+                textElement.appendChild(defaultPart);
+            }
+            
+            // Add the after slash part if it exists
+            if (afterSlash) {
+                const slashPart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                slashPart.textContent = " / " + afterSlash; // Keep the slash character
+                textElement.appendChild(slashPart);
+            }
+            
+            // Add the complete line to the parent
+            parentGroup.appendChild(textElement);
+            
+            // Move to next line
+            currentY += lineHeight;
+            lineCount++;
+        }
+        
+        // Add a blank line after the beats to create spacing based on spacerSize
+        if (spacerSize > 0) {
+            // Use rect element for more reliable spacing
+            const spacerElement = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            spacerElement.setAttribute("class", "beats-spacer");
+            spacerElement.setAttribute("x", "0");
+            spacerElement.setAttribute("y", String(currentY));
+            spacerElement.setAttribute("height", String(spacerSize)); // Use size directly as height
+            spacerElement.setAttribute("width", "5"); // Just needs to exist
+            spacerElement.setAttribute("opacity", "0");
+            parentGroup.appendChild(spacerElement);
+            
+            // Count this spacer as an additional line
+            lineCount++;
+            
+            this.plugin.log(`DEBUG: Added ${lineCount} formatted beat lines (with ${spacerSize}px rect spacer)`);
+        } else {
+            this.plugin.log(`DEBUG: Added ${lineCount} formatted beat lines (no spacer)`);
+        }
+        
+        return lineCount;
     }
 }
 
@@ -1914,7 +2183,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 status: metadata.Status,
                                 "Publish Stage": metadata["Publish Stage"],
                                 due: metadata.Due,
-                                pendingEdits: metadata["Pending Edits"]
+                                pendingEdits: metadata["Pending Edits"],
+                                "1beats": typeof metadata["1beats"] === 'string' ? metadata["1beats"] : String(metadata["1beats"]),
+                                "2beats": typeof metadata["2beats"] === 'string' ? metadata["2beats"] : String(metadata["2beats"]), 
+                                "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : String(metadata["3beats"])
                             });
 
                             // Only log scene data in debug mode, and avoid the noisy scene details
@@ -2910,7 +3182,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 // Ensure we have valid parts before proceeding
                 if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
                     const dueYear = parts[0];
-                    const dueMonth = parts[1] - 1; // Convert 1-based to 0-based month
+                    const dueMonth = parts[1] - 1; // Convert 1-based month
                     const dueDay = parts[2];
                     
                     // Get today's date parts

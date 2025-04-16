@@ -48,9 +48,9 @@ You can find it on GitHub or by searching for "Manuscript Calendar" in the Obsid
 
 ## Commands
 
-* **Open Manuscript Timeline**: Opens the timeline view in the center area
-* **Search Timeline**: Opens a modal to search scenes by title, synopsis, character, subplot, location, or POV
-* **Clear Timeline Search**: Clears the current search results
+* Open Manuscript Timeline: Opens the timeline view in the center area
+* Search Timeline: Opens a modal to search scenes by title, synopsis, character, subplot, location, or POV
+* Clear Timeline Search: Clears the current search results
 
 <a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
   <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px;" />
@@ -75,10 +75,10 @@ You can find it on GitHub or by searching for "Manuscript Calendar" in the Obsid
 
 The plugin offers several settings to customize its behavior:
 
-- **Source Path**: Set the folder containing your scene files (e.g., "Book 1" or "Scenes")
-- **Publishing Stage Colors**: Customize colors for different publishing stages (Zero, Author, House, Press)
-- **Reset to Default Colors**: Restore all color settings to their original values if you've made changes
-- **Debug Mode**: Enable detailed logging in the console (useful for troubleshooting)
+- Source Path: Set the folder containing your scene files (e.g., "Book 1" or "Scenes")
+- Publishing Stage Colors: Customize colors for different publishing stages (Zero, Author, House, Press)
+- Reset to Default Colors: Restore all color settings to their original values if you've made changes
+- Debug Mode: Enable detailed logging in the console (useful for troubleshooting)
 
 These settings can be accessed from Settings → Community Plugins → Manuscript Timeline → Settings.
 
@@ -95,7 +95,40 @@ Scene files must have the following frontmatter:
 - Status - Scene status (Todo, Working, Complete)
 - Due - Due date for the scene
 - Pending Edits - Optional future editing notes
+- 1beats - First Scene beats linking to actively edited scene 2
+- 2beats - Second Scene beats, the active scene
+- 3beats - Third Scene beats linking to scene 2
 
+---
+
+Beats Metadata (1beats, 2beats, 3beats):
+
+API using ChatGPT is implemented under the Plugin Settings. Or you can do this manually. Use the following prompt to generate these beats by comparing the active edit scene with the previous and following scenes to create AI Guidance. 
+
+You are a developmental editor generating narrative beat linkages across a 3-scene arc.
+
+Each beat must:
+- Focus on key dramatic or emotional turns in the scene.
+- End with a '+' if the beat connects well to the surrounding scene, or '-' if it needs improvement.
+- Include a short editorial comment on the connection strength and how to improve if needed.
+
+
+*   Format: Enter beats as a YAML list (each item starting with `- ` on a new line).
+    ```yaml
+    1beats:
+      - 40.5 Protagonist faces setback
+      - Antagonist reveals motive + / Guidance on rising tension
+      - Minor character offers help - / Guidance on hesitation
+    ```
+*   Color Coding (AI Guidance):
+    *   Include `+` within the main beat description (before the `/`) to color it green, indicating the AI guidance suggests this is a strong beat that works well.
+    *   Include `-` within the main beat description (before the `/`) to color it red, indicating the AI guidance suggests this is a weak beat that needs more work.
+    *   Beats without `+` or `-` will use the default text color, indicating a neutral AI assessment or no specific guidance provided.
+    *   Example: `Beat Description + / AI Guidance: This is well developed.`
+*   Secondary Notes/Guidance: Use a forward slash `/` to separate the main beat description (which might include a `+` or `-`) from the specific AI guidance text or other notes. The text after the `/` will appear on the same line in the tooltip. Example: `Beat Description - / AI Guidance: Fix this quick.`
+*   Single Line Entry: If you provide the beats as a single line starting with `- ` (without newlines), it will be treated as one beat entry, preserving any internal commas or slashes.
+
+---
 
 ```yaml
 ---
@@ -112,7 +145,16 @@ Character:
 Publish Stage: Zero
 Status: Complete
 Due: 2025-05-15
-Pending Edits:
+Pending Edits: Optional notes here
+1beats:
+  - 40.5 Initial discovery + / Leads Naturally to scene 45
+  - Realizes artifact is active / Interesting idea
+2beats:
+  - 45 Artifact causes minor chaos - / Needs tighter tie-in to alpha subplot for stronger bridge
+  - Attempts to hide it + / Great twist
+3beats:
+  - 48 Antagonist senses artifact's activation
+  - Plans to investigate + / Serves as the hub for Scene 2's strategy session
 ---
 ```
 
@@ -163,7 +205,7 @@ The visualizations are built using pure SVG and JavaScript, offering a lightweig
 
 ## Manual Installation
 
-1.  Download the latest `main.js`, `styles.css`, `manifest.json`, `Readme.md` from the [Releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page of the GitHub repository.
+1.  Download the latest `main.js`, `styles.css`, `manifest.json` from the [Releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page of the GitHub repository.
 2.  Extract the files to your vault's `.obsidian/plugins/manuscript-timeline`
 
 ## Screen Resolution Requirements
