@@ -283,6 +283,7 @@ dominant-baseline: middle;
     transform 0.1s;
   pointer-events: none;
 }
+
 .number-text {
   fill: #000000;
   transition:
@@ -938,11 +939,6 @@ tspan .search-term {
     /* fill: var(--text-muted); */ /* Keep commented out */
 }
 
-.metadata-text {
-    font-size: 12px;
-    /* fill: var(--text-muted); */ /* Keep commented out */
-}
-
 /* Beat text styles */
 .beats-metadata-text {
   /* font-size: 16px; /* Smaller than synopsis text (18px), larger than metadata (12px) */
@@ -951,8 +947,14 @@ tspan .search-term {
   text-transform: none;
   fill: #666666; /* Default color for the <text> element */
   white-space: nowrap; /* Prevent automatic line wrapping */
+  text-transform: uppercase;
 }
 
+.beats-text-grade {
+  font-size: 16px; /* Let's try 14px, closer to metadata */
+  fill: var(--max-publish-stage-color, var(--text-muted)); /* Darker green for better visibility */
+  font-weight: bold;
+}
 
 .beats-text-positive {
   fill: #2B9348; /* Darker green for better visibility */
@@ -964,11 +966,38 @@ tspan .search-term {
   font-weight: bold;
 }
 
-.beats-text-default {
+.beats-text-neutral {
   fill: #000000; /* Solid black */
   font-weight: bold; /* Match the weight of positive/negative */
 }
 
+
+/* Grade line styles */
+.grade-border-line {
+  stroke-width: 2px; /* Set the thickness of the line */
+  /* Add other line styling if needed, like stroke-linecap: round; */
+}
+
+/* Grade-specific colors */
+.grade-border-line.grade-A {
+  stroke: #00ff48; /*  green */
+}
+.grade-border-line.grade-B {
+  stroke: #ffbb00; /*  yellow */
+}
+.grade-border-line.grade-C {
+  stroke: #ff0000; /*  red */
+}
+
+/* grade line non-selected state for all grades */
+.grade-border-line.non-selected {
+  stroke: none;
+}
+
+/* grade line non-selected state for all grades */
+.grade-border-line.selected {
+  stroke: none;
+}
 
 /* Ensure search terms maintain their color */
 [data-item-type="subplot"] .search-term,

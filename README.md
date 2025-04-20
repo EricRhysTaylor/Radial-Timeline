@@ -98,40 +98,15 @@ Scene files must have the following frontmatter:
 - 1beats - First Scene beats linking to actively edited scene 2
 - 2beats - Second Scene beats, the active scene
 - 3beats - Third Scene beats linking to scene 2
-
+- BeatsUpdate: Yes
 ---
 
-Beats Metadata (1beats, 2beats, 3beats):
+## Beats Metadata (1beats, 2beats, 3beats):
 
-API using ChatGPT is implemented under the Plugin Settings. Or you can do this manually. Use the following prompt to generate these beats by comparing the active edit scene with the previous and following scenes to create AI Guidance. 
+API using ChatGPT is implemented under the Plugin Settings. Automates generation of beats continuuity between select or all vault scenes using Obsidian Command Console 
 
-You are a developmental editor generating narrative beat linkages across a 3-scene arc.
-
-Each beat must:
-- Focus on key dramatic or emotional turns in the scene.
-- End with a '+' if the beat connects well to the surrounding scene, or '-' if it needs improvement.
-- Include a short editorial comment on the connection strength and how to improve if needed.
-
-
-*   Format: Enter beats as a YAML list (each item starting with `- ` on a new line).
-    ```yaml
-    1beats:
-      - 40.5 Protagonist faces setback
-      - Antagonist reveals motive + / Guidance on rising tension
-      - Minor character offers help - / Guidance on hesitation
-    ```
-*   Color Coding (AI Guidance):
-    *   Include `+` within the main beat description (before the `/`) to color it green, indicating the AI guidance suggests this is a strong beat that works well.
-    *   Include `-` within the main beat description (before the `/`) to color it red, indicating the AI guidance suggests this is a weak beat that needs more work.
-    *   Beats without `+` or `-` will use the default text color, indicating a neutral AI assessment or no specific guidance provided.
-    *   Example: `Beat Description + / AI Guidance: This is well developed.`
-*   Secondary Notes/Guidance: Use a forward slash `/` to separate the main beat description (which might include a `+` or `-`) from the specific AI guidance text or other notes. The text after the `/` will appear on the same line in the tooltip. Example: `Beat Description - / AI Guidance: Fix this quick.`
-*   Single Line Entry: If you provide the beats as a single line starting with `- ` (without newlines), it will be treated as one beat entry, preserving any internal commas or slashes.
-
----
 
 ```yaml
----
 Class: Scene
 Synopsis: The protagonist discovers a mysterious artifact.
 Subplot:
@@ -148,14 +123,14 @@ Due: 2025-05-15
 Pending Edits: Optional notes here
 1beats:
   - 40.5 Initial discovery + / Leads Naturally to scene 45
-  - Realizes artifact is active / Interesting idea
+  - Realizes artifact is active ? / Interesting idea
 2beats:
   - 45 Artifact causes minor chaos - / Needs tighter tie-in to alpha subplot for stronger bridge
   - Attempts to hide it + / Great twist
 3beats:
-  - 48 Antagonist senses artifact's activation
+  - 48 Antagonist senses artifact's activation - / The subtext could be stronger
   - Plans to investigate + / Serves as the hub for Scene 2's strategy session
----
+BeatsUpdate: Yes
 ```
 
 ## Timeline Visualization Elements

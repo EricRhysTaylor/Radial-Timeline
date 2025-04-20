@@ -1,7 +1,10 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform } from "obsidian";
 
 // Declare the variable that will be injected by the build process
 declare const EMBEDDED_README_CONTENT: string;
+
+// Import the new beats update function <<< UPDATED IMPORT
+import { processByManuscriptOrder, processBySubplotOrder, testYamlUpdateFormatting } from './BeatsCommands';
 
 interface ManuscriptTimelineSettings {
     sourcePath: string;
@@ -11,8 +14,11 @@ interface ManuscriptTimelineSettings {
         House: string;
         Press: string;
     };
+    logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
+    processedBeatContexts: string[]; // <<< ADDED: Cache for processed triplets
     debug: boolean; // Add debug setting
     targetCompletionDate?: string; // Optional: Target date as yyyy-mm-dd string
+    openaiApiKey?: string; // <<< ADDED: Optional OpenAI API Key
 }
 
 // Constants for the view
@@ -52,15 +58,18 @@ interface SceneNumberInfo {
 }
 
 const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
-    sourcePath: 'Book 1',
+    sourcePath: '',
     publishStageColors: {
-        "Zero": "var(--color-zero)",      // Reference CSS variable
-        "Author": "var(--color-author)",  // Reference CSS variable
-        "House": "var(--color-house)",    // Reference CSS variable
-        "Press": "var(--color-press)"     // Reference CSS variable
+        Zero: '#cccccc', // Default Light Grey
+        Author: '#ffcc00', // Default Yellow
+        House: '#66ccff', // Default Light Blue
+        Press: '#99cc99' // Default Light Green
     },
-    debug: false, // Default to false
-    targetCompletionDate: undefined // Default to undefined
+    logApiInteractions: false, // <<< ADDED: Default for new setting
+    processedBeatContexts: [], // <<< ADDED: Default empty array
+    debug: false,
+    targetCompletionDate: undefined, // Ensure it's undefined by default
+    openaiApiKey: '' // Default to empty string
 };
 
 //a primary color for each status - references CSS variables
@@ -580,7 +589,6 @@ class SynopsisManager {
             const hue = Math.floor(Math.random() * 360);
             const saturation = 60 + Math.floor(Math.random() * 20); // 60-80%
             const lightness = 25 + Math.floor(Math.random() * 15);  // 25-40% - dark enough for contrast
-            this.plugin.log(`Generated subplot color for '${subplot}': hsl(${hue}, ${saturation}%, ${lightness}%)`);
             return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
         };
         
@@ -589,7 +597,6 @@ class SynopsisManager {
             const hue = Math.floor(Math.random() * 360);
             const saturation = 60 + Math.floor(Math.random() * 30); // 60-90%
             const lightness = 30 + Math.floor(Math.random() * 15);  // 30-45%
-            this.plugin.log(`Generated character color for '${character}': hsl(${hue}, ${saturation}%, ${lightness}%)`);
             return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
         };
         
@@ -671,7 +678,7 @@ class SynopsisManager {
             if (scene["1beats"]) {
                 const beatsY = currentMetadataY;
                 const beatsText = scene["1beats"] || '';
-                const linesAdded = this.formatBeatsText(beatsText, synopsisTextGroup, beatsY, lineHeight, 0);
+                const linesAdded = this.formatBeatsText(beatsText, '1beats', synopsisTextGroup, beatsY, lineHeight, 0); // Pass '1beats'
                 currentMetadataY = beatsY + (linesAdded * lineHeight);
                 if (linesAdded > 0) {
                     // Call addSpacer with height 0, update starting point for next block
@@ -683,7 +690,7 @@ class SynopsisManager {
             if (scene["2beats"]) {
                 const beatsY = currentMetadataY;
                 const beatsText = scene["2beats"] || '';
-                const linesAdded = this.formatBeatsText(beatsText, synopsisTextGroup, beatsY, lineHeight, 0);
+                const linesAdded = this.formatBeatsText(beatsText, '2beats', synopsisTextGroup, beatsY, lineHeight, 0); // Pass '2beats'
                 currentMetadataY = beatsY + (linesAdded * lineHeight);
                 if (linesAdded > 0) {
                      // Call addSpacer with height 0, update starting point for next block
@@ -695,7 +702,7 @@ class SynopsisManager {
             if (scene["3beats"]) {
                 const beatsY = currentMetadataY;
                 const beatsText = scene["3beats"] || '';
-                const linesAdded = this.formatBeatsText(beatsText, synopsisTextGroup, beatsY, lineHeight, 0);
+                const linesAdded = this.formatBeatsText(beatsText, '3beats', synopsisTextGroup, beatsY, lineHeight, 0); // Pass '3beats'
                 currentMetadataY = beatsY + (linesAdded * lineHeight);
                 if (linesAdded > 0) {
                     // Call addSpacer with height 0, update starting point for next block
@@ -730,7 +737,6 @@ class SynopsisManager {
                             tspan.setAttribute("data-item-type", "subplot");
                             tspan.setAttribute("fill", color);
                             tspan.setAttribute("style", `fill: ${color} !important`); // Use random color with !important
-                            this.plugin.log(`DEBUG: Setting subplot color to ${color} for "${subplotText}"`);
                             tspan.textContent = subplotText;
                             subplotTextElement.appendChild(tspan);
                             if (j < subplots.length - 1) {
@@ -766,7 +772,6 @@ class SynopsisManager {
                         tspan.setAttribute("data-item-type", "character");
                         tspan.setAttribute("fill", color);
                         tspan.setAttribute("style", `fill: ${color} !important`); // Use random color with !important
-                        this.plugin.log(`DEBUG: Setting character color to ${color} for "${characterText}"`);
                         tspan.textContent = characterText;
                         characterTextElement.appendChild(tspan);
                         if (j < characters.length - 1) {
@@ -856,7 +861,6 @@ class SynopsisManager {
             }
             
             // Set the base transformation to position the synopsis correctly
-            this.plugin.log(`[DEBUG] Setting transform: translate(${x}, ${y})`);
             synopsis.setAttribute('transform', `translate(${x}, ${y})`);
             
             // Ensure the synopsis is visible
@@ -866,16 +870,6 @@ class SynopsisManager {
             
             // Position text elements to follow the arc
             this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf);
-            
-            // Check final state of text elements
-            if (this.plugin.settings.debug) {
-                const textElements = Array.from(synopsis.querySelectorAll('text'));
-                textElements.forEach((el, idx) => {
-                    if (idx <= 2) { // Only log first few elements
-                        this.plugin.log(`[DEBUG] Final text position ${idx}: x=${el.getAttribute('x')}, y=${el.getAttribute('y')}, anchor=${el.getAttribute('text-anchor')}`);
-                    }
-                });
-            }
             
         } catch (e) {
             this.plugin.log("Error in updatePosition:", e);
@@ -1040,15 +1034,15 @@ class SynopsisManager {
                 let xOffset = 0;
                 
                 // Calculate distance for debugging
-                const distanceFromCenter = Math.sqrt(baseX * baseX + absoluteY * absoluteY);
-                this.plugin.log(`Line ${index} distance check: distanceFromCenter=${distanceFromCenter.toFixed(2)}, radius=${radius}`);
+                //const distanceFromCenter = Math.sqrt(baseX * baseX + absoluteY * absoluteY);
+                //this.plugin.log(`Line ${index} distance check: distanceFromCenter=${distanceFromCenter.toFixed(2)}, radius=${radius}`);
                 
                 // Calculate what the x-coordinate would be if this point were on the circle
                 try {
                     const circleX = Math.sqrt(radius * radius - absoluteY * absoluteY);
                     
                     // DEBUG: Log the values we're using
-                    this.plugin.log(`Calculation for line ${index}: isTopHalf=${isTopHalf}, isRightAligned=${isRightAligned}, circleX=${circleX.toFixed(2)}, baseX=${baseX.toFixed(2)}`);
+                   // this.plugin.log(`Calculation for line ${index}: isTopHalf=${isTopHalf}, isRightAligned=${isRightAligned}, circleX=${circleX.toFixed(2)}, baseX=${baseX.toFixed(2)}`);
                     
                     // Calculate the x-offset for this line based on quadrant
                     if (isTopHalf) {
@@ -1073,8 +1067,6 @@ class SynopsisManager {
                         }
                     }
                     
-                    // DEBUG: Log the calculated offset
-                    this.plugin.log(`Calculated xOffset for line ${index}: ${xOffset.toFixed(2)}`);
                 } catch (e) {
                     // If calculation fails (e.g. sqrt of negative), use a fixed offset
                     this.plugin.log(`Error calculating offset for line ${index}: ${e.message}`);
@@ -1249,147 +1241,107 @@ class SynopsisManager {
     }
 
     /**
-     * Parse and format beats text according to YAML format:
-     * - Handles YAML format with hyphens and newlines
-     * - Can also handle comma-separated text if not in YAML format
-     * - Applies color based on + (green) or - (red) indicators
-     * - Separates by slash (/) for formatting
-     * @param spacerSize Size of the spacer to add after this beats section (0 for none, 5 for small, 12 for medium)
+     * Formats and adds beat text lines to an SVG group.
+     * @param beatsText The multi-line string containing beats for one section.
+     * @param beatKey The key identifying the section ('1beats', '2beats', '3beats').
+     * @param parentGroup The SVG group element to append the text elements to.
+     * @param baseY The starting Y coordinate for the first line.
+     * @param lineHeight The vertical distance between lines.
+     * @param spacerSize Size of the spacer to add after this beats section.
      */
-    private formatBeatsText(beatsText: string, parentGroup: SVGElement, baseY: number, lineHeight: number, spacerSize: number = 0): number {
+    private formatBeatsText(beatsText: string, beatKey: '1beats' | '2beats' | '3beats', parentGroup: SVGElement, baseY: number, lineHeight: number, spacerSize: number = 0): number {
+        // START: Restore line splitting logic
         if (!beatsText || typeof beatsText !== 'string' || beatsText === 'undefined' || beatsText === 'null') {
-            this.plugin.log(`DEBUG: Empty or invalid beats text, returning`);
-            return 0; // Return 0 lines if empty
+            return 0; 
         }
-        
-        this.plugin.log(`DEBUG: Raw beats text format check: "${beatsText.substring(0, 20)}..."`);
-        
-        // Remove any "undefined" or "null" strings that might be in the text
         beatsText = beatsText.replace(/undefined|null/gi, '').trim();
-        
-        // If after cleaning there's nothing left, return
         if (!beatsText) {
             return 0;
         }
-        
-        // Check if the text is already formatted with hyphens
         let lines: string[] = [];
-        
         if (beatsText.trim().includes('\n')) {
-            // Split by line breaks for YAML format
             lines = beatsText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         } else {
-            // No newlines. Check if it looks like a single YAML-style entry.
             const trimmedText = beatsText.trim();
             if (trimmedText.startsWith('-')) {
-                // Starts with '-', treat as a single line, preserving internal commas.
-                if (trimmedText.length > 1) { // Ensure there's content after '-'
-                    lines = [trimmedText];
-                }
+                if (trimmedText.length > 1) { lines = [trimmedText]; }
             } else {
-                // No newline, doesn't start with '-': Fallback to splitting by comma for potentially legacy format.
-                lines = trimmedText.split(',').map(item => `- ${item.trim()}`).filter(line => line.length > 2); // Add hyphen prefix here
-                // If splitting by comma yielded nothing useful, but text exists, treat as single item.
+                lines = trimmedText.split(',').map(item => `- ${item.trim()}`).filter(line => line.length > 2); 
                 if (lines.length === 0 && trimmedText.length > 0) {
-                    lines = [`- ${trimmedText}`]; // Add hyphen prefix
+                    lines = [`- ${trimmedText}`]; 
                 }
             }
         }
-        
-        this.plugin.log(`DEBUG: Processed ${lines.length} beat lines`);
-        
+        // END: Restore line splitting logic
+
         let currentY = baseY;
         let lineCount = 0;
-        
-        // Process each line (either starting with hyphen or converted to start with one)
+
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
-            
-            // If line doesn't start with hyphen, add one
-            if (!line.startsWith('-')) {
-                line = `- ${line}`;
-            }
-            
-            // Remove the hyphen and trim
-            let content = line.substring(1).trim();
-            
-            // Skip if empty after removing hyphen
-            if (!content) continue;
-            
-            // Convert to uppercase
-            content = content.toUpperCase();
-            
-            // Check if there's a slash to split the element
-            const slashIndex = content.indexOf('/');
+            if (!line.startsWith('-')) { line = `- ${line}`; }
+            let rawContent = line.substring(1).trim();
+            if (!rawContent) continue;
+
+            const content = rawContent;
             let beforeSlash = content;
             let afterSlash = '';
-            
-            if (slashIndex !== -1) {
-                beforeSlash = content.substring(0, slashIndex).trim();
-                afterSlash = content.substring(slashIndex + 1).trim();
+            let baseTitleClass = 'beats-text-default';
+            let baseCommentClass = 'beats-text-default';
+            let isFirstLineOf2Beats = (beatKey === '2beats' && i === 0);
+
+            const positivePattern = ' + /';
+            const negativePattern = ' - /';
+            const neutralPattern = ' ? /';
+            const positiveIndex = content.indexOf(positivePattern);
+            const negativeIndex = content.indexOf(negativePattern);
+            const neutralIndex = content.indexOf(neutralPattern);
+
+            if (positiveIndex !== -1) {
+                baseTitleClass = 'beats-text-positive';
+                beforeSlash = content.substring(0, positiveIndex).trim();
+                afterSlash = content.substring(positiveIndex + positivePattern.length).trim();
+            } else if (negativeIndex !== -1) {
+                baseTitleClass = 'beats-text-negative';
+                beforeSlash = content.substring(0, negativeIndex).trim();
+                afterSlash = content.substring(negativeIndex + negativePattern.length).trim();
+            } else if (neutralIndex !== -1) {
+                baseTitleClass = 'beats-text-neutral';
+                beforeSlash = content.substring(0, neutralIndex).trim();
+                afterSlash = content.substring(neutralIndex + neutralPattern.length).trim();
+            } else {
+                beforeSlash = content;
+                afterSlash = '';
             }
-            
-            // Create text element for the line
+
+            const finalTitleClass = isFirstLineOf2Beats ? 'beats-text-grade' : baseTitleClass;
+            const finalCommentClass = isFirstLineOf2Beats ? 'beats-text-grade' : baseCommentClass;
+
             const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
             textElement.setAttribute("class", "info-text beats-metadata-text");
             textElement.setAttribute("x", "0");
             textElement.setAttribute("y", String(currentY));
             textElement.setAttribute("text-anchor", "start");
-            
-            // Check for + or - for coloring
-            if (beforeSlash.includes('+')) {
-                const positivePart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                positivePart.setAttribute("class", "beats-text-positive");
-                positivePart.textContent = beforeSlash.replace('+', '').trim(); // Remove the + symbol
-                textElement.appendChild(positivePart);
-            } else if (beforeSlash.includes('-')) {
-                const negativePart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                negativePart.setAttribute("class", "beats-text-negative");
-                negativePart.textContent = beforeSlash.replace('-', '').trim(); // Remove the - symbol
-                textElement.appendChild(negativePart);
-            } else {
-                // No + or -, use default styling with solid black
-                const defaultPart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                defaultPart.setAttribute("class", "beats-text-default");
-                defaultPart.textContent = beforeSlash;
-                textElement.appendChild(defaultPart);
-            }
-            
-            // Add the after slash part if it exists
+
+            const firstTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+            firstTspan.setAttribute("class", finalTitleClass);
+            firstTspan.textContent = beforeSlash;
+            textElement.appendChild(firstTspan);
+
             if (afterSlash) {
                 const slashPart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                slashPart.textContent = " / " + afterSlash; // Keep the slash character
+                slashPart.setAttribute("class", finalCommentClass);
+                slashPart.textContent = " / " + afterSlash;
                 textElement.appendChild(slashPart);
             }
-            
-            // Add the complete line to the parent
+
             parentGroup.appendChild(textElement);
-            
-            // Move to next line
             currentY += lineHeight;
             lineCount++;
         }
         
-        // Add a blank line after the beats to create spacing based on spacerSize
-        if (spacerSize > 0) {
-            // Use rect element for more reliable spacing
-            const spacerElement = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            spacerElement.setAttribute("class", "beats-spacer");
-            spacerElement.setAttribute("x", "0");
-            spacerElement.setAttribute("y", String(currentY));
-            spacerElement.setAttribute("height", String(spacerSize)); // Use size directly as height
-            spacerElement.setAttribute("width", "5"); // Just needs to exist
-            spacerElement.setAttribute("opacity", "0");
-            parentGroup.appendChild(spacerElement);
-            
-            // Count this spacer as an additional line
-            lineCount++;
-            
-            this.plugin.log(`DEBUG: Added ${lineCount} formatted beat lines (with ${spacerSize}px rect spacer)`);
-        } else {
-            this.plugin.log(`DEBUG: Added ${lineCount} formatted beat lines (no spacer)`);
-        }
-        
+        // ... (existing spacer logic) ...
+
         return lineCount;
     }
 }
@@ -1671,11 +1623,12 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     async onload() {
+        console.log('Loading Manuscript Timeline Plugin');
         await this.loadSettings();
-        
-        // Initialize the synopsis manager
+
+        // Initialize SynopsisManager
         this.synopsisManager = new SynopsisManager(this);
-        
+
         // Set CSS variables for publish stage colors
         this.setCSSColorVariables();
         
@@ -1696,7 +1649,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Add commands
         this.addCommand({
             id: 'open-timeline-view',
-            name: 'Open timeline view', // Sentence case
+            name: 'Open', // Sentence case
             callback: () => {
                 this.activateView();
             }
@@ -1704,7 +1657,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         this.addCommand({
             id: 'search-timeline',
-            name: 'Search timeline', // Sentence case
+            name: 'Search Timeline', // Sentence case
             callback: () => {
                 this.openSearchPrompt();
             }
@@ -1712,7 +1665,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         this.addCommand({
             id: 'clear-timeline-search',
-            name: 'Clear timeline search', // Sentence case
+            name: 'Clear Search', // Sentence case
             callback: () => {
                 this.clearSearch();
             }
@@ -1878,6 +1831,162 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 this.updateOpenFilesTracking();
             })
         );
+
+        this.addCommand({
+            id: 'search-timeline',
+            name: 'Search Timeline',
+            callback: () => {
+                this.openSearchPrompt();
+            }
+        });
+
+        this.addCommand({
+            id: 'clear-timeline-search',
+            name: 'Clear Timeline Search',
+            callback: () => {
+                this.clearSearch();
+            }
+        });
+
+        // --- ADD NEW COMMANDS --- 
+        this.addCommand({
+            id: 'update-beats-manuscript-order',
+            name: 'Update Flagged Beats (Manuscript Order)',
+            callback: async () => {
+                const apiKey = this.settings.openaiApiKey;
+                if (!apiKey || apiKey.trim() === '') {
+                    new Notice('OpenAI API key is not set in settings.');
+                    return;
+                }
+                // <<< Wrap console.log with debug check >>>
+                if (this.settings.debug) {
+                    console.log(`[Manuscript Timeline] Update Beats command initiated. Using sourcePath: "${this.settings.sourcePath}"`);
+                }
+                new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
+
+                try {
+                     new Notice('Starting Manuscript Order update...');
+                     await processByManuscriptOrder(this, this.app.vault, apiKey);
+                } catch (error) {
+                    console.error("Error running Manuscript Order beat update:", error);
+                    new Notice("❌ Error during Manuscript Order update.");
+                }
+            }
+        });
+
+        this.addCommand({
+            id: 'update-beats-subplot-order',
+            name: 'Update Flagged Beats (Subplot Order)',
+            callback: async () => {
+                const apiKey = this.settings.openaiApiKey;
+                if (!apiKey || apiKey.trim() === '') {
+                    new Notice('OpenAI API key is not set in settings.');
+                    return;
+                }
+                // <<< Wrap console.log with debug check >>>
+                if (this.settings.debug) {
+                    console.log(`[Manuscript Timeline] Update Beats command initiated. Using sourcePath: "${this.settings.sourcePath}"`);
+                }
+                new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
+                
+                try {
+                    new Notice('Starting Subplot Order update...');
+                    await processBySubplotOrder(this, this.app.vault, apiKey);
+                } catch (error) {
+                    console.error("Error running Subplot Order beat update:", error);
+                    new Notice("❌ Error during Subplot Order update.");
+                }
+            }
+        });
+
+        // Add settings tab
+        this.addSettingTab(new ManuscriptTimelineSettingTab(this.app, this));
+
+        // Register event listeners
+        this.registerEvent(this.app.workspace.on('layout-change', () => { this.updateOpenFilesTracking(); }));
+        this.registerEvent(this.app.metadataCache.on('changed', (file) => { this.refreshTimelineIfNeeded(file); }));
+        this.registerEvent(this.app.vault.on('delete', (file) => { this.refreshTimelineIfNeeded(file); }));
+        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => this.handleFileRename(file, oldPath)));
+
+        // Setup hover listeners (simplified example, original was more complex)
+        // this.registerDomEvent(document, 'mouseover', ...);
+        // this.registerDomEvent(document, 'mouseout', ...);
+
+        console.log('Manuscript Timeline Plugin loaded.');
+
+        this.app.workspace.onLayoutReady(() => {
+            this.setCSSColorVariables(); // Set initial colors
+            this.updateOpenFilesTracking(); // Track initially open files
+        });
+
+         // Register file open/close events
+        this.registerEvent(this.app.workspace.on('file-open', (file) => {
+            if (file) {
+                 // Check if the opened file is within the sourcePath
+                if (this.isSceneFile(file.path)) {
+                    this.openScenePaths.add(file.path);
+                     this.highlightSceneInTimeline(file.path, true);
+                 } 
+            } else {
+                // Handle case where no file is open (e.g., closing the last tab)
+                // Potentially clear highlights or update state
+            }
+            this.refreshTimelineIfNeeded(null); // Refresh potentially needed on file change
+        }));
+
+        this.registerEvent(this.app.workspace.on('layout-change', () => {
+            this.updateOpenFilesTracking();
+            this.refreshTimelineIfNeeded(null);
+        }));
+
+        // Listen for changes, deletions, renames
+        this.registerEvent(this.app.vault.on('modify', (file) => this.refreshTimelineIfNeeded(file)));
+        this.registerEvent(this.app.vault.on('delete', (file) => this.refreshTimelineIfNeeded(file)));
+        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => this.handleFileRename(file, oldPath)));
+
+        // Theme change listener
+        this.registerEvent(this.app.workspace.on('css-change', () => {
+            this.setCSSColorVariables();
+            this.refreshTimelineIfNeeded(null); // Timeline might need redraw if colors change
+        }));
+
+         // Setup hover listeners
+        this.setupHoverListeners();
+
+        // Initial status bar update
+        this.updateStatusBar(); 
+        
+        console.log('Manuscript Timeline Plugin Loaded');
+
+        // <<< ADDED: Command for Beats API testing (DEBUG ONLY) >>>
+        if (this.settings.debug) { // Wrap with this check
+            this.addCommand({
+                id: 'test-yaml-update-format',
+                name: 'Test YAML at AITestDummyScene.md',
+                callback: async () => {
+                    // Call the exported test function
+                    await testYamlUpdateFormatting(this, this.app.vault);
+                }
+            });
+        } // End the debug check wrap
+        // <<< END ADDED >>>
+        
+        this.addCommand({
+            id: 'clear-processed-beats-cache', 
+            name: 'Clear processed beats cache', // Use sentence case
+            callback: async () => {
+                const initialCount = this.settings.processedBeatContexts.length;
+                if (initialCount === 0) {
+                    new Notice('Beats processing cache is already empty.');
+                    return;
+                }
+                this.settings.processedBeatContexts = []; // Clear the array
+                await this.saveSettings(); // Save the change
+                new Notice(`Cleared ${initialCount} cached beat contexts. You can now re-run beat processing.`);
+                this.log(`User cleared processed beats cache. Removed ${initialCount} items.`);
+            }
+        });
+
     }
     
     // Store paths of current hover interactions to avoid redundant processing
@@ -2079,11 +2188,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
             
             if (!foundScene) {
-                console.log(`DEBUG: highlightSceneInTimeline - No scene found for path: ${filePath}`);
                 this.log(`No scene found in timeline matching path: ${filePath}`);
             }
         } catch (error) {
-            console.log(`DEBUG: highlightSceneInTimeline - Error: ${error}`);
             this.log(`Error highlighting scene in timeline: ${error}`);
         }
     }
@@ -2830,6 +2937,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         // Synopses at end to be above all other elements
         const synopsesElements: SVGGElement[] = [];
+        
+        // Create a Map to store grade information by sceneId (NEW)
+        const sceneGrades = new Map<string, string>();
+        
         scenes.forEach((scene) => {
             // Handle undefined subplot with a default "Main Plot"
             const subplot = scene.subplot || "Main Plot";
@@ -2846,6 +2957,22 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             const sceneIndex = scenesInActAndSubplot.indexOf(scene);
             
             const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`; // Keep the old ID format
+            
+            // Extract grade from 2beats here, when we know it's available (NEW)
+            if (scene["2beats"]) {
+                try {
+                    const firstLine2Beats = scene["2beats"].split('\n')[0]?.trim() || '';
+                    // Updated regex to match "[Number] [GradeLetter] / [Comment]"
+                    const gradeMatch = firstLine2Beats.match(/^(?:\d+(?:\.\d+)?\s+)?([ABC])\b\s*\/.*/i);
+                    if (gradeMatch && gradeMatch[1]) {
+                        const grade = gradeMatch[1].toUpperCase();
+                        // Store the grade in our Map
+                        sceneGrades.set(sceneId, grade);
+                    }
+                } catch (e) {
+                    this.log(`[ERROR][EarlyGradeExtract] Error extracting grade: ${e}`);
+                }
+            }
             
             // Skip content generation for placeholder scenes
             if (!scene.title) {
@@ -2975,18 +3102,18 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                         }
                                         
                                         // **Specific Debug Log for Scene Coloring**
-                                        if (this.settings.debug) {
-                                            console.log(`TRACE: Scene Color - Due Date Check for "${scene.title || scene.path}"`, {
-                                                dueString: originalDueString,
-                                                parsedDueYear: dueYear,
-                                                parsedDueMonth: dueMonth + 1, // Log 1-based month
-                                                parsedDueDay: dueDay,
-                                                parsedTodayYear: todayYear,
-                                                parsedTodayMonth: todayMonth + 1, // Log 1-based month
-                                                parsedTodayDay: todayDay,
-                                                comparisonResult_isOverdue: isOverdue
-                                            });
-                                        }
+                                        // if (this.settings.debug) {
+                                        //    console.log(`TRACE: Scene Color - Due Date Check for "${scene.title || scene.path}"`, {
+                                        //        dueString: originalDueString,
+                                        //        parsedDueYear: dueYear,
+                                        //        parsedDueMonth: dueMonth + 1, // Log 1-based month
+                                        //        parsedDueDay: dueDay,
+                                        //        parsedTodayYear: todayYear,
+                                        //        parsedTodayMonth: todayMonth + 1, // Log 1-based month
+                                        //        parsedTodayDay: todayDay,
+                                        //        comparisonResult_isOverdue: isOverdue
+                                        //    });
+                                        // }
                                         
                                         if (isOverdue) {
                                             return STATUS_COLORS.Due; // Return Due color if overdue
@@ -3207,18 +3334,18 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     }
                     
                     // Detailed debug logging
-                    if (this.settings.debug) {
-                        console.log(`TRACE: Status Count Due Date Debug for "${scene.title || scene.path}"`, {
-                            dueString: originalDueString,
-                            parsedDueYear: dueYear,
-                            parsedDueMonth: dueMonth + 1, // Log 1-based month
-                            parsedDueDay: dueDay,
-                            parsedTodayYear: todayYear,
-                            parsedTodayMonth: todayMonth + 1, // Log 1-based month
-                            parsedTodayDay: todayDay,
-                            comparisonResult_isOverdue: isOverdue
-                        });
-                    }
+                    //if (this.settings.debug) {
+                    //    console.log(`TRACE: Status Count Due Date Debug for "${scene.title || scene.path}"`, {
+                    //        dueString: originalDueString,
+                    //        parsedDueYear: dueYear,
+                    //        parsedDueMonth: dueMonth + 1, // Log 1-based month
+                    //        parsedDueDay: dueDay,
+                    //        parsedTodayYear: todayYear,
+                    //        parsedTodayMonth: todayMonth + 1, // Log 1-based month
+                    //        parsedTodayDay: todayDay,
+                    //        comparisonResult_isOverdue: isOverdue
+                    //    });
+                    // }
                     
                     if (isOverdue) {
                         // Non-complete scenes that are past due date are counted as Due
@@ -3481,11 +3608,21 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 const isSceneOpen = scene.path && this.openScenePaths.has(scene.path);
                 const isSearchMatch = this.searchActive && scene.path && this.searchResults.has(scene.path);
 
-                // Add appropriate classes
+                // Declare base classes first
                 let squareClasses = "number-square";
                 if (isSceneOpen) squareClasses += " scene-is-open";
                 if (isSearchMatch) squareClasses += " search-result";
 
+                // Get grade from our Map instead of trying to extract it again
+                const grade = sceneGrades.get(sceneId);
+                if (grade) {
+                    // Log grade information when in debug mode
+                    if (this.settings.debug) {
+                        this.log(`[GradeDebug] Found grade ${grade} for scene ${sceneId}`);
+                    }
+                }
+                
+                // Add the main group for the square and text
                 svg += `
                     <g transform="translate(${squareX}, ${squareY})">
                         <rect 
@@ -3494,8 +3631,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             width="${squareSize.width}" 
                             height="${squareSize.height}" 
                             fill="white"
-                            class="${squareClasses}${hasEdits ? ' has-edits' : ''}"
-                            data-scene-id="${sceneId}"
+                            class="${squareClasses}${hasEdits ? ' has-edits' : ''}" 
+                            data-scene-id="${escapeXml(sceneId)}"
                         />
                         <text 
                             x="0" 
@@ -3503,12 +3640,36 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             text-anchor="middle" 
                             dominant-baseline="middle" 
                             class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}"
-                            data-scene-id="${sceneId}"
+                            data-scene-id="${escapeXml(sceneId)}"
                             dy="0.1em"
                             fill="black"
                         >${number}</text>
                     </g>
                 `;
+
+                // Add the grade line separately if a grade exists
+                if (grade) {
+                    const lineOffset = 2; // Offset from the edge of the rect
+                    const lineX1 = squareX - squareSize.width / 2;
+                    const lineY1 = squareY + squareSize.height / 2 + lineOffset;
+                    const lineX2 = squareX + squareSize.width / 2;
+                    const lineY2 = lineY1; // Horizontal line
+
+                    // Log positioning data when in debug mode
+                    if (this.settings.debug) {
+                        this.log(`[GradeDebug] Adding grade line for ${sceneId} at position: x1=${lineX1}, y1=${lineY1}, x2=${lineX2}, y2=${lineY2}`);
+                    }
+
+                    svg += `
+                        <line 
+                            x1="${lineX1}" y1="${lineY1}" 
+                            x2="${lineX2}" y2="${lineY2}" 
+                            class="grade-border-line grade-${grade}" 
+                            data-scene-id="${escapeXml(sceneId)}" 
+                            stroke-width="2"
+                        />
+                    `;
+                }
             }
         });
         svg += `</g>`;
@@ -3533,21 +3694,30 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         const scriptSection = `
         <script>
             document.querySelectorAll('.scene-group').forEach(sceneGroup => {
-                const scenePath = sceneGroup.querySelector('.scene-path');
-                const sceneId = scenePath.id;
+                const scenePathElement = sceneGroup.querySelector('.scene-path');
+                if (!scenePathElement) return; // Skip if no path element found
+
+                const sceneId = scenePathElement.id;
                 const synopsis = document.querySelector(\`.scene-info[data-for-scene="\${sceneId}"]\`);
-                
+                const gradeLine = document.querySelector(\`.grade-border-line[data-scene-id="\${sceneId}"]\`); // Find the grade line
+
                 sceneGroup.addEventListener('mouseenter', () => {
                     if (synopsis) {
                         synopsis.style.opacity = '1';
                         synopsis.style.pointerEvents = 'all';
                     }
+                    if (gradeLine) { // Check if grade line exists
+                        gradeLine.classList.remove('non-selected'); // Remove non-selected on hover
+                    }
                 });
-                
+
                 sceneGroup.addEventListener('mouseleave', () => {
                     if (synopsis) {
                         synopsis.style.opacity = '0';
                         synopsis.style.pointerEvents = 'none';
+                    }
+                    if (gradeLine) { // Check if grade line exists
+                        gradeLine.classList.add('non-selected'); // Add non-selected on mouse out
                     }
                 });
             });
@@ -3779,11 +3949,13 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     // Method to refresh the timeline if the active view exists
-    refreshTimelineIfNeeded(file: TAbstractFile) {
-        // Only refresh if the file is a markdown file
-        if (!(file instanceof TFile) || file.extension !== 'md') {
+    refreshTimelineIfNeeded(file: TAbstractFile | null | undefined) {
+        // If a specific file is provided, only refresh if it's a markdown file
+        if (file && (!(file instanceof TFile) || file.extension !== 'md')) {
             return;
         }
+        
+        // If file is null/undefined, or if it's a valid markdown file, proceed to refresh
 
         // Get all timeline views
         const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
@@ -4654,12 +4826,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         const estimatedDate = new Date(today);
         estimatedDate.setDate(today.getDate() + Math.ceil(daysNeeded));
-
-        if (this.settings.debug) {
-            this.log(`Timeline Estimate| Inputs - Total: ${totalScenes}, Remaining: ${remainingScenes}, CompletedThisYear: ${completedThisYear}, DaysPassed: ${daysPassedThisYear}, Rate: ${scenesPerDay.toFixed(3)} scenes/day (${scenesPerWeek.toFixed(1)}/week)`);
-            this.log(`Timeline Estimate| Raw Estimated Date Object: ${estimatedDate.toString()}`);
-            this.log(`Estimated completion date: ${estimatedDate.toISOString().split('T')[0]}`);
-        }
         
         return {
             date: estimatedDate,
@@ -4667,6 +4833,32 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             remaining: remainingScenes,
             rate: parseFloat(scenesPerWeek.toFixed(1)) // Use rounded value
         };
+    }
+
+    private handleFileRename(file: TAbstractFile, oldPath: string): void {
+        if (this.openScenePaths.has(oldPath)) {
+            this.openScenePaths.delete(oldPath);
+            if (file instanceof TFile && this.isSceneFile(file.path)) {
+                this.openScenePaths.add(file.path);
+            }
+        }
+        // Add any specific logic needed when a file affecting the timeline is renamed
+        this.refreshTimelineIfNeeded(file);
+    }
+
+    private setupHoverListeners(): void {
+        // ... (Existing hover listener setup) ...
+    }
+
+    // Method to update status bar items if needed
+    private updateStatusBar(): void {
+        // ... (update logic using latestTotalScenes, etc.) ...
+    }
+
+    onunload() {
+        this.app.workspace.detachLeavesOfType(TIMELINE_VIEW_TYPE);
+        console.log('Manuscript Timeline Plugin Unloaded');
+        // Clean up any other resources
     }
 } // End of ManuscriptTimelinePlugin class
 
@@ -4853,94 +5045,128 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
     }
 
     display(): void {
-        const {containerEl} = this;
+        const { containerEl } = this;
         containerEl.empty();
 
-        // --- Settings Section ---
-        // Add source path setting
+        // containerEl.createEl('h2', { text: 'Manuscript Timeline Settings' }); // <<< REMOVING THIS LINE
+
+        // --- Source Path --- 
         new Setting(containerEl)
             .setName('Source path')
             .setDesc('Specify the root folder containing your manuscript scene files.')
             .addText(text => text
+                .setPlaceholder('Example: Manuscript/Scenes')
                 .setValue(this.plugin.settings.sourcePath)
-                    .onChange(async (value) => {
+                .onChange(async (value) => {
                     this.plugin.settings.sourcePath = value;
-                        await this.plugin.saveSettings();
+                    await this.plugin.saveSettings();
                 }));
 
-         // --- Add Target Completion Date Setting --- START ---
+        // --- Target Completion Date --- 
         new Setting(containerEl)
-        .setName('Target completion date') // Sentence case
-        .setDesc('Optional: Set a target date for project completion (YYYY-MM-DD). This will be shown on the timeline.')
-        .addText(text => {
-            text.inputEl.type = 'date'; // Use HTML5 date input
-            text.setValue(this.plugin.settings.targetCompletionDate || '')
+            .setName('Target completion date')
+            .setDesc('Optional: Set a target date for project completion (YYYY-MM-DD). This will be shown on the timeline.')
+            .addText(text => {
+                text.inputEl.type = 'date'; // Use HTML5 date input
+                text.setValue(this.plugin.settings.targetCompletionDate || '')
+                    .onChange(async (value) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+
+                        if (!value) {
+                            this.plugin.settings.targetCompletionDate = undefined;
+                            text.inputEl.removeClass('setting-input-error');
+                            await this.plugin.saveSettings();
+                            return;
+                        }
+
+                        const selectedDate = new Date(value + 'T00:00:00');
+                        if (selectedDate > today) {
+                            this.plugin.settings.targetCompletionDate = value;
+                            text.inputEl.removeClass('setting-input-error');
+                        } else {
+                            new Notice('Target date must be in the future.');
+                            text.setValue(this.plugin.settings.targetCompletionDate || '');
+                            return;
+                        }
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        // --- OpenAI API Key Setting --- 
+        // containerEl.createEl('h3', { text: 'AI Beats Generation (Optional)' }); // <<< REMOVING H3 HEADER
+        new Setting(containerEl)
+            .setName('OpenAI API Key')
+            .setDesc('Your OpenAI API key for using AI features (like Beat Analysis).')
+            .addText(text => text
+                .setPlaceholder('Enter your API key')
+                .setValue(this.plugin.settings.openaiApiKey || '')
+                .onChange(async (value) => {
+                    this.plugin.settings.openaiApiKey = value.trim();
+                    await this.plugin.saveSettings();
+                }));
+                
+        // <<< ADD THIS Setting block for API Logging Toggle >>>
+        new Setting(containerEl)
+            .setName('Log AI Interactions to File')
+            .setDesc('If enabled, create a new note in the "AI" folder for each OpenAI API request/response.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.logApiInteractions)
+                .onChange(async (value) => {
+                    this.plugin.settings.logApiInteractions = value;
+                    await this.plugin.saveSettings();
+                }));
+        // <<< END of added Setting block >>>
+
+        new Setting(containerEl)
+            .setName('Target Completion Date')
+            .setDesc('Optional: Enter your target completion date (YYYY-MM-DD) to estimate progress.')
+            .addText(text => text
+                .setPlaceholder('YYYY-MM-DD')
+                .setValue(this.plugin.settings.targetCompletionDate || '')
                 .onChange(async (value) => {
                     const today = new Date();
-                    today.setHours(0, 0, 0, 0); // Normalize today's date
+                    today.setHours(0, 0, 0, 0);
 
-                    // Allow empty value to clear the date
                     if (!value) {
                         this.plugin.settings.targetCompletionDate = undefined;
                         text.inputEl.removeClass('setting-input-error');
                         await this.plugin.saveSettings();
-                        return; // Exit early if cleared
+                        return;
                     }
 
-                    // Validate the selected date if a value is provided
-                    const selectedDate = new Date(value + 'T00:00:00'); // Use local time
-
+                    const selectedDate = new Date(value + 'T00:00:00');
                     if (selectedDate > today) {
                         this.plugin.settings.targetCompletionDate = value;
                         text.inputEl.removeClass('setting-input-error');
                     } else {
-                        // Don't save invalid date, keep existing or undefined
-                        text.inputEl.addClass('setting-input-error');
                         new Notice('Target date must be in the future.');
-                        // Revert the input value if invalid
                         text.setValue(this.plugin.settings.targetCompletionDate || '');
-                        return; // Don't save invalid date
+                        return;
                     }
-                    await this.plugin.saveSettings();
-                });
-        });
-        // --- Add Target Completion Date Setting --- END ---
-
-        // Add debug mode setting
-        new Setting(containerEl)
-            .setName('Debug mode') // Sentence case
-            .setDesc('Enable debug logging to the console.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.debug)
-                .onChange(async (value) => {
-                    this.plugin.settings.debug = value;
                     await this.plugin.saveSettings();
                 }));
 
-        // --- Publishing Stage Colors Section ---
-        // Add Separator
-        containerEl.createEl('hr', { cls: 'settings-separator' });
+        // --- Publishing Stage Colors --- 
+        // containerEl.createEl('hr', { cls: 'settings-separator' }); // <<< REMOVING HR
+        containerEl.createEl('h2', { text: 'Publishing stage colors'}); // <<< CHANGED to H3, REMOVED CLASS
 
-        containerEl.createEl('h2', {text: 'Publishing stage colors', cls: 'setting-item-heading'});
-
-        // Dynamically create color settings based on the interface keys
         Object.entries(this.plugin.settings.publishStageColors).forEach(([stage, color]) => {
             let textInputRef: TextComponent | undefined;
-        new Setting(containerEl)
+            const setting = new Setting(containerEl)
                 .setName(stage)
                 .addText(textInput => {
                     textInputRef = textInput;
                     textInput.setValue(color)
-                    .onChange(async (value) => {
+                        .onChange(async (value) => {
                             if (this.isValidHex(value)) {
                                 (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = value;
-                        await this.plugin.saveSettings();
-                                // Update the color swatch
-                                const swatch = textInput.inputEl.parentElement?.querySelector('.color-swatch') as HTMLElement;
-                        if (swatch) {
-                            swatch.style.setProperty('--swatch-color', value);
+                                await this.plugin.saveSettings();
+                                const swatch = setting.controlEl.querySelector('.color-swatch') as HTMLElement;
+                                if (swatch) {
+                                    swatch.style.setProperty('--swatch-color', value);
                                 }
-                            }
+                            } // Consider adding feedback for invalid hex
                         });
                 })
                 .addExtraButton(button => {
@@ -4951,44 +5177,41 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                             (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = defaultColor;
                             await this.plugin.saveSettings();
                             textInputRef?.setValue(defaultColor);
-                            // Update the color swatch
-                            const swatch = textInputRef?.inputEl.parentElement?.querySelector('.color-swatch') as HTMLElement;
+                            const swatch = setting.controlEl.querySelector('.color-swatch') as HTMLElement;
                             if (swatch) {
                                 swatch.style.setProperty('--swatch-color', defaultColor);
                             }
                         });
                 });
 
-            // Add color swatch after the text input
-            if (textInputRef) {
-                const swatchContainer = textInputRef.inputEl.parentElement;
-                if (swatchContainer) {
-                    const swatch = document.createElement('div');
-                    swatch.className = 'color-swatch';
-                    swatch.style.setProperty('--swatch-color', color);
-                    swatchContainer.appendChild(swatch);
-                }
-            }
-            });
+            // Add color swatch inside the control element for better alignment
+            this.createColorSwatch(setting.controlEl, color);
+        });
 
+        // --- Debug Setting --- 
+        new Setting(containerEl)
+            .setName('Debug mode')
+            .setDesc('Enable debug logging to the console.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.debug)
+                .onChange(async (value) => {
+                    this.plugin.settings.debug = value;
+                    await this.plugin.saveSettings();
+                }));
+                
         // --- Embedded README Section ---
-        // Add Separator
         containerEl.createEl('hr', { cls: 'settings-separator' });
-
         const readmeContainer = containerEl.createDiv({ cls: 'manuscript-readme-container' });
-
-        // Check if the content was injected - provide fallback if needed
         const readmeMarkdown = typeof EMBEDDED_README_CONTENT !== 'undefined'
             ? EMBEDDED_README_CONTENT
             : 'README content could not be loaded. Please ensure the plugin was built correctly or view the README.md file directly.';
 
-        // Use Obsidian's current MarkdownRenderer API
         MarkdownRenderer.render(
-            this.app, // Pass the app instance
-            readmeMarkdown, // The markdown string from the embedded variable
-            readmeContainer, // The HTML element to render into
-            this.plugin.manifest.dir ?? '', // Source path context (optional but good practice)
-            this.plugin // Component context (optional but good practice)
+            this.app, 
+            readmeMarkdown, 
+            readmeContainer, 
+            this.plugin.manifest.dir ?? '', 
+            this.plugin 
         );
     }
 
@@ -5848,7 +6071,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             // Apply mouseover effects for the group/path
             group.addEventListener("mouseenter", (event: MouseEvent) => {
                 // Reset all previous mouseover effects to ensure clean state
-                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title, .grade-border-line'); // <<< Added grade-border-line here
                 allElements.forEach(element => {
                     // Remove only the selected and non-selected classes, but keep the scene-is-open class
                     element.classList.remove('selected', 'non-selected');
@@ -5863,6 +6086,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     const sceneId = path.id;
                     const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
                     const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                    const gradeLine = svgElement.querySelector(`.grade-border-line[data-scene-id="${sceneId}"]`); // <<< Find the grade line
                     
                     if (numberSquare) {
                         numberSquare.classList.add('selected');
@@ -5870,6 +6094,13 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     
                     if (numberText) {
                         numberText.classList.add('selected');
+                    }
+
+                    // <<< NEW: Add selected class to grade line if it exists
+                    if (gradeLine) {
+                        gradeLine.classList.add('selected'); 
+                        // We also implicitly prevent non-selected from being added later by including it in `allElements` 
+                        // and removing non-selected initially, and then adding selected here.
                     }
                     
                     // Highlight the scene title
@@ -5922,10 +6153,14 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
                 
                 // Reset all element states
-                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title, .grade-border-line'); // <<< Added grade-border-line here
                 allElements.forEach(element => {
                     element.classList.remove('selected', 'non-selected');
                 });
+
+                // REMOVED the explicit re-addition of non-selected to all grade lines
+                // const allGradeLines = svgElement.querySelectorAll('.grade-border-line');
+                // allGradeLines.forEach(line => line.classList.add('non-selected'));
             });
         }
     }

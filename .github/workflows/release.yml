@@ -31,11 +31,11 @@ jobs:
           
           # Create a zip file with the required files
           mkdir $tag
-          cp main.js manifest.json README.md $tag/
+          cp main.js manifest.json styles.css README.md $tag/
           zip -r $tag.zip $tag
           
           # Create GitHub release
           gh release create "$tag" \
             --title "Version $tag" \
             --notes "See [README.md](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/blob/main/README.md) for details." \
-            main.js manifest.json $tag.zip 
+            main.js manifest.json styles.css $tag.zip 
