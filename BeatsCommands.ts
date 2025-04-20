@@ -588,9 +588,9 @@ export async function processByManuscriptOrder(
         }
 
         // Perform replacements on the parsed content
-        parsedBeats['1beats'] = parsedBeats['1beats'].replace(/1beats/gi, prevNum); // Case-insensitive global replace
-        parsedBeats['2beats'] = parsedBeats['2beats'].replace(/2beats/gi, currentNum);
-        parsedBeats['3beats'] = parsedBeats['3beats'].replace(/3beats/gi, nextNum);
+        parsedBeats['1beats'] = parsedBeats['1beats'].replace(/1beats['']?/gi, prevNum); // Case-insensitive global replace with optional apostrophe
+        parsedBeats['2beats'] = parsedBeats['2beats'].replace(/2beats['']?/gi, currentNum);
+        parsedBeats['3beats'] = parsedBeats['3beats'].replace(/3beats['']?/gi, nextNum);
         
         // Log the beats after replacement if debugging
         if (plugin.settings.debug) {
@@ -715,9 +715,9 @@ export async function processBySubplotOrder(
             }
 
             // <<< ADDED: Perform replacements on the parsed content >>>
-            parsedBeats['1beats'] = parsedBeats['1beats'].replace(/1beats/gi, prevNum); // Case-insensitive global replace
-            parsedBeats['2beats'] = parsedBeats['2beats'].replace(/2beats/gi, currentNum);
-            parsedBeats['3beats'] = parsedBeats['3beats'].replace(/3beats/gi, nextNum);
+            parsedBeats['1beats'] = parsedBeats['1beats'].replace(/1beats['']?/gi, prevNum); // Case-insensitive global replace with optional apostrophe
+            parsedBeats['2beats'] = parsedBeats['2beats'].replace(/2beats['']?/gi, currentNum);
+            parsedBeats['3beats'] = parsedBeats['3beats'].replace(/3beats['']?/gi, nextNum);
             
             // <<< ADDED: Log the beats after replacement if debugging >>>
             if (plugin.settings.debug) {

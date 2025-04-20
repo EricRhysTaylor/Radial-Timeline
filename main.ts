@@ -1276,6 +1276,9 @@ class SynopsisManager {
 
         let currentY = baseY;
         let lineCount = 0;
+        
+        // Add a grade border line for the 2beats section if it has a letter grade
+        let detectedGrade: string | null = null;
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i].trim();
@@ -1284,41 +1287,83 @@ class SynopsisManager {
             if (!rawContent) continue;
 
             const content = rawContent;
-            let beforeSlash = content;
-            let afterSlash = '';
-            let baseTitleClass = 'beats-text-default';
-            let baseCommentClass = 'beats-text-default';
             let isFirstLineOf2Beats = (beatKey === '2beats' && i === 0);
 
-            const positivePattern = ' + /';
-            const negativePattern = ' - /';
-            const neutralPattern = ' ? /';
-            const positiveIndex = content.indexOf(positivePattern);
-            const negativeIndex = content.indexOf(negativePattern);
-            const neutralIndex = content.indexOf(neutralPattern);
+            // More robust parsing that can handle different formats
+            let beforeSlash = content;
+            let afterSlash = '';
+            let baseTitleClass = 'beats-text-neutral'; // Default to neutral if no marker is found
+            let hasInsertedSlash = false;
 
-            if (positiveIndex !== -1) {
+            // First check for slash separator
+            const slashIndex = content.indexOf('/');
+            if (slashIndex !== -1) {
+                beforeSlash = content.substring(0, slashIndex).trim();
+                afterSlash = content.substring(slashIndex + 1).trim();
+            }
+
+            // Detect the sign indicators regardless of position
+            // Look for plus, minus, or question mark with surrounding spaces or at the end of text
+            const plusMatch = beforeSlash.match(/\s\+($|\s)/) || beforeSlash.match(/\+$/) || 
+                             (slashIndex === -1 && content.match(/\s\+($|\s)/)) || (slashIndex === -1 && content.match(/\+$/));
+            const minusMatch = beforeSlash.match(/\s\-($|\s)/) || beforeSlash.match(/\-$/) || 
+                              (slashIndex === -1 && content.match(/\s\-($|\s)/)) || (slashIndex === -1 && content.match(/\-$/));
+            const questionMatch = beforeSlash.match(/\s\?($|\s)/) || beforeSlash.match(/\?$/) || 
+                                 (slashIndex === -1 && content.match(/\s\?($|\s)/)) || (slashIndex === -1 && content.match(/\?$/));
+
+            // Determine the style class based on the detected sign
+            if (plusMatch) {
                 baseTitleClass = 'beats-text-positive';
-                beforeSlash = content.substring(0, positiveIndex).trim();
-                afterSlash = content.substring(positiveIndex + positivePattern.length).trim();
-            } else if (negativeIndex !== -1) {
+            } else if (minusMatch) {
                 baseTitleClass = 'beats-text-negative';
-                beforeSlash = content.substring(0, negativeIndex).trim();
-                afterSlash = content.substring(negativeIndex + negativePattern.length).trim();
-            } else if (neutralIndex !== -1) {
+            } else if (questionMatch) {
                 baseTitleClass = 'beats-text-neutral';
-                beforeSlash = content.substring(0, neutralIndex).trim();
-                afterSlash = content.substring(neutralIndex + neutralPattern.length).trim();
-            } else {
-                beforeSlash = content;
-                afterSlash = '';
+            }
+            
+            // If no slash in the original text but we found a sign, split the text at the sign
+            if (slashIndex === -1 && (plusMatch || minusMatch || questionMatch)) {
+                // Find the position of the sign
+                const match = plusMatch || minusMatch || questionMatch;
+                if (match && match.index !== undefined) {
+                    // Extract the text after the sign as the afterSlash content
+                    const signPosition = match.index + match[0].indexOf(match[0].trim());
+                    const afterSignText = content.substring(signPosition + 1).trim();
+                    if (afterSignText) {
+                        afterSlash = afterSignText;
+                        beforeSlash = content.substring(0, signPosition).trim();
+                        hasInsertedSlash = true;
+                    }
+                }
+            }
+            
+            // Clean up the display text by removing the sign if it's found
+            // This handles both "Text +" format and "Text + / Comment" format
+            if (plusMatch || minusMatch || questionMatch) {
+                // Remove the sign from the display text
+                beforeSlash = beforeSlash.replace(/\s[\+\-\?]($|\s)/g, ' ').replace(/[\+\-\?]$/g, '').trim();
+            }
+             // Detect grade letter in 2beats first line
+            
+             if (isFirstLineOf2Beats) {
+                // Look for letter grade (A, B, or C) after the scene number
+                // Format 1: "43 B / Good emotional fallout" (number, grade, slash, comment)
+                // Format 2: "43 B Good emotional fallout" (number, grade, rest of text)
+                // Format 3: "43 B + Good emotional fallout" (number, grade, sign, rest of text)
+                // Also handles lines with punctuation like: "43 B Good emotional fallout but pacing drags; tighten."
+                
+                // Look specifically for a number followed by an A, B, or C at the beginning of the line
+                //const gradeMatch = beforeSlash.match(/^\s*\d+(\.\d+)?\s+([ABC])\b/i);
+                const gradeMatch = beforeSlash.match(/^\s*\d+(\.\d+)?\s+([ABC])(?![A-Za-z0-9])/i);
+                if (gradeMatch && gradeMatch[2]) {
+                    detectedGrade = gradeMatch[2].toUpperCase();
+                }
             }
 
             const finalTitleClass = isFirstLineOf2Beats ? 'beats-text-grade' : baseTitleClass;
-            const finalCommentClass = isFirstLineOf2Beats ? 'beats-text-grade' : baseCommentClass;
+            const finalCommentClass = isFirstLineOf2Beats ? 'beats-text-grade' : 'beats-text';
 
             const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            textElement.setAttribute("class", "info-text beats-metadata-text");
+            textElement.setAttribute("class", "beats-text");
             textElement.setAttribute("x", "0");
             textElement.setAttribute("y", String(currentY));
             textElement.setAttribute("text-anchor", "start");
@@ -1328,10 +1373,10 @@ class SynopsisManager {
             firstTspan.textContent = beforeSlash;
             textElement.appendChild(firstTspan);
 
-            if (afterSlash) {
+            if (afterSlash || hasInsertedSlash) {
                 const slashPart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
                 slashPart.setAttribute("class", finalCommentClass);
-                slashPart.textContent = " / " + afterSlash;
+                slashPart.textContent = " / " + (afterSlash || "");
                 textElement.appendChild(slashPart);
             }
 
@@ -1340,7 +1385,61 @@ class SynopsisManager {
             lineCount++;
         }
         
-        // ... (existing spacer logic) ...
+        // Add grade border if detected
+        if (detectedGrade && beatKey === '2beats') {
+            // Find the scene group this synopsis belongs to
+            const sceneGroup = parentGroup.closest('.scene-group');
+            if (sceneGroup) {
+                // Find the number-square in the scene group
+                const numberSquare = sceneGroup.querySelector('.number-square');
+                if (numberSquare) {
+                    // Add the grade class to the number square
+                    numberSquare.classList.add(`grade-${detectedGrade}`);
+                    
+                    // Create or update the grade border
+                    let gradeBorder = sceneGroup.querySelector('.grade-border-line');
+                    if (!gradeBorder) {
+                        gradeBorder = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                        gradeBorder.setAttribute("class", `grade-border-line grade-${detectedGrade}`);
+                        
+                        // Copy size and position from number-square
+                        const x = numberSquare.getAttribute('x') || "0";
+                        const y = numberSquare.getAttribute('y') || "0";
+                        const width = numberSquare.getAttribute('width') || "0";
+                        const height = numberSquare.getAttribute('height') || "0";
+                        
+                        gradeBorder.setAttribute("x", x);
+                        gradeBorder.setAttribute("y", y);
+                        gradeBorder.setAttribute("width", width);
+                        gradeBorder.setAttribute("height", height);
+                        gradeBorder.setAttribute("fill", "none");
+                        
+                        // Insert the border before the number-square for proper z-index
+                        numberSquare.parentNode?.insertBefore(gradeBorder, numberSquare);
+                    } else {
+                        // Update existing border with the grade class
+                        gradeBorder.setAttribute("class", `grade-border-line grade-${detectedGrade}`);
+                    }
+                }
+            }
+        }
+        
+        // Add spacer at the end of this section if needed
+        if (spacerSize > 0) {
+            const addSpacer = (yPosition: number, height: number) => {
+                const spacer = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                spacer.setAttribute("class", "synopsis-spacer");
+                spacer.setAttribute("x", "0");
+                spacer.setAttribute("y", String(yPosition));
+                spacer.setAttribute("width", "20");
+                spacer.setAttribute("height", String(height));
+                spacer.setAttribute("fill", "transparent");
+                parentGroup.appendChild(spacer);
+            };
+            
+            addSpacer(currentY, spacerSize);
+            currentY += spacerSize;
+        }
 
         return lineCount;
     }
@@ -2548,11 +2647,14 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             `;
         });
 
-        // First add the progress ring (move this BEFORE the month spokes code)
+        // First add the progress ring (RAINBOW YEAR PROGRESS)
         // Calculate year progress
         const now = new Date();
         const startOfYear = new Date(now.getFullYear(), 0, 1);
+        
         const yearProgress = (now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24 * 365);
+        // TEMP TEST: Force full year display to see all colors
+        // const yearProgress = 1; // TEMP TEST: Force 100% to display all segments
 
         // Create progress ring
         const progressRadius = lineInnerRadius + 15;
@@ -2963,8 +3065,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 try {
                     const firstLine2Beats = scene["2beats"].split('\n')[0]?.trim() || '';
                     // Updated regex to match "[Number] [GradeLetter] / [Comment]"
-                    const gradeMatch = firstLine2Beats.match(/^(?:\d+(?:\.\d+)?\s+)?([ABC])\b\s*\/.*/i);
-                    if (gradeMatch && gradeMatch[1]) {
+                    const gradeMatch = firstLine2Beats.match(/^(?:\d+(?:\.\d+)?\s+)?([ABC])(?![A-Za-z0-9])/i);                    if (gradeMatch && gradeMatch[1]) {
                         const grade = gradeMatch[1].toUpperCase();
                         // Store the grade in our Map
                         sceneGrades.set(sceneId, grade);
@@ -3413,7 +3514,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         svg += `
             <g class="color-key-center">
-                <!-- Stage colors column (left) -->
+            <!-- Stage colors column (left) ZERO AUTHOR HOUSE PUBLISH -->
                 ${stageColorEntries.map(([stage, color], index) => {
                     const yPos = startY + (index * centerLineHeight);
                     return `
@@ -3425,7 +3526,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 dominant-baseline="middle" 
                                 text-anchor="end"
                                 class="center-key-text"
-                            >${stage.toUpperCase()}<tspan dx="0.15em" class="status-count" dy="-7" baseline-shift="super">${statusCounts[stage] || 0}</tspan></text>
+                            ><tspan>${stage.toUpperCase()}</tspan><tspan dx="0.0em" class="status-count" dy="-7" baseline-shift="super">${statusCounts[stage] || 0}</tspan></text>
                             
                             <!-- Color SWATCH to the right of text -->
                             <rect 
@@ -3464,14 +3565,14 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 fill="${fillValue}"
                             />
                             
-                            <!-- Status label with left justification -->
+                            <!-- Status label with left justification LEGEND WORKING TODO DUE -->
                             <text 
                                 x="10" 
                                 y="0" 
                                 dominant-baseline="middle" 
                                 text-anchor="start"
                                 class="center-key-text"
-                            >${status.toUpperCase()}<tspan dx="0.15em" class="status-count" dy="-7" baseline-shift="super">${statusCounts[status] || 0}</tspan></text>
+                            ><tspan class="status-count" dy="-7" baseline-shift="super" dx="-0.15em">${statusCounts[status] || 0}</tspan><tspan dy="7">${status.toUpperCase()}</tspan></text>
                         </g>
                     `;
                 }).join('')}

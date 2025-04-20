@@ -933,15 +933,14 @@ tspan .search-term {
     line-height: 1.5;
 }
 
-/* Metadata text styles */
+/* UNUSED????   Metadata text styles
 .metadata-text {
     font-size: 12px;
-    /* fill: var(--text-muted); */ /* Keep commented out */
-}
+
+}*/
 
 /* Beat text styles */
-.beats-metadata-text {
-  /* font-size: 16px; /* Smaller than synopsis text (18px), larger than metadata (12px) */
+.beats-text {
   font-size: 14px; /* Let's try 14px, closer to metadata */
   font-weight: normal;
   text-transform: none;
