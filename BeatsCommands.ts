@@ -404,6 +404,17 @@ function parseGptResult(gptResult: string, plugin: ManuscriptTimelinePlugin): { 
                 .split('\n')
                 .map(line => line.trim())
                 .map(line => line.replace(/,/g, ''))
+                .map(line => {
+                    // For editorial notes with colons, replace them with a different character
+                    // This is particularly important for the first line of 2beats that has the grade and editorial note
+                    
+                    // First, identify if this is a beat line (starts with dash or has dash after trimming)
+                    if (line.includes('-')) {
+                        // Look for patterns like "Clarify: something" and replace the colon
+                        return line.replace(/(\w+):/g, '$1 -');
+                    }
+                    return line;
+                })
                 .filter(line => line.length > 0)
                 .map(line => ` ${line}`)
                 .join('\n');
@@ -588,9 +599,9 @@ export async function processByManuscriptOrder(
         }
 
         // Perform replacements on the parsed content
-        parsedBeats['1beats'] = parsedBeats['1beats'].replace(/1beats['']?/gi, prevNum); // Case-insensitive global replace with optional apostrophe
-        parsedBeats['2beats'] = parsedBeats['2beats'].replace(/2beats['']?/gi, currentNum);
-        parsedBeats['3beats'] = parsedBeats['3beats'].replace(/3beats['']?/gi, nextNum);
+        parsedBeats['1beats'] = parsedBeats['1beats'].replace(/\b1beats\b/gi, prevNum); // Use word boundary for more accurate matching
+        parsedBeats['2beats'] = parsedBeats['2beats'].replace(/\b2beats\b/gi, currentNum);
+        parsedBeats['3beats'] = parsedBeats['3beats'].replace(/\b3beats\b/gi, nextNum);
         
         // Log the beats after replacement if debugging
         if (plugin.settings.debug) {
@@ -660,11 +671,23 @@ export async function processBySubplotOrder(
 
     // Process each subplot group
     for (const [subplotName, scenesInSubplot] of scenesBySubplot.entries()) {
-        new Notice(`Processing subplot: ${subplotName} (${scenesInSubplot.length} scenes)`);
-        
         // Sort scenes within this subplot by scene number
         const sortedScenes = scenesInSubplot.filter(s => s.sceneNumber !== null)
                                         .sort((a, b) => (a.sceneNumber as number) - (b.sceneNumber as number));
+
+        // Only process and show notification if the subplot has scenes flagged for update
+        const hasFlaggedScenes = sortedScenes.some(scene => {
+            const updateFlagValue = String(scene.frontmatter?.BeatsUpdate || '').trim().toLowerCase();
+            return ['yes', 'true', '1'].includes(updateFlagValue);
+        });
+        
+        if (!hasFlaggedScenes) {
+            // Skip this subplot entirely if no scenes need updating
+            continue;
+        }
+        
+        // Only show notice for subplots with scenes that need processing
+        new Notice(`Processing subplot: ${subplotName} (${scenesInSubplot.length} scenes)`);
 
         for (let i = 0; i < sortedScenes.length; i++) {
             const currentScene = sortedScenes[i];
@@ -714,16 +737,15 @@ export async function processBySubplotOrder(
                 continue;
             }
 
-            // <<< ADDED: Perform replacements on the parsed content >>>
-            parsedBeats['1beats'] = parsedBeats['1beats'].replace(/1beats['']?/gi, prevNum); // Case-insensitive global replace with optional apostrophe
-            parsedBeats['2beats'] = parsedBeats['2beats'].replace(/2beats['']?/gi, currentNum);
-            parsedBeats['3beats'] = parsedBeats['3beats'].replace(/3beats['']?/gi, nextNum);
+            // Perform replacements on the parsed content
+            parsedBeats['1beats'] = parsedBeats['1beats'].replace(/\b1beats\b/gi, prevNum); // Use word boundary for more accurate matching
+            parsedBeats['2beats'] = parsedBeats['2beats'].replace(/\b2beats\b/gi, currentNum);
+            parsedBeats['3beats'] = parsedBeats['3beats'].replace(/\b3beats\b/gi, nextNum);
             
-            // <<< ADDED: Log the beats after replacement if debugging >>>
+            // Log the beats after replacement if debugging
             if (plugin.settings.debug) {
                 console.log(`[API Beats][SubplotOrder] Beats content for ${subplotName} after string replacement:`, JSON.stringify(parsedBeats, null, 2));
             }
-            // <<< END ADDED >>>
 
              if (await updateSceneFile(vault, currentScene, parsedBeats, plugin)) {
                  updatesMade++;
@@ -741,19 +763,21 @@ export async function processBySubplotOrder(
 const DUMMY_API_RESPONSE = `1beats:
  - 33.2 Trisan Inner Turmoil - / Lacks clarity
  - Chae Ban Hesitation ? / Uncertain decision
- - Entiat Reflection ? / Needs clearer link
- - Chae Ban Plan + / Strengthens connection
+ - Entiat Reflection ? / Needs clearer link: should explore motive
+ - Chae Ban Plan + / Strengthens connection to 2beats choices
  - Meeting Entiat + / Sets up tension
 2beats:
- - 33.5 B Scene will be stronger by making Entiat motivations clearer
- - Entiat Adoption Reflections ? / Lacks tension link
+ - 33.5 B Scene will be stronger by making Entiat motivations clearer. Clarify: imminent threat
+ - Entiat Adoption Reflections ? / Lacks tension link to events in 1beats
  - Chae Ban Escape News + / Advances plot
- - Entiat Internal Conflict + / Highlights dilemma, how to handle the situation
+ - Entiat Internal Conflict + / Highlights dilemma: how to handle the situation from 1beats
+ - Connection to 3beats + / Sets up the coming conflict
 3beats:
  - 34 Teco Routine Disruption - / Needs purpose
- - Entiat Unexpected Visit ? / Confusing motivation
- - Sasha Defense and Defeat + / Builds tension
- - Teco Escape Decision + / Strong transition`;
+ - Entiat Unexpected Visit ? / Confusing motivation: clarify intention here
+ - Sasha Defense and Defeat + / Builds on tension from 2beats
+ - Teco Escape Decision + / Strong transition
+ - Final Choice + / Resolves arc started in 1beats`;
 
 // <<< ADDED: Exported Test Function >>>
 export async function testYamlUpdateFormatting(

@@ -56,10 +56,14 @@ You can find it on GitHub or by searching for "Manuscript Calendar" in the Obsid
   <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px;" />
 </a>
 
+<a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot2.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
+  <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot2.png" alt="Example Timeline Screenshot Synopsis" style="max-width: 100%; border-radius: 8px;" />
+</a>
+
 <div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
   Click image to view full size in browser
 </div>
-
+  
 ## How to Use
 
 1. Install the plugin in your Obsidian vault
