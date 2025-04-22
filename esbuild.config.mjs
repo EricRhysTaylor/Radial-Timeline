@@ -12,6 +12,7 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = process.argv[2] === "production";
+const isCI = process.env.CI === 'true';
 
 // --- Read README content --- START ---
 const readmePath = path.resolve('README.md'); // Get absolute path to README
@@ -27,10 +28,18 @@ try {
 
 // Define source and destination paths
 const sourceDir = ".";
-const destDirs = [
-	"/Users/erictaylor/Documents/Author/Book Trisan Series/Trisan Obsidian Vault .nosync/.obsidian/plugins/manuscript-timeline",
-	"/Users/erictaylor/Documents/Code Projects/Test Obsidian Vault/.obsidian/plugins/manuscript-timeline"
-];
+let destDirs = [];
+
+// Use a relative output directory when running in CI
+if (isCI) {
+	destDirs = ["./build"];
+} else {
+	// Local development paths
+	destDirs = [
+		"/Users/erictaylor/Documents/Author/Book Trisan Series/Trisan Obsidian Vault .nosync/.obsidian/plugins/manuscript-timeline",
+		"/Users/erictaylor/Documents/Code Projects/Test Obsidian Vault/.obsidian/plugins/manuscript-timeline"
+	];
+}
 
 // Files to copy (in addition to the built JS)
 const filesToCopy = [
@@ -42,6 +51,11 @@ const filesToCopy = [
 // Function to copy build assets to destination directories
 async function copyBuildAssets() {
 	for (const destDir of destDirs) {
+		// Ensure the destination directory exists
+		if (!fs.existsSync(destDir)) {
+			fs.mkdirSync(destDir, { recursive: true });
+		}
+		
 		// --- Copy individual files ---
 		for (const file of filesToCopy) {
 			const sourcePath = path.join(sourceDir, file);
@@ -66,13 +80,27 @@ async function copyBuildAssets() {
 		}
 		
 		// --- Copy main.js ---
-		const mainJsPath = path.join(destDirs[0], "main.js");
-		if (fs.existsSync(mainJsPath) && destDir !== destDirs[0]) {
-			try {
-				fs.copyFileSync(mainJsPath, path.join(destDir, "main.js"));
-			} catch (err) {
-				console.error(`Error copying main.js to ${destDir}:`, err);
+		if (destDirs.length > 1) {
+			const mainJsPath = path.join(destDirs[0], "main.js");
+			if (fs.existsSync(mainJsPath) && destDir !== destDirs[0]) {
+				try {
+					fs.copyFileSync(mainJsPath, path.join(destDir, "main.js"));
+				} catch (err) {
+					console.error(`Error copying main.js to ${destDir}:`, err);
+				}
 			}
+		}
+	}
+	
+	// When running in CI, copy the built files back to the project root for releases
+	if (isCI) {
+		try {
+			if (fs.existsSync(path.join(destDirs[0], "main.js"))) {
+				fs.copyFileSync(path.join(destDirs[0], "main.js"), path.join(sourceDir, "main.js"));
+				console.log("Copied main.js to project root for release");
+			}
+		} catch (err) {
+			console.error("Error copying main.js to project root:", err);
 		}
 	}
 	
