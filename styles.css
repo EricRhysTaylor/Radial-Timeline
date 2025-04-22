@@ -498,21 +498,27 @@ tspan .search-term {
 .number-square.has-edits {
   fill: #8875ff;
 }
+
 .number-square.has-edits.search-result {
   fill: #FFCC00;
 }
-
+.number-square.has-edits.scene-is-open {
+  fill: var(--interactive-accent, #705DCF); 
+}
+.number-square.has-edits.non-selected {
+  fill: #EFEFEF !important;
+}
 .number-square.has-edits.scene-is-open.non-selected {
-  fill: #EFEFEF;
+ fill: #EFEFEF;
 }
 .number-text.has-edits.scene-is-open.non-selected {
   fill: #ffffff;
 }
-.number-text.has-edits.scene-is-open.non-selected {
-  fill: #FFFFFF;
+.number-text.has-edits.scene-is-open.selected {
+  fill: #ffffff;
 }
 .number-text.has-edits.search-result.selected {
-  fill: #000000;
+  fill: #ffffff;
   font-weight: bold;
 }
 .clear-search-btn {

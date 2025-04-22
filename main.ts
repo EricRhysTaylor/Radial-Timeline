@@ -1252,7 +1252,7 @@ class SynopsisManager {
     private formatBeatsText(beatsText: string, beatKey: '1beats' | '2beats' | '3beats', parentGroup: SVGElement, baseY: number, lineHeight: number, spacerSize: number = 0): number {
         // START: Restore line splitting logic
         if (!beatsText || typeof beatsText !== 'string' || beatsText === 'undefined' || beatsText === 'null') {
-            return 0; 
+            return 0;
         }
         beatsText = beatsText.replace(/undefined|null/gi, '').trim();
         if (!beatsText) {
@@ -1266,17 +1266,62 @@ class SynopsisManager {
             if (trimmedText.startsWith('-')) {
                 if (trimmedText.length > 1) { lines = [trimmedText]; }
             } else {
-                lines = trimmedText.split(',').map(item => `- ${item.trim()}`).filter(line => line.length > 2); 
+                lines = trimmedText.split(',').map(item => `- ${item.trim()}`).filter(line => line.length > 2);
                 if (lines.length === 0 && trimmedText.length > 0) {
-                    lines = [`- ${trimmedText}`]; 
+                    lines = [`- ${trimmedText}`];
                 }
             }
         }
         // END: Restore line splitting logic
 
+        // Add this after the line splitting logic but before the for loop
+        // Around line 1275-1280, right after "// END: Restore line splitting logic"
+
+        // Pre-process lines that are too long (specifically for 2beats)
+        if (beatKey === '2beats' && lines.length > 0) {
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                
+                // First extract any grade notation like [B]
+                let gradePrefix = "";
+                const gradeMatch = line.match(/^\s*(\[[A-Z][+-]?\]\s*)/);
+                if (gradeMatch) {
+                    gradePrefix = gradeMatch[1];
+                    line = line.substring(gradeMatch[0].length).trim();
+                }
+                
+                // Instead of building word-based segments, split on commas directly
+                if (line.includes(',')) {
+                    // Split by commas and create new lines from each segment
+                    const segments = line.split(',').map(segment => segment.trim()).filter(segment => segment.length > 0);
+                    
+                    if (segments.length > 1) {
+                        // First segment keeps the grade prefix
+                        const firstSegment = segments.shift() || '';
+                        const processedLines = [
+                            gradePrefix ? `${gradePrefix} ${firstSegment}` : firstSegment,
+                            ...segments.map(segment => `- ${segment}`)
+                        ];
+                        
+                        // Replace current line with expanded lines
+                        lines.splice(i, 1, ...processedLines);
+                        
+                        // Adjust i to account for the new lines
+                        i += processedLines.length - 1;
+                        continue;
+                    }
+                }
+                
+                // If line has a grade prefix but no commas, reattach the grade prefix
+                if (gradePrefix) {
+                    lines[i] = `${gradePrefix} ${line}`;
+                }
+            }
+        }
+
         let currentY = baseY;
         let lineCount = 0;
-        
+    
         // Add a grade border line for the 2beats section if it has a letter grade
         let detectedGrade: string | null = null;
 
@@ -1321,21 +1366,21 @@ class SynopsisManager {
             }
             
             // If no slash in the original text but we found a sign, split the text at the sign
-            if (slashIndex === -1 && (plusMatch || minusMatch || questionMatch)) {
+             if (slashIndex === -1 && (plusMatch || minusMatch || questionMatch)) {
                 // Find the position of the sign
-                const match = plusMatch || minusMatch || questionMatch;
-                if (match && match.index !== undefined) {
+                 const match = plusMatch || minusMatch || questionMatch;
+                 if (match && match.index !== undefined) {
                     // Extract the text after the sign as the afterSlash content
-                    const signPosition = match.index + match[0].indexOf(match[0].trim());
+                     const signPosition = match.index + match[0].indexOf(match[0].trim());
                     const afterSignText = content.substring(signPosition + 1).trim();
-                    if (afterSignText) {
-                        afterSlash = afterSignText;
+                     if (afterSignText) {
+                         afterSlash = afterSignText;
                         beforeSlash = content.substring(0, signPosition).trim();
-                        hasInsertedSlash = true;
-                    }
-                }
-            }
-            
+                         hasInsertedSlash = true;
+                     }
+                 }
+             }
+
             // Clean up the display text by removing the sign if it's found
             // This handles both "Text +" format and "Text + / Comment" format
             if (plusMatch || minusMatch || questionMatch) {
@@ -1368,10 +1413,10 @@ class SynopsisManager {
             textElement.setAttribute("y", String(currentY));
             textElement.setAttribute("text-anchor", "start");
 
-            const firstTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                     const firstTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
             firstTspan.setAttribute("class", finalTitleClass);
-            firstTspan.textContent = beforeSlash;
-            textElement.appendChild(firstTspan);
+                     firstTspan.textContent = beforeSlash;
+                     textElement.appendChild(firstTspan);
 
             if (afterSlash || hasInsertedSlash) {
                 const slashPart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
@@ -1384,7 +1429,7 @@ class SynopsisManager {
             currentY += lineHeight;
             lineCount++;
         }
-        
+
         // Add grade border if detected
         if (detectedGrade && beatKey === '2beats') {
             // Find the scene group this synopsis belongs to
@@ -1395,12 +1440,12 @@ class SynopsisManager {
                 if (numberSquare) {
                     // Add the grade class to the number square
                     numberSquare.classList.add(`grade-${detectedGrade}`);
-                    
+
                     // Create or update the grade border
                     let gradeBorder = sceneGroup.querySelector('.grade-border-line');
-                    if (!gradeBorder) {
+                     if (!gradeBorder) {
                         gradeBorder = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-                        gradeBorder.setAttribute("class", `grade-border-line grade-${detectedGrade}`);
+                         gradeBorder.setAttribute("class", `grade-border-line grade-${detectedGrade}`);
                         
                         // Copy size and position from number-square
                         const x = numberSquare.getAttribute('x') || "0";
@@ -1415,15 +1460,15 @@ class SynopsisManager {
                         gradeBorder.setAttribute("fill", "none");
                         
                         // Insert the border before the number-square for proper z-index
-                        numberSquare.parentNode?.insertBefore(gradeBorder, numberSquare);
-                    } else {
+                         numberSquare.parentNode?.insertBefore(gradeBorder, numberSquare);
+                     } else {
                         // Update existing border with the grade class
-                        gradeBorder.setAttribute("class", `grade-border-line grade-${detectedGrade}`);
-                    }
-                }
-            }
+                         gradeBorder.setAttribute("class", `grade-border-line grade-${detectedGrade}`);
+                     }
+                 }
+             }
         }
-        
+
         // Add spacer at the end of this section if needed
         if (spacerSize > 0) {
             const addSpacer = (yPosition: number, height: number) => {
@@ -1438,11 +1483,11 @@ class SynopsisManager {
             };
             
             addSpacer(currentY, spacerSize);
-            currentY += spacerSize;
+                currentY += spacerSize;
         }
 
         return lineCount;
-    }
+      }
 }
 
 export default class ManuscriptTimelinePlugin extends Plugin {
@@ -3740,7 +3785,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                             y="0" 
                             text-anchor="middle" 
                             dominant-baseline="middle" 
-                            class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}"
+                            class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}${hasEdits ? ' has-edits' : ''}"
                             data-scene-id="${escapeXml(sceneId)}"
                             dy="0.1em"
                             fill="black"
@@ -6211,10 +6256,10 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     }
                 }
                 
-                // Make other scenes less prominent
+                // Make other scenes less prominent, but preserve has-edits styling
                 allElements.forEach(element => {
                     if (!element.classList.contains('selected')) {
-                        // Apply non-selected class even to open scenes when hovering other scenes
+                        // Apply non-selected class to all non-hovered elements.
                         element.classList.add('non-selected');
                     }
                 });
