@@ -22,16 +22,6 @@ A manuscript timeline for creative fiction writing projects that displays scenes
 
 This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in chronological order, to depict each scene. Various cues and interactions are available through a search feature that highlights the search term throughout and mouse-over functionality, revealing summary information in a colorful style. Hopefully, this will provide another method for tracking the progress of your manuscript and making it easier to stay on schedule and focused.
 
-<div style="border-radius: 8px; padding: 15px; margin: 15px 0;">
-Sister Plugin Manuscript Calendar
-
-Looking for a more compact way to track scene progress and key dates?
-Check out the complementary [Manuscript Calendar](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Calendar) plugin!
-It provides a compact calendar view in the sidebar, showing revision status and key dates.
-
-You can find it on GitHub or by searching for "Manuscript Calendar" in the Obsidian Community Plugins browser.
-</div>
-
 ## Features
 
 - Creates an interactive radial timeline visualization of your scenes

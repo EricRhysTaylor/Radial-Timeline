@@ -1,4 +1,4 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component } from "obsidian";
 
 // Declare the variable that will be injected by the build process
 declare const EMBEDDED_README_CONTENT: string;
@@ -3728,15 +3728,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     const height = 18;
                     if (num.includes('.')) {
                         return {
-                            width: num.length <= 3 ? 24 : 
-                                    num.length <= 4 ? 32 : 
+                            width: num.length <= 3 ? 24 :
+                                    num.length <= 4 ? 32 :
                                     36,
                             height: height
                         };
                     } else {
                         return {
-                            width: num.length === 1 ? 20 : 
-                                    num.length === 2 ? 24 : 
+                            width: num.length === 1 ? 20 :
+                                    num.length === 2 ? 24 :
                                     28,
                             height: height
                         };
@@ -5280,7 +5280,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                     this.plugin.settings.openaiApiKey = value.trim();
                     await this.plugin.saveSettings();
                 }));
-
+                
 
         // --- OpenAI Model Selection ---
         const modelSetting = new Setting(containerEl)
@@ -5298,12 +5298,9 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                     });
             });
 
-        // --- ANTHROPIC SECTION ---
-        const anthropicHeader = containerEl.createEl('div', { 
-            text: 'Anthropic Claude Settings',
-            cls: 'settings-section-header'
-        });
-        // SAFE: Using classList instead of inline styles
+        // --- Anthropic Claude SECTION ---
+        containerEl.createEl('h2', { text: 'Anthropic Claude Settings'});
+
         
         // --- Anthropic API Key Setting ---
         const anthropicSetting = new Setting(containerEl)
@@ -5339,7 +5336,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.logApiInteractions = value;
                     await this.plugin.saveSettings();
-            }));
+                }));
         // <<< END of added Setting block >>>
 
         // --- Debug Mode Setting ---
@@ -5392,7 +5389,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             // Add color swatch inside the control element for better alignment
             this.createColorSwatch(setting.controlEl, color);
         });
-
+                
         // --- Embedded README Section ---
         containerEl.createEl('hr', { cls: 'settings-separator' });
         const readmeContainer = containerEl.createDiv({ cls: 'manuscript-readme-container' });
@@ -5405,7 +5402,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             readmeMarkdown, 
             readmeContainer, 
             this.plugin.manifest.dir ?? '', 
-            this.plugin 
+            this as unknown as Component // Double cast to satisfy TypeScript and avoid Memory leak
         );
     }
 
