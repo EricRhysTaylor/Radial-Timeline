@@ -1,4 +1,4 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent } from "obsidian";
 
 // Declare the variable that will be injected by the build process
 declare const EMBEDDED_README_CONTENT: string;
@@ -19,6 +19,12 @@ interface ManuscriptTimelineSettings {
     debug: boolean; // Add debug setting
     targetCompletionDate?: string; // Optional: Target date as yyyy-mm-dd string
     openaiApiKey?: string; // <<< ADDED: Optional OpenAI API Key
+    anthropicApiKey?: string; // <<< ADDED: Anthropic API Key
+    anthropicModelId?: string; // <<< ADDED: Selected Anthropic Model ID
+    defaultAiProvider?: 'openai' | 'anthropic'; // <<< ADDED: Default AI provider
+    openaiModelId?: string; // <<< ADDED: Selected OpenAI Model ID
+    // Optional: Store the fetched models list to avoid refetching?
+    // availableOpenAiModels?: { id: string, description?: string }[];
 }
 
 // Constants for the view
@@ -69,7 +75,11 @@ const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
     processedBeatContexts: [], // <<< ADDED: Default empty array
     debug: false,
     targetCompletionDate: undefined, // Ensure it's undefined by default
-    openaiApiKey: '' // Default to empty string
+    openaiApiKey: '', // Default to empty string
+    anthropicApiKey: '', // <<< ADDED: Default empty string
+    anthropicModelId: 'claude-3-7-sonnet-20240729', // <<< ADDED: Default to latest Sonnet
+    defaultAiProvider: 'openai', // <<< ADDED: Default to OpenAI
+    openaiModelId: 'gpt-4o' // <<< ADDED: Default to gpt-4o
 };
 
 //a primary color for each status - references CSS variables
@@ -2010,7 +2020,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
                 try {
                      new Notice('Starting Manuscript Order update...');
-                     await processByManuscriptOrder(this, this.app.vault, apiKey);
+                     await processByManuscriptOrder(this, this.app.vault);
                 } catch (error) {
                     console.error("Error running Manuscript Order beat update:", error);
                     new Notice("❌ Error during Manuscript Order update.");
@@ -2035,7 +2045,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 
                 try {
                     new Notice('Starting Subplot Order update...');
-                    await processBySubplotOrder(this, this.app.vault, apiKey);
+                    await processBySubplotOrder(this, this.app.vault);
                 } catch (error) {
                     console.error("Error running Subplot Order beat update:", error);
                     new Notice("❌ Error during Subplot Order update.");
@@ -3718,15 +3728,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     const height = 18;
                     if (num.includes('.')) {
                         return {
-                            width: num.length <= 3 ? 24 :
-                                    num.length <= 4 ? 32 :
+                            width: num.length <= 3 ? 24 : 
+                                    num.length <= 4 ? 32 : 
                                     36,
                             height: height
                         };
                     } else {
                         return {
-                            width: num.length === 1 ? 20 :
-                                    num.length === 2 ? 24 :
+                            width: num.length === 1 ? 20 : 
+                                    num.length === 2 ? 24 : 
                                     28,
                             height: height
                         };
@@ -4532,7 +4542,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     // Performance optimization: Add directly to fragment
                     const fragment = document.createDocumentFragment();
                     fragment.appendChild(svgElement);
-                    container.appendChild(fragment);
                     
                     console.log(`SVG parsing fallback took ${performance.now() - startTime}ms`);
                     return svgElement;
@@ -5194,7 +5203,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        // containerEl.createEl('h2', { text: 'Manuscript Timeline Settings' }); // <<< REMOVING THIS LINE
+
 
         // --- Source Path --- 
         new Setting(containerEl)
@@ -5239,11 +5248,31 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                     });
             });
 
-        // --- OpenAI API Key Setting --- 
-        // containerEl.createEl('h3', { text: 'AI Beats Generation (Optional)' }); // <<< REMOVING H3 HEADER
+        // --- AI Settings for Beats Analysis ---
+        containerEl.createEl('h2', { text: 'AI Settings for Beats Analysis'});
+        
+
+        // --- Default AI Provider Setting ---
         new Setting(containerEl)
+        .setName('Default AI Provider')
+        .setDesc('Select the default AI provider to use for AI features like Beat Analysis.')
+        .addDropdown(dropdown => dropdown
+            .addOption('openai', 'OpenAI (ChatGPT)')
+            .addOption('anthropic', 'Anthropic (Claude)')
+            .setValue(this.plugin.settings.defaultAiProvider || 'openai')
+            .onChange(async (value) => {
+                this.plugin.settings.defaultAiProvider = value as 'openai' | 'anthropic';
+                await this.plugin.saveSettings();
+            }));
+
+        // --- OpenAI ChatGPT SECTION ---
+        containerEl.createEl('h2', { text: 'OpenAI ChatGPT Settings'});
+
+
+        // --- OpenAI API Key Setting ---
+        const openaiSetting = new Setting(containerEl) // <<< ADD const openaiSetting = here (line 5252)
             .setName('OpenAI API Key')
-            .setDesc('Your OpenAI API key for using AI features (like Beat Analysis).')
+            .setDesc('Your OpenAI API key for using ChatGPT AI features.')
             .addText(text => text
                 .setPlaceholder('Enter your API key')
                 .setValue(this.plugin.settings.openaiApiKey || '')
@@ -5251,7 +5280,56 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                     this.plugin.settings.openaiApiKey = value.trim();
                     await this.plugin.saveSettings();
                 }));
-                
+
+
+        // --- OpenAI Model Selection ---
+        const modelSetting = new Setting(containerEl)
+            .setName('OpenAI Model')
+            .setDesc('Select the OpenAI model to use.')
+            .addDropdown((dropdown) => {
+                // Add only the top models for creative fiction
+                dropdown.addOption('gpt-4o', 'GPT-4o (Recommended)')
+                    .addOption('gpt-4-turbo', 'GPT-4 Turbo')
+                    .addOption('gpt-4', 'GPT-4')
+                    .setValue(this.plugin.settings.openaiModelId || 'gpt-4o')
+                    .onChange(async (value) => {
+                        this.plugin.settings.openaiModelId = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        // --- ANTHROPIC SECTION ---
+        const anthropicHeader = containerEl.createEl('div', { 
+            text: 'Anthropic Claude Settings',
+            cls: 'settings-section-header'
+        });
+        // SAFE: Using classList instead of inline styles
+        
+        // --- Anthropic API Key Setting ---
+        const anthropicSetting = new Setting(containerEl)
+            .setName('Anthropic API Key')
+            .setDesc('Your Anthropic API key for using Claude AI features.')
+            .addText(text => text
+                .setPlaceholder('Enter your Anthropic API key')
+                .setValue(this.plugin.settings.anthropicApiKey || '')
+                .onChange(async (value) => {
+                    this.plugin.settings.anthropicApiKey = value.trim();
+                    await this.plugin.saveSettings();
+                }));
+
+        // --- Anthropic Model Selection ---
+        new Setting(containerEl)
+            .setName('Anthropic Model')
+            .setDesc('Select the Claude model to use.')
+            .addDropdown(dropdown => {
+                // Add the common Claude models
+                dropdown.addOption('claude-3-7-sonnet-20240729', 'Claude 3.7 Sonnet')
+                    .onChange(async (value) => {
+                        this.plugin.settings.anthropicModelId = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
         // <<< ADD THIS Setting block for API Logging Toggle >>>
         new Setting(containerEl)
             .setName('Log AI Interactions to File')
@@ -5261,40 +5339,21 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.logApiInteractions = value;
                     await this.plugin.saveSettings();
-                }));
+            }));
         // <<< END of added Setting block >>>
 
+        // --- Debug Mode Setting ---
         new Setting(containerEl)
-            .setName('Target Completion Date')
-            .setDesc('Optional: Enter your target completion date (YYYY-MM-DD) to estimate progress.')
-            .addText(text => text
-                .setPlaceholder('YYYY-MM-DD')
-                .setValue(this.plugin.settings.targetCompletionDate || '')
+            .setName('Debug mode')
+            .setDesc('Enable debug logging to the console for troubleshooting.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.debug)
                 .onChange(async (value) => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-
-                    if (!value) {
-                        this.plugin.settings.targetCompletionDate = undefined;
-                        text.inputEl.removeClass('setting-input-error');
-                        await this.plugin.saveSettings();
-                        return;
-                    }
-
-                    const selectedDate = new Date(value + 'T00:00:00');
-                    if (selectedDate > today) {
-                        this.plugin.settings.targetCompletionDate = value;
-                        text.inputEl.removeClass('setting-input-error');
-                    } else {
-                        new Notice('Target date must be in the future.');
-                        text.setValue(this.plugin.settings.targetCompletionDate || '');
-                        return;
-                    }
+                    this.plugin.settings.debug = value;
                     await this.plugin.saveSettings();
                 }));
 
         // --- Publishing Stage Colors --- 
-        // containerEl.createEl('hr', { cls: 'settings-separator' }); // <<< REMOVING HR
         containerEl.createEl('h2', { text: 'Publishing stage colors'}); // <<< CHANGED to H3, REMOVED CLASS
 
         Object.entries(this.plugin.settings.publishStageColors).forEach(([stage, color]) => {
@@ -5334,17 +5393,6 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             this.createColorSwatch(setting.controlEl, color);
         });
 
-        // --- Debug Setting --- 
-        new Setting(containerEl)
-            .setName('Debug mode')
-            .setDesc('Enable debug logging to the console.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.debug)
-                .onChange(async (value) => {
-                    this.plugin.settings.debug = value;
-                    await this.plugin.saveSettings();
-                }));
-                
         // --- Embedded README Section ---
         containerEl.createEl('hr', { cls: 'settings-separator' });
         const readmeContainer = containerEl.createDiv({ cls: 'manuscript-readme-container' });
