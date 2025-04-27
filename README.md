@@ -174,8 +174,8 @@ The visualizations are built using pure SVG and JavaScript, offering a lightweig
 
 ## Manual Installation
 
-1.  Download the latest `main.js`, `styles.css`, `manifest.json` from the [Releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page of the GitHub repository.
-2.  Extract the files to your vault's `.obsidian/plugins/manuscript-timeline`
+1.  Download the latest main.js, styles.css, manifest.json from the [Releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page of the GitHub repository.
+2.  Extract the files to your vault's .obsidian/plugins/manuscript-timeline
 
 ## Screen Resolution Requirements
 
@@ -203,4 +203,4 @@ If you encounter any issues or have feature requests, please file an issue on th
 
 ## License
 
-This project is licensed under the MIT License - see the `LICENSE` file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
