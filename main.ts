@@ -77,7 +77,7 @@ const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
     targetCompletionDate: undefined, // Ensure it's undefined by default
     openaiApiKey: '', // Default to empty string
     anthropicApiKey: '', // <<< ADDED: Default empty string
-    anthropicModelId: 'claude-3-7-sonnet-20240729', // <<< ADDED: Default to latest Sonnet
+    anthropicModelId: 'claude-3-7-sonnet-20250219', // <<< ADDED: Default to latest Sonnet
     defaultAiProvider: 'openai', // <<< ADDED: Default to OpenAI
     openaiModelId: 'gpt-4o' // <<< ADDED: Default to gpt-4o
 };
@@ -1341,98 +1341,78 @@ class SynopsisManager {
             let rawContent = line.substring(1).trim();
             if (!rawContent) continue;
 
-            const content = rawContent;
-            let isFirstLineOf2Beats = (beatKey === '2beats' && i === 0);
+            // --- Revised Splitting and Formatting Logic --- 
+            let titleText = rawContent; // Default: whole line is title
+            let commentText = '';     // Default: no comment
+            let titleClass = 'beats-text-neutral'; // Default class
+            let commentClass = 'beats-text'; // Default comment class
+            let signDetected: string | null = null; // Store the detected sign (+, -, ?)
+            let useSlashSeparator = false; // Flag to control adding " / "
 
-            // More robust parsing that can handle different formats
-            let beforeSlash = content;
-            let afterSlash = '';
-            let baseTitleClass = 'beats-text-neutral'; // Default to neutral if no marker is found
-            let hasInsertedSlash = false;
+            // 1. Find the specific "Sign /" pattern
+            const signSlashPattern = /^(.*?)\s*([-+?])\s*\/\s*(.*)$/;
+            const match = rawContent.match(signSlashPattern);
 
-            // First check for slash separator
-            const slashIndex = content.indexOf('/');
-            if (slashIndex !== -1) {
-                beforeSlash = content.substring(0, slashIndex).trim();
-                afterSlash = content.substring(slashIndex + 1).trim();
-            }
-
-            // Detect the sign indicators regardless of position
-            // Look for plus, minus, or question mark with surrounding spaces or at the end of text
-            const plusMatch = beforeSlash.match(/\s\+($|\s)/) || beforeSlash.match(/\+$/) || 
-                             (slashIndex === -1 && content.match(/\s\+($|\s)/)) || (slashIndex === -1 && content.match(/\+$/));
-            const minusMatch = beforeSlash.match(/\s\-($|\s)/) || beforeSlash.match(/\-$/) || 
-                              (slashIndex === -1 && content.match(/\s\-($|\s)/)) || (slashIndex === -1 && content.match(/\-$/));
-            const questionMatch = beforeSlash.match(/\s\?($|\s)/) || beforeSlash.match(/\?$/) || 
-                                 (slashIndex === -1 && content.match(/\s\?($|\s)/)) || (slashIndex === -1 && content.match(/\?$/));
-
-            // Determine the style class based on the detected sign
-            if (plusMatch) {
-                baseTitleClass = 'beats-text-positive';
-            } else if (minusMatch) {
-                baseTitleClass = 'beats-text-negative';
-            } else if (questionMatch) {
-                baseTitleClass = 'beats-text-neutral';
-            }
-            
-            // If no slash in the original text but we found a sign, split the text at the sign
-             if (slashIndex === -1 && (plusMatch || minusMatch || questionMatch)) {
-                // Find the position of the sign
-                 const match = plusMatch || minusMatch || questionMatch;
-                 if (match && match.index !== undefined) {
-                    // Extract the text after the sign as the afterSlash content
-                     const signPosition = match.index + match[0].indexOf(match[0].trim());
-                    const afterSignText = content.substring(signPosition + 1).trim();
-                     if (afterSignText) {
-                         afterSlash = afterSignText;
-                        beforeSlash = content.substring(0, signPosition).trim();
-                         hasInsertedSlash = true;
-                     }
+            if (match) {
+                // Pattern "Title Sign / Comment" found
+                titleText = match[1].trim();    // Part before the sign
+                signDetected = match[2];        // The actual sign (+, -, ?)
+                commentText = match[3].trim(); // Part after the slash
+                useSlashSeparator = true;     // We found the pattern, so use the slash
+                // NOTE: Title sign is implicitly removed because titleText comes from group 1 (before the sign)
+            } else {
+                 // Pattern not found. Check if there's a sign at the end for coloring, but don't split.
+                 const endSignMatch = rawContent.match(/\s*([-+?])$/);
+                 if (endSignMatch) {
+                     signDetected = endSignMatch[1];
+                     // Remove the sign from the title text for display
+                     titleText = rawContent.substring(0, endSignMatch.index).trim();
                  }
-             }
-
-            // Clean up the display text by removing the sign if it's found
-            // This handles both "Text +" format and "Text + / Comment" format
-            if (plusMatch || minusMatch || questionMatch) {
-                // Remove the sign from the display text
-                beforeSlash = beforeSlash.replace(/\s[\+\-\?]($|\s)/g, ' ').replace(/[\+\-\?]$/g, '').trim();
+                 // No split needed, commentText remains empty, useSlashSeparator remains false
             }
-             // Detect grade letter in 2beats first line
+
+            // 2. Determine Title CSS Class based on the detected sign
+            if (signDetected === '+') {
+                titleClass = 'beats-text-positive';
+            } else if (signDetected === '-') {
+                titleClass = 'beats-text-negative';
+            } // Otherwise remains 'beats-text-neutral'
             
-             if (isFirstLineOf2Beats) {
-                // Look for letter grade (A, B, or C) after the scene number
-                // Format 1: "43 B / Good emotional fallout" (number, grade, slash, comment)
-                // Format 2: "43 B Good emotional fallout" (number, grade, rest of text)
-                // Format 3: "43 B + Good emotional fallout" (number, grade, sign, rest of text)
-                // Also handles lines with punctuation like: "43 B Good emotional fallout but pacing drags; tighten."
-                
-                // Look specifically for a number followed by an A, B, or C at the beginning of the line
-                //const gradeMatch = beforeSlash.match(/^\s*\d+(\.\d+)?\s+([ABC])\b/i);
-                const gradeMatch = beforeSlash.match(/^\s*\d+(\.\d+)?\s+([ABC])(?![A-Za-z0-9])/i);
-                if (gradeMatch && gradeMatch[2]) {
+            // Handle special case for 2beats first line grade
+            let isFirstLineOf2Beats = (beatKey === '2beats' && i === 0);
+            let detectedGrade: string | null = null;
+            if (isFirstLineOf2Beats) {
+                // Look for Grade (A, B, C) potentially at the start of titleText
+                const gradeMatch = titleText.match(/^\s*\d+(\.\d+)?\s+([ABC])(?![A-Za-z0-9])/i);
+                 if (gradeMatch && gradeMatch[2]) {
                     detectedGrade = gradeMatch[2].toUpperCase();
-                }
+                    // Override classes for the grade line
+                    titleClass = 'beats-text-grade'; 
+                    commentClass = 'beats-text-grade';
+                 }
             }
 
-            const finalTitleClass = isFirstLineOf2Beats ? 'beats-text-grade' : baseTitleClass;
-            const finalCommentClass = isFirstLineOf2Beats ? 'beats-text-grade' : 'beats-text';
-
+            // --- Create SVG Elements --- 
             const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            textElement.setAttribute("class", "beats-text");
+            textElement.setAttribute("class", "beats-text"); // Base class for the line
             textElement.setAttribute("x", "0");
             textElement.setAttribute("y", String(currentY));
             textElement.setAttribute("text-anchor", "start");
 
-                     const firstTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-            firstTspan.setAttribute("class", finalTitleClass);
-                     firstTspan.textContent = beforeSlash;
-                     textElement.appendChild(firstTspan);
+            // Create Tspan for the Title part
+            const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+            titleTspan.setAttribute("class", titleClass); // Apply class based on sign/grade
+            titleTspan.textContent = titleText; // Already processed/sign removed
+            textElement.appendChild(titleTspan);
 
-            if (afterSlash || hasInsertedSlash) {
-                const slashPart = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                slashPart.setAttribute("class", finalCommentClass);
-                slashPart.textContent = " / " + (afterSlash || "");
-                textElement.appendChild(slashPart);
+            // Create Tspan for the Comment part (if applicable)
+            if (useSlashSeparator && commentText) {
+                const commentTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                commentTspan.setAttribute("class", commentClass); // Default or grade class
+                commentTspan.textContent = " / " + commentText; // Add the slash separator
+                textElement.appendChild(commentTspan);
+            } else if (commentText && !useSlashSeparator) {
+                 // Case where a sign was found at the end but no slash - commentText is empty, so nothing added.
             }
 
             parentGroup.appendChild(textElement);
@@ -4074,6 +4054,19 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+
+        // Ensure a valid Anthropic model ID is set, otherwise use the default
+        if (!this.settings.anthropicModelId) {
+            this.settings.anthropicModelId = DEFAULT_SETTINGS.anthropicModelId;
+        }
+        // Ensure a valid OpenAI model ID is set, otherwise use the default
+        if (!this.settings.openaiModelId) {
+            this.settings.openaiModelId = DEFAULT_SETTINGS.openaiModelId;
+        }
+         // Ensure a valid default provider is set
+        if (!this.settings.defaultAiProvider || !['openai', 'anthropic'].includes(this.settings.defaultAiProvider)) {
+            this.settings.defaultAiProvider = DEFAULT_SETTINGS.defaultAiProvider;
+        }
     }
 
     async saveSettings() {
@@ -5185,7 +5178,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
     // Helper function to convert RGB to hex
     private rgbToHex(rgb: string): string | null {
         const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-        if (match) {
+            if (match) {
             const r = parseInt(match[1]);
             const g = parseInt(match[2]);
             const b = parseInt(match[3]);
@@ -5239,7 +5232,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
                         if (selectedDate > today) {
                             this.plugin.settings.targetCompletionDate = value;
                             text.inputEl.removeClass('setting-input-error');
-                        } else {
+            } else {
                             new Notice('Target date must be in the future.');
                             text.setValue(this.plugin.settings.targetCompletionDate || '');
                             return;
@@ -5320,7 +5313,10 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             .setDesc('Select the Claude model to use.')
             .addDropdown(dropdown => {
                 // Add the common Claude models
-                dropdown.addOption('claude-3-7-sonnet-20240729', 'Claude 3.7 Sonnet')
+                dropdown.addOption('claude-3-7-sonnet-20250219', 'Claude 3.7 Sonnet (Recommended)')
+                    .addOption('claude-3-5-sonnet-20240620', 'Claude 3.5 Sonnet')
+                    // Provide a guaranteed string fallback for setValue
+                    .setValue(this.plugin.settings.anthropicModelId || 'claude-3-7-sonnet-20250219') 
                     .onChange(async (value) => {
                         this.plugin.settings.anthropicModelId = value;
                         await this.plugin.saveSettings();
