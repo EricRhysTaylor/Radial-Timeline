@@ -1846,11 +1846,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     const filePath = navFile.getAttribute('data-path');
                     if (filePath) {
                         // DEBUG: Always log the mouseover event to help diagnose issues
-                        console.log(`DEBUG: Mouseover detected on file in explorer: ${filePath}`);
+                        if (this.settings.debug) {
+                            console.log(`DEBUG: Mouseover detected on file in explorer: ${filePath}`);
+                        }
                         
                         // Store current hover path to avoid redundant processing
                         if (this._currentHoverPath === filePath) {
-                            console.log(`DEBUG: Skipping (already hovering): ${filePath}`);
+                            if (this.settings.debug) {
+                                console.log(`DEBUG: Skipping (already hovering): ${filePath}`);
+                            }
                             return;
                         }
                         this._currentHoverPath = filePath;
@@ -1860,14 +1864,18 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         if (file instanceof TFile) {
                             // Check if this is a scene file by looking at cached scene data
                             const isSceneFile = this.isSceneFile(filePath);
-                            console.log(`DEBUG: File ${filePath} is ${isSceneFile ? '' : 'NOT '}a scene file`);
+                            if (this.settings.debug) {
+                                console.log(`DEBUG: File ${filePath} is ${isSceneFile ? '' : 'NOT '}a scene file`);
+                            }
                             
                             if (isSceneFile) {
                                 this.log(`Hovering over scene file: ${filePath}`);
                                 this.highlightSceneInTimeline(filePath, true);
                             }
                         } else {
-                            console.log(`DEBUG: File not found in vault: ${filePath}`);
+                            if (this.settings.debug) {
+                                console.log(`DEBUG: File not found in vault: ${filePath}`);
+                            }
                         }
                     }
                 }
@@ -1882,7 +1890,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 if (navFile) {
                     const filePath = navFile.getAttribute('data-path');
                     if (filePath && this._currentHoverPath === filePath) {
-                        console.log(`DEBUG: Mouseout detected on file: ${filePath}`);
+                        if (this.settings.debug) {
+                            console.log(`DEBUG: Mouseout detected on file: ${filePath}`);
+                        }
                         this._currentHoverPath = null;
                         
                         // Only unhighlight if it was a scene file
@@ -1902,33 +1912,45 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             if (tabHeader) {
                 const tabId = tabHeader.getAttribute('data-tab-id');
                 if (tabId) {
-                    console.log(`DEBUG: Mouseover detected on tab: ${tabId}`);
+                    if (this.settings.debug) {
+                        console.log(`DEBUG: Mouseover detected on tab: ${tabId}`);
+                    }
                     const leaf = this.app.workspace.getLeafById(tabId);
                     if (leaf) {
                         const state = leaf.getViewState();
                         const filePath = state?.state?.file as string | undefined;
                         if (filePath && state?.type === 'markdown') {
-                            console.log(`DEBUG: Tab contains markdown file: ${filePath}`);
+                            if (this.settings.debug) {
+                                console.log(`DEBUG: Tab contains markdown file: ${filePath}`);
+                            }
                             
                             // Avoid redundant processing
                             if (this._currentTabHoverPath === filePath) {
-                                console.log(`DEBUG: Skipping tab (already hovering): ${filePath}`);
+                                if (this.settings.debug) {
+                                    console.log(`DEBUG: Skipping tab (already hovering): ${filePath}`);
+                                }
                                 return;
                             }
                             this._currentTabHoverPath = filePath;
                             
                             // Only highlight if it's a scene file
                             const isSceneFile = this.isSceneFile(filePath);
-                            console.log(`DEBUG: Tab file ${filePath} is ${isSceneFile ? '' : 'NOT '}a scene file`);
+                            if (this.settings.debug) {
+                                console.log(`DEBUG: Tab file ${filePath} is ${isSceneFile ? '' : 'NOT '}a scene file`);
+                            }
                             
                             if (isSceneFile) {
                                 this.highlightSceneInTimeline(filePath, true);
                             }
                         } else {
-                            console.log(`DEBUG: Tab is not a markdown file or has no file path`);
+                            if (this.settings.debug) {
+                                console.log(`DEBUG: Tab is not a markdown file or has no file path`);
+                            }
                         }
                     } else {
-                        console.log(`DEBUG: No leaf found for tab ID: ${tabId}`);
+                        if (this.settings.debug) {
+                            console.log(`DEBUG: No leaf found for tab ID: ${tabId}`);
+                        }
                     }
                 }
             }
@@ -2126,46 +2148,38 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     // Helper method to check if a file is a scene in the timeline
     private isSceneFile(filePath: string): boolean {
         if (!this.activeTimelineView) {
-            console.log(`DEBUG: isSceneFile - No active timeline view`);
             return false;
         }
         
         try {
             // If we have a scene cache, check against it
             const scenes = this.activeTimelineView['sceneData'] || [];
-            console.log(`DEBUG: isSceneFile - Checking against ${scenes.length} cached scenes`);
             
             if (scenes.length === 0) {
-                console.log(`DEBUG: isSceneFile - No scene data, checking SVG directly`);
                 // If no scene data available, check the SVG directly
                 const container = this.activeTimelineView.contentEl.querySelector('.manuscript-timeline-container');
                 if (!container) {
-                    console.log(`DEBUG: isSceneFile - No container found`);
                     return false;
                 }
                 
                 const svgElement = container.querySelector('svg') as SVGSVGElement;
                 if (!svgElement) {
-                    console.log(`DEBUG: isSceneFile - No SVG element found`);
                     return false;
                 }
                 
                 // Try direct path match
                 let encodedPath = encodeURIComponent(filePath);
                 let sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                console.log(`DEBUG: isSceneFile - Direct SVG path match ${encodedPath}: ${sceneGroup ? 'FOUND' : 'not found'}`);
                 
                 // Try with or without leading slash
                 if (!sceneGroup && filePath.startsWith('/')) {
                     const altPath = filePath.substring(1);
                     encodedPath = encodeURIComponent(altPath);
                     sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                    console.log(`DEBUG: isSceneFile - Without slash match ${encodedPath}: ${sceneGroup ? 'FOUND' : 'not found'}`);
                 } else if (!sceneGroup && !filePath.startsWith('/')) {
                     const altPath = '/' + filePath;
                     encodedPath = encodeURIComponent(altPath);
                     sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                    console.log(`DEBUG: isSceneFile - With slash match ${encodedPath}: ${sceneGroup ? 'FOUND' : 'not found'}`);
                 }
                 
                 return !!sceneGroup;
@@ -2183,10 +2197,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 return false;
             });
             
-            console.log(`DEBUG: isSceneFile - Scene data match for ${filePath}: ${matchingScene ? 'FOUND' : 'not found'}`);
             return !!matchingScene;
         } catch (error) {
-            console.log(`DEBUG: isSceneFile - Error: ${error}`);
             this.log(`Error checking if file is a scene: ${error}`);
             return false;
         }
@@ -2195,10 +2207,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     // Helper method to highlight a scene in the timeline when hovering over a file
     private highlightSceneInTimeline(filePath: string, isHighlighting: boolean): void {
         if (!filePath || !this.activeTimelineView) {
-            // Wrap this console.log with the debug check
-            if (this.settings.debug) {
-                console.log(`DEBUG: highlightSceneInTimeline - Invalid inputs: filePath=${filePath}, activeView=${!!this.activeTimelineView}`);
-            }
             return;
         }
         
@@ -2208,19 +2216,16 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             // Get the SVG container element
             const container = this.activeTimelineView.contentEl.querySelector('.manuscript-timeline-container');
             if (!container) {
-                console.log(`DEBUG: highlightSceneInTimeline - No container found`);
                 return;
             }
             
             const svgElement = container.querySelector('svg') as SVGSVGElement;
             if (!svgElement) {
-                console.log(`DEBUG: highlightSceneInTimeline - No SVG element found`);
                 return;
             }
             
             // First, we should reset any previous highlighting if we're highlighting a new scene
             if (isHighlighting) {
-                console.log(`DEBUG: highlightSceneInTimeline - Resetting previous highlights`);
                 // Remove existing highlights to start with a clean state
                 const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
                 allElements.forEach(element => {
@@ -2234,24 +2239,20 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             // Strategy 1: Direct path match
             let encodedPath = encodeURIComponent(filePath);
             let sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-            console.log(`DEBUG: highlightSceneInTimeline - Direct match for ${encodedPath}: ${sceneGroup ? 'FOUND' : 'not found'}`);
             
             // Strategy 2: Try with or without leading slash
             if (!sceneGroup && filePath.startsWith('/')) {
                 const altPath = filePath.substring(1);
                 encodedPath = encodeURIComponent(altPath);
                 sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                console.log(`DEBUG: highlightSceneInTimeline - Without slash match for ${encodedPath}: ${sceneGroup ? 'FOUND' : 'not found'}`);
             } else if (!sceneGroup && !filePath.startsWith('/')) {
                 const altPath = '/' + filePath;
                 encodedPath = encodeURIComponent(altPath);
                 sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                console.log(`DEBUG: highlightSceneInTimeline - With slash match for ${encodedPath}: ${sceneGroup ? 'FOUND' : 'not found'}`);
             }
             
             if (sceneGroup) {
                 foundScene = true;
-                console.log(`DEBUG: highlightSceneInTimeline - Found matching scene for ${filePath}`);
                 
                 if (isHighlighting) {
                     // Highlight this scene by adding the 'selected' class to its elements
@@ -2261,7 +2262,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         
                         // Also highlight the scene number and title
                         const sceneId = currentPath.id;
-                        console.log(`DEBUG: highlightSceneInTimeline - Highlighting scene ID: ${sceneId}`);
                         
                         const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
                         const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
@@ -2295,7 +2295,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         }
                     }
                 } else {
-                    console.log(`DEBUG: highlightSceneInTimeline - Unhighlighting scene for ${filePath}`);
                     // Reset highlighting
                     const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
                     allElements.forEach(element => {
