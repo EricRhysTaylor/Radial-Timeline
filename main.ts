@@ -1757,7 +1757,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     async onload() {
-        console.log('Loading Manuscript Timeline Plugin');
         await this.loadSettings();
 
         // Initialize SynopsisManager
@@ -2042,11 +2041,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         this.registerEvent(this.app.vault.on('delete', (file) => { this.refreshTimelineIfNeeded(file); }));
         this.registerEvent(this.app.vault.on('rename', (file, oldPath) => this.handleFileRename(file, oldPath)));
 
-        // Setup hover listeners (simplified example, original was more complex)
-        // this.registerDomEvent(document, 'mouseover', ...);
-        // this.registerDomEvent(document, 'mouseout', ...);
 
-        console.log('Manuscript Timeline Plugin loaded.');
 
         this.app.workspace.onLayoutReady(() => {
             this.setCSSColorVariables(); // Set initial colors
