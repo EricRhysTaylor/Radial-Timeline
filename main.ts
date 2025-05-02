@@ -2407,11 +2407,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 "2beats": typeof metadata["2beats"] === 'string' ? metadata["2beats"] : String(metadata["2beats"]), 
                                 "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : String(metadata["3beats"])
                             });
-
-                            // Only log scene data in debug mode, and avoid the noisy scene details
-                            if (this.settings.debug) {
-                                // this.log(`Added scene: ${metadata.Title || file.basename}`); // Commented out due to excessive logging
-                            }
                     });
                 }
             }
