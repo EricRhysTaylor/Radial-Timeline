@@ -1790,7 +1790,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         this.addCommand({
             id: 'search-timeline',
-            name: 'Search Timeline', // Sentence case
+            name: 'Search timeline', // Sentence case
             callback: () => {
                 this.openSearchPrompt();
             }
@@ -1798,7 +1798,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         this.addCommand({
             id: 'clear-timeline-search',
-            name: 'Clear Search', // Sentence case
+            name: 'Clear search', // Sentence case
             callback: () => {
                 this.clearSearch();
             }
@@ -1987,26 +1987,10 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             })
         );
 
-        this.addCommand({
-            id: 'search-timeline',
-            name: 'Search Timeline',
-            callback: () => {
-                this.openSearchPrompt();
-            }
-        });
-
-        this.addCommand({
-            id: 'clear-timeline-search',
-            name: 'Clear Timeline Search',
-            callback: () => {
-                this.clearSearch();
-            }
-        });
-
         // --- ADD NEW COMMANDS --- 
         this.addCommand({
             id: 'update-beats-manuscript-order',
-            name: 'Update Flagged Beats (Manuscript Order)',
+            name: 'Update flagged beats (manuscript order)',
             callback: async () => {
                 const apiKey = this.settings.openaiApiKey;
                 if (!apiKey || apiKey.trim() === '') {
@@ -2031,7 +2015,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
         this.addCommand({
             id: 'update-beats-subplot-order',
-            name: 'Update Flagged Beats (Subplot Order)',
+            name: 'Update flagged beats (subplot order)',
             callback: async () => {
                 const apiKey = this.settings.openaiApiKey;
                 if (!apiKey || apiKey.trim() === '') {
@@ -2124,7 +2108,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         this.addCommand({
             id: 'clear-processed-beats-cache', 
-            name: 'Clear processed beats cache', // Use sentence case
+            name: 'Clear beats cache', // Use sentence case
             callback: async () => {
                 const initialCount = this.settings.processedBeatContexts.length;
                 if (initialCount === 0) {
@@ -5007,6 +4991,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
 class ManuscriptTimelineSettingTab extends PluginSettingTab {
     plugin: ManuscriptTimelinePlugin;
+    private readmeComponent: Component | null = null; // <<< ADD THIS LINE
 
     constructor(app: App, plugin: ManuscriptTimelinePlugin) {
         super(app, plugin);
@@ -5236,12 +5221,12 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             });
 
         // --- AI Settings for Beats Analysis ---
-        containerEl.createEl('h2', { text: 'AI Settings for Beats Analysis'});
+        containerEl.createEl('h2', { text: 'AI settings for beats analysis'});
         
 
         // --- Default AI Provider Setting ---
         new Setting(containerEl)
-        .setName('Default AI Provider')
+        .setName('Default AI provider')
         .setDesc('Select the default AI provider to use for AI features like Beat Analysis.')
         .addDropdown(dropdown => dropdown
             .addOption('openai', 'OpenAI (ChatGPT)')
@@ -5253,12 +5238,12 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             }));
 
         // --- OpenAI ChatGPT SECTION ---
-        containerEl.createEl('h2', { text: 'OpenAI ChatGPT Settings'});
+        containerEl.createEl('h2', { text: 'OpenAI ChatGPT settings'});
 
 
         // --- OpenAI API Key Setting ---
         const openaiSetting = new Setting(containerEl) // <<< ADD const openaiSetting = here (line 5252)
-            .setName('OpenAI API Key')
+            .setName('OpenAI API key')
             .setDesc('Your OpenAI API key for using ChatGPT AI features.')
             .addText(text => text
                 .setPlaceholder('Enter your API key')
@@ -5271,7 +5256,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
 
         // --- OpenAI Model Selection ---
         const modelSetting = new Setting(containerEl)
-            .setName('OpenAI Model')
+            .setName('OpenAI model')
             .setDesc('Select the OpenAI model to use.')
             .addDropdown((dropdown) => {
                 // Add only the top models for creative fiction
@@ -5286,12 +5271,12 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             });
 
         // --- Anthropic Claude SECTION ---
-        containerEl.createEl('h2', { text: 'Anthropic Claude Settings'});
+        containerEl.createEl('h2', { text: 'Anthropic Claude settings'});
 
         
         // --- Anthropic API Key Setting ---
         const anthropicSetting = new Setting(containerEl)
-            .setName('Anthropic API Key')
+            .setName('Anthropic API key')
             .setDesc('Your Anthropic API key for using Claude AI features.')
             .addText(text => text
                 .setPlaceholder('Enter your Anthropic API key')
@@ -5303,7 +5288,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
 
         // --- Anthropic Model Selection ---
         new Setting(containerEl)
-            .setName('Anthropic Model')
+            .setName('Anthropic model')
             .setDesc('Select the Claude model to use.')
             .addDropdown(dropdown => {
                 // Add the common Claude models
@@ -5319,7 +5304,7 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
 
         // <<< ADD THIS Setting block for API Logging Toggle >>>
         new Setting(containerEl)
-            .setName('Log AI Interactions to File')
+            .setName('Log AI interactions to file')
             .setDesc('If enabled, create a new note in the "AI" folder for each OpenAI API request/response.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.logApiInteractions)
@@ -5379,21 +5364,37 @@ class ManuscriptTimelineSettingTab extends PluginSettingTab {
             // Add color swatch inside the control element for better alignment
             this.createColorSwatch(setting.controlEl, color);
         });
-                
+                    
         // --- Embedded README Section ---
         containerEl.createEl('hr', { cls: 'settings-separator' });
         const readmeContainer = containerEl.createDiv({ cls: 'manuscript-readme-container' });
         const readmeMarkdown = typeof EMBEDDED_README_CONTENT !== 'undefined'
             ? EMBEDDED_README_CONTENT
             : 'README content could not be loaded. Please ensure the plugin was built correctly or view the README.md file directly.';
+           
+        // Create a new component instance specifically for this rendering
+        this.readmeComponent = new Component(); 
 
-        MarkdownRenderer.render(
-            this.app, 
-            readmeMarkdown, 
-            readmeContainer, 
+
+        // Use the managed component for the renderer
+        // Note: Switching back to MarkdownRenderer.render as renderMarkdown was part of the error path
+        MarkdownRenderer.render( // <<< Using render, not renderMarkdown
+            this.app,           // <<< Pass app instance
+            readmeMarkdown,
+            readmeContainer, // Render directly into the container created above
             this.plugin.manifest.dir ?? '', 
-            this as unknown as Component // Double cast to satisfy TypeScript and avoid Memory leak
+            this.readmeComponent // Pass the managed component instance
         );
+    }
+
+    hide() {
+        // Clean up the component when the tab is hidden/closed
+        if (this.readmeComponent) {
+            this.readmeComponent.unload(); // <<< CALL unload() on the component itself
+            this.readmeComponent = null;
+        }
+        // If PluginSettingTab has a base hide method you need to call, uncomment below
+        // super.hide(); 
     }
 
 }

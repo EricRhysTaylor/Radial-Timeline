@@ -38,9 +38,12 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 ## Commands
 
-* Open Manuscript Timeline: Opens the timeline view in the center area
-* Search Timeline: Opens a modal to search scenes by title, synopsis, character, subplot, location, or POV
-* Clear Timeline Search: Clears the current search results
+* Open
+* Search timeline
+* Clear search
+* Update flagged beats (manuscript order)
+* Update flagged beats (subplot order)
+* Clear beats cache
 
 <a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
   <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.png" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px;" />
@@ -54,48 +57,46 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
   Click image to view full size in browser
 </div>
   
-## How to Use
 
-1. Install the plugin in your Obsidian vault
-2. Configure the source path in the plugin settings to point to your scenes folder
-3. Ensure your scene files have the required frontmatter metadata (see below)
-4. Click the manuscript timeline ribbon icon or run the "Show Manuscript Timeline" command from the Command Palette
-5. The timeline will open in a new tab in the main editor area
-6. Interact with the timeline by hovering over scenes to see details and clicking to open the corresponding file
-7. Use the zoom controls in the top left corner to zoom in/out and reset the view
-8. The timeline automatically updates when you modify, create, or delete scene files
 
 ## Settings
 
-The plugin offers several settings to customize its behavior:
+The plugin offers several settings to customize its behavior and enable AI features:
 
-- Source Path: Set the folder containing your scene files (e.g., "Book 1" or "Scenes")
-- Publishing Stage Colors: Customize colors for different publishing stages (Zero, Author, House, Press)
-- Reset to Default Colors: Restore all color settings to their original values if you've made changes
-- Debug Mode: Enable detailed logging in the console (useful for troubleshooting)
+*   Source path: Specify the root folder containing your manuscript scene files (e.g., "Book 1/Scenes"). Leave blank to scan the entire vault.
+*   Target completion date: Optional: Set a target date for project completion (YYYY-MM-DD). A marker for this date will be shown on the timeline's outer ring.
+*   AI settings for beats analysis: Configure the AI providers for features like automated beat generation.
+    *   Default AI provider: Select the primary AI service (OpenAI or Anthropic) to use for beat analysis commands.
+    *   OpenAI ChatGPT settings:
+        *   OpenAI API key: Enter your API key from OpenAI to enable ChatGPT features.
+        *   OpenAI model: Select the specific GPT model (e.g., GPT-4o, GPT-4 Turbo) to use.
+    *   Anthropic Claude settings:
+        *   Anthropic API key: Enter your API key from Anthropic to enable Claude features.
+        *   Anthropic model: Select the specific Claude model (e.g., Claude 3.7 Sonnet) to use.
+    *   Log AI interactions to file: If enabled, the plugin will create a new note in an "AI" folder within your vault for each API request and response (useful for debugging or tracking usage).
+*   Debug mode: Enable detailed logging in the developer console (useful for troubleshooting issues).
+*   Publishing stage colors: Customize the colors used for scenes based on their "Publish Stage" metadata (Zero, Author, House, Press). Each color has a reset button to restore its default value.
 
-These settings can be accessed from Settings → Community Plugins → Manuscript Timeline → Settings.
-
-## Required Scene Metadata
+## Required scene metadata
 
 Scene files must have the following frontmatter:
 - Class: Scene - Identifies the file as a scene and part of the manuscript
-- Synopsis - Brief description of the scene
+- `Synopsis` - Brief description of the scene (required)
 - Subplot - Subplot(s) the scene belongs to (default if empty is Main Plot)
 - Act - Act number (1-3) (if empty then 1)
-- When - Date of the scene (required)
+- `When` - Date of the scene (required)
 - Character - Characters in the scene
 - Publish Stage - (Zero, Author, House, Press)
 - Status - Scene status (Todo, Working, Complete)
-- Due - Due date for the scene
+- `Due` - Due date for the scene (required)
 - Pending Edits - Optional future editing notes
 - 1beats - First Scene beats linking to actively edited scene 2
-- 2beats - Second Scene beats, the active scene
+- 2beats - Second Scene beats, the active scene under current edit
 - 3beats - Third Scene beats linking to scene 2
 - BeatsUpdate: Yes
 ---
 
-## Beats Metadata (1beats, 2beats, 3beats):
+## Beats metadata (1beats, 2beats, 3beats):
 
 API using ChatGPT is implemented under the Plugin Settings. Automates generation of beats continuuity between select or all vault scenes using Obsidian Command Console 
 
@@ -127,7 +128,7 @@ Pending Edits: Optional notes here
 BeatsUpdate: Yes
 ```
 
-## Timeline Visualization Elements
+## Timeline visualization elements
 
 The timeline displays:
 - Scenes arranged in a circular pattern
@@ -142,7 +143,7 @@ The timeline displays:
 
 Hover over a scene to see its details and click to open the corresponding file.
 
-## Scene Ordering and Numbering
+## Scene ordering and numbering
 
 - Scenes are ordered chronologically based on the When date in the frontmatter metadata
 - The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")
@@ -150,7 +151,7 @@ Hover over a scene to see its details and click to open the corresponding file.
 - Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer
 - If scenes have the same When date, they are sub-ordered by their scene number
 
-## Technical Implementation
+## Technical implementation
 
 The Manuscript Timeline visualization was inspired by and draws on principles from [D3.js](https://d3js.org), a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:
 
@@ -172,12 +173,12 @@ The visualizations are built using pure SVG and JavaScript, offering a lightweig
 3.  Click Browse and search for "Manuscript Calendar".
 4.  Click Install and then Enable.
 
-## Manual Installation
+## Manual installation
 
 1.  Download the latest main.js, styles.css, manifest.json from the [Releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page of the GitHub repository.
 2.  Extract the files to your vault's .obsidian/plugins/manuscript-timeline
 
-## Screen Resolution Requirements
+## Screen resolution requirements
 
 The Manuscript Timeline is designed for high pixel density displays (around 200 PPI or higher) for optimal visual quality. This means:
 
@@ -193,7 +194,7 @@ Created by Eric Rhys Taylor
 
 This plugin adheres to Obsidian.md development best practices, including secure DOM manipulation and API compliance.
 
-## Feedback and Support
+## Feedback and support
 
 If you encounter any issues or have feature requests, please file an issue on the [GitHub repository issues page](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues). If you find the Manuscript Calendar plugin useful and would like to support continued development, please consider buying me a coffee:
 
