@@ -597,18 +597,28 @@ export async function processByManuscriptOrder(
         return;
     }
 
+        // Filter scenes with content (Words > 0)
+        const writtenScenes = allScenes.filter(scene => {
+            const words = scene.frontmatter?.words || scene.frontmatter?.Words;
+            return (typeof words === 'number' && words > 0);
+        });
+
+        if (plugin.settings.debug) {
+            console.log(`[API Beats][processByManuscriptOrder] Found ${writtenScenes.length} written scenes out of ${allScenes.length} total`);
+        }
+
         const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
-        for (let i = 0; i < allScenes.length; i++) {
+        for (let i = 0; i < writtenScenes.length; i++) {
             triplets.push({
-                prev: i > 0 ? allScenes[i - 1] : null,
-                current: allScenes[i],
-                next: i < allScenes.length - 1 ? allScenes[i + 1] : null
+                prev: i > 0 ? writtenScenes[i - 1] : null,
+                current: writtenScenes[i],
+                next: i < writtenScenes.length - 1 ? writtenScenes[i + 1] : null
             });
         }
 
         let processedCount = 0;
         const totalTriplets = triplets.length;
-        notice.setMessage(`Processing Manuscript Order: 0/${totalTriplets} triplets processed.`);
+        notice.setMessage(`Analyzing ${totalTriplets} scenes in manuscript order...`);
 
         for (const triplet of triplets) {
             const currentScenePath = triplet.current.file.path;
@@ -621,16 +631,19 @@ export async function processByManuscriptOrder(
                 // We don't increment processedCount here, as we only count actual attempts/cache hits
                 continue; // Skip to the next triplet if not flagged
             }
+            
+            // We've already filtered scenes by Words > 0 when building triplets,
+            // so no need to check again here.
 
             // Check cache *after* confirming the scene is flagged for update
             if (plugin.settings.processedBeatContexts.includes(tripletIdentifier)) {
                  if (plugin.settings.debug) console.log(`[API Beats][processByManuscriptOrder] Skipping cached triplet: ${tripletIdentifier}`);
                  processedCount++;
-                 notice.setMessage(`Processing Manuscript Order: ${processedCount}/${totalTriplets} triplets processed (Skipped Cache).`);
+                 notice.setMessage(`Progress: ${processedCount}/${totalTriplets} scenes (Skipped - Already processed)`);
             continue;
         }
 
-            notice.setMessage(`Processing Manuscript Order: ${processedCount}/${totalTriplets} - Processing ${triplet.current.sceneNumber}...`);
+            notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${processedCount+1}/${totalTriplets})...`);
             if (plugin.settings.debug) {
                  console.log(`[API Beats][processByManuscriptOrder] Processing triplet: ${tripletIdentifier}`);
             }
@@ -665,7 +678,7 @@ export async function processByManuscriptOrder(
             }
 
             processedCount++;
-            notice.setMessage(`Processing Manuscript Order: ${processedCount}/${totalTriplets} triplets processed.`);
+            notice.setMessage(`Progress: ${processedCount}/${totalTriplets} scenes processed...`);
             await new Promise(resolve => setTimeout(resolve, 200));
         }
 
@@ -729,13 +742,23 @@ export async function processBySubplotOrder(
         let totalProcessedCount = 0;
          let totalTripletsAcrossSubplots = 0;
 
+        // Count only valid scenes with Words > 0 for the total
         subplotNames.forEach(subplotName => {
             const scenes = scenesBySubplot[subplotName];
             scenes.sort((a, b) => (a.sceneNumber ?? Infinity) - (b.sceneNumber ?? Infinity));
-            totalTripletsAcrossSubplots += scenes.length;
+            
+            // Count only scenes with words > 0 and BeatsUpdate: Yes
+            const validScenes = scenes.filter(scene => {
+                const words = scene.frontmatter?.words || scene.frontmatter?.Words;
+                const beatsUpdate = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate;
+                return (typeof words === 'number' && words > 0) && 
+                       (typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes');
+            });
+            
+            totalTripletsAcrossSubplots += validScenes.length;
         });
 
-        notice.setMessage(`Processing Subplots: 0/${totalTripletsAcrossSubplots} total triplets.`);
+        notice.setMessage(`Analyzing ${totalTripletsAcrossSubplots} scenes across ${subplotNames.length} subplots...`);
 
         for (const subplotName of subplotNames) {
              const scenes = scenesBySubplot[subplotName];
@@ -743,14 +766,45 @@ export async function processBySubplotOrder(
 
             console.log(`[API Beats][processBySubplotOrder] Processing subplot: ${subplotName} (${scenes.length} scenes)`);
 
+            // Build triplets but ensure we handle unwritten scenes properly
             const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
-             for (let i = 0; i < scenes.length; i++) {
-                 triplets.push({
-                     prev: i > 0 ? scenes[i - 1] : null,
-                     current: scenes[i],
-                     next: i < scenes.length - 1 ? scenes[i + 1] : null
-                 });
-        }
+            
+            // Filter scenes that actually have content worth analyzing
+            const writtenScenes = scenes.filter(scene => {
+                const words = scene.frontmatter?.words || scene.frontmatter?.Words;
+                return (typeof words === 'number' && words > 0);
+            });
+            
+            if (plugin.settings.debug) {
+                console.log(`[API Beats][processBySubplotOrder] Subplot ${subplotName}: Found ${writtenScenes.length} written scenes out of ${scenes.length} total`);
+            }
+            
+            // For each written scene, find its appropriate prev and next
+            for (let i = 0; i < writtenScenes.length; i++) {
+                const currentScene = writtenScenes[i];
+                
+                // Find previous written scene (if any)
+                let prevScene: SceneData | null = null;
+                if (i > 0) {
+                    prevScene = writtenScenes[i - 1];
+                }
+                
+                // Find next written scene (if any)
+                let nextScene: SceneData | null = null;
+                if (i < writtenScenes.length - 1) {
+                    nextScene = writtenScenes[i + 1];
+                }
+                
+                triplets.push({
+                    prev: prevScene,
+                    current: currentScene,
+                    next: nextScene
+                });
+            }
+            
+            if (plugin.settings.debug) {
+                console.log(`[API Beats][processBySubplotOrder] Subplot ${subplotName}: Created ${triplets.length} triplets`);
+            }
         
             for (const triplet of triplets) {
                 const currentScenePath = triplet.current.file.path;
@@ -763,16 +817,19 @@ export async function processBySubplotOrder(
                      // We don't increment totalProcessedCount here, as we only count actual attempts/cache hits
                      continue; // Skip to the next triplet if not flagged
                  }
+                 
+                 // We've already filtered scenes by Words > 0 when building triplets,
+                 // so no need to check again here.
 
                  // Check cache *after* confirming the scene is flagged for update
                  if (plugin.settings.processedBeatContexts.includes(tripletIdentifier)) {
                      if (plugin.settings.debug) console.log(`[API Beats][processBySubplotOrder] Skipping cached triplet: ${tripletIdentifier}`);
                      totalProcessedCount++;
-                     notice.setMessage(`Processing Subplots: ${totalProcessedCount}/${totalTripletsAcrossSubplots} total triplets (Skipped Cache).`);
+                     notice.setMessage(`Progress: ${totalProcessedCount}/${totalTripletsAcrossSubplots} scenes (Skipped - Already processed)`);
                 continue;
             }
 
-                notice.setMessage(`Processing Subplots: ${totalProcessedCount}/${totalTripletsAcrossSubplots} - Subplot '${subplotName}', Scene ${triplet.current.sceneNumber}...`);
+                notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${totalProcessedCount+1}/${totalTripletsAcrossSubplots}) - Subplot: '${subplotName}'...`);
                  if (plugin.settings.debug) {
                      console.log(`[API Beats][processBySubplotOrder] Processing triplet for subplot ${subplotName}: ${tripletIdentifier}`);
                 }
@@ -806,7 +863,7 @@ export async function processBySubplotOrder(
                       console.warn(`[API Beats][processBySubplotOrder] No result from AI for subplot ${subplotName}, scene: ${currentScenePath}`);
                  }
                  totalProcessedCount++;
-                 notice.setMessage(`Processing Subplots: ${totalProcessedCount}/${totalTripletsAcrossSubplots} total triplets.`);
+                 notice.setMessage(`Progress: ${totalProcessedCount}/${totalTripletsAcrossSubplots} scenes processed...`);
                  await new Promise(resolve => setTimeout(resolve, 200));
              }
          }

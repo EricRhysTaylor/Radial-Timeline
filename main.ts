@@ -5399,6 +5399,10 @@ export class ManuscriptTimelineView extends ItemView {
     static readonly viewType = TIMELINE_VIEW_TYPE;
     plugin: ManuscriptTimelinePlugin;
     
+    // Frontmatter values to track to reduce unnecessary SVG View refreshes
+    private lastFrontmatterValues: Record<string, any> = {};
+    private timelineRefreshTimeout: NodeJS.Timeout | null = null;
+        
     // Scene data (scenes)
     sceneData: Scene[] = [];
     
@@ -5756,12 +5760,41 @@ export class ManuscriptTimelineView extends ItemView {
             })
         );
         
-        // Register for metadata changes to refresh the timeline
+
+        // Frontmatter values to track changes only to YAML frontmatter with debounce every 5 seconds.
         this.registerEvent(
             this.app.metadataCache.on('changed', (file) => {
-                this.log('Metadata changed event for file: ' + file.path);
-                // Refresh the timeline view immediately when metadata changes
-                this.refreshTimeline();
+                // Skip if not a markdown file
+                if (!(file instanceof TFile) || file.extension !== 'md') return;
+                
+                // Get the current frontmatter
+                const cache = this.app.metadataCache.getFileCache(file);
+                if (!cache || !cache.frontmatter) return;
+                
+                // Check if this is a scene file (Class: Scene)
+                const fm = cache.frontmatter;
+                const isScene = (fm.Class === 'Scene') || (fm.class === 'Scene');
+                if (!isScene) return;
+                
+                // Check if this is a frontmatter change
+                const fileId = file.path;
+                const currentFrontmatter = JSON.stringify(cache.frontmatter);
+                const previousFrontmatter = this.lastFrontmatterValues[fileId];
+                
+                // Update our stored value regardless
+                this.lastFrontmatterValues[fileId] = currentFrontmatter;
+                
+                // If values are the same, no need to trigger refresh
+                if (previousFrontmatter === currentFrontmatter) return;
+                
+                // Log only meaningful changes
+                this.log('Scene frontmatter changed for file: ' + file.path);
+                
+                // Debounce the refresh with a generous 5 seconds
+                if (this.timelineRefreshTimeout) clearTimeout(this.timelineRefreshTimeout);
+                this.timelineRefreshTimeout = setTimeout(() => {
+                    this.refreshTimeline();
+                }, 5000);
             })
         );
         
