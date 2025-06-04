@@ -2926,7 +2926,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
 
             // ... (calculate label positions using absoluteDatePos) ...
             const labelRadius = progressRadius - 45;
-            const maxOffset = -38;
+            const maxOffset = -18;
             const offsetX = maxOffset * Math.cos(absoluteDatePos);
             const maxYOffset = 5;
             const offsetY = -maxYOffset * Math.sin(absoluteDatePos);
