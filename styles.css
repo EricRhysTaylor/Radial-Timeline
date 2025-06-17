@@ -47,6 +47,7 @@
   padding: 0;
   margin: 0;
   background-color: transparent;
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 .loading-message,
 .error-message {
@@ -629,22 +630,6 @@ tspan .search-term {
   text-transform: uppercase;
 }
 
-/* Debug container styles */
-.debug-info-container {
-    pointer-events: none;
-}
-
-/* Color swatch styles */
-.color-swatch {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    background-color: var(--swatch-color);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 3px;
-    margin-left: 8px;
-}
-
 /* Debug container visibility */
 .debug-container {
     display: none;
@@ -659,13 +644,6 @@ tspan .search-term {
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-/* Button container styles */
-.button-container {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
 }
 
 /* Test button styles */
@@ -716,6 +694,7 @@ tspan .search-term {
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-bottom: 15px;
 }
 
 /* Button styles */
@@ -738,111 +717,12 @@ tspan .search-term {
     font-weight: bold;
 }
 
-/* Dynamic Color Elements */
-[data-item-type="subplot"],
-[data-item-type="character"] {
-    stroke: white;
-    stroke-width: 0.07em;
-    paint-order: stroke;
-}
-
-/* Dynamic Font Size Elements */
-.dynamic-font-size {
-    font-size: var(--dynamic-font-size);
-}
-
-/* SVG Interaction Elements */
-.svg-interaction {
-    pointer-events: none;
-}
-
-/* Layout Containers */
-.flex-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Button Styles */
-.action-button {
-    padding: 10px;
-    margin-top: 20px;
-}
-
-/* Dynamic Positioning */
-.dynamic-position {
-    position: absolute;
-}
-
-/* Color Swatch Styles */
-.color-swatch {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    background-color: var(--swatch-color);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 3px;
-    margin-left: 8px;
-}
-
-/* Debug Container Styles */
-.debug-container {
-    display: none;
-}
-
-.debug-container.visible {
-    display: block;
-}
-
-/* Search Container Styles */
-.search-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
 /* Button Container Styles */
 .button-container {
     display: flex;
     gap: 10px;
     justify-content: flex-end;
-}
-
-/* Test Button Styles */
-.test-button {
-    padding: 10px;
-}
-
-/* Path Element Visibility */
-.path-element {
-    display: none;
-}
-
-/* Dynamic Color Variables */
-:root {
-    --dynamic-color: inherit;
-    --dynamic-font-size: inherit;
-}
-
-/* SVG path styles */
-.svg-path {
-    display: none;
-}
-
-
-/* Container layouts */
-.flex-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 15px;
-}
-
-/* Button container */
-.button-container {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
+    align-items: center; /* Align items vertically */
 }
 
 /* Input field styles */
@@ -850,34 +730,9 @@ tspan .search-term {
     flex: 1;
 }
 
-/* Color swatch for settings */
-.color-swatch {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    background-color: var(--swatch-color);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 3px;
-    margin-left: 8px;
-}
-
-/* Button styles */
-.action-button {
-    padding: 10px;
-    margin-top: 20px;
-}
-
 /* Title text styles */
 .title-text-main {
     --title-color: var(--text-normal);
-}
-
-/* Subplot and character text styles */
-[data-item-type="subplot"],
-[data-item-type="character"] {
-    stroke: white;
-    stroke-width: 0.07em;
-    paint-order: stroke;
 }
 
 /* Date text styles */
@@ -978,24 +833,6 @@ tspan .search-term {
   font-weight: bold !important;
 }
 
-/* Apply the randomized colors from the CSS variable */
-[data-item-type="subplot"],
-[data-item-type="character"] {
-  stroke: white;
-  stroke-width: 0.07em;
-  paint-order: stroke;
-}
-
-/* Ensure search terms within subplots/characters maintain highlighting style */
-.metadata-text tspan[data-item-type="subplot"] .search-term,
-.metadata-text tspan[data-item-type="character"] .search-term {
-  stroke: #FFCC00 !important;
-  stroke-width: 0.6em !important;
-  stroke-opacity: 0.6 !important;
-  paint-order: stroke !important;
-  font-weight: bold !important;
-}
-
 .subplot-ring-label-path {
   fill: none;
   stroke: none;
@@ -1071,33 +908,9 @@ tspan .search-term {
     stroke-width: 2px; /* Outline width */
 }
 
-/* Add plugin specific class */
-.manuscript-timeline-plugin .button-container {
-    display: flex;
-    gap: 10px; /* Adjust gap as needed */
-}
-
-/* Add plugin specific class */
-.manuscript-timeline-plugin .button-container {
-    display: flex;
-    gap: 10px; /* Adjust gap as needed */
-}
-
-/* Add plugin specific class */
-.manuscript-timeline-plugin .button-container {
-    display: flex;
-    gap: 10px; /* Adjust gap as needed */
-    align-items: center; /* Align items vertically */
-}
-
 /* Styling for the embedded README container in settings */
 .manuscript-readme-container {
     padding: 0; 
     margin-top: 15px;
     margin-bottom: 20px;
-}
-
-/* Use Lato font with appropriate fallbacks */
-.manuscript-timeline-container {
-  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
