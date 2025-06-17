@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "rootDir": "src",
+    "outDir": "release-ts",
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
@@ -20,6 +22,6 @@
     ]
   },
   "include": [
-    "**/*.ts"
+    "src/**/*.ts"
   ]
 }

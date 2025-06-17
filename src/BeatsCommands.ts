@@ -1,7 +1,7 @@
 import ManuscriptTimelinePlugin from './main'; 
 import { App, TFile, Vault, Notice, parseYaml, stringifyYaml } from "obsidian";
-import { callAnthropicApi, AnthropicApiResponse } from './anthropicApi';
-import { callOpenAiApi, OpenAiApiResponse } from './openaiApi';
+import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
+import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
 
 // --- Interfaces --- 
 interface SceneData {
@@ -119,7 +119,7 @@ Use the following exact format (to be processed by a script for YAML formatting)
  - Follow-up beat title + or - or ? / Short comment under 10 words 
  - ...
 2beats:
- - ${currentNum} A, B or C and include concise summary editorial note no more than 10 words.
+ - ${currentNum} A, B or C / Instructions on how to improve it no more than 15 words.
  - Follow-up beat title + or - or ? / Concise editorial comment under 10 words
  - ...
 3beats:
@@ -449,23 +449,20 @@ function parseGptResult(gptResult: string, plugin: ManuscriptTimelinePlugin): { 
         
         const processSection = (content: string | undefined): string => {
             if (!content) return '';
-            const trimmedContent = content.trim();
+            // Convert any literal "\n" sequences to real newlines and remove trailing ones
+            const normalized = content.replace(/\\n/g, '\n').replace(/(\\n)+\s*$/, '');
+            const trimmedContent = normalized.trim();
             if (plugin.settings.debug) {
                  console.log("[API Beats][parseGptResult] Raw section content after outer trim: " + JSON.stringify(trimmedContent));
             }
             if (!trimmedContent) return '';
             return trimmedContent
                 .split('\n')
-                .map(line => line.trim())
-                .map(line => line.replace(/,/g, ''))
-                .map(line => {
-                    if (line.includes('-')) {
-                        return line.replace(/(\w+):/g, '$1 -');
-                    }
-                    return line;
-                })
-                .filter(line => line.length > 0)
-                .map(line => ` ${line}`)
+                .map(l => l.trim())
+                .filter(l => l.startsWith('-'))
+                .map(l => l.replace(/,/g, ''))
+                .map(l => l.replace(/(\w+):/g, '$1 -'))
+                .map(l => ` ${l}`)
                 .join('\n');
         };
         
@@ -600,6 +597,16 @@ export async function processByManuscriptOrder(
         // Filter scenes with content (Words > 0)
         const writtenScenes = allScenes.filter(scene => {
             const words = scene.frontmatter?.words || scene.frontmatter?.Words;
+            const beatsFlag = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate;
+
+            // Warn if user requested update but scene has no word count
+            if ((typeof beatsFlag === 'string' && beatsFlag.toLowerCase() === 'yes') &&
+                (!(typeof words === 'number') || words <= 0)) {
+                const msg = `⚠️ Scene ${scene.sceneNumber ?? scene.file.basename} has BeatsUpdate: Yes but 0 words. Skipping.`;
+                console.warn(`[API Beats][processByManuscriptOrder] ${msg}`);
+                new Notice(msg, 6000);
+            }
+
             return (typeof words === 'number' && words > 0);
         });
 
@@ -699,7 +706,7 @@ export async function processBySubplotOrder(
     plugin: ManuscriptTimelinePlugin,
     vault: Vault
 ): Promise<void> {
-     console.log("[API Beats][processBySubplotOrder] Starting subplot processing...");
+     if (plugin.settings.debug) console.log("[API Beats][processBySubplotOrder] Starting subplot processing...");
      const notice = new Notice("Processing Subplots: Getting scene data...", 0);
 
     try {
@@ -751,6 +758,14 @@ export async function processBySubplotOrder(
             const validScenes = scenes.filter(scene => {
                 const words = scene.frontmatter?.words || scene.frontmatter?.Words;
                 const beatsUpdate = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate;
+
+                if ((typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes') &&
+                    (!(typeof words === 'number') || words <= 0)) {
+                    const msg = `⚠️ Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has BeatsUpdate: Yes but 0 words. Skipping.`;
+                    console.warn(`[API Beats][processBySubplotOrder] ${msg}`);
+                    new Notice(msg, 6000);
+                }
+
                 return (typeof words === 'number' && words > 0) && 
                        (typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes');
             });
@@ -764,7 +779,7 @@ export async function processBySubplotOrder(
              const scenes = scenesBySubplot[subplotName];
              scenes.sort((a, b) => (a.sceneNumber ?? Infinity) - (b.sceneNumber ?? Infinity));
 
-            console.log(`[API Beats][processBySubplotOrder] Processing subplot: ${subplotName} (${scenes.length} scenes)`);
+            if (plugin.settings.debug) console.log(`[API Beats][processBySubplotOrder] Processing subplot: ${subplotName} (${scenes.length} scenes)`);
 
             // Build triplets but ensure we handle unwritten scenes properly
             const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
@@ -889,7 +904,7 @@ const DUMMY_API_RESPONSE = `1beats:
  - Chae Ban Plan + / Strengthens connection to 2beats choices
  - Meeting Entiat + / Sets up tension
 2beats:
- - 33.5 B Scene will be stronger by making Entiat motivations clearer. Clarify: imminent threat
+ - 33.5 B / Scene will be stronger by making Entiat motivations clearer. Clarify: imminent threat
  - Entiat Adoption Reflections ? / Lacks tension link to events in 1beats
  - Chae Ban Escape News + / Advances plot
  - Entiat Internal Conflict + / Highlights dilemma: how to handle the situation from 1beats

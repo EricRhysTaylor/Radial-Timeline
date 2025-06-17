@@ -6,10 +6,10 @@
 	"type": "module",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
-		"build": "node code-quality-check.mjs main.ts && node esbuild.config.mjs production",
+		"build": "node code-quality-check.mjs src/main.ts && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"prepare": "husky",
-		"check-quality": "node code-quality-check.mjs main.ts"
+		"check-quality": "node code-quality-check.mjs src/main.ts"
 	},
 	"keywords": [
 		"obsidian",
