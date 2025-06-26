@@ -8,24 +8,8 @@ import {
   TextComponent,
 } from 'obsidian';
 import ManuscriptTimelinePlugin, { DEFAULT_SETTINGS } from '../main';
-import { fetchOpenAiModels } from '../api/openaiApi';
-import { fetchAnthropicModels } from '../api/anthropicApi';
 
 declare const EMBEDDED_README_CONTENT: string;
-
-// Pricing maps (USD per 1M tokens input/output as at 2025-06)
-const OPENAI_MODEL_PRICE: Record<string, string> = {
-    'gpt-4o': '$5 in / $15 out',
-    'o3': '$3 in / $10 out', // placeholder pricing
-};
-
-const ANTHROPIC_MODEL_PRICE: Record<string, string> = {
-    'claude-4-sonnet': '$3 in / $15 out',
-    'claude-4-opus': '$15 in / $75 out',
-    'claude-3-7-sonnet-20250219': '$3 in / $15 out',
-    'claude-3-5-sonnet-20240620': '$3 in / $15 out',
-    'claude-3-opus-20240229': '$15 in / $75 out',
-};
 
 export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
     plugin: ManuscriptTimelinePlugin;
@@ -295,54 +279,15 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
         // --- OpenAI Model Selection ---
         const modelSetting = new Settings(containerEl)
             .setName('OpenAI model')
-            .setDesc('Top GPT-4 family models (live list; prices are for 1M tokens)')
-            .addDropdown((dropdown) => {
-                // Placeholder while fetching
-                dropdown.addOption('', 'Loading…');
-                dropdown.setDisabled(true);
-
-                const populate = async () => {
-                    try {
-                        const apiKey = this.plugin.settings.openaiApiKey;
-                        if (!apiKey) throw new Error('API key not set');
-                        const models = await fetchOpenAiModels(apiKey);
-                        // Priority order reflecting ChatGPT UI offerings
-                        const preferredOrder = ['gpt-4o', 'o3'];
-                        const top: typeof models = [];
-                        preferredOrder.forEach(id=>{
-                            const found = models.find(m=>m.id===id);
-                            if (found && top.length<4) top.push(found);
-                        });
-                        if (top.length === 0) {
-                            // fallback: generic gpt-4* models
-                            top.push(...models.filter(m=>m.id.startsWith('gpt-4')).slice(0,4));
-                        }
-
-                        while (dropdown.selectEl.firstChild) {
-                            dropdown.selectEl.removeChild(dropdown.selectEl.firstChild);
-                        }
-
-                        top.forEach(m => {
-                            const label = `${m.id.replace(/:/g,' ')} (${OPENAI_MODEL_PRICE[m.id] || 'price N/A'})`;
-                            dropdown.addOption(m.id, label);
-                        });
-                        dropdown.setDisabled(false);
-                        dropdown.setValue(this.plugin.settings.openaiModelId || top[0]?.id || '');
-                    } catch (err) {
-                        while (dropdown.selectEl.firstChild) {
-                            dropdown.selectEl.removeChild(dropdown.selectEl.firstChild);
-                        }
-                        ['gpt-4o','o3'].forEach(id=>{
-                            const label = `${id} (${OPENAI_MODEL_PRICE[id]})`;
-                            dropdown.addOption(id, label);
-                        });
-                        dropdown.setDisabled(false);
-                        dropdown.setValue(this.plugin.settings.openaiModelId || 'gpt-4o');
-                    }
-                };
-                populate();
-
-                dropdown.onChange(async (value) => {
+            .setDesc('Choose the ChatGPT model to use.')
+            .addDropdown(dropdown => {
+                const options: { id: string; label: string }[] = [
+                    { id: 'gpt-4o', label: 'GPT-4o – best reasoning (std cost)' },
+                    { id: 'o3',      label: 'o3 – good reasoning (lower cost)' },
+                ];
+                options.forEach(opt => dropdown.addOption(opt.id, opt.label));
+                dropdown.setValue(this.plugin.settings.openaiModelId || 'gpt-4o');
+                dropdown.onChange(async value => {
                     this.plugin.settings.openaiModelId = value;
                     await this.plugin.saveSettings();
                 });
@@ -367,45 +312,15 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
         // --- Anthropic Model Selection ---
         new Settings(containerEl)
             .setName('Anthropic model')
-            .setDesc('Top Claude 4 models (live list; prices per 1M tokens)')
+            .setDesc('Choose the Claude model to use.')
             .addDropdown(dropdown => {
-                dropdown.addOption('', 'Loading…');
-                dropdown.setDisabled(true);
-
-                const populate = async () => {
-                    try {
-                        const apiKey = this.plugin.settings.anthropicApiKey;
-                        if (!apiKey) throw new Error('API key not set');
-                        const models = await fetchAnthropicModels(apiKey);
-                        // Prefer Claude-4 family; fallback to Claude-3
-                        let claude4 = models.filter(m => m.id.startsWith('claude-4'));
-                        if (claude4.length === 0) claude4 = models.filter(m => m.id.startsWith('claude-3'));
-                        claude4 = claude4.slice(0,3);
-
-                        while (dropdown.selectEl.firstChild) {
-                            dropdown.selectEl.removeChild(dropdown.selectEl.firstChild);
-                        }
-
-                        claude4.forEach(m=>{
-                            const label = `${m.id} (${ANTHROPIC_MODEL_PRICE[m.id] || 'price N/A'})`;
-                            dropdown.addOption(m.id, label);
-                        });
-                        dropdown.setDisabled(false);
-                        dropdown.setValue(this.plugin.settings.anthropicModelId || claude4[0]?.id || '');
-                    } catch(err) {
-                        const fallback = ['claude-4-sonnet','claude-4-opus','claude-3-7-sonnet-20250219'];
-                        while (dropdown.selectEl.firstChild) {
-                            dropdown.selectEl.removeChild(dropdown.selectEl.firstChild);
-                        }
-                        fallback.forEach(id=>{
-                            const label = `${id} (${ANTHROPIC_MODEL_PRICE[id] || 'price N/A'})`;
-                            dropdown.addOption(id,label);
-                        });
-                    }
-                };
-                populate();
-
-                dropdown.onChange(async (value) => {
+                const options: { id: string; label: string }[] = [
+                    { id: 'claude-4-sonnet', label: 'Claude 4 Sonnet – balanced' },
+                    { id: 'claude-4-opus',   label: 'Claude 4 Opus – highest quality' },
+                ];
+                options.forEach(opt => dropdown.addOption(opt.id, opt.label));
+                dropdown.setValue(this.plugin.settings.anthropicModelId || 'claude-4-sonnet');
+                dropdown.onChange(async value => {
                     this.plugin.settings.anthropicModelId = value;
                     await this.plugin.saveSettings();
                 });
