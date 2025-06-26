@@ -315,11 +315,11 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
             .setDesc('Choose the Claude model to use.')
             .addDropdown(dropdown => {
                 const options: { id: string; label: string }[] = [
-                    { id: 'claude-4-sonnet', label: 'claude-4-sonnet' },
-                    { id: 'claude-4-opus', label: 'claude-4-opus' },
+                    { id: 'claude-sonnet-4-0', label: 'claude-sonnet-4-0' },
+                    { id: 'claude-opus-4-0', label: 'claude-opus-4-0' },
                 ];
                 options.forEach(opt => dropdown.addOption(opt.id, opt.label));
-                dropdown.setValue(this.plugin.settings.anthropicModelId || 'claude-4-sonnet');
+                dropdown.setValue(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-0');
                 dropdown.onChange(async value => {
                     this.plugin.settings.anthropicModelId = value;
                     await this.plugin.saveSettings();
