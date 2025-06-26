@@ -65,4 +65,27 @@ export async function callAnthropicApi(
     responseData = { type: 'error', error: { type: 'network_or_execution_error', message: msg } };
     return { success: false, content: null, responseData, error: msg };
   }
+}
+
+// --- fetch models ---
+interface AnthropicModel { name: string; } // API currently returns array of {name: string}
+interface AnthropicModelsResponse { models: AnthropicModel[]; }
+
+export async function fetchAnthropicModels(apiKey: string): Promise<AnthropicModel[]> {
+  if (!apiKey) throw new Error('Anthropic API key is required to fetch models.');
+
+  const response = await requestUrl({
+    url: 'https://api.anthropic.com/v1/models',
+    method: 'GET',
+    headers: {
+      'anthropic-version': '2023-06-01',
+      'x-api-key': apiKey,
+    },
+    throw: false,
+  });
+  const data = response.json as AnthropicModelsResponse;
+  if (response.status >= 400 || !Array.isArray((data as any)?.models)) {
+    throw new Error(`Error fetching Anthropic models (${response.status})`);
+  }
+  return data.models.sort((a, b) => a.name.localeCompare(b.name));
 } 
