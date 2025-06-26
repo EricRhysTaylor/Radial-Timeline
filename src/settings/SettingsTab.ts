@@ -16,6 +16,11 @@ declare const EMBEDDED_README_CONTENT: string;
 // Pricing maps (USD per 1M tokens input/output as at 2025-06)
 const OPENAI_MODEL_PRICE: Record<string, string> = {
     'gpt-4o': '$5 in / $15 out',
+    'gpt-4o-mini': '$1 in / $5 out',
+    'gpt-4o-mini-high': '$2 in / $10 out',
+    'o3': '$0.50 in / $1.50 out', // placeholder – adjust if OpenAI publishes exact number
+    'o4-mini': '$1 in / $5 out',
+    'o4-mini-high': '$2 in / $10 out',
     'gpt-4-turbo': '$10 in / $30 out',
     'gpt-4': '$30 in / $60 out',
 };
@@ -307,11 +312,31 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                         const apiKey = this.plugin.settings.openaiApiKey;
                         if (!apiKey) throw new Error('API key not set');
                         const models = await fetchOpenAiModels(apiKey);
-                        // Pick GPT-4 family only, sort alphabetically, then take top 3
-                        const top = models.filter(m => m.id.startsWith('gpt-4')).slice(0, 3);
+                        // Priority order reflecting ChatGPT UI offerings
+                        const preferredOrder = [
+                            'gpt-4o',
+                            'gpt-4o-mini',
+                            'gpt-4o-mini-high',
+                            'o3',
+                            'o4-mini',
+                            'o4-mini-high',
+                            'gpt-4-turbo',
+                            'gpt-4'
+                        ];
+                        const top: typeof models = [];
+                        preferredOrder.forEach(id=>{
+                            const found = models.find(m=>m.id===id);
+                            if (found && top.length<4) top.push(found);
+                        });
+                        if (top.length === 0) {
+                            // fallback: generic gpt-4* models
+                            top.push(...models.filter(m=>m.id.startsWith('gpt-4')).slice(0,4));
+                        }
+
                         while (dropdown.selectEl.firstChild) {
                             dropdown.selectEl.removeChild(dropdown.selectEl.firstChild);
                         }
+
                         top.forEach(m => {
                             const label = `${m.id.replace(/:/g,' ')} (${OPENAI_MODEL_PRICE[m.id] || 'price N/A'})`;
                             dropdown.addOption(m.id, label);
@@ -322,7 +347,7 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                         while (dropdown.selectEl.firstChild) {
                             dropdown.selectEl.removeChild(dropdown.selectEl.firstChild);
                         }
-                        ['gpt-4o','gpt-4-turbo','gpt-4'].forEach(id=>{
+                        ['gpt-4o','gpt-4o-mini','gpt-4o-mini-high','o3','o4-mini','o4-mini-high'].slice(0,4).forEach(id=>{
                             const label = `${id} (${OPENAI_MODEL_PRICE[id]})`;
                             dropdown.addOption(id, label);
                         });
