@@ -68,7 +68,7 @@ export async function callAnthropicApi(
 }
 
 // --- fetch models ---
-interface AnthropicModel { name: string; } // API currently returns array of {name: string}
+interface AnthropicModel { id: string; } // API returns id field
 interface AnthropicModelsResponse { models: AnthropicModel[]; }
 
 export async function fetchAnthropicModels(apiKey: string): Promise<AnthropicModel[]> {
@@ -87,5 +87,5 @@ export async function fetchAnthropicModels(apiKey: string): Promise<AnthropicMod
   if (response.status >= 400 || !Array.isArray((data as any)?.models)) {
     throw new Error(`Error fetching Anthropic models (${response.status})`);
   }
-  return data.models.sort((a, b) => a.name.localeCompare(b.name));
+  return data.models.sort((a, b) => a.id.localeCompare(b.id));
 } 

@@ -16,13 +16,7 @@ declare const EMBEDDED_README_CONTENT: string;
 // Pricing maps (USD per 1M tokens input/output as at 2025-06)
 const OPENAI_MODEL_PRICE: Record<string, string> = {
     'gpt-4o': '$5 in / $15 out',
-    'gpt-4o-mini': '$1 in / $5 out',
-    'gpt-4o-mini-high': '$2 in / $10 out',
-    'o3': '$0.50 in / $1.50 out', // placeholder – adjust if OpenAI publishes exact number
-    'o4-mini': '$1 in / $5 out',
-    'o4-mini-high': '$2 in / $10 out',
-    'gpt-4-turbo': '$10 in / $30 out',
-    'gpt-4': '$30 in / $60 out',
+    'o3': '$3 in / $10 out', // placeholder pricing
 };
 
 const ANTHROPIC_MODEL_PRICE: Record<string, string> = {
@@ -313,16 +307,7 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                         if (!apiKey) throw new Error('API key not set');
                         const models = await fetchOpenAiModels(apiKey);
                         // Priority order reflecting ChatGPT UI offerings
-                        const preferredOrder = [
-                            'gpt-4o',
-                            'gpt-4o-mini',
-                            'gpt-4o-mini-high',
-                            'o3',
-                            'o4-mini',
-                            'o4-mini-high',
-                            'gpt-4-turbo',
-                            'gpt-4'
-                        ];
+                        const preferredOrder = ['gpt-4o', 'o3'];
                         const top: typeof models = [];
                         preferredOrder.forEach(id=>{
                             const found = models.find(m=>m.id===id);
@@ -347,7 +332,7 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                         while (dropdown.selectEl.firstChild) {
                             dropdown.selectEl.removeChild(dropdown.selectEl.firstChild);
                         }
-                        ['gpt-4o','gpt-4o-mini','gpt-4o-mini-high','o3','o4-mini','o4-mini-high'].slice(0,4).forEach(id=>{
+                        ['gpt-4o','o3'].forEach(id=>{
                             const label = `${id} (${OPENAI_MODEL_PRICE[id]})`;
                             dropdown.addOption(id, label);
                         });
@@ -393,20 +378,20 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                         if (!apiKey) throw new Error('API key not set');
                         const models = await fetchAnthropicModels(apiKey);
                         // Prefer Claude-4 family; fallback to Claude-3
-                        let picks = models.filter(m => m.name.startsWith('claude-4'));
-                        if (picks.length === 0) picks = models.filter(m => m.name.startsWith('claude-3'));
-                        picks = picks.slice(0,3);
+                        let claude4 = models.filter(m => m.id.startsWith('claude-4'));
+                        if (claude4.length === 0) claude4 = models.filter(m => m.id.startsWith('claude-3'));
+                        claude4 = claude4.slice(0,3);
 
                         while (dropdown.selectEl.firstChild) {
                             dropdown.selectEl.removeChild(dropdown.selectEl.firstChild);
                         }
 
-                        picks.forEach(m=>{
-                            const label = `${m.name} (${ANTHROPIC_MODEL_PRICE[m.name] || 'price N/A'})`;
-                            dropdown.addOption(m.name, label);
+                        claude4.forEach(m=>{
+                            const label = `${m.id} (${ANTHROPIC_MODEL_PRICE[m.id] || 'price N/A'})`;
+                            dropdown.addOption(m.id, label);
                         });
                         dropdown.setDisabled(false);
-                        dropdown.setValue(this.plugin.settings.anthropicModelId || picks[0]?.name || '');
+                        dropdown.setValue(this.plugin.settings.anthropicModelId || claude4[0]?.id || '');
                     } catch(err) {
                         const fallback = ['claude-4-sonnet','claude-4-opus','claude-3-7-sonnet-20250219'];
                         while (dropdown.selectEl.firstChild) {
