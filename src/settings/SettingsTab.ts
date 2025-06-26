@@ -282,8 +282,8 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
             .setDesc('Choose the ChatGPT model to use.')
             .addDropdown(dropdown => {
                 const options: { id: string; label: string }[] = [
-                    { id: 'gpt-4o', label: 'GPT-4o – best reasoning (std cost)' },
-                    { id: 'o3',      label: 'o3 – good reasoning (lower cost)' },
+                    { id: 'gpt-4o', label: 'gpt-4o' },
+                    { id: 'o3', label: 'o3' },
                 ];
                 options.forEach(opt => dropdown.addOption(opt.id, opt.label));
                 dropdown.setValue(this.plugin.settings.openaiModelId || 'gpt-4o');
@@ -315,8 +315,8 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
             .setDesc('Choose the Claude model to use.')
             .addDropdown(dropdown => {
                 const options: { id: string; label: string }[] = [
-                    { id: 'claude-4-sonnet', label: 'Claude 4 Sonnet – balanced' },
-                    { id: 'claude-4-opus',   label: 'Claude 4 Opus – highest quality' },
+                    { id: 'claude-4-sonnet', label: 'claude-4-sonnet' },
+                    { id: 'claude-4-opus', label: 'claude-4-opus' },
                 ];
                 options.forEach(opt => dropdown.addOption(opt.id, opt.label));
                 dropdown.setValue(this.plugin.settings.anthropicModelId || 'claude-4-sonnet');

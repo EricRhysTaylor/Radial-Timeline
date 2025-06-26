@@ -85,7 +85,7 @@ export const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
     targetCompletionDate: undefined, // Ensure it's undefined by default
     openaiApiKey: '', // Default to empty string
     anthropicApiKey: '', // <<< ADDED: Default empty string
-    anthropicModelId: 'claude-3-7-sonnet-20250219', // <<< ADDED: Default to latest Sonnet
+    anthropicModelId: 'claude-4-sonnet', // <<< ADDED: Default to latest Sonnet
     defaultAiProvider: 'openai', // <<< ADDED: Default to OpenAI
     openaiModelId: 'gpt-4o' // <<< ADDED: Default to gpt-4o
 };
