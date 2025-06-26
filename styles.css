@@ -30,8 +30,11 @@
   --color-estimation: #ff0000; /* Red not using this right now. defs at bottom of file*/
 }
 
-
-/* Remove plaid pattern styles - these are now handled in main.ts SVG patterns */
+/* ADD stage-specific fill rules for title text – keep close to highlight-rect definitions so colours are defined in one place */
+.title-text-main.title-stage-zero   { fill: var(--publishStageColors-Zero,   var(--color-zero)); }
+.title-text-main.title-stage-author { fill: var(--publishStageColors-Author, var(--color-author)); }
+.title-text-main.title-stage-house  { fill: var(--publishStageColors-House,  var(--color-house)); }
+.title-text-main.title-stage-press  { fill: var(--publishStageColors-Press,  var(--color-press)); }
 
 /* styles.css */
 .manuscript-timeline-container {
@@ -84,9 +87,6 @@
 .scene-act:hover {
   fill-opacity: 0.3;
   cursor: pointer;
-}
-.scene-group:hover .scene-info {
-  opacity: 1;
 }
 path.scene-path[fill="#EEEEEE"] {
   cursor: default;
@@ -289,12 +289,6 @@ dominant-baseline: middle;
 }
 .number-text.selected {
   font-weight: bold;
-}
-text.info-text.title-text-main {
-  fill: var(--title-color) !important;
-}
-text.info-text.title-text-main tspan:not(.search-term) {
-  fill: var(--title-color) !important;
 }
 .search-term {
   fill: #FFCC00;
@@ -600,7 +594,6 @@ tspan .search-term {
   stroke-width: .2em !important;
   paint-order: stroke !important;
   font-weight: bold !important;
-  fill: var(--title-color) !important;
 }
 .synopsis-spacer {
   line-height: 1.5em;

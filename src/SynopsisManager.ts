@@ -178,8 +178,6 @@ export default class SynopsisManager {
     titleTextElement.setAttribute("x", "0");
     titleTextElement.setAttribute("y", "0");
     titleTextElement.setAttribute("text-anchor", "start");
-    // Remove style attribute and use CSS variable
-    titleTextElement.style.setProperty('--title-color', titleColor);
     
     // Process title content with special handling for formatting
     this.addTitleContent(titleContent, titleTextElement, titleColor);
@@ -293,7 +291,7 @@ export default class SynopsisManager {
               const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
               tspan.setAttribute("data-item-type", "subplot");
               tspan.setAttribute("fill", color);
-              tspan.setAttribute("style", `fill: ${color} !important`); // Use random color with !important
+              tspan.setAttribute("style", `fill: ${color} !important`);
               tspan.textContent = subplotText;
               subplotTextElement.appendChild(tspan);
               if (j < subplots.length - 1) {
@@ -328,7 +326,7 @@ export default class SynopsisManager {
             const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
             tspan.setAttribute("data-item-type", "character");
             tspan.setAttribute("fill", color);
-            tspan.setAttribute("style", `fill: ${color} !important`); // Use random color with !important
+            tspan.setAttribute("style", `fill: ${color} !important`);
             tspan.textContent = characterText;
             characterTextElement.appendChild(tspan);
             if (j < characters.length - 1) {

@@ -27,8 +27,8 @@ interface PluginRendererFacade {
   openScenePaths: Set<string>;
   desaturateColor(hex: string, amount: number): string;
   calculateCompletionEstimate(scenes: Scene[]): { date: Date; total: number; remaining: number; rate: number } | null;
-  log(message: string, data?: any): void;
-  synopsisManager: { generateElement: (...args: any[]) => SVGGElement };
+  log<T>(message: string, data?: T): void;
+  synopsisManager: { generateElement: (scene: Scene, contentLines: string[], sceneId: string) => SVGGElement };
   highlightSearchTerm(text: string): string;
   safeSvgText(text: string): string;
   latestStatusCounts?: Record<string, number>;
@@ -1391,18 +1391,13 @@ export function createTimelineSVG(
 
                 sceneGroup.addEventListener('mouseenter', () => {
                     if (synopsis) {
-                        synopsis.style.opacity = '1';
-                        synopsis.style.pointerEvents = 'all';
-                    }
-                    if (gradeLine) { // Check if grade line exists
-                        gradeLine.classList.remove('non-selected'); // Remove non-selected on hover
+                        synopsis.classList.add('visible');
                     }
                 });
 
                 sceneGroup.addEventListener('mouseleave', () => {
                     if (synopsis) {
-                        synopsis.style.opacity = '0';
-                        synopsis.style.pointerEvents = 'none';
+                        synopsis.classList.remove('visible');
                     }
                     if (gradeLine) { // Check if grade line exists
                         gradeLine.classList.add('non-selected'); // Add non-selected on mouse out

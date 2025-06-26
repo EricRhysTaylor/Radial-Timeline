@@ -2,14 +2,20 @@
 import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice } from 'obsidian';
 import ManuscriptTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
+import type { Scene } from '../main';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "manuscript-timeline";
 export const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript timeline";
 
-// TEMP generic type aliases until shared types file exists
-type Scene = any;
-type SceneNumberInfo = any;
+// For SceneNumberInfo we define a concrete interface matching the fields we store
+interface SceneNumberInfo {
+  number: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 // Timeline View implementation
 export class ManuscriptTimelineView extends ItemView {
@@ -32,7 +38,7 @@ export class ManuscriptTimelineView extends ItemView {
         this.openScenePaths = plugin.openScenePaths;
     }
     
-    private log(message: string, data?: any) {
+    private log<T>(message: string, data?: T) {
         // Disable all debug logging
         return;
     }
@@ -301,7 +307,7 @@ export class ManuscriptTimelineView extends ItemView {
             };
             
             // Remove any existing listeners and add new one
-            svg.removeEventListener('mousemove', updateCoordinates as any);
+            svg.removeEventListener('mousemove', updateCoordinates);
             svg.addEventListener('mousemove', updateCoordinates);
             
             // Also log coordinates on click
@@ -613,6 +619,7 @@ Due: 2025-05-17
 Total Time: 2
 Revision: 2
 Pending Edits: 
+BeatsUpdate: 
 ---
 
 # Test Scene
@@ -753,10 +760,9 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 // Start processing scene groups in chunks
                 processSceneGroups(0);
                 
-                // Hide all synopses initially (in batch for performance)
+                // All synopses default to the CSS-defined hidden state (opacity 0, pointer-events none)
                 allSynopses.forEach(synopsis => {
-                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
-                    (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
+                    synopsis.classList.remove('visible');
                 });
                 
                 // Setup search controls after SVG is rendered
@@ -838,7 +844,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     }
                 }
             });
-            (path as SVGElement & {style: CSSStyleDeclaration}).style.cursor = "pointer";
+            // Cursor styling handled via CSS (.scene-path)
             
             // Add mouse enter/leave handlers to highlight files in explorer and tabs
             group.addEventListener("mouseenter", () => {
@@ -937,9 +943,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 
                 // Make the tooltip visible
                 synopsis.classList.add('visible');
-                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
-                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
-                
+
                 // Update position on initial hover
                 const svg = svgElement.closest('svg') as SVGSVGElement;
                 this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
@@ -966,18 +970,12 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 
                 // Hide the tooltip
                 synopsis.classList.remove('visible');
-                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
-                (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
-                
-                // Reset all element states
-                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title, .grade-border-line'); // <<< Added grade-border-line here
+
+                // Reset element selection/non-selection classes
+                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title, .grade-border-line');
                 allElements.forEach(element => {
                     element.classList.remove('selected', 'non-selected');
                 });
-
-                // REMOVED the explicit re-addition of non-selected to all grade lines
-                // const allGradeLines = svgElement.querySelectorAll('.grade-border-line');
-                // allGradeLines.forEach(line => line.classList.add('non-selected'));
             });
         }
     }
@@ -999,7 +997,8 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     const fileExplorer = this.plugin.app.workspace.getLeavesOfType('file-explorer')[0];
                     if (fileExplorer && fileExplorer.view) {
                         // Cast to any to access the internal reveal method
-                        const explorerView = fileExplorer.view as any;
+                        interface ExplorerView { revealInFolder(file: TFile): void }
+                        const explorerView = fileExplorer.view as unknown as ExplorerView;
                         if (explorerView.revealInFolder) {
                             // SAFE: Using Obsidian's API
                             explorerView.revealInFolder(file);

@@ -39,7 +39,7 @@ interface ManuscriptTimelineSettings {
 export const TIMELINE_VIEW_TYPE = "manuscript-timeline";
 const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript timeline"; // Use sentence case
 
-interface Scene {
+export interface Scene {
     title?: string;
     date: string;
     path?: string;
@@ -1099,8 +1099,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
                         if (synopsis) {
                             synopsis.classList.add('visible');
-                            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "1";
-                            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "all";
                         }
                     }
                 } else {
@@ -1117,8 +1115,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
                         if (synopsis) {
                             synopsis.classList.remove('visible');
-                            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.opacity = "0";
-                            (synopsis as SVGElement & {style: CSSStyleDeclaration}).style.pointerEvents = "none";
                         }
                     }
                 }
@@ -1432,7 +1428,7 @@ public createTimelineSVG(scenes: Scene[]) {
         };
     }
 
-    public log(message: string, data?: any) {
+    public log<T>(message: string, data?: T) {
         if (this.settings.debug) {
             console.log(`[Manuscript Timeline] ${message}`, data || '');
         }
@@ -1729,13 +1725,14 @@ public createTimelineSVG(scenes: Scene[]) {
         this.searchActive = true;
         this.searchResults.clear();
         
-        // Find matching scenes
-        const regex = new RegExp(escapeRegExp(term), 'gi');
+        // Case-insensitive search without global flag (avoids lastIndex side-effects)
+        const buildRegex = () => new RegExp(escapeRegExp(term), 'i');
         
         // Populate searchResults with matching scene paths
         this.getSceneData().then(scenes => {
             scenes.forEach(scene => {
-                // Check scene properties for matches
+                const regex = buildRegex();
+                // Build searchable string from scene fields
                 const searchableContent = [
                     scene.title,
                     scene.synopsis,
@@ -1744,7 +1741,7 @@ public createTimelineSVG(scenes: Scene[]) {
                     scene.location,
                     scene.pov
                 ].filter(Boolean).join(' ');
-                
+
                 if (regex.test(searchableContent)) {
                     if (scene.path) {
                         this.searchResults.add(scene.path);
@@ -2280,7 +2277,6 @@ public createTimelineSVG(scenes: Scene[]) {
     }
 
     onunload() {
-        this.app.workspace.detachLeavesOfType(TIMELINE_VIEW_TYPE);
         console.log('Manuscript Timeline Plugin Unloaded');
         // Clean up any other resources
     }
