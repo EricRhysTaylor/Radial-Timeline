@@ -582,18 +582,35 @@ export class ManuscriptTimelineView extends ItemView {
     }
     
     async createTestSceneFile(): Promise<void> {
-        const sourcePath = this.plugin.settings.sourcePath || "";
+        // --- Sanitize the configured source path so we don't accidentally create
+        //     duplicate folders when a trailing slash or whitespace is present
+        //     1. Trim leading/trailing whitespace
+        //     2. Remove a leading slash so the path is relative to the vault root
+        //     3. Remove a trailing slash (if any)
+
+        let sourcePath = (this.plugin.settings.sourcePath || "").trim();
+        if (sourcePath.startsWith("/")) {
+            sourcePath = sourcePath.slice(1);
+        }
+
+        if (sourcePath.endsWith("/")) {
+            sourcePath = sourcePath.slice(0, -1);
+        }
+
         let targetPath = sourcePath;
         
-        // Make sure the folder exists
-        if (sourcePath && !this.plugin.app.vault.getAbstractFileByPath(sourcePath)) {
+        if (sourcePath !== "") {
             try {
                 // Try to create the folder if it doesn't exist
                 await this.plugin.app.vault.createFolder(sourcePath);
             } catch (error) {
-                console.error(`Failed to create folder: ${sourcePath}`, error);
-                new Notice(`Failed to create folder: ${sourcePath}`);
-                return;
+                // If the folder already exists, we can safely ignore the error and continue.
+                const message = (error as any)?.message ?? '';
+                if (!message.includes('Folder already exists')) {
+                    console.error(`Failed to create folder: ${sourcePath}`, error);
+                    new Notice(`Failed to create folder: ${sourcePath}`);
+                    return;
+                }
             }
         }
         
@@ -651,23 +668,41 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
         container.empty();
         
         if (!scenes || scenes.length === 0) {
-            container.createEl("div", {
-                text: "No scenes found. Please check your source path in the settings."
-            });
-            this.log("No scenes found. Source path:", this.plugin.settings.sourcePath);
-            
-            // Add button to create a test scene file
-            const testButton = container.createEl("button", {
-                text: "Create a Test Scene File",
+            // --- Build a contextual message describing why no scenes are shown ---
+            let sourcePath = (this.plugin.settings.sourcePath || "").trim();
+            if (sourcePath.startsWith("/")) sourcePath = sourcePath.slice(1);
+            if (sourcePath.endsWith("/")) sourcePath = sourcePath.slice(0, -1);
+
+            let messageText: string;
+
+            if (sourcePath === "") {
+                // No folder configured at all
+                messageText = "No source folder has been configured in the Manuscript Timelineplugin settings. Please choose a folder that will hold your scene notes or leave blank to use the root of your vault.";
+            } else {
+                const folderExists = !!this.plugin.app.vault.getAbstractFileByPath(sourcePath);
+                if (folderExists) {
+                    // Folder exists, just no scenes inside it
+                    messageText = `No scene files were found in “${sourcePath}”.`;
+                } else {
+                    // Folder path set but doesn't exist yet
+                    messageText = `The folder “${sourcePath}” does not exist in your vault yet.`;
+                }
+                messageText += " Would you like to create a demonstration scene note with example YAML front-matter?";
+            }
+
+            container.createEl("div", { text: messageText });
+            this.log("No scenes found. Source path:", sourcePath || "<not set>");
+
+            // Add button to create a demonstration scene file
+            const demoButton = container.createEl("button", {
+                text: "Create Demonstration Scene Note",
                 cls: "action-button"
             });
-            
-            // Styles now defined in CSS
-            
-            testButton.addEventListener("click", async () => {
+
+            demoButton.addEventListener("click", async () => {
                 await this.createTestSceneFile();
             });
-            
+
             return;
         }
         
