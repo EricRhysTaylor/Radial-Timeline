@@ -301,7 +301,7 @@ export function createTimelineSVG(
             </linearGradient>
         </defs>`;
 
-        // Add the base gray circle
+        // Add the base purple circle (provides background for entire ring)
         svg += `
             <circle
                 cx="0"
@@ -347,39 +347,33 @@ export function createTimelineSVG(
              const estimatedDay = estimatedCompletionDate.getDate();
              
              const estimatedDaysInMonth = new Date(estimatedYear, estimatedMonth + 1, 0).getDate();
-             const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
-             const estimatedDateAngle = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
-             
              const now = new Date(); // Need current time for diff calculations
-             const diffMs = estimatedCompletionDate.getTime() - now.getTime();
-             let arcAngleSpan = estimatedDateAngle - startAngle;
-             if (arcAngleSpan < 0) arcAngleSpan += 2 * Math.PI;
              const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
 
-             // First, draw complete circles for each full year if any
-             for (let i = 0; i < yearsDiff; i++) {
+             // Note: Red circles removed - year indicators now shown in date label instead
+             
+             if (yearsDiff > 0) {
+                 // For multi-year estimates, the base circle already provides the full purple background
+                 // No additional circle needed - year indicator in label shows multi-year status
+             } else {
+                 // For current year estimates, draw partial arc from January 1 to estimated date position
+                 const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
+                 const estimatedDateAngle = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
+                 
+                 let arcAngleSpan = estimatedDateAngle - startAngle;
+                 if (arcAngleSpan < 0) arcAngleSpan += 2 * Math.PI;
+                 
                  svg += `
-                     <circle
-                         cx="0"
-                         cy="0"
-                         r="${progressRadius}"
-                         fill="none"
-                         class="estimation-arc estimation-full-year"
+                     <path
+                         d="
+                             M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
+                             A ${progressRadius} ${progressRadius} 0 ${arcAngleSpan > Math.PI ? 1 : 0} 1 
+                             ${progressRadius * Math.cos(estimatedDateAngle)} ${progressRadius * Math.sin(estimatedDateAngle)}
+                         "
+                         class="progress-ring-base"
                      />
                  `;
              }
-             
-             // Draw the arc from January 1 (12 o'clock) to estimated date position
-             svg += `
-                 <path
-                     d="
-                         M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
-                         A ${progressRadius} ${progressRadius} 0 ${arcAngleSpan > Math.PI ? 1 : 0} 1 
-                         ${progressRadius * Math.cos(estimatedDateAngle)} ${progressRadius * Math.sin(estimatedDateAngle)}
-                     "
-                     class="estimation-arc"
-                 />
-             `;
 
          }
          // --- Draw Estimation Arc --- END ---
@@ -517,7 +511,12 @@ export function createTimelineSVG(
 
             // Use estimateResult.date for display format
             const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
-            const dateDisplay = dateFormatter.format(estimatedCompletionDate);
+            
+            // Add year indicator for completion estimates beyond current year
+            const now = new Date();
+            const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
+            const yearIndicator = yearsDiff > 0 ? `[${yearsDiff + 1}] ` : '';
+            const dateDisplay = `${yearIndicator}${dateFormatter.format(estimatedCompletionDate)}`;
             
             // --- Get stats string from estimateResult --- START ---
             const total = estimateResult.total;
