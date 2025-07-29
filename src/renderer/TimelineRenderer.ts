@@ -981,12 +981,7 @@ export function createTimelineSVG(
                                 A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(voidStartAngle))} ${formatNumber(innerR * Math.sin(voidStartAngle))}
                             `;
                             
-                            svg += `<path d="${voidArcPath}" 
-                                     fill="#EEEEEE" 
-                                     fill-opacity="0.7"
-                                     stroke="white" 
-                                     stroke-width="1" 
-                                     class="scene-path"/>`;
+                            svg += `<path d="${voidArcPath}" class="void-cell"/>`;
                         }
                     } else {
                         // Empty subplot ring - but Plot notes should still appear here
@@ -1051,12 +1046,7 @@ export function createTimelineSVG(
                                     A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(currentAngle))} ${formatNumber(innerR * Math.sin(currentAngle))}
                                 `;
                                 
-                                svg += `<path d="${voidArcPath}" 
-                                         fill="#EEEEEE" 
-                                         fill-opacity="0.7"
-                                         stroke="white" 
-                                         stroke-width="1" 
-                                         class="scene-path"/>`;
+                                svg += `<path d="${voidArcPath}" class="void-cell"/>`;
                             }
                         } else {
                             // Completely empty ring - fill with single void cell
@@ -1068,12 +1058,7 @@ export function createTimelineSVG(
                                 A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
                             `;
                             
-                            svg += `<path d="${voidArcPath}" 
-                                     fill="#EEEEEE" 
-                                     fill-opacity="0.7"
-                                     stroke="white" 
-                                     stroke-width="1" 
-                                     class="scene-path"/>`;
+                            svg += `<path d="${voidArcPath}" class="void-cell"/>`;
                         }
                     }
                 } else {
@@ -1085,8 +1070,7 @@ export function createTimelineSVG(
                         L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
                         A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
                     `;
-                    const emptyColor = "#EEEEEE"; // Light gray for empty scenes
-                    svg += `<path d="${arcPath}" fill="${emptyColor}" fill-opacity="0.7" stroke="white" stroke-width="1"/>`;
+                    svg += `<path d="${arcPath}" class="void-cell"/>`;
                 }
             }
         }

@@ -85,7 +85,12 @@
   fill-opacity: 0.3;
   cursor: pointer;
 }
-path.scene-path[fill="#EEEEEE"] {
+/* Void cells - empty space in timeline */
+.void-cell {
+  fill: #EEEEEE;
+  fill-opacity: 0.7;
+  stroke: white;
+  stroke-width: 1;
   cursor: default;
 }
 .scene-path.faded {
