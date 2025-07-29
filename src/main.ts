@@ -37,7 +37,7 @@ interface ManuscriptTimelineSettings {
 
 // Constants for the view
 export const TIMELINE_VIEW_TYPE = "manuscript-timeline";
-const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript timeline"; // Use sentence case
+const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript Timeline"; // Use Title case
 
 export interface Scene {
     title?: string;
@@ -60,6 +60,9 @@ export interface Scene {
     "1beats"?: string; // Add 1beats property
     "2beats"?: string; // Add 2beats property 
     "3beats"?: string; // Add 3beats property
+    // Plot-specific properties  
+    itemType?: "Scene" | "Plot"; // Distinguish between Scene and Plot items
+    Description?: string; // For Plot beat descriptions
 }
 
 // Add this interface to store scene number information for the scene square and synopsis
@@ -324,6 +327,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     searchTerm: string = '';
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
+    
+    // Debouncing for timeline refresh
+    private refreshTimeout: NodeJS.Timeout | null = null;
     
     // --- Add variables to store latest estimate stats --- START ---
     latestTotalScenes: number = 0;
@@ -632,14 +638,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Add settings tab
         this.addSettingTab(new ManuscriptTimelineSettingsTab(this.app, this));
         
-        // Register event for metadata changes
-        this.registerEvent(
-            this.app.metadataCache.on('changed', (file) => {
-                this.log('Metadata changed for file: ' + file.path);
-                // Refresh timeline when metadata changes
-                this.refreshTimelineIfNeeded(file);
-            })
-        );
+        // Note: Frontmatter change detection is handled by the TimelineView with proper debouncing
+        // No metadata listener needed here to avoid triggering on body text changes
         
         // Listen for tab changes and file manager interactions using Obsidian's events
         // This is more reliable than DOM events
@@ -866,32 +866,24 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Add settings tab
         this.addSettingTab(new ManuscriptTimelineSettingsTab(this.app, this));
 
-        // Register event listeners
-        this.registerEvent(this.app.workspace.on('layout-change', () => { this.updateOpenFilesTracking(); }));
-        this.registerEvent(this.app.metadataCache.on('changed', (file) => { this.refreshTimelineIfNeeded(file); }));
-        this.registerEvent(this.app.vault.on('delete', (file) => { this.refreshTimelineIfNeeded(file); }));
-        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => this.handleFileRename(file, oldPath)));
-
-
-
         this.app.workspace.onLayoutReady(() => {
             this.setCSSColorVariables(); // Set initial colors
             this.updateOpenFilesTracking(); // Track initially open files
         });
 
-         // Register file open/close events
+         // Register file open/close events  
         this.registerEvent(this.app.workspace.on('file-open', (file) => {
             if (file) {
                  // Check if the opened file is within the sourcePath
                 if (this.isSceneFile(file.path)) {
                     this.openScenePaths.add(file.path);
                      this.highlightSceneInTimeline(file.path, true);
+                     this.refreshTimelineIfNeeded(null);
                  } 
             } else {
                 // Handle case where no file is open (e.g., closing the last tab)
                 // Potentially clear highlights or update state
             }
-            this.refreshTimelineIfNeeded(null); // Refresh potentially needed on file change
         }));
 
         this.registerEvent(this.app.workspace.on('layout-change', () => {
@@ -899,15 +891,15 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             this.refreshTimelineIfNeeded(null);
         }));
 
-        // Listen for changes, deletions, renames
-        this.registerEvent(this.app.vault.on('modify', (file) => this.refreshTimelineIfNeeded(file)));
+        // Listen for deletions and renames only (metadata changes handled by view with debouncing)
+        // Removed 'modify' listener as it triggers on every keystroke
         this.registerEvent(this.app.vault.on('delete', (file) => this.refreshTimelineIfNeeded(file)));
         this.registerEvent(this.app.vault.on('rename', (file, oldPath) => this.handleFileRename(file, oldPath)));
 
         // Theme change listener
         this.registerEvent(this.app.workspace.on('css-change', () => {
             this.setCSSColorVariables();
-            this.refreshTimelineIfNeeded(null); // Timeline might need redraw if colors change
+            this.refreshTimelineIfNeeded(null);
         }));
 
          // Setup hover listeners
@@ -1164,6 +1156,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         });
 
         const scenes: Scene[] = [];
+        const plotsToProcess: Array<{file: TFile, metadata: Record<string, unknown>, validActNumber: number}> = [];
     
         for (const file of files) {
             try {
@@ -1226,31 +1219,68 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 pendingEdits: metadata["Pending Edits"],
                                 "1beats": typeof metadata["1beats"] === 'string' ? metadata["1beats"] : String(metadata["1beats"]),
                                 "2beats": typeof metadata["2beats"] === 'string' ? metadata["2beats"] : String(metadata["2beats"]), 
-                                "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : String(metadata["3beats"])
+                                "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : String(metadata["3beats"]),
+                                itemType: "Scene"
                             });
                     });
                 }
+            }
+                
+            // Store Plot notes for processing after we know all subplots
+            if (metadata && metadata.Class === "Plot") {
+                const actNumber = metadata.Act !== undefined ? Number(metadata.Act) : 1;
+                const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
+                
+                plotsToProcess.push({
+                    file: file,
+                    metadata: metadata,
+                    validActNumber: validActNumber
+                });
             }
             } catch (error) {
                 console.error(`Error processing file ${file.path}:`, error);
         }
         }
 
-        //sort scenes by when and then by scene number for the subplot radials
+        // Process Plot notes - create entry for each unique subplot
+        const uniqueSubplots = new Set<string>();
+        scenes.forEach(scene => {
+            if (scene.subplot) uniqueSubplots.add(scene.subplot);
+        });
+        
+        // If no subplots found, use Main Plot as default
+        if (uniqueSubplots.size === 0) {
+            uniqueSubplots.add("Main Plot");
+        }
+        
+        // Create Plot entries for each subplot
+        plotsToProcess.forEach(plotInfo => {
+            uniqueSubplots.forEach(subplot => {
+                scenes.push({
+                    title: plotInfo.file.basename,
+                    date: "1900-01-01T12:00:00Z", // Dummy date for plots
+                    path: plotInfo.file.path,
+                    subplot: subplot,
+                    act: plotInfo.validActNumber.toString(),
+                    actNumber: plotInfo.validActNumber,
+                    itemType: "Plot",
+                    Description: (plotInfo.metadata.Description as string) || ''
+                });
+            });
+        });
+
+        
+        // Sort by manuscript order (prefix number) rather than chronological order
         return scenes.sort((a, b) => {
-            // First compare by when (date)
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            const whenComparison = dateA.getTime() - dateB.getTime();
-            if (whenComparison !== 0) return whenComparison;
+            // First compare by act number
+            const actComparison = (a.actNumber || 1) - (b.actNumber || 1);
+            if (actComparison !== 0) return actComparison;
             
-            // If dates are equal, compare by scene number
+            // Then by prefix number (manuscript order)
             const aNumber = parseSceneTitle(a.title || '').number;
             const bNumber = parseSceneTitle(b.title || '').number;
             
-            // Convert scene numbers to numbers for comparison
-            // Ensure we're using numeric values by explicitly parsing the strings
-            // Use parseFloat instead of parseInt to handle decimal scene numbers correctly
+            // Use parseFloat to handle both integer and decimal scene numbers correctly
             const aNumberValue = aNumber ? parseFloat(aNumber) : 0;
             const bNumberValue = bNumber ? parseFloat(bNumber) : 0;
             return aNumberValue - bNumberValue;
@@ -1262,7 +1292,7 @@ public createTimelineSVG(scenes: Scene[]) {
   return createTimelineSVG(this, scenes);
 }
 
-    private darkenColor(color: string, percent: number): string {
+    public darkenColor(color: string, percent: number): string {
         const num = parseInt(color.replace("#", ""), 16);
         const amt = Math.round(2.55 * percent);
         const R = Math.max((num >> 16) - amt, 0);
@@ -1271,7 +1301,7 @@ public createTimelineSVG(scenes: Scene[]) {
         return `#${(1 << 24 | R << 16 | G << 8 | B).toString(16).slice(1)}`;
     }
 
-    private lightenColor(color: string, percent: number): string {
+    public lightenColor(color: string, percent: number): string {
         // Parse the color
         const num = parseInt(color.replace("#", ""), 16);
         
@@ -1434,30 +1464,38 @@ public createTimelineSVG(scenes: Scene[]) {
         }
     }
 
-    // Method to refresh the timeline if the active view exists
+    // Method to refresh the timeline if the active view exists (with debouncing)
     refreshTimelineIfNeeded(file: TAbstractFile | null | undefined) {
         // If a specific file is provided, only refresh if it's a markdown file
         if (file && (!(file instanceof TFile) || file.extension !== 'md')) {
             return;
         }
         
-        // If file is null/undefined, or if it's a valid markdown file, proceed to refresh
+        // Clear existing timeout
+        if (this.refreshTimeout) {
+            clearTimeout(this.refreshTimeout);
+        }
+        
+        // Debounce the refresh with a 1-second delay
+        this.refreshTimeout = setTimeout(() => {
+            // Get all timeline views
+            const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
+                .map(leaf => leaf.view as ManuscriptTimelineView)
+                .filter(view => view instanceof ManuscriptTimelineView);
 
-        // Get all timeline views
-        const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
-            .map(leaf => leaf.view as ManuscriptTimelineView)
-            .filter(view => view instanceof ManuscriptTimelineView);
-
-        // Refresh each view
-        for (const view of timelineViews) {
-            if (view) {
-                // Get the leaf that contains the view
-                const leaf = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)[0];
-                if (leaf) {
-                    view.refreshTimeline();
+            // Refresh each view
+            for (const view of timelineViews) {
+                if (view) {
+                    // Get the leaf that contains the view
+                    const leaf = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)[0];
+                    if (leaf) {
+                        view.refreshTimeline();
+                    }
                 }
             }
-        }
+            
+            this.refreshTimeout = null;
+        }, 1000); // 1 second debounce
     }
 
     /**
@@ -2137,6 +2175,9 @@ public createTimelineSVG(scenes: Scene[]) {
         remaining: number;
         rate: number; // Scenes per week
     } | null {
+        // Filter out Plot notes - only calculate completion based on actual Scene notes
+        const sceneNotesOnly = scenes.filter(scene => scene.itemType !== "Plot");
+        
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Normalize to start of day
 
@@ -2152,7 +2193,7 @@ public createTimelineSVG(scenes: Scene[]) {
         const completedPathsThisYear = new Set<string>();
 
         // Calculate completed scenes this year
-        scenes.forEach(scene => {
+        sceneNotesOnly.forEach(scene => {
             const dueDateStr = scene.due;
             const scenePath = scene.path;
             const sceneStatus = scene.status?.toString().trim().toLowerCase();
@@ -2183,9 +2224,9 @@ public createTimelineSVG(scenes: Scene[]) {
         const scenesPerDay = completedThisYear / daysPassedThisYear;
 
         // --- Get Current Status Counts (Necessary for Remaining/Total) ---
-        // Use a fresh calculation based on the provided scenes array
+        // Use a fresh calculation based on the provided scenes array (excluding Plot notes)
         const processedPaths = new Set<string>(); // Track unique paths
-        const currentStatusCounts = scenes.reduce((acc, scene) => {
+        const currentStatusCounts = sceneNotesOnly.reduce((acc, scene) => {
             // --- Add check for unique path --- START ---
             if (!scene.path || processedPaths.has(scene.path)) {
                 return acc; // Skip if no path or already counted

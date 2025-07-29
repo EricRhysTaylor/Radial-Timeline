@@ -6,7 +6,7 @@ import type { Scene } from '../main';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "manuscript-timeline";
-export const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript timeline";
+export const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript Timeline";
 
 // For SceneNumberInfo we define a concrete interface matching the fields we store
 interface SceneNumberInfo {
@@ -396,10 +396,11 @@ export class ManuscriptTimelineView extends ItemView {
                 const cache = this.app.metadataCache.getFileCache(file);
                 if (!cache || !cache.frontmatter) return;
                 
-                // Check if this is a scene file (Class: Scene)
+                // Check if this is a scene or plot file (Class: Scene or Class: Plot)
                 const fm = cache.frontmatter;
-                const isScene = (fm.Class === 'Scene') || (fm.class === 'Scene');
-                if (!isScene) return;
+                const isSceneOrPlot = (fm.Class === 'Scene') || (fm.class === 'Scene') ||
+                                     (fm.Class === 'Plot') || (fm.class === 'Plot');
+                if (!isSceneOrPlot) return;
                 
                 // Check if this is a frontmatter change
                 const fileId = file.path;
@@ -413,7 +414,7 @@ export class ManuscriptTimelineView extends ItemView {
                 if (previousFrontmatter === currentFrontmatter) return;
                 
                 // Log only meaningful changes
-                this.log('Scene frontmatter changed for file: ' + file.path);
+                this.log('Scene/Plot frontmatter changed for file: ' + file.path);
                 
                 // Debounce the refresh with a generous 5 seconds
                 if (this.timelineRefreshTimeout) clearTimeout(this.timelineRefreshTimeout);

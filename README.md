@@ -26,12 +26,14 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 - Creates an interactive radial timeline visualization of your scenes
 - Organizes scenes by act, subplot, and chronological order
+- Save the Cat beat structure support with `Class: Plot` notes for story beats
 - Shows scene details on hover including title, date, synopsis, subplots, and characters
 - Color-codes scenes by status (Complete, Working, Todo, etc.)
+- Plot notes display with graduated color shading and 10px width for visual distinction
 - Supports both light and dark themes
 - Allows clicking on scenes to open the corresponding file
 - Visually highlights currently open scene tabs in the radial timeline with special styling
-- Displays estimated completion date based on remaining Todo/Working scenes and your recent progress rate
+- Displays estimated completion date based on remaining Todo/Working scenes and your recent progress rate (excludes Plot notes)
 - Shows a visual arc and marker indicating the estimated completion timeframe
 - Labels subplot rings with descriptive titles for easy identification
 - Fully integrated into Obsidian's interface - no external plugins required
@@ -128,6 +130,43 @@ Pending Edits: Optional notes here
 BeatsUpdate: Yes
 ```
 
+## Plot notes (Save the Cat beats) - NEW in v2.1.0
+
+The plugin now supports Save the Cat story structure with `Class: Plot` notes. These notes represent the 15 essential story beats and appear as narrow visual markers across all subplot rings.
+
+### Required Plot note metadata
+
+Plot notes must have the following frontmatter:
+
+```yaml
+Class: Plot
+Act: 1
+Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
+```
+
+### Plot note features
+
+- Visual distinction: Plot notes appear as 10px wide colored bars (no title text or number squares)
+- Universal presence: Automatically appear in ALL subplot rings regardless of which subplot you specify
+- Graduated coloring: Each plot note uses a progressively lighter shade of your current publish stage color
+- Manuscript ordering: Positioned by their title prefix number (e.g., "01 Opening Image", "1.5 Theme Stated")
+- Hover details: Mouseover shows the full title and description with synopsis formatting
+- Excluded from estimates: Plot notes don't count toward completion date calculations
+
+### Example Plot note
+
+Create a note titled "01 Opening Image" with this frontmatter:
+
+```yaml
+---
+Class: Plot
+Act: 1
+Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
+---
+```
+
+The title prefix number (01) determines its position in the timeline, and the Description appears on mouseover.
+
 ## Timeline visualization elements
 
 The timeline displays:
@@ -146,10 +185,12 @@ Hover over a scene to see its details and click to open the corresponding file.
 ## Scene ordering and numbering
 
 - Scenes are ordered chronologically based on the When date in the frontmatter metadata
+- Plot notes are ordered by their title prefix number (manuscript order), not by date
 - The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")
-- These numbers are displayed in small boxes on the timeline
+- Scene numbers are displayed in small boxes on the timeline (Plot notes don't have number boxes)
 - Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer
 - If scenes have the same When date, they are sub-ordered by their scene number
+- Both scenes and Plot notes can use decimal numbering (e.g., "1.5", "2.25") for fine-grained ordering
 
 ## Technical implementation
 

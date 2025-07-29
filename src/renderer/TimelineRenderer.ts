@@ -26,6 +26,8 @@ interface PluginRendererFacade {
   searchTerm: string;
   openScenePaths: Set<string>;
   desaturateColor(hex: string, amount: number): string;
+  lightenColor(hex: string, percent: number): string;
+  darkenColor(hex: string, percent: number): string;
   calculateCompletionEstimate(scenes: Scene[]): { date: Date; total: number; remaining: number; rate: number } | null;
   log<T>(message: string, data?: T): void;
   synopsisManager: { generateElement: (scene: Scene, contentLines: string[], sceneId: string) => SVGGElement };
@@ -704,7 +706,12 @@ export function createTimelineSVG(
             const contentLines = [
                 // Format title and date on same line with spacing
                 plugin.highlightSearchTerm(`${scene.title}   ${scene.when?.toLocaleDateString() || ''}`),
-                ...(scene.synopsis
+                // For Plot notes, use Description field; for Scene notes, use synopsis
+                ...(scene.itemType === "Plot" && scene.Description
+                    ? plugin
+                        .splitIntoBalancedLines(scene.Description, maxTextWidth)
+                        .map((lineStr: string) => plugin.highlightSearchTerm(lineStr))
+                    : scene.synopsis
                     ? plugin
                         .splitIntoBalancedLines(scene.synopsis, maxTextWidth)
                         .map((lineStr: string) => plugin.highlightSearchTerm(lineStr))
@@ -712,17 +719,20 @@ export function createTimelineSVG(
                 '\u00A0', // Separator
             ];
             
-            // --- Subplots --- 
-            // Remove the loop generating subplotsHtml
-            // Just push the raw subplot string (or empty string if none)
-            const rawSubplots = orderedSubplots.join(', ');
-            contentLines.push(rawSubplots);
-            
-            // --- Characters ---
-            // Remove the loop generating charactersHtml
-            // Just push the raw character string (or empty string if none)
-            const rawCharacters = (scene.Character || []).join(', ');
-            contentLines.push(rawCharacters);
+            // Only add subplots and characters for Scene notes, not Plot notes
+            if (scene.itemType !== "Plot") {
+                // --- Subplots --- 
+                // Remove the loop generating subplotsHtml
+                // Just push the raw subplot string (or empty string if none)
+                const rawSubplots = orderedSubplots.join(', ');
+                contentLines.push(rawSubplots);
+                
+                // --- Characters ---
+                // Remove the loop generating charactersHtml
+                // Just push the raw character string (or empty string if none)
+                const rawCharacters = (scene.Character || []).join(', ');
+                contentLines.push(rawCharacters);
+            }
             
             // Filter out empty lines AFTER generating raw strings
             const filteredContentLines = contentLines.filter(line => line && line.trim() !== '\u00A0');
@@ -755,17 +765,88 @@ export function createTimelineSVG(
                     const currentScenes = scenesByActAndSubplot[act][subplot] || [];
 
                     if (currentScenes && currentScenes.length > 0) {
-                        const sceneAngleSize = (endAngle - startAngle) / currentScenes.length;
+                        // Separate Plot notes and Scene notes for different sizing
+                        const plotNotes = currentScenes.filter(scene => scene.itemType === "Plot");
+                        const sceneNotes = currentScenes.filter(scene => scene.itemType !== "Plot");
+                        
+                        // Calculate 10px angular width for Plot notes using middle radius of ring
+                        const middleRadius = (innerR + outerR) / 2;
+                        const plotAngularWidth = 10 / middleRadius; // 10px converted to radians
+                        
+                        // Calculate remaining angular space after Plot notes
+                        const totalAngularSpace = endAngle - startAngle;
+                        const plotTotalAngularSpace = plotNotes.length * plotAngularWidth;
+                        const remainingAngularSpace = totalAngularSpace - plotTotalAngularSpace;
+                        
+                        // Calculate angular size for Scene notes (divide remaining space)
+                        const sceneAngularSize = sceneNotes.length > 0 ? remainingAngularSpace / sceneNotes.length : 0;
+                        
+                        // Create position mapping for all scenes in manuscript order
+                        let currentAngle = startAngle;
+                        const scenePositions = new Map();
+                        
+                        currentScenes.forEach((scene, idx) => {
+                            if (scene.itemType === "Plot") {
+                                scenePositions.set(idx, {
+                                    startAngle: currentAngle,
+                                    endAngle: currentAngle + plotAngularWidth,
+                                    angularSize: plotAngularWidth
+                                });
+                                currentAngle += plotAngularWidth;
+                            } else {
+                                scenePositions.set(idx, {
+                                    startAngle: currentAngle,
+                                    endAngle: currentAngle + sceneAngularSize,
+                                    angularSize: sceneAngularSize
+                                });
+                                currentAngle += sceneAngularSize;
+                            }
+                        });
             
                         currentScenes.forEach((scene, idx) => {
                             const { number, text } = parseSceneTitle(scene.title || '');
-                            const sceneStartAngle = startAngle + (idx * sceneAngleSize);
-                            const sceneEndAngle = sceneStartAngle + sceneAngleSize;
+                            const position = scenePositions.get(idx);
+                            const sceneStartAngle = position.startAngle;
+                            const sceneEndAngle = position.endAngle;
                             // Position text 2px from the top boundary of the cell
                             const textPathRadius = outerR - 25;
             
                             // Determine the color of a scene based on its status and due date
                             const color = (() => {
+                                // Handle Plot notes with graduated shades from dark to light of the current max publish stage color
+                                if (scene.itemType === "Plot") {
+                                    // Use the max stage color as the base hue (already calculated above)
+                                    const baseColor = maxStageColor;
+                                    
+                                    // Count total Plot notes to determine shade distribution
+                                    const allPlotNotes = scenes.filter(s => s.itemType === "Plot");
+                                    const totalPlots = allPlotNotes.length;
+                                    
+                                    if (totalPlots === 0) return baseColor;
+                                    
+                                    // Find this plot's index in the ordered list
+                                    const plotIndex = allPlotNotes.findIndex(p => p.title === scene.title && p.actNumber === scene.actNumber);
+                                    
+                                    // Create a range from dark to light: -40% (dark) to +40% (light)
+                                    const maxAdjustment = 40;
+                                    const adjustmentRange = maxAdjustment * 2; // Total range: 80%
+                                    
+                                    // Calculate position: 0 = darkest, 1 = lightest
+                                    const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
+                                    
+                                    // Map position to adjustment: -40% to +40%
+                                    const adjustment = (position * adjustmentRange) - maxAdjustment;
+                                    
+                                    // Apply darkening or lightening based on adjustment value
+                                    if (adjustment < 0) {
+                                        // Darken the color
+                                        return plugin.darkenColor(baseColor, Math.abs(adjustment));
+                                    } else {
+                                        // Lighten the color
+                                        return plugin.lightenColor(baseColor, adjustment);
+                                    }
+                                }
+                                
                                 const statusList = Array.isArray(scene.status) ? scene.status : [scene.status];
                                 const normalizedStatus = statusList[0]?.toString().trim().toLowerCase() || '';
                                 
@@ -869,7 +950,8 @@ export function createTimelineSVG(
                                       stroke-width="1" 
                                       class="${sceneClasses}"/>
 
-                                <!-- Scene title path (using only the text part) -->
+                                <!-- Scene title path (using only the text part) - Skip for Plot notes -->
+                                ${scene.itemType !== "Plot" ? `
                                 <path id="textPath-${act}-${ring}-${idx}" 
                                       d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + 0.02))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + 0.02))} 
                                          A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
@@ -878,26 +960,113 @@ export function createTimelineSVG(
                                     <textPath href="#textPath-${act}-${ring}-${idx}" startOffset="4">
                                         ${text}
                                     </textPath>
-                                </text>
+                                </text>` : ''}
                             </g>`;
                         });
-                    } else {
-                        // Create 4 dummy scenes for empty subplot rings
-                        const dummyScenes = 4;
-                        for (let idx = 0; idx < dummyScenes; idx++) {
-                            const sceneStartAngle = startAngle + (idx * (endAngle - startAngle) / dummyScenes);
-                            const sceneEndAngle = startAngle + ((idx + 1) * (endAngle - startAngle) / dummyScenes);
+                        
+                        // Fill any remaining angular space with gray void cells
+                        const totalUsedSpace = plotNotes.length * plotAngularWidth + sceneNotes.length * sceneAngularSize;
+                        const remainingVoidSpace = totalAngularSpace - totalUsedSpace;
+                        
+                        if (remainingVoidSpace > 0.001) { // Small threshold to avoid floating point errors
+                            const voidStartAngle = startAngle + totalUsedSpace;
+                            const voidEndAngle = endAngle;
                             
-                            // Construct the arc path for the dummy scene
-                            const arcPath = `
-                                M ${formatNumber(innerR * Math.cos(sceneStartAngle))} ${formatNumber(innerR * Math.sin(sceneStartAngle))}
-                                L ${formatNumber(outerR * Math.cos(sceneStartAngle))} ${formatNumber(outerR * Math.sin(sceneStartAngle))}
-                                A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(sceneEndAngle))} ${formatNumber(outerR * Math.sin(sceneEndAngle))}
-                                L ${formatNumber(innerR * Math.cos(sceneEndAngle))} ${formatNumber(innerR * Math.sin(sceneEndAngle))}
-                                A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(sceneStartAngle))} ${formatNumber(innerR * Math.sin(sceneStartAngle))}
+                            // Create void cell to fill remaining space
+                            const voidArcPath = `
+                                M ${formatNumber(innerR * Math.cos(voidStartAngle))} ${formatNumber(innerR * Math.sin(voidStartAngle))}
+                                L ${formatNumber(outerR * Math.cos(voidStartAngle))} ${formatNumber(outerR * Math.sin(voidStartAngle))}
+                                A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(voidEndAngle))} ${formatNumber(outerR * Math.sin(voidEndAngle))}
+                                L ${formatNumber(innerR * Math.cos(voidEndAngle))} ${formatNumber(innerR * Math.sin(voidEndAngle))}
+                                A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(voidStartAngle))} ${formatNumber(innerR * Math.sin(voidStartAngle))}
                             `;
-
-                            svg += `<path d="${arcPath}" 
+                            
+                            svg += `<path d="${voidArcPath}" 
+                                     fill="#EEEEEE" 
+                                     stroke="white" 
+                                     stroke-width="1" 
+                                     class="scene-path"/>`;
+                        }
+                    } else {
+                        // Empty subplot ring - but Plot notes should still appear here
+                        // Get Plot notes that should appear in this subplot
+                        const plotNotesInSubplot = scenes.filter(s => s.itemType === "Plot" && s.subplot === subplot);
+                        
+                        if (plotNotesInSubplot.length > 0) {
+                            // Calculate space for Plot notes in empty ring
+                            const middleRadius = (innerR + outerR) / 2;
+                            const plotAngularWidth = 10 / middleRadius;
+                            const totalPlotSpace = plotNotesInSubplot.length * plotAngularWidth;
+                            const remainingSpace = (endAngle - startAngle) - totalPlotSpace;
+                            
+                            // Position Plot notes
+                            let currentAngle = startAngle;
+                            plotNotesInSubplot.forEach((plotNote, idx) => {
+                                const plotStartAngle = currentAngle;
+                                const plotEndAngle = currentAngle + plotAngularWidth;
+                                
+                                // Get Plot note color (reuse the color logic)
+                                const allPlotNotes = scenes.filter(s => s.itemType === "Plot");
+                                const plotIndex = allPlotNotes.findIndex(p => p.title === plotNote.title && p.actNumber === plotNote.actNumber);
+                                const totalPlots = allPlotNotes.length;
+                                const maxAdjustment = 40;
+                                const adjustmentRange = maxAdjustment * 2;
+                                const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
+                                const adjustment = (position * adjustmentRange) - maxAdjustment;
+                                
+                                const plotColor = adjustment < 0 
+                                    ? plugin.darkenColor(maxStageColor, Math.abs(adjustment))
+                                    : plugin.lightenColor(maxStageColor, adjustment);
+                                
+                                const plotArcPath = `
+                                    M ${formatNumber(innerR * Math.cos(plotStartAngle))} ${formatNumber(innerR * Math.sin(plotStartAngle))}
+                                    L ${formatNumber(outerR * Math.cos(plotStartAngle))} ${formatNumber(outerR * Math.sin(plotStartAngle))}
+                                    A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(plotEndAngle))} ${formatNumber(outerR * Math.sin(plotEndAngle))}
+                                    L ${formatNumber(innerR * Math.cos(plotEndAngle))} ${formatNumber(innerR * Math.sin(plotEndAngle))}
+                                    A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(plotStartAngle))} ${formatNumber(innerR * Math.sin(plotStartAngle))}
+                                `;
+                                
+                                const sceneId = `scene-path-${act}-${ring}-${idx}`;
+                                svg += `
+                                <g class="scene-group" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                                    <path id="${sceneId}"
+                                          d="${plotArcPath}" 
+                                          fill="${plotColor}" 
+                                          stroke="white" 
+                                          stroke-width="1" 
+                                          class="scene-path"/>
+                                </g>`;
+                                
+                                currentAngle += plotAngularWidth;
+                            });
+                            
+                            // Fill remaining space with void cell
+                            if (remainingSpace > 0.001) {
+                                const voidArcPath = `
+                                    M ${formatNumber(innerR * Math.cos(currentAngle))} ${formatNumber(innerR * Math.sin(currentAngle))}
+                                    L ${formatNumber(outerR * Math.cos(currentAngle))} ${formatNumber(outerR * Math.sin(currentAngle))}
+                                    A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(endAngle))} ${formatNumber(outerR * Math.sin(endAngle))}
+                                    L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(endAngle))}
+                                    A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(currentAngle))} ${formatNumber(innerR * Math.sin(currentAngle))}
+                                `;
+                                
+                                svg += `<path d="${voidArcPath}" 
+                                         fill="#EEEEEE" 
+                                         stroke="white" 
+                                         stroke-width="1" 
+                                         class="scene-path"/>`;
+                            }
+                        } else {
+                            // Completely empty ring - fill with single void cell
+                            const voidArcPath = `
+                                M ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
+                                L ${formatNumber(outerR * Math.cos(startAngle))} ${formatNumber(outerR * Math.sin(startAngle))}
+                                A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(endAngle))} ${formatNumber(outerR * Math.sin(endAngle))}
+                                L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(endAngle))}
+                                A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
+                            `;
+                            
+                            svg += `<path d="${voidArcPath}" 
                                      fill="#EEEEEE" 
                                      stroke="white" 
                                      stroke-width="1" 
@@ -1235,6 +1404,11 @@ export function createTimelineSVG(
         // Add number squares after background layer but before synopses
         svg += `<g class="number-squares">`;
         scenes.forEach((scene) => {
+            // Skip number squares for Plot notes
+            if (scene.itemType === "Plot") {
+                return;
+            }
+            
             const { number } = parseSceneTitle(scene.title || '');
             if (number) {
                 const subplot = scene.subplot || "Main Plot";
@@ -1249,8 +1423,34 @@ export function createTimelineSVG(
                 
                 const startAngle = (actIndex * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
                 const endAngle = ((actIndex + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                const sceneAngleSize = (endAngle - startAngle) / scenesInActAndSubplot.length;
-                const sceneStartAngle = startAngle + (sceneIndex * sceneAngleSize);
+                
+                // Use the same positioning logic as scene rendering
+                const plotNotes = scenesInActAndSubplot.filter(s => s.itemType === "Plot");
+                const sceneNotes = scenesInActAndSubplot.filter(s => s.itemType !== "Plot");
+                
+                const innerR = ringStartRadii[ring];
+                const outerR = innerR + ringWidths[ring];
+                const middleRadius = (innerR + outerR) / 2;
+                const plotAngularWidth = 10 / middleRadius;
+                
+                const totalAngularSpace = endAngle - startAngle;
+                const plotTotalAngularSpace = plotNotes.length * plotAngularWidth;
+                const remainingAngularSpace = totalAngularSpace - plotTotalAngularSpace;
+                const sceneAngularSize = sceneNotes.length > 0 ? remainingAngularSpace / sceneNotes.length : 0;
+                
+                // Calculate this scene's position
+                let currentAngle = startAngle;
+                let sceneStartAngle = startAngle;
+                
+                for (let i = 0; i < sceneIndex; i++) {
+                    const sceneAtIndex = scenesInActAndSubplot[i];
+                    if (sceneAtIndex.itemType === "Plot") {
+                        currentAngle += plotAngularWidth;
+                    } else {
+                        currentAngle += sceneAngularSize;
+                    }
+                }
+                sceneStartAngle = currentAngle;
                 
                 const textPathRadius = (ringStartRadii[ring] + (ringStartRadii[ring] + ringWidths[ring])) / 2;
                 
