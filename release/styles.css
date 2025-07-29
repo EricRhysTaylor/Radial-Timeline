@@ -1,0 +1,860 @@
+/* Main color variables for the manuscript timeline */
+:root {
+  /* Publish Stage Colors */
+  --color-zero:   #9E70CF;    /* Purple */
+  --color-author: #5E85CF;    /* Blue   */
+  --color-house:  #DA7847;    /* Orange */
+  --color-press:  #6FB971;    /* Green  */
+
+  /* Runtime colours – the plugin overwrites these on load */
+  --publishStageColors-Zero:   var(--color-zero);
+  --publishStageColors-Author: var(--color-author);
+  --publishStageColors-House:  var(--color-house);
+  --publishStageColors-Press:  var(--color-press);
+  /* most-common stage (used for ACT labels &c.) */
+  --max-publish-stage-color: var(--publishStageColors-Zero);
+
+  /* Status Colors */
+  --color-due: #d05e5e;      /* Red */
+  --color-empty: #f0f0f0;    /* Very Light Gray */
+  
+  /* Plaid Colors and Opacity */
+  --color-working: #FF69B4;          /* Match pink color for Working in Manuscript Calendar */
+  --color-todo: #cccccc;             /* Light Gray */
+  --color-plaid-opacity: 1;
+  --color-plaid-stroke-opacity: 1;
+    /* Current Stage Color stroke for working pattern set in SVG patterns*/
+    /* Current Stage Color stroke for todo pattern set in SVG patterns*/
+  
+  /* Estimation Colors */
+  --color-estimation: #ff0000; /* Red not using this right now. defs at bottom of file*/
+}
+
+/* ADD stage-specific fill rules for title text – keep close to highlight-rect definitions so colours are defined in one place */
+.title-text-main.title-stage-zero   { fill: var(--publishStageColors-Zero,   var(--color-zero)); }
+.title-text-main.title-stage-author { fill: var(--publishStageColors-Author, var(--color-author)); }
+.title-text-main.title-stage-house  { fill: var(--publishStageColors-House,  var(--color-house)); }
+.title-text-main.title-stage-press  { fill: var(--publishStageColors-Press,  var(--color-press)); }
+
+/* styles.css */
+.manuscript-timeline-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  background-color: transparent;
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+.loading-message,
+.error-message {
+  padding: 20px;
+  text-align: center;
+  font-size: 1.2em;
+  color: var(--text-muted);
+}
+.error-message {
+  color: var(--text-error);
+}
+.manuscript-timeline-container svg {
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0 auto;
+  padding: 0;
+  transform-origin: center;
+  object-fit: contain;
+  cursor: default;
+  background-color: transparent;
+  fill: none;
+}
+.scene-path {
+  cursor: pointer;
+}
+.scene-act {
+  fill-opacity: 0;
+}
+.scene-act:hover {
+  fill-opacity: 0.3;
+  cursor: pointer;
+}
+path.scene-path[fill="#EEEEEE"] {
+  cursor: default;
+}
+.scene-path.faded {
+  opacity: 0.3;
+}
+.scene-path.non-selected {
+  fill: #EEEEEE !important;
+}
+.scene-path.scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+}
+.scene-path.selected {
+  filter: saturate(1.2) brightness(1.1);
+}
+.scene-title {
+  cursor: pointer;
+  fill: white;
+  opacity: 1;
+  pointer-events: none;
+}
+.scene-title.faded {
+  opacity: 0.2;
+}
+.scene-info {
+  opacity: 0;
+  pointer-events: none !important;
+  z-index: 100;
+  vector-effect: non-scaling-stroke;
+}
+.scene-info text {
+  stroke: white;
+  stroke-width: 3px;
+  paint-order: stroke;
+  padding: 0 !important;
+  margin: 0 !important;
+  pointer-events: none !important;
+}
+
+.month-label {  
+  font-size: 16px;
+  fill: var(--text-normal);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.month-label-outer {
+font-size: 18px;
+fill: var(--text-normal);
+text-anchor: middle;
+dominant-baseline: middle;
+}
+.act-label {
+  font-size: 20px;
+  font-weight: 900;
+  /* fill: var(--text-normal); */ /* Color is now set dynamically in SVG */
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.month-spoke-line {
+  stroke: var(--text-normal);
+  stroke-width: 1px;
+  stroke-dasharray: 2, 2;
+  opacity: 1;
+}
+.month-spoke-line.act-boundary {
+  stroke: var(--text-normal);
+  stroke-width: 2px;
+  stroke-dasharray: none;
+  opacity: 1;
+}
+.scene-title-small {
+  font-size: 9px;
+}
+.scene-title-medium {
+  font-size: 16px;
+}
+.scene-title-large {
+  font-size: 18px;
+}
+.status-count {
+  font-size: 80%;
+  opacity: 1;
+  vertical-align: super;
+  position: relative;
+  top: -0.7em;
+  font-weight: normal;
+  line-height: 0;
+  dominant-baseline: inherit;
+}
+.settings-separator {
+  margin: 1em 0 2em 0;
+  border: none;
+  border-top: 1px solid var(--background-modifier-border);
+}
+.documentation-container {
+  padding: 0 1em;
+}
+.documentation-container h1 {
+  font-size: 1.8em;
+  margin-top: 0.5em;
+}
+.documentation-container h2 {
+  font-size: 1.5em;
+  margin-top: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.documentation-container h3 {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+.documentation-container img {
+  max-width: 100%;
+  border-radius: 5px;
+  margin: 1em 0;
+}
+.documentation-container code {
+  background-color: var(--background-primary);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+.documentation-container pre {
+  background-color: var(--background-primary);
+  padding: 1em;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.metadata-example {
+  line-height: 2em;
+  white-space: pre;
+  user-select: all;
+  cursor: text;
+  background-color: var(--background-secondary);
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+.subplot-text {
+  font-size: 16px;
+  fill: #555555;
+  font-weight: normal;
+}
+
+.number-square{
+  pointer-events: none;
+}
+
+.number-text {
+  fill: #000000;
+  pointer-events: none;
+}
+.number-square.faded,
+.number-text.faded {
+  opacity: 0.2;
+}
+.scene-title.selected {
+  stroke: #000000;
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+.number-square.scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+  stroke: none;
+  stroke-width: 0;
+}
+.number-text.scene-is-open.non-selected {
+  fill: #FFFFFF !important;
+  opacity: 1;
+}
+.number-square.selected {
+  transform: scale(1.2);
+  z-index: 10;
+  stroke-width: 3px;
+  stroke: var(--scene-color, #705DCF);
+}
+.number-text.selected {
+  font-weight: bold;
+}
+.search-term {
+  fill: #FFCC00;
+  font-weight: bold;
+}
+.metadata-text .search-term,
+text.info-text.metadata-text .search-term,
+.info-text.metadata-text tspan.search-term {
+  fill: inherit !important;
+  stroke: #FFCC00 !important;
+  stroke-width: 0.6em !important;
+  stroke-opacity: 0.6 !important;
+  paint-order: stroke !important;
+  font-weight: bold !important;
+}
+tspan.search-term,
+text.info-text tspan.search-term,
+text.info-text.metadata-text tspan.search-term,
+text.info-text.title-text-main tspan.search-term,
+text.info-text.title-text-secondary tspan.search-term {
+  stroke: #FFCC00 !important;
+  stroke-width: 0.5em !important;
+  stroke-opacity: 0.5 !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+  paint-order: stroke !important;
+  fill: inherit !important;
+  font-size: inherit !important;
+}
+
+
+text.info-text.metadata-text tspan[data-item-type] {
+  fill: inherit !important;
+}
+.info-text.metadata-text tspan[data-item-type=subplot],
+.info-text.metadata-text tspan[data-item-type=character] {
+  stroke: white;
+  stroke-width: 0.07em;
+  paint-order: stroke;
+}
+
+tspan[fill] .search-term,
+tspan[fill].search-term,
+tspan .search-term {
+  fill: inherit !important;
+}
+.synopsis-q1 .info-text,
+.synopsis-q1 .title-text-main,
+.synopsis-q1 .title-text-secondary,
+.synopsis-q1 .metadata-text {
+  text-anchor: end;
+}
+.synopsis-q2 .info-text,
+.synopsis-q2 .title-text-main,
+.synopsis-q2 .title-text-secondary,
+.synopsis-q2 .metadata-text {
+  text-anchor: start;
+}
+.synopsis-q3 .info-text,
+.synopsis-q3 .title-text-main,
+.synopsis-q3 .title-text-secondary,
+.synopsis-q3 .metadata-text {
+  text-anchor: start;
+}
+.synopsis-q4 .info-text,
+.synopsis-q4 .title-text-main,
+.synopsis-q4 .title-text-secondary,
+.synopsis-q4 .metadata-text {
+  text-anchor: end;
+}
+.scene-info.synopsis-q1 text,
+.scene-info.synopsis-q4 text {
+  text-anchor: end !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.scene-info.synopsis-q2 text,
+.scene-info.synopsis-q3 text {
+  text-anchor: start !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.scene-info.visible {
+  opacity: 1 !important;
+  pointer-events: all !important;
+  visibility: visible !important;
+  display: block !important;
+}
+.synopsis-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.scene-info text.info-text.title-text-main {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.scene-info text.info-text.title-text-main tspan.date-text {
+  font-weight: 700;
+  font-size: 18px;
+  stroke-width: 2.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: super;
+  baseline-shift: .3em;
+}
+.scene-info text.info-text.title-text-secondary {
+  font-size: 18px;
+  fill: #666666;
+  text-transform: uppercase;
+  font-weight: normal;
+}
+.scene-info text.info-text.metadata-text {
+  font-size: 18px;
+  font-weight: normal;
+  text-transform: none;
+}
+.number-square.scene-is-open {
+  fill: var(--interactive-accent, #705DCF);
+  stroke: none;
+}
+.number-text.scene-is-open {
+  font-weight: normal;
+  fill: #FFFFFF;
+}
+.number-square.scene-is-open.non-selected {
+  fill: #EFEFEF;
+  stroke: none;
+  stroke-width: 0;
+  transition: fill 0.1s;
+}
+.number-text.scene-is-open.non-selected {
+  fill: #ffffff;
+  opacity: 1;
+}
+.number-square.scene-is-open.selected {
+  stroke: #705DCF;
+  stroke-width: 3px;
+  fill: #FFFFFF;
+}
+.number-text.scene-is-open.selected {
+  fill: #000000;
+  font-weight: bold;
+}
+.number-square.search-result {
+  fill: #FFCC00;
+}
+.number-text.search-result.non-selected {
+  fill: #FFFFFF !important;
+}
+.number-text.scene-is-open.search-result.non-selected {
+  fill: #FFFFFF !important;
+}
+.number-text.scene-is-open.search-result {
+  fill: #000000 !important;
+}
+.number-square.search-result.non-selected {
+  fill: #EFEFEF !important;
+  stroke: #EFEFEF;
+  stroke-width: 2px;
+}
+.number-square.search-result.selected {
+  fill: #FFCC00;
+  stroke: #ff9500;
+  stroke-width: 2px;
+}
+.number-square.has-edits {
+  fill: #8875ff;
+}
+
+.number-square.has-edits.search-result {
+  fill: #FFCC00;
+}
+.number-square.has-edits.scene-is-open {
+  fill: var(--interactive-accent, #705DCF); 
+}
+.number-square.has-edits.non-selected {
+  fill: #EFEFEF !important;
+}
+.number-square.has-edits.scene-is-open.non-selected {
+ fill: #EFEFEF;
+}
+.number-text.has-edits.scene-is-open.non-selected {
+  fill: #ffffff;
+}
+.number-text.has-edits.scene-is-open.selected {
+  fill: #ffffff;
+}
+.number-text.has-edits.search-result.selected {
+  fill: #ffffff;
+  font-weight: bold;
+}
+.clear-search-btn {
+  cursor: pointer;
+}
+.clear-search-btn:hover {
+  transform: scale(1.1);
+}
+
+.clear-search-btn:hover circle {
+  fill: #FFE5E5;
+}
+
+.highlight-rect {
+  fill: #FFCC00;
+  rx: 3;
+  ry: 3;
+  opacity: 0.3;
+}
+
+.highlight-rect.stage-zero   { fill: var(--publishStageColors-Zero,   var(--color-zero)); }
+.highlight-rect.stage-author { fill: var(--publishStageColors-Author, var(--color-author)); }
+.highlight-rect.stage-house  { fill: var(--publishStageColors-House,  var(--color-house)); }
+.highlight-rect.stage-press  { fill: var(--publishStageColors-Press,  var(--color-press)); }
+
+.color-picker-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.color-picker-container {
+  background-color: var(--background-primary);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  position: relative;
+  cursor: move;
+}
+.color-picker-input {
+  width: 100%;
+  height: 40px;
+  margin-bottom: 10px;
+}
+.color-picker-text-input {
+  width: 100%;
+  margin-bottom: 5px;
+  padding: 5px;
+}
+.color-picker-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.color-picker-button {
+  padding: 5px 15px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+.color-picker-button.ok {
+  background-color: var(--interactive-accent);
+  color: white;
+}
+.color-picker-button.cancel {
+  background-color: var(--background-modifier-error);
+  color: white;
+}
+.color-swatch {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-color: var(--swatch-color);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+  margin-left: 8px;
+}
+.debug-info-container {
+  pointer-events: none;
+}
+.debug-info-background {
+  fill: rgba(255, 255, 255, 0.8);
+  rx: 5px;
+  ry: 5px;
+  stroke: #333333;
+  stroke-width: 1px;
+}
+.debug-info-text {
+  font-size: 20px;
+  fill: #ff3300;
+  font-weight: bold;
+  stroke: white;
+  stroke-width: 0.5px;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+.scene-info text.info-text.title-text-main .search-term {
+  stroke: #FFCC00 !important;
+  stroke-width: .2em !important;
+  paint-order: stroke !important;
+  font-weight: bold !important;
+}
+.synopsis-spacer {
+  line-height: 1.5em;
+  min-height: 1.5em;
+  display: block;
+  visibility: visible !important;
+}
+.number-square.non-selected {
+  fill: #EFEFEF;
+  stroke: none;
+  stroke-width: 0;
+}
+.number-text.non-selected {
+  fill: #FFFFFF;
+}
+/* styles.css */
+
+.center-key-text {
+  font-size: 16px;
+  fill: var(--text-normal, #333333);
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+/* Debug container visibility */
+.debug-container {
+    display: none;
+}
+
+.debug-container.visible {
+    display: block;
+}
+
+/* Search container styles */
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Test button styles */
+.test-button {
+    padding: 10px;
+}
+
+/* Path element visibility */
+.path-element {
+    display: none;
+}
+
+/* Absolute positioning for dynamic elements */
+.dynamic-element {
+    position: absolute;
+}
+
+/* Dynamic font size elements */
+.font-size-element {
+    font-size: var(--dynamic-font-size);
+}
+
+/* Subplot and character text styles */
+.subplot-text {
+    fill: var(--dynamic-color);
+}
+
+/* Dynamic color elements */
+[data-item-type="subplot"],
+[data-item-type="character"] {
+    stroke: white;
+    stroke-width: 0.07em;
+    paint-order: stroke;
+}
+
+/* Dynamic font size elements */
+.dynamic-font-size {
+    font-size: var(--dynamic-font-size);
+}
+
+/* SVG interaction elements */
+.svg-interaction {
+    pointer-events: none;
+}
+
+/* Layout containers */
+.flex-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+/* Button styles */
+.action-button {
+    padding: 10px;
+    margin-top: 20px;
+}
+
+/* Dynamic positioning */
+.dynamic-position {
+    position: absolute;
+}
+
+/* SVG Element Styles */
+.svg-path {
+    display: none;
+}
+
+.svg-text {
+    font-weight: bold;
+}
+
+/* Button Container Styles */
+.button-container {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center; /* Align items vertically */
+}
+
+/* Input field styles */
+.search-input {
+    flex: 1;
+}
+
+/* Title text styles */
+.title-text-main {
+    --title-color: var(--text-normal);
+}
+
+/* Date text styles */
+.date-text {
+    fill: var(--text-muted);
+}
+
+/* Search term highlighting */
+.search-term {
+    fill: #FFCC00;
+    font-weight: bold;
+}
+
+/* Info container styles */
+.info-container {
+    cursor: pointer;
+}
+
+/* Synopsis text styles */
+.synopsis-text {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* UNUSED????   Metadata text styles
+.metadata-text {
+    font-size: 12px;
+
+}*/
+
+/* Beat text styles */
+.beats-text {
+  font-size: 14px; /* Let's try 14px, closer to metadata */
+  font-weight: normal;
+  text-transform: none;
+  fill: #666666; /* Default color for the <text> element */
+  white-space: nowrap; /* Prevent automatic line wrapping */
+  text-transform: uppercase;
+}
+
+.beats-text-grade {
+  font-size: 16px; /* Let's try 14px, closer to metadata */
+  fill: var(--max-publish-stage-color, var(--text-muted)); /* Darker green for better visibility */
+  font-weight: bold;
+}
+
+.beats-text-positive {
+  fill: #2B9348; /* Darker green for better visibility */
+  font-weight: bold;
+}
+
+.beats-text-negative {
+  fill: #D62828; /* Darker red for better visibility */
+  font-weight: bold;
+}
+
+.beats-text-neutral {
+  fill: #000000; /* Solid black */
+  font-weight: bold; /* Match the weight of positive/negative */
+}
+
+
+/* Grade line styles */
+.grade-border-line {
+  stroke-width: 2px; /* Set the thickness of the line */
+  /* Add other line styling if needed, like stroke-linecap: round; */
+}
+
+/* Grade-specific colors */
+.grade-border-line.grade-A {
+  stroke: #00ff48; /*  green */
+}
+.grade-border-line.grade-B {
+  stroke: #ffbb00; /*  yellow */
+}
+.grade-border-line.grade-C {
+  stroke: #ff0000; /*  red */
+}
+
+/* grade line non-selected state for all grades */
+.grade-border-line.non-selected {
+  stroke: none;
+}
+
+/* grade line non-selected state for all grades */
+.grade-border-line.selected {
+  stroke: none;
+}
+
+/* Ensure search terms maintain their color */
+[data-item-type="subplot"] .search-term,
+[data-item-type="character"] .search-term {
+  fill: inherit !important;
+  stroke: #FFCC00 !important;
+  stroke-width: 0.6em !important;
+  stroke-opacity: 0.6 !important;
+  paint-order: stroke !important;
+  font-weight: bold !important;
+}
+
+.subplot-ring-label-path {
+  fill: none;
+  stroke: none;
+  pointer-events: none;
+}
+
+.subplot-label-text {
+    fill: var(--max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
+    opacity: .2; /* Corrected opacity back to 30% */
+    font-weight: 700; /* Corrected font-weight back to 700 */
+    font-size: var(--subplot-font-size);
+    dominant-baseline: central; /* Try central for potentially better vertical centering */
+    text-transform: uppercase;
+    pointer-events: none; /* Ignore mouse events */
+}
+
+/* Use .non-selected class for faded state (consistent with other elements) */
+.subplot-label-text.non-selected {
+    opacity: .1; /* Corrected opacity back to 30% */
+}
+
+/* Progress Ring Base (thin gray track underneath) */
+.progress-ring-base {
+  fill: none;
+  stroke: #5e0098; /* Purple background to match estimation arc */
+  stroke-width: 10px; /* Base width */
+}
+
+/* Year Progress Ring (Rainbow Segments) */
+.progress-ring-fill {
+  fill: none;
+  stroke-width: 6px; /* Make rainbow ring thinner */
+  stroke-linecap: round; /* Optional: round ends */
+}
+
+.estimation-date-label {
+    font-size: 14px;
+    fill: #ff0000;
+    font-weight: bold;
+}
+
+.estimated-date-tick {
+    stroke: #ff0000;
+    stroke-width: 2px;
+}
+
+.estimated-date-dot {
+    fill: #ff0000;
+}
+
+/* Target Completion Date Marker Styles */
+.target-date-tick {
+    stroke: #00cc00; /* Bright Green */
+    stroke-width: 2px;
+}
+
+.target-date-marker {
+    fill: none; /* No fill */
+    stroke: #00cc00; /* Bright Green */
+    stroke-width: 2px; /* Outline width */
+}
+
+/* Styling for the embedded README container in settings */
+.manuscript-readme-container {
+    padding: 0; 
+    margin-top: 15px;
+    margin-bottom: 20px;
+}

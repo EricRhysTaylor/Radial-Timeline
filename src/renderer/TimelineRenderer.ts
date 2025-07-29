@@ -983,6 +983,7 @@ export function createTimelineSVG(
                             
                             svg += `<path d="${voidArcPath}" 
                                      fill="#EEEEEE" 
+                                     fill-opacity="0.7"
                                      stroke="white" 
                                      stroke-width="1" 
                                      class="scene-path"/>`;
@@ -1052,6 +1053,7 @@ export function createTimelineSVG(
                                 
                                 svg += `<path d="${voidArcPath}" 
                                          fill="#EEEEEE" 
+                                         fill-opacity="0.7"
                                          stroke="white" 
                                          stroke-width="1" 
                                          class="scene-path"/>`;
@@ -1068,6 +1070,7 @@ export function createTimelineSVG(
                             
                             svg += `<path d="${voidArcPath}" 
                                      fill="#EEEEEE" 
+                                     fill-opacity="0.7"
                                      stroke="white" 
                                      stroke-width="1" 
                                      class="scene-path"/>`;
@@ -1083,7 +1086,7 @@ export function createTimelineSVG(
                         A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
                     `;
                     const emptyColor = "#EEEEEE"; // Light gray for empty scenes
-                    svg += `<path d="${arcPath}" fill="${emptyColor}" stroke="white" stroke-width="1"/>`;
+                    svg += `<path d="${arcPath}" fill="${emptyColor}" fill-opacity="0.7" stroke="white" stroke-width="1"/>`;
                 }
             }
         }
