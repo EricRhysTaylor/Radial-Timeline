@@ -175,21 +175,19 @@ The timeline displays:
 - Subplots organized in concentric rings with descriptive titles at the top
 - Scene numbers in small boxes
 - Color-coded scenes based on status
-- Month markers around the perimeter showing calendar months of the year
+- Month markers around the perimeter showing calendar months of the year and do not relate to the story timeline
 - Rainbow progress ring showing elapsed portion of the current calendar year (not related to story timeline)
 - Estimated completion date arc (dark purple) showing projected completion timeline with Red Tick Mark
 - Central legend showing counts for each status and publish stage
 
-Hover over a scene to see its details and click to open the corresponding file.
+Hover over a scene or plot note to see its details and click to open the corresponding file.
 
-## Scene ordering and numbering
+## Scene and plot ordering and numbering
 
-- Scenes are ordered chronologically based on the When date in the frontmatter metadata
-- Plot notes are ordered by their title prefix number (manuscript order), not by date
+- Scene and Plot notes are ordered by their title prefix number (manuscript order), not by date
 - The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")
 - Scene numbers are displayed in small boxes on the timeline (Plot notes don't have number boxes)
 - Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer
-- If scenes have the same When date, they are sub-ordered by their scene number
 - Both scenes and Plot notes can use decimal numbering (e.g., "1.5", "2.25") for fine-grained ordering
 
 ## Technical implementation
