@@ -120,7 +120,7 @@ export function createTimelineSVG(
         // Dynamically set NUM_RINGS based on the number of unique subplots
         const NUM_RINGS = allSubplots.length;
     
-        const DEFAULT_RING_COLOR = '#333333'; // Dark gray
+        // Ring colors are now handled by CSS variables and dynamic color logic
     
         // Group scenes by Act and Subplot
         const scenesByActAndSubplot: { [act: number]: { [subplot: string]: Scene[] } } = {};

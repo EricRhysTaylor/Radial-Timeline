@@ -16,7 +16,12 @@
 
   /* Status Colors */
   --color-due: #d05e5e;      /* Red */
-  --color-empty: #f0f0f0;    /* Very Light Gray */
+  --color-empty: #ffffff;    /* becomes gray when transparent added */
+  --color-empty-selected: #EFEFEF; /* Slightly darker gray for selected empty cells */
+  
+  /* Search and UI Colors */
+  --color-search: #FFCC00;   /* Yellow for search highlighting */
+  --color-debug: #ff3300;    /* Red for debug text */
   
   /* Plaid Colors and Opacity */
   --color-working: #FF69B4;          /* Match pink color for Working in Manuscript Calendar */
@@ -87,8 +92,8 @@
 }
 /* Void cells - empty space in timeline */
 .void-cell {
-  fill: #EEEEEE;
-  fill-opacity: 0.7;
+  fill: var(--color-empty);
+  fill-opacity: 0.9;
   stroke: white;
   stroke-width: 1;
   cursor: default;
@@ -97,10 +102,10 @@
   opacity: 0.3;
 }
 .scene-path.non-selected {
-  fill: #EEEEEE !important;
+  fill: var(--color-empty-selected) !important;
 }
 .scene-path.scene-is-open.non-selected {
-  fill: #EFEFEF !important;
+  fill: var(--color-empty-selected) !important;
 }
 .scene-path.selected {
   filter: saturate(1.2) brightness(1.1);
@@ -231,7 +236,7 @@ dominant-baseline: middle;
 
 .subplot-text {
   font-size: 16px;
-  fill: #555555;
+  fill: var(--text-muted, #555555);
   font-weight: normal;
 }
 
@@ -271,14 +276,14 @@ dominant-baseline: middle;
   font-weight: bold;
 }
 .search-term {
-  fill: #FFCC00;
+  fill: var(--color-search);
   font-weight: bold;
 }
 .metadata-text .search-term,
 text.info-text.metadata-text .search-term,
 .info-text.metadata-text tspan.search-term {
   fill: inherit !important;
-  stroke: #FFCC00 !important;
+  stroke: var(--color-search) !important;
   stroke-width: 0.6em !important;
   stroke-opacity: 0.6 !important;
   paint-order: stroke !important;
@@ -289,7 +294,7 @@ text.info-text tspan.search-term,
 text.info-text.metadata-text tspan.search-term,
 text.info-text.title-text-main tspan.search-term,
 text.info-text.title-text-secondary tspan.search-term {
-  stroke: #FFCC00 !important;
+  stroke: var(--color-search) !important;
   stroke-width: 0.5em !important;
   stroke-opacity: 0.5 !important;
   stroke-linejoin: round !important;
@@ -415,7 +420,7 @@ tspan .search-term {
   font-weight: bold;
 }
 .number-square.search-result {
-  fill: #FFCC00;
+  fill: var(--color-search);
 }
 .number-text.search-result.non-selected {
   fill: #FFFFFF !important;
@@ -432,7 +437,7 @@ tspan .search-term {
   stroke-width: 2px;
 }
 .number-square.search-result.selected {
-  fill: #FFCC00;
+  fill: var(--color-search);
   stroke: #ff9500;
   stroke-width: 2px;
 }
@@ -441,7 +446,7 @@ tspan .search-term {
 }
 
 .number-square.has-edits.search-result {
-  fill: #FFCC00;
+  fill: var(--color-search);
 }
 .number-square.has-edits.scene-is-open {
   fill: var(--interactive-accent, #705DCF); 
@@ -474,7 +479,7 @@ tspan .search-term {
 }
 
 .highlight-rect {
-  fill: #FFCC00;
+  fill: var(--color-search);
   rx: 3;
   ry: 3;
   opacity: 0.3;
@@ -564,7 +569,7 @@ tspan .search-term {
 }
 
 .scene-info text.info-text.title-text-main .search-term {
-  stroke: #FFCC00 !important;
+  stroke: var(--color-search) !important;
   stroke-width: .2em !important;
   paint-order: stroke !important;
   font-weight: bold !important;
@@ -608,30 +613,9 @@ tspan .search-term {
     gap: 8px;
 }
 
-/* Test button styles */
-.test-button {
-    padding: 10px;
-}
+/* Removed unused utility classes: test-button, path-element, dynamic-element, font-size-element */
 
-/* Path element visibility */
-.path-element {
-    display: none;
-}
-
-/* Absolute positioning for dynamic elements */
-.dynamic-element {
-    position: absolute;
-}
-
-/* Dynamic font size elements */
-.font-size-element {
-    font-size: var(--dynamic-font-size);
-}
-
-/* Subplot and character text styles */
-.subplot-text {
-    fill: var(--dynamic-color);
-}
+/* Dynamic subplot/character colors are set inline in TypeScript - no static CSS needed */
 
 /* Dynamic color elements */
 [data-item-type="subplot"],
@@ -641,10 +625,7 @@ tspan .search-term {
     paint-order: stroke;
 }
 
-/* Dynamic font size elements */
-.dynamic-font-size {
-    font-size: var(--dynamic-font-size);
-}
+/* Removed unused dynamic-font-size class */
 
 /* SVG interaction elements */
 .svg-interaction {
@@ -702,11 +683,7 @@ tspan .search-term {
     fill: var(--text-muted);
 }
 
-/* Search term highlighting */
-.search-term {
-    fill: #FFCC00;
-    font-weight: bold;
-}
+/* Search term highlighting - consolidated above with other search-term rules */
 
 /* Info container styles */
 .info-container {
@@ -788,7 +765,7 @@ tspan .search-term {
 [data-item-type="subplot"] .search-term,
 [data-item-type="character"] .search-term {
   fill: inherit !important;
-  stroke: #FFCC00 !important;
+  stroke: var(--color-search) !important;
   stroke-width: 0.6em !important;
   stroke-opacity: 0.6 !important;
   paint-order: stroke !important;

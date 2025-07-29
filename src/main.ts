@@ -2027,7 +2027,7 @@ public createTimelineSVG(scenes: Scene[]) {
                             const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                             text.setAttribute('x', '0');
                             text.setAttribute('y', '0');
-                            text.setAttribute('fill', '#333333');
+                            text.setAttribute('class', 'loading-message');
                             text.setAttribute('font-size', '24');
                             text.setAttribute('text-anchor', 'middle');
                             text.textContent = 'Loading timeline...';
