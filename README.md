@@ -96,6 +96,7 @@ Scene files must have the following frontmatter:
 - 2beats - Second Scene beats, the active scene under current edit
 - 3beats - Third Scene beats linking to scene 2
 - BeatsUpdate: Yes
+- Book: Book 1 A New Beginning
 ---
 
 ## Beats metadata (1beats, 2beats, 3beats):
@@ -128,6 +129,7 @@ Pending Edits: Optional notes here
   - 48 Antagonist senses artifact's activation - / The subtext could be stronger
   - Plans to investigate + / Serves as the hub for Scene 2's strategy session
 BeatsUpdate: Yes
+  - Book: Book 1 A New Beginning
 ```
 
 ## Plot notes (Save the Cat beats) - NEW in v2.1.0
