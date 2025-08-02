@@ -458,7 +458,7 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
         // <<< ADD THIS Setting block for API Logging Toggle >>>
         new Settings(containerEl)
             .setName('Log AI interactions to file')
-            .setDesc('If enabled, create a new note in the "AI" folder for each OpenAI API request/response.')
+            .setDesc('If enabled, create a new note in the "AI" folder for each AI API request/response.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.logApiInteractions)
                 .onChange(async (value) => {
