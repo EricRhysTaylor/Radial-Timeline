@@ -194,11 +194,7 @@ export class ManuscriptTimelineView extends ItemView {
                 // Render the timeline with the scene data
                 this.renderTimeline(container, this.sceneData);
                 
-                // Count SVG elements if debug mode is enabled
-                if (this.plugin.settings.debug) {
-                    this.countSvgElements(container);
-                    this.setupMouseCoordinateTracking(container);
-                }
+
             })
             .catch(error => {
                 loadingEl.textContent = `Error: ${error.message}`;
@@ -217,45 +213,7 @@ export class ManuscriptTimelineView extends ItemView {
         }
     }
     
-    /**
-     * Count all SVG elements and log to console for debugging
-     */
-    private countSvgElements(container: HTMLElement) {
-        if (!this.plugin.settings.debug) return;
-        setTimeout(() => {
-            const svg = container.querySelector('.manuscript-timeline-svg') as SVGSVGElement;
-            
-            if (!svg) {
-                console.log('Could not find SVG element for counting');
-                return;
-            }
-            
-            // Count all SVG elements by type
-            const elementCounts: Record<string, number> = {};
-            const allElements = svg.querySelectorAll('*');
-            let totalCount = 0;
-            
-            allElements.forEach(el => {
-                const tagName = el.tagName.toLowerCase();
-                elementCounts[tagName] = (elementCounts[tagName] || 0) + 1;
-                totalCount++;
-            });
-            
-            // Log the counts
-            console.log(`SVG Elements Count (Total: ${totalCount}):`);
-            Object.entries(elementCounts)
-                .sort((a, b) => b[1] - a[1]) // Sort by count, descending
-                .forEach(([tagName, count]) => {
-                    console.log(`  ${tagName}: ${count}`);
-                });
-            
-            // Add count to debug display if it exists
-            const debugText = svg.querySelector('#element-count-text');
-            if (debugText) {
-                (debugText as SVGTextElement).textContent = `SVG Elements: ${totalCount}`;
-            }
-        }, 500); // Wait for SVG to fully render
-    }
+
     
     private setupMouseCoordinateTracking(container: HTMLElement) {
         if (!this.plugin.settings.debug) return;
@@ -322,7 +280,7 @@ export class ManuscriptTimelineView extends ItemView {
                     
                     const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
                     if (svgP) {
-                        console.log('Clicked at SVG coordinates:', Math.round(svgP.x), Math.round(svgP.y));
+            
                     }
                 } catch (err) {
                     console.error('Error capturing click coordinates:', err);

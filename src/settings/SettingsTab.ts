@@ -20,14 +20,82 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
-    // Add color swatch creation function
-    private createColorSwatch(container: HTMLElement, color: string): HTMLElement {
-            const swatch = document.createElement('div');
-            swatch.className = 'color-swatch';
-        swatch.style.setProperty('--swatch-color', color);
+    // Method to show path suggestions
+    private showPathSuggestions(currentValue: string, container: HTMLElement, textInput: TextComponent): void {
+        const validPaths = this.plugin.settings.validFolderPaths;
+        
+        // Filter paths that match the current input
+        const filteredPaths = validPaths.filter(path => 
+            path.toLowerCase().includes(currentValue.toLowerCase()) || currentValue === ''
+        );
+        
+        // Clear previous suggestions
+        container.empty();
+        
+        if (filteredPaths.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+        
+        // Show suggestions
+        container.classList.remove('hidden');
+        
+        filteredPaths.forEach(path => {
+            const suggestionEl = container.createDiv({ cls: 'source-path-suggestion-item' });
+            // Padding, cursor, and border handled by CSS class
+            suggestionEl.textContent = path;
             
-            container.appendChild(swatch);
-            return swatch;
+            // Hover effect handled by CSS :hover pseudo-class
+            
+            // Click to select
+            suggestionEl.addEventListener('click', async () => {
+                textInput.setValue(path);
+                this.plugin.settings.sourcePath = path;
+                await this.plugin.saveSettings();
+                container.classList.add('hidden');
+                
+                // Show success feedback
+                textInput.inputEl.style.borderColor = 'var(--text-success)';
+                setTimeout(() => {
+                    textInput.inputEl.style.borderColor = '';
+                }, 1000);
+                
+                // Focus back to input and trigger change event
+                textInput.inputEl.focus();
+            });
+        });
+    }
+
+    // Method to update the selected suggestion highlighting
+    private updateSelectedSuggestion(suggestions: NodeListOf<Element>, selectedIndex: number): void {
+        suggestions.forEach((suggestion, index) => {
+            const el = suggestion as HTMLElement;
+            if (index === selectedIndex) {
+                el.classList.add('selected');
+            } else {
+                el.classList.remove('selected');
+            }
+        });
+    }
+
+    // Add color swatch creation function
+    private createColorSwatch(container: HTMLElement, color: string, onColorChange: (newColor: string) => void): HTMLElement {
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        swatch.style.setProperty('--swatch-color', color);
+        swatch.style.cursor = 'pointer';
+        
+        // Add click handler to open color picker
+        swatch.addEventListener('click', async () => {
+            const newColor = await this.showColorPicker(color);
+            if (newColor) {
+                swatch.style.setProperty('--swatch-color', newColor);
+                onColorChange(newColor);
+            }
+        });
+        
+        container.appendChild(swatch);
+        return swatch;
     }
 
     // Add color picker function with centered dialog
@@ -73,35 +141,7 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
             cancelButton.textContent = 'Cancel';
             cancelButton.className = 'color-picker-button cancel';
 
-            // Add drag functionality
-            let isDragging = false;
-            let currentX: number;
-            let currentY: number;
-            let initialX: number;
-            let initialY: number;
-            let xOffset = 0;
-            let yOffset = 0;
 
-            pickerContainer.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                initialX = e.clientX - xOffset;
-                initialY = e.clientY - yOffset;
-            });
-
-            document.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    e.preventDefault();
-                    currentX = e.clientX - initialX;
-                    currentY = e.clientY - initialY;
-                    xOffset = currentX;
-                    yOffset = currentY;
-                    pickerContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
-                }
-            });
-
-            document.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
 
             // Update hex and RGB values when color changes
             colorPicker.addEventListener('input', (e) => {
@@ -199,17 +239,106 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
 
 
 
-        // --- Source Path --- 
-        new Settings(containerEl)
+        // --- Source Path with Autocomplete --- 
+        const sourcePathSetting = new Settings(containerEl)
             .setName('Source path')
-            .setDesc('Specify the root folder containing your manuscript scene files.')
-            .addText(text => text
+            .setDesc('Specify the root folder containing your manuscript scene files.');
+
+        let textInput: TextComponent;
+        let suggestionsContainer: HTMLElement;
+        let selectedIndex = -1; // Move this outside the addText callback
+        
+        sourcePathSetting.addText(text => {
+            textInput = text;
+            text
                 .setPlaceholder('Example: Manuscript/Scenes')
-                .setValue(this.plugin.settings.sourcePath)
-                .onChange(async (value) => {
-                    this.plugin.settings.sourcePath = value;
-                    await this.plugin.saveSettings();
-                }));
+                .setValue(this.plugin.settings.sourcePath);
+            
+            // Create suggestions container
+            const inputContainer = text.inputEl.parentElement!;
+            inputContainer.classList.add('source-path-input-container'); // Make parent relative for absolute positioning
+            
+            suggestionsContainer = inputContainer.createDiv({ cls: 'source-path-suggestions' });
+            suggestionsContainer.classList.add('hidden');
+            // All positioning and styling handled by CSS classes
+            
+            // Input event for showing suggestions
+            text.inputEl.addEventListener('input', () => {
+                selectedIndex = -1; // Reset selection when typing
+                this.showPathSuggestions(text.inputEl.value, suggestionsContainer, textInput);
+            });
+            
+            // Focus event to show suggestions only if there are valid paths
+            text.inputEl.addEventListener('focus', () => {
+                selectedIndex = -1; // Reset selection on focus
+                if (this.plugin.settings.validFolderPaths.length > 0) {
+                    this.showPathSuggestions(text.inputEl.value, suggestionsContainer, textInput);
+                }
+            });
+            
+            // Blur event to hide suggestions after a short delay
+            text.inputEl.addEventListener('blur', () => {
+                setTimeout(() => {
+                    if (!suggestionsContainer.matches(':hover')) {
+                        suggestionsContainer.classList.add('hidden');
+                        selectedIndex = -1;
+                    }
+                }, 150); // Small delay to allow clicking on suggestions
+            });
+            
+            // Keyboard navigation support
+            text.inputEl.addEventListener('keydown', (e) => {
+                const suggestions = suggestionsContainer.querySelectorAll('.source-path-suggestion-item');
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+                    this.updateSelectedSuggestion(suggestions, selectedIndex);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    this.updateSelectedSuggestion(suggestions, selectedIndex);
+                } else if (e.key === 'Enter' && selectedIndex >= 0) {
+                    e.preventDefault();
+                    const selectedEl = suggestions[selectedIndex] as HTMLElement;
+                    selectedEl.click();
+                } else if (e.key === 'Escape') {
+                    suggestionsContainer.classList.add('hidden');
+                    selectedIndex = -1;
+                }
+            });
+            
+            // Click outside to hide suggestions
+            document.addEventListener('click', (e) => {
+                if (!text.inputEl.contains(e.target as Node) && !suggestionsContainer.contains(e.target as Node)) {
+                    suggestionsContainer.classList.add('hidden');
+                    selectedIndex = -1;
+                }
+            });
+            
+            // Handle value changes
+            text.onChange(async (value) => {
+                this.plugin.settings.sourcePath = value;
+                await this.plugin.saveSettings();
+                
+                // Validate and remember path when Enter is pressed or field loses focus
+                if (value.trim()) {
+                    const isValid = await this.plugin.validateAndRememberPath(value);
+                    if (!isValid) {
+                        // Optional: Show visual feedback for invalid paths
+                        text.inputEl.style.borderColor = 'var(--text-error)';
+                        setTimeout(() => {
+                            text.inputEl.style.borderColor = '';
+                        }, 2000);
+                    } else {
+                        text.inputEl.style.borderColor = 'var(--text-success)';
+                        setTimeout(() => {
+                            text.inputEl.style.borderColor = '';
+                        }, 1000);
+                    }
+                }
+            });
+        });
 
         // --- Target Completion Date --- 
         new Settings(containerEl)
@@ -386,7 +515,13 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                 });
 
             // Add color swatch inside the control element for better alignment
-            this.createColorSwatch(setting.controlEl, color);
+            this.createColorSwatch(setting.controlEl, color, async (newColor: string) => {
+                // Update settings
+                (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = newColor;
+                await this.plugin.saveSettings();
+                // Update text input
+                textInputRef?.setValue(newColor);
+            });
         });
                     
         // --- Embedded README Section ---

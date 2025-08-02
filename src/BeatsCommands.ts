@@ -39,9 +39,7 @@ function extractSceneNumber(filename: string): number | null {
 
 async function getAllSceneData(plugin: ManuscriptTimelinePlugin, vault: Vault): Promise<SceneData[]> {
     const sourcePath = plugin.settings.sourcePath.trim();
-    if (plugin.settings.debug) {
-        console.log(`[BeatsCommands][getAllSceneData] DEBUG: Using sourcePath: "${sourcePath}"`);
-    }
+
 
     const allFiles = vault.getMarkdownFiles();
     const filesInPath = allFiles.filter(file => {
@@ -55,9 +53,7 @@ async function getAllSceneData(plugin: ManuscriptTimelinePlugin, vault: Vault): 
             const content = await vault.read(file);
             const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
             if (!frontmatterMatch) {
-                if (plugin.settings.debug) {
-                    console.log(`[BeatsCommands][getAllSceneData] DEBUG: Skipping "${filePath}": No frontmatter found.`);
-                }
+
                 return null;
             }
 
@@ -65,24 +61,18 @@ async function getAllSceneData(plugin: ManuscriptTimelinePlugin, vault: Vault): 
             try {
                 frontmatter = parseYaml(frontmatterMatch[1]) || {};
             } catch (e) {
-                if (plugin.settings.debug) {
-                    console.warn(`[BeatsCommands][getAllSceneData] DEBUG: Skipping "${filePath}": YAML parse error`, e);
-                }
+
                 return null; // Skip files with invalid YAML
             }
 
             const fileClass = frontmatter?.Class || frontmatter?.class;
             if (typeof fileClass !== 'string' || fileClass.toLowerCase() !== 'scene') {
                 const foundClass = fileClass ? `'${fileClass}'` : 'Not found';
-                if (plugin.settings.debug) {
-                    console.log(`[BeatsCommands][getAllSceneData] DEBUG: Skipping "${filePath}": Missing or invalid 'Class: Scene'. Found Class: ${foundClass}`);
-                }
+
                 return null; // Skip if not Class: Scene
             }
 
-            if (plugin.settings.debug) {
-                console.log(`[BeatsCommands][getAllSceneData] Debug Check - Identified as valid scene: "${filePath}"`);
-            }
+
 
             const sceneNumber = extractSceneNumber(file.name);
             const body = content.replace(/^---[\s\S]*?\n---/, "").trim();
@@ -90,9 +80,7 @@ async function getAllSceneData(plugin: ManuscriptTimelinePlugin, vault: Vault): 
             return { file, frontmatter, sceneNumber, body };
 
         } catch (e) {
-            if (plugin.settings.debug) {
-                console.error(`[BeatsCommands][getAllSceneData] DEBUG: Skipping "${filePath}" due to read error:`, e);
-            }
+
             return null; // Skip file on read error
         }
     });
@@ -100,9 +88,7 @@ async function getAllSceneData(plugin: ManuscriptTimelinePlugin, vault: Vault): 
     const results = await Promise.all(sceneDataPromises);
     const validScenes = results.filter((item): item is SceneData => item !== null);
 
-    if (plugin.settings.debug) {
-        console.log(`[BeatsCommands][getAllSceneData] DEBUG: Finished scan. Found ${validScenes.length} valid scenes for beats processing.`);
-    }
+
 
     return validScenes;
 }
@@ -305,7 +291,7 @@ async function logApiInteractionToFile(
     try {
         try {
             await vault.createFolder(logFolder);
-            if(plugin.settings.debug) console.log(`[BeatsCommands] Ensured folder exists: ${logFolder}`);
+    
         } catch (e: unknown) {
             if (e instanceof Error && e.message && !e.message.includes('already exists')) {
                 throw e;
@@ -315,7 +301,7 @@ async function logApiInteractionToFile(
         }
 
         await vault.create(filePath, fileContent.trim());
-        if(plugin.settings.debug) console.log(`[BeatsCommands] Logged API interaction to: ${filePath}`);
+
 
     } catch (error) {
         console.error(`[BeatsCommands] Error logging API interaction to file ${filePath}:`, error);
@@ -354,7 +340,7 @@ async function callAiProvider(
                 messages: [{ role: 'user', content: userPrompt }],
                 max_tokens: 4000
             };
-            console.log(`[API][BeatsCommands][callAiProvider] Calling Anthropic (${modelId})...`);
+    
 
             const apiResponse: AnthropicApiResponse = await callAnthropicApi(apiKey, modelId, null, userPrompt, 4000);
 
@@ -384,7 +370,7 @@ async function callAiProvider(
                 temperature: 0.7,
                 max_tokens: 4000
             };
-            console.log(`[API][BeatsCommands][callAiProvider] Calling OpenAI (${modelId})...`);
+    
 
             const apiResponse: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, null, userPrompt, 4000, 0.7);
 
@@ -397,7 +383,7 @@ async function callAiProvider(
             result = apiResponse.content;
         }
 
-        console.log(`[API][BeatsCommands][callAiProvider] ${provider} response received successfully.`);
+    
         await logApiInteractionToFile(plugin, vault, provider, modelId || 'unknown', requestBodyForLog, responseDataForLog, subplotName, commandContext);
         return { result: result, modelIdUsed: modelId || 'unknown' };
 
@@ -426,9 +412,7 @@ async function callAiProvider(
 }
 
 function parseGptResult(gptResult: string, plugin: ManuscriptTimelinePlugin): { '1beats': string, '2beats': string, '3beats': string } | null {
-    if (plugin.settings.debug) {
-        console.log("[API Beats][parseGptResult] Received Raw GPT Result:\n---" + gptResult + "---");
-    }
+
     try {
         const section1Pattern = /^1beats:\s*([\s\S]*?)(?=^\s*(?:2beats:|3beats:|$))/m;
         const section2Pattern = /^2beats:\s*([\s\S]*?)(?=^\s*(?:3beats:|$))/m;
@@ -452,15 +436,12 @@ function parseGptResult(gptResult: string, plugin: ManuscriptTimelinePlugin): { 
             // Convert any literal "\n" sequences to real newlines and remove trailing ones
             const normalized = content.replace(/\\n/g, '\n').replace(/(\\n)+\s*$/, '');
             const trimmedContent = normalized.trim();
-            if (plugin.settings.debug) {
-                 console.log("[API Beats][parseGptResult] Raw section content after outer trim: " + JSON.stringify(trimmedContent));
-            }
+
             if (!trimmedContent) return '';
             return trimmedContent
                 .split('\n')
                 .map(l => l.trim())
                 .filter(l => l.startsWith('-'))
-                .map(l => l.replace(/,/g, ''))
                 .map(l => l.replace(/(\w+):/g, '$1 -'))
                 .map(l => ` ${l}`)
                 .join('\n');
@@ -472,9 +453,7 @@ function parseGptResult(gptResult: string, plugin: ManuscriptTimelinePlugin): { 
             '3beats': processSection(section3Match[1])
         };
         
-        if (plugin.settings.debug) {
-            console.log("[API Beats][parseGptResult] Processed beats object: " + JSON.stringify(beats, null, 2));
-        }
+
         
         if (!beats['1beats'].trim() && !beats['2beats'].trim() && !beats['3beats'].trim()) {
              console.error("[parseGptResult] Parsed beats object is effectively empty after trimming check.");
@@ -496,11 +475,7 @@ async function updateSceneFile(
     plugin: ManuscriptTimelinePlugin,
     modelIdUsed: string | null
 ): Promise<boolean> {
-    console.log("[updateSceneFile] Updating frontmatter for:", scene.file.path);
-    if (plugin.settings.debug) {
-        console.log("[API Beats][updateSceneFile] Parsed Beats Received:", JSON.stringify(parsedBeats, null, 2));
-        console.log("[API Beats][updateSceneFile] Model ID Used:", modelIdUsed);
-    }
+
     try {
         // Clone frontmatter and remove existing beats
         const frontmatterCopy = { ...scene.frontmatter };
@@ -521,52 +496,35 @@ async function updateSceneFile(
             frontmatterCopy['BeatsLastUpdated'] = updatedValue;
         }
         
-        if (plugin.settings.debug) {
-            console.log("[API Beats][updateSceneFile] Frontmatter object before adding new beats:", JSON.stringify(frontmatterCopy, null, 2));
-        }
+
         
         // Stringify the base frontmatter (without any beats yet)
         let frontmatterYaml = stringifyYaml(frontmatterCopy).trim();
         
-        if (plugin.settings.debug) {
-            console.log("[API Beats][updateSceneFile] Initial stringifyYaml output (before adding beats):\n---\n" + frontmatterYaml + "---\n");
-        }
+
         
         // Append the new beats content directly to the YAML string
         let beatsAdded = false;
         for (const beatKey of ['1beats', '2beats', '3beats'] as const) {
             const beatContentFromParser = parsedBeats[beatKey];
             
-            if (plugin.settings.debug) {
-                console.log(`[API Beats][updateSceneFile] --- Checking beatKey: ${beatKey} ---`);
-                console.log(`[API Beats][updateSceneFile] Content from parser: ${JSON.stringify(beatContentFromParser)}`); 
-                const trimmedForCheck = beatContentFromParser?.trim();
-                console.log(`[API Beats][updateSceneFile] Content after trim() for check: ${JSON.stringify(trimmedForCheck)}`);
-            }
+
 
             if (beatContentFromParser && beatContentFromParser.trim()) { 
                 if (frontmatterYaml) frontmatterYaml += '\n';
                 frontmatterYaml += `${beatKey}:\n${beatContentFromParser}`;
-                 if (plugin.settings.debug) {
-                    console.log(`[API Beats][updateSceneFile] Appended ${beatKey}. Current YAML:\n---\n${frontmatterYaml}\n---`);
-                 }
+
                 beatsAdded = true;
             } else {
-                 if (plugin.settings.debug) {
-                     console.log(`[API Beats][updateSceneFile] Skipping append for ${beatKey} because check failed.`);
-                 }
+
             }
         }
         
-        if (plugin.settings.debug) {
-             console.log("[API Beats][updateSceneFile] Final Frontmatter YAML after appending beats:\n---\n" + frontmatterYaml + "---\n");
-        }
+
         
         const newFileContent = `---\n${frontmatterYaml}\n---\n${scene.body}`;
         
-        if (plugin.settings.debug) {
-            console.log("[API Beats][updateSceneFile] Final generated file content before writing:\n" + newFileContent);
-        }
+
           
         await vault.modify(scene.file, newFileContent);
         return true;
@@ -581,7 +539,7 @@ export async function processByManuscriptOrder(
     plugin: ManuscriptTimelinePlugin,
     vault: Vault
 ): Promise<void> {
-    console.log("[API Beats][processByManuscriptOrder] Starting processing...");
+
     const notice = new Notice("Processing Manuscript Order: Getting scene data...", 0);
 
     try {
@@ -610,9 +568,7 @@ export async function processByManuscriptOrder(
             return (typeof words === 'number' && words > 0);
         });
 
-        if (plugin.settings.debug) {
-            console.log(`[API Beats][processByManuscriptOrder] Found ${writtenScenes.length} written scenes out of ${allScenes.length} total`);
-        }
+
 
         const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
         for (let i = 0; i < writtenScenes.length; i++) {
@@ -634,7 +590,7 @@ export async function processByManuscriptOrder(
             // <<< ADDED: Check for BeatsUpdate flag before cache check >>>
             const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
             if (typeof beatsUpdateFlag !== 'string' || beatsUpdateFlag.toLowerCase() !== 'yes') {
-                if (plugin.settings.debug) console.log(`[API Beats][processByManuscriptOrder] Skipping triplet for ${currentScenePath}: No 'BeatsUpdate: Yes' flag.`);
+
                 // We don't increment processedCount here, as we only count actual attempts/cache hits
                 continue; // Skip to the next triplet if not flagged
             }
@@ -644,7 +600,7 @@ export async function processByManuscriptOrder(
 
             // Check cache *after* confirming the scene is flagged for update
             if (plugin.settings.processedBeatContexts.includes(tripletIdentifier)) {
-                 if (plugin.settings.debug) console.log(`[API Beats][processByManuscriptOrder] Skipping cached triplet: ${tripletIdentifier}`);
+ 
                  processedCount++;
                  notice.setMessage(`Progress: ${processedCount}/${totalTriplets} scenes (Skipped - Already processed)`);
             continue;
@@ -706,7 +662,7 @@ export async function processBySubplotOrder(
     plugin: ManuscriptTimelinePlugin,
     vault: Vault
 ): Promise<void> {
-     if (plugin.settings.debug) console.log("[API Beats][processBySubplotOrder] Starting subplot processing...");
+     
      const notice = new Notice("Processing Subplots: Getting scene data...", 0);
 
     try {
@@ -779,7 +735,7 @@ export async function processBySubplotOrder(
              const scenes = scenesBySubplot[subplotName];
              scenes.sort((a, b) => (a.sceneNumber ?? Infinity) - (b.sceneNumber ?? Infinity));
 
-            if (plugin.settings.debug) console.log(`[API Beats][processBySubplotOrder] Processing subplot: ${subplotName} (${scenes.length} scenes)`);
+
 
             // Build triplets but ensure we handle unwritten scenes properly
             const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
@@ -828,7 +784,7 @@ export async function processBySubplotOrder(
                  // <<< ADDED: Check for BeatsUpdate flag before cache check >>>
                  const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
                  if (typeof beatsUpdateFlag !== 'string' || beatsUpdateFlag.toLowerCase() !== 'yes') {
-                     if (plugin.settings.debug) console.log(`[API Beats][processBySubplotOrder] Skipping triplet for ${currentScenePath}: No 'BeatsUpdate: Yes' flag.`);
+ 
                      // We don't increment totalProcessedCount here, as we only count actual attempts/cache hits
                      continue; // Skip to the next triplet if not flagged
                  }
@@ -838,7 +794,7 @@ export async function processBySubplotOrder(
 
                  // Check cache *after* confirming the scene is flagged for update
                  if (plugin.settings.processedBeatContexts.includes(tripletIdentifier)) {
-                     if (plugin.settings.debug) console.log(`[API Beats][processBySubplotOrder] Skipping cached triplet: ${tripletIdentifier}`);
+ 
                      totalProcessedCount++;
                      notice.setMessage(`Progress: ${totalProcessedCount}/${totalTripletsAcrossSubplots} scenes (Skipped - Already processed)`);
                 continue;

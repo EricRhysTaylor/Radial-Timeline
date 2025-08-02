@@ -508,7 +508,6 @@ tspan .search-term {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   position: relative;
-  cursor: move;
 }
 .color-picker-input {
   width: 100%;
@@ -579,6 +578,7 @@ tspan .search-term {
   min-height: 1.5em;
   display: block;
   visibility: visible !important;
+  fill: transparent;
 }
 .number-square.non-selected {
   fill: #EFEFEF;
@@ -654,10 +654,26 @@ tspan .search-term {
 /* SVG Element Styles */
 .svg-path {
     display: none;
+    fill: none;
 }
 
 .svg-text {
     font-weight: bold;
+}
+
+/* Title text styles */
+.scene-title-bold {
+    font-weight: bold;
+}
+
+/* Grade border styles */
+.grade-border {
+    fill: none;
+}
+
+/* Invisible spacer styles */
+.invisible-spacer {
+    opacity: 0;
 }
 
 /* Button Container Styles */
@@ -839,4 +855,49 @@ tspan .search-term {
     padding: 0; 
     margin-top: 15px;
     margin-bottom: 20px;
+}
+
+/* Source path autocomplete suggestions */
+.source-path-suggestions {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    margin-top: 2px;
+    min-width: 200px; /* Ensure minimum width */
+    background-color: var(--background-primary);
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    border: 1px solid var(--background-modifier-border);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.source-path-suggestions.hidden {
+    display: none;
+}
+
+.source-path-suggestions.visible {
+    display: block;
+}
+
+.source-path-input-container {
+    position: relative;
+}
+
+.source-path-suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--background-modifier-border);
+    transition: background-color 0.1s ease;
+}
+
+.source-path-suggestion-item:last-child {
+    border-bottom: none !important;
+}
+
+.source-path-suggestion-item:hover,
+.source-path-suggestion-item.selected {
+    background-color: var(--background-modifier-hover) !important;
 }

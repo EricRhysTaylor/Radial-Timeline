@@ -16,6 +16,7 @@ import { processByManuscriptOrder, processBySubplotOrder, testYamlUpdateFormatti
 
 interface ManuscriptTimelineSettings {
     sourcePath: string;
+    validFolderPaths: string[]; // <<< ADDED: Store previously validated folder paths for autocomplete
     publishStageColors: {
         Zero: string;
         Author: string;
@@ -76,6 +77,7 @@ interface SceneNumberInfo {
 
 export const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
     sourcePath: '',
+    validFolderPaths: [], // <<< ADDED: Default empty array for folder path history
     publishStageColors: {
         Zero: '#9E70CF',   // Purple (Stage Zero)
         Author: '#5E85CF', // Blue   (Author)
@@ -362,7 +364,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 pathElement.setAttribute('id', pathId);
                 pathElement.setAttribute('d', `M 0,0 Q ${Math.cos(angleToCenter) * 500},${Math.sin(angleToCenter) * 500 * curveFactor} 1000,0`);
-                pathElement.setAttribute('fill', 'none');
+
                 // Use CSS class instead of inline style
                 pathElement.classList.add('svg-path');
                 
@@ -670,16 +672,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 if (navFile) {
                     const filePath = navFile.getAttribute('data-path');
                     if (filePath) {
-                        // DEBUG: Always log the mouseover event to help diagnose issues
-                        if (this.settings.debug) {
-                            console.log(`DEBUG: Mouseover detected on file in explorer: ${filePath}`);
-                        }
+
                         
                         // Store current hover path to avoid redundant processing
                         if (this._currentHoverPath === filePath) {
-                            if (this.settings.debug) {
-                                console.log(`DEBUG: Skipping (already hovering): ${filePath}`);
-                            }
+
                             return;
                         }
                         this._currentHoverPath = filePath;
@@ -689,18 +686,13 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                         if (file instanceof TFile) {
                             // Check if this is a scene file by looking at cached scene data
                             const isSceneFile = this.isSceneFile(filePath);
-                            if (this.settings.debug) {
-                                console.log(`DEBUG: File ${filePath} is ${isSceneFile ? '' : 'NOT '}a scene file`);
-                            }
+
                             
                             if (isSceneFile) {
                                 this.log(`Hovering over scene file: ${filePath}`);
                                 this.highlightSceneInTimeline(filePath, true);
                             }
                         } else {
-                            if (this.settings.debug) {
-                                console.log(`DEBUG: File not found in vault: ${filePath}`);
-                            }
                         }
                     }
                 }
@@ -715,9 +707,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 if (navFile) {
                     const filePath = navFile.getAttribute('data-path');
                     if (filePath && this._currentHoverPath === filePath) {
-                        if (this.settings.debug) {
-                            console.log(`DEBUG: Mouseout detected on file: ${filePath}`);
-                        }
+
                         this._currentHoverPath = null;
                         
                         // Only unhighlight if it was a scene file
@@ -737,45 +727,28 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             if (tabHeader) {
                 const tabId = tabHeader.getAttribute('data-tab-id');
                 if (tabId) {
-                    if (this.settings.debug) {
-                        console.log(`DEBUG: Mouseover detected on tab: ${tabId}`);
-                    }
+
                     const leaf = this.app.workspace.getLeafById(tabId);
                     if (leaf) {
                         const state = leaf.getViewState();
                         const filePath = state?.state?.file as string | undefined;
                         if (filePath && state?.type === 'markdown') {
-                            if (this.settings.debug) {
-                                console.log(`DEBUG: Tab contains markdown file: ${filePath}`);
-                            }
                             
                             // Avoid redundant processing
                             if (this._currentTabHoverPath === filePath) {
-                                if (this.settings.debug) {
-                                    console.log(`DEBUG: Skipping tab (already hovering): ${filePath}`);
-                                }
                                 return;
                             }
                             this._currentTabHoverPath = filePath;
                             
                             // Only highlight if it's a scene file
                             const isSceneFile = this.isSceneFile(filePath);
-                            if (this.settings.debug) {
-                                console.log(`DEBUG: Tab file ${filePath} is ${isSceneFile ? '' : 'NOT '}a scene file`);
-                            }
                             
                             if (isSceneFile) {
                                 this.highlightSceneInTimeline(filePath, true);
                             }
                         } else {
-                            if (this.settings.debug) {
-                                console.log(`DEBUG: Tab is not a markdown file or has no file path`);
-                            }
                         }
                     } else {
-                        if (this.settings.debug) {
-                            console.log(`DEBUG: No leaf found for tab ID: ${tabId}`);
-                        }
                     }
                 }
             }
@@ -822,10 +795,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     new Notice('OpenAI API key is not set in settings.');
                     return;
                 }
-                // <<< Wrap console.log with debug check >>>
-                if (this.settings.debug) {
-                    console.log(`[Manuscript Timeline] Update Beats command initiated. Using sourcePath: "${this.settings.sourcePath}"`);
-                }
+
                 new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
 
                 try {
@@ -847,10 +817,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                     new Notice('OpenAI API key is not set in settings.');
                     return;
                 }
-                // <<< Wrap console.log with debug check >>>
-                if (this.settings.debug) {
-                    console.log(`[Manuscript Timeline] Update Beats command initiated. Using sourcePath: "${this.settings.sourcePath}"`);
-                }
+
                 new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
                 
                 try {
@@ -908,20 +875,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         // Initial status bar update
         this.updateStatusBar(); 
         
-        console.log('Manuscript Timeline Plugin Loaded');
 
-        // <<< ADDED: Command for Beats API testing (DEBUG ONLY) >>>
-        if (this.settings.debug) { // Wrap with this check
-            this.addCommand({
-                id: 'test-yaml-update-format',
-                name: 'Test YAML at AITestDummyScene.md',
-                callback: async () => {
-                    // Call the exported test function
-                    await testYamlUpdateFormatting(this, this.app.vault);
-                }
-            });
-        } // End the debug check wrap
-        // <<< END ADDED >>>
+
+
         
         this.addCommand({
             id: 'clear-processed-beats-cache', 
@@ -939,6 +895,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
         });
 
+        console.log('Manuscript Timeline Plugin Loaded');
     }
     
     // Store paths of current hover interactions to avoid redundant processing
@@ -1217,9 +1174,9 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                                 "Publish Stage": metadata["Publish Stage"],
                                 due: metadata.Due,
                                 pendingEdits: metadata["Pending Edits"],
-                                "1beats": typeof metadata["1beats"] === 'string' ? metadata["1beats"] : String(metadata["1beats"]),
-                                "2beats": typeof metadata["2beats"] === 'string' ? metadata["2beats"] : String(metadata["2beats"]), 
-                                "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : String(metadata["3beats"]),
+                                "1beats": typeof metadata["1beats"] === 'string' ? metadata["1beats"] : (metadata["1beats"] ? String(metadata["1beats"]) : undefined),
+                                "2beats": typeof metadata["2beats"] === 'string' ? metadata["2beats"] : (metadata["2beats"] ? String(metadata["2beats"]) : undefined), 
+                                "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : (metadata["3beats"] ? String(metadata["3beats"]) : undefined),
                                 itemType: "Scene"
                             });
                     });
@@ -1440,6 +1397,32 @@ public createTimelineSVG(scenes: Scene[]) {
         await this.saveData(this.settings);
     }
 
+    // Helper method to validate and remember folder paths
+    async validateAndRememberPath(path: string): Promise<boolean> {
+        if (!path || path.trim() === '') return false;
+        
+        const trimmedPath = path.trim();
+        
+        // Check if the folder exists in the vault
+        const folder = this.app.vault.getAbstractFileByPath(trimmedPath);
+        const isValid = folder && folder.path === trimmedPath;
+        
+        if (isValid) {
+            // Add to valid paths if not already present
+            if (!this.settings.validFolderPaths.includes(trimmedPath)) {
+                this.settings.validFolderPaths.unshift(trimmedPath); // Add to beginning
+                // Keep only the last 10 paths to avoid clutter
+                if (this.settings.validFolderPaths.length > 10) {
+                    this.settings.validFolderPaths = this.settings.validFolderPaths.slice(0, 10);
+                }
+                await this.saveSettings();
+            }
+            return true;
+        }
+        
+        return false;
+    }
+
     // Add this helper function at the class level
     private parseSceneTitle(title: string): { number: string; cleanTitle: string } {
         // Split on first space
@@ -1498,78 +1481,7 @@ public createTimelineSVG(scenes: Scene[]) {
         }, 1000); // 1 second debounce
     }
 
-    /**
-     * Measures text dimensions using an offscreen DOM element
-     * This provides much more accurate text sizing than estimation
-     */
-    private measureTextDimensions(text: string, maxWidth: number, fontSize: number, fontWeight: string = 'normal'): {width: number, height: number} {
-        // Create an offscreen element for measurement
-        const el = document.createElement('div');
-        el.classList.add('text-measure');
-        el.style.setProperty('--max-width', `${maxWidth}px`);
-        el.style.setProperty('--font-size', `${fontSize}px`);
-        el.style.setProperty('--font-weight', fontWeight);
-        
-        // Check if text contains HTML/SVG tags
-        if (text.includes('<') && text.includes('>')) {
-            // Use DOMParser for safely handling HTML content
-            try {
-                const parser = new DOMParser();
-                // For SVG content
-                if (text.includes('<tspan')) {
-                    const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg"><text>${text}</text></svg>`, 'image/svg+xml');
-                    if (!doc.querySelector('parsererror')) {
-                        const textNode = doc.querySelector('text');
-                        if (textNode) {
-                            const fragment = document.createDocumentFragment();
-                            while (textNode.firstChild) {
-                                fragment.appendChild(textNode.firstChild);
-                            }
-                            el.appendChild(fragment);
-                        } else {
-                            el.textContent = text;
-                        }
-                    } else {
-                        el.textContent = text;
-                    }
-                } else {
-                    // For regular HTML
-                    const doc = parser.parseFromString(`<div>${text}</div>`, 'text/html');
-                    const div = doc.querySelector('div');
-                    if (div) {
-                        const fragment = document.createDocumentFragment();
-                        while (div.firstChild) {
-                            fragment.appendChild(div.firstChild);
-                        }
-                        el.appendChild(fragment);
-                    } else {
-                        el.textContent = text;
-                    }
-                }
-            } catch (error) {
-                console.error('Error parsing HTML content for measurement:', error);
-                el.textContent = text;
-            }
-        } else {
-            // Simple text, use textContent
-            el.textContent = text;
-        }
-        
-        // Append to DOM for measurement
-        document.body.appendChild(el);
-        
-        // Get the dimensions
-        const rect = el.getBoundingClientRect();
-        const dimensions = {
-            width: rect.width,
-            height: rect.height
-        };
-        
-        // Clean up
-        document.body.removeChild(el);
-        
-        return dimensions;
-    }
+
 
     // Add this function near the top of the class, after refreshTimelineIfNeeded 
     public updateSynopsisPosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
@@ -2074,87 +1986,7 @@ public createTimelineSVG(scenes: Scene[]) {
             }
         }
     }
-    
-    // Add a method to handle zooming and panning
-    private setupZoomPan(svgElement: SVGSVGElement): void {
-        // Initial transform values
-        let scale = 1;
-        const initialScale = 1;
-        let translateX = 0;
-        let translateY = 0;
-        
-        // Track mouse and touch events
-        let isPanning = false;
-        let startPoint = { x: 0, y: 0 };
-        let endPoint = { x: 0, y: 0 };
-        
-        // Get SVG viewport dimensions
-        const updateViewBox = () => {
-            const viewBox = svgElement.getAttribute('viewBox')?.split(' ').map(Number) || [-800, -800, 1600, 1600];
-            svgElement.setAttribute('viewBox', `${viewBox[0] - translateX} ${viewBox[1] - translateY} ${viewBox[2] / scale} ${viewBox[3] / scale}`);
-        };
-        
-        // Zoom function
-        const zoom = (delta: number, x: number, y: number) => {
-            // Adjust scale with limits
-            scale = Math.max(0.2, Math.min(3, scale - delta * 0.1));
-            
-            // Apply the transform to the viewBox instead of CSS transform
-            updateViewBox();
-        };
-        
-        // Handle mouse wheel for zooming
-        svgElement.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const delta = e.deltaY > 0 ? 1 : -1;
-            zoom(delta, e.clientX, e.clientY);
-        });
-        
-        // Handle panning with mouse
-        svgElement.addEventListener('mousedown', (e) => {
-            if (e.button === 0) { // Left mouse button
-                isPanning = true;
-                startPoint = { x: e.clientX, y: e.clientY };
-                svgElement.style.cursor = 'grabbing';
-            }
-        });
-        
-        window.addEventListener('mousemove', (e) => {
-            if (isPanning) {
-                endPoint = { x: e.clientX, y: e.clientY };
-                
-                // Calculate the movement delta
-                const dx = (endPoint.x - startPoint.x) / scale;
-                const dy = (endPoint.y - startPoint.y) / scale;
-                
-                // Update translation
-                translateX += dx;
-                translateY += dy;
-                
-                // Update startPoint for continuous movement
-                startPoint = { x: e.clientX, y: e.clientY };
-                
-                // Apply the updated viewBox
-                updateViewBox();
-            }
-        });
-        
-        window.addEventListener('mouseup', () => {
-            isPanning = false;
-            svgElement.style.cursor = 'default';
-        });
-        
-        // Double-click to reset view
-        svgElement.addEventListener('dblclick', () => {
-            scale = initialScale;
-            translateX = 0;
-            translateY = 0;
-            
-            // Reset the viewBox to its original value
-            const size = 1600;
-            svgElement.setAttribute('viewBox', `-${size / 2} -${size / 2} ${size} ${size}`);
-        });
-    }
+
 
     // --- START: Color Conversion & Desaturation Helpers ---
     // Ensure these are PUBLIC

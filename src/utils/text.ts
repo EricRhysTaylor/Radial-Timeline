@@ -63,13 +63,13 @@ export function renderSceneTitleComponents(
   fragment.appendChild(container);
   if (title.sceneNumber) {
     const num = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-    num.setAttribute('font-weight', 'bold');
+    num.classList.add('scene-title-bold');
     if (titleColor) num.setAttribute('fill', titleColor);
     num.textContent = `${title.sceneNumber} `;
     container.appendChild(num);
   }
   const main = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-  main.setAttribute('font-weight', 'bold');
+  main.classList.add('scene-title-bold');
   if (titleColor) main.setAttribute('fill', titleColor);
   container.appendChild(main);
   if (searchTerm && title.title) {

@@ -1603,7 +1603,7 @@ export function createTimelineSVG(
                     (function() {
                         // Wait for DOM to be ready
                         window.addEventListener('DOMContentLoaded', function() {
-                            console.log("Setting up mouse coordinate tracking");
+                        
                             
                             // Get SVG element and coordinate text
                             const svg = document.querySelector('.manuscript-timeline-svg');
@@ -1634,13 +1634,13 @@ export function createTimelineSVG(
                                     pt.x = e.clientX;
                                     pt.y = e.clientY;
                                     const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-                                    console.log('Clicked at:', Math.round(svgP.x), Math.round(svgP.y));
+                    
                                 } catch (err) {
                                     console.error("Error calculating coordinates:", err);
                                 }
                             });
                             
-                            console.log("Mouse coordinate tracking initialized");
+                        
                         });
                     })();
                 ]]></script>

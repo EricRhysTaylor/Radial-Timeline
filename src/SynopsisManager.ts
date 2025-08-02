@@ -217,7 +217,7 @@ export default class SynopsisManager {
         // Setting font-size to 0, as requested, since constants had no effect
         spacerElement.setAttribute("font-size", `0px`); 
         spacerElement.textContent = "\u00A0"; // Non-breaking space
-        spacerElement.setAttribute("opacity", "0"); // Make it invisible
+        spacerElement.classList.add('invisible-spacer'); // Make it invisible
         synopsisTextGroup.appendChild(spacerElement);
         // Return value now adds 0 height, placing next block immediately after previous
         // Need to return the original yPosition so next block starts correctly relative to the last *content* block
@@ -285,7 +285,7 @@ export default class SynopsisManager {
             subplotTextElement.setAttribute("text-anchor", "start");
             
             // Format each subplot with its own color
-            subplots.forEach((subplot, j) => {
+            subplots.forEach((subplot, j) => { 
               const color = getSubplotColor(subplot.trim()); // Restore random color
               const subplotText = subplot.trim();
               const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
@@ -646,8 +646,6 @@ export default class SynopsisManager {
    * @param parentElement The SVG element to append processed nodes to
    */
   private processContentWithTspans(content: string, parentElement: SVGElement): void {
-    this.plugin.log(`DEBUG: Processing content with tspans: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`);
-    
     // First decode any HTML entities in the content
     let processedContent = content;
     
@@ -661,7 +659,7 @@ export default class SynopsisManager {
         .replace(/&apos;/g, "'")
         .replace(/&amp;/g, '&');
         
-      this.plugin.log(`DEBUG: Decoded HTML entities in content`);
+
     }
     
     // Use DOMParser to parse the content safely
@@ -670,7 +668,7 @@ export default class SynopsisManager {
     const container = doc.querySelector('div');
 
     if (!container) {
-      this.plugin.log(`DEBUG: Failed to parse HTML content: no container found`);
+
       return;
     }
     
@@ -682,7 +680,7 @@ export default class SynopsisManager {
       }
     });
     
-    this.plugin.log(`DEBUG: Content has direct text nodes: ${hasDirectTextNodes}`);
+
     
     if (hasDirectTextNodes) {
       // Handle mixed content (text nodes and elements)
@@ -691,7 +689,7 @@ export default class SynopsisManager {
           // Add text directly
           if (node.textContent?.trim()) {
             parentElement.appendChild(document.createTextNode(node.textContent));
-            this.plugin.log(`DEBUG: Added text node: "${node.textContent}"`);
+  
           }
         } else if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === 'tspan') {
           // Handle tspan element
@@ -710,14 +708,14 @@ export default class SynopsisManager {
           });
           
           svgTspan.textContent = tspan.textContent;
-          this.plugin.log(`DEBUG: Added tspan element with text: "${tspan.textContent}"`);
+
           parentElement.appendChild(svgTspan);
         }
       });
     } else {
       // Process only tspan elements
       const tspans = container.querySelectorAll('tspan');
-      this.plugin.log(`DEBUG: Found ${tspans.length} tspan elements`);
+  
       
       tspans.forEach(tspan => {
         const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
@@ -741,7 +739,7 @@ export default class SynopsisManager {
     
     // If no content was added to the parent element, add the original text as fallback
     if (!parentElement.hasChildNodes()) {
-      this.plugin.log(`DEBUG: No content was added, using original text as fallback`);
+  
       parentElement.textContent = content;
     }
   }
@@ -750,7 +748,7 @@ export default class SynopsisManager {
   private splitTextIntoLines(text: string, maxWidth: number): string[] {
     // Handle null, undefined, or non-string input
     if (!text || typeof text !== 'string') {
-      this.plugin.log(`DEBUG: splitTextIntoLines received invalid text: ${text}`);
+  
       return [''];  // Return an array with a single empty string
     }
     
@@ -759,7 +757,7 @@ export default class SynopsisManager {
     
     // Check if the trimmed text is empty
     if (!trimmedText) {
-      this.plugin.log(`DEBUG: splitTextIntoLines received empty or whitespace-only text`);
+  
       return [''];  // Return an array with a single empty string for empty content
     }
     
@@ -787,11 +785,10 @@ export default class SynopsisManager {
     
     // If we still end up with no lines, ensure we return something
     if (lines.length === 0) {
-      this.plugin.log(`DEBUG: splitTextIntoLines produced no lines, returning default`);
+
       return [trimmedText]; // Return the trimmed text as a single line
     }
     
-    this.plugin.log(`DEBUG: splitTextIntoLines produced ${lines.length} lines from text of length ${text.length}`);
     return lines;
   }
 
@@ -821,57 +818,96 @@ export default class SynopsisManager {
       if (trimmedText.startsWith('-')) {
         if (trimmedText.length > 1) { lines = [trimmedText]; }
       } else {
-        lines = trimmedText.split(',').map(item => `- ${item.trim()}`).filter(line => line.length > 2);
+        // Split on commas that appear between beats (not within descriptions)
+        // Pattern: split on ", " followed by text containing "+ /" or "- /" or "? /"
+        const beatSeparatorPattern = /,\s*(?=[^,]*[\+\-\?]\s*\/)/g;
+        const parts = trimmedText.split(beatSeparatorPattern);
+        
+        if (parts.length > 1) {
+          lines = parts.map(item => `- ${item.trim()}`).filter(line => line.length > 2);
+        } else {
+          // If no pattern match, use original comma splitting as fallback
+          lines = trimmedText.split(',').map(item => `- ${item.trim()}`).filter(line => line.length > 2);
+        }
         if (lines.length === 0 && trimmedText.length > 0) {
           lines = [`- ${trimmedText}`];
         }
       }
     }
     // END: Restore line splitting logic
+    
+
 
     // Add this after the line splitting logic but before the for loop
     // Around line 1275-1280, right after "// END: Restore line splitting logic"
 
-    // Pre-process lines that are too long (specifically for 2beats)
-    if (beatKey === '2beats' && lines.length > 0) {
-      for (let i = 0; i < lines.length; i++) {
-        let line = lines[i].trim();
-        
-        // First extract any grade notation like [B]
-        let gradePrefix = "";
-        const gradeMatch = line.match(/^\s*(\[[A-Z][+-]?\]\s*)/);
-        if (gradeMatch) {
-          gradePrefix = gradeMatch[1];
-          line = line.substring(gradeMatch[0].length).trim();
-        }
-        
-        // Instead of building word-based segments, split on commas directly
-        if (line.includes(',')) {
-          // Split by commas and create new lines from each segment
-          const segments = line.split(',').map(segment => segment.trim()).filter(segment => segment.length > 0);
-          
-          if (segments.length > 1) {
-            // First segment keeps the grade prefix
-            const firstSegment = segments.shift() || '';
-            const processedLines = [
-              gradePrefix ? `${gradePrefix} ${firstSegment}` : firstSegment,
-              ...segments.map(segment => `- ${segment}`)
-            ];
-            
-            // Replace current line with expanded lines
-            lines.splice(i, 1, ...processedLines);
-            
-            // Adjust i to account for the new lines
-            i += processedLines.length - 1;
-            continue;
+    // Pre-process lines for wrapping for all beats sections.
+    if (lines.length > 0) {
+      const processedLines: string[] = [];
+
+      for (const originalLine of lines) {
+          if (!originalLine || !originalLine.trim()) continue;
+
+          const line = originalLine.trim();
+          let wasSplit = false;
+
+          // 1. Check if the line should have grade styling.
+          let isGradeLine = false;
+          const prefixMatch = line.match(/^\s*(\[[A-Z][+-]?\]\s*)/);
+          const numericGradeRegex = /^\s*-?\s*(\d+(\.\d+)?\s+[ABC])/i; // Simplified to find the grade pattern itself.
+          if (prefixMatch || line.match(numericGradeRegex)) {
+              isGradeLine = true;
           }
-        }
-        
-        // If line has a grade prefix but no commas, reattach the grade prefix
-        if (gradePrefix) {
-          lines[i] = `${gradePrefix} ${line}`;
-        }
+          
+
+
+
+          // 2. Determine the correct splitter character and method.
+          let splitChar = '';
+          if (isGradeLine) {
+              // For grade lines, prefer splitting on ". " to avoid decimals, otherwise use comma.
+              if (line.match(/\.\s/)) {
+                  splitChar = '.';
+              } else if (line.includes(',')) {
+                  splitChar = ',';
+              }
+          } else {
+              // Non-grade lines are only split by comma.
+              if (line.includes(',')) {
+                  splitChar = ',';
+              }
+          }
+
+          // 3. Perform the split and format the new lines.
+          if (splitChar) {
+              const parts = line.split(splitChar);
+              if (parts.length > 1) {
+                  wasSplit = true;
+                  const wrapTag = isGradeLine ? '[GRADE]' : '[BODY]';
+
+                  // First part includes the split character.
+                  processedLines.push(parts[0] + splitChar);
+                  
+                  // Subsequent parts get the appropriate wrap tag.
+                  for (let i = 1; i < parts.length; i++) {
+                      const part = parts[i].trim();
+                      if (part) {
+                          // Add split character back except for the last part
+                          const text = (i < parts.length - 1) ? part + splitChar : part;
+                          processedLines.push(`${wrapTag} ${text}`);
+                      }
+                  }
+              }
+          }
+
+          // 4. If no split occurred, add the original line back.
+          if (!wasSplit) {
+              processedLines.push(originalLine);
+          }
       }
+      
+      // Replace original lines with the new processed lines.
+      lines.splice(0, lines.length, ...processedLines);
     }
 
     let currentY = baseY;
@@ -893,48 +929,83 @@ export default class SynopsisManager {
       let commentClass = 'beats-text'; // Default comment class
       let signDetected: string | null = null; // Store the detected sign (+, -, ?)
       let useSlashSeparator = false; // Flag to control adding " / "
+      let detectedGrade: string | null = null; // Declare detectedGrade here
 
-      // 1. Find the specific "Sign /" pattern
-      const signSlashPattern = /^(.*?)\s*([-+?])\s*\/\s*(.*)$/;
-      const match = rawContent.match(signSlashPattern);
-
-      if (match) {
-        // Pattern "Title Sign / Comment" found
-        titleText = match[1].trim();    // Part before the sign
-        signDetected = match[2];        // The actual sign (+, -, ?)
-        commentText = match[3].trim(); // Part after the slash
-        useSlashSeparator = true;     // We found the pattern, so use the slash
-        // NOTE: Title sign is implicitly removed because titleText comes from group 1 (before the sign)
-      } else {
-         // Pattern not found. Check if there's a sign at the end for coloring, but don't split.
-         const endSignMatch = rawContent.match(/\s*([-+?])$/);
-         if (endSignMatch) {
-           signDetected = endSignMatch[1];
-           // Remove the sign from the title text for display
-           titleText = rawContent.substring(0, endSignMatch.index).trim();
-         }
-         // No split needed, commentText remains empty, useSlashSeparator remains false
-      }
-
-      // 2. Determine Title CSS Class based on the detected sign
-      if (signDetected === '+') {
-        titleClass = 'beats-text-positive';
-      } else if (signDetected === '-') {
-        titleClass = 'beats-text-negative';
-      } // Otherwise remains 'beats-text-neutral'
+      // Check for body text wrapper from non-grade line splitting FIRST
+      const bodyWrapMatch = rawContent.match(/^\[BODY\]\s*(.*)$/);
+      const gradeWrapMatch = rawContent.match(/^\[GRADE\]\s*(.*)$/);
       
-      // Handle special case for 2beats first line grade
-      let isFirstLineOf2Beats = (beatKey === '2beats' && i === 0);
-      let detectedGrade: string | null = null;
-      if (isFirstLineOf2Beats) {
-        // Look for Grade (A, B, C) potentially at the start of titleText
-        const gradeMatch = titleText.match(/^\s*\d+(\.\d+)?\s+([ABC])(?![A-Za-z0-9])/i);
-         if (gradeMatch && gradeMatch[2]) {
-            detectedGrade = gradeMatch[2].toUpperCase();
-            // Override classes for the grade line
-            titleClass = 'beats-text-grade'; 
-            commentClass = 'beats-text-grade';
-         }
+      if (gradeWrapMatch) {
+        // This is a wrapped line from a grade line.
+        titleText = gradeWrapMatch[1];
+        rawContent = titleText;
+        // Apply grade formatting to wrapped grade segments
+        titleClass = 'beats-text-grade'; 
+        commentClass = 'beats-text-grade';
+        
+        // Find the grade from the first line for border logic
+        if (lines.length > 0) {
+          const firstLineContent = lines[0].replace(/^-\s*/, '');
+          const firstLineGradeMatch = firstLineContent.match(/^\s*\d+(\.\d+)?\s+([ABC])(?![A-Za-z0-9])/i);
+          if (firstLineGradeMatch) {
+            detectedGrade = firstLineGradeMatch[2].toUpperCase();
+          }
+        }
+      } else if (bodyWrapMatch) {
+        // This is a wrapped line from a regular line.
+        titleText = bodyWrapMatch[1];
+        rawContent = titleText;
+        // Apply light gray body text formatting  
+        titleClass = 'info-text title-text-secondary'; 
+        commentClass = 'info-text title-text-secondary';
+      } else {
+        // Only do sign detection if this is NOT body text or grade text
+        if (!bodyWrapMatch && !gradeWrapMatch) {
+          // 1. Find the specific "Sign /" pattern
+          const signSlashPattern = /^(.*?)\s*([-+?])\s*\/\s*(.*)$/;
+          const match = rawContent.match(signSlashPattern);
+
+          if (match) {
+            // Pattern "Title Sign / Comment" found
+            titleText = match[1].trim();    // Part before the sign
+            signDetected = match[2];        // The actual sign (+, -, ?)
+            commentText = match[3].trim(); // Part after the slash
+            useSlashSeparator = true;     // We found the pattern, so use the slash
+            // NOTE: Title sign is implicitly removed because titleText comes from group 1 (before the sign)
+          } else {
+             // Pattern not found. Check if there's a sign at the end for coloring, but don't split.
+             const endSignMatch = rawContent.match(/\s*([-+?])$/);
+             if (endSignMatch) {
+               signDetected = endSignMatch[1];
+               // Remove the sign from the title text for display
+               titleText = rawContent.substring(0, endSignMatch.index).trim();
+             }
+             // No split needed, commentText remains empty, useSlashSeparator remains false
+          }
+
+          // 2. Determine Title CSS Class based on the detected sign
+          if (signDetected === '+') {
+            titleClass = 'beats-text-positive';
+          } else if (signDetected === '-') {
+            titleClass = 'beats-text-negative';
+          } // Otherwise remains 'beats-text-neutral'
+        }
+      }
+      
+      // Handle special case for 2beats grade detection (simple, content-based only)
+      if (beatKey === '2beats' && !bodyWrapMatch && !gradeWrapMatch) {
+        // Check if THIS specific line has a grade pattern
+        const gradeMatch = titleText.match(/^\s*-?\s*(\d+(\.\d+)?\s+[ABC])/i);
+        
+        if (gradeMatch) {
+          // This line itself has a grade - apply grade formatting
+          const gradeLetterMatch = titleText.match(/\s+([ABC])/i);
+          if (gradeLetterMatch && gradeLetterMatch[1]) {
+            detectedGrade = gradeLetterMatch[1].toUpperCase();
+          }
+          titleClass = 'beats-text-grade'; 
+          commentClass = 'beats-text-grade';
+        }
       }
 
       // --- Create SVG Elements --- 
@@ -992,7 +1063,7 @@ export default class SynopsisManager {
               gradeBorder.setAttribute("y", y);
               gradeBorder.setAttribute("width", width);
               gradeBorder.setAttribute("height", height);
-              gradeBorder.setAttribute("fill", "none");
+              gradeBorder.classList.add('grade-border');
               
               // Insert the border before the number-square for proper z-index
                numberSquare.parentNode?.insertBefore(gradeBorder, numberSquare);
@@ -1013,7 +1084,7 @@ export default class SynopsisManager {
         spacer.setAttribute("y", String(yPosition));
         spacer.setAttribute("width", "20");
         spacer.setAttribute("height", String(height));
-        spacer.setAttribute("fill", "transparent");
+
         parentGroup.appendChild(spacer);
       };
       
