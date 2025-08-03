@@ -132,11 +132,11 @@ BeatsUpdate: Yes
   - Book: Book 1 A New Beginning
 ```
 
-## Plot notes (Save the Cat beats) - NEW in v2.1.0
+## Plot notes (Save the Cat beats) - new in v2.1.0
 
 The plugin now supports Save the Cat story structure with `Class: Plot` notes. These notes represent the 15 essential story beats and appear as narrow visual markers across all subplot rings.
 
-### Required Plot note metadata
+### Required plot note metadata
 
 Plot notes must have the following frontmatter:
 
@@ -155,7 +155,7 @@ Description: The first impression of your story. It should capture the essence o
 - Hover details: Mouseover shows the full title and description with synopsis formatting
 - Excluded from estimates: Plot notes don't count toward completion date calculations
 
-### Example Plot note
+### Example plot note
 
 Create a note titled "01 Opening Image" with this frontmatter:
 
