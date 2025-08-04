@@ -475,81 +475,7 @@ export function createTimelineSVG(
             `;
         }
 
-        // Add tick mark and label for the estimated completion date if available
-        // Use the same estimateResult check
-        if (estimateResult) {
-            const estimatedCompletionDate = estimateResult.date; // Get date again
 
-            // Use estimateResult.date for calculations
-            const estimatedMonth = estimatedCompletionDate.getMonth();
-            const estimatedDay = estimatedCompletionDate.getDate();
-            const estimatedDaysInMonth = new Date(estimatedCompletionDate.getFullYear(), estimatedMonth + 1, 0).getDate();
-            const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
-            const absoluteDatePos = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
-
-            // ... (calculate tick mark positions using absoluteDatePos) ...
-            const tickOuterRadius = progressRadius + 5;
-            const tickInnerRadius = progressRadius - 35;
-            const tickOuterX = tickOuterRadius * Math.cos(absoluteDatePos);
-            const tickOuterY = tickOuterRadius * Math.sin(absoluteDatePos);
-            const tickInnerX = tickInnerRadius * Math.cos(absoluteDatePos);
-            const tickInnerY = tickInnerRadius * Math.sin(absoluteDatePos);
-            
-            svg += `
-                <line 
-                    x1="${formatNumber(tickOuterX)}" 
-                    y1="${formatNumber(tickOuterY)}" 
-                    x2="${formatNumber(tickInnerX)}" 
-                    y2="${formatNumber(tickInnerY)}" 
-                    class="estimated-date-tick" 
-                />
-                <circle 
-                    cx="${formatNumber(tickInnerX)}" 
-                    cy="${formatNumber(tickInnerY)}" 
-                    r="4" 
-                    class="estimated-date-dot" 
-                />
-            `;
-
-            // Use estimateResult.date for display format
-            const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
-            
-            // Add year indicator for completion estimates beyond current year
-            const now = new Date();
-            const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
-            const yearIndicator = yearsDiff > 0 ? `[${yearsDiff + 1}] ` : '';
-            const dateDisplay = `${yearIndicator}${dateFormatter.format(estimatedCompletionDate)}`;
-            
-            // --- Get stats string from estimateResult --- START ---
-            const total = estimateResult.total;
-            const remaining = estimateResult.remaining;
-            const rate = estimateResult.rate; // Already rounded
-            const statsDisplay = `${total}:${remaining}:${rate}`; // Compact format
-            // --- Get stats string from estimateResult --- END ---
-
-            // ... (calculate label positions using absoluteDatePos) ...
-            const labelRadius = progressRadius - 45;
-            const maxOffset = -18;
-            const offsetX = maxOffset * Math.cos(absoluteDatePos);
-            const maxYOffset = 5;
-            const offsetY = -maxYOffset * Math.sin(absoluteDatePos);
-            const labelX = formatNumber(labelRadius * Math.cos(absoluteDatePos) + offsetX);
-            const labelY = formatNumber(labelRadius * Math.sin(absoluteDatePos) + offsetY);
-
-            svg += `
-                <text
-                    x="${labelX}"
-                    y="${labelY}"
-                    text-anchor="middle"
-                    dominant-baseline="middle"
-                    class="estimation-date-label"
-                >
-                    ${dateDisplay}
-                </text>
-            `;
-
-            //   Replace dateDisplay above for complete stats ${dateDisplay} ${statsDisplay}
-        }
 
         // --- START: Draw Target Completion Marker ---
         let targetDateAngle = -Math.PI / 2; // Default to 12 o'clock (top)
@@ -1132,8 +1058,10 @@ export function createTimelineSVG(
         const lineHeight = 26; // Reduced for tighter spacing
 
         // Calculate the number of scenes for each status using a Set to track unique scenes
+        // Filter out Plot items, only count Scene items
+        const sceneNotesOnly = scenes.filter(scene => scene.itemType !== "Plot");
         const processedScenes = new Set<string>(); // Track scenes by their path
-        const statusCounts = scenes.reduce((acc, scene) => {
+        const statusCounts = sceneNotesOnly.reduce((acc, scene) => {
             // Skip if we've already processed this scene
             if (scene.path && processedScenes.has(scene.path)) {
                 return acc;
@@ -1320,6 +1248,83 @@ export function createTimelineSVG(
                 }).join('')}
             </g>
         `;
+
+        // Add tick mark and label for the estimated completion date if available
+        // (Moved here to draw AFTER center stats so it appears on top)
+        if (estimateResult) {
+            const estimatedCompletionDate = estimateResult.date; // Get date again
+
+            // Use estimateResult.date for calculations
+            const estimatedMonth = estimatedCompletionDate.getMonth();
+            const estimatedDay = estimatedCompletionDate.getDate();
+            const estimatedDaysInMonth = new Date(estimatedCompletionDate.getFullYear(), estimatedMonth + 1, 0).getDate();
+            const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
+            const absoluteDatePos = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
+
+            // ... (calculate tick mark positions using absoluteDatePos) ...
+            const tickOuterRadius = progressRadius + 5;
+            const tickInnerRadius = progressRadius - 35;
+            const tickOuterX = tickOuterRadius * Math.cos(absoluteDatePos);
+            const tickOuterY = tickOuterRadius * Math.sin(absoluteDatePos);
+            const tickInnerX = tickInnerRadius * Math.cos(absoluteDatePos);
+            const tickInnerY = tickInnerRadius * Math.sin(absoluteDatePos);
+            
+            svg += `
+                <line 
+                    x1="${formatNumber(tickOuterX)}" 
+                    y1="${formatNumber(tickOuterY)}" 
+                    x2="${formatNumber(tickInnerX)}" 
+                    y2="${formatNumber(tickInnerY)}" 
+                    class="estimated-date-tick" 
+                />
+                <circle 
+                    cx="${formatNumber(tickInnerX)}" 
+                    cy="${formatNumber(tickInnerY)}" 
+                    r="4" 
+                    class="estimated-date-dot" 
+                />
+            `;
+
+            // Use estimateResult.date for display format
+            const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
+            
+            // Add year indicator for completion estimates beyond current year
+            const now = new Date();
+            const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
+            const yearIndicator = yearsDiff > 0 ? `[${yearsDiff + 1}] ` : '';
+            const dateDisplay = `${yearIndicator}${dateFormatter.format(estimatedCompletionDate)}`;
+            
+            // --- Get stats string from estimateResult --- START ---
+            const total = estimateResult.total;
+            const remaining = estimateResult.remaining;
+            const rate = estimateResult.rate; // Already rounded
+            const statsDisplay = `${total}:${remaining}:${rate}`; // Compact format
+            // --- Get stats string from estimateResult --- END ---
+
+            // ... (calculate label positions using absoluteDatePos) ...
+            const labelRadius = progressRadius - 45;
+            // Adjust offset based on whether there's a year indicator - longer text needs more shift
+            const maxOffset = yearsDiff > 0 ? -30 : -18; // Extra shift for multi-year estimates
+            const offsetX = maxOffset * Math.cos(absoluteDatePos);
+            const maxYOffset = 5;
+            const offsetY = -maxYOffset * Math.sin(absoluteDatePos);
+            const labelX = formatNumber(labelRadius * Math.cos(absoluteDatePos) + offsetX);
+            const labelY = formatNumber(labelRadius * Math.sin(absoluteDatePos) + offsetY);
+
+            svg += `
+                <text
+                    x="${labelX}"
+                    y="${labelY}"
+                    text-anchor="middle"
+                    dominant-baseline="middle"
+                    class="estimation-date-label"
+                >
+                    ${dateDisplay}
+                </text>
+            `;
+
+            //   Replace dateDisplay above for complete stats ${dateDisplay} ${statsDisplay}
+        }
 
         // First, add the background layer with subplot labels
         // --- START: Subplot Label Generation ---
