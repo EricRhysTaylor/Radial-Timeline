@@ -1313,93 +1313,111 @@ export function createTimelineSVG(
         const currentYearLabel = new Date().getFullYear();
         const headerY = startYGrid - (cellGapY + 12);
 
+        // Calculate estimated total scenes: max(unique scene files, highest numeric prefix from titles)
+        const uniqueScenesCount = processedPathsForGrid.size;
+        const seenForMax = new Set<string>();
+        let highestPrefixNumber = 0;
+        scenes.forEach(scene => {
+            if (scene.itemType === 'Plot') return;
+            if (!scene.path || seenForMax.has(scene.path)) return;
+            seenForMax.add(scene.path);
+            const { number } = parseSceneTitle(scene.title || '');
+            if (number) {
+                const n = parseFloat(String(number));
+                if (!isNaN(n)) {
+                    highestPrefixNumber = Math.max(highestPrefixNumber, n);
+                }
+            }
+        });
+        const estimatedTotalScenes = Math.max(uniqueScenesCount, Math.floor(highestPrefixNumber));
+
         svg += `
-            <g class="color-key-center">
-                <!-- Column headers (status) -->
-                ${statusesForGrid.map((status, c) => {
-                    const label = status === 'Todo' ? 'Tdo' : status === 'Working' ? 'Wrk' : status === 'Completed' ? 'Cmt' : 'Due';
-                    const x = startXGrid + c * (cellWidth + cellGapX) + (cellWidth / 2);
-                    const y = headerY;
-                    return `
-                        <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="alphabetic" class="center-key-text">${label}</text>
-                    `;
-                }).join('')}
+             <g class="color-key-center">
+                 <!-- Column headers (status) -->
+                 ${statusesForGrid.map((status, c) => {
+                     const label = status === 'Todo' ? 'Tdo' : status === 'Working' ? 'Wrk' : status === 'Completed' ? 'Cmt' : 'Due';
+                     const x = startXGrid + c * (cellWidth + cellGapX) + (cellWidth / 2);
+                     const y = headerY;
+                     return `
+                         <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="alphabetic" class="center-key-text">${label}</text>
+                     `;
+                 }).join('')}
 
-                <!-- Row headers (stages) and year -->
-                <!-- Old top-left year removed -->
-                <!-- Year bottom-right, left-justified to last column edge -->
-                <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}</text>
-                ${stagesForGrid.map((stage, r) => {
-                    const short = stage === 'Zero' ? 'Z' : stage === 'Author' ? 'A' : stage === 'House' ? 'H' : 'P';
-                    const xh = startXGrid - 12;
-                    const yh = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2 + 1);
-                    return `
-                        <text x="${xh}" y="${yh}" text-anchor="end" dominant-baseline="middle" class="center-key-text">${short}</text>
-                    `;
-                }).join('')}
+                 <!-- Row headers (stages) and year -->
+                 <!-- Old top-left year removed -->
+                 <!-- Year bottom-right, left-justified to last column edge -->
+                 <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}//${estimatedTotalScenes}</text>
+                 ${stagesForGrid.map((stage, r) => {
+                     const short = stage === 'Zero' ? 'Z' : stage === 'Author' ? 'A' : stage === 'House' ? 'H' : 'P';
+                     const xh = startXGrid - 12;
+                     const yh = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2 + 1);
+                     return `
+                         <text x="${xh}" y="${yh}" text-anchor="end" dominant-baseline="middle" class="center-key-text">${short}</text>
+                     `;
+                 }).join('')}
 
-                <!-- Grid cells -->
-                ${stagesForGrid.map((stage, r) => {
-                    return `${statusesForGrid.map((status, c) => {
-                        const count = gridCounts[stage][status] || 0;
-                        const x = startXGrid + c * (cellWidth + cellGapX);
-                        const y = startYGrid + r * (cellHeight + cellGapY);
-                        // Determine fill per status using SVG patterns/colors
-                        let fillAttr = '';
-                        if (status === 'Completed') {
-                            const solid = (PUBLISH_STAGE_COLORS[stage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
-                            fillAttr = `fill="${solid}"`;
-                        } else if (status === 'Working') {
-                            fillAttr = `fill="url(#plaidWorking${stage})"`;
-                        } else if (status === 'Todo') {
-                            fillAttr = `fill="url(#plaidTodo${stage})"`;
-                        } else if (status === 'Due') {
-                            fillAttr = `fill="var(--color-due)"`;
-                        } else {
-                            fillAttr = `fill="#888888"`;
-                        }
-                        const cellOpacity = count <= 0 ? 0.10 : 1;
-                        return `
-                            <g transform="translate(${x}, ${y})">
-                                <rect x="0" y="0" width="${cellWidth}" height="${cellHeight}" ${fillAttr} fill-opacity="${cellOpacity}">
-                                    <title>${stage} • ${status}: ${count}</title>
-                                </rect>
-                            </g>
-                        `;
-                    }).join('')}`;
-                }).join('')}
+                 <!-- Grid cells -->
+                 ${stagesForGrid.map((stage, r) => {
+                     return `${statusesForGrid.map((status, c) => {
+                         const count = gridCounts[stage][status] || 0;
+                         const x = startXGrid + c * (cellWidth + cellGapX);
+                         const y = startYGrid + r * (cellHeight + cellGapY);
+                         // Determine fill per status using SVG patterns/colors
+                         let fillAttr = '';
+                         if (status === 'Completed') {
+                             const solid = (PUBLISH_STAGE_COLORS[stage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
+                             fillAttr = `fill="${solid}"`;
+                         } else if (status === 'Working') {
+                             fillAttr = `fill="url(#plaidWorking${stage})"`;
+                         } else if (status === 'Todo') {
+                             fillAttr = `fill="url(#plaidTodo${stage})"`;
+                         } else if (status === 'Due') {
+                             fillAttr = `fill="var(--color-due)"`;
+                         } else {
+                             fillAttr = `fill="#888888"`;
+                         }
+                         const cellOpacity = count <= 0 ? 0.10 : 1;
+                         return `
+                             <g transform="translate(${x}, ${y})">
+                                 <rect x="0" y="0" width="${cellWidth}" height="${cellHeight}" ${fillAttr} fill-opacity="${cellOpacity}">
+                                     <title>${stage} • ${status}: ${count}</title>
+                                 </rect>
+                             </g>
+                         `;
+                     }).join('')}`;
+                 }).join('')}
 
-                <!-- Per-stage progress arrows -->
-                ${(() => {
-                    // Determine most advanced stage that has any scenes
-                    let maxStageIdx = -1;
-                    for (let i = 0; i < stagesForGrid.length; i++) {
-                        const sc = gridCounts[stagesForGrid[i]];
-                        const total = (sc.Todo || 0) + (sc.Working || 0) + (sc.Due || 0) + (sc.Completed || 0);
-                        if (total > 0) maxStageIdx = i; // keep advancing to highest index with data
-                    }
-                    if (maxStageIdx === -1) return '';
-                    return stagesForGrid.map((stage, r) => {
-                        const sc = gridCounts[stage];
-                        const total = (sc.Todo || 0) + (sc.Working || 0) + (sc.Due || 0) + (sc.Completed || 0);
-                        if (total <= 0) return '';
-                        let arrowId = '';
-                        if (r === maxStageIdx) {
-                            // Current active (most advanced) stage
-                            arrowId = 'icon-arrow-right-dash';
-                        } else if (r < maxStageIdx) {
-                            // Earlier stages
-                            arrowId = 'icon-arrow-down';
-                        } else {
-                            return '';
-                        }
-                        const ax = startXGrid + gridWidth + 4;
-                        const ay = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2);
-                        return `<use href=\"#${arrowId}\" x=\"${ax}\" y=\"${ay - 12}\" width=\"24\" height=\"24\" style=\"color: var(--text-normal)\" />`;
-                    }).join('');
-                })()}
-            </g>
-        `;
+                 <!-- Per-stage progress arrows -->
+                 ${(() => {
+                     // Determine most advanced stage that has any scenes
+                     let maxStageIdx = -1;
+                     for (let i = 0; i < stagesForGrid.length; i++) {
+                         const sc = gridCounts[stagesForGrid[i]];
+                         const total = (sc.Todo || 0) + (sc.Working || 0) + (sc.Due || 0) + (sc.Completed || 0);
+                         if (total > 0) maxStageIdx = i; // keep advancing to highest index with data
+                     }
+                     if (maxStageIdx === -1) return '';
+                     return stagesForGrid.map((stage, r) => {
+                         const sc = gridCounts[stage];
+                         const total = (sc.Todo || 0) + (sc.Working || 0) + (sc.Due || 0) + (sc.Completed || 0);
+                         if (total <= 0) return '';
+                         let arrowId = '';
+                         if (r === maxStageIdx) {
+                             // Current active (most advanced) stage
+                             arrowId = 'icon-arrow-right-dash';
+                         } else if (r < maxStageIdx) {
+                             // Earlier stages
+                             arrowId = 'icon-arrow-down';
+                         } else {
+                             return '';
+                         }
+                         const ax = startXGrid + gridWidth + 4;
+                         const ay = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2);
+                         return `<use href=\"#${arrowId}\" x=\"${ax}\" y=\"${ay - 12}\" width=\"24\" height=\"24\" style=\"color: var(--text-normal)\" />`;
+                     }).join('');
+                 })()}
+             </g>
+         `;
 
         // Add tick mark and label for the estimated completion date if available
         // (Moved here to draw AFTER center stats so it appears on top)
