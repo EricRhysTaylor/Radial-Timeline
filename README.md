@@ -27,7 +27,7 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 - Creates an interactive radial timeline visualization of your scenes
 - Organizes scenes by act, subplot, and chronological order
 - Save the Cat beat structure support with `Class: Plot` notes for story beats
-- Shows scene details on hover including title, date, synopsis, subplots, and characters
+- Shows scene details on hover including title, date, synopsis, subplots, characters, overdue line, and revisions line when present
 - Color-codes scenes by status (Complete, Working, Todo, etc.)
 - Plot notes display with graduated color shading and 10px width for visual distinction
 - Supports both light and dark themes
@@ -180,7 +180,8 @@ The timeline displays:
 - Month markers around the perimeter showing calendar months of the year and do not relate to the story timeline
 - Rainbow progress ring showing elapsed portion of the current calendar year (not related to story timeline)
 - Estimated completion date arc (dark purple) showing projected completion timeline with Red Tick Mark
-- Central legend showing counts for each status and publish stage
+- Central stage × status grid for publish stage and status with mouseover
+- Per-stage arrows for progress: right arrow indicates the current active stage; down arrows indicate earlier stages when a later stage is active
 
 Hover over a scene or plot note to see its details and click to open the corresponding file.
 

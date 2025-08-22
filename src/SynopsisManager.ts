@@ -184,24 +184,91 @@ export default class SynopsisManager {
     
     synopsisTextGroup.appendChild(titleTextElement);
     
-    // Add synopsis lines with precise vertical spacing
+    // Insert special extra lines right after the title (Due/Revisions), then the regular synopsis lines
+    let extraLineCount = 0;
+
+    // Compute Due/Overdue state (YYYY-MM-DD expected)
+    const dueString = scene.due;
+    if (dueString && typeof dueString === 'string') {
+      const parts = dueString.split('-').map(Number);
+      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+        const dueYear = parts[0];
+        const dueMonth = parts[1] - 1; // 0-based
+        const dueDay = parts[2];
+        const today = new Date();
+        const todayY = today.getFullYear();
+        const todayM = today.getMonth();
+        const todayD = today.getDate();
+
+        let isOverdue = false;
+        if (dueYear < todayY) isOverdue = true; else if (dueYear === todayY) {
+          if (dueMonth < todayM) isOverdue = true; else if (dueMonth === todayM) {
+            if (dueDay < todayD) isOverdue = true; // strictly before today
+          }
+        }
+
+        // Determine scene completion status; do not show overdue for completed/done scenes
+        let normalizedStatus = '';
+        if (scene.status) {
+          if (Array.isArray(scene.status) && scene.status.length > 0) {
+            normalizedStatus = String(scene.status[0]).trim().toLowerCase();
+          } else if (typeof scene.status === 'string') {
+            normalizedStatus = scene.status.trim().toLowerCase();
+          }
+        }
+        const isComplete = normalizedStatus === 'complete' || normalizedStatus === 'done';
+
+        // Only render when overdue per original behavior AND not complete
+        if (isOverdue && !isComplete) {
+          const dueLine = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          dueLine.setAttribute("class", "info-text title-text-secondary");
+          dueLine.setAttribute("x", "0");
+          dueLine.setAttribute("y", String(1 * lineHeight));
+          dueLine.setAttribute("text-anchor", "start");
+          // Use existing overdue color and ensure it overrides class fill
+          dueLine.setAttribute("style", "fill: var(--color-due) !important");
+          dueLine.textContent = `Overdue: ${dueString}`;
+          synopsisTextGroup.appendChild(dueLine);
+          extraLineCount += 1;
+        }
+      }
+    }
+
+    // Revisions (Pending Edits) line if non-empty
+    const pendingEdits = scene.pendingEdits && typeof scene.pendingEdits === 'string' ? scene.pendingEdits.trim() : '';
+    if (pendingEdits) {
+      // Wrap revisions text using same logic as synopsis
+      const maxWidth = 500; // Match timeline synopsis width
+      const lines = this.plugin.splitIntoBalancedLines(pendingEdits, maxWidth);
+      for (let i = 0; i < lines.length; i++) {
+        const y = (1 + extraLineCount) * lineHeight + (i * lineHeight);
+        const lineEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        lineEl.setAttribute("class", "info-text title-text-secondary");
+        lineEl.setAttribute("x", "0");
+        lineEl.setAttribute("y", String(y));
+        lineEl.setAttribute("text-anchor", "start");
+        // Match number-square.has-edits background color and override class fill
+        lineEl.setAttribute("style", "fill: #8875ff !important");
+        lineEl.textContent = `${i === 0 ? 'Revisions: ' : ''}${lines[i]}`;
+        synopsisTextGroup.appendChild(lineEl);
+      }
+      extraLineCount += lines.length;
+    }
+
+    // Add synopsis lines with precise vertical spacing, offset by the number of extra lines
     for (let i = 1; i < synopsisEndIndex; i++) {
       const lineContent = decodedContentLines[i];
-      const lineY = i * lineHeight; // Simplified vertical spacing
-      
+      const lineY = (i + extraLineCount) * lineHeight; // shift down by inserted lines
       const synopsisLineElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
       synopsisLineElement.setAttribute("class", "info-text title-text-secondary");
       synopsisLineElement.setAttribute("x", "0");
       synopsisLineElement.setAttribute("y", String(lineY));
       synopsisLineElement.setAttribute("text-anchor", "start");
-      
       if (lineContent.includes('<tspan')) {
-        // For pre-formatted HTML, we need to parse and create elements safely
         this.processContentWithTspans(lineContent, synopsisLineElement);
       } else {
         synopsisLineElement.textContent = lineContent;
       }
-      
       synopsisTextGroup.appendChild(synopsisLineElement);
     }
     
