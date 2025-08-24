@@ -23,7 +23,7 @@ export class ManuscriptTimelineView extends ItemView {
     plugin: ManuscriptTimelinePlugin;
     
     // Frontmatter values to track to reduce unnecessary SVG View refreshes
-    private lastFrontmatterValues: Record<string, any> = {};
+    private lastFrontmatterValues: Record<string, unknown> = {};
     private timelineRefreshTimeout: NodeJS.Timeout | null = null;
         
     // Scene data (scenes)
@@ -98,13 +98,14 @@ export class ManuscriptTimelineView extends ItemView {
         try {
             // @ts-ignore - Use the workspace layout accessor which may not be fully typed
             const layout = this.app.workspace.getLayout();
-            if (layout && layout.leaves) {
-                const leafIds = Object.keys(layout.leaves as Record<string, any>);
+            if (layout && (layout as Record<string, unknown>).leaves) {
+                const leafIds = Object.keys((layout as Record<string, unknown>).leaves as Record<string, unknown>);
                 
                 // Try to find any additional file paths from the layout
                 leafIds.forEach(id => {
                     // @ts-ignore - Access the layout structure which may not be fully typed
-                    const leafData = layout.leaves[id];
+                    const leafs = (layout as Record<string, any>).leaves as Record<string, any>;
+                    const leafData = leafs[id];
                     if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
                         const filePath = leafData.state.file;
                         if (!openFilesList.includes(filePath)) {
@@ -621,6 +622,8 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             new Notice(`Failed to create test scene file: ${filename}`);
         }
     }
+
+    
     
     renderTimeline(container: HTMLElement, scenes: Scene[]): void {
         // Clear existing content

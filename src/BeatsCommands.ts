@@ -166,7 +166,7 @@ async function logApiInteractionToFile(
     let costString = "**Estimated Cost:** N/A";
     try {
         if (responseData && typeof responseData === 'object') {
-            const usage = (responseData as Record<string, any>)?.usage;
+            const usage = (responseData as Record<string, unknown>)?.usage as Record<string, unknown> | undefined;
 
             if (usage) {
                 if (provider === 'openai' && typeof usage.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number') {

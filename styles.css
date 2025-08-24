@@ -82,6 +82,8 @@
 }
 .scene-path {
   cursor: pointer;
+  stroke: #ffffff;
+  stroke-width: 1px;
 }
 .scene-act {
   fill-opacity: 0;
@@ -279,6 +281,8 @@ dominant-baseline: middle;
   fill: var(--color-search);
   font-weight: bold;
 }
+
+/* (Reverted) Keep original outlined highlight for readability; styles consolidated above */
 .metadata-text .search-term,
 text.info-text.metadata-text .search-term,
 .info-text.metadata-text tspan.search-term {
@@ -613,6 +617,8 @@ tspan .search-term {
     gap: 8px;
 }
 
+/* Search banner styles removed */
+
 /* Removed unused utility classes: test-button, path-element, dynamic-element, font-size-element */
 
 /* Dynamic subplot/character colors are set inline in TypeScript - no static CSS needed */
@@ -900,4 +906,38 @@ tspan .search-term {
 .source-path-suggestion-item:hover,
 .source-path-suggestion-item.selected {
     background-color: var(--background-modifier-hover) !important;
+}
+
+/* status header hover effect */
+.status-header-letter {
+  transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
+  text-decoration: none;
+}
+.status-header:hover .status-header-letter {
+  transform: scale(1.05);
+  fill: #ffffff;
+  text-decoration: underline;
+}
+
+/* bottom-left count inside Completed grid cells */
+.grid-completed-count {
+  fill: #000000;
+  font-size: 14px; /* doubled size */
+  pointer-events: none;
+}
+
+/* icon color for Completed grid cells */
+.completed-icon {
+  color: #000000;
+}
+
+/* stage header hover effect */
+.stage-header-letter {
+  transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
+  text-decoration: none;
+}
+.stage-header:hover .stage-header-letter {
+  transform: scale(1.07);
+  fill: #ffffff;
+  text-decoration: underline;
 }

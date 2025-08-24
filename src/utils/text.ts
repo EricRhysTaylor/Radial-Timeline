@@ -110,3 +110,15 @@ export function parseSceneTitle(title: string): { number: string; text: string }
   }
   return { number: '0', text: escapeXml(title) };
 } 
+
+export type NormalizedStatus = 'Todo' | 'Working' | 'Due' | 'Completed';
+
+export function normalizeStatus(raw: unknown): NormalizedStatus | null {
+  if (raw == null) return 'Todo';
+  const v = Array.isArray(raw) ? String(raw[0] ?? '').trim().toLowerCase() : String(raw).trim().toLowerCase();
+  if (!v) return 'Todo';
+  if (v === 'complete' || v === 'done' || v === 'completed') return 'Completed';
+  if (v === 'working' || v === 'in progress' || v === 'progress') return 'Working';
+  if (v === 'todo' || v === 'to do' || v === 'tbd') return 'Todo';
+  return null; // let caller decide Due based on date, or default
+}

@@ -1,11 +1,17 @@
-import { NUM_ACTS } from '../utils/constants';
+import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, PLOT_PIXEL_WIDTH, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID } from '../utils/constants';
+import type { Scene } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';
-import { dateToAngle } from '../utils/date';
-import { parseSceneTitle } from '../utils/text';
+import { dateToAngle, isOverdueDateString } from '../utils/date';
+import { parseSceneTitle, normalizeStatus } from '../utils/text';
 
-// Temporary minimal type aliases to avoid external dependencies during refactor
-type Scene = any;
-type SceneNumberInfo = any;
+// Local definition for scene number metadata used in number squares and synopsis
+interface SceneNumberInfo {
+    number: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
 
 const STATUS_COLORS = {
   Working: 'var(--color-working)',
@@ -13,6 +19,22 @@ const STATUS_COLORS = {
   Empty: 'var(--color-empty)',
   Due: 'var(--color-due)',
   Complete: 'var(--color-complete)',
+};
+
+// Stage header tooltips (used for grid row headers Z/A/H/P)
+const STAGE_HEADER_TOOLTIPS: Record<string, string> = {
+  Zero: 'Zero stage — The raw first draft. Unpolished ideas on the page, no edits yet.',
+  Author: 'Author stage — The author revises and refines the draft after letting it rest.',
+  House: 'House stage — Alpha and beta readers give feedback. Publisher or editor reviews the manuscript. Copy-edited and proofed.',
+  Press: 'Public stage — Final version is ready for publication.'
+};
+
+// Status header tooltips (used for grid column headers Tdo/Wrk/Due/Cmt)
+const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
+  Todo: 'Todo — tasks or scenes not yet started',
+  Working: 'Working — tasks or scenes currently in progress',
+  Due: 'Due — tasks or scenes with a past-due date',
+  Completed: 'Completed — tasks or scenes finished'
 };
 
 interface PluginRendererFacade {
@@ -50,10 +72,11 @@ export function createTimelineSVG(
         const maxTextWidth = 500; // Define maxTextWidth for the synopsis text
     
         // --- Find Max Publish Stage --- START ---
-        const stageOrder = ["Zero", "Author", "House", "Press"];
+        const stageOrder = [...STAGE_ORDER];
         let maxStageIndex = 0; // Default to Zero index
         scenes.forEach(scene => {
-            const stage = scene["Publish Stage"] || "Zero";
+            const rawStage = scene["Publish Stage"];
+            const stage = (STAGE_ORDER as readonly string[]).includes(rawStage as string) ? (rawStage as typeof STAGE_ORDER[number]) : 'Zero';
             const currentIndex = stageOrder.indexOf(stage);
             if (currentIndex > maxStageIndex) {
                 maxStageIndex = currentIndex;
@@ -74,32 +97,14 @@ export function createTimelineSVG(
         // Hidden config group consumed by the stylesheet (e.g. to tint buttons, etc.)
         svg += `<g id="timeline-config-data" data-max-stage-color="${maxStageColor}"></g>`;
 
-        // Add debug coordinate display if debug mode is enabled
-        if (plugin.settings.debug) {
-            svg += `
-                <g class="debug-info-container svg-interaction"><!-- SAFE: class-based SVG interaction -->
-                    <rect class="debug-info-background" x="-790" y="-790" width="230" height="40" rx="5" ry="5" fill="rgba(255,255,255,0.9)" stroke="#333333" stroke-width="1" />
-                    <text class="debug-info-text" id="mouse-coords-text" x="-780" y="-765" fill="#ff3300" font-size="20px" font-weight="bold" stroke="white" stroke-width="0.5px" paint-order="stroke">Mouse: X=0, Y=0</text>
-                </g>
-            `;
-        }
+        // (Debug overlay and search banner removed)
         
-        // Add search results indicator if search is active
-        if (plugin.searchActive && plugin.searchResults.size > 0) {
-            svg += `
-                <g transform="translate(-${size/2 - 20}, -${size/2 - 30})">
-                    <rect x="0" y="0" width="200" height="40" rx="5" ry="5" 
-                          fill="#FFCC00" fill-opacity="0.6" stroke="#000000" stroke-width="1" />
-                    <text x="10" y="25" fill="#000000" font-size="14px" font-weight="bold">
-                        Found ${plugin.searchResults.size} scene${plugin.searchResults.size !== 1 ? 's' : ''}: "${plugin.searchTerm}"
-                    </text>
-                    <g transform="translate(185, 20)" class="clear-search-btn" data-action="clear-search">
-                        <circle r="15" fill="#FFFFFF" fill-opacity="0.8" stroke="#000000" stroke-width="1" />
-                        <path d="M-8,-8 L8,8 M-8,8 L8,-8" stroke="#000000" stroke-width="2" fill="none" />
-                    </g>
-                </g>
-            `;
-        }
+        // Center the origin in the middle of the SVG
+        svg += `<g transform="translate(${size / 2}, ${size / 2})">`;
+        
+        // Create defs for patterns and gradients (opened later after SVG root)
+
+        // (Debug overlay and search banner removed)
         
         // Center the origin in the middle of the SVG
         svg += `<g transform="translate(${size / 2}, ${size / 2})">`;
@@ -122,6 +127,19 @@ export function createTimelineSVG(
     
         // Ring colors are now handled by CSS variables and dynamic color logic
     
+        // Precompute plot note indexes and grouping to avoid repeated scans
+        const allScenesPlotNotes = scenes.filter(s => s.itemType === 'Plot');
+        const totalPlotNotes = allScenesPlotNotes.length;
+        const plotIndexByKey = new Map<string, number>();
+        allScenesPlotNotes.forEach((p, i) => plotIndexByKey.set(`${String(p.title || '')}::${String(p.actNumber ?? '')}`, i));
+        const plotsBySubplot = new Map<string, Scene[]>();
+        allScenesPlotNotes.forEach(p => {
+            const key = String(p.subplot || '');
+            const arr = plotsBySubplot.get(key) || [];
+            arr.push(p);
+            plotsBySubplot.set(key, arr);
+        });
+
         // Group scenes by Act and Subplot
         const scenesByActAndSubplot: { [act: number]: { [subplot: string]: Scene[] } } = {};
     
@@ -243,6 +261,10 @@ export function createTimelineSVG(
             <symbol id="icon-arrow-down" viewBox="0 0 24 24">
                 <path d="M15 11a1 1 0 0 0 1 1h2.939a1 1 0 0 1 .75 1.811l-6.835 6.836a1.207 1.207 0 0 1-1.707 0L4.31 13.81a1 1 0 0 1 .75-1.811H8a1 1 0 0 0 1-1V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </symbol>
+            <symbol id="icon-bookmark-check" viewBox="0 0 24 24">
+                <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="m9 10 2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </symbol>
         `;
 
         // Define outer arc paths for months
@@ -272,6 +294,17 @@ export function createTimelineSVG(
 
         // Close defs act
         svg += `</defs>`;
+
+        // Reusable helper to build a full ring cell arc path (inner->outer->outer arc->inner->inner arc)
+        const buildCellArcPath = (innerR: number, outerR: number, startAngle: number, endAngle: number): string => {
+            return `
+                                M ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
+                                L ${formatNumber(outerR * Math.cos(startAngle))} ${formatNumber(outerR * Math.sin(startAngle))}
+                                A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(endAngle))} ${formatNumber(outerR * Math.sin(endAngle))}
+                                L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(endAngle))}
+                                A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
+                            `;
+        };
 
         // Get current month index (0-11)
         const currentMonthIndex = new Date().getMonth();
@@ -727,7 +760,7 @@ export function createTimelineSVG(
                         
                         // Calculate 10px angular width for Plot notes using middle radius of ring
                         const middleRadius = (innerR + outerR) / 2;
-                        const plotAngularWidth = 10 / middleRadius; // 10px converted to radians
+                        const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius; // px converted to radians
                         
                         // Calculate remaining angular space after Plot notes
                         const totalAngularSpace = endAngle - startAngle;
@@ -775,13 +808,13 @@ export function createTimelineSVG(
                                     const baseColor = maxStageColor;
                                     
                                     // Count total Plot notes to determine shade distribution
-                                    const allPlotNotes = scenes.filter(s => s.itemType === "Plot");
-                                    const totalPlots = allPlotNotes.length;
+                                    const allPlotNotes = allScenesPlotNotes;
+                                    const totalPlots = totalPlotNotes;
                                     
                                     if (totalPlots === 0) return baseColor;
                                     
                                     // Find this plot's index in the ordered list
-                                    const plotIndex = allPlotNotes.findIndex(p => p.title === scene.title && p.actNumber === scene.actNumber);
+                                    const plotIndex = plotIndexByKey.get(`${scene.title}::${scene.actNumber}`) ?? 0;
                                     
                                     // Create a range from dark to light: -40% (dark) to +40% (light)
                                     const maxAdjustment = 40;
@@ -804,17 +837,17 @@ export function createTimelineSVG(
                                 }
                                 
                                 const statusList = Array.isArray(scene.status) ? scene.status : [scene.status];
-                                const normalizedStatus = statusList[0]?.toString().trim().toLowerCase() || '';
+                                const norm = normalizeStatus(statusList[0]);
                                 
                                 // Get the publish stage for pattern selection
                                 const publishStage = scene["Publish Stage"] || 'Zero';
                                 
                                 // If status is empty/undefined/null, treat it as "Todo" with plaid pattern
-                                if (!normalizedStatus || normalizedStatus === '') {
+                                if (!norm) {
                                     return `url(#plaidTodo${publishStage})`;
                                 }
                                 
-                                if (normalizedStatus === "complete") {
+                                if (norm === 'Completed') {
                                     // For completed scenes, use Publish Stage color with full opacity
                                     const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
                                     // Do not apply any modifications to the color to ensure it matches the legend
@@ -822,53 +855,15 @@ export function createTimelineSVG(
                                 }
                                 
                                 // Check due date before checking working/todo
-                                if (scene.due) {
-                                    const originalDueString = scene.due;
-                                    const parts = originalDueString.split('-').map(Number);
-
-                                    // Ensure we have valid parts before proceeding
-                                    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-                                        const dueYear = parts[0];
-                                        const dueMonth = parts[1] - 1; // Convert 1-based month
-                                        const dueDay = parts[2];
-                                        
-                                        const today = new Date();
-                                        const todayYear = today.getFullYear();
-                                        const todayMonth = today.getMonth();
-                                        const todayDay = today.getDate();
-                                        
-                                        // Compare dates by parts - overdue only if date is strictly before today
-                                        let isOverdue = false;
-                                        if (dueYear < todayYear) {
-                                            isOverdue = true;
-                                        } else if (dueYear === todayYear) {
-                                            if (dueMonth < todayMonth) {
-                                                isOverdue = true;
-                                            } else if (dueMonth === todayMonth) {
-                                                if (dueDay < todayDay) {
-                                                    isOverdue = true;
-                                                }
-                                                // Same day is NOT overdue
-                                            }
-                                        }
-                                
-                                        
-                                        if (isOverdue) {
-                                            return STATUS_COLORS.Due; // Return Due color if overdue
-                                        }
-                                    } else {
-                                        // Handle invalid date format
-                                        if (plugin.settings.debug) {
-                                            console.warn(`WARN: Invalid date format for scene color: ${originalDueString}`);
-                                        }
-                                    }
+                                if (scene.due && isOverdueDateString(scene.due)) {
+                                    return STATUS_COLORS.Due; // Return Due color if overdue
                                 }
                                 
                                 // If not overdue (or no due date), check for working/todo status
-                                if (normalizedStatus === "working") {
+                                if (norm === 'Working') {
                                     return `url(#plaidWorking${publishStage})`;
                                 }
-                                if (normalizedStatus === "todo") {
+                                if (norm === 'Todo') {
                                     return `url(#plaidTodo${publishStage})`;
                                 }
                                 
@@ -878,13 +873,7 @@ export function createTimelineSVG(
             
                         
                             // Construct the arc path for the scene
-                            const arcPath = `
-                                M ${formatNumber(innerR * Math.cos(sceneStartAngle))} ${formatNumber(innerR * Math.sin(sceneStartAngle))}
-                                L ${formatNumber(outerR * Math.cos(sceneStartAngle))} ${formatNumber(outerR * Math.sin(sceneStartAngle))}
-                                A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(sceneEndAngle))} ${formatNumber(outerR * Math.sin(sceneEndAngle))}
-                                L ${formatNumber(innerR * Math.cos(sceneEndAngle))} ${formatNumber(innerR * Math.sin(sceneEndAngle))}
-                                A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(sceneStartAngle))} ${formatNumber(innerR * Math.sin(sceneStartAngle))}
-                            `;
+                            const arcPath = buildCellArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
             
                             const sceneId = `scene-path-${act}-${ring}-${idx}`;
             
@@ -902,8 +891,6 @@ export function createTimelineSVG(
                                 <path id="${sceneId}"
                                       d="${arcPath}" 
                                       fill="${color}" 
-                                      stroke="white" 
-                                      stroke-width="1" 
                                       class="${sceneClasses}"/>
 
                                 <!-- Scene title path (using only the text part) - Skip for Plot notes -->
@@ -929,25 +916,19 @@ export function createTimelineSVG(
                             const voidEndAngle = endAngle;
                             
                             // Create void cell to fill remaining space
-                            const voidArcPath = `
-                                M ${formatNumber(innerR * Math.cos(voidStartAngle))} ${formatNumber(innerR * Math.sin(voidStartAngle))}
-                                L ${formatNumber(outerR * Math.cos(voidStartAngle))} ${formatNumber(outerR * Math.sin(voidStartAngle))}
-                                A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(voidEndAngle))} ${formatNumber(outerR * Math.sin(voidEndAngle))}
-                                L ${formatNumber(innerR * Math.cos(voidEndAngle))} ${formatNumber(innerR * Math.sin(voidEndAngle))}
-                                A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(voidStartAngle))} ${formatNumber(innerR * Math.sin(voidStartAngle))}
-                            `;
+                            const voidArcPath = buildCellArcPath(innerR, outerR, voidStartAngle, voidEndAngle);
                             
                             svg += `<path d="${voidArcPath}" class="void-cell"/>`;
                         }
                     } else {
                         // Empty subplot ring - but Plot notes should still appear here
-                        // Get Plot notes that should appear in this subplot
-                        const plotNotesInSubplot = scenes.filter(s => s.itemType === "Plot" && s.subplot === subplot);
+                        // Get Plot notes that should appear in this subplot (use precomputed map)
+                        const plotNotesInSubplot = plotsBySubplot.get(subplot) || [];
                         
                         if (plotNotesInSubplot.length > 0) {
                             // Calculate space for Plot notes in empty ring
                             const middleRadius = (innerR + outerR) / 2;
-                            const plotAngularWidth = 10 / middleRadius;
+                            const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
                             const totalPlotSpace = plotNotesInSubplot.length * plotAngularWidth;
                             const remainingSpace = (endAngle - startAngle) - totalPlotSpace;
                             
@@ -958,9 +939,8 @@ export function createTimelineSVG(
                                 const plotEndAngle = currentAngle + plotAngularWidth;
                                 
                                 // Get Plot note color (reuse the color logic)
-                                const allPlotNotes = scenes.filter(s => s.itemType === "Plot");
-                                const plotIndex = allPlotNotes.findIndex(p => p.title === plotNote.title && p.actNumber === plotNote.actNumber);
-                                const totalPlots = allPlotNotes.length;
+                                const plotIndex = plotIndexByKey.get(`${plotNote.title}::${plotNote.actNumber}`) ?? 0;
+                                const totalPlots = totalPlotNotes;
                                 const maxAdjustment = 40;
                                 const adjustmentRange = maxAdjustment * 2;
                                 const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
@@ -970,13 +950,7 @@ export function createTimelineSVG(
                                     ? plugin.darkenColor(maxStageColor, Math.abs(adjustment))
                                     : plugin.lightenColor(maxStageColor, adjustment);
                                 
-                                const plotArcPath = `
-                                    M ${formatNumber(innerR * Math.cos(plotStartAngle))} ${formatNumber(innerR * Math.sin(plotStartAngle))}
-                                    L ${formatNumber(outerR * Math.cos(plotStartAngle))} ${formatNumber(outerR * Math.sin(plotStartAngle))}
-                                    A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(plotEndAngle))} ${formatNumber(outerR * Math.sin(plotEndAngle))}
-                                    L ${formatNumber(innerR * Math.cos(plotEndAngle))} ${formatNumber(innerR * Math.sin(plotEndAngle))}
-                                    A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(plotStartAngle))} ${formatNumber(innerR * Math.sin(plotStartAngle))}
-                                `;
+                                const plotArcPath = buildCellArcPath(innerR, outerR, plotStartAngle, plotEndAngle);
                                 
                                 const sceneId = `scene-path-${act}-${ring}-${idx}`;
                                 svg += `
@@ -984,8 +958,6 @@ export function createTimelineSVG(
                                     <path id="${sceneId}"
                                           d="${plotArcPath}" 
                                           fill="${plotColor}" 
-                                          stroke="white" 
-                                          stroke-width="1" 
                                           class="scene-path"/>
                                 </g>`;
                                 
@@ -994,38 +966,20 @@ export function createTimelineSVG(
                             
                             // Fill remaining space with void cell
                             if (remainingSpace > 0.001) {
-                                const voidArcPath = `
-                                    M ${formatNumber(innerR * Math.cos(currentAngle))} ${formatNumber(innerR * Math.sin(currentAngle))}
-                                    L ${formatNumber(outerR * Math.cos(currentAngle))} ${formatNumber(outerR * Math.sin(currentAngle))}
-                                    A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(endAngle))} ${formatNumber(outerR * Math.sin(endAngle))}
-                                    L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(endAngle))}
-                                    A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(currentAngle))} ${formatNumber(innerR * Math.sin(currentAngle))}
-                                `;
+                                const voidArcPath = buildCellArcPath(innerR, outerR, currentAngle, endAngle);
                                 
                                 svg += `<path d="${voidArcPath}" class="void-cell"/>`;
                             }
                         } else {
                             // Completely empty ring - fill with single void cell
-                            const voidArcPath = `
-                                M ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
-                                L ${formatNumber(outerR * Math.cos(startAngle))} ${formatNumber(outerR * Math.sin(startAngle))}
-                                A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(endAngle))} ${formatNumber(outerR * Math.sin(endAngle))}
-                                L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(endAngle))}
-                                A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
-                            `;
+                            const voidArcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
                             
                             svg += `<path d="${voidArcPath}" class="void-cell"/>`;
                         }
                     }
                 } else {
                     // Empty subplot code
-                    const arcPath = `
-                        M ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
-                        L ${formatNumber(outerR * Math.cos(startAngle))} ${formatNumber(outerR * Math.sin(startAngle))}
-                        A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(endAngle))} ${formatNumber(outerR * Math.sin(endAngle))}
-                        L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
-                        A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
-                    `;
+                    const arcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
                     svg += `<path d="${arcPath}" class="void-cell"/>`;
                 }
             }
@@ -1085,7 +1039,7 @@ export function createTimelineSVG(
         const keyY = -size/2 + 50; // Position from top
         const swatchSize = 20;
         const textOffset = 30;
-        const lineHeight = 26; // Reduced for tighter spacing
+        const lineHeight = GRID_LINE_HEIGHT; // Reduced for tighter spacing
 
         // Calculate the number of scenes for each status using a Set to track unique scenes
         // Filter out Plot items, only count Scene items
@@ -1210,12 +1164,6 @@ export function createTimelineSVG(
             House: 'icon-house',
             Press: 'icon-printer'
         };
-        const STAGE_TOOLTIP_MAP: Record<string, string> = {
-            Zero: 'Zero Stage — The raw first draft. Unpolished ideas on the page, no edits yet.',
-            Author: 'Author Stage — The author revises and refines the draft after letting it rest.',
-            House: 'House Stage — Alpha and beta readers give feedback. Publisher or editor reviews the manuscript. Copy-edited and proofed.',
-            Press: 'Public Stage — Final version is ready for publication.'
-        };
         const statusColorEntries = Object.entries(STATUS_COLORS)
             .filter(([status]) => status !== 'Empty' && status !== 'Complete');
 
@@ -1226,8 +1174,8 @@ export function createTimelineSVG(
 
         // --- Stage × Status Grid (center) ---
         // Compute per-stage per-status counts (Scenes only, unique by path)
-        const stagesForGrid = ["Zero", "Author", "House", "Press"];
-        const statusesForGrid = ["Todo", "Working", "Due", "Completed"];
+        const stagesForGrid = [...STAGES_FOR_GRID];
+        const statusesForGrid = [...STATUSES_FOR_GRID];
         const processedPathsForGrid = new Set<string>();
         const gridCounts: Record<string, Record<string, number>> = {};
         stagesForGrid.forEach(s => { gridCounts[s] = { Todo: 0, Working: 0, Due: 0, Completed: 0 }; });
@@ -1237,42 +1185,17 @@ export function createTimelineSVG(
             if (!scene.path || processedPathsForGrid.has(scene.path)) return;
             processedPathsForGrid.add(scene.path);
 
-            const stage = scene["Publish Stage"] || "Zero";
-            const stageKey = stagesForGrid.includes(stage) ? stage : "Zero";
+            const rawStage = scene["Publish Stage"];
+            const stageKey = (STAGES_FOR_GRID as readonly string[]).includes(rawStage as string) ? (rawStage as typeof STAGES_FOR_GRID[number]) : 'Zero';
 
-            const normalizedStatus = (scene.status ? String(Array.isArray(scene.status) ? scene.status[0] : scene.status) : '').trim().toLowerCase();
-
-            // Determine status bucket using same overdue logic as elsewhere
+            const normalized = normalizeStatus(scene.status);
             let bucket: string = 'Todo';
-            if (normalizedStatus === 'complete' || normalizedStatus === 'done') {
+            if (normalized === 'Completed') {
                 bucket = 'Completed';
-            } else if (scene.due) {
-                const originalDueString = scene.due as string;
-                const parts = originalDueString.split('-').map(Number);
-                if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-                    const dueYear = parts[0];
-                    const dueMonth = parts[1] - 1;
-                    const dueDay = parts[2];
-                    const today = new Date();
-                    const todayYear = today.getFullYear();
-                    const todayMonth = today.getMonth();
-                    const todayDay = today.getDate();
-                    let isOverdue = false;
-                    if (dueYear < todayYear) isOverdue = true; else if (dueYear === todayYear) {
-                        if (dueMonth < todayMonth) isOverdue = true; else if (dueMonth === todayMonth) {
-                            if (dueDay < todayDay) isOverdue = true;
-                        }
-                    }
-                    if (isOverdue) {
-                        bucket = 'Due';
-                    } else {
-                        bucket = normalizedStatus ? (normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1)) : 'Todo';
-                    }
-                } else {
-                    bucket = normalizedStatus ? (normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1)) : 'Todo';
-                }
-            } else {
-                bucket = normalizedStatus ? (normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1)) : 'Todo';
+            } else if (scene.due && isOverdueDateString(scene.due)) {
+                bucket = 'Due';
+            } else if (normalized) {
+                bucket = normalized;
             }
 
             if (!(bucket in gridCounts[stageKey])) {
@@ -1283,11 +1206,11 @@ export function createTimelineSVG(
         });
 
         // Layout for grid
-        const cellBase = 22; // base size
-        const cellWidth = Math.round(cellBase * 1.5);  // 1/2 again as wide
+        const cellBase = GRID_CELL_BASE; // base size
+        const cellWidth = Math.round(cellBase * 1.5) + GRID_CELL_WIDTH_EXTRA;  // widen cells further so horizontal gap can be 2px
         const cellHeight = cellBase; // restore original height
-        const cellGapY = 4;   // tighter vertical gap
-        const cellGapX = cellGapY + 5; // slightly tighter horizontal gap
+        const cellGapY = GRID_CELL_GAP_Y;   // tighter vertical gap
+        const cellGapX = GRID_CELL_GAP_X; // exact horizontal gap between rectangles
         const gridWidth = statusesForGrid.length * cellWidth + (statusesForGrid.length - 1) * cellGapX;
         const gridHeight = stagesForGrid.length * cellHeight + (stagesForGrid.length - 1) * cellGapY;
         const startXGrid = -gridWidth / 2;
@@ -1311,84 +1234,138 @@ export function createTimelineSVG(
         const baseTotalScenes = Math.max(uniqueSceneCount, maxSceneNumber);
 
         const currentYearLabel = new Date().getFullYear();
-        const headerY = startYGrid - (cellGapY + 12);
+        const headerY = startYGrid - (cellGapY + GRID_HEADER_OFFSET_Y);
+
+        // Calculate estimated total scenes: max(unique scene files, highest numeric prefix from titles)
+        const uniqueScenesCount = processedPathsForGrid.size;
+        const seenForMax = new Set<string>();
+        let highestPrefixNumber = 0;
+        scenes.forEach(scene => {
+            if (scene.itemType === 'Plot') return;
+            if (!scene.path || seenForMax.has(scene.path)) return;
+            seenForMax.add(scene.path);
+            const { number } = parseSceneTitle(scene.title || '');
+            if (number) {
+                const n = parseFloat(String(number));
+                if (!isNaN(n)) {
+                    highestPrefixNumber = Math.max(highestPrefixNumber, n);
+                }
+            }
+        });
+        const estimatedTotalScenes = Math.max(uniqueScenesCount, Math.floor(highestPrefixNumber));
+
+        // Determine the most advanced stage index present in the grid
+        let maxStageIdxForGrid = -1;
+        for (let i = 0; i < stagesForGrid.length; i++) {
+            const rc = gridCounts[stagesForGrid[i]];
+            const rowTotal = (rc.Todo || 0) + (rc.Working || 0) + (rc.Due || 0) + (rc.Completed || 0);
+            if (rowTotal > 0) maxStageIdxForGrid = i;
+        }
+
+        // Helper: stage completion for grid row
+        const isStageCompleteForGridRow = (rowIndex: number, gridCounts: Record<string, Record<string, number>>, stages: string[], maxStageIdxForGrid: number): boolean => {
+            const stage = stages[rowIndex];
+            const rc = gridCounts[stage];
+            const rowTotal = (rc.Todo || 0) + (rc.Working || 0) + (rc.Due || 0) + (rc.Completed || 0);
+            return rowTotal === 0 && (maxStageIdxForGrid > rowIndex);
+        };
+
+        // Helper: render a grid cell rect (no icon)
+        const renderGridCell = (stage: string, status: string, x: number, y: number, count: number, cellWidth: number, cellHeight: number): string => {
+            let fillAttr = '';
+            if (status === 'Completed') {
+                const solid = (PUBLISH_STAGE_COLORS[stage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
+                fillAttr = `fill="${solid}"`;
+            } else if (status === 'Working') {
+                fillAttr = `fill="url(#plaidWorking${stage})"`;
+            } else if (status === 'Todo') {
+                fillAttr = `fill="url(#plaidTodo${stage})"`;
+            } else if (status === 'Due') {
+                fillAttr = `fill="var(--color-due)"`;
+            } else {
+                fillAttr = `fill="#888888"`;
+            }
+            const cellOpacity = count <= 0 ? 0.10 : 1;
+            return `
+                <g transform="translate(${x}, ${y})">
+                    <rect x="0" y="0" width="${cellWidth}" height="${cellHeight}" ${fillAttr} fill-opacity="${cellOpacity}">
+                        ${count > 0 ? `<title>${stage} • ${status}: ${count}</title>` : ''}
+                    </rect>
+                    ${status === 'Completed' && count > 0 ? `<text x="2" y="${cellHeight - 3}" text-anchor="start" dominant-baseline="alphabetic" class="grid-completed-count">${count}</text>` : ''}
+                </g>
+            `;
+        };
 
         svg += `
-            <g class="color-key-center">
-                <!-- Column headers (status) -->
-                ${statusesForGrid.map((status, c) => {
-                    const label = status === 'Todo' ? 'Tdo' : status === 'Working' ? 'Wrk' : status === 'Completed' ? 'Cmt' : 'Due';
-                    const x = startXGrid + c * (cellWidth + cellGapX) + (cellWidth / 2);
-                    const y = headerY;
-                    return `
-                        <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="alphabetic" class="center-key-text">${label}</text>
-                    `;
-                }).join('')}
+             <g class="color-key-center">
+                 <!-- Column headers (status) -->
+                 ${statusesForGrid.map((status, c) => {
+                     const label = status === 'Todo' ? 'Tdo' : status === 'Working' ? 'Wrk' : status === 'Completed' ? 'Cmt' : 'Due';
+                     const x = startXGrid + c * (cellWidth + cellGapX) + (cellWidth / 2);
+                     const y = headerY;
+                     const tip = STATUS_HEADER_TOOLTIPS[status] || status;
+                     return `
+                         <g class="status-header">
+                             <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="alphabetic" class="center-key-text status-header-letter">${label}</text>
+                             <rect x="${x - 18}" y="${y - 18}" width="36" height="24" fill="transparent" pointer-events="all">
+                                 <title>${tip}</title>
+                             </rect>
+                         </g>
+                     `;
+                 }).join('')}
 
-                <!-- Row headers (stages) and year -->
-                <!-- Old top-left year removed -->
-                <!-- Year bottom-right, left-justified to last column edge -->
-                <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}</text>
-                ${stagesForGrid.map((stage, r) => {
-                    const short = stage === 'Zero' ? 'Z' : stage === 'Author' ? 'A' : stage === 'House' ? 'H' : 'P';
-                    const xh = startXGrid - 12;
-                    const yh = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2 + 1);
-                    return `
-                        <text x="${xh}" y="${yh}" text-anchor="end" dominant-baseline="middle" class="center-key-text">${short}</text>
-                    `;
-                }).join('')}
+                 <!-- Row headers (stages) and year -->
+                 <!-- Old top-left year removed -->
+                 <!-- Year bottom-right, left-justified to last column edge -->
+                 <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}//${estimatedTotalScenes}</text>
+                 ${stagesForGrid.map((stage, r) => {
+                     const short = stage === 'Zero' ? 'Z' : stage === 'Author' ? 'A' : stage === 'House' ? 'H' : 'P';
+                     const xh = startXGrid - 12;
+                     const yh = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2 + 1);
+                     const tooltip = STAGE_HEADER_TOOLTIPS[stage] || stage;
+                     return `
+                         <g class="stage-header">
+                             <text x="${xh}" y="${yh}" text-anchor="end" dominant-baseline="middle" class="center-key-text stage-header-letter">${short}</text>
+                             <rect x="${xh - 14}" y="${yh - 14}" width="28" height="28" fill="transparent" pointer-events="all">
+                                 <title>${tooltip}</title>
+                             </rect>
+                         </g>
+                     `;
+                 }).join('')}
 
-                <!-- Grid cells -->
-                ${stagesForGrid.map((stage, r) => {
+                 <!-- Grid cells -->
+                 ${stagesForGrid.map((stage, r) => {
                     return `${statusesForGrid.map((status, c) => {
                         const count = gridCounts[stage][status] || 0;
                         const x = startXGrid + c * (cellWidth + cellGapX);
                         const y = startYGrid + r * (cellHeight + cellGapY);
-                        // Determine fill per status using SVG patterns/colors
-                        let fillAttr = '';
-                        if (status === 'Completed') {
-                            const solid = (PUBLISH_STAGE_COLORS[stage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
-                            fillAttr = `fill="${solid}"`;
-                        } else if (status === 'Working') {
-                            fillAttr = `fill="url(#plaidWorking${stage})"`;
-                        } else if (status === 'Todo') {
-                            fillAttr = `fill="url(#plaidTodo${stage})"`;
-                        } else if (status === 'Due') {
-                            fillAttr = `fill="var(--color-due)"`;
-                        } else {
-                            fillAttr = `fill="#888888"`;
+                        const completeRow = isStageCompleteForGridRow(r, gridCounts, stagesForGrid, maxStageIdxForGrid);
+                        if (completeRow) {
+                            const mostAdvancedStage = stagesForGrid[maxStageIdxForGrid];
+                            const solid = (PUBLISH_STAGE_COLORS[mostAdvancedStage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
+                            return `
+                                <g transform="translate(${x}, ${y})">
+                                    <rect x="0" y="0" width="${cellWidth}" height="${cellHeight}" fill="${solid}">
+                                        ${count > 0 ? `<title>${stage} • ${status}: ${count}</title>` : ''}
+                                    </rect>
+                                    ${status === 'Completed' && count > 0 ? `<text x="2" y="${cellHeight - 3}" text-anchor="start" dominant-baseline="alphabetic" class="grid-completed-count">${count}</text>` : ''}
+                                    <use href="#icon-bookmark-check" x="${(cellWidth - 18) / 2}" y="${(cellHeight - 18) / 2}" width="18" height="18" class="completed-icon" />
+                                </g>
+                            `;
                         }
-                        const cellOpacity = count <= 0 ? 0.10 : 1;
-                        return `
-                            <g transform="translate(${x}, ${y})">
-                                <rect x="0" y="0" width="${cellWidth}" height="${cellHeight}" ${fillAttr} fill-opacity="${cellOpacity}">
-                                    <title>${stage} • ${status}: ${count}</title>
-                                </rect>
-                            </g>
-                        `;
+                        return renderGridCell(stage, status, x, y, count, cellWidth, cellHeight);
                     }).join('')}`;
                 }).join('')}
 
-                <!-- Per-stage progress arrows -->
-                ${(() => {
-                    // Determine most advanced stage that has any scenes
-                    let maxStageIdx = -1;
-                    for (let i = 0; i < stagesForGrid.length; i++) {
-                        const sc = gridCounts[stagesForGrid[i]];
-                        const total = (sc.Todo || 0) + (sc.Working || 0) + (sc.Due || 0) + (sc.Completed || 0);
-                        if (total > 0) maxStageIdx = i; // keep advancing to highest index with data
-                    }
-                    if (maxStageIdx === -1) return '';
+                 <!-- Per-stage progress arrows -->
+                 ${(() => {
+                    // Use already computed maxStageIdxForGrid; if none, show nothing
+                    if (maxStageIdxForGrid === -1) return '';
                     return stagesForGrid.map((stage, r) => {
-                        const sc = gridCounts[stage];
-                        const total = (sc.Todo || 0) + (sc.Working || 0) + (sc.Due || 0) + (sc.Completed || 0);
-                        if (total <= 0) return '';
                         let arrowId = '';
-                        if (r === maxStageIdx) {
-                            // Current active (most advanced) stage
+                        if (r === maxStageIdxForGrid) {
                             arrowId = 'icon-arrow-right-dash';
-                        } else if (r < maxStageIdx) {
-                            // Earlier stages
+                        } else if (r < maxStageIdxForGrid) {
                             arrowId = 'icon-arrow-down';
                         } else {
                             return '';
@@ -1398,8 +1375,8 @@ export function createTimelineSVG(
                         return `<use href=\"#${arrowId}\" x=\"${ax}\" y=\"${ay - 12}\" width=\"24\" height=\"24\" style=\"color: var(--text-normal)\" />`;
                     }).join('');
                 })()}
-            </g>
-        `;
+             </g>
+         `;
 
         // Add tick mark and label for the estimated completion date if available
         // (Moved here to draw AFTER center stats so it appears on top)
