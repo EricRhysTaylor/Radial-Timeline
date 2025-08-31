@@ -67,6 +67,7 @@ The plugin offers several settings to customize its behavior and enable AI featu
 
 *   Source path: Specify the root folder containing your manuscript scene files (e.g., "Book 1/Scenes"). Leave blank to scan the entire vault.
 *   Target completion date: Optional: Set a target date for project completion (YYYY-MM-DD). A marker for this date will be shown on the timeline's outer ring.
+*   Outer ring shows all scenes: When enabled, the outer ring combines all subplot scenes and displays Save the Cat beat slices on the outer ring only. When disabled, the outer ring shows only Main Plot scenes and no beat slices are drawn anywhere.
 *   AI settings for beats analysis: Configure the AI providers for features like automated beat generation.
     *   Default AI provider: Select the primary AI service (OpenAI or Anthropic) to use for beat analysis commands.
     *   OpenAI ChatGPT settings:
@@ -132,30 +133,11 @@ BeatsUpdate: Yes
   - Book: Book 1 A New Beginning
 ```
 
-## Plot notes (Save the Cat beats) - new in v2.1.0
+## Plot beats slices (Save the Cat beats)
 
-The plugin now supports Save the Cat story structure with `Class: Plot` notes. These notes represent the 15 essential story beats and appear as narrow visual markers across all subplot rings.
+The plugin now supports any plot structuring with `Class: Plot` notes. These notes represent the plot structure and appear as narrow visual slices across the outer most ring when Show All Scenes is toggled on from the Plugin Settings. Mouseover of Plot slices reveals the description.
 
-### Required plot note metadata
-
-Plot notes must have the following frontmatter:
-
-```yaml
-Class: Plot
-Act: 1
-Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
-```
-
-### Plot note features
-
-- Visual distinction: Plot notes appear as 10px wide colored bars (no title text or number squares)
-- Universal presence: Automatically appear in ALL subplot rings regardless of which subplot you specify
-- Graduated coloring: Each plot note uses a progressively lighter shade of your current publish stage color
-- Manuscript ordering: Positioned by their title prefix number (e.g., "01 Opening Image", "1.5 Theme Stated")
-- Hover details: Mouseover shows the full title and description with synopsis formatting
-- Excluded from estimates: Plot notes don't count toward completion date calculations
-
-### Example plot note
+## Example plot note
 
 Create a note titled "01 Opening Image" with this frontmatter:
 
@@ -166,8 +148,6 @@ Act: 1
 Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
 ---
 ```
-
-The title prefix number (01) determines its position in the timeline, and the Description appears on mouseover.
 
 ## Timeline visualization elements
 

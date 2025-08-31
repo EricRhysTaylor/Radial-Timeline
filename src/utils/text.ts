@@ -122,3 +122,30 @@ export function normalizeStatus(raw: unknown): NormalizedStatus | null {
   if (v === 'todo' || v === 'to do' || v === 'tbd') return 'Todo';
   return null; // let caller decide Due based on date, or default
 }
+
+// Unified helpers for scene prefix numbers and number-square sizing
+export function getScenePrefixNumber(title: string | undefined | null): string | null {
+  if (!title) return null;
+  const decoded = decodeHtmlEntities(title);
+  // Titles are of the form: "12.3 Title here" or "12 Title here" (no dates)
+  const m = decoded.match(/^(\d+(?:\.\d+)?)\s+.+/);
+  return m ? m[1] : null;
+}
+
+export function getNumberSquareSize(num: string): { width: number; height: number } {
+  const height = 18;
+  if (num.includes('.')) {
+    return {
+      width: num.length <= 3 ? 24 :
+             num.length <= 4 ? 32 :
+             36,
+      height
+    };
+  }
+  return {
+    width: num.length === 1 ? 20 :
+           num.length === 2 ? 24 :
+           28,
+    height
+  };
+}

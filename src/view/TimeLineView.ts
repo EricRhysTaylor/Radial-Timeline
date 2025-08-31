@@ -930,10 +930,40 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     }
                 }
                 
+                // Cross-ring highlighting: identify related scenes by path
+                const currentScenePath = group.getAttribute('data-path');
+                const relatedSceneElements = new Set<Element>();
+                
+                if (currentScenePath) {
+                    // Find all scene groups with the same path (cross-ring scenes)
+                    const allMatchingGroups = svgElement.querySelectorAll(`[data-path="${currentScenePath}"]`);
+                    allMatchingGroups.forEach(matchingGroup => {
+                        if (matchingGroup !== group) { // Skip the current group
+                            // Collect elements from related scenes
+                            const relatedPath = matchingGroup.querySelector('.scene-path');
+                            const relatedTitle = matchingGroup.querySelector('.scene-title');
+                            
+                            if (relatedPath) relatedSceneElements.add(relatedPath);
+                            if (relatedTitle) relatedSceneElements.add(relatedTitle);
+                            
+                            // Number squares are not children of scene groups, find them by scene ID
+                            const relatedSceneId = relatedPath?.id;
+                            if (relatedSceneId) {
+                                const relatedSquare = svgElement.querySelector(`.number-square[data-scene-id="${relatedSceneId}"]`);
+                                const relatedText = svgElement.querySelector(`.number-text[data-scene-id="${relatedSceneId}"]`);
+                                
+                                if (relatedSquare) relatedSceneElements.add(relatedSquare);
+                                if (relatedText) relatedSceneElements.add(relatedText);
+                            }
+                        }
+                    });
+                }
+
                 // Make other scenes less prominent, but preserve has-edits styling
+                // Exclude both selected elements and related scene elements from non-selected
                 allElements.forEach(element => {
-                    if (!element.classList.contains('selected')) {
-                        // Apply non-selected class to all non-hovered elements.
+                    if (!element.classList.contains('selected') && !relatedSceneElements.has(element)) {
+                        // Apply non-selected class to all non-hovered and non-related elements.
                         element.classList.add('non-selected');
                     }
                 });

@@ -23,6 +23,7 @@ interface ManuscriptTimelineSettings {
         House: string;
         Press: string;
     };
+    outerRingAllScenes?: boolean; // If true, outer ring shows all scenes; inner rings remain subplots
     logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
     processedBeatContexts: string[]; // <<< ADDED: Cache for processed triplets
     debug: boolean; // Add debug setting
@@ -84,6 +85,7 @@ export const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
         House: '#DA7847',  // Orange (House)
         Press: '#6FB971'   // Green  (Press)
     },
+    outerRingAllScenes: false, // Default to per-subplot outer ring
     logApiInteractions: false, // <<< ADDED: Default for new setting
     processedBeatContexts: [], // <<< ADDED: Default empty array
     debug: false,

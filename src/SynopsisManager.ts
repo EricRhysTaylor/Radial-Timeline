@@ -118,7 +118,7 @@ export default class SynopsisManager {
    * Create a DOM element for a scene synopsis with consistent formatting
    * @returns An SVG group element containing the formatted synopsis
    */
-  generateElement(scene: Scene, contentLines: string[], sceneId: string): SVGGElement {
+  generateElement(scene: Scene, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number): SVGGElement {
     // Map the publish stage to a CSS class
     const stage = scene["Publish Stage"] || 'Zero';
     const stageClass = `title-stage-${String(stage).toLowerCase()}`;
@@ -139,14 +139,41 @@ export default class SynopsisManager {
     // Process all content lines to decode any HTML entities
     const decodedContentLines = contentLines.map(line => decodeHtmlEntities(line));
     
-    // Create truly random color mappings for subplots and characters
-    // These will generate new colors on every reload
-    const getSubplotColor = (subplot: string): string => {
-      // Generate a random dark color with good contrast (HSL: random hue, high saturation, low lightness)
-      const hue = Math.floor(Math.random() * 360);
-      const saturation = 60 + Math.floor(Math.random() * 20); // 60-80%
-      const lightness = 25 + Math.floor(Math.random() * 15);  // 25-40% - dark enough for contrast
-      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    // Deterministic subplot color from stylesheet variables
+    const getSubplotColor = (subplot: string, sceneId: string): string => {
+      if (subplotIndexResolver) {
+        try {
+          const idx = Math.max(0, subplotIndexResolver(subplot)) % 15;
+          const varName = `--subplot-colors-${idx}`;
+          const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+          if (value) return value;
+        } catch {}
+      }
+      // Prefer the exact color used by the rendered scene cell via its group data attribute
+      try {
+        const sceneGroup = document.getElementById(sceneId)?.closest('.scene-group') as HTMLElement | null;
+        if (sceneGroup) {
+          const idxAttr = sceneGroup.getAttribute('data-subplot-index');
+          if (idxAttr) {
+            const idx = Math.max(0, parseInt(idxAttr, 10)) % 15;
+            const varName = `--subplot-colors-${idx}`;
+            const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+            if (value) return value;
+          }
+        }
+      } catch {}
+      // Fallback: derive index from label element that carries data-subplot-index
+      const labels = Array.from(document.querySelectorAll('.subplot-label-text')) as HTMLElement[];
+      let idx = 0;
+      const match = labels.find(el => (el.getAttribute('data-subplot-name') || '').toLowerCase() === subplot.toLowerCase());
+      if (match) {
+        const attr = match.getAttribute('data-subplot-index');
+        if (attr) idx = Math.max(0, parseInt(attr, 10));
+      }
+      const varName = `--subplot-colors-${idx % 15}`;
+      const root = document.documentElement;
+      const value = getComputedStyle(root).getPropertyValue(varName).trim();
+      return value || '#EFBDEB';
     };
     
     const getCharacterColor = (character: string): string => {
@@ -353,7 +380,7 @@ export default class SynopsisManager {
             
             // Format each subplot with its own color
             subplots.forEach((subplot, j) => { 
-              const color = getSubplotColor(subplot.trim()); // Restore random color
+              const color = getSubplotColor(subplot.trim(), sceneId);
               const subplotText = subplot.trim();
               const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
               tspan.setAttribute("data-item-type", "subplot");

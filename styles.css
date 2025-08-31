@@ -33,6 +33,23 @@
   
   /* Estimation Colors */
   --color-estimation: #ff0000; /* Red not using this right now. defs at bottom of file*/
+
+  /* Subplot palette - 15 fixed colors provided */
+  --subplot-colors-0: #EFBDEB;
+  --subplot-colors-1: #B68CB8;
+  --subplot-colors-2: #6461A0;
+  --subplot-colors-3: #314CB6;
+  --subplot-colors-4: #0A81D1;
+  --subplot-colors-5: #98CE00;
+  --subplot-colors-6: #16E0BD;
+  --subplot-colors-7: #78C3FB;
+  --subplot-colors-8: #273C2C;
+  --subplot-colors-9: #A6D8D4;
+  --subplot-colors-10: #FF8600;
+  --subplot-colors-11: #F9E784;
+  --subplot-colors-12: #CEC3C1;
+  --subplot-colors-13: #F3D34A;
+  --subplot-colors-14: #004777;
 }
 
 /* ADD stage-specific fill rules for title text – keep close to highlight-rect definitions so colours are defined in one place */
@@ -116,6 +133,14 @@
   cursor: pointer;
   fill: white;
   opacity: 1;
+  pointer-events: none;
+}
+.plot-title {
+  fill: #ffffff;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   pointer-events: none;
 }
 .scene-title.faded {
@@ -309,8 +334,9 @@ text.info-text.title-text-secondary tspan.search-term {
 }
 
 
+/* Allow inline subplot/character colors to apply in synopsis */
 text.info-text.metadata-text tspan[data-item-type] {
-  fill: inherit !important;
+  /* no fill override here; use inline color set by SynopsisManager */
 }
 .info-text.metadata-text tspan[data-item-type=subplot],
 .info-text.metadata-text tspan[data-item-type=character] {
@@ -630,6 +656,8 @@ tspan .search-term {
     stroke-width: 0.07em;
     paint-order: stroke;
 }
+
+
 
 /* Removed unused dynamic-font-size class */
 

@@ -467,6 +467,17 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                 }));
         // <<< END of added Setting block >>>
 
+        // --- Timeline outer ring content ---
+        new Settings(containerEl)
+            .setName('Outer ring shows all scenes')
+            .setDesc('If enabled, the outer ring includes all scenes. Inner subplot rings remain unchanged.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.outerRingAllScenes || false)
+                .onChange(async (value) => {
+                    this.plugin.settings.outerRingAllScenes = value;
+                    await this.plugin.saveSettings();
+                }));
+
         // --- Debug Mode Setting ---
         new Settings(containerEl)
             .setName('Debug mode')

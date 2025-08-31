@@ -2,7 +2,7 @@ import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_
 import type { Scene } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString } from '../utils/date';
-import { parseSceneTitle, normalizeStatus } from '../utils/text';
+import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
 
 // Local definition for scene number metadata used in number squares and synopsis
 interface SceneNumberInfo {
@@ -42,6 +42,7 @@ interface PluginRendererFacade {
     publishStageColors: Record<string, string>;
     debug: boolean;
     targetCompletionDate?: string;
+    outerRingAllScenes?: boolean;
   };
   searchActive: boolean;
   searchResults: Set<string>;
@@ -57,6 +58,143 @@ interface PluginRendererFacade {
   safeSvgText(text: string): string;
   latestStatusCounts?: Record<string, number>;
   splitIntoBalancedLines: (text: string, maxWidth: number) => string[];
+}
+
+// --- Small helpers to centralize ring logic ---
+const OUTER_TEXT_OFFSET = 25; // px from outer ring for scene text
+const PLOT_LABEL_OUTWARD_OFFSET = 15; // px outward nudge for plot labels
+const PLOT_SHADE_MAX_ADJUST = 40; // +/- percentage when shading plot colors
+
+function makeSceneId(actIndex: number, ring: number, idx: number, isOuterAllScenes: boolean, isOuter: boolean): string {
+    return isOuterAllScenes && isOuter
+        ? `scene-path-${actIndex}-${ring}-outer-${idx}`
+        : `scene-path-${actIndex}-${ring}-${idx}`;
+}
+
+function getEffectiveScenesForRing(allScenes: Scene[], actIndex: number, subplot: string | undefined, outerAllScenes: boolean, isOuter: boolean, grouped: { [act: number]: { [subplot: string]: Scene[] } }): Scene[] {
+    if (isOuter && outerAllScenes) {
+        const seenPaths = new Set<string>();
+        const seenPlotKeys = new Set<string>();
+        const result: Scene[] = [];
+        allScenes.forEach(s => {
+            const a = s.actNumber !== undefined ? s.actNumber - 1 : 0;
+            if (a !== actIndex) return;
+            if (s.itemType === 'Plot') {
+                const key = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
+                if (seenPlotKeys.has(key)) return;
+                seenPlotKeys.add(key);
+                result.push(s);
+            } else {
+                const k = s.path || `${s.title || ''}::${String(s.when || '')}`;
+                if (seenPaths.has(k)) return;
+                seenPaths.add(k);
+                result.push(s);
+            }
+        });
+        return result;
+    }
+    const list = subplot ? (grouped[actIndex] && grouped[actIndex][subplot]) || [] : [];
+    return outerAllScenes ? list.filter(s => s.itemType !== 'Plot') : list.filter(s => s.itemType !== 'Plot');
+}
+
+function buildSynopsis(
+    plugin: PluginRendererFacade,
+    scene: Scene,
+    sceneId: string,
+    maxTextWidth: number,
+    orderedSubplots: string[],
+    subplotIndexResolver?: (name: string) => number
+): SVGGElement {
+    const contentLines = [
+        plugin.highlightSearchTerm(`${scene.title}   ${scene.when?.toLocaleDateString() || ''}`),
+        ...(scene.itemType === 'Plot' && scene.Description
+            ? plugin.splitIntoBalancedLines(scene.Description, maxTextWidth).map(line => plugin.highlightSearchTerm(line))
+            : scene.synopsis
+            ? plugin.splitIntoBalancedLines(scene.synopsis, maxTextWidth).map(line => plugin.highlightSearchTerm(line))
+            : []),
+        '\u00A0'
+    ];
+    if (scene.itemType !== 'Plot') {
+        const rawSubplots = orderedSubplots.join(', ');
+        contentLines.push(rawSubplots);
+        const rawCharacters = (scene.Character || []).join(', ');
+        contentLines.push(rawCharacters);
+    }
+    const filtered = contentLines.filter(line => line && line.trim() !== '\u00A0');
+    // Pass resolver so SynopsisManager can map each subplot name to the same CSS var index used in rings
+    return plugin.synopsisManager.generateElement(scene, filtered, sceneId, subplotIndexResolver);
+}
+
+type PositionInfo = { startAngle: number; endAngle: number; angularSize: number };
+function computePositions(innerR: number, outerR: number, startAngle: number, endAngle: number, items: Scene[]): Map<number, PositionInfo> {
+    const middleRadius = (innerR + outerR) / 2;
+    const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
+    const totalAngularSpace = endAngle - startAngle;
+    const plotCount = items.filter(it => it.itemType === 'Plot').length;
+    const plotTotalAngularSpace = plotCount * plotAngularWidth;
+    const sceneCount = items.filter(it => it.itemType !== 'Plot').length;
+    const sceneAngularSize = sceneCount > 0 ? (totalAngularSpace - plotTotalAngularSpace) / sceneCount : 0;
+
+    let current = startAngle;
+    const positions = new Map<number, PositionInfo>();
+    items.forEach((it, idx) => {
+        if (it.itemType === 'Plot') {
+            positions.set(idx, { startAngle: current, endAngle: current + plotAngularWidth, angularSize: plotAngularWidth });
+            current += plotAngularWidth;
+        } else {
+            positions.set(idx, { startAngle: current, endAngle: current + sceneAngularSize, angularSize: sceneAngularSize });
+            current += sceneAngularSize;
+        }
+    });
+    return positions;
+}
+
+function getFillForItem(
+    plugin: PluginRendererFacade,
+    scene: Scene,
+    maxStageColor: string,
+    publishStageColors: Record<string, string>,
+    totalPlotNotes: number,
+    plotIndexByKey: Map<string, number>,
+    allowPlotShading: boolean,
+    subplotColorResolver?: (subplot: string) => string,
+    isOuterAllScenes?: boolean
+): string {
+    if (scene.itemType === 'Plot') {
+        if (!allowPlotShading) return 'transparent';
+        const baseColor = maxStageColor;
+        const totalPlots = totalPlotNotes;
+        if (totalPlots === 0) return baseColor;
+        const plotIndex = plotIndexByKey.get(`${scene.title}::${scene.actNumber}`) ?? 0;
+        const adjustmentRange = PLOT_SHADE_MAX_ADJUST * 2;
+        const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
+        const adjustment = (position * adjustmentRange) - PLOT_SHADE_MAX_ADJUST;
+        if (adjustment < 0) {
+            return plugin.darkenColor(baseColor, Math.abs(adjustment));
+        } else {
+            return plugin.lightenColor(baseColor, adjustment);
+        }
+    }
+
+    const statusList = Array.isArray(scene.status) ? scene.status : [scene.status];
+    const norm = normalizeStatus(statusList[0]);
+    const publishStage = scene['Publish Stage'] || 'Zero';
+    if (!norm) return `url(#plaidTodo${publishStage})`;
+    if (norm === 'Completed') {
+        // Completed: use subplot tint in all-scenes mode for non-Main Plot, else stage color
+        if (isOuterAllScenes && subplotColorResolver) {
+            const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+            if (subplotName !== 'Main Plot') {
+                return subplotColorResolver(subplotName);
+            }
+        }
+        const stageColor = publishStageColors[publishStage as keyof typeof publishStageColors] || publishStageColors.Zero;
+        return stageColor;
+    }
+    if (scene.due && isOverdueDateString(scene.due)) return STATUS_COLORS.Due;
+    if (norm === 'Working') return `url(#plaidWorking${publishStage})`;
+    if (norm === 'Todo') return `url(#plaidTodo${publishStage})`;
+    return STATUS_COLORS[statusList[0] as keyof typeof STATUS_COLORS] || STATUS_COLORS.Todo;
 }
 
 export function createTimelineSVG(
@@ -115,10 +253,11 @@ export function createTimelineSVG(
         // Create a map to store scene number information for the scene square and synopsis
         const sceneNumbersMap = new Map<string, SceneNumberInfo>();
     
-        // Collect all unique subplots
+        // Collect all unique subplots (normalize empty to "Main Plot")
         const allSubplotsSet = new Set<string>();
         scenes.forEach(scene => {
-            allSubplotsSet.add(scene.subplot || "None");
+            const key = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+            allSubplotsSet.add(key);
         });
         const allSubplots = Array.from(allSubplotsSet);
     
@@ -153,7 +292,7 @@ export function createTimelineSVG(
             // Ensure act is within valid range
             const validAct = (act >= 0 && act < NUM_ACTS) ? act : 0;
     
-            const subplot = scene.subplot || 'Default';
+            const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
     
             if (!scenesByActAndSubplot[validAct][subplot]) {
                 scenesByActAndSubplot[validAct][subplot] = [];
@@ -304,6 +443,17 @@ export function createTimelineSVG(
                                 L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(endAngle))}
                                 A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
                             `;
+        };
+
+        // Helper: evenly spaced rainbow color across N items (HSL)
+        const computeRainbowColor = (index: number, total: number): string => {
+            if (!Number.isFinite(index) || !Number.isFinite(total) || total <= 0) {
+                return '#888888';
+            }
+            const hue = (index / total) * 360; // 0..360
+            const saturation = 85; // percent
+            const lightness = 55; // percent
+            return `hsl(${Math.round(hue)}, ${saturation}%, ${lightness}%)`;
         };
 
         // Get current month index (0-11)
@@ -637,6 +787,19 @@ export function createTimelineSVG(
             return subplotCounts.map(item => item.subplot);
         })();
 
+        // Resolver for subplot CSS color variables (index-based to ensure uniqueness across current subplots)
+        const subplotCssColor = (name: string): string => {
+            const idx = masterSubplotOrder.indexOf(name);
+            if (idx <= 0) return '#EFBDEB'; // fallback for Main Plot or not found
+            const colorIdx = (idx - 1) % 15; // subtract 1 to skip Main Plot, start from 0
+            const varName = `--subplot-colors-${colorIdx}`;
+            const root = document.documentElement;
+            const computed = getComputedStyle(root).getPropertyValue(varName).trim();
+            return computed || '#EFBDEB';
+        };
+
+
+
         // Synopses at end to be above all other elements
         const synopsesElements: SVGGElement[] = [];
         
@@ -645,7 +808,7 @@ export function createTimelineSVG(
         
         scenes.forEach((scene) => {
             // Handle undefined subplot with a default "Main Plot"
-            const subplot = scene.subplot || "Main Plot";
+            const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
             const subplotIndex = masterSubplotOrder.indexOf(subplot);
             const ring = NUM_RINGS - 1 - subplotIndex;
             
@@ -656,9 +819,16 @@ export function createTimelineSVG(
             const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
             const actIndex = sceneActNumber - 1;
             const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
-            const sceneIndex = scenesInActAndSubplot.indexOf(scene);
-            
-            const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`; // Keep the old ID format
+
+            // Never generate inner-ring synopses for Plot notes here
+            if (scene.itemType === 'Plot') {
+                return;
+            }
+
+            const filteredScenesForIndex = scenesInActAndSubplot.filter(s => s.itemType !== 'Plot');
+            const sceneIndex = filteredScenesForIndex.indexOf(scene);
+
+            const sceneId = makeSceneId(actIndex, ring, sceneIndex, false, false);
             
             // Extract grade from 2beats here, when we know it's available (NEW)
             if (scene["2beats"]) {
@@ -680,55 +850,21 @@ export function createTimelineSVG(
                 return;
             }
             
-            // Find all subplots this scene belongs to
-            const allSceneSubplots = scenes
-                .filter(s => s.path === scene.path)
-                .map(s => s.subplot);
+            // Build ordered subplots to show with synopsis
+            const allSceneSubplots = scenes.filter(s => s.path === scene.path).map(s => s.subplot);
+            const orderedSubplots = [scene.subplot, ...allSceneSubplots.filter(s => s !== scene.subplot)];
 
-            // Reorder subplots to put the current ring's subplot first
-            const orderedSubplots = [
-                scene.subplot,
-                ...allSceneSubplots.filter(s => s !== scene.subplot)
-            ];
-            
-            // Prepare text content with modified format
-            const contentLines = [
-                // Format title and date on same line with spacing
-                plugin.highlightSearchTerm(`${scene.title}   ${scene.when?.toLocaleDateString() || ''}`),
-                // For Plot notes, use Description field; for Scene notes, use synopsis
-                ...(scene.itemType === "Plot" && scene.Description
-                    ? plugin
-                        .splitIntoBalancedLines(scene.Description, maxTextWidth)
-                        .map((lineStr: string) => plugin.highlightSearchTerm(lineStr))
-                    : scene.synopsis
-                    ? plugin
-                        .splitIntoBalancedLines(scene.synopsis, maxTextWidth)
-                        .map((lineStr: string) => plugin.highlightSearchTerm(lineStr))
-                    : []),
-                '\u00A0', // Separator
-            ];
-            
-            // Only add subplots and characters for Scene notes, not Plot notes
-            if (scene.itemType !== "Plot") {
-                // --- Subplots --- 
-                // Remove the loop generating subplotsHtml
-                // Just push the raw subplot string (or empty string if none)
-                const rawSubplots = orderedSubplots.join(', ');
-                contentLines.push(rawSubplots);
-                
-                // --- Characters ---
-                // Remove the loop generating charactersHtml
-                // Just push the raw character string (or empty string if none)
-                const rawCharacters = (scene.Character || []).join(', ');
-                contentLines.push(rawCharacters);
-            }
-            
-            // Filter out empty lines AFTER generating raw strings
-            const filteredContentLines = contentLines.filter(line => line && line.trim() !== '\u00A0');
-            
-            // Generate the synopsis element using our new DOM-based method
-            // This will now always receive raw text for subplots/characters
-            const synopsisElement = plugin.synopsisManager.generateElement(scene, filteredContentLines, sceneId);
+            const synopsisElement = buildSynopsis(
+                plugin,
+                scene,
+                sceneId,
+                maxTextWidth,
+                orderedSubplots,
+                (name) => {
+                    const idx = masterSubplotOrder.indexOf(name);
+                    return idx <= 0 ? 0 : (idx - 1) % 15; // skip Main Plot, start from 0
+                }
+            );
             synopsesElements.push(synopsisElement);
         });
 
@@ -747,52 +883,170 @@ export function createTimelineSVG(
                 const startAngle = (act * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
                 const endAngle = ((act + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
                 
-                // Use the subplot from the master order instead of the current act's order
+                // Compute which content to show for this ring
                 const subplot = masterSubplotOrder[ringOffset];
+                const isOuterRing = ringOffset === 0;
 
-                if (subplot) {
-                    const currentScenes = scenesByActAndSubplot[act][subplot] || [];
+                // Special handling: when outer ring all-scenes mode is ON, draw each subplot's scenes
+                // in the outer ring using the same angular positions they have in their own subplot rings.
+                if (isOuterRing && plugin.settings.outerRingAllScenes) {
+                    // Build a single combined, manuscript-ordered list of items (unique by path for scenes
+                    // and unique by title+act for Plot notes) for this act only.
+                    const seenPaths = new Set<string>();
+                    const seenPlotKeys = new Set<string>();
+                    const combined: Scene[] = [];
+
+                    scenes.forEach(s => {
+                        const sAct = s.actNumber !== undefined ? s.actNumber - 1 : 0;
+                        if (sAct !== act) return;
+                        if (s.itemType === 'Plot') {
+                            const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
+                            if (seenPlotKeys.has(pKey)) return;
+                            seenPlotKeys.add(pKey);
+                            combined.push(s);
+                        } else {
+                            const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
+                            if (seenPaths.has(key)) return;
+                            seenPaths.add(key);
+                            combined.push(s);
+                        }
+                    });
+
+                    // Compute angular positions for all combined items
+                    const positions = computePositions(innerR, outerR, startAngle, endAngle, combined);
+
+                    // Render combined items into the outer ring
+                    // Helper to resolve subplot color from CSS variables
+                    const subplotColorFor = (subplotName: string) => {
+                        const idx = masterSubplotOrder.indexOf(subplotName);
+                        if (idx <= 0) return '#EFBDEB'; // fallback for Main Plot or not found
+                        const colorIdx = (idx - 1) % 15; // subtract 1 to skip Main Plot, start from 0
+                        const varName = `--subplot-colors-${colorIdx}`;
+                        const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+                        return computed || '#EFBDEB';
+                    };
+
+                    combined.forEach((scene, idx) => {
+                        const { number, text } = parseSceneTitle(scene.title || '');
+                        const position = positions.get(idx)!;
+                        const sceneStartAngle = position.startAngle;
+                        const sceneEndAngle = position.endAngle;
+                        const textPathRadius = outerR - OUTER_TEXT_OFFSET;
+
+                        const color = getFillForItem(plugin, scene, maxStageColor, PUBLISH_STAGE_COLORS, totalPlotNotes, plotIndexByKey, true, subplotColorFor, true);
+
+                        const arcPath = buildCellArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
+                        const sceneId = makeSceneId(act, ring, idx, true, true);
+
+                        // --- Create synopsis for OUTER ring item using matching ID ---
+                        try {
+                            const allSceneSubplots = scenes.filter(s => s.path === scene.path).map(s => s.subplot);
+                            const orderedSubplots = [scene.subplot, ...allSceneSubplots.filter(s => s !== scene.subplot)];
+                            const synopsisElOuter = buildSynopsis(
+                                plugin,
+                                scene,
+                                sceneId,
+                                maxTextWidth,
+                                orderedSubplots,
+                                (name) => {
+                                    const idx = masterSubplotOrder.indexOf(name);
+                                    return idx <= 0 ? 0 : (idx - 1) % 15; // skip Main Plot, start from 0
+                                }
+                            );
+                            synopsesElements.push(synopsisElOuter);
+                        } catch {}
+                        let sceneClasses = 'scene-path';
+                        if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += ' scene-is-open';
+                        const fontSize = 18;
+                        const dyOffset = -1;
+
+                        const midAngle = (sceneStartAngle + sceneEndAngle) / 2;
+                        const plotTextRadius = textPathRadius + PLOT_LABEL_OUTWARD_OFFSET;
+                        const backwardShift = 1.0 / plotTextRadius;
+                        const adjustedAngle = midAngle - backwardShift;
+                        const labelX = formatNumber(plotTextRadius * Math.cos(adjustedAngle));
+                        const labelY = formatNumber(plotTextRadius * Math.sin(adjustedAngle));
+                        const rotationDeg = (adjustedAngle * 180 / Math.PI) + 180;
+
+                        const plotLabelText = (() => {
+                            const radialAvailable = Math.max(0, (plotTextRadius - innerR) - 7);
+                            const fontPx = 9;
+                            const approxPerChar = fontPx * (0.62 + 0.07);
+                            const maxChars = Math.max(1, Math.floor(radialAvailable / approxPerChar));
+                            const rawTitle = (() => {
+                                const full = scene.title || '';
+                                const m = full.match(/^(?:\s*\d+(?:\.\d+)?\s+)?(.+)/);
+                                return m ? m[1] : full;
+                            })();
+                            const truncated = rawTitle.length > maxChars ? rawTitle.slice(0, maxChars) : rawTitle;
+                            return escapeXml(truncated);
+                        })();
+
+                        const subplotIdxAttr = (() => {
+                            const name = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+                            const i = Math.max(0, masterSubplotOrder.indexOf(name));
+                            return i;
+                        })();
+
+                        svg += `
+                        <g class="scene-group" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
+                            <path id="${sceneId}"
+                                  d="${arcPath}" 
+                                  fill="${color}" 
+                                  class="${sceneClasses}"/>
+
+                            ${scene.itemType !== 'Plot' ? `
+                            <path id="textPath-${act}-${ring}-outer-${idx}" 
+                                  d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + 0.02))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + 0.02))} 
+                                     A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
+                                  fill="none"/>
+                            <text class="scene-title scene-title-${fontSize <= 10 ? 'small' : (fontSize <= 12 ? 'medium' : 'large')}${scene.path && plugin.openScenePaths.has(scene.path) ? ' scene-is-open' : ''}" dy="${dyOffset}" data-scene-id="${sceneId}">
+                                <textPath href="#textPath-${act}-${ring}-outer-${idx}" startOffset="4">
+                                    ${text}
+                                </textPath>
+                            </text>` : `
+                            <text class="plot-title" x="0" y="0" text-anchor="start" dominant-baseline="middle"
+                                  transform="translate(${labelX}, ${labelY}) rotate(${formatNumber(rotationDeg)})">
+                                ${plotLabelText}
+                            </text>
+                            `}
+                        </g>`;
+
+                        // Number squares are drawn in a single dedicated pass for the outer ring below
+                    });
+
+                    // Fill any remaining angular space on the outer ring with a void cell
+                    const totalUsedSpace = Array.from(positions.values()).reduce((sum, p) => sum + p.angularSize, 0);
+                    const totalAngularSpace = endAngle - startAngle;
+                    const remainingVoidSpace = totalAngularSpace - totalUsedSpace;
+                    if (remainingVoidSpace > 0.001) {
+                        const voidStartAngle = startAngle + totalUsedSpace;
+                        const voidEndAngle = endAngle;
+                        const voidArcPath = buildCellArcPath(innerR, outerR, voidStartAngle, voidEndAngle);
+                        svg += `<path d="${voidArcPath}" class="void-cell"/>`;
+                    }
+
+                    continue; // Done with outer ring for this act
+                }
+
+                // Inner rings (or outer when toggle off): use subplot-specific scenes
+                const currentScenes = subplot ? (scenesByActAndSubplot[act][subplot] || []) : [];
+
+                if (currentScenes && currentScenes.length > 0) {
 
                     if (currentScenes && currentScenes.length > 0) {
                         // Separate Plot notes and Scene notes for different sizing
-                        const plotNotes = currentScenes.filter(scene => scene.itemType === "Plot");
-                        const sceneNotes = currentScenes.filter(scene => scene.itemType !== "Plot");
+                        // Suppress Plot notes for ALL rings unless outer ring + all-scenes mode
+                        const isOuterRingAllScenes = isOuterRing && plugin.settings.outerRingAllScenes === true;
+                        const isAllScenesMode = plugin.settings.outerRingAllScenes === true;
+                        const effectiveScenes = isOuterRingAllScenes ? currentScenes : currentScenes.filter(scene => scene.itemType !== "Plot");
+                        const plotNotes = effectiveScenes.filter(scene => scene.itemType === "Plot");
+                        const sceneNotes = effectiveScenes.filter(scene => scene.itemType !== "Plot");
                         
-                        // Calculate 10px angular width for Plot notes using middle radius of ring
-                        const middleRadius = (innerR + outerR) / 2;
-                        const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius; // px converted to radians
-                        
-                        // Calculate remaining angular space after Plot notes
-                        const totalAngularSpace = endAngle - startAngle;
-                        const plotTotalAngularSpace = plotNotes.length * plotAngularWidth;
-                        const remainingAngularSpace = totalAngularSpace - plotTotalAngularSpace;
-                        
-                        // Calculate angular size for Scene notes (divide remaining space)
-                        const sceneAngularSize = sceneNotes.length > 0 ? remainingAngularSpace / sceneNotes.length : 0;
-                        
-                        // Create position mapping for all scenes in manuscript order
-                        let currentAngle = startAngle;
-                        const scenePositions = new Map();
-                        
-                        currentScenes.forEach((scene, idx) => {
-                            if (scene.itemType === "Plot") {
-                                scenePositions.set(idx, {
-                                    startAngle: currentAngle,
-                                    endAngle: currentAngle + plotAngularWidth,
-                                    angularSize: plotAngularWidth
-                                });
-                                currentAngle += plotAngularWidth;
-                            } else {
-                                scenePositions.set(idx, {
-                                    startAngle: currentAngle,
-                                    endAngle: currentAngle + sceneAngularSize,
-                                    angularSize: sceneAngularSize
-                                });
-                                currentAngle += sceneAngularSize;
-                            }
-                        });
+                        // Compute positions for this ring using shared helper
+                        const scenePositions = computePositions(innerR, outerR, startAngle, endAngle, effectiveScenes);
             
-                        currentScenes.forEach((scene, idx) => {
+                        effectiveScenes.forEach((scene, idx) => {
                             const { number, text } = parseSceneTitle(scene.title || '');
                             const position = scenePositions.get(idx);
                             const sceneStartAngle = position.startAngle;
@@ -802,36 +1056,21 @@ export function createTimelineSVG(
             
                             // Determine the color of a scene based on its status and due date
                             const color = (() => {
-                                // Handle Plot notes with graduated shades from dark to light of the current max publish stage color
+                                // Hide Plot notes color logic unless allowed in outer ring all-scenes mode
                                 if (scene.itemType === "Plot") {
-                                    // Use the max stage color as the base hue (already calculated above)
+                                    // Only outer ring all-scenes shows plot; otherwise no plot arcs exist here
+                                    if (!isOuterRingAllScenes) return 'transparent';
                                     const baseColor = maxStageColor;
-                                    
-                                    // Count total Plot notes to determine shade distribution
-                                    const allPlotNotes = allScenesPlotNotes;
                                     const totalPlots = totalPlotNotes;
-                                    
                                     if (totalPlots === 0) return baseColor;
-                                    
-                                    // Find this plot's index in the ordered list
                                     const plotIndex = plotIndexByKey.get(`${scene.title}::${scene.actNumber}`) ?? 0;
-                                    
-                                    // Create a range from dark to light: -40% (dark) to +40% (light)
-                                    const maxAdjustment = 40;
-                                    const adjustmentRange = maxAdjustment * 2; // Total range: 80%
-                                    
-                                    // Calculate position: 0 = darkest, 1 = lightest
+                                    const maxAdjustment = PLOT_SHADE_MAX_ADJUST;
+                                    const adjustmentRange = maxAdjustment * 2;
                                     const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
-                                    
-                                    // Map position to adjustment: -40% to +40%
                                     const adjustment = (position * adjustmentRange) - maxAdjustment;
-                                    
-                                    // Apply darkening or lightening based on adjustment value
                                     if (adjustment < 0) {
-                                        // Darken the color
                                         return plugin.darkenColor(baseColor, Math.abs(adjustment));
                                     } else {
-                                        // Lighten the color
                                         return plugin.lightenColor(baseColor, adjustment);
                                     }
                                 }
@@ -848,9 +1087,14 @@ export function createTimelineSVG(
                                 }
                                 
                                 if (norm === 'Completed') {
-                                    // For completed scenes, use Publish Stage color with full opacity
+                                    // In all-scenes mode, tint inner-ring scenes (non–Main Plot) by subplot color
+                                    if (isAllScenesMode) {
+                                        const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+                                        if (subplotName !== 'Main Plot') {
+                                            return subplotCssColor(subplotName);
+                                        }
+                                    }
                                     const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
-                                    // Do not apply any modifications to the color to ensure it matches the legend
                                     return stageColor;
                                 }
                                 
@@ -876,6 +1120,13 @@ export function createTimelineSVG(
                             const arcPath = buildCellArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
             
                             const sceneId = `scene-path-${act}-${ring}-${idx}`;
+
+                            // Derive subplot index for matching synopsis color mapping
+                            const subplotIdxAttr = (() => {
+                                const name = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+                                const i = Math.max(0, masterSubplotOrder.indexOf(name));
+                                return i;
+                            })();
             
                             // Apply appropriate CSS classes based on open status and search match
                             let sceneClasses = "scene-path";
@@ -886,8 +1137,38 @@ export function createTimelineSVG(
                             const fontSize = 18; // Fixed font size for all rings
                             const dyOffset = -1;
             
+                            // Compute local orientation and position for plot label
+                            const midAngle = (sceneStartAngle + sceneEndAngle) / 2;
+                            // Match the same offset from the outer edge used by scene titles,
+                            // then nudge outward by ~15px toward the top (outer edge)
+                            const plotTextRadius = textPathRadius + 15; // outerR - 25 + 15px
+                            // Keep only the small backward shift along the arc (~1px)
+                            const backwardShift = 1.0 / plotTextRadius; // radians per px at this radius
+                            const adjustedAngle = midAngle - backwardShift;
+                            const labelX = formatNumber(plotTextRadius * Math.cos(adjustedAngle));
+                            const labelY = formatNumber(plotTextRadius * Math.sin(adjustedAngle));
+                            const rotationDeg = (adjustedAngle * 180 / Math.PI) + 180; // flip inward
+
+                            // Truncate plot label based on available radial thickness (ring height)
+                            // IMPORTANT: truncate on unescaped text, then escape to avoid broken entities
+                            const plotLabelText = (() => {
+                                const radialAvailable = Math.max(0, (plotTextRadius - innerR) - 7); // add 3px tighter padding to clip earlier
+                                const fontPx = 9; // keep in sync with .plot-title in CSS
+                                const approxPerChar = fontPx * (0.62 + 0.07); // glyph width (~0.62em) + letter-spacing (0.07em)
+                                const maxChars = Math.max(1, Math.floor(radialAvailable / approxPerChar));
+                                // Derive unescaped title without numeric prefix
+                                const rawTitle = (() => {
+                                    const full = scene.title || '';
+                                    const m = full.match(/^(?:\s*\d+(?:\.\d+)?\s+)?(.+)/);
+                                    return m ? m[1] : full;
+                                })();
+                                const limit = maxChars; // no extra slack to ensure earlier clipping is visible
+                                const truncated = rawTitle.length > limit ? rawTitle.slice(0, limit) : rawTitle;
+                                return escapeXml(truncated);
+                            })();
+
                             svg += `
-                            <g class="scene-group" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                            <g class="scene-group" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                 <path id="${sceneId}"
                                       d="${arcPath}" 
                                       fill="${color}" 
@@ -903,77 +1184,73 @@ export function createTimelineSVG(
                                     <textPath href="#textPath-${act}-${ring}-${idx}" startOffset="4">
                                         ${text}
                                     </textPath>
-                                </text>` : ''}
+                                </text>` : `
+                                ${isOuterRingAllScenes ? `
+                                <text class="plot-title" x="0" y="0" text-anchor="start" dominant-baseline="middle"
+                                      transform="translate(${labelX}, ${labelY}) rotate(${formatNumber(rotationDeg)})">
+                                    ${plotLabelText}
+                                </text>
+                                ` : ''}
+                                `}
                             </g>`;
                         });
                         
                         // Fill any remaining angular space with gray void cells
-                        const totalUsedSpace = plotNotes.length * plotAngularWidth + sceneNotes.length * sceneAngularSize;
+                        const totalUsedSpace = Array.from(scenePositions.values()).reduce((sum, p) => sum + p.angularSize, 0);
+                        const totalAngularSpace = endAngle - startAngle;
                         const remainingVoidSpace = totalAngularSpace - totalUsedSpace;
-                        
-                        if (remainingVoidSpace > 0.001) { // Small threshold to avoid floating point errors
+
+                        if (remainingVoidSpace > 0.001) {
                             const voidStartAngle = startAngle + totalUsedSpace;
                             const voidEndAngle = endAngle;
-                            
-                            // Create void cell to fill remaining space
                             const voidArcPath = buildCellArcPath(innerR, outerR, voidStartAngle, voidEndAngle);
-                            
                             svg += `<path d="${voidArcPath}" class="void-cell"/>`;
                         }
                     } else {
-                        // Empty subplot ring - but Plot notes should still appear here
-                        // Get Plot notes that should appear in this subplot (use precomputed map)
-                        const plotNotesInSubplot = plotsBySubplot.get(subplot) || [];
-                        
-                        if (plotNotesInSubplot.length > 0) {
-                            // Calculate space for Plot notes in empty ring
-                            const middleRadius = (innerR + outerR) / 2;
-                            const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
-                            const totalPlotSpace = plotNotesInSubplot.length * plotAngularWidth;
-                            const remainingSpace = (endAngle - startAngle) - totalPlotSpace;
-                            
-                            // Position Plot notes
-                            let currentAngle = startAngle;
-                            plotNotesInSubplot.forEach((plotNote, idx) => {
-                                const plotStartAngle = currentAngle;
-                                const plotEndAngle = currentAngle + plotAngularWidth;
-                                
-                                // Get Plot note color (reuse the color logic)
-                                const plotIndex = plotIndexByKey.get(`${plotNote.title}::${plotNote.actNumber}`) ?? 0;
-                                const totalPlots = totalPlotNotes;
-                                const maxAdjustment = 40;
-                                const adjustmentRange = maxAdjustment * 2;
-                                const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
-                                const adjustment = (position * adjustmentRange) - maxAdjustment;
-                                
-                                const plotColor = adjustment < 0 
-                                    ? plugin.darkenColor(maxStageColor, Math.abs(adjustment))
-                                    : plugin.lightenColor(maxStageColor, adjustment);
-                                
-                                const plotArcPath = buildCellArcPath(innerR, outerR, plotStartAngle, plotEndAngle);
-                                
-                                const sceneId = `scene-path-${act}-${ring}-${idx}`;
-                                svg += `
-                                <g class="scene-group" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
-                                    <path id="${sceneId}"
-                                          d="${plotArcPath}" 
-                                          fill="${plotColor}" 
-                                          class="scene-path"/>
-                                </g>`;
-                                
-                                currentAngle += plotAngularWidth;
-                            });
-                            
-                            // Fill remaining space with void cell
-                            if (remainingSpace > 0.001) {
-                                const voidArcPath = buildCellArcPath(innerR, outerR, currentAngle, endAngle);
-                                
+                        // Empty subplot ring. When outer-ring-all-scenes is ON, do NOT place Plot notes here.
+                        if (!plugin.settings.outerRingAllScenes) {
+                            // Only in non-all-scenes mode do we place Plot notes in empty rings
+                            const plotNotesInSubplot = plotsBySubplot.get(subplot) || [];
+                            if (plotNotesInSubplot.length > 0) {
+                                const middleRadius = (innerR + outerR) / 2;
+                                const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
+                                const totalPlotSpace = plotNotesInSubplot.length * plotAngularWidth;
+                                const remainingSpace = (endAngle - startAngle) - totalPlotSpace;
+                                let currentAngle = startAngle;
+                                plotNotesInSubplot.forEach((plotNote, idx) => {
+                                    const plotStartAngle = currentAngle;
+                                    const plotEndAngle = currentAngle + plotAngularWidth;
+                                    const plotIndex = plotIndexByKey.get(`${plotNote.title}::${plotNote.actNumber}`) ?? 0;
+                                    const totalPlots = totalPlotNotes;
+                                    const maxAdjustment = 40;
+                                    const adjustmentRange = maxAdjustment * 2;
+                                    const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
+                                    const adjustment = (position * adjustmentRange) - maxAdjustment;
+                                    const plotColor = adjustment < 0 
+                                        ? plugin.darkenColor(maxStageColor, Math.abs(adjustment))
+                                        : plugin.lightenColor(maxStageColor, adjustment);
+                                    const plotArcPath = buildCellArcPath(innerR, outerR, plotStartAngle, plotEndAngle);
+                                    const sceneId = `scene-path-${act}-${ring}-${idx}`;
+                                    svg += `
+                                    <g class="scene-group" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                                        <path id="${sceneId}"
+                                              d="${plotArcPath}" 
+                                              fill="${plotColor}" 
+                                              class="scene-path"/>
+                                    </g>`;
+                                    currentAngle += plotAngularWidth;
+                                });
+                                if (remainingSpace > 0.001) {
+                                    const voidArcPath = buildCellArcPath(innerR, outerR, currentAngle, endAngle);
+                                    svg += `<path d="${voidArcPath}" class="void-cell"/>`;
+                                }
+                            } else {
+                                const voidArcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
                                 svg += `<path d="${voidArcPath}" class="void-cell"/>`;
                             }
                         } else {
-                            // Completely empty ring - fill with single void cell
+                            // All-scenes mode: just fill empty ring with a void cell
                             const voidArcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
-                            
                             svg += `<path d="${voidArcPath}" class="void-cell"/>`;
                         }
                     }
@@ -1497,7 +1774,9 @@ export function createTimelineSVG(
             const arcPixelLength = labelRadius * arcLength; 
             
             // Ensure subplot text is properly escaped
-            const safeSubplotText = plugin.safeSvgText(subplot.toUpperCase());
+            const isOuterRing = ringOffset === 0;
+            const labelRaw = (isOuterRing && plugin.settings.outerRingAllScenes) ? 'ALL SCENES' : subplot.toUpperCase();
+            const safeSubplotText = plugin.safeSvgText(labelRaw);
             
             // Create the path for the label - Add data-font-size attribute instead of inline style
             svg += `
@@ -1508,7 +1787,7 @@ export function createTimelineSVG(
                         ${formatNumber(labelRadius * Math.cos(endAngle))} ${formatNumber(labelRadius * Math.sin(endAngle))}"
                         class="subplot-ring-label-path"
                     />
-                    <text class="subplot-label-text">
+                    <text class="subplot-label-text" data-subplot-index="${ringOffset}" data-subplot-name="${escapeXml(subplot)}">
                         <textPath href="#${labelPathId}" startOffset="100%" text-anchor="end"
                                 textLength="${arcPixelLength}" lengthAdjust="spacingAndGlyphs">
                             ${safeSubplotText}
@@ -1523,12 +1802,207 @@ export function createTimelineSVG(
         // --- END: Subplot Label Generation ---
 
         // Add number squares after background layer but before synopses
-        svg += `<g class="number-squares">`;
-        scenes.forEach((scene) => {
-            // Skip number squares for Plot notes
-            if (scene.itemType === "Plot") {
-                return;
+        if (plugin.settings.outerRingAllScenes) {
+            // In outer-ring-all-scenes mode, draw number squares for ALL rings
+            
+            svg += `<g class="number-squares">`;
+            
+            // First, draw squares for the outer ring (all scenes combined)
+            const ringOuter = NUM_RINGS - 1;
+            const innerROuter = ringStartRadii[ringOuter];
+            const outerROuter = innerROuter + ringWidths[ringOuter];
+            const squareRadiusOuter = (innerROuter + outerROuter) / 2;
+
+            for (let act = 0; act < NUM_ACTS; act++) {
+                
+                const startAngle = (act * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                const endAngle = ((act + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+
+                // Build combined list for this act (unique scenes by path, unique plots by title+act)
+                const seenPaths = new Set<string>();
+                const seenPlotKeys = new Set<string>();
+                const combined: Scene[] = [];
+
+                scenes.forEach(s => {
+                    const sAct = s.actNumber !== undefined ? s.actNumber - 1 : 0;
+                    if (sAct !== act) return;
+                    if (s.itemType === 'Plot') {
+                        const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
+                        if (seenPlotKeys.has(pKey)) return;
+                        seenPlotKeys.add(pKey);
+                        combined.push(s);
+                    } else {
+                        const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
+                        if (seenPaths.has(key)) return;
+                        seenPaths.add(key);
+                        combined.push(s);
+                    }
+                });
+
+
+
+                // Positions derived from shared geometry
+                const positionsDetailed = computePositions(innerROuter, outerROuter, startAngle, endAngle, combined);
+                const positions = new Map<number, { startAngle: number; endAngle: number }>();
+                positionsDetailed.forEach((p, i) => positions.set(i, { startAngle: p.startAngle, endAngle: p.endAngle }));
+
+                // Draw squares for non-Plot scenes that have a number
+                combined.forEach((scene, idx) => {
+                    if (scene.itemType === 'Plot') return;
+                    const number = getScenePrefixNumber(scene.title);
+                    if (!number) return;
+
+                    const pos = positions.get(idx);
+                    if (!pos) return;
+                    const sceneStartAngle = pos.startAngle;
+
+                    const squareSize = getNumberSquareSize(number);
+                    const squareX = squareRadiusOuter * Math.cos(sceneStartAngle);
+                    const squareY = squareRadiusOuter * Math.sin(sceneStartAngle);
+
+                    const isSceneOpen = scene.path && plugin.openScenePaths.has(scene.path);
+                    const isSearchMatch = plugin.searchActive && scene.path && plugin.searchResults.has(scene.path);
+                    const hasEdits = scene.pendingEdits && scene.pendingEdits.trim() !== '';
+
+                    let squareClasses = 'number-square';
+                    if (isSceneOpen) squareClasses += ' scene-is-open';
+                    if (isSearchMatch) squareClasses += ' search-result';
+                    if (hasEdits) squareClasses += ' has-edits';
+
+                    // Match the sceneId format used in the outer ring scene arcs
+                    const sceneId = makeSceneId(act, ringOuter, idx, true, true);
+
+                    svg += `
+                        <g transform="translate(${squareX}, ${squareY})">
+                            <rect 
+                                x="-${squareSize.width/2}" 
+                                y="-${squareSize.height/2}" 
+                                width="${squareSize.width}" 
+                                height="${squareSize.height}" 
+                                fill="white"
+                                class="${squareClasses}" 
+                                data-scene-id="${escapeXml(sceneId)}"
+                            />
+                            <text 
+                                x="0" 
+                                y="0" 
+                                text-anchor="middle" 
+                                dominant-baseline="middle" 
+                                class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}${hasEdits ? ' has-edits' : ''}"
+                                data-scene-id="${escapeXml(sceneId)}"
+                                dy="0.1em"
+                                fill="black"
+                            >${number}</text>
+                        </g>
+                    `;
+                });
             }
+            
+            // Then, draw squares for inner subplot rings (excluding Main Plot since it's on outer ring)
+            
+            scenes.forEach((scene) => {
+                if (scene.itemType === "Plot") return;
+                
+                const number = getScenePrefixNumber(scene.title);
+                if (!number) return;
+                
+                const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+                
+                // Skip Main Plot scenes since they're already on the outer ring
+                if (subplot === 'Main Plot') {
+                    return;
+                }
+                
+                const subplotIndex = masterSubplotOrder.indexOf(subplot);
+                if (subplotIndex === -1) return;
+                
+                const ring = NUM_RINGS - 1 - subplotIndex;
+                if (ring < 0 || ring >= NUM_RINGS) return;
+                
+                const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
+                const actIndex = sceneActNumber - 1;
+                const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
+                const isAllScenesMode = plugin.settings.outerRingAllScenes === true;
+                const filteredScenesForIndex = isAllScenesMode ? scenesInActAndSubplot.filter(s => s.itemType !== "Plot") : scenesInActAndSubplot;
+                const sceneIndex = filteredScenesForIndex.indexOf(scene);
+                if (sceneIndex === -1) return;
+                
+                const startAngle = (actIndex * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                const endAngle = ((actIndex + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                
+                const plotNotes = isAllScenesMode ? [] : scenesInActAndSubplot.filter(s => s.itemType === "Plot");
+                const sceneNotes = isAllScenesMode ? scenesInActAndSubplot.filter(s => s.itemType !== "Plot") : scenesInActAndSubplot.filter(s => s.itemType !== "Plot");
+                
+                const innerR = ringStartRadii[ring];
+                const outerR = innerR + ringWidths[ring];
+                const middleRadius = (innerR + outerR) / 2;
+                const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
+                
+                const totalAngularSpace = endAngle - startAngle;
+                const plotTotalAngularSpace = plotNotes.length * plotAngularWidth;
+                const remainingAngularSpace = totalAngularSpace - plotTotalAngularSpace;
+                const sceneAngularSize = sceneNotes.length > 0 ? remainingAngularSpace / sceneNotes.length : 0;
+                
+                let currentAngle = startAngle;
+                for (let i = 0; i < sceneIndex; i++) {
+                    const sceneAtIndex = filteredScenesForIndex[i];
+                    if (sceneAtIndex.itemType === "Plot") {
+                        currentAngle += plotAngularWidth;
+                    } else {
+                        currentAngle += sceneAngularSize;
+                    }
+                }
+                const sceneStartAngle = currentAngle;
+                
+                const textPathRadius = (innerR + outerR) / 2;
+                const squareSize = getNumberSquareSize(number);
+                const squareX = textPathRadius * Math.cos(sceneStartAngle);
+                const squareY = textPathRadius * Math.sin(sceneStartAngle);
+                
+                const isSceneOpen = scene.path && plugin.openScenePaths.has(scene.path);
+                const isSearchMatch = plugin.searchActive && scene.path && plugin.searchResults.has(scene.path);
+                const hasEdits = scene.pendingEdits && scene.pendingEdits.trim() !== '';
+                
+                let squareClasses = 'number-square';
+                if (isSceneOpen) squareClasses += ' scene-is-open';
+                if (isSearchMatch) squareClasses += ' search-result';
+                if (hasEdits) squareClasses += ' has-edits';
+                
+                const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
+                
+                svg += `
+                    <g transform="translate(${squareX}, ${squareY})">
+                        <rect 
+                            x="-${squareSize.width/2}" 
+                            y="-${squareSize.height/2}" 
+                            width="${squareSize.width}" 
+                            height="${squareSize.height}" 
+                            fill="white"
+                            class="${squareClasses}" 
+                            data-scene-id="${escapeXml(sceneId)}"
+                        />
+                        <text 
+                            x="0" 
+                            y="0" 
+                            text-anchor="middle" 
+                            dominant-baseline="middle" 
+                            class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}${hasEdits ? ' has-edits' : ''}"
+                            data-scene-id="${escapeXml(sceneId)}"
+                            dy="0.1em"
+                            fill="black"
+                        >${number}</text>
+                    </g>
+                `;
+            });
+            
+            svg += `</g>`;
+        } else if (!plugin.settings.outerRingAllScenes) {
+            svg += `<g class="number-squares">`;
+            scenes.forEach((scene) => {
+                // Skip number squares for Plot notes
+                if (scene.itemType === "Plot") {
+                    return;
+                }
             
             const { number } = parseSceneTitle(scene.title || '');
             if (number) {
@@ -1540,60 +2014,32 @@ export function createTimelineSVG(
                 const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
                 const actIndex = sceneActNumber - 1;
                 const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
-                const sceneIndex = scenesInActAndSubplot.indexOf(scene);
+                const filteredScenes = scenesInActAndSubplot.filter(s => s.itemType !== "Plot");
+                const sceneIndex = filteredScenes.indexOf(scene);
                 
                 const startAngle = (actIndex * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
                 const endAngle = ((actIndex + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
                 
-                // Use the same positioning logic as scene rendering
-                const plotNotes = scenesInActAndSubplot.filter(s => s.itemType === "Plot");
-                const sceneNotes = scenesInActAndSubplot.filter(s => s.itemType !== "Plot");
-                
+                // Use the same positioning logic as scene rendering (no plot notes when toggle is off)
                 const innerR = ringStartRadii[ring];
                 const outerR = innerR + ringWidths[ring];
                 const middleRadius = (innerR + outerR) / 2;
-                const plotAngularWidth = 10 / middleRadius;
-                
                 const totalAngularSpace = endAngle - startAngle;
-                const plotTotalAngularSpace = plotNotes.length * plotAngularWidth;
-                const remainingAngularSpace = totalAngularSpace - plotTotalAngularSpace;
-                const sceneAngularSize = sceneNotes.length > 0 ? remainingAngularSpace / sceneNotes.length : 0;
+                const sceneAngularSize = filteredScenes.length > 0 ? totalAngularSpace / filteredScenes.length : 0;
                 
                 // Calculate this scene's position
                 let currentAngle = startAngle;
                 let sceneStartAngle = startAngle;
                 
                 for (let i = 0; i < sceneIndex; i++) {
-                    const sceneAtIndex = scenesInActAndSubplot[i];
-                    if (sceneAtIndex.itemType === "Plot") {
-                        currentAngle += plotAngularWidth;
-                    } else {
-                        currentAngle += sceneAngularSize;
-                    }
+                    currentAngle += sceneAngularSize;
                 }
                 sceneStartAngle = currentAngle;
                 
                 const textPathRadius = (ringStartRadii[ring] + (ringStartRadii[ring] + ringWidths[ring])) / 2;
                 
                 // Reuse the existing square size calculation
-                const getSquareSize = (num: string): { width: number, height: number } => {
-                    const height = 18;
-                    if (num.includes('.')) {
-                        return {
-                            width: num.length <= 3 ? 24 :
-                                    num.length <= 4 ? 32 :
-                                    36,
-                            height: height
-                        };
-                    } else {
-                        return {
-                            width: num.length === 1 ? 20 :
-                                    num.length === 2 ? 24 :
-                                    28,
-                            height: height
-                        };
-                    }
-                };
+                const getSquareSize = getNumberSquareSize;
 
                 const squareSize = getSquareSize(number);
                 const squareX = textPathRadius * Math.cos(sceneStartAngle) + 2;
@@ -1681,6 +2127,7 @@ export function createTimelineSVG(
             }
         });
         svg += `</g>`;
+        }
         
         // Create container for all synopses
         const synopsesContainer = document.createElementNS("http://www.w3.org/2000/svg", "g");
