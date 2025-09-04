@@ -594,6 +594,28 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     async onload() {
         await this.loadSettings();
 
+        // Load Asimovian Google Font for subplot arcing headlines (Act 3)
+        try {
+            const existing = document.querySelector('link[href*="fonts.googleapis.com"][href*="Asimovian"]');
+            if (!existing) {
+                const link1 = document.createElement('link');
+                link1.rel = 'preconnect';
+                link1.href = 'https://fonts.googleapis.com';
+                document.head.appendChild(link1);
+
+                const link2 = document.createElement('link');
+                link2.rel = 'preconnect';
+                link2.href = 'https://fonts.gstatic.com';
+                link2.crossOrigin = '';
+                document.head.appendChild(link2);
+
+                const fontLink = document.createElement('link');
+                fontLink.rel = 'stylesheet';
+                fontLink.href = 'https://fonts.googleapis.com/css2?family=Asimovian:wght@400;700&display=swap';
+                document.head.appendChild(fontLink);
+            }
+        } catch {}
+
         // Initialize SynopsisManager
         this.synopsisManager = new SynopsisManager(this);
 

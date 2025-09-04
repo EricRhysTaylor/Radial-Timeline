@@ -36,7 +36,7 @@
 
   /* Subplot palette - 15 fixed colors provided */
   --subplot-colors-0: #EFBDEB;
-  --subplot-colors-1: #B68CB8;
+  --subplot-colors-1: #a35ca7;
   --subplot-colors-2: #6461A0;
   --subplot-colors-3: #314CB6;
   --subplot-colors-4: #0A81D1;
@@ -137,11 +137,20 @@
 }
 .plot-title {
   fill: #ffffff;
-  font-size: 9px;
+  font-size:11px;
   font-weight: 500;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   pointer-events: none;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Hover: emphasize plot titles with a solid black background using stroke */
+.scene-group:hover .plot-title {
+  filter: url(#plotTextBg); /* black background halo */
+  fill: #ffffff; /* keep white text */
+  font-weight: 700; /* heavier for readability */
+  font-size: 13px; /* +20% over 9px on hover */
 }
 .scene-title.faded {
   opacity: 0.2;
@@ -335,9 +344,6 @@ text.info-text.title-text-secondary tspan.search-term {
 
 
 /* Allow inline subplot/character colors to apply in synopsis */
-text.info-text.metadata-text tspan[data-item-type] {
-  /* no fill override here; use inline color set by SynopsisManager */
-}
 .info-text.metadata-text tspan[data-item-type=subplot],
 .info-text.metadata-text tspan[data-item-type=character] {
   stroke: white;
@@ -831,7 +837,9 @@ tspan .search-term {
 .subplot-label-text {
     fill: var(--max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
     opacity: .2; /* Corrected opacity back to 30% */
-    font-weight: 700; /* Corrected font-weight back to 700 */
+    font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
+    font-weight: 400; /* Regular weight */
+    letter-spacing: -0.02em; /* tighter tracking */
     font-size: var(--subplot-font-size);
     dominant-baseline: central; /* Try central for potentially better vertical centering */
     text-transform: uppercase;
