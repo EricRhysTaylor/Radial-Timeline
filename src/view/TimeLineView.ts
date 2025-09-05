@@ -756,6 +756,8 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
 
                 // Post-layout adjustment: prevent plot label overlap using actual measured lengths
                 const scheduleLabelAdjust = () => {
+                    // Prevent duplicate adjustments on the same SVG instance
+                    if (svgElement.getAttribute('data-plot-adjusted') === '1') return;
                     try {
                         const plotTextNodes = Array.from(svgElement.querySelectorAll('text.plot-title')) as SVGTextElement[];
                         const items = plotTextNodes.map((textEl) => {
@@ -787,6 +789,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                             const d = `M ${sx} ${sy} A ${r} ${r} 0 ${largeArcFlag} 1 ${ex} ${ey}`;
                             it.pathNode.setAttribute('d', d);
                         });
+                        svgElement.setAttribute('data-plot-adjusted', '1');
                     } catch {}
                 };
                 // Delay to ensure layout is ready for accurate measurements

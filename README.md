@@ -182,7 +182,7 @@ The visualizations are built using pure SVG and JavaScript, offering a lightweig
 The Manuscript Timeline is designed for high pixel density displays (around 200 PPI or higher) for optimal visual quality. This means:
 
 - All Apple Retina displays or 2x pixel density (MacBooks, iMacs, etc.)
-- Windows systems with 4K displays or higher (when adjusted scaling) will work well
+- Windows systems with 4K displays or higher (may require adjusted scaling) will work well
 - Tablets and Mobile Phones all support High DPI
 
 If you're experiencing visual quality issues on Windows, please check your display scaling settings in Windows Settings > System > Display > Scale and layout.
