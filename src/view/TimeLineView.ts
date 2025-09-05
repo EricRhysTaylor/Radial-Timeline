@@ -761,7 +761,8 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     try {
                         const plotTextNodes = Array.from(svgElement.querySelectorAll('text.plot-title')) as SVGTextElement[];
                         const items = plotTextNodes.map((textEl) => {
-                            const href = textEl.querySelector('textPath')?.getAttribute('href') || '';
+                            const tp = textEl.querySelector('textPath') as SVGTextPathElement | null;
+                            const href = tp?.getAttribute('href') || '';
                             const pathId = href.startsWith('#') ? href.slice(1) : href;
                             const pathNode = svgElement.querySelector(`[id="${pathId}"]`) as SVGPathElement | null;
                             if (!pathNode) return null;
@@ -770,24 +771,19 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                             const lengthPx = textEl.getComputedTextLength();
                             if (!isFinite(lengthPx) || lengthPx <= 0 || radius <= 0) return null;
                             const angleSpan = lengthPx / radius;
-                            return { textEl, pathNode, radius, sliceStart, angleSpan };
-                        }).filter(Boolean) as { textEl: SVGTextElement; pathNode: SVGPathElement; radius: number; sliceStart: number; angleSpan: number; }[];
+                            return { textEl, textPathEl: tp!, pathNode, radius, sliceStart, angleSpan };
+                        }).filter(Boolean) as { textEl: SVGTextElement; textPathEl: SVGTextPathElement; pathNode: SVGPathElement; radius: number; sliceStart: number; angleSpan: number; }[];
 
                         items.sort((a, b) => a.sliceStart - b.sliceStart);
                         let lastEnd = Number.NEGATIVE_INFINITY;
                         items.forEach((it) => {
                             const minGap = 2 / Math.max(1, it.radius);
-                            const start = Math.max(it.sliceStart, lastEnd + minGap);
-                            const end = start + it.angleSpan;
-                            lastEnd = end;
-                            const r = it.radius;
-                            const largeArcFlag = (end - start) > Math.PI ? 1 : 0;
-                            const sx = (r * Math.cos(start)).toFixed(3);
-                            const sy = (r * Math.sin(start)).toFixed(3);
-                            const ex = (r * Math.cos(end)).toFixed(3);
-                            const ey = (r * Math.sin(end)).toFixed(3);
-                            const d = `M ${sx} ${sy} A ${r} ${r} 0 ${largeArcFlag} 1 ${ex} ${ey}`;
-                            it.pathNode.setAttribute('d', d);
+                            const startAngle = Math.max(it.sliceStart, lastEnd + minGap);
+                            const endAngle = startAngle + it.angleSpan;
+                            lastEnd = endAngle;
+                            // Set startOffset in px along the existing path rather than rewriting the path
+                            const offsetPx = Math.max(0, (startAngle - it.sliceStart) * it.radius);
+                            it.textPathEl.setAttribute('startOffset', offsetPx.toFixed(2));
                         });
                         svgElement.setAttribute('data-plot-adjusted', '1');
                     } catch {}
