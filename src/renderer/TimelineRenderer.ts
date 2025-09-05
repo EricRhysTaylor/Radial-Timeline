@@ -507,6 +507,17 @@ export function createTimelineSVG(
                 <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="m9 10 2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </symbol>
+            <!-- Arrow Up/Down From Line (toggle rotation) -->
+            <symbol id="icon-arrow-up-from-line" viewBox="0 0 24 24">
+                <path d="m18 9-6-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M12 3v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M5 21h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </symbol>
+            <symbol id="icon-arrow-down-from-line" viewBox="0 0 24 24">
+                <path d="M19 3H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M12 21V7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="m6 15 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </symbol>
         `;
 
         // Define outer arc paths for months
@@ -550,6 +561,9 @@ export function createTimelineSVG(
         // Close defs act
         svg += `</defs>`;
 
+        // Open static container (non-rotating root)
+        svg += `<g id="timeline-root">`;
+
         // Reusable helper to build a full ring cell arc path (inner->outer->outer arc->inner->inner arc)
         const buildCellArcPath = (innerR: number, outerR: number, startAngle: number, endAngle: number): string => {
             return `
@@ -588,30 +602,7 @@ export function createTimelineSVG(
             `;
         });
 
-        // --- Draw Act labels early (below plot labels) ---
-        const actualOuterRadiusEarly = ringStartRadii[NUM_RINGS - 1] + ringWidths[NUM_RINGS - 1];
-        for (let act = 0; act < NUM_ACTS; act++) {
-            const angle = (act * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-            const actLabelRadius = actualOuterRadiusEarly + 20;
-            const angleOffset = -0.085;
-            const startAngleAct = angle + angleOffset;
-            const endAngleAct = startAngleAct + (Math.PI / 12);
-            const actPathId = `actPath-${act}`;
-            svg += `
-                <path id="${actPathId}"
-                    d="
-                        M ${formatNumber(actLabelRadius * Math.cos(startAngleAct))} ${formatNumber(actLabelRadius * Math.sin(startAngleAct))}
-                        A ${formatNumber(actLabelRadius)} ${formatNumber(actLabelRadius)} 0 0 1 ${formatNumber(actLabelRadius * Math.cos(endAngleAct))} ${formatNumber(actLabelRadius * Math.sin(endAngleAct))}
-                    "
-                    fill="none"
-                />
-                <text class="act-label" fill="${maxStageColor}">
-                    <textPath href="#${actPathId}" startOffset="0" text-anchor="start">
-                        ACT ${act + 1}
-                    </textPath>
-                </text>
-            `;
-        }
+        // --- Draw Act labels early (below plot labels) into rotatable group later ---
 
         // First add the progress ring (RAINBOW YEAR PROGRESS)
         // Calculate year progress
@@ -1010,6 +1001,35 @@ export function createTimelineSVG(
             synopsesElements.push(synopsisElement);
         });
 
+        // Open rotatable container – scenes and act labels/borders only
+        svg += `<g id="timeline-rotatable">`;
+        // Track last plot label end-angle per act to prevent overlap when laying out labels
+        const lastPlotEndByAct: { [key: string]: number } = {};
+        // --- Draw Act labels here so they rotate ---
+        const actualOuterRadiusForActs = ringStartRadii[NUM_RINGS - 1] + ringWidths[NUM_RINGS - 1];
+        for (let act = 0; act < NUM_ACTS; act++) {
+            const angle = (act * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+            const actLabelRadius = actualOuterRadiusForActs + 20;
+            const angleOffset = -0.085;
+            const startAngleAct = angle + angleOffset;
+            const endAngleAct = startAngleAct + (Math.PI / 12);
+            const actPathId = `actPath-${act}`;
+            svg += `
+                <path id="${actPathId}"
+                    d="
+                        M ${formatNumber(actLabelRadius * Math.cos(startAngleAct))} ${formatNumber(actLabelRadius * Math.sin(startAngleAct))}
+                        A ${formatNumber(actLabelRadius)} ${formatNumber(actLabelRadius)} 0 0 1 ${formatNumber(actLabelRadius * Math.cos(endAngleAct))} ${formatNumber(actLabelRadius * Math.sin(endAngleAct))}
+                    "
+                    fill="none"
+                />
+                <text class="act-label" fill="${maxStageColor}">
+                    <textPath href="#${actPathId}" startOffset="0" text-anchor="start">
+                        ACT ${act + 1}
+                    </textPath>
+                </text>
+            `;
+        }
+
         // Draw scenes and dummy scenes (existing code remains as is)
         for (let act = 0; act < NUM_ACTS; act++) {
             const totalRings = NUM_RINGS;
@@ -1046,7 +1066,7 @@ export function createTimelineSVG(
                             if (seenPlotKeys.has(pKey)) return;
                             seenPlotKeys.add(pKey);
                             combined.push(s);
-                        } else {
+                            } else {
                             const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
                             if (seenPaths.has(key)) return;
                             seenPaths.add(key);
@@ -1081,10 +1101,10 @@ export function createTimelineSVG(
                     };
 
                     combined.forEach((scene, idx) => {
-                        const { number, text } = parseSceneTitle(scene.title || '');
+                            const { number, text } = parseSceneTitle(scene.title || '');
                         const position = positions.get(idx)!;
-                        const sceneStartAngle = position.startAngle;
-                        const sceneEndAngle = position.endAngle;
+                            const sceneStartAngle = position.startAngle;
+                            const sceneEndAngle = position.endAngle;
                         const textPathRadius = outerR - OUTER_TEXT_OFFSET;
 
                         const color = getFillForItem(plugin, scene, maxStageColor, PUBLISH_STAGE_COLORS, totalPlotNotes, plotIndexByKey, true, subplotColorFor, true);
@@ -1115,10 +1135,8 @@ export function createTimelineSVG(
                         const fontSize = 18;
                         const dyOffset = -1;
 
-                        // Apply vertical stacking offset for overlapping plot beats (more spacing for readability)
-                        const groupInfo = plotBeatsGrouping.get(idx);
-                        const stackingOffset = groupInfo ? groupInfo.positionInGroup * STACK_STEP_PX : 0; // outward per level
-                        const plotTextRadius = textPathRadius + PLOT_LABEL_OUTWARD_OFFSET + stackingOffset;
+                        // Use a single y-axis (radius) for all plot labels; no outward stacking
+                        const plotTextRadius = textPathRadius + PLOT_LABEL_OUTWARD_OFFSET;
 
                         // Compute a path that starts at the slice but is long enough for the full title
                         const rawTitleFull = (() => {
@@ -1129,7 +1147,7 @@ export function createTimelineSVG(
                         const fontPxForPlot = PLOT_FONT_PX;
                         const desiredPixels = estimatePixelsFromTitle(rawTitleFull, PLOT_FONT_PX, ESTIMATE_FUDGE_RENDER, PADDING_RENDER_PX);
                         const desiredAngleArc = desiredPixels / plotTextRadius;
-                        const labelStartAngle = sceneStartAngle;
+                        const labelStartAngle = sceneStartAngle; // initial; post-layout adjuster will move if needed
                         const labelEndAngle = sceneStartAngle + desiredAngleArc;
                         const largeArcFlag = desiredAngleArc > Math.PI ? 1 : 0;
 
@@ -1159,8 +1177,8 @@ export function createTimelineSVG(
                             <path id="plotTextPath-outer-${act}-${ring}-${idx}" 
                                   d="M ${formatNumber(plotTextRadius * Math.cos(labelStartAngle))} ${formatNumber(plotTextRadius * Math.sin(labelStartAngle))} 
                                      A ${formatNumber(plotTextRadius)} ${formatNumber(plotTextRadius)} 0 ${largeArcFlag} 1 ${formatNumber(plotTextRadius * Math.cos(labelEndAngle))} ${formatNumber(plotTextRadius * Math.sin(labelEndAngle))}" 
-                                  fill="none"/>
-                            <text class="plot-title" dy="-2">
+                                  data-slice-start="${formatNumber(sceneStartAngle)}" data-radius="${formatNumber(plotTextRadius)}" fill="none"/>
+                            <text class="plot-title" dy="-3">
                                 <textPath href="#plotTextPath-outer-${act}-${ring}-${idx}" startOffset="2">
                                     ${escapeXml(rawTitleFull)}
                                 </textPath>
@@ -1276,7 +1294,7 @@ export function createTimelineSVG(
                             const dyOffset = -1;
             
                             // (No plot labels rendered in inner rings)
-
+            
                             svg += `
                             <g class="scene-group" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                 <path id="${sceneId}"
@@ -1304,7 +1322,7 @@ export function createTimelineSVG(
                         const totalUsedSpace = Array.from(scenePositions.values()).reduce((sum, p) => sum + p.angularSize, 0);
                         const totalAngularSpace = endAngle - startAngle;
                         const remainingVoidSpace = totalAngularSpace - totalUsedSpace;
-
+                        
                         if (remainingVoidSpace > 0.001) {
                             const voidStartAngle = startAngle + totalUsedSpace;
                             const voidEndAngle = endAngle;
@@ -1315,42 +1333,42 @@ export function createTimelineSVG(
                         // Empty subplot ring. When outer-ring-all-scenes is ON, do NOT place Plot notes here.
                         if (!plugin.settings.outerRingAllScenes) {
                             // Only in non-all-scenes mode do we place Plot notes in empty rings
-                            const plotNotesInSubplot = plotsBySubplot.get(subplot) || [];
-                            if (plotNotesInSubplot.length > 0) {
-                                const middleRadius = (innerR + outerR) / 2;
-                                const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
-                                const totalPlotSpace = plotNotesInSubplot.length * plotAngularWidth;
-                                const remainingSpace = (endAngle - startAngle) - totalPlotSpace;
-                                let currentAngle = startAngle;
-                                plotNotesInSubplot.forEach((plotNote, idx) => {
-                                    const plotStartAngle = currentAngle;
-                                    const plotEndAngle = currentAngle + plotAngularWidth;
-                                    const plotIndex = plotIndexByKey.get(`${plotNote.title}::${plotNote.actNumber}`) ?? 0;
-                                    const totalPlots = totalPlotNotes;
-                                    const maxAdjustment = 40;
-                                    const adjustmentRange = maxAdjustment * 2;
-                                    const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
-                                    const adjustment = (position * adjustmentRange) - maxAdjustment;
-                                    const plotColor = adjustment < 0 
-                                        ? plugin.darkenColor(maxStageColor, Math.abs(adjustment))
-                                        : plugin.lightenColor(maxStageColor, adjustment);
-                                    const plotArcPath = buildCellArcPath(innerR, outerR, plotStartAngle, plotEndAngle);
-                                    const sceneId = `scene-path-${act}-${ring}-${idx}`;
-                                    svg += `
-                                    <g class="scene-group" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
-                                        <path id="${sceneId}"
-                                              d="${plotArcPath}" 
-                                              fill="${plotColor}" 
-                                              class="scene-path"/>
-                                    </g>`;
-                                    currentAngle += plotAngularWidth;
-                                });
-                                if (remainingSpace > 0.001) {
-                                    const voidArcPath = buildCellArcPath(innerR, outerR, currentAngle, endAngle);
-                                    svg += `<path d="${voidArcPath}" class="void-cell"/>`;
-                                }
-                            } else {
-                                const voidArcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
+                        const plotNotesInSubplot = plotsBySubplot.get(subplot) || [];
+                        if (plotNotesInSubplot.length > 0) {
+                            const middleRadius = (innerR + outerR) / 2;
+                            const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
+                            const totalPlotSpace = plotNotesInSubplot.length * plotAngularWidth;
+                            const remainingSpace = (endAngle - startAngle) - totalPlotSpace;
+                            let currentAngle = startAngle;
+                            plotNotesInSubplot.forEach((plotNote, idx) => {
+                                const plotStartAngle = currentAngle;
+                                const plotEndAngle = currentAngle + plotAngularWidth;
+                                const plotIndex = plotIndexByKey.get(`${plotNote.title}::${plotNote.actNumber}`) ?? 0;
+                                const totalPlots = totalPlotNotes;
+                                const maxAdjustment = 40;
+                                const adjustmentRange = maxAdjustment * 2;
+                                const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
+                                const adjustment = (position * adjustmentRange) - maxAdjustment;
+                                const plotColor = adjustment < 0 
+                                    ? plugin.darkenColor(maxStageColor, Math.abs(adjustment))
+                                    : plugin.lightenColor(maxStageColor, adjustment);
+                                const plotArcPath = buildCellArcPath(innerR, outerR, plotStartAngle, plotEndAngle);
+                                const sceneId = `scene-path-${act}-${ring}-${idx}`;
+                                svg += `
+                                <g class="scene-group" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                                    <path id="${sceneId}"
+                                          d="${plotArcPath}" 
+                                          fill="${plotColor}" 
+                                          class="scene-path"/>
+                                </g>`;
+                                currentAngle += plotAngularWidth;
+                            });
+                            if (remainingSpace > 0.001) {
+                                const voidArcPath = buildCellArcPath(innerR, outerR, currentAngle, endAngle);
+                                svg += `<path d="${voidArcPath}" class="void-cell"/>`;
+                            }
+                        } else {
+                            const voidArcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
                                 svg += `<path d="${voidArcPath}" class="void-cell"/>`;
                             }
                         } else {
@@ -1880,7 +1898,7 @@ export function createTimelineSVG(
         if (plugin.settings.outerRingAllScenes) {
             // In outer-ring-all-scenes mode, draw number squares for ALL rings
             
-            svg += `<g class="number-squares">`;
+        svg += `<g class="number-squares">`;
             
             // First, draw squares for the outer ring (all scenes combined)
             const ringOuter = NUM_RINGS - 1;
@@ -1975,7 +1993,7 @@ export function createTimelineSVG(
             
             // Then, draw squares for inner subplot rings (excluding Main Plot since it's on outer ring)
             
-            scenes.forEach((scene) => {
+        scenes.forEach((scene) => {
                 if (scene.itemType === "Plot") return;
                 
                 const number = getScenePrefixNumber(scene.title);
@@ -1985,9 +2003,9 @@ export function createTimelineSVG(
                 
                 // Skip Main Plot scenes since they're already on the outer ring
                 if (subplot === 'Main Plot') {
-                    return;
-                }
-                
+                return;
+            }
+            
                 const subplotIndex = masterSubplotOrder.indexOf(subplot);
                 if (subplotIndex === -1) return;
                 
@@ -2204,6 +2222,9 @@ export function createTimelineSVG(
         svg += `</g>`;
         }
         
+        // Close rotatable container
+        svg += `</g>`;
+        
         // Create container for all synopses
         const synopsesContainer = document.createElementNS("http://www.w3.org/2000/svg", "g");
         synopsesContainer.setAttribute("class", "synopses-container");
@@ -2217,8 +2238,32 @@ export function createTimelineSVG(
         const serializer = new XMLSerializer();
         const synopsesHTML = serializer.serializeToString(synopsesContainer);
 
-        // Then add the synopses on top
+        // Then add the synopses on top (non-rotating)
         svg += synopsesHTML;
+
+        // Close static root container
+        svg += `</g>`;
+
+        // Add rotation toggle control (non-rotating UI), positioned above top edge (Act 2 marker vicinity)
+        // Place the button near the Act 2 label (start of Act 2 boundary) and slightly outside along local y-axis
+        const act2BaseAngle = (1 * 2 * Math.PI) / NUM_ACTS - Math.PI / 2; // Act 2 start (π/6 ≈ 30°)
+        const act2Angle = act2BaseAngle; // use exact axis angle; no label offset
+        const arrowRadius = actualOuterRadius + 43; // +3px further outward along local y-axis
+        // Fine-tune: adjust to a net -0.225° from the axis
+        const arrowAngleAdjust = -(0.60 * Math.PI) / 180; // -0.225° in radians total
+        const arrowAngle = act2Angle + arrowAngleAdjust;
+        const arrowX = formatNumber(arrowRadius * Math.cos(arrowAngle));
+        const arrowY = formatNumber(arrowRadius * Math.sin(arrowAngle));
+        const arrowRotateDeg = (act2BaseAngle + Math.PI / 2) * 180 / Math.PI - 90; // rotate CCW 90° from radial alignment
+        svg += `
+            <g id="rotation-toggle" class="rotation-toggle" transform="translate(${arrowX}, ${arrowY}) rotate(${formatNumber(arrowRotateDeg)})">
+                <use id="rotation-arrow-up" class="arrow-icon" href="#icon-arrow-up-from-line" x="-14.4" y="-14.4" width="26" height="26" />
+                <use id="rotation-arrow-down" class="arrow-icon is-hidden" href="#icon-arrow-down-from-line" x="-14.4" y="-14.4" width="26" height="26" />
+                <rect x="-18" y="-18" width="36" height="36" fill="transparent" pointer-events="all">
+                    <title>Rotate timeline</title>
+                </rect>
+            </g>
+        `;
 
         // Add JavaScript to handle synopsis visibility
         const scriptSection = `
@@ -2246,6 +2291,36 @@ export function createTimelineSVG(
                     }
                 });
             });
+
+            // Rotation toggle behavior
+            (function() {
+                const svgRoot = document.querySelector('.manuscript-timeline-svg');
+                if (!svgRoot) return;
+                const rotatable = svgRoot.querySelector('#timeline-rotatable');
+                const toggle = svgRoot.querySelector('#rotation-toggle');
+                const up = svgRoot.querySelector('#rotation-arrow-up');
+                const down = svgRoot.querySelector('#rotation-arrow-down');
+                if (!rotatable || !toggle || !up || !down) return;
+
+                let rotated = false;
+                const applyRotation = () => {
+                    if (rotated) {
+                        rotatable.setAttribute('transform', 'rotate(120)');
+                        up.setAttribute('style', 'display: none;');
+                        down.setAttribute('style', 'display: inline;');
+                    } else {
+                        rotatable.removeAttribute('transform');
+                        up.setAttribute('style', 'display: inline;');
+                        down.setAttribute('style', 'display: none;');
+                    }
+                };
+                applyRotation();
+
+                toggle.addEventListener('click', () => {
+                    rotated = !rotated;
+                    applyRotation();
+                });
+            })();
         ]]></script>`;
 
         // Add debug coordinate display

@@ -26,10 +26,11 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 - Creates an interactive radial timeline visualization of your scenes
 - Organizes scenes by act, subplot, and chronological order
+- Allows CCW rotation of timeline so act 2 is moved up to act 1 position for readability
 - Save the Cat beat structure support with `Class: Plot` notes for story beats
 - Shows scene details on hover including title, date, synopsis, subplots, characters, overdue line, and revisions line when present
 - Color-codes scenes by status (Complete, Working, Todo, etc.)
-- Plot notes display with graduated color shading and 10px width for visual distinction
+- Plot notes display with graduated color shading and narrow width
 - Supports both light and dark themes
 - Allows clicking on scenes to open the corresponding file
 - Visually highlights currently open scene tabs in the radial timeline with special styling
@@ -45,7 +46,7 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Clear search
 * Update flagged beats (manuscript order)
 * Update flagged beats (subplot order)
-* Clear beats cache
+* Clear beats cache (to reprocess all notes already processed)
 
 <a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
   <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px;" />
@@ -149,30 +150,6 @@ Description: The first impression of your story. It should capture the essence o
 ---
 ```
 
-## Timeline visualization elements
-
-The timeline displays:
-- Scenes arranged in a circular pattern
-- Acts divided into sections
-- Subplots organized in concentric rings with descriptive titles at the top
-- Scene numbers in small boxes
-- Color-coded scenes based on status
-- Month markers around the perimeter showing calendar months of the year and do not relate to the story timeline
-- Rainbow progress ring showing elapsed portion of the current calendar year (not related to story timeline)
-- Estimated completion date arc (dark purple) showing projected completion timeline with Red Tick Mark
-- Central stage × status grid for publish stage and status with mouseover
-- Per-stage arrows for progress: right arrow indicates the current active stage; down arrows indicate earlier stages when a later stage is active
-
-Hover over a scene or plot note to see its details and click to open the corresponding file.
-
-## Scene and plot ordering and numbering
-
-- Scene and Plot notes are ordered by their title prefix number (manuscript order), not by date
-- The plugin parses scene numbers from the Title prefix (e.g., "1.2" in "1.2 The Discovery")
-- Scene numbers are displayed in small boxes on the timeline (Plot notes don't have number boxes)
-- Using numbered prefixes in your scene titles helps Obsidian order scenes correctly in the file explorer
-- Both scenes and Plot notes can use decimal numbering (e.g., "1.5", "2.25") for fine-grained ordering
-
 ## Technical implementation
 
 The Manuscript Timeline visualization was inspired by and draws on principles from [D3.js](https://d3js.org), a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:
@@ -204,9 +181,9 @@ The visualizations are built using pure SVG and JavaScript, offering a lightweig
 
 The Manuscript Timeline is designed for high pixel density displays (around 200 PPI or higher) for optimal visual quality. This means:
 
-- All Apple Retina displays (MacBooks, iMacs, etc.) will work perfectly
-- Windows systems with 4K displays (when properly scaled) will work well
-- Lower resolution displays or Windows systems not properly configured for 4K scaling may show some visual artifacts or less crisp rendering
+- All Apple Retina displays or 2x pixel density (MacBooks, iMacs, etc.)
+- Windows systems with 4K displays or higher (when adjusted scaling) will work well
+- Tablets and Mobile Phones all support High DPI
 
 If you're experiencing visual quality issues on Windows, please check your display scaling settings in Windows Settings > System > Display > Scale and layout.
 

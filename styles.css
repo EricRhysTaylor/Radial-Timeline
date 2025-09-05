@@ -136,8 +136,8 @@
   pointer-events: none;
 }
 .plot-title {
-  fill: #ffffff;
-  font-size:11px;
+  fill: var(--text-normal);
+  font-size:12px;
   font-weight: 500;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -148,10 +148,22 @@
 /* Hover: emphasize plot titles with a solid black background using stroke */
 .scene-group:hover .plot-title {
   filter: url(#plotTextBg); /* black background halo */
-  fill: #ffffff; /* keep white text */
+  fill: #ffffff;
   font-weight: 700; /* heavier for readability */
-  font-size: 13px; /* +20% over 9px on hover */
 }
+
+/* Rotation toggle hover animation */
+.manuscript-timeline-svg #rotation-toggle use {
+  transition: color 120ms ease, stroke 120ms ease, fill 120ms ease;
+}
+.manuscript-timeline-svg #rotation-toggle:hover use {
+  /* Make arrow white on hover via currentColor (symbols use stroke=currentColor) */
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: none !important;
+}
+.manuscript-timeline-svg #rotation-toggle .arrow-icon.is-hidden { display: none; }
+.manuscript-timeline-svg #rotation-toggle { cursor: pointer; }
 .scene-title.faded {
   opacity: 0.2;
 }

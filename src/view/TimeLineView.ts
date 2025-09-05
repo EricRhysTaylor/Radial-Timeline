@@ -692,6 +692,105 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             const svgElement = this.createSvgElement(svgString, timelineContainer); // Pass svgString
             
             if (svgElement) {
+                // Attach rotation toggle behavior (inline SVG scripts won't run here)
+                const rotatable = svgElement.querySelector('#timeline-rotatable') as SVGGElement | null;
+                const toggle = svgElement.querySelector('#rotation-toggle') as SVGGElement | null;
+                const arrowUp = svgElement.querySelector('#rotation-arrow-up') as SVGUseElement | null;
+                const arrowDown = svgElement.querySelector('#rotation-arrow-down') as SVGUseElement | null;
+                if (rotatable && toggle && arrowUp && arrowDown) {
+                    let rotated = false;
+                    const applyRotation = () => {
+                        if (rotated) {
+                            rotatable.setAttribute('transform', 'rotate(-120)');
+                            arrowUp.classList.add('is-hidden');
+                            arrowDown.classList.remove('is-hidden');
+                        } else {
+                            rotatable.removeAttribute('transform');
+                            arrowUp.classList.remove('is-hidden');
+                            arrowDown.classList.add('is-hidden');
+                        }
+                        // Counter-rotate number squares so numbers remain upright
+                        const squares = svgElement.querySelectorAll('.number-squares g');
+                        squares.forEach((g) => {
+                            const el = g as SVGGElement;
+                            if (!el) return;
+                            if (rotated) {
+                                el.setAttribute('transform', (el.getAttribute('transform') || '') + ' rotate(120)');
+                            } else {
+                                // remove the last rotate(120) if present
+                                const t = el.getAttribute('transform') || '';
+                                el.setAttribute('transform', t.replace(/\s*rotate\(120\)/, ''));
+                            }
+                        });
+
+                        // Counter-rotate center grid and estimate markers if they live under the rotatable group
+                        const counterSelectors = [
+                            '.color-key-center',
+                            '.estimated-date-tick',
+                            '.estimated-date-dot',
+                            '.estimation-date-label',
+                            '.target-date-tick',
+                            '.target-date-marker'
+                        ];
+                        counterSelectors.forEach((sel) => {
+                            const nodes = svgElement.querySelectorAll(sel);
+                            nodes.forEach((node) => {
+                                const el = node as SVGGraphicsElement;
+                                // Only counter-rotate if this node is inside the rotatable group
+                                if (!el.closest('#timeline-rotatable')) return;
+                                if (rotated) {
+                                    el.setAttribute('transform', (el.getAttribute('transform') || '') + ' rotate(120)');
+                                } else {
+                                    const t = el.getAttribute('transform') || '';
+                                    el.setAttribute('transform', t.replace(/\s*rotate\(120\)/, ''));
+                                }
+                            });
+                        });
+                    };
+                    applyRotation();
+                    toggle.addEventListener('click', () => {
+                        rotated = !rotated;
+                        applyRotation();
+                    });
+                }
+
+                // Post-layout adjustment: prevent plot label overlap using actual measured lengths
+                const scheduleLabelAdjust = () => {
+                    try {
+                        const plotTextNodes = Array.from(svgElement.querySelectorAll('text.plot-title')) as SVGTextElement[];
+                        const items = plotTextNodes.map((textEl) => {
+                            const href = textEl.querySelector('textPath')?.getAttribute('href') || '';
+                            const pathId = href.startsWith('#') ? href.slice(1) : href;
+                            const pathNode = svgElement.querySelector(`[id="${pathId}"]`) as SVGPathElement | null;
+                            if (!pathNode) return null;
+                            const radius = parseFloat(pathNode.getAttribute('data-radius') || '0');
+                            const sliceStart = parseFloat(pathNode.getAttribute('data-slice-start') || '0');
+                            const lengthPx = textEl.getComputedTextLength();
+                            if (!isFinite(lengthPx) || lengthPx <= 0 || radius <= 0) return null;
+                            const angleSpan = lengthPx / radius;
+                            return { textEl, pathNode, radius, sliceStart, angleSpan };
+                        }).filter(Boolean) as { textEl: SVGTextElement; pathNode: SVGPathElement; radius: number; sliceStart: number; angleSpan: number; }[];
+
+                        items.sort((a, b) => a.sliceStart - b.sliceStart);
+                        let lastEnd = Number.NEGATIVE_INFINITY;
+                        items.forEach((it) => {
+                            const minGap = 2 / Math.max(1, it.radius);
+                            const start = Math.max(it.sliceStart, lastEnd + minGap);
+                            const end = start + it.angleSpan;
+                            lastEnd = end;
+                            const r = it.radius;
+                            const largeArcFlag = (end - start) > Math.PI ? 1 : 0;
+                            const sx = (r * Math.cos(start)).toFixed(3);
+                            const sy = (r * Math.sin(start)).toFixed(3);
+                            const ex = (r * Math.cos(end)).toFixed(3);
+                            const ey = (r * Math.sin(end)).toFixed(3);
+                            const d = `M ${sx} ${sy} A ${r} ${r} 0 ${largeArcFlag} 1 ${ex} ${ey}`;
+                            it.pathNode.setAttribute('d', d);
+                        });
+                    } catch {}
+                };
+                // Delay to ensure layout is ready for accurate measurements
+                requestAnimationFrame(() => requestAnimationFrame(scheduleLabelAdjust));
                 // Performance optimization: Use batch operations where possible
                 const allSynopses = Array.from(svgElement.querySelectorAll(".scene-info"));
                 const sceneGroups = Array.from(svgElement.querySelectorAll(".scene-group"));
