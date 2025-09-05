@@ -781,9 +781,17 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                             const startAngle = Math.max(it.sliceStart, lastEnd + minGap);
                             const endAngle = startAngle + it.angleSpan;
                             lastEnd = endAngle;
-                            // Set startOffset in px along the existing path rather than rewriting the path
-                            const offsetPx = Math.max(0, (startAngle - it.sliceStart) * it.radius);
-                            it.textPathEl.setAttribute('startOffset', offsetPx.toFixed(2));
+                            // Rewrite the path arc to ensure sufficient length for the measured text
+                            const r = it.radius;
+                            const largeArcFlag = (endAngle - startAngle) > Math.PI ? 1 : 0;
+                            const sx = (r * Math.cos(startAngle)).toFixed(3);
+                            const sy = (r * Math.sin(startAngle)).toFixed(3);
+                            const ex = (r * Math.cos(endAngle)).toFixed(3);
+                            const ey = (r * Math.sin(endAngle)).toFixed(3);
+                            const d = `M ${sx} ${sy} A ${r} ${r} 0 ${largeArcFlag} 1 ${ex} ${ey}`;
+                            it.pathNode.setAttribute('d', d);
+                            // Keep a minimal startOffset for a tiny inset, but don't push beyond the path
+                            it.textPathEl.setAttribute('startOffset', '2');
                         });
                         svgElement.setAttribute('data-plot-adjusted', '1');
                     } catch {}
