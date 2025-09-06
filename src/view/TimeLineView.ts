@@ -796,8 +796,25 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                         svgElement.setAttribute('data-plot-adjusted', '1');
                     } catch {}
                 };
-                // Delay to ensure layout is ready for accurate measurements
-                requestAnimationFrame(() => requestAnimationFrame(scheduleLabelAdjust));
+                // Delay to ensure layout is ready for accurate measurements + re-run on visibility/resize
+                let adjustPending = false;
+                const debouncedAdjust = () => {
+                    if (adjustPending) return;
+                    adjustPending = true;
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        scheduleLabelAdjust();
+                        adjustPending = false;
+                    }));
+                };
+                debouncedAdjust();
+                const visibilityHandler = () => {
+                    if (document.visibilityState === 'visible') debouncedAdjust();
+                };
+                document.addEventListener('visibilitychange', visibilityHandler);
+                if ((window as any).ResizeObserver) {
+                    const ro = new (window as any).ResizeObserver(() => debouncedAdjust());
+                    ro.observe(svgElement);
+                }
                 // Performance optimization: Use batch operations where possible
                 const allSynopses = Array.from(svgElement.querySelectorAll(".scene-info"));
                 const sceneGroups = Array.from(svgElement.querySelectorAll(".scene-group"));
