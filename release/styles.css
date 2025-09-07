@@ -16,7 +16,12 @@
 
   /* Status Colors */
   --color-due: #d05e5e;      /* Red */
-  --color-empty: #f0f0f0;    /* Very Light Gray */
+  --color-empty: #ffffff;    /* becomes gray when transparent added */
+  --color-empty-selected: #EFEFEF; /* Slightly darker gray for selected empty cells */
+  
+  /* Search and UI Colors */
+  --color-search: #FFCC00;   /* Yellow for search highlighting */
+  --color-debug: #ff3300;    /* Red for debug text */
   
   /* Plaid Colors and Opacity */
   --color-working: #FF69B4;          /* Match pink color for Working in Manuscript Calendar */
@@ -28,6 +33,23 @@
   
   /* Estimation Colors */
   --color-estimation: #ff0000; /* Red not using this right now. defs at bottom of file*/
+
+  /* Subplot palette - 15 fixed colors provided */
+  --subplot-colors-0: #EFBDEB;
+  --subplot-colors-1: #a35ca7;
+  --subplot-colors-2: #6461A0;
+  --subplot-colors-3: #314CB6;
+  --subplot-colors-4: #0A81D1;
+  --subplot-colors-5: #98CE00;
+  --subplot-colors-6: #16E0BD;
+  --subplot-colors-7: #78C3FB;
+  --subplot-colors-8: #273C2C;
+  --subplot-colors-9: #A6D8D4;
+  --subplot-colors-10: #FF8600;
+  --subplot-colors-11: #F9E784;
+  --subplot-colors-12: #CEC3C1;
+  --subplot-colors-13: #F3D34A;
+  --subplot-colors-14: #004777;
 }
 
 /* ADD stage-specific fill rules for title text – keep close to highlight-rect definitions so colours are defined in one place */
@@ -77,6 +99,8 @@
 }
 .scene-path {
   cursor: pointer;
+  stroke: #ffffff;
+  stroke-width: 1px;
 }
 .scene-act {
   fill-opacity: 0;
@@ -85,17 +109,22 @@
   fill-opacity: 0.3;
   cursor: pointer;
 }
-path.scene-path[fill="#EEEEEE"] {
+/* Void cells - empty space in timeline */
+.void-cell {
+  fill: var(--color-empty);
+  fill-opacity: 0.9;
+  stroke: white;
+  stroke-width: 1;
   cursor: default;
 }
 .scene-path.faded {
   opacity: 0.3;
 }
 .scene-path.non-selected {
-  fill: #EEEEEE !important;
+  fill: var(--color-empty-selected) !important;
 }
 .scene-path.scene-is-open.non-selected {
-  fill: #EFEFEF !important;
+  fill: var(--color-empty-selected) !important;
 }
 .scene-path.selected {
   filter: saturate(1.2) brightness(1.1);
@@ -106,6 +135,35 @@ path.scene-path[fill="#EEEEEE"] {
   opacity: 1;
   pointer-events: none;
 }
+.plot-title {
+  fill: var(--text-normal);
+  font-size:12px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  pointer-events: none;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Hover: emphasize plot titles with a solid black background using stroke */
+.scene-group:hover .plot-title {
+  filter: url(#plotTextBg); /* black background halo */
+  fill: #ffffff;
+  font-weight: 700; /* heavier for readability */
+}
+
+/* Rotation toggle hover animation */
+.manuscript-timeline-svg #rotation-toggle use {
+  transition: color 120ms ease, stroke 120ms ease, fill 120ms ease;
+}
+.manuscript-timeline-svg #rotation-toggle:hover use {
+  /* Make arrow white on hover via currentColor (symbols use stroke=currentColor) */
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: none !important;
+}
+.manuscript-timeline-svg #rotation-toggle .arrow-icon.is-hidden { display: none; }
+.manuscript-timeline-svg #rotation-toggle { cursor: pointer; }
 .scene-title.faded {
   opacity: 0.2;
 }
@@ -226,7 +284,7 @@ dominant-baseline: middle;
 
 .subplot-text {
   font-size: 16px;
-  fill: #555555;
+  fill: var(--text-muted, #555555);
   font-weight: normal;
 }
 
@@ -266,14 +324,16 @@ dominant-baseline: middle;
   font-weight: bold;
 }
 .search-term {
-  fill: #FFCC00;
+  fill: var(--color-search);
   font-weight: bold;
 }
+
+/* (Reverted) Keep original outlined highlight for readability; styles consolidated above */
 .metadata-text .search-term,
 text.info-text.metadata-text .search-term,
 .info-text.metadata-text tspan.search-term {
   fill: inherit !important;
-  stroke: #FFCC00 !important;
+  stroke: var(--color-search) !important;
   stroke-width: 0.6em !important;
   stroke-opacity: 0.6 !important;
   paint-order: stroke !important;
@@ -284,7 +344,7 @@ text.info-text tspan.search-term,
 text.info-text.metadata-text tspan.search-term,
 text.info-text.title-text-main tspan.search-term,
 text.info-text.title-text-secondary tspan.search-term {
-  stroke: #FFCC00 !important;
+  stroke: var(--color-search) !important;
   stroke-width: 0.5em !important;
   stroke-opacity: 0.5 !important;
   stroke-linejoin: round !important;
@@ -295,9 +355,7 @@ text.info-text.title-text-secondary tspan.search-term {
 }
 
 
-text.info-text.metadata-text tspan[data-item-type] {
-  fill: inherit !important;
-}
+/* Allow inline subplot/character colors to apply in synopsis */
 .info-text.metadata-text tspan[data-item-type=subplot],
 .info-text.metadata-text tspan[data-item-type=character] {
   stroke: white;
@@ -410,7 +468,7 @@ tspan .search-term {
   font-weight: bold;
 }
 .number-square.search-result {
-  fill: #FFCC00;
+  fill: var(--color-search);
 }
 .number-text.search-result.non-selected {
   fill: #FFFFFF !important;
@@ -427,7 +485,7 @@ tspan .search-term {
   stroke-width: 2px;
 }
 .number-square.search-result.selected {
-  fill: #FFCC00;
+  fill: var(--color-search);
   stroke: #ff9500;
   stroke-width: 2px;
 }
@@ -436,7 +494,7 @@ tspan .search-term {
 }
 
 .number-square.has-edits.search-result {
-  fill: #FFCC00;
+  fill: var(--color-search);
 }
 .number-square.has-edits.scene-is-open {
   fill: var(--interactive-accent, #705DCF); 
@@ -469,7 +527,7 @@ tspan .search-term {
 }
 
 .highlight-rect {
-  fill: #FFCC00;
+  fill: var(--color-search);
   rx: 3;
   ry: 3;
   opacity: 0.3;
@@ -498,7 +556,6 @@ tspan .search-term {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   position: relative;
-  cursor: move;
 }
 .color-picker-input {
   width: 100%;
@@ -559,7 +616,7 @@ tspan .search-term {
 }
 
 .scene-info text.info-text.title-text-main .search-term {
-  stroke: #FFCC00 !important;
+  stroke: var(--color-search) !important;
   stroke-width: .2em !important;
   paint-order: stroke !important;
   font-weight: bold !important;
@@ -569,6 +626,7 @@ tspan .search-term {
   min-height: 1.5em;
   display: block;
   visibility: visible !important;
+  fill: transparent;
 }
 .number-square.non-selected {
   fill: #EFEFEF;
@@ -581,7 +639,7 @@ tspan .search-term {
 /* styles.css */
 
 .center-key-text {
-  font-size: 16px;
+  font-size: 18px;
   fill: var(--text-normal, #333333);
   font-weight: 400;
   text-transform: uppercase;
@@ -603,30 +661,11 @@ tspan .search-term {
     gap: 8px;
 }
 
-/* Test button styles */
-.test-button {
-    padding: 10px;
-}
+/* Search banner styles removed */
 
-/* Path element visibility */
-.path-element {
-    display: none;
-}
+/* Removed unused utility classes: test-button, path-element, dynamic-element, font-size-element */
 
-/* Absolute positioning for dynamic elements */
-.dynamic-element {
-    position: absolute;
-}
-
-/* Dynamic font size elements */
-.font-size-element {
-    font-size: var(--dynamic-font-size);
-}
-
-/* Subplot and character text styles */
-.subplot-text {
-    fill: var(--dynamic-color);
-}
+/* Dynamic subplot/character colors are set inline in TypeScript - no static CSS needed */
 
 /* Dynamic color elements */
 [data-item-type="subplot"],
@@ -636,10 +675,9 @@ tspan .search-term {
     paint-order: stroke;
 }
 
-/* Dynamic font size elements */
-.dynamic-font-size {
-    font-size: var(--dynamic-font-size);
-}
+
+
+/* Removed unused dynamic-font-size class */
 
 /* SVG interaction elements */
 .svg-interaction {
@@ -668,10 +706,26 @@ tspan .search-term {
 /* SVG Element Styles */
 .svg-path {
     display: none;
+    fill: none;
 }
 
 .svg-text {
     font-weight: bold;
+}
+
+/* Title text styles */
+.scene-title-bold {
+    font-weight: bold;
+}
+
+/* Grade border styles */
+.grade-border {
+    fill: none;
+}
+
+/* Invisible spacer styles */
+.invisible-spacer {
+    opacity: 0;
 }
 
 /* Button Container Styles */
@@ -697,11 +751,7 @@ tspan .search-term {
     fill: var(--text-muted);
 }
 
-/* Search term highlighting */
-.search-term {
-    fill: #FFCC00;
-    font-weight: bold;
-}
+/* Search term highlighting - consolidated above with other search-term rules */
 
 /* Info container styles */
 .info-container {
@@ -783,7 +833,7 @@ tspan .search-term {
 [data-item-type="subplot"] .search-term,
 [data-item-type="character"] .search-term {
   fill: inherit !important;
-  stroke: #FFCC00 !important;
+  stroke: var(--color-search) !important;
   stroke-width: 0.6em !important;
   stroke-opacity: 0.6 !important;
   paint-order: stroke !important;
@@ -799,7 +849,9 @@ tspan .search-term {
 .subplot-label-text {
     fill: var(--max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
     opacity: .2; /* Corrected opacity back to 30% */
-    font-weight: 700; /* Corrected font-weight back to 700 */
+    font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
+    font-weight: 400; /* Regular weight */
+    letter-spacing: -0.02em; /* tighter tracking */
     font-size: var(--subplot-font-size);
     dominant-baseline: central; /* Try central for potentially better vertical centering */
     text-transform: uppercase;
@@ -857,4 +909,83 @@ tspan .search-term {
     padding: 0; 
     margin-top: 15px;
     margin-bottom: 20px;
+}
+
+/* Source path autocomplete suggestions */
+.source-path-suggestions {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    margin-top: 2px;
+    min-width: 200px; /* Ensure minimum width */
+    background-color: var(--background-primary);
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    border: 1px solid var(--background-modifier-border);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.source-path-suggestions.hidden {
+    display: none;
+}
+
+.source-path-suggestions.visible {
+    display: block;
+}
+
+.source-path-input-container {
+    position: relative;
+}
+
+.source-path-suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--background-modifier-border);
+    transition: background-color 0.1s ease;
+}
+
+.source-path-suggestion-item:last-child {
+    border-bottom: none !important;
+}
+
+.source-path-suggestion-item:hover,
+.source-path-suggestion-item.selected {
+    background-color: var(--background-modifier-hover) !important;
+}
+
+/* status header hover effect */
+.status-header-letter {
+  transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
+  text-decoration: none;
+}
+.status-header:hover .status-header-letter {
+  transform: scale(1.05);
+  fill: #ffffff;
+  text-decoration: underline;
+}
+
+/* bottom-left count inside Completed grid cells */
+.grid-completed-count {
+  fill: #000000;
+  font-size: 14px; /* doubled size */
+  pointer-events: none;
+}
+
+/* icon color for Completed grid cells */
+.completed-icon {
+  color: #000000;
+}
+
+/* stage header hover effect */
+.stage-header-letter {
+  transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
+  text-decoration: none;
+}
+.stage-header:hover .stage-header-letter {
+  transform: scale(1.07);
+  fill: #ffffff;
+  text-decoration: underline;
 }

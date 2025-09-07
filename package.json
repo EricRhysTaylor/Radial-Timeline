@@ -1,12 +1,13 @@
 {
 	"name": "obsidian-manuscript-timeline",
-	"version": "2.1.0",
+	"version": "2.2.0",
 	"description": "A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "node code-quality-check.mjs src/main.ts && node esbuild.config.mjs production",
+		"release": "node release-script.mjs",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"prepare": "husky",
 		"check-quality": "node code-quality-check.mjs src/main.ts"
