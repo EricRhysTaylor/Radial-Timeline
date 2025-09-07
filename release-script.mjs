@@ -15,16 +15,20 @@ function question(prompt) {
     });
 }
 
-function runCommand(command, description, silent = false) {
+function runCommand(command, description, silent = false, allowFail = false) {
     if (!silent) console.log(`\n🔄 ${description}...`);
     try {
         const output = execSync(command, { encoding: 'utf8', stdio: silent ? 'pipe' : 'inherit' });
         if (!silent) console.log(`✅ ${description} completed`);
         return output;
     } catch (error) {
-        console.error(`❌ Failed: ${description}`);
-        console.error(error.message);
-        process.exit(1);
+        if (!allowFail) {
+            console.error(`❌ Failed: ${description}`);
+            console.error(error.message);
+            process.exit(1);
+        }
+        if (!silent) console.warn(`⚠️  ${description} failed but continuing: ${error.message}`);
+        return null;
     }
 }
 
@@ -55,6 +59,15 @@ function getLastReleaseTag() {
         return tag || null;
     } catch {
         return null;
+    }
+}
+
+function tagExists(tag) {
+    try {
+        const out = execSync(`git tag -l "${tag}"`, { encoding: 'utf8' });
+        return out.trim() === tag;
+    } catch {
+        return false;
     }
 }
 
@@ -206,71 +219,45 @@ Choose (1/2): `);
         }
 
         // Create and push tag (handle existing tags)
-        try {
-            runCommand(`git tag ${newVersion}`, "Creating git tag");
-        } catch (error) {
-            if (error.message.includes('already exists')) {
-                console.log(`ℹ️  Tag ${newVersion} already exists, skipping tag creation`);
-            } else {
-                throw error;
-            }
+        if (tagExists(newVersion)) {
+            console.log(`ℹ️  Tag ${newVersion} already exists, skipping tag creation`);
+        } else {
+            const tagRes = runCommand(`git tag ${newVersion}`, "Creating git tag", false, true);
+            if (!tagRes) console.log(`ℹ️  Skipped creating tag ${newVersion}`);
         }
         
         runCommand("git push origin master", "Pushing changes");
         
-        try {
-            runCommand(`git push origin ${newVersion}`, "Pushing tag");
-        } catch (error) {
-            if (error.message.includes('already exists')) {
-                console.log(`ℹ️  Tag ${newVersion} already pushed, continuing`);
-            } else {
-                throw error;
-            }
-        }
+        const pushTagRes = runCommand(`git push origin ${newVersion}`, "Pushing tag", false, true);
+        if (!pushTagRes) console.log(`ℹ️  Tag ${newVersion} already pushed or skipped`);
 
         // Create GitHub release with release assets
         // Escape quotes in release notes for command line
         const escapedNotes = releaseNotes.replace(/"/g, '\\"').replace(/\n/g, '\\n');
         
-        try {
-            let releaseCommand;
-            
-            if (createDraft) {
-                // Create draft release
-                releaseCommand = `gh release create ${newVersion} ` +
-                    `release/main.js release/manifest.json release/styles.css ` +
-                    `--title "${newVersion}" ` +
-                    `--notes "${escapedNotes}" ` +
-                    `--draft`;
-                
-                runCommand(releaseCommand, "Creating draft GitHub release");
-            } else {
-                // Create published release
-                releaseCommand = `gh release create ${newVersion} ` +
-                    `release/main.js release/manifest.json release/styles.css ` +
-                    `--title "${newVersion}" ` +
-                    `--notes "${escapedNotes}" ` +
-                    `--latest`;
-                
-                runCommand(releaseCommand, "Creating GitHub release");
-            }
-        } catch (error) {
-            if (error.message.includes('already exists')) {
-                console.log(`ℹ️  Release ${newVersion} already exists, updating instead`);
-                
-                // Update existing release
-                const updateCommand = `gh release edit ${newVersion} ` +
-                    `--title "${newVersion}" ` +
-                    `--notes "${escapedNotes}" ` +
-                    (createDraft ? `--draft` : `--latest`);
-                
-                runCommand(updateCommand, "Updating GitHub release");
-                
-                // Upload assets separately
-                runCommand(`gh release upload ${newVersion} release/main.js release/manifest.json release/styles.css --clobber`, "Updating release assets");
-            } else {
-                throw error;
-            }
+        let releaseCommand;
+        if (createDraft) {
+            releaseCommand = `gh release create ${newVersion} ` +
+                `release/main.js release/manifest.json release/styles.css ` +
+                `--title "${newVersion}" ` +
+                `--notes "${escapedNotes}" ` +
+                `--draft`;
+        } else {
+            releaseCommand = `gh release create ${newVersion} ` +
+                `release/main.js release/manifest.json release/styles.css ` +
+                `--title "${newVersion}" ` +
+                `--notes "${escapedNotes}" ` +
+                `--latest`;
+        }
+        const createRes = runCommand(releaseCommand, createDraft ? "Creating draft GitHub release" : "Creating GitHub release", false, true);
+        if (!createRes) {
+            console.log(`ℹ️  Release ${newVersion} may already exist, updating instead`);
+            const updateCommand = `gh release edit ${newVersion} ` +
+                `--title "${newVersion}" ` +
+                `--notes "${escapedNotes}" ` +
+                (createDraft ? `--draft` : `--latest`);
+            runCommand(updateCommand, "Updating GitHub release");
+            runCommand(`gh release upload ${newVersion} release/main.js release/manifest.json release/styles.css --clobber`, "Updating release assets", false, true);
         }
 
         if (createDraft) {
