@@ -68,6 +68,7 @@ const ACT_LABEL_OFFSET = 24;     // px outward from outer scene edge for ACT lab
 const MONTH_TICK_TERMINAL = 34;   // px outward from outer scene edge for month tick lines
 const MONTH_TEXT_INSET = 8;     // px inward from month tick ring to month text path
 const PLOT_SHADE_MAX_ADJUST = 40; // +/- percentage when shading plot colors
+const SCENE_TITLE_INSET = 20; // fixed pixels inward from the scene's outer boundary for title path
 
 // --- Tuning constants for plot label rendering/stacking ---
 const PLOT_FONT_PX = 9; // keep in sync with .plot-title in CSS
@@ -1104,9 +1105,8 @@ export function createTimelineSVG(
                         const position = positions.get(idx)!;
                             const sceneStartAngle = position.startAngle;
                             const sceneEndAngle = position.endAngle;
-                        // Scene titles: near outer edge, proportional to this ring's thickness
-                        const textInset = (outerR - innerR) * 0.35; // 35% of ring width
-                        const textPathRadius = outerR - textInset;
+                        // Scene titles: fixed inset from the top (outer) boundary of the cell
+                        const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
 
                         const color = scene.itemType === 'Plot' 
                             ? '#E6E6E6' 
@@ -1135,8 +1135,7 @@ export function createTimelineSVG(
                         } catch {}
                         let sceneClasses = 'scene-path';
                         if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += ' scene-is-open';
-                        const fontSize = 18;
-                        const dyOffset = -1;
+                        const dyOffset = 0; // keep scene titles exactly on the midline path
 
                         // Use a single y-axis (radius) for all plot labels; no outward stacking
                         // Plot titles are inset a fixed amount from the outer scene edge
@@ -1174,7 +1173,7 @@ export function createTimelineSVG(
                                   d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} 
                                      A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
                                   fill="none"/>
-                            <text class="scene-title scene-title-${fontSize <= 10 ? 'small' : (fontSize <= 12 ? 'medium' : 'large')}${scene.path && plugin.openScenePaths.has(scene.path) ? ' scene-is-open' : ''}" dy="${dyOffset}" data-scene-id="${sceneId}">
+                            <text class="scene-title${scene.path && plugin.openScenePaths.has(scene.path) ? ' scene-is-open' : ''}" dy="${dyOffset}" data-scene-id="${sceneId}">
                                 <textPath href="#textPath-${act}-${ring}-outer-${idx}" startOffset="4">
                                     ${text}
                                 </textPath>
@@ -1231,9 +1230,8 @@ export function createTimelineSVG(
                             if (!position) return; // Skip if position is undefined
                             const sceneStartAngle = position.startAngle;
                             const sceneEndAngle = position.endAngle;
-                            // Scene titles: near outer edge, proportional to this ring's thickness
-                            const textInset = (outerR - innerR) * 0.35; // 35% of ring width
-                            const textPathRadius = outerR - textInset;
+                            // Scene titles: fixed inset from the top (outer) boundary of the cell
+                            const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
             
                             // Determine the color of a scene based on its status and due date
                             const color = (() => {
@@ -1297,7 +1295,7 @@ export function createTimelineSVG(
             
                             // In createTimelineSVG method, replace the font size calculation with a fixed size:
                             const fontSize = 18; // Fixed font size for all rings
-                            const dyOffset = -1;
+                            // No vertical offset; follow textPath baseline
             
                             // (No plot labels rendered in inner rings)
             
@@ -1314,7 +1312,7 @@ export function createTimelineSVG(
                                       d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} 
                                          A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
                                       fill="none"/>
-                                <text class="scene-title scene-title-${fontSize <= 10 ? 'small' : (fontSize <= 12 ? 'medium' : 'large')}${scene.path && plugin.openScenePaths.has(scene.path) ? ' scene-is-open' : ''}" dy="${dyOffset}" data-scene-id="${sceneId}">
+                                <text class="scene-title${scene.path && plugin.openScenePaths.has(scene.path) ? ' scene-is-open' : ''}" data-scene-id="${sceneId}">
                                     <textPath href="#textPath-${act}-${ring}-${idx}" startOffset="4">
                                         ${text}
                                     </textPath>

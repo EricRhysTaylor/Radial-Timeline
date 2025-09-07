@@ -136,6 +136,7 @@
   cursor: pointer;
   fill: white;
   opacity: 1;
+  font-size: 18px;
   pointer-events: none;
 }
 .plot-title {
