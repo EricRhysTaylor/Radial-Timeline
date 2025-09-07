@@ -594,7 +594,7 @@ export function createTimelineSVG(
             const pathId = `monthLabelPath-${index}`;
             const isPastMonth = index < currentMonthIndex;
             svg += `
-                <text class="month-label-outer" ${isPastMonth ? 'opacity="0.5"' : ''}>
+                <text class="month-label-outer" ${isPastMonth ? 'opacity="0.5"' : ''} dy="-2">
                     <textPath href="#${pathId}" startOffset="0" text-anchor="start">
                         ${name}
                     </textPath>
@@ -1022,7 +1022,7 @@ export function createTimelineSVG(
                     "
                     fill="none"
                 />
-                <text class="act-label" fill="${maxStageColor}">
+                <text class="act-label" fill="${maxStageColor}" dy="-2">
                     <textPath href="#${actPathId}" startOffset="0" text-anchor="start">
                         ACT ${act + 1}
                     </textPath>
