@@ -63,7 +63,7 @@ interface PluginRendererFacade {
 // --- Small helpers to centralize ring logic ---
 
 // Offsets are based solely on the outer scene ring's outer radius
-const PLOT_TITLE_INSET = -2;     // px inward from outer scene edge for plot titles
+const PLOT_TITLE_INSET = -3;     // px inward from outer scene edge for plot titles
 const ACT_LABEL_OFFSET = 24;     // px outward from outer scene edge for ACT labels
 const MONTH_TICK_TERMINAL = 34;   // px outward from outer scene edge for month tick lines
 const MONTH_TEXT_INSET = 8;     // px inward from month tick ring to month text path

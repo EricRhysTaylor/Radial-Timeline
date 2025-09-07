@@ -28,6 +28,26 @@ function runCommand(command, description, silent = false) {
     }
 }
 
+function updateManifestAndVersions(targetVersion) {
+    // Keep manifest.json and versions.json in sync with package.json
+    const manifestPath = 'src/manifest.json';
+    const versionsPath = 'versions.json';
+    try {
+        const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+        const { minAppVersion } = manifest;
+        manifest.version = targetVersion;
+        writeFileSync(manifestPath, JSON.stringify(manifest, null, '\t'));
+
+        const versions = JSON.parse(readFileSync(versionsPath, 'utf8'));
+        versions[targetVersion] = minAppVersion;
+        writeFileSync(versionsPath, JSON.stringify(versions, null, '\t'));
+        console.log(`✅ Synced manifest.json and versions.json to ${targetVersion}`);
+    } catch (err) {
+        console.error('❌ Failed to update manifest/versions:', err.message);
+        process.exit(1);
+    }
+}
+
 function getLastReleaseTag() {
     try {
         const output = execSync('git tag --sort=-version:refname | head -1', { encoding: 'utf8' });
@@ -163,18 +183,13 @@ Choose (1/2): `);
     rl.close();
 
     try {
-        // Update package.json version
-        packageJson.version = newVersion;
-        writeFileSync("package.json", JSON.stringify(packageJson, null, "\t"));
-        console.log(`✅ Updated package.json to version ${newVersion}`);
-
-        // Run npm version to update manifest.json and versions.json (only if version changed)
+        // Version bump and file sync
         if (newVersion !== currentVersion) {
-            runCommand(`npm version ${newVersion} --no-git-tag-version`, "Updating version files");
+            // Use npm to bump version and trigger package.json "version" script
+            runCommand(`npm version ${newVersion} --no-git-tag-version`, "Bumping version and updating manifest/versions");
         } else {
-            console.log(`ℹ️  Version unchanged, skipping npm version command`);
-            // Still need to update manifest.json and versions.json manually for same-version re-releases
-            runCommand(`node version-bump.mjs`, "Updating manifest and versions files");
+            console.log(`ℹ️  Version unchanged, syncing manifest/versions only`);
+            updateManifestAndVersions(newVersion);
         }
 
         // Run build process
