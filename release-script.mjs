@@ -280,10 +280,17 @@ Choose (1/2): `);
             console.log(`💡 Remember to publish the release when you're done editing!`);
             
             try {
-                runCommand(`gh release edit ${newVersion} --web`, "Opening release editor in browser", true);
+                // Open in browser via GitHub CLI (edit doesn't support --web; view does)
+                runCommand(`gh release view ${newVersion} --web`, "Opening release in browser", true);
             } catch (error) {
-                console.log(`⚠️  Could not open browser automatically. You can edit the draft release at:`);
-                console.log(`   https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases/tag/${newVersion}`);
+                // Fallback: try OS open command on macOS
+                try {
+                    const url = `https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases/tag/${newVersion}`;
+                    runCommand(`open ${url}`, "Opening release in browser", true);
+                } catch (e2) {
+                    console.log(`⚠️  Could not open browser automatically. You can edit the draft release at:`);
+                    console.log(`   https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases/tag/${newVersion}`);
+                }
             }
         } else {
             console.log(`\n🎉 Release ${newVersion} published successfully!`);
