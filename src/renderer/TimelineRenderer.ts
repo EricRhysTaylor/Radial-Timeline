@@ -61,8 +61,12 @@ interface PluginRendererFacade {
 }
 
 // --- Small helpers to centralize ring logic ---
-const OUTER_TEXT_OFFSET = 25; // px from outer ring for scene text
-const PLOT_LABEL_OUTWARD_OFFSET = 26; // px outward nudge for plot labels
+
+// Offsets are based solely on the outer scene ring's outer radius
+const PLOT_TITLE_INSET = -2;     // px inward from outer scene edge for plot titles
+const ACT_LABEL_OFFSET = 24;     // px outward from outer scene edge for ACT labels
+const MONTH_TICK_TERMINAL = 34;   // px outward from outer scene edge for month tick lines
+const MONTH_TEXT_INSET = 8;     // px inward from month tick ring to month text path
 const PLOT_SHADE_MAX_ADJUST = 40; // +/- percentage when shading plot colors
 
 // --- Tuning constants for plot label rendering/stacking ---
@@ -104,7 +108,8 @@ function computeGlobalPlotLevels(
     const outerRingIndex = ringStartRadii.length - 1;
     const innerROuter = ringStartRadii[outerRingIndex];
     const outerROuter = innerROuter + ringWidths[outerRingIndex];
-    const baseRadius = (outerROuter - OUTER_TEXT_OFFSET) + PLOT_LABEL_OUTWARD_OFFSET;
+    // Use the same reference as rendering: plot titles are inset from the outer scene edge
+    const baseRadius = outerROuter - PLOT_TITLE_INSET;
     const gapAngle = ANGULAR_GAP_PX / Math.max(1, baseRadius);
 
     type Entry = { key: string; labelStart: number; labelEnd: number };
@@ -256,19 +261,8 @@ function getFillForItem(
     isOuterAllScenes?: boolean
 ): string {
     if (scene.itemType === 'Plot') {
-        if (!allowPlotShading) return 'transparent';
-        const baseColor = maxStageColor;
-        const totalPlots = totalPlotNotes;
-        if (totalPlots === 0) return baseColor;
-        const plotIndex = plotIndexByKey.get(`${scene.title}::${scene.actNumber}`) ?? 0;
-        const adjustmentRange = PLOT_SHADE_MAX_ADJUST * 2;
-        const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
-        const adjustment = (position * adjustmentRange) - PLOT_SHADE_MAX_ADJUST;
-        if (adjustment < 0) {
-            return plugin.darkenColor(baseColor, Math.abs(adjustment));
-        } else {
-            return plugin.lightenColor(baseColor, adjustment);
-        }
+        // Solid white for plot beats
+        return '#FFFFFF';
     }
 
     const statusList = Array.isArray(scene.status) ? scene.status : [scene.status];
@@ -299,7 +293,7 @@ export function createTimelineSVG(
     
         const sceneCount = scenes.length;
         const size = 1600;
-        const margin = 30;
+        const margin = 34; //Offset from the SVG edge to the First Plot Ring
         const innerRadius = 200; // the first ring is 200px from the center
         const outerRadius = size / 2 - margin;
         const maxTextWidth = 500; // Define maxTextWidth for the synopsis text
@@ -326,6 +320,7 @@ export function createTimelineSVG(
         let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
                        xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg" 
                        preserveAspectRatio="xMidYMid meet">`;
+        
 
         // Hidden config group consumed by the stylesheet (e.g. to tint buttons, etc.)
         svg += `<g id="timeline-config-data" data-max-stage-color="${maxStageColor}"></g>`;
@@ -432,10 +427,12 @@ export function createTimelineSVG(
     
         // Months radius outer and inner
         const lineInnerRadius = ringStartRadii[0] - 20;
-        const lineOuterRadius = ringStartRadii[N - 1] + ringWidths[N - 1] + 30;
+        // Month tick ring sits a fixed offset from the outer scene edge
+        const lineOuterRadius = ringStartRadii[N - 1] + ringWidths[N - 1] + MONTH_TICK_TERMINAL;
     
         // **Include the `<style>` code here**
         svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg" preserveAspectRatio="xMidYMid meet">`;
+        
 
         // After radii are known, compute global stacking map (outer-ring all-scenes only)
         if (plugin.settings.outerRingAllScenes) {
@@ -523,7 +520,8 @@ export function createTimelineSVG(
         // Define outer arc paths for months
         months.forEach(({ name, angle }, index) => {
             // Calculate angular offset for 9px at the label radius
-            const outerlabelRadius = lineOuterRadius - 10; //the larger the number the closer to the center
+            // Month text path sits a fixed inset from the month tick ring
+            const outerlabelRadius = lineOuterRadius - MONTH_TEXT_INSET;
             // Convert 5px to radians based on the circle's circumference
             const pixelToRadian = (5 * 2 * Math.PI) / (2 * Math.PI * outerlabelRadius);
             
@@ -594,7 +592,7 @@ export function createTimelineSVG(
             const pathId = `monthLabelPath-${index}`;
             const isPastMonth = index < currentMonthIndex;
             svg += `
-                <text class="month-label-outer" ${isPastMonth ? 'opacity="0.5"' : ''} dy="-2">
+                <text class="month-label-outer" ${isPastMonth ? 'opacity="0.5"' : ''}>
                     <textPath href="#${pathId}" startOffset="0" text-anchor="start">
                         ${name}
                     </textPath>
@@ -1009,7 +1007,8 @@ export function createTimelineSVG(
         const actualOuterRadiusForActs = ringStartRadii[NUM_RINGS - 1] + ringWidths[NUM_RINGS - 1];
         for (let act = 0; act < NUM_ACTS; act++) {
             const angle = (act * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-            const actLabelRadius = actualOuterRadiusForActs + 20;
+            // ACT labels sit a fixed offset from the outer scene edge
+            const actLabelRadius = actualOuterRadiusForActs + ACT_LABEL_OFFSET;
             const angleOffset = -0.085;
             const startAngleAct = angle + angleOffset;
             const endAngleAct = startAngleAct + (Math.PI / 12);
@@ -1022,7 +1021,7 @@ export function createTimelineSVG(
                     "
                     fill="none"
                 />
-                <text class="act-label" fill="${maxStageColor}" dy="-2">
+                <text class="act-label" fill="${maxStageColor}">
                     <textPath href="#${actPathId}" startOffset="0" text-anchor="start">
                         ACT ${act + 1}
                     </textPath>
@@ -1105,13 +1104,17 @@ export function createTimelineSVG(
                         const position = positions.get(idx)!;
                             const sceneStartAngle = position.startAngle;
                             const sceneEndAngle = position.endAngle;
-                        const textPathRadius = outerR - OUTER_TEXT_OFFSET;
+                        // Scene titles: near outer edge, proportional to this ring's thickness
+                        const textInset = (outerR - innerR) * 0.35; // 35% of ring width
+                        const textPathRadius = outerR - textInset;
 
-                        const color = getFillForItem(plugin, scene, maxStageColor, PUBLISH_STAGE_COLORS, totalPlotNotes, plotIndexByKey, true, subplotColorFor, true);
+                        const color = scene.itemType === 'Plot' 
+                            ? '#E6E6E6' 
+                            : getFillForItem(plugin, scene, maxStageColor, PUBLISH_STAGE_COLORS, totalPlotNotes, plotIndexByKey, true, subplotColorFor, true);
 
                         const arcPath = buildCellArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
                         const sceneId = makeSceneId(act, ring, idx, true, true);
-
+                        
                         // --- Create synopsis for OUTER ring item using matching ID ---
                         try {
                             const allSceneSubplots = scenes.filter(s => s.path === scene.path).map(s => s.subplot).filter((s): s is string => s !== undefined);
@@ -1136,7 +1139,8 @@ export function createTimelineSVG(
                         const dyOffset = -1;
 
                         // Use a single y-axis (radius) for all plot labels; no outward stacking
-                        const plotTextRadius = textPathRadius + PLOT_LABEL_OUTWARD_OFFSET;
+                        // Plot titles are inset a fixed amount from the outer scene edge
+                        const plotTextRadius = outerR - PLOT_TITLE_INSET;
 
                         // Compute a path that starts at the slice but is long enough for the full title
                         const rawTitleFull = (() => {
@@ -1163,6 +1167,7 @@ export function createTimelineSVG(
                                   d="${arcPath}" 
                                   fill="${color}" 
                                   class="${sceneClasses}"/>
+                            ${scene.itemType === 'Plot' ? `` : ``}
 
                             ${scene.itemType !== 'Plot' ? `
                             <path id="textPath-${act}-${ring}-outer-${idx}" 
@@ -1226,8 +1231,9 @@ export function createTimelineSVG(
                             if (!position) return; // Skip if position is undefined
                             const sceneStartAngle = position.startAngle;
                             const sceneEndAngle = position.endAngle;
-                            // Position text 2px from the top boundary of the cell
-                            const textPathRadius = outerR - 25;
+                            // Scene titles: near outer edge, proportional to this ring's thickness
+                            const textInset = (outerR - innerR) * 0.35; // 35% of ring width
+                            const textPathRadius = outerR - textInset;
             
                             // Determine the color of a scene based on its status and due date
                             const color = (() => {
@@ -1358,8 +1364,14 @@ export function createTimelineSVG(
                                 <g class="scene-group" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                     <path id="${sceneId}"
                                           d="${plotArcPath}" 
-                                          fill="${plotColor}" 
+                                          fill="#E6E6E6" 
                                           class="scene-path"/>
+                                    <line 
+                                        x1="${formatNumber(innerR * Math.cos(plotEndAngle))}" 
+                                        y1="${formatNumber(innerR * Math.sin(plotEndAngle))}"
+                                        x2="${formatNumber(outerR * Math.cos(plotEndAngle))}" 
+                                        y2="${formatNumber(outerR * Math.sin(plotEndAngle))}"
+                                        stroke="#000000" stroke-width="1" shape-rendering="crispEdges" />
                                 </g>`;
                                 currentAngle += plotAngularWidth;
                             });
@@ -2266,117 +2278,7 @@ export function createTimelineSVG(
         `;
 
         // Add JavaScript to handle synopsis visibility
-        const scriptSection = `
-        <script><![CDATA[
-            document.querySelectorAll('.scene-group').forEach(sceneGroup => {
-                const scenePathElement = sceneGroup.querySelector('.scene-path');
-                if (!scenePathElement) return; // Skip if no path element found
-
-                const sceneId = scenePathElement.id;
-                const synopsis = document.querySelector(\`.scene-info[data-for-scene="\${sceneId}"]\`);
-                const gradeLine = document.querySelector(\`.grade-border-line[data-scene-id="\${sceneId}"]\`); // Find the grade line
-
-                sceneGroup.addEventListener('mouseenter', () => {
-                    if (synopsis) {
-                        synopsis.classList.add('visible');
-                    }
-                });
-
-                sceneGroup.addEventListener('mouseleave', () => {
-                    if (synopsis) {
-                        synopsis.classList.remove('visible');
-                    }
-                    if (gradeLine) { // Check if grade line exists
-                        gradeLine.classList.add('non-selected'); // Add non-selected on mouse out
-                    }
-                });
-            });
-
-            // Rotation toggle behavior
-            (function() {
-                const svgRoot = document.querySelector('.manuscript-timeline-svg');
-                if (!svgRoot) return;
-                const rotatable = svgRoot.querySelector('#timeline-rotatable');
-                const toggle = svgRoot.querySelector('#rotation-toggle');
-                const up = svgRoot.querySelector('#rotation-arrow-up');
-                const down = svgRoot.querySelector('#rotation-arrow-down');
-                if (!rotatable || !toggle || !up || !down) return;
-
-                let rotated = false;
-                const applyRotation = () => {
-                    if (rotated) {
-                        rotatable.setAttribute('transform', 'rotate(120)');
-                        up.setAttribute('style', 'display: none;');
-                        down.setAttribute('style', 'display: inline;');
-                    } else {
-                        rotatable.removeAttribute('transform');
-                        up.setAttribute('style', 'display: inline;');
-                        down.setAttribute('style', 'display: none;');
-                    }
-                };
-                applyRotation();
-
-                toggle.addEventListener('click', () => {
-                    rotated = !rotated;
-                    applyRotation();
-                });
-            })();
-        ]]></script>`;
-
-        // Add debug coordinate display
-        if (plugin.settings.debug) {
-            svg += `
-                <g class="debug-info-container svg-interaction"><!-- SAFE: class-based SVG interaction -->
-                    <rect class="debug-info-background" x="-790" y="-790" width="230" height="40" rx="5" ry="5" fill="rgba(255,255,255,0.9)" stroke="#333333" stroke-width="1" />
-                    <text class="debug-info-text" id="mouse-coords-text" x="-780" y="-765" fill="#ff3300" font-size="20px" font-weight="bold" stroke="white" stroke-width="0.5px" paint-order="stroke">Mouse: X=0, Y=0</text>
-                </g>
-                <script><![CDATA[
-                    (function() {
-                        // Wait for DOM to be ready
-                        window.addEventListener('DOMContentLoaded', function() {
-                        
-                            
-                            // Get SVG element and coordinate text
-                            const svg = document.querySelector('.manuscript-timeline-svg');
-                            const coordText = document.getElementById('mouse-coords-text');
-                            
-                            if (!svg || !coordText) {
-                                console.error("Couldn't find SVG or coordinate text element");
-                                return;
-                            }
-                            
-                            // Add mousemove handler to the main SVG element
-                            svg.addEventListener('mousemove', function(e) {
-                                try {
-                                    const pt = svg.createSVGPoint();
-                                    pt.x = e.clientX;
-                                    pt.y = e.clientY;
-                                    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-                                    coordText.textContent = 'Mouse: X=' + Math.round(svgP.x) + ', Y=' + Math.round(svgP.y);
-                                } catch (err) {
-                                    console.error("Error calculating coordinates:", err);
-                                }
-                            });
-                            
-                            // Also log coordinates on click
-                            svg.addEventListener('click', function(e) {
-                                try {
-                                    const pt = svg.createSVGPoint();
-                                    pt.x = e.clientX;
-                                    pt.y = e.clientY;
-                                    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
-                    
-                                } catch (err) {
-                                    console.error("Error calculating coordinates:", err);
-                                }
-                            });
-                            
-                        
-                        });
-                    })();
-                ]]></script>
-            `;
-        }
+        const scriptSection = ``;
 
         // If not in debug mode, close SVG normally
         svg += `${scriptSection}</svg>`;

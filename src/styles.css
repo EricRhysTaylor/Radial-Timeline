@@ -97,6 +97,9 @@
   background-color: transparent;
   fill: none;
 }
+
+/* Debug: visualize the SVG viewport box */
+
 .scene-path {
   cursor: pointer;
   stroke: #ffffff;
@@ -182,6 +185,12 @@
   pointer-events: none !important;
 }
 
+.month-label  ,
+.month-label-outer,
+.act-label,
+.plot-title {
+  pointer-events: none;
+}
 .month-label {  
   font-size: 16px;
   fill: var(--text-normal);

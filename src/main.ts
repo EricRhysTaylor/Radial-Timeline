@@ -1502,7 +1502,7 @@ public createTimelineSVG(scenes: Scene[]) {
             }
             
             this.refreshTimeout = null;
-        }, 1000); // 1 second debounce
+        }, 400); // 400 ms debounce
     }
 
 

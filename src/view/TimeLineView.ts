@@ -899,28 +899,131 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                 // const sceneGroups = svgElement.querySelectorAll('.scene-group'); // REMOVE this redeclaration
                 const subplotLabels = svgElement.querySelectorAll<SVGTextElement>('.subplot-label-text'); // Use type assertion
 
-                if (subplotLabels.length > 0) { // Only add listeners if subplot labels exist
-                    // Attach listeners to GROUPS (using the existing sceneGroups variable)
-                    sceneGroups.forEach(group => {
-                        group.addEventListener('mouseenter', () => {
-                            subplotLabels.forEach(label => {
-                                label.classList.add('non-selected'); // Use standard class
-                            });
+                if (subplotLabels.length > 0) {
+                    const onEnterLeave = (hovering: boolean, targetGroup: Element | null) => {
+                        if (!targetGroup) return;
+                        subplotLabels.forEach(label => {
+                            if (hovering) label.classList.add('non-selected'); else label.classList.remove('non-selected');
                         });
-
-                        group.addEventListener('mouseleave', () => {
-                            subplotLabels.forEach(label => {
-                                label.classList.remove('non-selected'); // Use standard class
-                            });
+                    };
+                    const svg = container.querySelector('.manuscript-timeline-svg') as SVGSVGElement;
+                    if (svg) {
+                        let lastHoverGroup: Element | null = null;
+                        svg.addEventListener('pointerover', (e: PointerEvent) => {
+                            const g = (e.target as Element).closest('.scene-group');
+                            if (g && g !== lastHoverGroup) {
+                                onEnterLeave(true, g);
+                                lastHoverGroup = g;
+                            }
                         });
-                    });
-                    if (this.plugin.settings.debug) this.plugin.log(`Added hover listeners to ${sceneGroups.length} scene groups to fade ${subplotLabels.length} subplot labels using .non-selected.`);
+                        svg.addEventListener('pointerout', (e: PointerEvent) => {
+                            const g = (e.target as Element).closest('.scene-group');
+                            if (g && g === lastHoverGroup) {
+                                onEnterLeave(false, g);
+                                lastHoverGroup = null;
+                            }
+                        });
+                    }
                 }
                 // --- END: Add hover effect for scene paths ---
+
+                // Delegated hover will be bound after we append the fragment
             }
                 
             // Add the fragment to the container
             container.appendChild(fragment);
+            // --- SVG-level delegated hover for scenes and synopsis (bind after append) ---
+            (function setupDelegatedSceneHover(view: ManuscriptTimelineView) {
+                const svg = container.querySelector('.manuscript-timeline-svg') as SVGSVGElement | null;
+                if (!svg) return;
+
+                let currentGroup: Element | null = null;
+                let currentSynopsis: Element | null = null;
+                let currentSceneId: string | null = null;
+                let rafId: number | null = null;
+
+                const clearSelection = () => {
+                    const all = svg.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title, .grade-border-line');
+                    all.forEach(el => el.classList.remove('selected', 'non-selected'));
+                    if (currentSynopsis) currentSynopsis.classList.remove('visible');
+                    currentGroup = null; currentSynopsis = null; currentSceneId = null;
+                };
+
+                const applySelection = (group: Element, sceneId: string) => {
+                    const pathEl = group.querySelector('.scene-path');
+                    if (pathEl) (pathEl as Element).classList.add('selected');
+                    const numberSquare = svg.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
+                    if (numberSquare) numberSquare.classList.add('selected');
+                    const numberText = svg.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                    if (numberText) numberText.classList.add('selected');
+                    const gradeLine = svg.querySelector(`.grade-border-line[data-scene-id="${sceneId}"]`);
+                    if (gradeLine) gradeLine.classList.add('selected');
+                    const sceneTitle = group.querySelector('.scene-title');
+                    if (sceneTitle) sceneTitle.classList.add('selected');
+
+                    const related = new Set<Element>();
+                    const currentPathAttr = group.getAttribute('data-path');
+                    if (currentPathAttr) {
+                        const matches = svg.querySelectorAll(`[data-path="${currentPathAttr}"]`);
+                        matches.forEach(mg => {
+                            if (mg === group) return;
+                            const rp = mg.querySelector('.scene-path'); if (rp) related.add(rp);
+                            const rt = mg.querySelector('.scene-title'); if (rt) related.add(rt);
+                            const rid = (rp as SVGPathElement | null)?.id;
+                            if (rid) {
+                                const rsq = svg.querySelector(`.number-square[data-scene-id="${rid}"]`); if (rsq) related.add(rsq);
+                                const rtx = svg.querySelector(`.number-text[data-scene-id="${rid}"]`); if (rtx) related.add(rtx);
+                            }
+                        });
+                    }
+                    const all = svg.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title, .grade-border-line');
+                    all.forEach(el => {
+                        if (!el.classList.contains('selected') && !related.has(el)) el.classList.add('non-selected');
+                    });
+                };
+
+                const getSceneIdFromGroup = (group: Element): string | null => {
+                    const pathEl = group.querySelector('.scene-path') as SVGPathElement | null;
+                    return pathEl?.id || null;
+                };
+
+                const findSynopsisForScene = (sceneId: string): Element | null => {
+                    return svg.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+                };
+
+                svg.addEventListener('pointerover', (e: PointerEvent) => {
+                    const g = (e.target as Element).closest('.scene-group');
+                    if (!g || g === currentGroup) return;
+                    clearSelection();
+                    const sid = getSceneIdFromGroup(g);
+                    if (!sid) return;
+                    currentGroup = g;
+                    currentSceneId = sid;
+                    currentSynopsis = findSynopsisForScene(sid);
+                    applySelection(g, sid);
+                    if (currentSynopsis) {
+                        currentSynopsis.classList.add('visible');
+                        view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
+                    }
+                });
+
+                svg.addEventListener('pointerout', (e: PointerEvent) => {
+                    const toEl = e.relatedTarget as Element | null;
+                    if (currentGroup && toEl && currentGroup.contains(toEl)) return;
+                    clearSelection();
+                });
+
+                const onMove = (e: PointerEvent) => {
+                    if (!currentSynopsis || !currentSceneId) return;
+                    view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, currentSceneId);
+                    rafId = null;
+                };
+                svg.addEventListener('pointermove', (e: PointerEvent) => {
+                    if (rafId !== null) return;
+                    rafId = window.requestAnimationFrame(() => onMove(e));
+                });
+            })(this);
+            // --- end delegated hover ---
             
         } catch (error) {
             console.error("Error rendering timeline:", error);
@@ -981,7 +1084,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             });
         }
         
-        // Set up mouseover events for synopses
+        // Set up mouseover events for synopses (delegated at svg level; keep only click here)
         const sceneId = path.id;
         let synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
 
@@ -1004,127 +1107,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
             }
         }
 
-        if (synopsis) {
-            // Performance optimization: Use a debounced mousemove handler instead of directly updating
-            let timeoutId: number | null = null;
-            
-            // Apply mouseover effects for the group/path
-            group.addEventListener("mouseenter", (event: MouseEvent) => {
-                // Reset all previous mouseover effects to ensure clean state
-                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title, .grade-border-line'); // <<< Added grade-border-line here
-                allElements.forEach(element => {
-                    // Remove only the selected and non-selected classes, but keep the scene-is-open class
-                    element.classList.remove('selected', 'non-selected');
-                });
-                
-                // Highlight the current scene path and related elements
-                const currentPath = group.querySelector('.scene-path');
-                if (currentPath) {
-                    currentPath.classList.add('selected');
-                    
-                    // Also highlight the number square and text
-                    const sceneId = path.id;
-                    const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
-                    const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
-                    const gradeLine = svgElement.querySelector(`.grade-border-line[data-scene-id="${sceneId}"]`); // <<< Find the grade line
-                    
-                    if (numberSquare) {
-                        numberSquare.classList.add('selected');
-                    }
-                    
-                    if (numberText) {
-                        numberText.classList.add('selected');
-                    }
-
-                    // <<< NEW: Add selected class to grade line if it exists
-                    if (gradeLine) {
-                        gradeLine.classList.add('selected'); 
-                        // We also implicitly prevent non-selected from being added later by including it in `allElements` 
-                        // and removing non-selected initially, and then adding selected here.
-                    }
-                    
-                    // Highlight the scene title
-                    const sceneTitle = group.querySelector('.scene-title');
-                    if (sceneTitle) {
-                        sceneTitle.classList.add('selected');
-                    }
-                }
-                
-                // Cross-ring highlighting: identify related scenes by path
-                const currentScenePath = group.getAttribute('data-path');
-                const relatedSceneElements = new Set<Element>();
-                
-                if (currentScenePath) {
-                    // Find all scene groups with the same path (cross-ring scenes)
-                    const allMatchingGroups = svgElement.querySelectorAll(`[data-path="${currentScenePath}"]`);
-                    allMatchingGroups.forEach(matchingGroup => {
-                        if (matchingGroup !== group) { // Skip the current group
-                            // Collect elements from related scenes
-                            const relatedPath = matchingGroup.querySelector('.scene-path');
-                            const relatedTitle = matchingGroup.querySelector('.scene-title');
-                            
-                            if (relatedPath) relatedSceneElements.add(relatedPath);
-                            if (relatedTitle) relatedSceneElements.add(relatedTitle);
-                            
-                            // Number squares are not children of scene groups, find them by scene ID
-                            const relatedSceneId = relatedPath?.id;
-                            if (relatedSceneId) {
-                                const relatedSquare = svgElement.querySelector(`.number-square[data-scene-id="${relatedSceneId}"]`);
-                                const relatedText = svgElement.querySelector(`.number-text[data-scene-id="${relatedSceneId}"]`);
-                                
-                                if (relatedSquare) relatedSceneElements.add(relatedSquare);
-                                if (relatedText) relatedSceneElements.add(relatedText);
-                            }
-                        }
-                    });
-                }
-
-                // Make other scenes less prominent, but preserve has-edits styling
-                // Exclude both selected elements and related scene elements from non-selected
-                allElements.forEach(element => {
-                    if (!element.classList.contains('selected') && !relatedSceneElements.has(element)) {
-                        // Apply non-selected class to all non-hovered and non-related elements.
-                        element.classList.add('non-selected');
-                    }
-                });
-                
-                // Make the tooltip visible
-                synopsis.classList.add('visible');
-
-                // Update position on initial hover
-                const svg = svgElement.closest('svg') as SVGSVGElement;
-                this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
-            });
-            
-            // Use mousemove with debounce to improve performance
-            group.addEventListener("mousemove", (event: MouseEvent) => {
-                if (timeoutId) {
-                    window.clearTimeout(timeoutId);
-                }
-                
-                timeoutId = window.setTimeout(() => {
-                    const svg = svgElement.closest('svg') as SVGSVGElement;
-                    this.plugin.updateSynopsisPosition(synopsis, event, svg, sceneId);
-                    timeoutId = null;
-                }, 50); // 50ms debounce
-            });
-            
-            group.addEventListener("mouseleave", () => {
-                if (timeoutId) {
-                    window.clearTimeout(timeoutId);
-                    timeoutId = null;
-                }
-                
-                // Hide the tooltip
-                synopsis.classList.remove('visible');
-
-                // Reset element selection/non-selection classes
-                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title, .grade-border-line');
-                allElements.forEach(element => {
-                    element.classList.remove('selected', 'non-selected');
-                });
-            });
-        }
+        // Delegated hover handled at svg level (see above); synopsis use rAF throttle there.
     }
     
     // Helper method to highlight files in the navigator and tab bar
