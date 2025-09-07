@@ -24,29 +24,29 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 ## Features
 
-- Creates an interactive radial timeline visualization of your scenes
+- Creates an interactive radial timeline visualization of scenes
 - Organizes scenes by act, subplot, and chronological order
-- Allows CCW rotation of timeline so act 2 is moved up to act 1 position for readability
-- Save the Cat beat structure support with `Class: Plot` notes for story beats
-- Shows scene details on hover including title, date, synopsis, subplots, characters, overdue line, and revisions line when present
+- Rotates counterclockwise so act 2 can align under act 1 for readability
+- Supports Save the Cat beats via `Class: Plot` notes that render as slices
+- Shows scene details on hover: title, date, synopsis, subplots, characters, overdue and revisions lines
 - Color-codes scenes by status (Complete, Working, Todo, etc.)
-- Plot notes display with graduated color shading and narrow width
-- Supports both light and dark themes
-- Allows clicking on scenes to open the corresponding file
-- Visually highlights currently open scene tabs in the radial timeline with special styling
-- Displays estimated completion date based on remaining Todo/Working scenes and your recent progress rate (excludes Plot notes)
-- Shows a visual arc and marker indicating the estimated completion timeframe
-- Labels subplot rings with descriptive titles for easy identification
-- Fully integrated into Obsidian's interface - no external plugins required
+- Displays plot notes with graduated shading and narrow width
+- Supports light and dark themes
+- Opens a scene on click
+- Highlights currently open scene tabs in the radial timeline
+- Estimates completion date based on remaining Todo/Working scenes and recent progress rate (excludes plot notes)
+- Shows a visual arc and marker for the estimated completion timeframe
+- Labels subplot rings with descriptive titles
+- Fully integrated into Obsidian's interface (no external plugins required)
 
 ## Commands
 
-* Open
-* Search timeline
-* Clear search
-* Update flagged beats (manuscript order)
-* Update flagged beats (subplot order)
-* Clear beats cache (to reprocess all notes already processed)
+* Open: open the timeline view
+* Search timeline: filter by title, character, subplot, or date
+* Clear search: reset all search filters
+* Update flagged beats (manuscript order): process `BeatsUpdate: Yes` notes in manuscript order
+* Update flagged beats (subplot order): process `BeatsUpdate: Yes` notes in subplot order
+* Clear beats cache: clear saved beat results to force a full reprocess
 
 <a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
   <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px;" />
@@ -66,47 +66,41 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 The plugin offers several settings to customize its behavior and enable AI features:
 
-*   Source path: Specify the root folder containing your manuscript scene files (e.g., "Book 1/Scenes"). Leave blank to scan the entire vault.
-*   Target completion date: Optional: Set a target date for project completion (YYYY-MM-DD). A marker for this date will be shown on the timeline's outer ring.
-*   Outer ring shows all scenes: When enabled, the outer ring combines all subplot scenes and displays Save the Cat beat slices on the outer ring only. When disabled, the outer ring shows only Main Plot scenes and no beat slices are drawn anywhere.
-*   AI settings for beats analysis: Configure the AI providers for features like automated beat generation.
-    *   Default AI provider: Select the primary AI service (OpenAI or Anthropic) to use for beat analysis commands.
-    *   OpenAI ChatGPT settings:
-        *   OpenAI API key: Enter your API key from OpenAI to enable ChatGPT features.
-        *   OpenAI model: Select the specific GPT model (e.g., GPT-4o, GPT-4 Turbo) to use.
-    *   Anthropic Claude settings:
-        *   Anthropic API key: Enter your API key from Anthropic to enable Claude features.
-        *   Anthropic model: Select the specific Claude model (e.g., Claude 3.7 Sonnet) to use.
-    *   Log AI interactions to file: If enabled, the plugin will create a new note in an "AI" folder within your vault for each API request and response (useful for debugging or tracking usage).
-*   Debug mode: Enable detailed logging in the developer console (useful for troubleshooting issues).
-*   Publishing stage colors: Customize the colors used for scenes based on their "Publish Stage" metadata (Zero, Author, House, Press). Each color has a reset button to restore its default value.
+* Source path: set the root folder for scene files (for example, "Book 1/Scenes"). Leave blank to scan the entire vault.
+* Target completion date: optional target date (YYYY-MM-DD). A marker appears on the outer ring.
+* Outer ring shows all scenes: when on, the outer ring combines all subplot scenes and shows beat slices there only. When off, the outer ring shows Main Plot only and no beat slices are drawn.
+* AI settings for beats analysis: configure OpenAI or Anthropic for automated beat generation via commands.
+    * Default AI provider: choose OpenAI or Anthropic
+    * OpenAI settings: API key and model
+    * Anthropic settings: API key and model
+    * Log AI interactions to file: creates notes in an "AI" folder with request/response details
+* Debug mode: enables developer console logging for troubleshooting
+* Publishing stage colors: customize colors for `Publish Stage` values (Zero, Author, House, Press). Each has a reset button.
 
 ## Required scene metadata
 
-Scene files must have the following frontmatter:
-- Class: Scene - Identifies the file as a scene and part of the manuscript
-- `Synopsis` - Brief description of the scene (required)
-- Subplot - Subplot(s) the scene belongs to (default if empty is Main Plot)
-- Act - Act number (1-3) (if empty then 1)
-- `When` - Date of the scene (required)
-- Character - Characters in the scene
-- Publish Stage - (Zero, Author, House, Press)
-- Status - Scene status (Todo, Working, Complete)
-- `Due` - Due date for the scene (required)
-- Pending Edits - Optional future editing notes
-- 1beats - First Scene beats linking to actively edited scene 2
-- 2beats - Second Scene beats, the active scene under current edit
-- 3beats - Third Scene beats linking to scene 2
-- BeatsUpdate: Yes
-- Book: Book 1 A New Beginning
----
+Scene files use YAML frontmatter. Keys commonly used by the timeline are:
+- `Class`: must be `Scene` to include in the timeline
+- `Synopsis` (required): brief description of the scene
+- `Subplot` (optional): one or more subplot names; defaults to Main Plot when empty
+- `Act` (optional): 1–3; defaults to 1 when empty
+- `When` (required): the scene date (YYYY-MM-DD)
+- `Character` (optional): one or more characters
+- `Publish Stage` (optional): Zero, Author, House, Press
+- `Status` (optional): Todo, Working, Complete
+- `Due` (required): due date (YYYY-MM-DD)
+- `Pending Edits` (optional): future edit notes
+- `1beats`, `2beats`, `3beats` (optional): beat lists
+- `BeatsUpdate` (optional): set to `Yes` to include in beat update commands
+- `Book` (optional): book identifier
 
-## Beats metadata (1beats, 2beats, 3beats):
+## Beats metadata (1beats, 2beats, 3beats)
 
-API using ChatGPT is implemented under the Plugin Settings. Automates generation of beats continuuity between select or all vault scenes using Obsidian Command Console 
+Beats can be generated via the plugin’s AI settings (OpenAI or Anthropic). Use the command palette to run beat update commands for the current selection or the whole vault. This helps maintain beat continuity across scenes.
 
 
 ```yaml
+---
 Class: Scene
 Synopsis: The protagonist discovers a mysterious artifact.
 Subplot:
@@ -122,21 +116,22 @@ Status: Complete
 Due: 2025-05-15
 Pending Edits: Optional notes here
 1beats:
-  - 40.5 Initial discovery + / Leads Naturally to scene 45
-  - Realizes artifact is active ? / Interesting idea
+  - 40.5 Initial discovery + / Leads naturally to scene 45
+  - Realizes artifact is active? / Interesting idea
 2beats:
-  - 45 Artifact causes minor chaos - / Needs tighter tie-in to alpha subplot for stronger bridge
+  - 45 Artifact causes minor chaos — needs tighter tie-in to alpha subplot for a stronger bridge
   - Attempts to hide it + / Great twist
 3beats:
-  - 48 Antagonist senses artifact's activation - / The subtext could be stronger
+  - 48 Antagonist senses artifact activation — the subtext could be stronger
   - Plans to investigate + / Serves as the hub for Scene 2's strategy session
 BeatsUpdate: Yes
-  - Book: Book 1 A New Beginning
+Book: Book 1 A New Beginning
+---
 ```
 
-## Plot beats slices (Save the Cat beats)
+## Plot beat slices (Save the Cat beats)
 
-The plugin now supports any plot structuring with `Class: Plot` notes. These notes represent the plot structure and appear as narrow visual slices across the outer most ring when Show All Scenes is toggled on from the Plugin Settings. Mouseover of Plot slices reveals the description.
+The plugin supports plot structuring with `Class: Plot` notes. These appear as narrow slices on the outermost ring when the “outer ring shows all scenes” setting is enabled. Hover a slice to view its description.
 
 ## Example plot note
 
@@ -149,6 +144,30 @@ Act: 1
 Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
 ---
 ```
+
+## Installation
+
+## From Obsidian
+
+1.  Open Settings > Community plugins.
+2.  Turn off Safe mode if it's on.
+3.  Click Browse and search for "Manuscript Timeline".
+4.  Click Install and then Enable.
+
+## Manual installation
+
+1.  Download the latest `main.js`, `styles.css`, and `manifest.json` from the [releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page.
+2.  Extract the files to your vault's .obsidian/plugins/manuscript-timeline
+
+## Screen resolution suggestions
+
+The Manuscript Timeline is designed for high pixel density displays (around 200 PPI or higher) for optimal visual quality. This means:
+
+- All Apple Retina displays or 2x pixel density (MacBooks, iMacs, etc.)
+- Windows systems with 4K displays or higher (may require adjusted scaling) will work well
+- Tablets and Mobile Phones all support High DPI
+
+If you're experiencing visual quality issues on Windows, please check your display scaling settings in Windows Settings > System > Display > Scale and layout.
 
 ## Technical implementation
 
@@ -163,30 +182,6 @@ The Manuscript Timeline visualization was inspired by and draws on principles fr
 
 The visualizations are built using pure SVG and JavaScript, offering a lightweight solution that maintains the elegance and interactivity of D3-style visualizations while being fully compatible with Obsidian's rendering capabilities.
 
-## Installation
-
-## From Obsidian
-
-1.  Open Settings > Community plugins.
-2.  Turn off Safe mode if it's on.
-3.  Click Browse and search for "Manuscript Calendar".
-4.  Click Install and then Enable.
-
-## Manual installation
-
-1.  Download the latest main.js, styles.css, manifest.json from the [Releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page of the GitHub repository.
-2.  Extract the files to your vault's .obsidian/plugins/manuscript-timeline
-
-## Screen resolution requirements
-
-The Manuscript Timeline is designed for high pixel density displays (around 200 PPI or higher) for optimal visual quality. This means:
-
-- All Apple Retina displays or 2x pixel density (MacBooks, iMacs, etc.)
-- Windows systems with 4K displays or higher (may require adjusted scaling) will work well
-- Tablets and Mobile Phones all support High DPI
-
-If you're experiencing visual quality issues on Windows, please check your display scaling settings in Windows Settings > System > Display > Scale and layout.
-
 ## Author
 
 Created by Eric Rhys Taylor
@@ -195,7 +190,7 @@ This plugin adheres to Obsidian.md development best practices, including secure 
 
 ## Feedback and support
 
-If you encounter any issues or have feature requests, please file an issue on the [GitHub repository issues page](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues). If you find the Manuscript Calendar plugin useful and would like to support continued development, please consider buying me a coffee:
+If you encounter issues or have feature requests, please file an issue on the [GitHub repository issues page](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues). If you find the Manuscript Timeline plugin useful and would like to support continued development, please consider buying me a coffee:
 
 <a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="width: 150px;" >
