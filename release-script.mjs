@@ -54,11 +54,25 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
             const match = line.match(/^([a-f0-9]+)\s+(.+)$/);
             if (match) {
                 const [, hash, message] = match;
-                changelog += `- ${message}\n`;
+                // Clean up the message and format it nicely
+                let cleanMessage = message.trim();
+                
+                // If message is very long, truncate it sensibly
+                if (cleanMessage.length > 80) {
+                    const words = cleanMessage.split(' ');
+                    let truncated = '';
+                    for (const word of words) {
+                        if ((truncated + ' ' + word).length > 80) break;
+                        truncated += (truncated ? ' ' : '') + word;
+                    }
+                    cleanMessage = truncated + '...';
+                }
+                
+                changelog += `- ${cleanMessage}\n`;
             }
         });
         
-        return changelog || "No changes since last release.";
+        return changelog.trim() || "No changes since last release.";
     } catch (error) {
         return "Could not generate changelog.";
     }
@@ -108,29 +122,42 @@ async function main() {
     
     // Ask if user wants to edit release notes
     const editOption = await question(`\n✏️  Release notes:
-1. Use auto-generated changelog (default)
-2. Edit in browser before publishing
+1. Publish now with auto-generated changelog
+2. Create draft release for editing in browser
 Choose (1/2): `);
     
-    let releaseNotes = `Release version ${newVersion}\n\n${autoChangelog}`;
-    let editInBrowser = false;
+    let releaseNotes = `## What's Changed\n\n${autoChangelog}`;
+    let createDraft = false;
     
     if (editOption === '2') {
-        editInBrowser = true;
-        console.log(`📝 Release will be created with auto-generated notes, then opened in browser for editing`);
-    }
-
-    console.log(`\n📋 Release Summary:`);
-    console.log(`   Current: ${currentVersion}`);
-    console.log(`   New:     ${newVersion}`);
-    console.log(`   Changes: ${lastTag ? `Since ${lastTag}` : 'Initial release'}`);
-    
-    const confirm = await question(`\n❓ Proceed with release? (y/N): `);
-    
-    if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
-        console.log("❌ Release cancelled.");
-        rl.close();
-        return;
+        createDraft = true;
+        console.log(`📝 Will create draft release for editing in browser`);
+        
+        console.log(`\n📋 Draft Release Summary:`);
+        console.log(`   Current: ${currentVersion}`);
+        console.log(`   New:     ${newVersion}`);
+        console.log(`   Changes: ${lastTag ? `Since ${lastTag}` : 'Initial release'}`);
+        
+        const confirm = await question(`\n❓ Create draft release? (y/N): `);
+        
+        if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
+            console.log("❌ Draft creation cancelled.");
+            rl.close();
+            return;
+        }
+    } else {
+        console.log(`\n📋 Release Summary:`);
+        console.log(`   Current: ${currentVersion}`);
+        console.log(`   New:     ${newVersion}`);
+        console.log(`   Changes: ${lastTag ? `Since ${lastTag}` : 'Initial release'}`);
+        
+        const confirm = await question(`\n❓ Proceed with release? (y/N): `);
+        
+        if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
+            console.log("❌ Release cancelled.");
+            rl.close();
+            return;
+        }
     }
 
     rl.close();
@@ -191,22 +218,36 @@ Choose (1/2): `);
         const escapedNotes = releaseNotes.replace(/"/g, '\\"').replace(/\n/g, '\\n');
         
         try {
-            const releaseCommand = `gh release create ${newVersion} ` +
-                `release/main.js release/manifest.json release/styles.css ` +
-                `--title "Release ${newVersion}" ` +
-                `--notes "${escapedNotes}" ` +
-                `--latest`;
+            let releaseCommand;
             
-            runCommand(releaseCommand, "Creating GitHub release");
+            if (createDraft) {
+                // Create draft release
+                releaseCommand = `gh release create ${newVersion} ` +
+                    `release/main.js release/manifest.json release/styles.css ` +
+                    `--title "${newVersion}" ` +
+                    `--notes "${escapedNotes}" ` +
+                    `--draft`;
+                
+                runCommand(releaseCommand, "Creating draft GitHub release");
+            } else {
+                // Create published release
+                releaseCommand = `gh release create ${newVersion} ` +
+                    `release/main.js release/manifest.json release/styles.css ` +
+                    `--title "${newVersion}" ` +
+                    `--notes "${escapedNotes}" ` +
+                    `--latest`;
+                
+                runCommand(releaseCommand, "Creating GitHub release");
+            }
         } catch (error) {
             if (error.message.includes('already exists')) {
                 console.log(`ℹ️  Release ${newVersion} already exists, updating instead`);
                 
                 // Update existing release
                 const updateCommand = `gh release edit ${newVersion} ` +
-                    `--title "Release ${newVersion}" ` +
+                    `--title "${newVersion}" ` +
                     `--notes "${escapedNotes}" ` +
-                    `--latest`;
+                    (createDraft ? `--draft` : `--latest`);
                 
                 runCommand(updateCommand, "Updating GitHub release");
                 
@@ -217,18 +258,21 @@ Choose (1/2): `);
             }
         }
 
-        console.log(`\n🎉 Release ${newVersion} completed successfully!`);
-        console.log(`📦 GitHub release: https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases/tag/${newVersion}`);
-        
-        // Open browser for editing if requested
-        if (editInBrowser) {
-            console.log(`\n🌐 Opening release in browser for editing...`);
+        if (createDraft) {
+            console.log(`\n🎉 Draft release ${newVersion} created successfully!`);
+            console.log(`📝 Draft release: https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases/tag/${newVersion}`);
+            console.log(`\n🌐 Opening draft release in browser for editing...`);
+            console.log(`💡 Remember to publish the release when you're done editing!`);
+            
             try {
                 runCommand(`gh release edit ${newVersion} --web`, "Opening release editor in browser", true);
             } catch (error) {
-                console.log(`⚠️  Could not open browser automatically. You can edit the release at:`);
+                console.log(`⚠️  Could not open browser automatically. You can edit the draft release at:`);
                 console.log(`   https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases/tag/${newVersion}`);
             }
+        } else {
+            console.log(`\n🎉 Release ${newVersion} published successfully!`);
+            console.log(`📦 GitHub release: https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases/tag/${newVersion}`);
         }
 
     } catch (error) {

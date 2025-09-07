@@ -42,7 +42,7 @@ if (isCI) {
 	];
 }
 
-// Files to copy (in addition to the built JS)
+// Files to copy from src/ (in addition to the built JS)
 const filesToCopy = [
 	"manifest.json",
 	"styles.css",
@@ -59,7 +59,7 @@ async function copyBuildAssets() {
 		
 		// --- Copy individual files ---
 		for (const file of filesToCopy) {
-			const sourcePath = path.join(sourceDir, file);
+			const sourcePath = path.join(sourceDir, "src", file);
 			const destPath = path.join(destDir, file);
 			
 			// Check if source file exists
@@ -93,17 +93,8 @@ async function copyBuildAssets() {
 		}
 	}
 	
-	// When running in CI, copy the built files back to the project root for releases
-	if (isCI) {
-		try {
-			if (fs.existsSync(path.join(destDirs[0], "main.js"))) {
-				fs.copyFileSync(path.join(destDirs[0], "main.js"), path.join(sourceDir, "main.js"));
-				console.log("Copied main.js to project root for release");
-			}
-		} catch (err) {
-			console.error("Error copying main.js to project root:", err);
-		}
-	}
+	// Note: Release files are now maintained in the release/ folder
+	// No need to copy to project root since release/ is the source of truth
 	
 	console.log(`Build assets copied to: ${destDirs.join(", ")}`);
 }
@@ -152,7 +143,7 @@ if (prod) {
 	
 	// Set up file watchers for non-TS files
 	filesToCopy.forEach(file => {
-		const sourcePath = path.join(sourceDir, file);
+		const sourcePath = path.join(sourceDir, "src", file);
 		fs.watch(sourcePath, async () => {
 			try {
 				// Update file in all destination directories
