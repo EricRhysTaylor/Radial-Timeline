@@ -93,6 +93,16 @@ async function copyBuildAssets() {
 		}
 	}
 	
+	// Keep root manifest.json in sync for submission tooling
+	try {
+		const srcManifest = path.join(sourceDir, "src", "manifest.json");
+		if (fs.existsSync(srcManifest)) {
+			fs.copyFileSync(srcManifest, path.join(sourceDir, "manifest.json"));
+		}
+	} catch (err) {
+		console.error("Error syncing manifest.json to project root:", err);
+	}
+	
 	// Note: Release files are now maintained in the release/ folder
 	// No need to copy to project root since release/ is the source of truth
 	
@@ -150,6 +160,14 @@ if (prod) {
 				for (const destDir of destDirs) {
 					const destPath = path.join(destDir, file);
 					fs.copyFileSync(sourcePath, destPath);
+				}
+				// Also sync root manifest.json on change
+				if (file === "manifest.json") {
+					try {
+						fs.copyFileSync(sourcePath, path.join(sourceDir, "manifest.json"));
+					} catch (e) {
+						console.error("Error syncing root manifest.json on change:", e);
+					}
 				}
 				console.log(`Files updated in all destination directories`);
 			} catch (err) {

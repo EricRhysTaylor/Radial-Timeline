@@ -68,7 +68,7 @@ const ACT_LABEL_OFFSET = 24;     // px outward from outer scene edge for ACT lab
 const MONTH_TICK_TERMINAL = 34;   // px outward from outer scene edge for month tick lines
 const MONTH_TEXT_INSET = 8;     // px inward from month tick ring to month text path
 const PLOT_SHADE_MAX_ADJUST = 40; // +/- percentage when shading plot colors
-const SCENE_TITLE_INSET = 20; // fixed pixels inward from the scene's outer boundary for title path
+const SCENE_TITLE_INSET = 22; // fixed pixels inward from the scene's outer boundary for title path
 
 // --- Tuning constants for plot label rendering/stacking ---
 const PLOT_FONT_PX = 9; // keep in sync with .plot-title in CSS
