@@ -3,6 +3,7 @@ import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice } f
 import ManuscriptTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
 import type { Scene } from '../main';
+import { PlotLabelManager } from '../utils/plotLabelManager';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "manuscript-timeline";
@@ -754,45 +755,8 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
                     });
                 }
 
-                // Post-layout adjustment: prevent plot label overlap using actual measured lengths
-                const scheduleLabelAdjust = () => {
-                    try {
-                        const plotTextNodes = Array.from(svgElement.querySelectorAll('text.plot-title')) as SVGTextElement[];
-                        const items = plotTextNodes.map((textEl) => {
-                            const tp = textEl.querySelector('textPath') as SVGTextPathElement | null;
-                            const href = tp?.getAttribute('href') || '';
-                            const pathId = href.startsWith('#') ? href.slice(1) : href;
-                            const pathNode = svgElement.querySelector(`[id="${pathId}"]`) as SVGPathElement | null;
-                            if (!pathNode) return null;
-                            const radius = parseFloat(pathNode.getAttribute('data-radius') || '0');
-                            const sliceStart = parseFloat(pathNode.getAttribute('data-slice-start') || '0');
-                            const lengthPx = textEl.getComputedTextLength();
-                            if (!isFinite(lengthPx) || lengthPx <= 0 || radius <= 0) return null;
-                            const angleSpan = lengthPx / radius;
-                            return { textEl, textPathEl: tp!, pathNode, radius, sliceStart, angleSpan };
-                        }).filter(Boolean) as { textEl: SVGTextElement; textPathEl: SVGTextPathElement; pathNode: SVGPathElement; radius: number; sliceStart: number; angleSpan: number; }[];
-
-                        items.sort((a, b) => a.sliceStart - b.sliceStart);
-                        let lastEnd = Number.NEGATIVE_INFINITY;
-                        items.forEach((it) => {
-                            const minGap = 2 / Math.max(1, it.radius);
-                            const startAngle = Math.max(it.sliceStart, lastEnd + minGap);
-                            const endAngle = startAngle + it.angleSpan;
-                            lastEnd = endAngle;
-                            // Rewrite the path arc to ensure sufficient length for the measured text
-                            const r = it.radius;
-                            const largeArcFlag = (endAngle - startAngle) > Math.PI ? 1 : 0;
-                            const sx = (r * Math.cos(startAngle)).toFixed(3);
-                            const sy = (r * Math.sin(startAngle)).toFixed(3);
-                            const ex = (r * Math.cos(endAngle)).toFixed(3);
-                            const ey = (r * Math.sin(endAngle)).toFixed(3);
-                            const d = `M ${sx} ${sy} A ${r} ${r} 0 ${largeArcFlag} 1 ${ex} ${ey}`;
-                            it.pathNode.setAttribute('d', d);
-                            // Keep a minimal startOffset for a tiny inset, but don't push beyond the path
-                            it.textPathEl.setAttribute('startOffset', '2');
-                        });
-                    } catch {}
-                };
+                // Post-layout adjustment: prevent plot label overlap and add separators
+                const scheduleLabelAdjust = () => PlotLabelManager.adjustPlotLabels(svgElement);
                 // Delay to ensure layout is ready for accurate measurements + re-run on visibility/resize
                 let adjustPending = false;
                 const debouncedAdjust = () => {

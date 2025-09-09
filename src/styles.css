@@ -510,6 +510,7 @@ tspan .search-term {
 .number-square.has-edits.scene-is-open.non-selected {
  fill: #EFEFEF;
 }
+.number-text.has-edits { fill: #ffffff; } /* Base white text for pending edits */
 .number-text.has-edits.scene-is-open.non-selected { fill: #ffffff; }
 .number-text.has-edits.scene-is-open.selected { fill: #ffffff; }
 .number-text.has-edits.search-result.selected {

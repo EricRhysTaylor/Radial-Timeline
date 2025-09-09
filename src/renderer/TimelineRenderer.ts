@@ -70,16 +70,13 @@ const MONTH_TEXT_INSET = 8;     // px inward from month tick ring to month text 
 const PLOT_SHADE_MAX_ADJUST = 40; // +/- percentage when shading plot colors
 const SCENE_TITLE_INSET = 22; // fixed pixels inward from the scene's outer boundary for title path
 
-// --- Tuning constants for plot label rendering/stacking ---
+// --- Tuning constants for plot label rendering ---
 const PLOT_FONT_PX = 9; // keep in sync with .plot-title in CSS
 const CHAR_WIDTH_EM = 0.62; // approx glyph width in em
 const LETTER_SPACING_EM = 0.07; // additional spacing in em
 const ESTIMATE_FUDGE_RENDER = 1.35; // generous length when rendering
-const ESTIMATE_FUDGE_STACK = 1.45; // even more generous when stacking
 const PADDING_RENDER_PX = 24; // extra pixels for render
-const PADDING_STACK_PX = 12; // extra pixels for stacking estimate
-const ANGULAR_GAP_PX = 16; // gap between labels on same level
-const STACK_STEP_PX = 12; // outward offset per stacking level
+const ANGULAR_GAP_PX = 16; // gap used when checking overlaps
 const TEXTPATH_START_NUDGE_RAD = 0.02; // small start nudge for text paths
 
 // --- Small helpers ---
@@ -100,6 +97,7 @@ function estimateAngleFromTitle(title: string, baseRadius: number, fontPx: numbe
 }
 
 // Compute global stacking levels for plot titles across all acts
+/* Stacking removed: computeGlobalPlotLevels no longer used
 function computeGlobalPlotLevels(
     scenes: Scene[],
     ringStartRadii: number[],
@@ -165,6 +163,7 @@ function computeGlobalPlotLevels(
 
     return result;
 }
+*/
 
 function makeSceneId(actIndex: number, ring: number, idx: number, isOuterAllScenes: boolean, isOuter: boolean): string {
     return isOuterAllScenes && isOuter
@@ -371,7 +370,7 @@ export function createTimelineSVG(
         });
 
         // Global stacking for plot titles across all acts (outer-ring all-scenes only)
-        let globalPlotLevelByKey: Map<string, number> = new Map();
+        // Stacking map removed
 
         // Group scenes by Act and Subplot
         const scenesByActAndSubplot: { [act: number]: { [subplot: string]: Scene[] } } = {};
@@ -437,7 +436,7 @@ export function createTimelineSVG(
 
         // After radii are known, compute global stacking map (outer-ring all-scenes only)
         if (plugin.settings.outerRingAllScenes) {
-            globalPlotLevelByKey = computeGlobalPlotLevels(scenes, ringStartRadii, ringWidths, NUM_ACTS);
+            // No global stacking computation
         }
 
         // Access the publishStageColors from settings
@@ -1077,17 +1076,7 @@ export function createTimelineSVG(
                     // Compute angular positions for all combined items
                     const positions = computePositions(innerR, outerR, startAngle, endAngle, combined);
 
-                    // Use global stacking map to assign outward offsets consistently across acts
-                    const plotBeatsGrouping = (() => {
-                        const result = new Map<number, { groupIndex: number; positionInGroup: number }>();
-                        combined.forEach((scene, idx) => {
-                            if (scene.itemType !== 'Plot') return;
-                            const key = `${String(scene.title || '')}::${String(scene.actNumber ?? '')}`;
-                            const level = globalPlotLevelByKey.get(key) ?? 0;
-                            result.set(idx, { groupIndex: level, positionInGroup: level });
-                        });
-                        return result;
-                    })();
+                    // Stacking removed
 
                     // Render combined items into the outer ring
                     // Helper to resolve subplot color from CSS variables
@@ -1150,6 +1139,7 @@ export function createTimelineSVG(
                         const fontPxForPlot = PLOT_FONT_PX;
                         const desiredPixels = estimatePixelsFromTitle(rawTitleFull, PLOT_FONT_PX, ESTIMATE_FUDGE_RENDER, PADDING_RENDER_PX);
                         const desiredAngleArc = desiredPixels / plotTextRadius;
+                        
                         const labelStartAngle = sceneStartAngle; // initial; post-layout adjuster will move if needed
                         const labelEndAngle = sceneStartAngle + desiredAngleArc;
                         const largeArcFlag = desiredAngleArc > Math.PI ? 1 : 0;
@@ -1159,6 +1149,8 @@ export function createTimelineSVG(
                             const i = Math.max(0, masterSubplotOrder.indexOf(name));
                             return i;
                         })();
+
+                        // No separator needed; spacing handled in positioning
 
                         svg += `
                         <g class="scene-group" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
@@ -2252,7 +2244,7 @@ export function createTimelineSVG(
         // Place the button near the Act 2 label (start of Act 2 boundary) and slightly outside along local y-axis
         const act2BaseAngle = (1 * 2 * Math.PI) / NUM_ACTS - Math.PI / 2; // Act 2 start (π/6 ≈ 30°)
         const act2Angle = act2BaseAngle; // use exact axis angle; no label offset
-        const arrowRadius = actualOuterRadius + 43; // +3px further outward along local y-axis
+        const arrowRadius = actualOuterRadius + 46; // +3px further outward along local y-axis
         // Fine-tune: adjust to a net -0.225° from the axis
         const arrowAngleAdjust = -(0.60 * Math.PI) / 180; // -0.225° in radians total
         const arrowAngle = act2Angle + arrowAngleAdjust;
