@@ -300,6 +300,7 @@ dominant-baseline: middle;
 
 .number-square{
   pointer-events: none;
+  fill: #FFFFFF;
 }
 
 .number-text {
@@ -477,9 +478,7 @@ tspan .search-term {
   fill: #000000;
   font-weight: bold;
 }
-.number-square.search-result {
-  fill: var(--color-search);
-}
+.number-square.search-result { fill: var(--color-search) !important; }
 .number-text.search-result.non-selected {
   fill: #FFFFFF !important;
 }
@@ -503,24 +502,16 @@ tspan .search-term {
   fill: #8875ff;
 }
 
-.number-square.has-edits.search-result {
-  fill: var(--color-search);
-}
-.number-square.has-edits.scene-is-open {
-  fill: var(--interactive-accent, #705DCF); 
-}
+.number-square.has-edits.search-result { fill: var(--color-search) !important; }
+.number-square.has-edits.scene-is-open { fill: #8875ff; }
 .number-square.has-edits.non-selected {
   fill: #EFEFEF !important;
 }
 .number-square.has-edits.scene-is-open.non-selected {
  fill: #EFEFEF;
 }
-.number-text.has-edits.scene-is-open.non-selected {
-  fill: #ffffff;
-}
-.number-text.has-edits.scene-is-open.selected {
-  fill: #ffffff;
-}
+.number-text.has-edits.scene-is-open.non-selected { fill: #ffffff; }
+.number-text.has-edits.scene-is-open.selected { fill: #ffffff; }
 .number-text.has-edits.search-result.selected {
   fill: #ffffff;
   font-weight: bold;

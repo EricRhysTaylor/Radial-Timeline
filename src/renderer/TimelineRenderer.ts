@@ -1982,7 +1982,6 @@ export function createTimelineSVG(
                                 y="-${squareSize.height/2}" 
                                 width="${squareSize.width}" 
                                 height="${squareSize.height}" 
-                                fill="white"
                                 class="${squareClasses}" 
                                 data-scene-id="${escapeXml(sceneId)}"
                             />
@@ -1994,7 +1993,6 @@ export function createTimelineSVG(
                                 class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}${hasEdits ? ' has-edits' : ''}"
                                 data-scene-id="${escapeXml(sceneId)}"
                                 dy="0.1em"
-                                fill="black"
                             >${number}</text>
                         </g>
                     `;
@@ -2080,7 +2078,6 @@ export function createTimelineSVG(
                             y="-${squareSize.height/2}" 
                             width="${squareSize.width}" 
                             height="${squareSize.height}" 
-                            fill="white"
                             class="${squareClasses}" 
                             data-scene-id="${escapeXml(sceneId)}"
                         />
@@ -2092,7 +2089,6 @@ export function createTimelineSVG(
                             class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}${hasEdits ? ' has-edits' : ''}"
                             data-scene-id="${escapeXml(sceneId)}"
                             dy="0.1em"
-                            fill="black"
                         >${number}</text>
                     </g>
                 `;
@@ -2187,7 +2183,6 @@ export function createTimelineSVG(
                             y="-${squareSize.height/2}" 
                             width="${squareSize.width}" 
                             height="${squareSize.height}" 
-                            fill="white"
                             class="${squareClasses}${hasEdits ? ' has-edits' : ''}" 
                             data-scene-id="${escapeXml(sceneId)}"
                         />
@@ -2199,7 +2194,6 @@ export function createTimelineSVG(
                             class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}${hasEdits ? ' has-edits' : ''}"
                             data-scene-id="${escapeXml(sceneId)}"
                             dy="0.1em"
-                            fill="black"
                         >${number}</text>
                     </g>
                 `;
