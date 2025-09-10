@@ -64,9 +64,9 @@ interface PluginRendererFacade {
 
 // Offsets are based solely on the outer scene ring's outer radius
 const PLOT_TITLE_INSET = -3;     // px inward from outer scene edge for plot titles
-const ACT_LABEL_OFFSET = 24;     // px outward from outer scene edge for ACT labels
+const ACT_LABEL_OFFSET = 25;     // px outward from outer scene edge for ACT labels
 const MONTH_TICK_TERMINAL = 34;   // px outward from outer scene edge for month tick lines
-const MONTH_TEXT_INSET = 8;     // px inward from month tick ring to month text path
+const MONTH_TEXT_INSET = 9;     // px inward from month tick ring to month text path
 const PLOT_SHADE_MAX_ADJUST = 40; // +/- percentage when shading plot colors
 const SCENE_TITLE_INSET = 22; // fixed pixels inward from the scene's outer boundary for title path
 

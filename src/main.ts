@@ -23,6 +23,7 @@ interface ManuscriptTimelineSettings {
         House: string;
         Press: string;
     };
+    subplotColors: string[]; // 15 subplot palette colors
     outerRingAllScenes?: boolean; // If true, outer ring shows all scenes; inner rings remain subplots
     logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
     processedBeatContexts: string[]; // <<< ADDED: Cache for processed triplets
@@ -85,6 +86,23 @@ export const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
         House: '#DA7847',  // Orange (House)
         Press: '#6FB971'   // Green  (Press)
     },
+    subplotColors: [
+        '#EFBDEB', // 0
+        '#a35ca7', // 1
+        '#6461A0', // 2
+        '#314CB6', // 3
+        '#0A81D1', // 4
+        '#98CE00', // 5
+        '#16E0BD', // 6
+        '#78C3FB', // 7
+        '#273C2C', // 8
+        '#A6D8D4', // 9
+        '#FF8600', // 10
+        '#F9E784', // 11
+        '#CEC3C1', // 12
+        '#F3D34A', // 13
+        '#004777'  // 14
+    ],
     outerRingAllScenes: false, // Default to per-subplot outer ring
     logApiInteractions: false, // <<< ADDED: Default for new setting
     processedBeatContexts: [], // <<< ADDED: Default empty array
@@ -1765,9 +1783,9 @@ public createTimelineSVG(scenes: Scene[]) {
     }
 
     // Function to set CSS variables for RGB colors
-    private setCSSColorVariables() {
+    public setCSSColorVariables() {
         const root = document.documentElement;
-        const { publishStageColors } = this.settings;
+        const { publishStageColors, subplotColors } = this.settings;
         
         // Convert hex colors to RGB for CSS variables
         Object.entries(publishStageColors).forEach(([stage, color]) => {
@@ -1780,6 +1798,16 @@ public createTimelineSVG(scenes: Scene[]) {
                 root.style.setProperty(`--publishStageColors-${stage}-rgb`, rgbValues);
             }
         });
+
+        // Apply subplot palette colors (15 entries)
+        if (Array.isArray(subplotColors)) {
+            for (let i = 0; i < 15; i++) {
+                const color = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
+                if (color) {
+                    root.style.setProperty(`--subplot-colors-${i}`, color);
+                }
+            }
+        }
     }
 
     // Helper function to convert hex to RGB values without the "rgb()" wrapper

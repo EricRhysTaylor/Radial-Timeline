@@ -6,6 +6,7 @@ import {
   MarkdownRenderer,
   Notice,
   TextComponent,
+  ColorComponent,
 } from 'obsidian';
 import ManuscriptTimelinePlugin, { DEFAULT_SETTINGS } from '../main';
 
@@ -55,9 +56,9 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                 container.classList.add('hidden');
                 
                 // Show success feedback
-                textInput.inputEl.style.borderColor = 'var(--text-success)';
+                textInput.inputEl.addClass('setting-input-success');
                 setTimeout(() => {
-                    textInput.inputEl.style.borderColor = '';
+                    textInput.inputEl.removeClass('setting-input-success');
                 }, 1000);
                 
                 // Focus back to input and trigger change event
@@ -78,155 +79,6 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
         });
     }
 
-    // Add color swatch creation function
-    private createColorSwatch(container: HTMLElement, color: string, onColorChange: (newColor: string) => void): HTMLElement {
-        const swatch = document.createElement('div');
-        swatch.className = 'color-swatch';
-        swatch.style.setProperty('--swatch-color', color);
-        swatch.style.cursor = 'pointer';
-        
-        // Add click handler to open color picker
-        swatch.addEventListener('click', async () => {
-            const newColor = await this.showColorPicker(color);
-            if (newColor) {
-                swatch.style.setProperty('--swatch-color', newColor);
-                onColorChange(newColor);
-            }
-        });
-        
-        container.appendChild(swatch);
-        return swatch;
-    }
-
-    // Add color picker function with centered dialog
-    private async showColorPicker(currentColor: string): Promise<string | null> {
-        return new Promise((resolve) => {
-            // Create a modal container
-            const modal = document.createElement('div');
-            modal.className = 'color-picker-modal';
-
-            // Create the color picker container
-            const pickerContainer = document.createElement('div');
-            pickerContainer.className = 'color-picker-container';
-
-            // Create the color picker input
-            const colorPicker = document.createElement('input');
-            colorPicker.type = 'color';
-            colorPicker.value = currentColor;
-            colorPicker.className = 'color-picker-input';
-
-            // Create hex input
-            const hexInput = document.createElement('input');
-            hexInput.type = 'text';
-            hexInput.value = currentColor;
-            hexInput.className = 'color-picker-text-input';
-
-            // Create RGB input
-            const rgbInput = document.createElement('input');
-            rgbInput.type = 'text';
-            rgbInput.value = this.hexToRgb(currentColor);
-            rgbInput.className = 'color-picker-text-input';
-
-            // Create buttons container
-            const buttonsContainer = document.createElement('div');
-            buttonsContainer.className = 'color-picker-buttons';
-
-            // Create OK button
-            const okButton = document.createElement('button');
-            okButton.textContent = 'OK';
-            okButton.className = 'color-picker-button ok';
-
-            // Create Cancel button
-            const cancelButton = document.createElement('button');
-            cancelButton.textContent = 'Cancel';
-            cancelButton.className = 'color-picker-button cancel';
-
-
-
-            // Update hex and RGB values when color changes
-            colorPicker.addEventListener('input', (e) => {
-                const newColor = (e.target as HTMLInputElement).value;
-                hexInput.value = newColor;
-                rgbInput.value = this.hexToRgb(newColor);
-            });
-
-            // Update color picker when hex input changes
-            hexInput.addEventListener('input', (e) => {
-                const newColor = (e.target as HTMLInputElement).value;
-                if (this.isValidHex(newColor)) {
-                    colorPicker.value = newColor;
-                    rgbInput.value = this.hexToRgb(newColor);
-                }
-            });
-
-            // Update color picker when RGB input changes
-            rgbInput.addEventListener('input', (e) => {
-                const newColor = (e.target as HTMLInputElement).value;
-                const hex = this.rgbToHex(newColor);
-                if (hex) {
-                    colorPicker.value = hex;
-                    hexInput.value = hex;
-                }
-            });
-
-            // Add buttons to container
-            buttonsContainer.appendChild(cancelButton);
-            buttonsContainer.appendChild(okButton);
-
-            // Add all elements to the picker container
-            pickerContainer.appendChild(colorPicker);
-            pickerContainer.appendChild(hexInput);
-            pickerContainer.appendChild(rgbInput);
-            pickerContainer.appendChild(buttonsContainer);
-
-            // Add the picker container to the modal
-            modal.appendChild(pickerContainer);
-
-            // Add the modal to the document body
-            document.body.appendChild(modal);
-
-            // OK button event
-            okButton.addEventListener('click', () => {
-                document.body.removeChild(modal);
-                resolve(colorPicker.value);
-            });
-
-            // Cancel button event
-            cancelButton.addEventListener('click', () => {
-                document.body.removeChild(modal);
-                resolve(null);
-            });
-
-            // Close if clicking outside the picker
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    document.body.removeChild(modal);
-                    resolve(null);
-                }
-            });
-        });
-    }
-
-    // Helper function to convert hex to RGB
-    private hexToRgb(hex: string): string {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        if (result) {
-            return `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})`;
-        }
-        return '';
-    }
-
-    // Helper function to convert RGB to hex
-    private rgbToHex(rgb: string): string | null {
-        const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-            if (match) {
-            const r = parseInt(match[1]);
-            const g = parseInt(match[2]);
-            const b = parseInt(match[3]);
-            return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-        }
-        return null;
-    }
 
     // Helper function to validate hex color
     private isValidHex(hex: string): boolean {
@@ -326,14 +178,14 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                     const isValid = await this.plugin.validateAndRememberPath(value);
                     if (!isValid) {
                         // Optional: Show visual feedback for invalid paths
-                        text.inputEl.style.borderColor = 'var(--text-error)';
+                        text.inputEl.addClass('setting-input-error');
                         setTimeout(() => {
-                            text.inputEl.style.borderColor = '';
+                            text.inputEl.removeClass('setting-input-error');
                         }, 2000);
                     } else {
-                        text.inputEl.style.borderColor = 'var(--text-success)';
+                        text.inputEl.addClass('setting-input-success');
                         setTimeout(() => {
-                            text.inputEl.style.borderColor = '';
+                            text.inputEl.removeClass('setting-input-success');
                         }, 1000);
                     }
                 }
@@ -489,25 +341,52 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // --- Publishing Stage Colors --- 
-        containerEl.createEl('h2', { text: 'Publishing stage colors'}); // <<< CHANGED to H3, REMOVED CLASS
+        // Divider before color sections
+        containerEl.createEl('hr', { cls: 'settings-separator' });
 
-        Object.entries(this.plugin.settings.publishStageColors).forEach(([stage, color]) => {
+        // --- Publishing Stage Colors (compact grid) --- 
+        containerEl.createEl('h2', { text: 'Publishing stage colors'});
+        containerEl.createEl('p', { cls: 'color-section-desc', text: 'Used for completed main plot scenes of the outermost ring.' });
+        const stageGrid = containerEl.createDiv({ cls: 'color-grid' });
+        const stages = Object.entries(this.plugin.settings.publishStageColors);
+        stages.forEach(([stage, color]) => {
+            const cell = stageGrid.createDiv({ cls: 'color-grid-item' });
+            const label = cell.createDiv({ cls: 'color-grid-label' });
+            label.setText(stage);
+
             let textInputRef: TextComponent | undefined;
-            const setting = new Settings(containerEl)
-                .setName(stage)
+            let colorPickerRef: ColorComponent | undefined;
+            const control = cell.createDiv({ cls: 'color-grid-controls' });
+            // Add hidden Obsidian color input (used to open native picker)
+            colorPickerRef = new ColorComponent(control)
+                .setValue(color)
+                .onChange(async (value) => {
+                    if (this.isValidHex(value)) {
+                        (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = value;
+                        await this.plugin.saveSettings();
+                        this.plugin.setCSSColorVariables();
+                        textInputRef?.setValue(value);
+                    }
+                });
+            // Hide the native input and present a crisp trigger square
+            const colorInput = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
+            if (colorInput) colorInput.classList.add('hidden-color-input');
+            const swatchEl = control.createDiv({ cls: `swatch-trigger stage-${stage}` });
+            swatchEl.addEventListener('click', () => {
+                colorInput?.click();
+            });
+            const setting = new Settings(control)
                 .addText(textInput => {
                     textInputRef = textInput;
+                    textInput.inputEl.classList.add('hex-input');
                     textInput.setValue(color)
                         .onChange(async (value) => {
                             if (this.isValidHex(value)) {
                                 (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = value;
                                 await this.plugin.saveSettings();
-                                const swatch = setting.controlEl.querySelector('.color-swatch') as HTMLElement;
-                                if (swatch) {
-                                    swatch.style.setProperty('--swatch-color', value);
-                                }
-                            } // Consider adding feedback for invalid hex
+                                this.plugin.setCSSColorVariables();
+                                colorPickerRef?.setValue(value);
+                            }
                         });
                 })
                 .addExtraButton(button => {
@@ -517,23 +396,78 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                             const defaultColor = DEFAULT_SETTINGS.publishStageColors[stage as keyof typeof DEFAULT_SETTINGS.publishStageColors];
                             (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = defaultColor;
                             await this.plugin.saveSettings();
+                            this.plugin.setCSSColorVariables();
                             textInputRef?.setValue(defaultColor);
-                            const swatch = setting.controlEl.querySelector('.color-swatch') as HTMLElement;
-                            if (swatch) {
-                                swatch.style.setProperty('--swatch-color', defaultColor);
-                            }
+                            colorPickerRef?.setValue(defaultColor);
                         });
                 });
-
-            // Add color swatch inside the control element for better alignment
-            this.createColorSwatch(setting.controlEl, color, async (newColor: string) => {
-                // Update settings
-                (this.plugin.settings.publishStageColors as Record<string, string>)[stage] = newColor;
-                await this.plugin.saveSettings();
-                // Update text input
-                textInputRef?.setValue(newColor);
-            });
         });
+
+        // --- Subplot palette (15 colors) ---
+        containerEl.createEl('h2', { text: 'Subplot ring colors - outer to inner'});
+        const subplotGrid = containerEl.createDiv({ cls: 'color-grid' });
+        const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
+        const subplotColors = ensureArray(this.plugin.settings.subplotColors);
+        for (let i = 0; i < 15; i++) {
+            const labelText = `Color ${i+1}`;
+            const current = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
+            const cell = subplotGrid.createDiv({ cls: 'color-grid-item' });
+            const label = cell.createDiv({ cls: 'color-grid-label' });
+            label.setText(labelText);
+
+            const control = cell.createDiv({ cls: 'color-grid-controls' });
+            let inputRef: TextComponent | undefined;
+            let colorPickerRef: ColorComponent | undefined;
+            colorPickerRef = new ColorComponent(control)
+                .setValue(current)
+                .onChange(async (value) => {
+                    if (this.isValidHex(value)) {
+                        const next = [...(this.plugin.settings.subplotColors || DEFAULT_SETTINGS.subplotColors)];
+                        next[i] = value;
+                        this.plugin.settings.subplotColors = next;
+                        await this.plugin.saveSettings();
+                        this.plugin.setCSSColorVariables();
+                        inputRef?.setValue(value);
+                    }
+                });
+            // Hide the native input and present a crisp trigger square
+            const colorInput2 = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
+            if (colorInput2) colorInput2.classList.add('hidden-color-input');
+            const swatchEl2 = control.createDiv({ cls: `swatch-trigger subplot-${i}` });
+            swatchEl2.addEventListener('click', () => {
+                colorInput2?.click();
+            });
+            const setting = new Settings(control)
+                .addText(text => {
+                    inputRef = text;
+                    text.inputEl.classList.add('hex-input');
+                    text.setValue(current)
+                        .onChange(async (value) => {
+                            if (this.isValidHex(value)) {
+                                const next = [...(this.plugin.settings.subplotColors || DEFAULT_SETTINGS.subplotColors)];
+                                next[i] = value;
+                                this.plugin.settings.subplotColors = next;
+                                await this.plugin.saveSettings();
+                                this.plugin.setCSSColorVariables();
+                                colorPickerRef?.setValue(value);
+                            }
+                        });
+                })
+                .addExtraButton(button => {
+                    button.setIcon('reset')
+                        .setTooltip('Reset to default')
+                        .onClick(async () => {
+                            const value = DEFAULT_SETTINGS.subplotColors[i];
+                            const next = [...(this.plugin.settings.subplotColors || DEFAULT_SETTINGS.subplotColors)];
+                            next[i] = value;
+                            this.plugin.settings.subplotColors = next;
+                            await this.plugin.saveSettings();
+                            this.plugin.setCSSColorVariables();
+                            inputRef?.setValue(value);
+                            colorPickerRef?.setValue(value);
+                        });
+                });
+        }
                     
         // --- Embedded README Section ---
         containerEl.createEl('hr', { cls: 'settings-separator' });

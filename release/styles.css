@@ -597,6 +597,127 @@ tspan .search-term {
   border-radius: 3px;
   margin-left: 8px;
 }
+/* Compact grid for color settings (publish stages + subplot palette) */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 12px;
+  margin-top: 8px;
+}
+@media (max-width: 1100px) {
+  .color-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 800px) {
+  .color-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.color-grid-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+}
+.color-grid-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.color-grid-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 6px;
+  margin-top: 4px;
+}
+.color-grid-controls input[type="color"] {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 0; /* crisp square */
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  overflow: hidden;
+  box-shadow: none;
+  outline: none;
+}
+.color-grid-controls .hidden-color-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.color-grid-controls .swatch-trigger {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--background-modifier-border);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+/* Stage swatch backgrounds map to CSS variables that the plugin updates */
+.color-grid-controls .swatch-trigger.stage-Zero { background: var(--publishStageColors-Zero); }
+.color-grid-controls .swatch-trigger.stage-Author { background: var(--publishStageColors-Author); }
+.color-grid-controls .swatch-trigger.stage-House { background: var(--publishStageColors-House); }
+.color-grid-controls .swatch-trigger.stage-Press { background: var(--publishStageColors-Press); }
+
+/* Subplot swatches map to subplot color CSS variables */
+.color-grid-controls .swatch-trigger.subplot-0 { background: var(--subplot-colors-0); }
+.color-grid-controls .swatch-trigger.subplot-1 { background: var(--subplot-colors-1); }
+.color-grid-controls .swatch-trigger.subplot-2 { background: var(--subplot-colors-2); }
+.color-grid-controls .swatch-trigger.subplot-3 { background: var(--subplot-colors-3); }
+.color-grid-controls .swatch-trigger.subplot-4 { background: var(--subplot-colors-4); }
+.color-grid-controls .swatch-trigger.subplot-5 { background: var(--subplot-colors-5); }
+.color-grid-controls .swatch-trigger.subplot-6 { background: var(--subplot-colors-6); }
+.color-grid-controls .swatch-trigger.subplot-7 { background: var(--subplot-colors-7); }
+.color-grid-controls .swatch-trigger.subplot-8 { background: var(--subplot-colors-8); }
+.color-grid-controls .swatch-trigger.subplot-9 { background: var(--subplot-colors-9); }
+.color-grid-controls .swatch-trigger.subplot-10 { background: var(--subplot-colors-10); }
+.color-grid-controls .swatch-trigger.subplot-11 { background: var(--subplot-colors-11); }
+.color-grid-controls .swatch-trigger.subplot-12 { background: var(--subplot-colors-12); }
+.color-grid-controls .swatch-trigger.subplot-13 { background: var(--subplot-colors-13); }
+.color-grid-controls .swatch-trigger.subplot-14 { background: var(--subplot-colors-14); }
+
+/* Description under color section headers */
+.color-section-desc {
+  margin: 6px 0 10px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.color-grid-controls input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.color-grid-controls input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 0; /* ensure square inside */
+}
+.color-grid-controls .hex-input {
+  width: 7.5em; /* fits #RRGGBB */
+}
+.color-grid-controls .setting-item {
+  margin: 0;
+  width: 100%;
+  display: block;
+  border: 0 !important; /* remove inner divider so only outer line shows */
+}
+.color-grid-controls .setting-item-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
 .debug-info-container {
   pointer-events: none;
 }
