@@ -346,7 +346,7 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
 
         // --- Publishing Stage Colors (compact grid) --- 
         containerEl.createEl('h2', { text: 'Publishing stage colors'});
-        containerEl.createEl('p', { cls: 'color-section-desc', text: 'Used for completed main plot scenes of the outermost ring.' });
+        containerEl.createEl('p', { cls: 'color-section-desc', text: 'Used for completed main plot scenes of the outermost ring. Affects other elements as well.' });
         const stageGrid = containerEl.createDiv({ cls: 'color-grid' });
         const stages = Object.entries(this.plugin.settings.publishStageColors);
         stages.forEach(([stage, color]) => {
@@ -404,13 +404,13 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
         });
 
         // --- Subplot palette (15 colors) ---
-        containerEl.createEl('h2', { text: 'Subplot ring colors - outer to inner'});
+        containerEl.createEl('h2', { text: 'Subplot ring colors'});
         containerEl.createEl('p', { cls: 'color-section-desc', text: 'Subplot ring colors used for rings 2 through 16 moving inward.' });
         const subplotGrid = containerEl.createDiv({ cls: 'color-grid' });
         const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
         const subplotColors = ensureArray(this.plugin.settings.subplotColors);
         for (let i = 0; i < 15; i++) {
-            const labelText = `Color ${i+1}`;
+            const labelText = `Ring ${i+2}`;
             const current = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
             const cell = subplotGrid.createDiv({ cls: 'color-grid-item' });
             const label = cell.createDiv({ cls: 'color-grid-label' });
