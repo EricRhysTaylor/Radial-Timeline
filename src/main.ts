@@ -40,7 +40,7 @@ interface ManuscriptTimelineSettings {
 
 // Constants for the view
 export const TIMELINE_VIEW_TYPE = "manuscript-timeline";
-const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript Timeline"; // Use Title case
+const TIMELINE_VIEW_DISPLAY_TEXT = "Radial Manuscript Timeline"; // Use Title case
 
 export interface Scene {
     title?: string;
@@ -650,7 +650,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         );
         
         // Add ribbon icon
-        this.addRibbonIcon('shell', 'Manuscript Timeline', () => {
+        this.addRibbonIcon('shell', 'Radial Manuscript Timeline', () => {
             this.activateView();
         });
 
@@ -937,7 +937,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
         });
 
-        console.log('Manuscript Timeline Plugin Loaded');
+        console.log('Radial Manuscript Timeline Plugin Loaded');
     }
     
     // Store paths of current hover interactions to avoid redundant processing
@@ -1485,7 +1485,7 @@ public createTimelineSVG(scenes: Scene[]) {
 
     public log<T>(message: string, data?: T) {
         if (this.settings.debug) {
-            console.log(`[Manuscript Timeline] ${message}`, data || '');
+            console.log(`[Radial Manuscript Timeline] ${message}`, data || '');
         }
     }
 
@@ -2202,7 +2202,7 @@ public createTimelineSVG(scenes: Scene[]) {
     }
 
     onunload() {
-        console.log('Manuscript Timeline Plugin Unloaded');
+        console.log('Radial Manuscript Timeline Plugin Unloaded');
         // Clean up any other resources
     }
 } // End of ManuscriptTimelinePlugin class

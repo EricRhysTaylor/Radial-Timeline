@@ -7,7 +7,7 @@ import { PlotLabelManager } from '../utils/plotLabelManager';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "manuscript-timeline";
-export const TIMELINE_VIEW_DISPLAY_TEXT = "Manuscript Timeline";
+export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial Manuscript Timeline";
 
 // For SceneNumberInfo we define a concrete interface matching the fields we store
 interface SceneNumberInfo {
@@ -602,7 +602,7 @@ BeatsUpdate:
 
 # Test Scene
 
-This is a test scene created to help troubleshoot the Manuscript Timeline plugin.
+This is a test scene created to help troubleshoot the Radial Manuscript Timeline plugin.
 
 `;
         
@@ -640,7 +640,7 @@ This is a test scene created to help troubleshoot the Manuscript Timeline plugin
 
             if (sourcePath === "") {
                 // No folder configured at all
-                messageText = "No source folder has been configured in the Manuscript Timelineplugin settings. Please choose a folder that will hold your scene notes or leave blank to use the root of your vault.";
+                messageText = "No source folder has been configured in the Radial Manuscript Timeline plugin settings. Please choose a folder that will hold your scene notes or leave blank to use the root of your vault.";
             } else {
                 const folderExists = !!this.plugin.app.vault.getAbstractFileByPath(sourcePath);
                 if (folderExists) {
