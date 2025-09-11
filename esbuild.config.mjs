@@ -36,8 +36,8 @@ if (isCI) {
 } else {
 	// Local development paths
 	destDirs = [
-		"/Users/erictaylor/Documents/Author/Author Obsidian Vault .nosync/.obsidian/plugins/manuscript-timeline",
-		"/Users/erictaylor/Documents/Code Projects/Test Obsidian Vault/.obsidian/plugins/manuscript-timeline",
+		"/Users/erictaylor/Documents/Author/Author Obsidian Vault .nosync/.obsidian/plugins/radial-manuscript-timeline",
+		"/Users/erictaylor/Documents/Code Projects/Test Obsidian Vault/.obsidian/plugins/radial-manuscript-timeline",
 		"./release"  // Add release folder for distribution
 	];
 }

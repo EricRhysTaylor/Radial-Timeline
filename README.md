@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/master/logo.png" alt="Manuscript Timeline Logo" width="10%">
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Manuscript-Timeline/master/logo.png" alt="Manuscript Timeline Logo" width="10%">
 </p>
 <p align="center" style="font-family: 'Lato', sans-serif; font-weight: 100; font-size: 14px; margin-top: 12px; margin-bottom: 0; letter-spacing: 8px;">
-  MANUSCRIPT TIMELINE
+  RADIAL MANUSCRIPT TIMELINE
 </p>
 <p align="center" style="font-family: 'Lato', sans-serif; font-size: 14px; margin-top: 4px;">
   by Eric Rhys Taylor
@@ -10,11 +10,11 @@
 
 
 <p align="center">
-    <a href="https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/stargazers"><img src="https://img.shields.io/github/stars/EricRhysTaylor/Obsidian-Manuscript-Timeline?colorA=363a4f&colorB=e0ac00&style=for-the-badge" alt="GitHub star count"></a>
-    <a href="https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues"><img src="https://img.shields.io/github/issues/EricRhysTaylor/Obsidian-Manuscript-Timeline?colorA=363a4f&colorB=e93147&style=for-the-badge" alt="Open issues on GitHub"></a>
+    <a href="https://github.com/EricRhysTaylor/Radial-Manuscript-Timeline/stargazers"><img src="https://img.shields.io/github/stars/EricRhysTaylor/Radial-Manuscript-Timeline?colorA=363a4f&colorB=e0ac00&style=for-the-badge" alt="GitHub star count"></a>
+    <a href="https://github.com/EricRhysTaylor/Radial-Manuscript-Timeline/issues"><img src="https://img.shields.io/github/issues/EricRhysTaylor/Radial-Manuscript-Timeline?colorA=363a4f&colorB=e93147&style=for-the-badge" alt="Open issues on GitHub"></a>
     <br/>
 	<a href="https://obsidian.md/plugins?id=manuscript-timeline"><img src="https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&query=$.manuscript-timeline.downloads&label=Downloads&style=for-the-badge&colorA=363a4f&colorB=d53984" alt="Plugin Downloads"/></a>
-    <a href="https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/blob/master/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&colorA=363a4f&colorB=b7bdf8" alt="MIT license"/></a>
+	<a href="https://github.com/EricRhysTaylor/Radial-Manuscript-Timeline/blob/master/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&colorA=363a4f&colorB=b7bdf8" alt="MIT license"/></a>
 </p>
 <hr style="margin-bottom: 20px;">
 
@@ -48,18 +48,17 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Update flagged beats (subplot order): process `BeatsUpdate: Yes` notes in subplot order
 * Clear beats cache: clear saved beat results to force a full reprocess
 
-<a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-  <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px;" />
+<a href="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Manuscript-Timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Manuscript-Timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px;" />
 </a>
 
-<a href="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-  <img src="https://raw.githubusercontent.com/ericrhystaylor/obsidian-manuscript-timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="max-width: 100%; border-radius: 8px;" />
+<a href="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Manuscript-Timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/Radial-Manuscript-Timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="max-width: 100%; border-radius: 8px;" />
 </a>
 
 <div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
   Click image to view full size in browser
-</div>
-  
+</div>  
 
 
 ## Settings
@@ -156,7 +155,7 @@ Description: The first impression of your story. It should capture the essence o
 
 ## Manual installation
 
-1.  Download the latest `main.js`, `styles.css`, and `manifest.json` from the [releases](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/releases) page.
+1.  Download the latest `main.js`, `styles.css`, and `manifest.json` from the [releases](https://github.com/EricRhysTaylor/Radial-Manuscript-Timeline/releases) page.
 2.  Extract the files to your vault's .obsidian/plugins/manuscript-timeline
 
 ## Screen resolution suggestions
@@ -190,7 +189,7 @@ This plugin adheres to Obsidian.md development best practices, including secure 
 
 ## Feedback and support
 
-If you encounter issues or have feature requests, please file an issue on the [GitHub repository issues page](https://github.com/EricRhysTaylor/Obsidian-Manuscript-Timeline/issues). If you find the Manuscript Timeline plugin useful and would like to support continued development, please consider buying me a coffee:
+If you encounter issues or have feature requests, please file an issue on the [GitHub repository issues page](https://github.com/EricRhysTaylor/Radial-Manuscript-Timeline/issues). If you find the Manuscript Timeline plugin useful and would like to support continued development, please consider buying me a coffee:
 
 <a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="width: 150px;" >
