@@ -20,10 +20,11 @@
 
 A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.
 
-This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in chronological order, to depict each scene. Various cues and interactions are available through a search feature and mouse-over functionality. Hopefully, this will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
+This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in chronological order, to depict each scene. Various cues and interactions are available through a search feature and hover and click functionality. Hopefully, this will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
 
 ## Features
 
+- Quick setup. Click on Timeline Tool then click button to create a note pre-populated with required metadata (yaml). Duplicate that scene or use other plugins like Templater and Metadata Menu to automate the process.
 - Creates an interactive radial timeline visualization of scenes
 - Organizes scenes by act, subplot, and chronological order
 - Rotates counterclockwise so act 2 can align under act 1 for readability
