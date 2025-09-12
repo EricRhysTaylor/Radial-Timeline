@@ -1,4 +1,4 @@
-/* Main color variables for the manuscript timeline */
+/* Main color variables for the radial timeline */
 :root {
   /* Publish Stage Colors */
   --color-zero:   #9E70CF;    /* Purple */
@@ -59,7 +59,7 @@
 .title-text-main.title-stage-press  { fill: var(--publishStageColors-Press,  var(--color-press)); }
 
 /* styles.css */
-.manuscript-timeline-container {
+.radial-timeline-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -84,7 +84,7 @@
 .error-message {
   color: var(--text-error);
 }
-.manuscript-timeline-container svg {
+.radial-timeline-container svg {
   width: 100%;
   height: 100%;
   max-width: 100vw;
@@ -96,6 +96,14 @@
   cursor: default;
   background-color: transparent;
   fill: none;
+}
+
+/* Measurement text node used only for width measurement; keep off-layout and invisible */
+.rt-measure-text {
+  font-size: 18px;
+  visibility: hidden;
+  position: absolute;
+  pointer-events: none;
 }
 
 /* Debug: visualize the SVG viewport box */
@@ -157,17 +165,17 @@
 }
 
 /* Rotation toggle hover animation */
-.manuscript-timeline-svg #rotation-toggle use {
+.radial-timeline-svg #rotation-toggle use {
   transition: color 120ms ease, stroke 120ms ease, fill 120ms ease;
 }
-.manuscript-timeline-svg #rotation-toggle:hover use {
+.radial-timeline-svg #rotation-toggle:hover use {
   /* Make arrow white on hover via currentColor (symbols use stroke=currentColor) */
   color: #ffffff !important;
   stroke: #ffffff !important;
   fill: none !important;
 }
-.manuscript-timeline-svg #rotation-toggle .arrow-icon.is-hidden { display: none; }
-.manuscript-timeline-svg #rotation-toggle { cursor: pointer; }
+.radial-timeline-svg #rotation-toggle .arrow-icon.is-hidden { display: none; }
+.radial-timeline-svg #rotation-toggle { cursor: pointer; }
 .scene-title.faded {
   opacity: 0.2;
 }
@@ -1032,6 +1040,19 @@ tspan .search-term {
     padding: 0; 
     margin-top: 15px;
     margin-bottom: 20px;
+}
+
+/* Settings input validation styles */
+.setting-input-success {
+    border-color: #00ff48 !important;
+    background-color: rgba(0, 255, 72, 0.1) !important;
+    box-shadow: 0 0 0 2px rgba(0, 255, 72, 0.2) !important;
+}
+
+.setting-input-error {
+    border-color: #ff4444 !important;
+    background-color: rgba(255, 68, 68, 0.1) !important;
+    box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2) !important;
 }
 
 /* Source path autocomplete suggestions */

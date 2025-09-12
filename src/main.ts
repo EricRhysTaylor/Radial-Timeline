@@ -39,8 +39,8 @@ interface ManuscriptTimelineSettings {
 }
 
 // Constants for the view
-export const TIMELINE_VIEW_TYPE = "manuscript-timeline";
-const TIMELINE_VIEW_DISPLAY_TEXT = "Radial Manuscript Timeline"; // Use Title case
+export const TIMELINE_VIEW_TYPE = "radial-timeline";
+const TIMELINE_VIEW_DISPLAY_TEXT = "Radial Timeline"; // Use Title case
 
 export interface Scene {
     title?: string;
@@ -650,7 +650,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         );
         
         // Add ribbon icon
-        this.addRibbonIcon('shell', 'Radial Manuscript Timeline', () => {
+        this.addRibbonIcon('shell', 'Radial Timeline', () => {
             this.activateView();
         });
 
@@ -937,7 +937,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
         });
 
-        console.log('Radial Manuscript Timeline Plugin Loaded');
+        console.log('Radial Timeline Plugin Loaded');
     }
     
     // Store paths of current hover interactions to avoid redundant processing
@@ -957,7 +957,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             
             if (scenes.length === 0) {
                 // If no scene data available, check the SVG directly
-                const container = this.activeTimelineView.contentEl.querySelector('.manuscript-timeline-container');
+                const container = this.activeTimelineView.contentEl.querySelector('.radial-timeline-container');
                 if (!container) {
                     return false;
                 }
@@ -1014,7 +1014,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         
         try {
             // Get the SVG container element
-            const container = this.activeTimelineView.contentEl.querySelector('.manuscript-timeline-container');
+            const container = this.activeTimelineView.contentEl.querySelector('.radial-timeline-container');
             if (!container) {
                 return;
             }
@@ -1485,7 +1485,7 @@ public createTimelineSVG(scenes: Scene[]) {
 
     public log<T>(message: string, data?: T) {
         if (this.settings.debug) {
-            console.log(`[Radial Manuscript Timeline] ${message}`, data || '');
+            console.log(`[Radial Timeline] ${message}`, data || '');
         }
     }
 
@@ -1532,7 +1532,6 @@ public createTimelineSVG(scenes: Scene[]) {
 
     // Add method to update open files tracking
     private updateOpenFilesTracking() {
-        this.log('Running open files tracking check...');
         
         // Store the previous state to check if it changed
         const previousOpenFiles = new Set(this.openScenePaths);
@@ -1584,19 +1583,12 @@ public createTimelineSVG(scenes: Scene[]) {
             console.error("Error accessing workspace layout:", e);
         }
         
-        // Log a summary instead of individual files
-        if (openFilesList.length > 0) {
-            this.log(`Found ${openFilesList.length} open files: ${openFilesList.join(', ')}`);
-        } else {
-            this.log('No open files found');
-        }
         
         // Check if the open files have changed
         let hasChanged = false;
         
         // Different size means something changed
         if (previousOpenFiles.size !== this.openScenePaths.size) {
-            this.log(`Open files count changed from ${previousOpenFiles.size} to ${this.openScenePaths.size}`);
             hasChanged = true;
         } else {
             // Check if any files were added or removed
@@ -1628,7 +1620,6 @@ public createTimelineSVG(scenes: Scene[]) {
         
         // Update the UI if something changed
         if (hasChanged) {
-            this.log('Open files changed, refreshing timeline...');
             // Use the appropriate method to refresh the timeline
             if (this.activeTimelineView) {
                 this.activeTimelineView.refreshTimeline();
@@ -1870,7 +1861,7 @@ public createTimelineSVG(scenes: Scene[]) {
                     svgElement.setAttribute('height', '100%');
                     svgElement.setAttribute('viewBox', '-800 -800 1600 1600');
                     svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                    svgElement.setAttribute('class', 'manuscript-timeline-svg');
+                    svgElement.setAttribute('class', 'radial-timeline-svg');
                     
                     // Performance optimization: Add directly to fragment
                     const fragment = document.createDocumentFragment();
@@ -1906,7 +1897,7 @@ public createTimelineSVG(scenes: Scene[]) {
             svgElement.setAttribute('height', '100%');
             svgElement.setAttribute('viewBox', viewBox);
             svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-            svgElement.setAttribute('class', 'manuscript-timeline-svg');
+            svgElement.setAttribute('class', 'radial-timeline-svg');
             
             // Performance optimization: Use document fragment for better performance
             const fragment = document.createDocumentFragment();
@@ -1936,7 +1927,7 @@ public createTimelineSVG(scenes: Scene[]) {
                 fallbackSvg.setAttribute('height', '100%');
                 fallbackSvg.setAttribute('viewBox', '-800 -800 1600 1600');
                 fallbackSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                fallbackSvg.setAttribute('class', 'manuscript-timeline-svg');
+                fallbackSvg.setAttribute('class', 'radial-timeline-svg');
                 
                 // Extract content using regex approach
                 const svgBodyMatch = svgContent.match(/<svg[^>]*>([\s\S]*)<\/svg>/i);
@@ -2202,7 +2193,7 @@ public createTimelineSVG(scenes: Scene[]) {
     }
 
     onunload() {
-        console.log('Radial Manuscript Timeline Plugin Unloaded');
+        console.log('Radial Timeline Plugin Unloaded');
         // Clean up any other resources
     }
 } // End of ManuscriptTimelinePlugin class

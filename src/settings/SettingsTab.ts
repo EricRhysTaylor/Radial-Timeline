@@ -55,7 +55,8 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
                 container.classList.add('hidden');
                 
-                // Show success feedback
+                // Clear existing validation classes and show success feedback
+                textInput.inputEl.removeClass('setting-input-error');
                 textInput.inputEl.addClass('setting-input-success');
                 setTimeout(() => {
                     textInput.inputEl.removeClass('setting-input-success');
@@ -105,6 +106,19 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
             text
                 .setPlaceholder('Example: Manuscript/Scenes')
                 .setValue(this.plugin.settings.sourcePath);
+            
+            // Validate current path on load to show initial status
+            if (this.plugin.settings.sourcePath?.trim()) {
+                setTimeout(async () => {
+                    const isValid = await this.plugin.validateAndRememberPath(this.plugin.settings.sourcePath);
+                    if (isValid) {
+                        text.inputEl.addClass('setting-input-success');
+                        setTimeout(() => {
+                            text.inputEl.removeClass('setting-input-success');
+                        }, 2000); // Show success for longer on initial load
+                    }
+                }, 100); // Small delay to ensure DOM is ready
+            }
             
             // Create suggestions container
             const inputContainer = text.inputEl.parentElement!;
@@ -173,11 +187,15 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                 this.plugin.settings.sourcePath = value;
                 await this.plugin.saveSettings();
                 
+                // Clear any existing validation classes
+                text.inputEl.removeClass('setting-input-success');
+                text.inputEl.removeClass('setting-input-error');
+                
                 // Validate and remember path when Enter is pressed or field loses focus
                 if (value.trim()) {
                     const isValid = await this.plugin.validateAndRememberPath(value);
                     if (!isValid) {
-                        // Optional: Show visual feedback for invalid paths
+                        // Show visual feedback for invalid paths
                         text.inputEl.addClass('setting-input-error');
                         setTimeout(() => {
                             text.inputEl.removeClass('setting-input-error');
@@ -188,6 +206,8 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                             text.inputEl.removeClass('setting-input-success');
                         }, 1000);
                     }
+                } else {
+                    // Empty path - no validation styling
                 }
             });
         });

@@ -6,8 +6,11 @@ import type { Scene } from '../main';
 import { PlotLabelManager } from '../utils/plotLabelManager';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
-export const TIMELINE_VIEW_TYPE = "manuscript-timeline";
-export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial Manuscript Timeline";
+export const TIMELINE_VIEW_TYPE = "radial-timeline";
+export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial Timeline";
+
+// CONSTANTS: Scene expansion constants
+const HOVER_EXPAND_FACTOR = 1.1; // expansion multiplier when text doesn't fit
 
 // For SceneNumberInfo we define a concrete interface matching the fields we store
 interface SceneNumberInfo {
@@ -67,7 +70,6 @@ export class ManuscriptTimelineView extends ItemView {
     }
     
     updateOpenFilesTracking(): void {
-        this.log('Running open files tracking check...');
         
         // Store the previous state to check if it changed
         const previousOpenFiles = new Set(this.openScenePaths);
@@ -120,19 +122,12 @@ export class ManuscriptTimelineView extends ItemView {
             console.error("Error accessing workspace layout:", e);
         }
         
-        // Log a summary instead of individual files
-        if (openFilesList.length > 0) {
-            this.log(`Found ${openFilesList.length} open files: ${openFilesList.join(', ')}`);
-        } else {
-            this.log('No open files found');
-        }
         
         // Check if the open files have changed
         let hasChanged = false;
         
         // Different size means something changed
         if (previousOpenFiles.size !== this.openScenePaths.size) {
-            this.log(`Open files count changed from ${previousOpenFiles.size} to ${this.openScenePaths.size}`);
             hasChanged = true;
         } else {
             // Check if any files were added or removed
@@ -164,7 +159,6 @@ export class ManuscriptTimelineView extends ItemView {
         
         // Update the UI if something changed
         if (hasChanged) {
-            this.log('Open files changed, refreshing timeline...');
             this.refreshTimeline();
         } else {
             this.log('No changes in open files detected');
@@ -222,7 +216,7 @@ export class ManuscriptTimelineView extends ItemView {
         // Wait a bit for the SVG to be fully rendered
         setTimeout(() => {
             // Get SVG and text elements
-            const svg = container.querySelector('.manuscript-timeline-svg') as SVGSVGElement;
+            const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement;
             const debugText = svg?.querySelector('#mouse-coords-text') as SVGTextElement;
             const debugContainer = svg?.querySelector('.debug-info-container') as SVGGElement;
             
@@ -268,10 +262,10 @@ export class ManuscriptTimelineView extends ItemView {
             
             // Remove any existing listeners and add new one
             svg.removeEventListener('mousemove', updateCoordinates);
-            svg.addEventListener('mousemove', updateCoordinates);
+            this.registerDomEvent(svg as unknown as HTMLElement, 'mousemove', updateCoordinates);
             
             // Also log coordinates on click
-            svg.addEventListener('click', (e: MouseEvent) => {
+            this.registerDomEvent(svg as unknown as HTMLElement, 'click', (e: MouseEvent) => {
                 // Only log if debug mode is active
                 if (!this.plugin.settings.debug) return;
                 
@@ -301,7 +295,7 @@ export class ManuscriptTimelineView extends ItemView {
             debugContainer.classList.add('visible');
             
             // For changes that might happen outside mutation observer
-            document.addEventListener('visibilitychange', () => {
+            this.registerDomEvent(document, 'visibilitychange', () => {
                 debugContainer.classList.remove('debug-container');
                 debugContainer.classList.add('visible');
             });
@@ -602,7 +596,7 @@ BeatsUpdate:
 
 # Test Scene
 
-This is a test scene created to help troubleshoot the Radial Manuscript Timeline plugin.
+This is a test scene created to help troubleshoot the Radial Timeline plugin.
 
 `;
         
@@ -640,7 +634,7 @@ This is a test scene created to help troubleshoot the Radial Manuscript Timeline
 
             if (sourcePath === "") {
                 // No folder configured at all
-                messageText = "No source folder has been configured in the Radial Manuscript Timeline plugin settings. Please choose a folder that will hold your scene notes or leave blank to use the root of your vault.";
+                messageText = "No source folder has been configured in the Radial Timeline plugin settings. Please choose a folder that will hold your scene notes or leave blank to use the root of your vault.";
             } else {
                 const folderExists = !!this.plugin.app.vault.getAbstractFileByPath(sourcePath);
                 if (folderExists) {
@@ -676,7 +670,7 @@ This is a test scene created to help troubleshoot the Radial Manuscript Timeline
         // Performance optimization: Create DocumentFragment to minimize reflows
         const fragment = document.createDocumentFragment();
         const timelineContainer = document.createElement("div");
-        timelineContainer.className = "manuscript-timeline-container";
+        timelineContainer.className = "radial-timeline-container";
         fragment.appendChild(timelineContainer);
         
         try {
@@ -749,7 +743,7 @@ This is a test scene created to help troubleshoot the Radial Manuscript Timeline
                         });
                     };
                     applyRotation();
-                    toggle.addEventListener('click', () => {
+                    this.registerDomEvent(toggle as unknown as HTMLElement, 'click', () => {
                         rotated = !rotated;
                         applyRotation();
                     });
@@ -771,16 +765,25 @@ This is a test scene created to help troubleshoot the Radial Manuscript Timeline
                 const visibilityHandler = () => {
                     if (document.visibilityState === 'visible') debouncedAdjust();
                 };
-                document.addEventListener('visibilitychange', visibilityHandler);
+                this.registerDomEvent(document, 'visibilitychange', visibilityHandler);
                 if ((window as any).ResizeObserver) {
                     const ro = new (window as any).ResizeObserver(() => debouncedAdjust());
+                    // Ensure any previous observer is disconnected to avoid stacking observers
+                    const selfAny = this as unknown as { _plotLabelRO?: ResizeObserver };
+                    if (selfAny._plotLabelRO) {
+                        try { selfAny._plotLabelRO.disconnect(); } catch {}
+                    }
                     ro.observe(svgElement);
+                    selfAny._plotLabelRO = ro as unknown as ResizeObserver;
+                    this.register(() => {
+                        try { ro.disconnect(); } catch {}
+                        if (selfAny._plotLabelRO === ro) delete selfAny._plotLabelRO;
+                    });
                 }
                 // Performance optimization: Use batch operations where possible
                 const allSynopses = Array.from(svgElement.querySelectorAll(".scene-info"));
                 const sceneGroups = Array.from(svgElement.querySelectorAll(".scene-group"));
                 
-                this.log(`Found ${sceneGroups.length} scene groups to check against ${this.openScenePaths.size} open files`);
                 
                 // Performance optimization: Process scene groups in chunks to avoid UI blocking
                 const CHUNK_SIZE = 20;
@@ -870,7 +873,7 @@ This is a test scene created to help troubleshoot the Radial Manuscript Timeline
                             if (hovering) label.classList.add('non-selected'); else label.classList.remove('non-selected');
                         });
                     };
-                    const svg = container.querySelector('.manuscript-timeline-svg') as SVGSVGElement;
+                    const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement;
                     if (svg) {
                         let lastHoverGroup: Element | null = null;
                         svg.addEventListener('pointerover', (e: PointerEvent) => {
@@ -898,7 +901,7 @@ This is a test scene created to help troubleshoot the Radial Manuscript Timeline
             container.appendChild(fragment);
             // --- SVG-level delegated hover for scenes and synopsis (bind after append) ---
             (function setupDelegatedSceneHover(view: ManuscriptTimelineView) {
-                const svg = container.querySelector('.manuscript-timeline-svg') as SVGSVGElement | null;
+                const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
                 if (!svg) return;
 
                 let currentGroup: Element | null = null;
@@ -955,31 +958,319 @@ This is a test scene created to help troubleshoot the Radial Manuscript Timeline
                     return svg.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
                 };
 
+                
+
                 svg.addEventListener('pointerover', (e: PointerEvent) => {
                     const g = (e.target as Element).closest('.scene-group');
                     if (!g || g === currentGroup) return;
+                    
                     clearSelection();
                     const sid = getSceneIdFromGroup(g);
                     if (!sid) return;
+                    
                     currentGroup = g;
                     currentSceneId = sid;
                     currentSynopsis = findSynopsisForScene(sid);
+                    
                     applySelection(g, sid);
+                    
                     if (currentSynopsis) {
                         currentSynopsis.classList.add('visible');
                         view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
+                    }
+                    
+                    // Only trigger expansion for regular scenes (not plot elements)
+                    const sceneTitle = g.querySelector('.scene-title');
+                    if (sceneTitle) {
+                        redistributeActScenes(g);
                     }
                 });
 
                 svg.addEventListener('pointerout', (e: PointerEvent) => {
                     const toEl = e.relatedTarget as Element | null;
+                    
+                    // Check if we're moving within the current group
                     if (currentGroup && toEl && currentGroup.contains(toEl)) return;
+                    
+                    // Reset expansion if we had a scene expanded
+                    if (currentGroup) {
+                        const sceneTitle = currentGroup.querySelector('.scene-title');
+                        if (sceneTitle) {
+                            resetAngularRedistribution();
+                        }
+                    }
+                    
                     clearSelection();
                 });
 
+                // Helper function to build arc path (copied from renderer)
+                const buildCellArcPath = (innerR: number, outerR: number, startAngle: number, endAngle: number): string => {
+                    const formatNumber = (n: number) => n.toFixed(6);
+                    return `
+                        M ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
+                        L ${formatNumber(outerR * Math.cos(startAngle))} ${formatNumber(outerR * Math.sin(startAngle))}
+                        A ${formatNumber(outerR)} ${formatNumber(outerR)} 0 0 1 ${formatNumber(outerR * Math.cos(endAngle))} ${formatNumber(outerR * Math.sin(endAngle))}
+                        L ${formatNumber(innerR * Math.cos(endAngle))} ${formatNumber(innerR * Math.sin(endAngle))}
+                        A ${formatNumber(innerR)} ${formatNumber(innerR)} 0 0 0 ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
+                    `;
+                };
+
+                // Track original scene angles and number square transforms for reset
+                const originalAngles = new Map<string, { start: number; end: number; }>();
+                const originalSquareTransforms = new Map<string, string>();
+                
+                // Create a single reusable text measurement element to avoid creating/destroying on each hover
+                const measurementText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                // SAFE: styling moved to CSS class to satisfy code-quality policy
+                measurementText.classList.add('rt-measure-text');
+                svg.appendChild(measurementText);
+                
+                const storeOriginalAngles = () => {
+                    if (originalAngles.size > 0) return; // Already stored
+                    svg.querySelectorAll('.scene-group').forEach((group: Element) => {
+                        const start = Number(group.getAttribute('data-start-angle')) || 0;
+                        const end = Number(group.getAttribute('data-end-angle')) || 0;
+                        originalAngles.set(group.id, { start, end });
+                        
+                        // Store original number square transforms
+                        const scenePathEl = group.querySelector('.scene-path') as SVGPathElement;
+                        if (scenePathEl) {
+                            const sceneId = scenePathEl.id;
+                            const numberSquareGroup = svg.querySelector(`.number-square[data-scene-id="${sceneId}"]`)?.parentElement;
+                            
+                            if (numberSquareGroup) {
+                                const originalTransform = numberSquareGroup.getAttribute('transform') || '';
+                                originalSquareTransforms.set(sceneId, originalTransform);
+                            }
+                        }
+                    });
+                };
+
+                // Reset all scenes to original angles
+                const resetAngularRedistribution = () => {
+                    originalAngles.forEach((angles, groupId) => {
+                        const group = svg.getElementById(groupId);
+                        if (!group) return;
+                        const innerR = Number(group.getAttribute('data-inner-r')) || 0;
+                        const outerR = Number(group.getAttribute('data-outer-r')) || 0;
+                        const path = group.querySelector('.scene-path') as SVGPathElement;
+                        if (path) {
+                            path.setAttribute('d', buildCellArcPath(innerR, outerR, angles.start, angles.end));
+                        }
+                        // Also reset text path if present
+                        const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
+                        if (textPath) {
+                            const textPathRadius = Math.max(innerR, outerR - 22); // SCENE_TITLE_INSET = 22
+                            const TEXTPATH_START_NUDGE_RAD = 0.02;
+                            const textStart = angles.start + TEXTPATH_START_NUDGE_RAD;
+                            const formatNumber = (n: number) => n.toFixed(6);
+                            textPath.setAttribute('d', 
+                                `M ${formatNumber(textPathRadius * Math.cos(textStart))} ${formatNumber(textPathRadius * Math.sin(textStart))} A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(angles.end))} ${formatNumber(textPathRadius * Math.sin(angles.end))}`
+                            );
+                        }
+                        
+                        // Reset number square transform
+                        const scenePathEl = group.querySelector('.scene-path') as SVGPathElement;
+                        if (scenePathEl) {
+                            const sceneId = scenePathEl.id;
+                            const originalTransform = originalSquareTransforms.get(sceneId);
+                            if (originalTransform !== undefined) {
+                                const numberSquareGroup = svg.querySelector(`.number-square[data-scene-id="${sceneId}"]`)?.parentElement;
+                                if (numberSquareGroup) {
+                                    // Check if there's currently a rotation applied and preserve it
+                                    const currentTransform = numberSquareGroup.getAttribute('transform') || '';
+                                    const hasRotation = currentTransform.includes('rotate(120)');
+                                    const restoredTransform = hasRotation 
+                                        ? originalTransform + ' rotate(120)'
+                                        : originalTransform;
+                                    numberSquareGroup.setAttribute('transform', restoredTransform);
+                                }
+                            }
+                        }
+                    });
+                };
+
+                // Redistribute scenes within an act to expand hovered scene
+                const redistributeActScenes = (hoveredGroup: Element) => {
+                    storeOriginalAngles();
+                    
+                    const hoveredAct = hoveredGroup.getAttribute('data-act');
+                    const hoveredRing = hoveredGroup.getAttribute('data-ring');
+                    if (!hoveredAct || !hoveredRing) return;
+
+                        // Find all elements in the same act and ring (scenes AND plot slices)
+                        const actElements: Element[] = [];
+                        const sceneElements: Element[] = []; // Track which ones are scenes for text measurement
+                        svg.querySelectorAll('.scene-group').forEach((group: Element) => {
+                            if (group.getAttribute('data-act') === hoveredAct && 
+                                group.getAttribute('data-ring') === hoveredRing) {
+                                const path = group.querySelector('.scene-path');
+                                if (path) {
+                                    actElements.push(group);
+                                    // Track which ones are scenes (have titles) vs plot slices
+                                    const sceneTitle = group.querySelector('.scene-title');
+                                    if (sceneTitle) {
+                                        sceneElements.push(group);
+                                    }
+                                }
+                            }
+                        });
+
+                    if (actElements.length <= 1) return; // Need at least 2 elements to redistribute
+
+                    // Only check text measurement if the hovered element is a scene (not a plot slice)
+                    if (!sceneElements.includes(hoveredGroup)) return; // Don't expand plot slices
+
+                    // Measure if the hovered scene's title text fits in its current space
+                    const hoveredStart = Number(hoveredGroup.getAttribute('data-start-angle')) || 0;
+                    const hoveredEnd = Number(hoveredGroup.getAttribute('data-end-angle')) || 0;
+                    const hoveredInnerR = Number(hoveredGroup.getAttribute('data-inner-r')) || 0;
+                    const hoveredOuterR = Number(hoveredGroup.getAttribute('data-outer-r')) || 0;
+                    const hoveredMidR = (hoveredInnerR + hoveredOuterR) / 2;
+                    const currentArcPx = (hoveredEnd - hoveredStart) * hoveredMidR;
+
+                    // Get the scene title element and measure its text width
+                    const hoveredSceneTitle = hoveredGroup.querySelector('.scene-title');
+                    if (!hoveredSceneTitle) return; // No title to measure
+
+                    const titleText = hoveredSceneTitle.textContent || '';
+                    if (!titleText.trim()) return; // No text to measure
+
+                    // Use the reusable measurement element to avoid creating/destroying elements
+                    measurementText.textContent = titleText;
+                    measurementText.style.fontFamily = getComputedStyle(hoveredSceneTitle).fontFamily || 'sans-serif';
+                    
+                    const textBBox = measurementText.getBBox();
+                    const requiredTextWidth = textBBox.width;
+
+                    // Add padding for readability and account for text path start offsets
+                    const PADDING_PX = 8;
+                    const TEXTPATH_START_NUDGE_RAD = 0.02; // Angular nudge from renderer
+                    const TEXTPATH_START_OFFSET_PX = 4; // Pixel offset from startOffset="4"
+                    
+                    // Convert angular nudge to pixels at this radius
+                    const angularNudgePx = TEXTPATH_START_NUDGE_RAD * hoveredMidR;
+                    
+                    const requiredArcPx = requiredTextWidth + PADDING_PX + TEXTPATH_START_OFFSET_PX + angularNudgePx;
+                    
+                    if (currentArcPx >= requiredArcPx) return; // Text already fits, no need to expand
+
+                    // Calculate target expanded size based on text width
+                    const targetArcPx = requiredArcPx * HOVER_EXPAND_FACTOR;
+                    const targetAngularSize = targetArcPx / hoveredMidR;
+
+                    // Get total angular space for this act/ring by finding act boundaries
+                    let actStartAngle = 0;
+                    let actEndAngle = 2 * Math.PI;
+                    
+                    // Simple approximation: if this is act 0,1,2 out of 3, divide circle
+                    const actNum = Number(hoveredAct);
+                    const NUM_ACTS = 3; // You might want to make this dynamic
+                    actStartAngle = (actNum * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                    actEndAngle = ((actNum + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                    
+                    const totalActSpace = actEndAngle - actStartAngle;
+                    
+                    // Calculate space for plot slices (they keep their original size)
+                    let totalPlotSpace = 0;
+                    const plotElements: Element[] = [];
+                    actElements.forEach(element => {
+                        if (!sceneElements.includes(element)) {
+                            // This is a plot slice
+                            plotElements.push(element);
+                            const plotStart = Number(element.getAttribute('data-start-angle')) || 0;
+                            const plotEnd = Number(element.getAttribute('data-end-angle')) || 0;
+                            totalPlotSpace += (plotEnd - plotStart);
+                        }
+                    });
+                    
+                    const availableSceneSpace = totalActSpace - totalPlotSpace;
+                    const spaceForOtherScenes = availableSceneSpace - targetAngularSize;
+                    const angularSizeForOtherScenes = spaceForOtherScenes / (sceneElements.length - 1);
+
+                    // Redistribute angles for all elements (scenes and plots)
+                    let currentAngle = actStartAngle;
+                    actElements.forEach((group: Element) => {
+                        const innerR = Number(group.getAttribute('data-inner-r')) || 0;
+                        const outerR = Number(group.getAttribute('data-outer-r')) || 0;
+                        
+                        let newStart, newEnd;
+                        if (group === hoveredGroup) {
+                            // Expanded scene
+                            newStart = currentAngle;
+                            newEnd = currentAngle + targetAngularSize;
+                        } else if (sceneElements.includes(group)) {
+                            // Other scenes (compressed)
+                            newStart = currentAngle;
+                            newEnd = currentAngle + angularSizeForOtherScenes;
+                        } else {
+                            // Plot slice (keep original size)
+                            const originalStart = Number(group.getAttribute('data-start-angle')) || 0;
+                            const originalEnd = Number(group.getAttribute('data-end-angle')) || 0;
+                            const originalSize = originalEnd - originalStart;
+                            newStart = currentAngle;
+                            newEnd = currentAngle + originalSize;
+                        }
+
+                        // Update the scene path
+                        const path = group.querySelector('.scene-path') as SVGPathElement;
+                        if (path) {
+                            path.setAttribute('d', buildCellArcPath(innerR, outerR, newStart, newEnd));
+                        }
+
+                        // Update text path if present
+                        const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
+                        if (textPath) {
+                            const textPathRadius = Math.max(innerR, outerR - 22); // SCENE_TITLE_INSET = 22
+                            const TEXTPATH_START_NUDGE_RAD = 0.02;
+                            const textStart = newStart + TEXTPATH_START_NUDGE_RAD;
+                            const formatNumber = (n: number) => n.toFixed(6);
+                            textPath.setAttribute('d', 
+                                `M ${formatNumber(textPathRadius * Math.cos(textStart))} ${formatNumber(textPathRadius * Math.sin(textStart))} A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(newEnd))} ${formatNumber(textPathRadius * Math.sin(newEnd))}`
+                            );
+                        }
+
+                        // Update associated number square position for all scenes (including hovered)
+                        const scenePathEl = group.querySelector('.scene-path') as SVGPathElement;
+                        if (scenePathEl) {
+                            const sceneId = scenePathEl.id;
+                            const numberSquareGroup = svg.querySelector(`.number-square[data-scene-id="${sceneId}"]`)?.parentElement;
+                            
+                            if (numberSquareGroup) {
+                                // Position at the START of the redistributed scene (not center)
+                                const startAngle = newStart;
+                                // Use the same radius calculation as the original renderer
+                                // For outer ring: squareRadiusOuter, for inner rings: textPathRadius
+                                const isOuterRing = hoveredRing === '2'; // Assuming 3 rings (0,1,2) with outer=2
+                                let squareRadius;
+                                if (isOuterRing) {
+                                    squareRadius = (innerR + outerR) / 2; // squareRadiusOuter calculation
+                                } else {
+                                    squareRadius = (innerR + outerR) / 2; // textPathRadius calculation
+                                }
+                                const squareX = squareRadius * Math.cos(startAngle);
+                                const squareY = squareRadius * Math.sin(startAngle);
+                                
+                                // Preserve any existing rotation transforms while updating the translation
+                                const currentTransform = numberSquareGroup.getAttribute('transform') || '';
+                                const hasRotation = currentTransform.includes('rotate(120)');
+                                const newTransform = hasRotation 
+                                    ? `translate(${squareX}, ${squareY}) rotate(120)`
+                                    : `translate(${squareX}, ${squareY})`;
+                                numberSquareGroup.setAttribute('transform', newTransform);
+                            }
+                        }
+
+                        currentAngle = newEnd;
+                    });
+                };
+
                 const onMove = (e: PointerEvent) => {
-                    if (!currentSynopsis || !currentSceneId) return;
-                    view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, currentSceneId);
+                    // Update synopsis position when visible
+                    if (currentSynopsis && currentSceneId) {
+                        view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, currentSceneId);
+                    }
+
                     rafId = null;
                 };
                 svg.addEventListener('pointermove', (e: PointerEvent) => {

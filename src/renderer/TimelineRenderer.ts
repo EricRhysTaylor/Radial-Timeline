@@ -64,10 +64,9 @@ interface PluginRendererFacade {
 
 // Offsets are based solely on the outer scene ring's outer radius
 const PLOT_TITLE_INSET = -3;     // px inward from outer scene edge for plot titles
-const ACT_LABEL_OFFSET = 25;     // px outward from outer scene edge for ACT labels
-const MONTH_TICK_TERMINAL = 34;   // px outward from outer scene edge for month tick lines
+const ACT_LABEL_OFFSET = 26;     // px outward from outer scene edge for ACT labels
 const MONTH_TEXT_INSET = 9;     // px inward from month tick ring to month text path
-const PLOT_SHADE_MAX_ADJUST = 40; // +/- percentage when shading plot colors
+const MONTH_TICK_TERMINAL = 35;   // px outward from outer scene edge for month tick lines
 const SCENE_TITLE_INSET = 22; // fixed pixels inward from the scene's outer boundary for title path
 
 // --- Tuning constants for plot label rendering ---
@@ -95,75 +94,6 @@ function estimateAngleFromTitle(title: string, baseRadius: number, fontPx: numbe
     const px = estimatePixelsFromTitle(title, fontPx, fudge, paddingPx);
     return px / Math.max(1, baseRadius);
 }
-
-// Compute global stacking levels for plot titles across all acts
-/* Stacking removed: computeGlobalPlotLevels no longer used
-function computeGlobalPlotLevels(
-    scenes: Scene[],
-    ringStartRadii: number[],
-    ringWidths: number[],
-    numActs: number
-): Map<string, number> {
-    const outerRingIndex = ringStartRadii.length - 1;
-    const innerROuter = ringStartRadii[outerRingIndex];
-    const outerROuter = innerROuter + ringWidths[outerRingIndex];
-    // Use the same reference as rendering: plot titles are inset from the outer scene edge
-    const baseRadius = outerROuter - PLOT_TITLE_INSET;
-    const gapAngle = ANGULAR_GAP_PX / Math.max(1, baseRadius);
-
-    type Entry = { key: string; labelStart: number; labelEnd: number };
-    const entries: Entry[] = [];
-
-    for (let actIndex = 0; actIndex < numActs; actIndex++) {
-        const startAngle = (actIndex * 2 * Math.PI) / numActs - Math.PI / 2;
-        const endAngle = ((actIndex + 1) * 2 * Math.PI) / numActs - Math.PI / 2;
-
-        const seenPaths = new Set<string>();
-        const seenPlotKeys = new Set<string>();
-        const combined: Scene[] = [];
-        scenes.forEach(s => {
-            const sAct = s.actNumber !== undefined ? s.actNumber - 1 : 0;
-            if (sAct !== actIndex) return;
-            if (s.itemType === 'Plot') {
-                const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
-                if (seenPlotKeys.has(pKey)) return;
-                seenPlotKeys.add(pKey);
-                combined.push(s);
-            } else {
-                const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
-                if (seenPaths.has(key)) return;
-                seenPaths.add(key);
-                combined.push(s);
-            }
-        });
-
-        const positions = computePositions(innerROuter, outerROuter, startAngle, endAngle, combined);
-        combined.forEach((scene, idx) => {
-            if (scene.itemType !== 'Plot') return;
-            const pos = positions.get(idx);
-            if (!pos) return;
-            const labelStart = pos.startAngle;
-            const title = stripNumericPrefix(scene.title);
-            const angSpan = estimateAngleFromTitle(title, baseRadius, PLOT_FONT_PX, ESTIMATE_FUDGE_RENDER, PADDING_RENDER_PX);
-            const labelEnd = labelStart + angSpan;
-            const key = `${String(scene.title || '')}::${String(scene.actNumber ?? '')}`;
-            entries.push({ key, labelStart, labelEnd });
-        });
-    }
-
-    entries.sort((a, b) => a.labelStart - b.labelStart);
-    const lastEndByLevel: number[] = [];
-    const result = new Map<string, number>();
-    entries.forEach(e => {
-        let level = 0;
-        while (level < lastEndByLevel.length && e.labelStart < (lastEndByLevel[level] + gapAngle)) level++;
-        if (level === lastEndByLevel.length) lastEndByLevel.push(e.labelEnd); else lastEndByLevel[level] = e.labelEnd;
-        result.set(e.key, Math.max(result.get(e.key) ?? 0, level));
-    });
-
-    return result;
-}
-*/
 
 function makeSceneId(actIndex: number, ring: number, idx: number, isOuterAllScenes: boolean, isOuter: boolean): string {
     return isOuterAllScenes && isOuter
@@ -293,7 +223,7 @@ export function createTimelineSVG(
     
         const sceneCount = scenes.length;
         const size = 1600;
-        const margin = 34; //Offset from the SVG edge to the First Plot Ring
+        const margin = 35; //KEY VALUEOffset from the SVG edge to the First Plot Ring
         const innerRadius = 200; // the first ring is 200px from the center
         const outerRadius = size / 2 - margin;
         const maxTextWidth = 500; // Define maxTextWidth for the synopsis text
@@ -318,7 +248,7 @@ export function createTimelineSVG(
 
         // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
         let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
-                       xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg" 
+                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg" 
                        preserveAspectRatio="xMidYMid meet">`;
         
 
@@ -431,7 +361,7 @@ export function createTimelineSVG(
         const lineOuterRadius = ringStartRadii[N - 1] + ringWidths[N - 1] + MONTH_TICK_TERMINAL;
     
         // **Include the `<style>` code here**
-        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="manuscript-timeline-svg" preserveAspectRatio="xMidYMid meet">`;
+        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg" preserveAspectRatio="xMidYMid meet">`;
         
 
         // After radii are known, compute global stacking map (outer-ring all-scenes only)
@@ -1153,7 +1083,7 @@ export function createTimelineSVG(
                         // No separator needed; spacing handled in positioning
 
                         svg += `
-                        <g class="scene-group" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
+                        <g class="scene-group" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
                             <path id="${sceneId}"
                                   d="${arcPath}" 
                                   fill="${color}" 
@@ -1292,7 +1222,7 @@ export function createTimelineSVG(
                             // (No plot labels rendered in inner rings)
             
                             svg += `
-                            <g class="scene-group" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                            <g class="scene-group" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                 <path id="${sceneId}"
                                       d="${arcPath}" 
                                       fill="${color}" 

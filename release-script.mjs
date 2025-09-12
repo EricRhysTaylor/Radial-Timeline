@@ -262,7 +262,7 @@ Choose (1/2): `);
 
         if (createDraft) {
             console.log(`\n🎉 Draft release ${newVersion} created successfully!`);
-            console.log(`📝 Draft release: https://github.com/EricRhysTaylor/Radial-Manuscript-Timeline/releases/tag/${newVersion}`);
+			console.log(`📝 Draft release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
             console.log(`\n🌐 Opening draft release in browser for editing...`);
             console.log(`💡 Remember to publish the release when you're done editing!`);
             
@@ -272,16 +272,16 @@ Choose (1/2): `);
             } catch (error) {
                 // Fallback: try OS open command on macOS
                 try {
-                    const url = `https://github.com/EricRhysTaylor/Radial-Manuscript-Timeline/releases/tag/${newVersion}`;
+				const url = `https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`;
                     runCommand(`open ${url}`, "Opening release in browser", true);
                 } catch (e2) {
                     console.log(`⚠️  Could not open browser automatically. You can edit the draft release at:`);
-                    console.log(`   https://github.com/EricRhysTaylor/Radial-Manuscript-Timeline/releases/tag/${newVersion}`);
+				console.log(`   https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
                 }
             }
         } else {
             console.log(`\n🎉 Release ${newVersion} published successfully!`);
-            console.log(`📦 GitHub release: https://github.com/EricRhysTaylor/Radial-Manuscript-Timeline/releases/tag/${newVersion}`);
+			console.log(`📦 GitHub release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
         }
 
     } catch (error) {

@@ -479,10 +479,6 @@ export default class SynopsisManager {
       const outerRadius = size / 2 - margin;
       const adjustedRadius = outerRadius - 20; // Reduce radius by 20px to move synopsis closer to center
       
-      // Debug info
-      if (this.plugin.settings.debug) {
-        this.plugin.log(`Mouse position: SVG(${svgP.x.toFixed(0)}, ${svgP.y.toFixed(0)}), Quadrant: ${quadrant}`);
-      }
       
       // Reset styles and classes
       (synopsis as SVGElement).removeAttribute('style');
@@ -534,8 +530,6 @@ export default class SynopsisManager {
    * Q4: Top-Right (+x, -y)
    */
   private getQuadrant(x: number, y: number): string {
-    // Debug log to troubleshoot
-    this.plugin.log(`Raw coordinates: x=${x}, y=${y}`);
     
     // Define quadrants based on SVG coordinates
     if (x >= 0 && y >= 0) return "Q1";      // Bottom Right (+x, +y)
@@ -567,8 +561,6 @@ export default class SynopsisManager {
     const topHalfOffset = -550; // Fixed vertical position from center for top half
     const bottomHalfOffset = 120; // Updated value for bottom half (Q1, Q2)
     
-    // Debug log to troubleshoot
-    this.plugin.log(`Processing quadrant: ${quadrant}`);
     
     switch (quadrant) {
       case "Q1": // Mouse in Bottom Right -> Synopsis in Q2 (Bottom Left)
@@ -604,8 +596,6 @@ export default class SynopsisManager {
         break;
     }
     
-    // Debug log the result for troubleshooting
-    this.plugin.log(`Synopsis positioning: quadrant=${result.quadrantClass}, isRightAligned=${result.isRightAligned}, y=${result.y}`);
     
     return result;
   }
@@ -651,7 +641,6 @@ export default class SynopsisManager {
     const baseX = parseFloat(translateMatch[1]);
     const baseY = parseFloat(translateMatch[2]);
     
-    this.plugin.log(`Base position parsed: x=${baseX}, y=${baseY}`);
     
     // Position each text element using Pythagorean theorem relative to circle center
     textElements.forEach((textEl, index) => {
@@ -673,9 +662,6 @@ export default class SynopsisManager {
         textEl.setAttribute('x', '0');
         textEl.setAttribute('y', '0');
         
-        if (this.plugin.settings.debug) {
-          this.plugin.log(`Title positioned at x=0, y=0, (absolute: ${baseX}, ${baseY})`);
-        }
       } else {
         // For subsequent lines, calculate x-position using Pythagorean theorem
         // This makes text follow the circle's arc
@@ -727,10 +713,6 @@ export default class SynopsisManager {
         textEl.setAttribute('y', String(yOffset));
       }
       
-      // Debug logging
-      if (this.plugin.settings.debug && index <= 3) {
-        this.plugin.log(`Text ${index} positioned at x=${textEl.getAttribute('x')}, y=${textEl.getAttribute('y')}, absoluteY=${absoluteY}`);
-      }
     });
   }
 
