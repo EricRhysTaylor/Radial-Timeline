@@ -507,11 +507,11 @@ tspan .search-term {
   stroke-width: 2px;
 }
 .number-square.has-edits {
-  fill: #8875ff;
+  fill: var(--color-due);
 }
 
 .number-square.has-edits.search-result { fill: var(--color-search) !important; }
-.number-square.has-edits.scene-is-open { fill: #8875ff; }
+.number-square.has-edits.scene-is-open { fill: var(--color-due); }
 .number-square.has-edits.non-selected {
   fill: #EFEFEF !important;
 }
@@ -992,6 +992,11 @@ tspan .search-term {
 /* Use .non-selected class for faded state (consistent with other elements) */
 .subplot-label-text.non-selected {
     opacity: .1; /* Corrected opacity back to 30% */
+}
+
+/* Make subplot labels disappear when any scene is hovered */
+.radial-timeline-svg.scene-hover .subplot-label-text {
+    opacity: 0 !important;
 }
 
 /* Progress Ring Base (thin gray track underneath) */

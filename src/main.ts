@@ -872,9 +872,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
         });
 
-        // Add settings tab
-        this.addSettingTab(new ManuscriptTimelineSettingsTab(this.app, this));
-
         this.app.workspace.onLayoutReady(() => {
             this.setCSSColorVariables(); // Set initial colors
             this.updateOpenFilesTracking(); // Track initially open files

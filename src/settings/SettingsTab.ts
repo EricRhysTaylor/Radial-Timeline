@@ -243,6 +243,17 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                     });
             });
 
+        // --- Timeline outer ring content ---
+        new Settings(containerEl)
+            .setName('Outer ring shows all scenes and plot beats')
+            .setDesc('If enabled, the outer ring shows ordered scenes from all subplots with their own colors. Plot Beats slices (gray) with full titles are shown on the outer ring.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.outerRingAllScenes || false)
+                .onChange(async (value) => {
+                    this.plugin.settings.outerRingAllScenes = value;
+                    await this.plugin.saveSettings();
+                }));
+
         // --- AI Settings for Beats Analysis ---
         containerEl.createEl('h2', { text: 'AI settings for beats analysis'});
         
@@ -338,17 +349,6 @@ export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
         // <<< END of added Setting block >>>
-
-        // --- Timeline outer ring content ---
-        new Settings(containerEl)
-            .setName('Outer ring shows all scenes')
-            .setDesc('If enabled, the outer ring includes all scenes. Inner subplot rings remain unchanged.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.outerRingAllScenes || false)
-                .onChange(async (value) => {
-                    this.plugin.settings.outerRingAllScenes = value;
-                    await this.plugin.saveSettings();
-                }));
 
         // --- Debug Mode Setting ---
         new Settings(containerEl)

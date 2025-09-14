@@ -968,6 +968,9 @@ This is a test scene created to help troubleshoot the Radial Timeline plugin.
                     const sid = getSceneIdFromGroup(g);
                     if (!sid) return;
                     
+                    // Add scene-hover class to SVG for subplot label styling
+                    svg.classList.add('scene-hover');
+                    
                     currentGroup = g;
                     currentSceneId = sid;
                     currentSynopsis = findSynopsisForScene(sid);
@@ -999,6 +1002,9 @@ This is a test scene created to help troubleshoot the Radial Timeline plugin.
                             resetAngularRedistribution();
                         }
                     }
+                    
+                    // Remove scene-hover class from SVG
+                    svg.classList.remove('scene-hover');
                     
                     clearSelection();
                 });
