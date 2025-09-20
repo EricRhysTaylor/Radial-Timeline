@@ -1,6 +1,6 @@
 // --- Imports and constants added for standalone module ---
 import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice } from 'obsidian';
-import ManuscriptTimelinePlugin from '../main';
+import RadialTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
 import type { Scene } from '../main';
 import { PlotLabelManager } from '../utils/plotLabelManager';
@@ -22,9 +22,9 @@ interface SceneNumberInfo {
 }
 
 // Timeline View implementation
-export class ManuscriptTimelineView extends ItemView {
+export class RadialTimelineView extends ItemView {
     static readonly viewType = TIMELINE_VIEW_TYPE;
-    plugin: ManuscriptTimelinePlugin;
+    plugin: RadialTimelinePlugin;
     
     // Frontmatter values to track to reduce unnecessary SVG View refreshes
     private lastFrontmatterValues: Record<string, unknown> = {};
@@ -36,7 +36,7 @@ export class ManuscriptTimelineView extends ItemView {
     // Set of open scene paths (for tracking open files)
     openScenePaths: Set<string> = new Set<string>();
     
-    constructor(leaf: WorkspaceLeaf, plugin: ManuscriptTimelinePlugin) {
+    constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
         this.openScenePaths = plugin.openScenePaths;
@@ -578,25 +578,26 @@ Subplot:
   - Main Plot
   - Second Arc
 Act: 1
-When: 1969-04-17
+When: 2000-01-31
 Character:
   - Janet Rollins
 Place:
   - Earth
   - San Diego
-Words: 1
+Words: 
 Publish Stage: Zero
-Status: Complete
-Due: 2025-05-17
-Total Time: 2
-Revision: 2
+Status: Todo
+Due: 2025-12-31
+Total Time:
+Revision:
 Pending Edits: 
 BeatsUpdate: 
+Book:
 ---
 
 # Test Scene
 
-This is a test scene created to help troubleshoot the Radial Timeline plugin.
+This is a test scene created to help with initial Radial Timeline setup.
 
 `;
         
@@ -900,7 +901,7 @@ This is a test scene created to help troubleshoot the Radial Timeline plugin.
             // Add the fragment to the container
             container.appendChild(fragment);
             // --- SVG-level delegated hover for scenes and synopsis (bind after append) ---
-            (function setupDelegatedSceneHover(view: ManuscriptTimelineView) {
+            (function setupDelegatedSceneHover(view: RadialTimelineView) {
                 const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
                 if (!svg) return;
 

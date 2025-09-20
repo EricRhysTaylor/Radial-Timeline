@@ -1,4 +1,4 @@
-import ManuscriptTimelinePlugin from './main'; 
+import RadialTimelinePlugin from './main'; 
 import { App, TFile, Vault, Notice, parseYaml, stringifyYaml } from "obsidian";
 import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
 import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
@@ -37,7 +37,7 @@ function extractSceneNumber(filename: string): number | null {
     return match ? parseFloat(match[1]) : null;
 }
 
-async function getAllSceneData(plugin: ManuscriptTimelinePlugin, vault: Vault): Promise<SceneData[]> {
+async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Promise<SceneData[]> {
     const sourcePath = plugin.settings.sourcePath.trim();
 
 
@@ -134,7 +134,7 @@ ${nextBody || 'N/A'}
 }
 
 async function logApiInteractionToFile(
-    plugin: ManuscriptTimelinePlugin,
+    plugin: RadialTimelinePlugin,
     vault: Vault,
     provider: 'openai' | 'anthropic',
     modelId: string,
@@ -310,7 +310,7 @@ async function logApiInteractionToFile(
 }
 
 async function callAiProvider(
-    plugin: ManuscriptTimelinePlugin,
+    plugin: RadialTimelinePlugin,
     vault: Vault,
     userPrompt: string,
     subplotName: string | null,
@@ -411,7 +411,7 @@ async function callAiProvider(
     }
 }
 
-function parseGptResult(gptResult: string, plugin: ManuscriptTimelinePlugin): { '1beats': string, '2beats': string, '3beats': string } | null {
+function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): { '1beats': string, '2beats': string, '3beats': string } | null {
 
     try {
         const section1Pattern = /^1beats:\s*([\s\S]*?)(?=^\s*(?:2beats:|3beats:|$))/m;
@@ -472,7 +472,7 @@ async function updateSceneFile(
     vault: Vault, 
     scene: SceneData, 
     parsedBeats: { '1beats': string, '2beats': string, '3beats': string }, 
-    plugin: ManuscriptTimelinePlugin,
+    plugin: RadialTimelinePlugin,
     modelIdUsed: string | null
 ): Promise<boolean> {
 
@@ -536,7 +536,7 @@ async function updateSceneFile(
 }
 
 export async function processByManuscriptOrder(
-    plugin: ManuscriptTimelinePlugin,
+    plugin: RadialTimelinePlugin,
     vault: Vault
 ): Promise<void> {
 
@@ -608,7 +608,6 @@ export async function processByManuscriptOrder(
 
             notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${processedCount+1}/${totalTriplets})...`);
             if (plugin.settings.debug) {
-                 console.log(`[API Beats][processByManuscriptOrder] Processing triplet: ${tripletIdentifier}`);
             }
 
             const prevBody = triplet.prev ? triplet.prev.body : null;
@@ -629,7 +628,6 @@ export async function processByManuscriptOrder(
                     if (updated) {
                          plugin.settings.processedBeatContexts.push(tripletIdentifier);
                          await plugin.saveSettings();
-                        console.log(`[API Beats][processByManuscriptOrder] Successfully processed and updated: ${currentScenePath}`);
                     } else {
                          console.warn(`[API Beats][processByManuscriptOrder] Failed to update file after getting beats for: ${currentScenePath}`);
         }
@@ -659,7 +657,7 @@ export async function processByManuscriptOrder(
 }
 
 export async function processBySubplotOrder(
-    plugin: ManuscriptTimelinePlugin,
+    plugin: RadialTimelinePlugin,
     vault: Vault
 ): Promise<void> {
      
@@ -747,7 +745,6 @@ export async function processBySubplotOrder(
             });
             
             if (plugin.settings.debug) {
-                console.log(`[API Beats][processBySubplotOrder] Subplot ${subplotName}: Found ${writtenScenes.length} written scenes out of ${scenes.length} total`);
             }
             
             // For each written scene, find its appropriate prev and next
@@ -774,7 +771,6 @@ export async function processBySubplotOrder(
             }
             
             if (plugin.settings.debug) {
-                console.log(`[API Beats][processBySubplotOrder] Subplot ${subplotName}: Created ${triplets.length} triplets`);
             }
         
             for (const triplet of triplets) {
@@ -802,7 +798,6 @@ export async function processBySubplotOrder(
 
                 notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${totalProcessedCount+1}/${totalTripletsAcrossSubplots}) - Subplot: '${subplotName}'...`);
                  if (plugin.settings.debug) {
-                     console.log(`[API Beats][processBySubplotOrder] Processing triplet for subplot ${subplotName}: ${tripletIdentifier}`);
                 }
 
                  const prevBody = triplet.prev ? triplet.prev.body : null;
@@ -823,7 +818,6 @@ export async function processBySubplotOrder(
                          if (updated) {
                               plugin.settings.processedBeatContexts.push(tripletIdentifier);
                               await plugin.saveSettings();
-                             console.log(`[API Beats][processBySubplotOrder] Successfully processed subplot ${subplotName}, updated: ${currentScenePath}`);
                          } else {
                               console.warn(`[API Beats][processBySubplotOrder] Failed to update file for subplot ${subplotName} after getting beats for: ${currentScenePath}`);
                          }
@@ -874,7 +868,7 @@ const DUMMY_API_RESPONSE = `1beats:
 
 // <<< ADDED: Exported Test Function >>>
 export async function testYamlUpdateFormatting(
-    plugin: ManuscriptTimelinePlugin,
+    plugin: RadialTimelinePlugin,
     vault: Vault
 ): Promise<void> {
     const dummyFilePath = "AITestDummyScene.md";

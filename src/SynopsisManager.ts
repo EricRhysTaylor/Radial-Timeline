@@ -1,4 +1,4 @@
-import type ManuscriptTimelinePlugin from './main';
+import type RadialTimelinePlugin from './main';
 import { decodeHtmlEntities, parseSceneTitleComponents, renderSceneTitleComponents } from './utils/text';
 
 interface Scene {
@@ -29,9 +29,9 @@ interface Scene {
  * (This is the class you formerly had inside main.ts, unchanged.)
  */
 export default class SynopsisManager {
-  private plugin: ManuscriptTimelinePlugin;
+  private plugin: RadialTimelinePlugin;
 
-  constructor(plugin: ManuscriptTimelinePlugin) {
+  constructor(plugin: RadialTimelinePlugin) {
     this.plugin = plugin;
   }
 

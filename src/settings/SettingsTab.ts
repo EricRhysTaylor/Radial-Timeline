@@ -8,15 +8,15 @@ import {
   TextComponent,
   ColorComponent,
 } from 'obsidian';
-import ManuscriptTimelinePlugin, { DEFAULT_SETTINGS } from '../main';
+import RadialTimelinePlugin, { DEFAULT_SETTINGS } from '../main';
 
 declare const EMBEDDED_README_CONTENT: string;
 
-export class ManuscriptTimelineSettingsTab extends PluginSettingTab {
-    plugin: ManuscriptTimelinePlugin;
+export class RadialTimelineSettingsTab extends PluginSettingTab {
+    plugin: RadialTimelinePlugin;
     private readmeComponent: Component | null = null; // <<< ADD THIS LINE
 
-    constructor(app: App, plugin: ManuscriptTimelinePlugin) {
+    constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }

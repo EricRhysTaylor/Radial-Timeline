@@ -4,8 +4,8 @@ import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils
 import { decodeHtmlEntities, parseSceneTitleComponents, renderSceneTitleComponents } from './utils/text';
 import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG } from './renderer/TimelineRenderer';
-import { ManuscriptTimelineView } from './view/TimeLineView';
-import { ManuscriptTimelineSettingsTab } from './settings/SettingsTab';
+import { RadialTimelineView } from './view/TimeLineView';
+import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 
 
 // Declare the variable that will be injected by the build process
@@ -14,7 +14,7 @@ declare const EMBEDDED_README_CONTENT: string;
 // Import the new beats update function <<< UPDATED IMPORT
 import { processByManuscriptOrder, processBySubplotOrder, testYamlUpdateFormatting } from './BeatsCommands';
 
-interface ManuscriptTimelineSettings {
+interface RadialTimelineSettings {
     sourcePath: string;
     validFolderPaths: string[]; // <<< ADDED: Store previously validated folder paths for autocomplete
     publishStageColors: {
@@ -77,7 +77,7 @@ interface SceneNumberInfo {
     height: number;
 }
 
-export const DEFAULT_SETTINGS: ManuscriptTimelineSettings = {
+export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     sourcePath: '',
     validFolderPaths: [], // <<< ADDED: Default empty array for folder path history
     publishStageColors: {
@@ -336,11 +336,11 @@ function highlightSearchTermsInText(text: string, searchTerm: string, fragment: 
     }
 }
 
-export default class ManuscriptTimelinePlugin extends Plugin {
-    settings: ManuscriptTimelineSettings;
+export default class RadialTimelinePlugin extends Plugin {
+    settings: RadialTimelineSettings;
     
     // View reference
-    activeTimelineView: ManuscriptTimelineView | null = null;
+    activeTimelineView: RadialTimelineView | null = null;
 
     // Track open scene paths
     openScenePaths: Set<string> = new Set<string>();
@@ -610,6 +610,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
     }
 
     async onload() {
+        console.log('RadialTimeline: Plugin Loaded');
         await this.loadSettings();
 
         // Load Asimovian Google Font for subplot arcing headlines (Act 3)
@@ -644,8 +645,8 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         this.registerView(
             TIMELINE_VIEW_TYPE,
             (leaf: WorkspaceLeaf) => {
-                this.log('Creating new ManuscriptTimelineView');
-                return new ManuscriptTimelineView(leaf, this);
+                this.log('Creating new RadialTimelineView');
+                return new RadialTimelineView(leaf, this);
             }
         );
         
@@ -680,7 +681,7 @@ export default class ManuscriptTimelinePlugin extends Plugin {
         });
 
         // Add settings tab
-        this.addSettingTab(new ManuscriptTimelineSettingsTab(this.app, this));
+        this.addSettingTab(new RadialTimelineSettingsTab(this.app, this));
         
         // Note: Frontmatter change detection is handled by the TimelineView with proper debouncing
         // No metadata listener needed here to avoid triggering on body text changes
@@ -841,11 +842,11 @@ export default class ManuscriptTimelinePlugin extends Plugin {
                 new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
 
                 try {
-                     new Notice('Starting Manuscript Order update...');
+                     new Notice('Starting Radial Order update...');
                      await processByManuscriptOrder(this, this.app.vault);
                 } catch (error) {
-                    console.error("Error running Manuscript Order beat update:", error);
-                    new Notice("❌ Error during Manuscript Order update.");
+                    console.error("Error running Radial Order beat update:", error);
+                    new Notice("❌ Error during Radial Order update.");
                 }
             }
         });
@@ -934,7 +935,6 @@ export default class ManuscriptTimelinePlugin extends Plugin {
             }
         });
 
-        console.log('Radial Timeline Plugin Loaded');
     }
     
     // Store paths of current hover interactions to avoid redundant processing
@@ -1482,7 +1482,7 @@ public createTimelineSVG(scenes: Scene[]) {
 
     public log<T>(message: string, data?: T) {
         if (this.settings.debug) {
-            console.log(`[Radial Timeline] ${message}`, data || '');
+            // Debug logging removed per user preference
         }
     }
 
@@ -1502,8 +1502,8 @@ public createTimelineSVG(scenes: Scene[]) {
         this.refreshTimeout = setTimeout(() => {
             // Get all timeline views
             const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
-                .map(leaf => leaf.view as ManuscriptTimelineView)
-                .filter(view => view instanceof ManuscriptTimelineView);
+                .map(leaf => leaf.view as RadialTimelineView)
+                .filter(view => view instanceof RadialTimelineView);
 
             // Refresh each view
             for (const view of timelineViews) {
@@ -1731,8 +1731,8 @@ public createTimelineSVG(scenes: Scene[]) {
             
             // Get all timeline views and refresh them
             const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
-                .map(leaf => leaf.view as ManuscriptTimelineView)
-                .filter(view => view instanceof ManuscriptTimelineView);
+                .map(leaf => leaf.view as RadialTimelineView)
+                .filter(view => view instanceof RadialTimelineView);
                 
             if (timelineViews.length > 0) {
                 // Update all timeline views with the new search results
@@ -1757,8 +1757,8 @@ public createTimelineSVG(scenes: Scene[]) {
         
         // Get all timeline views and refresh them
         const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
-            .map(leaf => leaf.view as ManuscriptTimelineView)
-            .filter(view => view instanceof ManuscriptTimelineView);
+            .map(leaf => leaf.view as RadialTimelineView)
+            .filter(view => view instanceof RadialTimelineView);
 
         if (timelineViews.length > 0) {
             // Refresh each view
@@ -1864,7 +1864,6 @@ public createTimelineSVG(scenes: Scene[]) {
                     const fragment = document.createDocumentFragment();
                     fragment.appendChild(svgElement);
                     
-                    console.log(`SVG parsing fallback took ${performance.now() - startTime}ms`);
                     return svgElement;
                 }
                 
@@ -2040,7 +2039,7 @@ public createTimelineSVG(scenes: Scene[]) {
     }
     // --- END: Color Conversion & Desaturation Helpers ---
 
-    // Add this function inside the ManuscriptTimelinePlugin class
+    // Add this function inside the RadialTimelinePlugin class
     public calculateCompletionEstimate(scenes: Scene[]): {
         date: Date;
         total: number;
@@ -2190,7 +2189,7 @@ public createTimelineSVG(scenes: Scene[]) {
     }
 
     onunload() {
-        console.log('Radial Timeline Plugin Unloaded');
+        console.log('RadialTimeline: Plugin Unloaded');
         // Clean up any other resources
     }
-} // End of ManuscriptTimelinePlugin class
+} // End of RadialTimelinePlugin class

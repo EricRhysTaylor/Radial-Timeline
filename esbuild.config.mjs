@@ -36,8 +36,8 @@ if (isCI) {
 } else {
 	// Local development paths
 	destDirs = [
-		"/Users/erictaylor/Documents/Author/Author Obsidian Vault .nosync/.obsidian/plugins/radial-timeline",
-		"/Users/erictaylor/Documents/Code Projects/Test Obsidian Vault/.obsidian/plugins/radial-timeline",
+		"/Users/ericrhystaylor/Documents/Author/Author Obsidian Vault .nosync/.obsidian/plugins/radial-timeline",
+		"/Users/ericrhystaylor/Documents/Code Projects/Test Obsidian Vault/.obsidian/plugins/radial-timeline",
 		"./release"  // Add release folder for distribution
 	];
 }
@@ -46,7 +46,7 @@ if (isCI) {
 const filesToCopy = [
 	"manifest.json",
 	"styles.css",
-	// "screenshot.png" // Removed as it should be referenced via absolute URL in README
+	// "screenshot.jpeg" // Removed as it should be referenced via absolute URL in README
 ];
 
 // Function to copy build assets to destination directories
@@ -144,7 +144,7 @@ if (prod) {
 	await context.rebuild();
 	await copyBuildAssets();
 	console.log("Production build complete!");
-	process.exit(0);
+	await context.dispose(); // Gracefully dispose of the context
 } else {
 	await context.watch();
 	// Copy files initially

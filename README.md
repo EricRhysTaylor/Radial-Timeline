@@ -10,23 +10,35 @@
 
 
 <p align="center">
-    <a href="https://github.com/EricRhysTaylor/radial-timeline/stargazers"><img src="https://img.shields.io/github/stars/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e0ac00&style=for-the-badge" alt="GitHub star count"></a>
-    <a href="https://github.com/EricRhysTaylor/radial-timeline/issues"><img src="https://img.shields.io/github/issues/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e93147&style=for-the-badge" alt="Open issues on GitHub"></a>
+    <a href="https://github.com/EricRhysTaylor/radial-timeline/stargazers" target="_blank" rel="noopener"><img src="https://img.shields.io/github/stars/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e0ac00&style=for-the-badge" alt="GitHub star count"></a>
+    <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener"><img src="https://img.shields.io/github/issues/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e93147&style=for-the-badge" alt="Open issues on GitHub"></a>
     <br/>
-	<a href="https://obsidian.md/plugins?id=radial-timeline"><img src="https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&query=$.radial-timeline.downloads&label=Downloads&style=for-the-badge&colorA=363a4f&colorB=d53984" alt="Plugin Downloads"/></a>
-	<a href="https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&colorA=363a4f&colorB=b7bdf8" alt="MIT license"/></a>
+	<a href="https://obsidian.md/plugins?id=radial-timeline" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&query=$.radial-timeline.downloads&label=Downloads&style=for-the-badge&colorA=363a4f&colorB=d53984" alt="Plugin Downloads"/></a>
+	<a href="https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE" target="_blank" rel="noopener"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&colorA=363a4f&colorB=b7bdf8" alt="MIT license"/></a>
 </p>
 <hr style="margin-bottom: 20px;">
 
-A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.
+A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and numeric order in a radial format for a comprehensive view of project.
 
-This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in chronological order, to depict each scene. Various cues and interactions are available through a search feature and hover and click functionality. Hopefully, this will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
+This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in numeric order, to depict each scene. Various cues and interactions are available through a search feature and hover and click functionality. Hopefully, this will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
+
+
+<a href="https://youtu.be/lRwHJ-R8rMk" target="_blank" rel="noopener">
+  <p align="center">
+    <img src="https://i.ytimg.com/vi/lRwHJ-R8rMk/maxresdefault.jpg" alt="Plot Your Novel with Radial Timeline in Obsidian | Complete Author Walkthrough & Setup Guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  </p>
+  <p align="center" style="font-family: 'Lato', sans-serif; font-weight: bold; font-size: 16px; margin-top: 10px;">
+    Plot Your Novel with Radial Timeline in Obsidian<br>
+    Complete Author Walkthrough & Setup Guide
+  </p>
+</a>
+
 
 ## Features
 
 - Quick setup. Click on Timeline Tool then click button to create a note pre-populated with required metadata (yaml). Duplicate that scene or use other plugins like Templater and Metadata Menu to automate the process.
 - Creates an interactive radial timeline visualization of scenes
-- Organizes scenes by act, subplot, and chronological order
+- Organizes scenes by act, subplot, and numeric order
 - Rotates counterclockwise so act 2 can align under act 1 for readability
 - Supports Save the Cat beats via `Class: Plot` notes that render as slices
 - Shows scene details on hover: title, date, synopsis, subplots, characters, overdue and revisions lines
@@ -45,8 +57,8 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Open: open the timeline view
 * Search timeline: filter by title, character, subplot, or date
 * Clear search: reset all search filters
-* Update flagged beats (manuscript order): process `BeatsUpdate: Yes` notes in manuscript order
-* Update flagged beats (subplot order): process `BeatsUpdate: Yes` notes in subplot order
+* Update AI flagged beats (manuscript order): process `BeatsUpdate: Yes` notes in manuscript order
+* Update AI flagged beats (subplot order): process BeatsUpdate: Yes notes in subplot order
 * Clear beats cache: clear saved beat results to force a full reprocess
 
 <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
@@ -61,6 +73,109 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
   Click image to view full size in browser
 </div>  
 
+
+## Scene and plot metadata
+
+The plugin uses YAML frontmatter to identify and organize your scenes and plot points. Here are the key examples, from basic to advanced.
+
+**Required scene metadata**
+
+Scene files are identified by having `Class: Scene` in their frontmatter. The following fields are used by the timeline:
+
+```yaml
+---
+Class: Scene
+Act: 1
+When: 2000-01-31
+Synopsis: The protagonist discovers a mysterious artifact.
+Subplot:
+  - Main Plot
+  - Plot 2
+Characters:
+  - "[[Protagonist A]]"
+  - "[[Mentor B]]"
+Status: Todo
+Publish Stage: Zero
+Revision:
+Due: 2025-01-31
+Pending Edits:
+BeatsUpdate:
+Book: Book 1 A New Beginning
+---
+```
+
+<hr>
+
+**Plot beat slices (Save the Cat beats)**
+
+The plugin supports plot structuring with `Class: Plot` notes. These appear as narrow slices on the outermost ring when the “outer ring shows all scenes” setting is enabled. Hover a slice to view its description.
+
+Create a note titled "01 Opening Image" with this frontmatter:
+
+```yaml
+---
+Class: Plot
+Act: 1
+Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
+---
+```
+
+<hr>
+
+**Advanced scene example**
+
+While the plugin only requires a few specific metadata fields to function, your scene notes can contain any other frontmatter you need for your personal writing process. The Radial Timeline plugin will safely ignore any fields it doesn't use.
+
+Here is an example of a more detailed scene note that includes both plugin-specific fields and custom fields for personal organization.
+
+```yaml
+---
+# All required Radial Plugin fields come first, followed by Story Grid, Optional, and AI Beats.
+
+Class: Scene     # Always "Scene" for this fileclass
+Act: 1     # Story Act number 1-3
+When: 2000-01-31     # In-world date for the scene
+Duration: 0     # How much story time passes (minutes, hours, days)
+
+Synopsis: Explain concisely what happens in this scene.
+
+Subplots:     # Link to one or more arcs this scene belongs to
+  - Main Plot
+  - Plot 2
+
+Characters:     # Characters on stage; link to Character notes
+  - "[[Protagonist A]]"
+  - "[[Mentor B]]"
+
+Place:     # Location tags; link to class Place notes
+  - "[[Earth]]"
+
+Status: Todo     # Workflow status: Todo / Working / Complete
+Publish Stage: Zero     # Zero = draft, Author = ready for revision, House = reviewed and edited, Press = ready for publication
+Revision:     # Leave blank until Stage > Zero; increment as revisions occur
+Due: 2026-01-31     # Deadline for this scene
+Pending Edits:     # Concrete revisions to address (e.g., "Change venue to a Moon of Jupiter.")
+
+# --- Story Grid Analysis ---
+Type:     # Scene type: Revelation / Turning Point / Confrontation / Decision / Setup / Payoff / Inciting Incident / Deepening
+Shift:     # Polarity change: + / - (or +/- if it flips both ways)
+Questions:     # Prompt: What is the reader wondering?
+Reader Emotion:     # e.g., Curious / Shocked / Uneasy / Hopeful / Betrayed / Triumphant
+Internal:     # How do the characters change? (e.g., from trusting → suspicious)
+
+# --- Optional Fields ---
+Total Time: 0.0     # Writing/production time spent (hours in decimal)
+Words: 0     # scene wordcount
+Book: Book 1 A New Beginning     # Book project label
+Support Files:     # Attachments, references, research notes
+
+# --- AI-Generated Beats (triplets) ---
+beats3:     # Generated by AI: Scene 3
+beats2:     # Generated by AI: middle flagged scene
+beats1:     # Generated by AI: Scene 1 
+BeatsUpdate:     # Type "Yes" to flag for update. Reminder: erase timestamp and clear cache
+---
+```
 
 ## Settings
 
@@ -77,91 +192,25 @@ The plugin offers several settings to customize its behavior and enable AI featu
 * Debug mode: enables developer console logging for troubleshooting
 * Publishing stage colors: customize colors for `Publish Stage` values (Zero, Author, House, Press). Each has a reset button.
 
-## Required scene metadata
-
-Scene files use YAML frontmatter. Keys commonly used by the timeline are:
-- `Class`: must be `Scene` to include in the timeline
-- `Synopsis` (required): brief description of the scene
-- `Subplot` (optional): one or more subplot names; defaults to Main Plot when empty
-- `Act` (optional): 1–3; defaults to 1 when empty
-- `When` (required): the scene date (YYYY-MM-DD)
-- `Character` (optional): one or more characters
-- `Publish Stage` (optional): Zero, Author, House, Press
-- `Status` (optional): Todo, Working, Complete
-- `Due` (required): due date (YYYY-MM-DD)
-- `Pending Edits` (optional): future edit notes
-- `1beats`, `2beats`, `3beats` (optional): beat lists
-- `BeatsUpdate` (optional): set to `Yes` to include in beat update commands
-- `Book` (optional): book identifier
-
-## Beats metadata (1beats, 2beats, 3beats)
-
-Beats can be generated via the plugin’s AI settings (OpenAI or Anthropic). Use the command palette to run beat update commands for the current selection or the whole vault. This helps maintain beat continuity across scenes.
-
-
-```yaml
----
-Class: Scene
-Synopsis: The protagonist discovers a mysterious artifact.
-Subplot:
-  - The Great War
-  - Jinnis Pickle
-Act: 1
-When: 2023-02-15
-Character:
-  - John Mars
-  - Celon Tim
-Publish Stage: Zero
-Status: Complete
-Due: 2025-05-15
-Pending Edits: Optional notes here
-1beats:
-  - 40.5 Initial discovery + / Leads naturally to scene 45
-  - Realizes artifact is active? / Interesting idea
-2beats:
-  - 45 Artifact causes minor chaos — needs tighter tie-in to alpha subplot for a stronger bridge
-  - Attempts to hide it + / Great twist
-3beats:
-  - 48 Antagonist senses artifact activation — the subtext could be stronger
-  - Plans to investigate + / Serves as the hub for Scene 2's strategy session
-BeatsUpdate: Yes
-Book: Book 1 A New Beginning
----
-```
-
-## Plot beat slices (Save the Cat beats)
-
-The plugin supports plot structuring with `Class: Plot` notes. These appear as narrow slices on the outermost ring when the “outer ring shows all scenes” setting is enabled. Hover a slice to view its description.
-
-## Example plot note
-
-Create a note titled "01 Opening Image" with this frontmatter:
-
-```yaml
----
-Class: Plot
-Act: 1
-Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
----
-```
-
 ## Installation
 
-## From Obsidian
+**From Obsidian**
 
 1.  Open Settings > Community plugins.
 2.  Turn off Safe mode if it's on.
 3.  Click Browse and search for "Radial Timeline".
 4.  Click Install and then Enable.
 
-## Manual installation
+<hr>
 
-1.  Download the latest `main.js`, `styles.css`, and `manifest.json` from the [releases](https://github.com/EricRhysTaylor/radial-timeline/releases) page.
+**Manual installation**
+
+1.  Download the latest `main.js`, `styles.css`, and `manifest.json` from the <a href="https://github.com/EricRhysTaylor/radial-timeline/releases" target="_blank" rel="noopener">releases</a> page.
 2.  Extract the files to your vault's .obsidian/plugins/radial-timeline
 
 ## Screen resolution suggestions
 
-The Radial Timeline is designed for high pixel density displays (around 200 PPI or higher) for optimal visual quality. This means:
+The Radial Timeline is designed for high pixel density displays (around 200 PPI or higher) for an optimal visual quality. This means:
 
 - All Apple Retina displays or 2x pixel density (MacBooks, iMacs, etc.)
 - Windows systems with 4K displays or higher (may require adjusted scaling) will work well
@@ -171,7 +220,7 @@ If you're experiencing visual quality issues on Windows, please check your displ
 
 ## Technical implementation
 
-The Radial Timeline visualization was inspired by and draws on principles from [D3.js](https://d3js.org), a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:
+The Radial Timeline visualization was inspired by and draws on principles from <a href="https://d3js.org" target="_blank" rel="noopener">D3.js</a>, a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:
 
 - SVG-based visualization techniques
 - Data-driven document manipulation
@@ -190,9 +239,9 @@ This plugin adheres to Obsidian.md development best practices, including secure 
 
 ## Feedback and support
 
-If you encounter issues or have feature requests, please file an issue on the [GitHub repository issues page](https://github.com/EricRhysTaylor/radial-timeline/issues). If you find the Radial Timeline plugin useful and would like to support continued development, please consider buying me a coffee:
+If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">GitHub repository issues page</a>. If you find the Radial Timeline plugin useful and would like to support continued development, please consider buying me a coffee:
 
-<a href="https://www.buymeacoffee.com/ericrhystaylor" target="_blank">
+<a href="https://www.buymeacoffee.com/ericrhysTaylor" target="_blank" rel="noopener">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="width: 150px;" >
 </a>
 
