@@ -161,6 +161,7 @@
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
+
 /* Hover: emphasize plot titles with a solid black background using stroke */
 .scene-group:hover .plot-title {
   filter: url(#plotTextBg); /* black background halo */
@@ -319,29 +320,23 @@ dominant-baseline: middle;
   fill: #000000;
   pointer-events: none;
 }
+.rt-number-text.grade-A { fill: #00ff48; }
+.rt-number-text.grade-B { fill: #ffbb00; }
+.rt-number-text.grade-C { fill: #ff0000; }
 .rt-number-square.rt-faded,
 .rt-number-text.rt-faded {
-  opacity: 0.2;
+  opacity: 1;
 }
 .scene-title.selected {
   stroke: #000000;
   stroke-width: 3px;
   paint-order: stroke;
 }
-.rt-number-square.rt-scene-is-open.rt-non-selected {
-  fill: #EFEFEF !important;
-  stroke: none;
-  stroke-width: 0;
-}
 /* Dynamic classes for scene-is-open non-selected */
 .rt-number-square.rt-scene-is-open.non-selected {
   fill: #EFEFEF !important;
   stroke: none;
   stroke-width: 0;
-}
-.rt-number-text.rt-scene-is-open.rt-non-selected {
-  fill: #FFFFFF !important;
-  opacity: 1;
 }
 /* Dynamic classes for scene-is-open non-selected text */
 .rt-number-text.rt-scene-is-open.non-selected {
@@ -495,13 +490,13 @@ tspan .search-term {
   font-weight: normal;
   fill: #FFFFFF;
 }
-.rt-number-square.rt-scene-is-open.rt-non-selected {
+.rt-number-square.rt-scene-is-open.non-selected {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
   transition: fill 0.1s;
 }
-.rt-number-text.rt-scene-is-open.rt-non-selected {
+.rt-number-text.rt-scene-is-open.non-selected {
   fill: #ffffff;
   opacity: 1;
 }
@@ -515,10 +510,10 @@ tspan .search-term {
   font-weight: bold;
 }
 .rt-number-square.rt-search-result { fill: var(--rt-color-search) !important; }
-.rt-number-text.rt-search-result.rt-non-selected {
+.rt-number-text.rt-search-result.non-selected {
   fill: #FFFFFF !important;
 }
-.rt-number-text.rt-scene-is-open.rt-search-result.rt-non-selected {
+.rt-number-text.rt-scene-is-open.rt-search-result.non-selected {
   fill: #FFFFFF !important;
 }
 /* Dynamic classes for search result number text non-selected */
@@ -531,7 +526,7 @@ tspan .search-term {
 .rt-number-text.rt-scene-is-open.rt-search-result {
   fill: #000000 !important;
 }
-.rt-number-square.rt-search-result.rt-non-selected {
+.rt-number-square.rt-search-result.non-selected {
   fill: #EFEFEF !important;
   stroke: #EFEFEF;
   stroke-width: 2px;
@@ -552,11 +547,11 @@ tspan .search-term {
 }
 
 .rt-number-square.rt-has-edits.rt-search-result { fill: var(--rt-color-search) !important; }
-.rt-number-square.rt-has-edits.rt-scene-is-open { fill: var(--rt-color-due); }
-.rt-number-square.rt-has-edits.rt-non-selected {
+.rt-number-square.rt-has-edits.rt-scene-is-open { fill: #C0C0C0; }
+.rt-number-square.rt-has-edits.non-selected {
   fill: #EFEFEF !important;
 }
-.rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
+.rt-number-square.rt-has-edits.rt-scene-is-open.non-selected {
  fill: #EFEFEF;
 }
 /* Dynamic classes added by JavaScript */
@@ -567,7 +562,7 @@ tspan .search-term {
   fill: #EFEFEF !important;
 }
 .rt-number-text.rt-has-edits { fill: #ffffff; } /* Base white text for pending edits */
-.rt-number-text.rt-has-edits.rt-scene-is-open.rt-non-selected { fill: #ffffff; }
+.rt-number-text.rt-has-edits.rt-scene-is-open.non-selected { fill: #ffffff; }
 .rt-number-text.rt-has-edits.rt-scene-is-open.rt-selected { fill: #ffffff; }
 .rt-number-text.rt-has-edits.rt-search-result.rt-selected {
   fill: #ffffff;
@@ -577,6 +572,14 @@ tspan .search-term {
 .rt-number-text.rt-has-edits.non-selected { fill: #ffffff; }
 .rt-number-text.rt-has-edits.rt-scene-is-open.non-selected { fill: #ffffff; }
 .rt-number-text.rt-has-edits.selected { fill: #ffffff; font-weight: bold; }
+
+/* Ensure AI grade color persists when tab is open or has edits */
+.rt-number-text.rt-scene-is-open.grade-A:not(.selected), 
+.rt-number-text.rt-has-edits.grade-A:not(.selected) { fill: #00ff48; }
+.rt-number-text.rt-scene-is-open.grade-B:not(.selected), 
+.rt-number-text.rt-has-edits.grade-B:not(.selected) { fill: #ffbb00; }
+.rt-number-text.rt-scene-is-open.grade-C:not(.selected), 
+.rt-number-text.rt-has-edits.grade-C:not(.selected) { fill: #ff0000; }
 .rt-clear-search-btn {
   cursor: pointer;
 }
@@ -838,14 +841,7 @@ tspan .search-term {
   visibility: visible !important;
   fill: transparent;
 }
-.rt-number-square.rt-non-selected {
-  fill: #EFEFEF;
-  stroke: none;
-  stroke-width: 0;
-}
-.rt-number-text.rt-non-selected {
-  fill: #FFFFFF;
-}
+/* Removed legacy .rt-non-selected variants; use .non-selected selectors above */
 /* styles.css */
 
 .center-key-text {
@@ -1061,7 +1057,7 @@ tspan .search-term {
 }
 
 /* Use .non-selected class for faded state (consistent with other elements) */
-.rt-subplot-label-text.rt-non-selected {
+.rt-subplot-label-text.non-selected {
     opacity: .1; /* Corrected opacity back to 30% */
 }
 

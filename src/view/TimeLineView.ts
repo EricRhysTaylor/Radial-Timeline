@@ -7,7 +7,7 @@ import { PlotLabelManager } from '../utils/plotLabelManager';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
-export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial Timeline";
+export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline";
 
 // CONSTANTS: Scene expansion constants
 const HOVER_EXPAND_FACTOR = 1.1; // expansion multiplier when text doesn't fit
@@ -653,7 +653,7 @@ Book:
 
 # Test Scene
 
-This is a test scene created to help with initial Radial Timeline setup.
+This is a test scene created to help with initial Radial timeline setup.
 
 `;
         
@@ -691,7 +691,7 @@ This is a test scene created to help with initial Radial Timeline setup.
 
             if (sourcePath === "") {
                 // No folder configured at all
-                messageText = "No source folder has been configured in the Radial Timeline plugin settings. Please choose a folder that will hold your scene notes or leave blank to use the root of your vault.";
+                messageText = "No source folder has been configured in the Radial timeline plugin settings. Please choose a folder that will hold your scene notes or leave blank to use the root of your vault.";
             } else {
                 const folderExists = !!this.plugin.app.vault.getAbstractFileByPath(sourcePath);
                 if (folderExists) {
@@ -709,7 +709,7 @@ This is a test scene created to help with initial Radial Timeline setup.
 
             // Add button to create a demonstration scene file
             const demoButton = container.createEl("button", {
-                text: "Create Demonstration Scene Note",
+                text: "Create demonstration scene note",
                 cls: "rt-action-button"
             });
 
@@ -878,12 +878,12 @@ This is a test scene created to help with initial Radial Timeline setup.
                                     // Mark the number elements
                                     const numberSquare = svgElement.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
                             if (numberSquare) {
-                                numberSquare.classList.add("scene-is-open");
+                                numberSquare.classList.add("rt-scene-is-open");
                             }
                             
                                     const numberText = svgElement.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
                             if (numberText) {
-                                numberText.classList.add("scene-is-open");
+                                numberText.classList.add("rt-scene-is-open");
                                     }
                                 }
                             }
@@ -1427,27 +1427,7 @@ This is a test scene created to help with initial Radial Timeline setup.
                         }
                     }
                     
-                    // If we want to flash the file in the explorer without actually opening it
-                    // We can trigger a temporary focus event
-                    // this.plugin.app.workspace.trigger('file-menu', file, null); // <--- Commented out: Causes TypeError: e.addItem is not a function
-
-                    // Focus on any open instance of this file in the editor
-                    const leaves = this.plugin.app.workspace.getLeavesOfType('markdown');
-                    const matchingLeaf = leaves.find(leaf => {
-                        const state = leaf.getViewState();
-                        return state.state?.file === file.path;
-                    });
-                    
-                    if (matchingLeaf) {
-                        // Just trigger focus events without actually switching
-                        /*this.plugin.app.workspace.trigger('hover-link', {
-                            event: null,
-                            source: 'timeline',
-                            hoverParent: null,
-                            targetEl: null,
-                            linktext: file.path
-                        });*/
-                    }
+                    // No additional focus behavior required
                 } else {
                     // When unhighlighting, we don't need to do anything special
                     // The hover effect disappears naturally when mouse leaves

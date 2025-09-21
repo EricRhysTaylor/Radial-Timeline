@@ -257,6 +257,20 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // --- AI Settings for Beats Analysis ---
         containerEl.createEl('h2', { text: 'AI settings for beats analysis'});
         
+        // Enable/disable AI beats features
+        new Settings(containerEl)
+            .setName('Enable AI beats')
+            .setDesc('Show AI beat colors and beats sections in hover synopsis. When off, these visuals are hidden, but scene metadata remains unchanged.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableAiBeats ?? true)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableAiBeats = value;
+                    await this.plugin.saveSettings();
+                    // Refresh timeline to apply visibility changes
+                    if (this.plugin.activeTimelineView) {
+                        this.plugin.activeTimelineView.refreshTimeline();
+                    }
+                }));
 
         // --- Default AI Provider Setting ---
         new Settings(containerEl)

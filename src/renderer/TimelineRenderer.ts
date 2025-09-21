@@ -1866,13 +1866,14 @@ export function createTimelineSVG(
 
                     const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
                     const squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
-                    const textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
+                    let textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
 
                     // Match the sceneId format used in the outer ring scene arcs
                     const sceneId = makeSceneId(act, ringOuter, idx, true, true);
 
                     // Get grade for this scene from the grades map
                     const grade = sceneGrades.get(sceneId);
+                    if (plugin.settings.enableAiBeats && grade) textClasses += ` grade-${grade}`;
                     svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
                 });
             }
@@ -1940,7 +1941,7 @@ export function createTimelineSVG(
                 
                 const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
                 const squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
-                const textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
+                let textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
                 
                 const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
                 
@@ -1949,6 +1950,7 @@ export function createTimelineSVG(
                 
                 // Get grade for this scene from the grades map
                 const grade = sceneGrades.get(sceneId);
+                if (plugin.settings.enableAiBeats && grade) textClasses += ` grade-${grade}`;
                 svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
             });
             
@@ -2015,10 +2017,11 @@ export function createTimelineSVG(
                 // Use helper functions for consistent behavior
                 const sceneState = getSceneState(scene, plugin);
                 const squareClasses = buildSquareClasses(sceneState.isSceneOpen, sceneState.isSearchMatch, sceneState.hasEdits);
-                const textClasses = buildTextClasses(sceneState.isSceneOpen, sceneState.isSearchMatch, sceneState.hasEdits);
+                let textClasses = buildTextClasses(sceneState.isSceneOpen, sceneState.isSearchMatch, sceneState.hasEdits);
 
                 // Get grade from our Map for this scene
                 const grade = sceneGrades.get(sceneId);
+                if (plugin.settings.enableAiBeats && grade) textClasses += ` grade-${grade}`;
                 if (grade && plugin.settings.debug) {
                     plugin.log(`[GradeDebug] Found grade ${grade} for scene ${sceneId}`);
                 }

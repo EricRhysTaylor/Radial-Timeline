@@ -34,13 +34,15 @@ interface RadialTimelineSettings {
     anthropicModelId?: string; // <<< ADDED: Selected Anthropic Model ID
     defaultAiProvider?: 'openai' | 'anthropic'; // <<< ADDED: Default AI provider
     openaiModelId?: string; // <<< ADDED: Selected OpenAI Model ID
+    // Feature toggles
+    enableAiBeats?: boolean; // Show AI beats features (colors + synopsis)
     // Optional: Store the fetched models list to avoid refetching?
     // availableOpenAiModels?: { id: string, description?: string }[];
 }
 
 // Constants for the view
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
-const TIMELINE_VIEW_DISPLAY_TEXT = "Radial Timeline"; // Use Title case
+const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline"; // Sentence case per guidelines
 
 export interface Scene {
     title?: string;
@@ -114,6 +116,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     anthropicModelId: 'claude-sonnet-4-0', // <<< ADDED: Default to latest Sonnet
     defaultAiProvider: 'openai', // <<< ADDED: Default to OpenAI
     openaiModelId: 'gpt-4o' // <<< ADDED: Default to gpt-4o
+    ,enableAiBeats: true
 };
 
 //a primary color for each status - references CSS variables
@@ -652,7 +655,7 @@ export default class RadialTimelinePlugin extends Plugin {
         );
         
         // Add ribbon icon
-        this.addRibbonIcon('shell', 'Radial Timeline', () => {
+        this.addRibbonIcon('shell', 'Radial timeline', () => {
             this.activateView();
         });
 
@@ -833,7 +836,10 @@ export default class RadialTimelinePlugin extends Plugin {
         this.addCommand({
             id: 'update-beats-manuscript-order',
             name: 'Update flagged beats (manuscript order)',
-            callback: async () => {
+            checkCallback: (checking: boolean) => {
+                if (!this.settings.enableAiBeats) return false; // hide when disabled
+                if (checking) return true;
+                (async () => {
                 const apiKey = this.settings.openaiApiKey;
                 if (!apiKey || apiKey.trim() === '') {
                     new Notice('OpenAI API key is not set in settings.');
@@ -843,19 +849,24 @@ export default class RadialTimelinePlugin extends Plugin {
                 new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
 
                 try {
-                     new Notice('Starting Radial Order update...');
+                     new Notice('Starting manuscript order update...');
                      await processByManuscriptOrder(this, this.app.vault);
                 } catch (error) {
-                    console.error("Error running Radial Order beat update:", error);
-                    new Notice("❌ Error during Radial Order update.");
+                    console.error("Error running manuscript order beat update:", error);
+                    new Notice("❌ Error during manuscript order update.");
                 }
+                })();
+                return true;
             }
         });
 
         this.addCommand({
             id: 'update-beats-subplot-order',
             name: 'Update flagged beats (subplot order)',
-            callback: async () => {
+            checkCallback: (checking: boolean) => {
+                if (!this.settings.enableAiBeats) return false; // hide when disabled
+                if (checking) return true;
+                (async () => {
                 const apiKey = this.settings.openaiApiKey;
                 if (!apiKey || apiKey.trim() === '') {
                     new Notice('OpenAI API key is not set in settings.');
@@ -865,12 +876,14 @@ export default class RadialTimelinePlugin extends Plugin {
                 new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
                 
                 try {
-                    new Notice('Starting Subplot Order update...');
+                    new Notice('Starting subplot order update...');
                     await processBySubplotOrder(this, this.app.vault);
                 } catch (error) {
-                    console.error("Error running Subplot Order beat update:", error);
-                    new Notice("❌ Error during Subplot Order update.");
+                    console.error("Error running subplot order beat update:", error);
+                    new Notice("❌ Error during subplot order update.");
                 }
+                })();
+                return true;
             }
         });
 
@@ -923,16 +936,21 @@ export default class RadialTimelinePlugin extends Plugin {
         this.addCommand({
             id: 'clear-processed-beats-cache', 
             name: 'Clear beats cache', // Use sentence case
-            callback: async () => {
-                const initialCount = this.settings.processedBeatContexts.length;
-                if (initialCount === 0) {
-                    new Notice('Beats processing cache is already empty.');
-                    return;
-                }
-                this.settings.processedBeatContexts = []; // Clear the array
-                await this.saveSettings(); // Save the change
-                new Notice(`Cleared ${initialCount} cached beat contexts. You can now re-run beat processing.`);
-                this.log(`User cleared processed beats cache. Removed ${initialCount} items.`);
+            checkCallback: (checking: boolean) => {
+                if (!this.settings.enableAiBeats) return false; // hide when disabled
+                if (checking) return true;
+                (async () => {
+                    const initialCount = this.settings.processedBeatContexts.length;
+                    if (initialCount === 0) {
+                        new Notice('Beats processing cache is already empty.');
+                        return;
+                    }
+                    this.settings.processedBeatContexts = []; // Clear the array
+                    await this.saveSettings(); // Save the change
+                    new Notice(`Cleared ${initialCount} cached beat contexts. You can now re-run beat processing.`);
+                    this.log(`User cleared processed beats cache. Removed ${initialCount} items.`);
+                })();
+                return true;
             }
         });
 
@@ -1025,7 +1043,7 @@ export default class RadialTimelinePlugin extends Plugin {
             // First, we should reset any previous highlighting if we're highlighting a new scene
             if (isHighlighting) {
                 // Remove existing highlights to start with a clean state
-                const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                const allElements = svgElement.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
                 allElements.forEach(element => {
                     element.classList.remove('selected', 'non-selected');
                 });
@@ -1061,8 +1079,8 @@ export default class RadialTimelinePlugin extends Plugin {
                         // Also highlight the scene number and title
                         const sceneId = currentPath.id;
                         
-                        const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
-                        const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                        const numberSquare = svgElement.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
+                        const numberText = svgElement.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
                         
                         if (numberSquare) {
                             numberSquare.classList.add('selected');
@@ -1092,7 +1110,7 @@ export default class RadialTimelinePlugin extends Plugin {
                     }
                 } else {
                     // Reset highlighting
-                    const allElements = svgElement.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title');
+                    const allElements = svgElement.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
                     allElements.forEach(element => {
                         element.classList.remove('selected', 'non-selected');
                     });
@@ -1630,7 +1648,7 @@ public createTimelineSVG(scenes: Scene[]) {
     // Search related methods
     private openSearchPrompt(): void {
         const modal = new Modal(this.app);
-        modal.titleEl.setText('Search Timeline');
+        modal.titleEl.setText('Search timeline');
         
         const contentEl = modal.contentEl;
         contentEl.empty();

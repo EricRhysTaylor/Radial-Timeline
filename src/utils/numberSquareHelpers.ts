@@ -56,16 +56,6 @@ export function generateNumberSquareGroup(
                     data-scene-id="${escapeXml(sceneId)}"
                     dy="0.1em"
                 >${number}</text>
-                ${grade ? `
-                <line 
-                    x1="${-squareSize.width/2 + 2}" 
-                    y1="${squareSize.height/2 - 2}" 
-                    x2="${squareSize.width/2 - 2}" 
-                    y2="${squareSize.height/2 - 2}" 
-                    class="grade-border-line grade-${grade}" 
-                    data-scene-id="${escapeXml(sceneId)}" 
-                    stroke-width="2"
-                />` : ''}
             </g>
         </g>
     `;

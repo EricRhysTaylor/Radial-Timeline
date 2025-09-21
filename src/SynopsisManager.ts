@@ -274,8 +274,8 @@ export default class SynopsisManager {
         lineEl.setAttribute("x", "0");
         lineEl.setAttribute("y", String(y));
         lineEl.setAttribute("text-anchor", "start");
-        // Match number-square.has-edits background color and override class fill
-        lineEl.setAttribute("style", "fill: #8875ff !important");
+        // Match number-square.has-edits background color (light gray) and override class fill
+        lineEl.setAttribute("style", "fill: #C0C0C0 !important");
         lineEl.textContent = `${i === 0 ? 'Revisions: ' : ''}${lines[i]}`;
         synopsisTextGroup.appendChild(lineEl);
       }
@@ -323,8 +323,8 @@ export default class SynopsisManager {
       // Call addSpacer with height 0, and store the returned start position
       let currentMetadataY = addSpacer(synopsisBottomY, 0);
 
-      // Process 1beats metadata if it exists
-      if (scene["1beats"]) {
+      // Process 1beats metadata if it exists and AI beats are enabled
+      if (this.plugin.settings.enableAiBeats && scene["1beats"]) {
         const beatsY = currentMetadataY;
         const beatsText = scene["1beats"] || '';
         const linesAdded = this.formatBeatsText(beatsText, '1beats', synopsisTextGroup, beatsY, lineHeight, 0); // Pass '1beats'
@@ -335,8 +335,8 @@ export default class SynopsisManager {
         }
       }
       
-      // Process 2beats metadata if it exists
-      if (scene["2beats"]) {
+      // Process 2beats metadata if it exists and AI beats are enabled
+      if (this.plugin.settings.enableAiBeats && scene["2beats"]) {
         const beatsY = currentMetadataY;
         const beatsText = scene["2beats"] || '';
         const linesAdded = this.formatBeatsText(beatsText, '2beats', synopsisTextGroup, beatsY, lineHeight, 0); // Pass '2beats'
@@ -347,8 +347,8 @@ export default class SynopsisManager {
         }
       }
       
-      // Process 3beats metadata if it exists
-      if (scene["3beats"]) {
+      // Process 3beats metadata if it exists and AI beats are enabled
+      if (this.plugin.settings.enableAiBeats && scene["3beats"]) {
         const beatsY = currentMetadataY;
         const beatsText = scene["3beats"] || '';
         const linesAdded = this.formatBeatsText(beatsText, '3beats', synopsisTextGroup, beatsY, lineHeight, 0); // Pass '3beats'
@@ -989,8 +989,7 @@ export default class SynopsisManager {
     let currentY = baseY;
     let lineCount = 0;
   
-    // Add a grade border line for the 2beats section if it has a letter grade
-    let detectedGrade: string | null = null;
+    // Process lines and render synopsis content
 
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i].trim();
@@ -1112,44 +1111,7 @@ export default class SynopsisManager {
       lineCount++;
     }
 
-    // Add grade border if detected
-    if (detectedGrade && beatKey === '2beats') {
-      // Find the scene group this synopsis belongs to
-      const sceneGroup = parentGroup.closest('.scene-group');
-      if (sceneGroup) {
-        // Find the number-square in the scene group
-        const numberSquare = sceneGroup.querySelector('.rt-number-square');
-        if (numberSquare) {
-          // Add the grade class to the number square
-          numberSquare.classList.add(`grade-${detectedGrade}`);
-
-          // Create or update the grade border
-          let gradeBorder = sceneGroup.querySelector('.grade-border-line');
-           if (!gradeBorder) {
-              gradeBorder = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-               gradeBorder.setAttribute("class", `grade-border-line grade-${detectedGrade}`);
-              
-              // Copy size and position from number-square
-              const x = numberSquare.getAttribute('x') || "0";
-              const y = numberSquare.getAttribute('y') || "0";
-              const width = numberSquare.getAttribute('width') || "0";
-              const height = numberSquare.getAttribute('height') || "0";
-              
-              gradeBorder.setAttribute("x", x);
-              gradeBorder.setAttribute("y", y);
-              gradeBorder.setAttribute("width", width);
-              gradeBorder.setAttribute("height", height);
-              gradeBorder.classList.add('grade-border');
-              
-              // Insert the border before the number-square for proper z-index
-               numberSquare.parentNode?.insertBefore(gradeBorder, numberSquare);
-           } else {
-              // Update existing border with the grade class
-               gradeBorder.setAttribute("class", `grade-border-line grade-${detectedGrade}`);
-           }
-         }
-       }
-     }
+    // Removed grade border overlay; grade is now shown by coloring number text
 
     // Add spacer at the end of this section if needed
     if (spacerSize > 0) {
