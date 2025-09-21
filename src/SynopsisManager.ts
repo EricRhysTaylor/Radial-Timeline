@@ -71,7 +71,7 @@ export default class SynopsisManager {
 
       if (!textNode) {
         // Fallback: If parsing fails, add raw content (less safe, but preserves something)
-        console.warn("Failed to parse title content with tspans, adding raw:", titleContent);
+        this.plugin.log("Failed to parse title content with tspans, adding raw:", titleContent);
         const fallbackTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
         fallbackTspan.setAttribute("fill", titleColor);
         // Avoid setting textContent directly with potentially complex HTML

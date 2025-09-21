@@ -1049,6 +1049,7 @@ tspan .search-term {
     opacity: .2; /* Corrected opacity back to 30% */
     font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
     font-weight: 400; /* Regular weight */
+    font-synthesis: none; /* Prevent faux bold/italic synthesis for single-weight font */
     letter-spacing: -0.02em; /* tighter tracking */
     font-size: var(--rt-subplot-font-size);
     dominant-baseline: central; /* Try central for potentially better vertical centering */

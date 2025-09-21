@@ -44,7 +44,10 @@ export class PlotLabelManager {
 
             PlotLabelManager.repositionLabelsWithSeparators(svgElement, items);
         } catch (error) {
-            console.warn('Failed to adjust plot labels:', error);
+            const isDev = typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.NODE_ENV === 'development';
+            if (isDev) {
+                console.warn('Failed to adjust plot labels:', error);
+            }
         }
     }
 

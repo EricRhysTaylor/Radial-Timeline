@@ -617,26 +617,10 @@ export default class RadialTimelinePlugin extends Plugin {
         console.log('RadialTimeline: Plugin Loaded');
         await this.loadSettings();
 
-        // Load Asimovian Google Font for subplot arcing headlines (Act 3)
+        // Load embedded fonts (no external requests per Obsidian guidelines)
         try {
-            const existing = document.querySelector('link[href*="fonts.googleapis.com"][href*="Asimovian"]');
-            if (!existing) {
-                const link1 = document.createElement('link');
-                link1.rel = 'preconnect';
-                link1.href = 'https://fonts.googleapis.com';
-                document.head.appendChild(link1);
-
-                const link2 = document.createElement('link');
-                link2.rel = 'preconnect';
-                link2.href = 'https://fonts.gstatic.com';
-                link2.crossOrigin = '';
-                document.head.appendChild(link2);
-
-                const fontLink = document.createElement('link');
-                fontLink.rel = 'stylesheet';
-                fontLink.href = 'https://fonts.googleapis.com/css2?family=Asimovian:wght@400;700&display=swap';
-                document.head.appendChild(fontLink);
-            }
+            const { loadEmbeddedFonts } = await import('./utils/fontLoader');
+            loadEmbeddedFonts();
         } catch {}
 
         // Initialize SynopsisManager
@@ -1499,9 +1483,27 @@ public createTimelineSVG(scenes: Scene[]) {
         };
     }
 
-    public log<T>(message: string, data?: T) {
-        if (this.settings.debug) {
-            // Debug logging removed per user preference
+    // Centralized debug logger: only logs when debug is enabled or in development
+    private shouldDebugLog(): boolean {
+        // Best-effort dev detection; safe in browser/Obsidian envs
+        const isDev = typeof process !== 'undefined'
+            && typeof process.env !== 'undefined'
+            && process.env.NODE_ENV === 'development';
+        // Allow either explicit setting or dev mode to enable logs
+        return !!this.settings?.debug || isDev === true;
+    }
+
+    // Overloads to satisfy facades expecting (message, data?) while allowing variadic usage
+    public log<T>(message: string, data?: T): void;
+    public log(...args: unknown[]): void;
+    public log(...args: unknown[]) {
+        if (!this.shouldDebugLog()) return;
+        // Use console.debug to avoid cluttering normal logs
+        try {
+            console.debug('[RadialTimeline]', ...args);
+        } catch {
+            // Fallback if console.debug is unavailable
+            console.log('[RadialTimeline]', ...args);
         }
     }
 
@@ -1580,7 +1582,7 @@ public createTimelineSVG(scenes: Scene[]) {
             // @ts-ignore - Use the workspace layout accessor which may not be fully typed
             const layout = this.app.workspace.getLayout();
             if (layout && layout.leaves) {
-                const leafIds = Object.keys(layout.leaves as Record<string, any>);
+                const leafIds = Object.keys(layout.leaves as Record<string, unknown>);
                 
                 // Try to find any additional file paths from the layout
                 leafIds.forEach(id => {

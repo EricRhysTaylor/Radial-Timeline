@@ -296,7 +296,8 @@ async function logApiInteractionToFile(
             if (e instanceof Error && e.message && !e.message.includes('already exists')) {
                 throw e;
             } else if (!(e instanceof Error)) {
-                 console.warn(`[BeatsCommands] Caught non-Error object while checking/creating folder:`, e);
+                // Non-critical; log only when debug is enabled
+                plugin.log(`[BeatsCommands] Non-Error while ensuring folder exists:`, e);
             }
         }
 
@@ -491,7 +492,7 @@ async function updateSceneFile(
         if (frontmatterCopy.hasOwnProperty('BeatsUpdate')) {
             frontmatterCopy['BeatsUpdate'] = updatedValue; 
         } else {
-            console.warn(`[API Beats][updateSceneFile] Flag 'BeatsUpdate' not found for ${scene.file.path} during update. Adding 'BeatsLastUpdated'.`);
+            plugin.log(`[API Beats][updateSceneFile] Flag 'BeatsUpdate' not found for ${scene.file.path} during update. Adding 'BeatsLastUpdated'.`);
             // Add a fallback key if the original wasn't present 
             frontmatterCopy['BeatsLastUpdated'] = updatedValue;
         }
@@ -561,7 +562,7 @@ export async function processByManuscriptOrder(
             if ((typeof beatsFlag === 'string' && beatsFlag.toLowerCase() === 'yes') &&
                 (!(typeof words === 'number') || words <= 0)) {
                 const msg = `⚠️ Scene ${scene.sceneNumber ?? scene.file.basename} has BeatsUpdate: Yes but 0 words. Skipping.`;
-                console.warn(`[API Beats][processByManuscriptOrder] ${msg}`);
+                // Surface to user via Notice; suppress console noise
                 new Notice(msg, 6000);
             }
 
@@ -629,13 +630,13 @@ export async function processByManuscriptOrder(
                          plugin.settings.processedBeatContexts.push(tripletIdentifier);
                          await plugin.saveSettings();
                     } else {
-                         console.warn(`[API Beats][processByManuscriptOrder] Failed to update file after getting beats for: ${currentScenePath}`);
-        }
+                        plugin.log(`[API Beats][processByManuscriptOrder] Failed to update file after getting beats for: ${currentScenePath}`);
+                    }
                 } else {
-                     console.warn(`[API Beats][processByManuscriptOrder] Failed to parse AI result for: ${currentScenePath}`);
+                    plugin.log(`[API Beats][processByManuscriptOrder] Failed to parse AI result for: ${currentScenePath}`);
                 }
             } else {
-                 console.warn(`[API Beats][processByManuscriptOrder] No result from AI for: ${currentScenePath}`);
+                plugin.log(`[API Beats][processByManuscriptOrder] No result from AI for: ${currentScenePath}`);
             }
 
             processedCount++;
@@ -716,7 +717,7 @@ export async function processBySubplotOrder(
                 if ((typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes') &&
                     (!(typeof words === 'number') || words <= 0)) {
                     const msg = `⚠️ Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has BeatsUpdate: Yes but 0 words. Skipping.`;
-                    console.warn(`[API Beats][processBySubplotOrder] ${msg}`);
+                    // Surface to user via Notice; suppress console noise
                     new Notice(msg, 6000);
                 }
 
@@ -819,13 +820,13 @@ export async function processBySubplotOrder(
                               plugin.settings.processedBeatContexts.push(tripletIdentifier);
                               await plugin.saveSettings();
                          } else {
-                              console.warn(`[API Beats][processBySubplotOrder] Failed to update file for subplot ${subplotName} after getting beats for: ${currentScenePath}`);
+                             plugin.log(`[API Beats][processBySubplotOrder] Failed to update file for subplot ${subplotName} after getting beats for: ${currentScenePath}`);
                          }
                      } else {
-                          console.warn(`[API Beats][processBySubplotOrder] Failed to parse AI result for subplot ${subplotName}, scene: ${currentScenePath}`);
+                         plugin.log(`[API Beats][processBySubplotOrder] Failed to parse AI result for subplot ${subplotName}, scene: ${currentScenePath}`);
                      }
                  } else {
-                      console.warn(`[API Beats][processBySubplotOrder] No result from AI for subplot ${subplotName}, scene: ${currentScenePath}`);
+                     plugin.log(`[API Beats][processBySubplotOrder] No result from AI for subplot ${subplotName}, scene: ${currentScenePath}`);
                  }
                  totalProcessedCount++;
                  notice.setMessage(`Progress: ${totalProcessedCount}/${totalTripletsAcrossSubplots} scenes processed...`);

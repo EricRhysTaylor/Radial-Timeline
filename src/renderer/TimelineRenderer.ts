@@ -1401,7 +1401,7 @@ export function createTimelineSVG(
                 } else {
                     // Handle invalid date format
                     if (plugin.settings.debug) {
-                        console.warn(`WARN: Invalid date format in status count: ${originalDueString}`);
+                        plugin.log(`WARN: Invalid date format in status count: ${originalDueString}`);
                     }
                     // Count scenes with invalid due dates by status
                     let statusKey = "Todo"; 
