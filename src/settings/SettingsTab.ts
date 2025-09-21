@@ -367,16 +367,16 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // --- Publishing Stage Colors (compact grid) --- 
         containerEl.createEl('h2', { text: 'Publishing stage colors'});
         containerEl.createEl('p', { cls: 'color-section-desc', text: 'Used for completed main plot scenes of the outermost ring. Affects other elements as well.' });
-        const stageGrid = containerEl.createDiv({ cls: 'color-grid' });
+        const stageGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
         const stages = Object.entries(this.plugin.settings.publishStageColors);
         stages.forEach(([stage, color]) => {
-            const cell = stageGrid.createDiv({ cls: 'color-grid-item' });
-            const label = cell.createDiv({ cls: 'color-grid-label' });
+            const cell = stageGrid.createDiv({ cls: 'rt-color-grid-item' });
+            const label = cell.createDiv({ cls: 'rt-color-grid-label' });
             label.setText(stage);
 
             let textInputRef: TextComponent | undefined;
             let colorPickerRef: ColorComponent | undefined;
-            const control = cell.createDiv({ cls: 'color-grid-controls' });
+            const control = cell.createDiv({ cls: 'rt-color-grid-controls' });
             // Add hidden Obsidian color input (used to open native picker)
             colorPickerRef = new ColorComponent(control)
                 .setValue(color)
@@ -390,15 +390,15 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 });
             // Hide the native input and present a crisp trigger square
             const colorInput = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
-            if (colorInput) colorInput.classList.add('hidden-color-input');
-            const swatchEl = control.createDiv({ cls: `swatch-trigger stage-${stage}` });
+            if (colorInput) colorInput.classList.add('rt-hidden-color-input');
+            const swatchEl = control.createDiv({ cls: `rt-swatch-trigger rt-stage-${stage}` });
             swatchEl.addEventListener('click', () => {
                 colorInput?.click();
             });
             const setting = new Settings(control)
                 .addText(textInput => {
                     textInputRef = textInput;
-                    textInput.inputEl.classList.add('hex-input');
+                    textInput.inputEl.classList.add('rt-hex-input');
                     textInput.setValue(color)
                         .onChange(async (value) => {
                             if (this.isValidHex(value)) {
@@ -426,17 +426,17 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // --- Subplot palette (15 colors) ---
         containerEl.createEl('h2', { text: 'Subplot ring colors'});
         containerEl.createEl('p', { cls: 'color-section-desc', text: 'Subplot ring colors used for rings 2 through 16 moving inward.' });
-        const subplotGrid = containerEl.createDiv({ cls: 'color-grid' });
+        const subplotGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
         const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
         const subplotColors = ensureArray(this.plugin.settings.subplotColors);
         for (let i = 0; i < 15; i++) {
             const labelText = `Ring ${i+2}`;
             const current = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
-            const cell = subplotGrid.createDiv({ cls: 'color-grid-item' });
-            const label = cell.createDiv({ cls: 'color-grid-label' });
+            const cell = subplotGrid.createDiv({ cls: 'rt-color-grid-item' });
+            const label = cell.createDiv({ cls: 'rt-color-grid-label' });
             label.setText(labelText);
 
-            const control = cell.createDiv({ cls: 'color-grid-controls' });
+            const control = cell.createDiv({ cls: 'rt-color-grid-controls' });
             let inputRef: TextComponent | undefined;
             let colorPickerRef: ColorComponent | undefined;
             colorPickerRef = new ColorComponent(control)
@@ -453,15 +453,15 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 });
             // Hide the native input and present a crisp trigger square
             const colorInput2 = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
-            if (colorInput2) colorInput2.classList.add('hidden-color-input');
-            const swatchEl2 = control.createDiv({ cls: `swatch-trigger subplot-${i}` });
+            if (colorInput2) colorInput2.classList.add('rt-hidden-color-input');
+            const swatchEl2 = control.createDiv({ cls: `rt-swatch-trigger rt-subplot-${i}` });
             swatchEl2.addEventListener('click', () => {
                 colorInput2?.click();
             });
             const setting = new Settings(control)
                 .addText(text => {
                     inputRef = text;
-                    text.inputEl.classList.add('hex-input');
+                    text.inputEl.classList.add('rt-hex-input');
                     text.setValue(current)
                         .onChange(async (value) => {
                             if (this.isValidHex(value)) {

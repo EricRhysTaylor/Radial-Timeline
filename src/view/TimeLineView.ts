@@ -59,9 +59,38 @@ export class RadialTimelineView extends ItemView {
         return "shell";
     }
 
+    // --- Helpers for number-square orientation/position (shared across modes) ---
+    private applyRotationToNumberSquares(svg: SVGSVGElement, rotated: boolean): void {
+        const angle = 120; // degrees to counter-rotate when the whole timeline rotates -120
+        const orients = svg.querySelectorAll<SVGGElement>('.number-square-orient');
+        orients.forEach((el) => {
+            const base = (el.getAttribute('transform') || '').replace(/\s*rotate\([^)]*\)/g, '').trim();
+            if (rotated) {
+                el.setAttribute('transform', `${base} rotate(${angle})`.trim());
+            } else {
+                if (base) el.setAttribute('transform', base); else el.removeAttribute('transform');
+            }
+        });
+    }
+
+    private getSquareGroupForSceneId(svg: SVGSVGElement, sceneId: string): SVGGElement | null {
+        const rect = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`) as SVGRectElement | null;
+        if (!rect) return null;
+        const group = rect.closest('.number-square-group') as SVGGElement | null;
+        return group;
+    }
+
+    private setNumberSquareGroupPosition(svg: SVGSVGElement, sceneId: string, x: number, y: number): void {
+        const group = this.getSquareGroupForSceneId(svg, sceneId);
+        if (group) {
+            // Only translate on the outer group; orientation is handled by inner wrapper
+            group.setAttribute('transform', `translate(${x}, ${y})`);
+        }
+    }
+
     // Add this method to handle search indicator clicks
     private setupSearchControls(): void {
-        const clearSearchBtn = this.contentEl.querySelector('.clear-search-btn');
+        const clearSearchBtn = this.contentEl.querySelector('.rt-clear-search-btn');
         if (clearSearchBtn) {
             clearSearchBtn.addEventListener('click', () => {
                 this.plugin.clearSearch();
@@ -172,7 +201,7 @@ export class RadialTimelineView extends ItemView {
         container.empty();
         
         const loadingEl = container.createEl("div", {
-            cls: "loading-message",
+            cls: "rt-loading-message",
             text: "Loading timeline data..."
         });
         
@@ -452,7 +481,7 @@ export class RadialTimelineView extends ItemView {
                 
                 // Add the highlighted match
                 const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                highlightSpan.setAttribute("class", "search-term");
+                highlightSpan.setAttribute("class", "rt-search-term");
                 highlightSpan.setAttribute("fill", fillColor || "");
                 highlightSpan.textContent = match[0];
                 tspan.appendChild(highlightSpan);
@@ -498,7 +527,7 @@ export class RadialTimelineView extends ItemView {
                 }
                 
                 const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                highlightSpan.setAttribute("class", "search-term");
+                highlightSpan.setAttribute("class", "rt-search-term");
                 highlightSpan.setAttribute("fill", fillColor || "");
                 highlightSpan.textContent = match[0];
                 tspan.appendChild(highlightSpan);
@@ -521,8 +550,8 @@ export class RadialTimelineView extends ItemView {
             const pathAttr = group.getAttribute('data-path');
             if (pathAttr && this.plugin.searchResults.has(decodeURIComponent(pathAttr))) {
                 // Find the number square in this group
-                const numberSquare = group.querySelector('.number-square');
-                const numberText = group.querySelector('.number-text');
+                const numberSquare = group.querySelector('.rt-number-square');
+                const numberText = group.querySelector('.rt-number-text');
                 
                 if (numberSquare) {
                     numberSquare.classList.add('search-result');
@@ -654,7 +683,7 @@ This is a test scene created to help with initial Radial Timeline setup.
             // Add button to create a demonstration scene file
             const demoButton = container.createEl("button", {
                 text: "Create Demonstration Scene Note",
-                cls: "action-button"
+                cls: "rt-action-button"
             });
 
             demoButton.addEventListener("click", async () => {
@@ -705,19 +734,10 @@ This is a test scene created to help with initial Radial Timeline setup.
                             arrowUp.classList.remove('is-hidden');
                             arrowDown.classList.add('is-hidden');
                         }
-                        // Counter-rotate number squares so numbers remain upright
-                        const squares = svgElement.querySelectorAll('.number-squares g');
-                        squares.forEach((g) => {
-                            const el = g as SVGGElement;
-                            if (!el) return;
-                            if (rotated) {
-                                el.setAttribute('transform', (el.getAttribute('transform') || '') + ' rotate(120)');
-                            } else {
-                                // remove the last rotate(120) if present
-                                const t = el.getAttribute('transform') || '';
-                                el.setAttribute('transform', t.replace(/\s*rotate\(120\)/, ''));
-                            }
-                        });
+                        // Expose rotation state on the root SVG so other logic (hover redistribution) can respect it
+                        svgElement.setAttribute('data-rotated', rotated ? 'true' : 'false');
+                        // Keep squares upright by rotating only the inner orientation wrapper, not the translate group
+                        this.applyRotationToNumberSquares(svgElement as unknown as SVGSVGElement, rotated);
 
                         // Counter-rotate center grid and estimate markers if they live under the rotatable group
                         const counterSelectors = [
@@ -734,11 +754,12 @@ This is a test scene created to help with initial Radial Timeline setup.
                                 const el = node as SVGGraphicsElement;
                                 // Only counter-rotate if this node is inside the rotatable group
                                 if (!el.closest('#timeline-rotatable')) return;
+                                const t = el.getAttribute('transform') || '';
+                                const base = t.replace(/\s*rotate\([^)]*\)/g, '').trim();
                                 if (rotated) {
-                                    el.setAttribute('transform', (el.getAttribute('transform') || '') + ' rotate(120)');
+                                    el.setAttribute('transform', `${base} rotate(120)`.trim());
                                 } else {
-                                    const t = el.getAttribute('transform') || '';
-                                    el.setAttribute('transform', t.replace(/\s*rotate\(120\)/, ''));
+                                    el.setAttribute('transform', base);
                                 }
                             });
                         });
@@ -819,12 +840,12 @@ This is a test scene created to help with initial Radial Timeline setup.
                                 const sceneId = scenePath?.id;
                                 if (sceneId) {
                                     // Mark the number elements
-                                    const numberSquare = svgElement.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
+                                    const numberSquare = svgElement.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
                             if (numberSquare) {
                                 numberSquare.classList.add("scene-is-open");
                             }
                             
-                                    const numberText = svgElement.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                                    const numberText = svgElement.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
                             if (numberText) {
                                 numberText.classList.add("scene-is-open");
                                     }
@@ -911,7 +932,7 @@ This is a test scene created to help with initial Radial Timeline setup.
                 let rafId: number | null = null;
 
                 const clearSelection = () => {
-                    const all = svg.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title, .grade-border-line');
+                    const all = svg.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title, .grade-border-line');
                     all.forEach(el => el.classList.remove('selected', 'non-selected'));
                     if (currentSynopsis) currentSynopsis.classList.remove('visible');
                     currentGroup = null; currentSynopsis = null; currentSceneId = null;
@@ -920,9 +941,9 @@ This is a test scene created to help with initial Radial Timeline setup.
                 const applySelection = (group: Element, sceneId: string) => {
                     const pathEl = group.querySelector('.scene-path');
                     if (pathEl) (pathEl as Element).classList.add('selected');
-                    const numberSquare = svg.querySelector(`.number-square[data-scene-id="${sceneId}"]`);
+                    const numberSquare = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
                     if (numberSquare) numberSquare.classList.add('selected');
-                    const numberText = svg.querySelector(`.number-text[data-scene-id="${sceneId}"]`);
+                    const numberText = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
                     if (numberText) numberText.classList.add('selected');
                     const gradeLine = svg.querySelector(`.grade-border-line[data-scene-id="${sceneId}"]`);
                     if (gradeLine) gradeLine.classList.add('selected');
@@ -939,12 +960,12 @@ This is a test scene created to help with initial Radial Timeline setup.
                             const rt = mg.querySelector('.scene-title'); if (rt) related.add(rt);
                             const rid = (rp as SVGPathElement | null)?.id;
                             if (rid) {
-                                const rsq = svg.querySelector(`.number-square[data-scene-id="${rid}"]`); if (rsq) related.add(rsq);
-                                const rtx = svg.querySelector(`.number-text[data-scene-id="${rid}"]`); if (rtx) related.add(rtx);
+                                const rsq = svg.querySelector(`.rt-number-square[data-scene-id="${rid}"]`); if (rsq) related.add(rsq);
+                                const rtx = svg.querySelector(`.rt-number-text[data-scene-id="${rid}"]`); if (rtx) related.add(rtx);
                             }
                         });
                     }
-                    const all = svg.querySelectorAll('.scene-path, .number-square, .number-text, .scene-title, .grade-border-line');
+                    const all = svg.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title, .grade-border-line');
                     all.forEach(el => {
                         if (!el.classList.contains('selected') && !related.has(el)) el.classList.add('non-selected');
                     });
@@ -1043,7 +1064,7 @@ This is a test scene created to help with initial Radial Timeline setup.
                         const scenePathEl = group.querySelector('.scene-path') as SVGPathElement;
                         if (scenePathEl) {
                             const sceneId = scenePathEl.id;
-                            const numberSquareGroup = svg.querySelector(`.number-square[data-scene-id="${sceneId}"]`)?.parentElement;
+                            const numberSquareGroup = this.getSquareGroupForSceneId(svg, sceneId);
                             
                             if (numberSquareGroup) {
                                 const originalTransform = numberSquareGroup.getAttribute('transform') || '';
@@ -1082,16 +1103,9 @@ This is a test scene created to help with initial Radial Timeline setup.
                             const sceneId = scenePathEl.id;
                             const originalTransform = originalSquareTransforms.get(sceneId);
                             if (originalTransform !== undefined) {
-                                const numberSquareGroup = svg.querySelector(`.number-square[data-scene-id="${sceneId}"]`)?.parentElement;
-                                if (numberSquareGroup) {
-                                    // Check if there's currently a rotation applied and preserve it
-                                    const currentTransform = numberSquareGroup.getAttribute('transform') || '';
-                                    const hasRotation = currentTransform.includes('rotate(120)');
-                                    const restoredTransform = hasRotation 
-                                        ? originalTransform + ' rotate(120)'
-                                        : originalTransform;
-                                    numberSquareGroup.setAttribute('transform', restoredTransform);
-                                }
+                                this.setNumberSquareGroupPosition(svg, sceneId, 
+                                    parseFloat(originalTransform.split('(')[1]), 
+                                    parseFloat(originalTransform.split(',')[1]));
                             }
                         }
                     });
@@ -1241,31 +1255,14 @@ This is a test scene created to help with initial Radial Timeline setup.
                         const scenePathEl = group.querySelector('.scene-path') as SVGPathElement;
                         if (scenePathEl) {
                             const sceneId = scenePathEl.id;
-                            const numberSquareGroup = svg.querySelector(`.number-square[data-scene-id="${sceneId}"]`)?.parentElement;
+                            // Position at the START of the redistributed scene (not center)
+                            const startAngle = newStart;
+                            // Use the same radius calculation as the original renderer
+                            const squareRadius = (innerR + outerR) / 2;
+                            const squareX = squareRadius * Math.cos(startAngle);
+                            const squareY = squareRadius * Math.sin(startAngle);
                             
-                            if (numberSquareGroup) {
-                                // Position at the START of the redistributed scene (not center)
-                                const startAngle = newStart;
-                                // Use the same radius calculation as the original renderer
-                                // For outer ring: squareRadiusOuter, for inner rings: textPathRadius
-                                const isOuterRing = hoveredRing === '2'; // Assuming 3 rings (0,1,2) with outer=2
-                                let squareRadius;
-                                if (isOuterRing) {
-                                    squareRadius = (innerR + outerR) / 2; // squareRadiusOuter calculation
-                                } else {
-                                    squareRadius = (innerR + outerR) / 2; // textPathRadius calculation
-                                }
-                                const squareX = squareRadius * Math.cos(startAngle);
-                                const squareY = squareRadius * Math.sin(startAngle);
-                                
-                                // Preserve any existing rotation transforms while updating the translation
-                                const currentTransform = numberSquareGroup.getAttribute('transform') || '';
-                                const hasRotation = currentTransform.includes('rotate(120)');
-                                const newTransform = hasRotation 
-                                    ? `translate(${squareX}, ${squareY}) rotate(120)`
-                                    : `translate(${squareX}, ${squareY})`;
-                                numberSquareGroup.setAttribute('transform', newTransform);
-                            }
+                            this.setNumberSquareGroupPosition(svg, sceneId, squareX, squareY);
                         }
 
                         currentAngle = newEnd;

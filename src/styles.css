@@ -1,62 +1,65 @@
 /* Main color variables for the radial timeline */
 :root {
   /* Publish Stage Colors */
-  --color-zero:   #9E70CF;    /* Purple */
-  --color-author: #5E85CF;    /* Blue   */
-  --color-house:  #DA7847;    /* Orange */
-  --color-press:  #6FB971;    /* Green  */
+  --rt-color-zero:   #9E70CF;    /* Purple */
+  --rt-color-author: #5E85CF;    /* Blue   */
+  --rt-color-house:  #DA7847;    /* Orange */
+  --rt-color-press:  #6FB971;    /* Green  */
 
   /* Runtime colours – the plugin overwrites these on load */
-  --publishStageColors-Zero:   var(--color-zero);
-  --publishStageColors-Author: var(--color-author);
-  --publishStageColors-House:  var(--color-house);
-  --publishStageColors-Press:  var(--color-press);
+  --rt-publishStageColors-Zero:   var(--rt-color-zero);
+  --rt-publishStageColors-Author: var(--rt-color-author);
+  --rt-publishStageColors-House:  var(--rt-color-house);
+  --rt-publishStageColors-Press:  var(--rt-color-press);
   /* most-common stage (used for ACT labels &c.) */
-  --max-publish-stage-color: var(--publishStageColors-Zero);
+  --rt-max-publish-stage-color: var(--rt-publishStageColors-Zero);
 
   /* Status Colors */
-  --color-due: #d05e5e;      /* Red */
-  --color-empty: #ffffff;    /* becomes gray when transparent added */
-  --color-empty-selected: #EFEFEF; /* Slightly darker gray for selected empty cells */
+  --rt-color-due: #d05e5e;      /* Red */
+  --rt-color-empty: #ffffff;    /* becomes gray when transparent added */
+  --rt-color-empty-selected: #EFEFEF; /* Slightly darker gray for selected empty cells */
   
   /* Search and UI Colors */
-  --color-search: #FFCC00;   /* Yellow for search highlighting */
-  --color-debug: #ff3300;    /* Red for debug text */
+  --rt-color-search: #FFCC00;   /* Yellow for search highlighting */
+  --rt-color-debug: #ff3300;    /* Red for debug text */
+  /* Search highlight tuning */
+  --rt-search-stroke-width: 0.2em;      /* default stroke thickness for search outline */
+  --rt-search-stroke-opacity: 0.7;      /* default stroke opacity for search outline */
   
   /* Plaid Colors and Opacity */
-  --color-working: #FF69B4;          /* Match pink color for Working in Manuscript Calendar */
-  --color-todo: #cccccc;             /* Light Gray */
-  --color-plaid-opacity: 1;
-  --color-plaid-stroke-opacity: 1;
+  --rt-color-working: #FF69B4;          /* Match pink color for Working in Manuscript Calendar */
+  --rt-color-todo: #cccccc;             /* Light Gray */
+  --rt-color-plaid-opacity: 1;
+  --rt-color-plaid-stroke-opacity: 1;
     /* Current Stage Color stroke for working pattern set in SVG patterns*/
     /* Current Stage Color stroke for todo pattern set in SVG patterns*/
   
   /* Estimation Colors */
-  --color-estimation: #ff0000; /* Red not using this right now. defs at bottom of file*/
+  --rt-color-estimation: #ff0000; /* Red not using this right now. defs at bottom of file*/
 
   /* Subplot palette - 15 fixed colors provided */
-  --subplot-colors-0: #EFBDEB;
-  --subplot-colors-1: #a35ca7;
-  --subplot-colors-2: #6461A0;
-  --subplot-colors-3: #314CB6;
-  --subplot-colors-4: #0A81D1;
-  --subplot-colors-5: #98CE00;
-  --subplot-colors-6: #16E0BD;
-  --subplot-colors-7: #78C3FB;
-  --subplot-colors-8: #273C2C;
-  --subplot-colors-9: #A6D8D4;
-  --subplot-colors-10: #FF8600;
-  --subplot-colors-11: #F9E784;
-  --subplot-colors-12: #CEC3C1;
-  --subplot-colors-13: #F3D34A;
-  --subplot-colors-14: #004777;
+  --rt-subplot-colors-0: #EFBDEB;
+  --rt-subplot-colors-1: #a35ca7;
+  --rt-subplot-colors-2: #6461A0;
+  --rt-subplot-colors-3: #314CB6;
+  --rt-subplot-colors-4: #0A81D1;
+  --rt-subplot-colors-5: #98CE00;
+  --rt-subplot-colors-6: #16E0BD;
+  --rt-subplot-colors-7: #78C3FB;
+  --rt-subplot-colors-8: #273C2C;
+  --rt-subplot-colors-9: #A6D8D4;
+  --rt-subplot-colors-10: #FF8600;
+  --rt-subplot-colors-11: #F9E784;
+  --rt-subplot-colors-12: #CEC3C1;
+  --rt-subplot-colors-13: #F3D34A;
+  --rt-subplot-colors-14: #004777;
 }
 
 /* ADD stage-specific fill rules for title text – keep close to highlight-rect definitions so colours are defined in one place */
-.title-text-main.title-stage-zero   { fill: var(--publishStageColors-Zero,   var(--color-zero)); }
-.title-text-main.title-stage-author { fill: var(--publishStageColors-Author, var(--color-author)); }
-.title-text-main.title-stage-house  { fill: var(--publishStageColors-House,  var(--color-house)); }
-.title-text-main.title-stage-press  { fill: var(--publishStageColors-Press,  var(--color-press)); }
+.rt-title-text-main.rt-title-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)); }
+.rt-title-text-main.rt-title-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)); }
+.rt-title-text-main.rt-title-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)); }
+.rt-title-text-main.rt-title-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)); }
 
 /* styles.css */
 .radial-timeline-container {
@@ -74,14 +77,14 @@
   background-color: transparent;
   font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
-.loading-message,
-.error-message {
+.rt-loading-message,
+.rt-error-message {
   padding: 20px;
   text-align: center;
   font-size: 1.2em;
   color: var(--text-muted);
 }
-.error-message {
+.rt-error-message {
   color: var(--text-error);
 }
 .radial-timeline-container svg {
@@ -122,7 +125,7 @@
 }
 /* Void cells - empty space in timeline */
 .void-cell {
-  fill: var(--color-empty);
+  fill: var(--rt-color-empty);
   fill-opacity: 0.9;
   stroke: white;
   stroke-width: 1;
@@ -132,10 +135,10 @@
   opacity: 0.3;
 }
 .scene-path.non-selected {
-  fill: var(--color-empty-selected) !important;
+  fill: var(--rt-color-empty-selected) !important;
 }
 .scene-path.scene-is-open.non-selected {
-  fill: var(--color-empty-selected) !important;
+  fill: var(--rt-color-empty-selected) !important;
 }
 .scene-path.selected {
   filter: saturate(1.2) brightness(1.1);
@@ -240,7 +243,7 @@ dominant-baseline: middle;
 .scene-title-large {
   font-size: 18px;
 }
-.status-count {
+.rt-status-count {
   font-size: 80%;
   opacity: 1;
   vertical-align: super;
@@ -306,17 +309,17 @@ dominant-baseline: middle;
   font-weight: normal;
 }
 
-.number-square{
+.rt-number-square{
   pointer-events: none;
   fill: #FFFFFF;
 }
 
-.number-text {
+.rt-number-text {
   fill: #000000;
   pointer-events: none;
 }
-.number-square.faded,
-.number-text.faded {
+.rt-number-square.rt-faded,
+.rt-number-text.rt-faded {
   opacity: 0.2;
 }
 .scene-title.selected {
@@ -324,54 +327,61 @@ dominant-baseline: middle;
   stroke-width: 3px;
   paint-order: stroke;
 }
-.number-square.scene-is-open.non-selected {
+.rt-number-square.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
   stroke: none;
   stroke-width: 0;
 }
-.number-text.scene-is-open.non-selected {
+/* Dynamic classes for scene-is-open non-selected */
+.rt-number-square.rt-scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+  stroke: none;
+  stroke-width: 0;
+}
+.rt-number-text.rt-scene-is-open.rt-non-selected {
   fill: #FFFFFF !important;
   opacity: 1;
 }
-.number-square.selected {
+/* Dynamic classes for scene-is-open non-selected text */
+.rt-number-text.rt-scene-is-open.non-selected {
+  fill: #FFFFFF !important;
+  opacity: 1;
+}
+.rt-number-square.rt-selected {
   transform: scale(1.2);
   z-index: 10;
   stroke-width: 3px;
   stroke: var(--scene-color, #705DCF);
 }
-.number-text.selected {
+.rt-number-square.selected {
+  transform: scale(1.2);
+  z-index: 10;
+  stroke-width: 3px;
+  stroke: var(--scene-color, #705DCF);
+}
+.rt-number-square.non-selected {
+  fill: #EFEFEF;
+  stroke: none;
+  stroke-width: 0;
+}
+.rt-number-text.rt-selected {
   font-weight: bold;
 }
-.search-term {
-  fill: var(--color-search);
+.rt-number-text.selected {
   font-weight: bold;
+}
+.rt-number-text.non-selected {
+  fill: #FFFFFF;
+}
+.rt-search-term {
+  fill: inherit;
+  stroke: var(--rt-color-search);
+  stroke-width: var(--rt-search-stroke-width, 0.2em);
+  stroke-opacity: var(--rt-search-stroke-opacity, 0.3);
+  paint-order: stroke;
 }
 
-/* (Reverted) Keep original outlined highlight for readability; styles consolidated above */
-.metadata-text .search-term,
-text.info-text.metadata-text .search-term,
-.info-text.metadata-text tspan.search-term {
-  fill: inherit !important;
-  stroke: var(--color-search) !important;
-  stroke-width: 0.6em !important;
-  stroke-opacity: 0.6 !important;
-  paint-order: stroke !important;
-  font-weight: bold !important;
-}
-tspan.search-term,
-text.info-text tspan.search-term,
-text.info-text.metadata-text tspan.search-term,
-text.info-text.title-text-main tspan.search-term,
-text.info-text.title-text-secondary tspan.search-term {
-  stroke: var(--color-search) !important;
-  stroke-width: 0.5em !important;
-  stroke-opacity: 0.5 !important;
-  stroke-linejoin: round !important;
-  stroke-linecap: round !important;
-  paint-order: stroke !important;
-  fill: inherit !important;
-  font-size: inherit !important;
-}
+/* Using only .rt-search-term for highlight styling; legacy .search-term rules removed */
 
 
 /* Allow inline subplot/character colors to apply in synopsis */
@@ -434,12 +444,12 @@ tspan .search-term {
   font-weight: 700;
   margin-bottom: 10px;
 }
-.scene-info text.info-text.title-text-main {
+.scene-info text.info-text.rt-title-text-main {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 8px;
 }
-.scene-info text.info-text.title-text-main tspan.date-text {
+.scene-info text.info-text.rt-title-text-main tspan.date-text {
   font-weight: 700;
   font-size: 18px;
   stroke-width: 2.5px;
@@ -459,96 +469,120 @@ tspan .search-term {
   font-weight: normal;
   text-transform: none;
 }
-.number-square.scene-is-open {
+.rt-number-square.rt-scene-is-open {
   fill: var(--interactive-accent, #705DCF);
   stroke: none;
 }
-.number-text.scene-is-open {
+.rt-number-text.rt-scene-is-open {
   font-weight: normal;
   fill: #FFFFFF;
 }
-.number-square.scene-is-open.non-selected {
+.rt-number-square.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
   transition: fill 0.1s;
 }
-.number-text.scene-is-open.non-selected {
+.rt-number-text.rt-scene-is-open.rt-non-selected {
   fill: #ffffff;
   opacity: 1;
 }
-.number-square.scene-is-open.selected {
+.rt-number-square.rt-scene-is-open.rt-selected {
   stroke: #705DCF;
   stroke-width: 3px;
   fill: #FFFFFF;
 }
-.number-text.scene-is-open.selected {
+.rt-number-text.rt-scene-is-open.rt-selected {
   fill: #000000;
   font-weight: bold;
 }
-.number-square.search-result { fill: var(--color-search) !important; }
-.number-text.search-result.non-selected {
+.rt-number-square.rt-search-result { fill: var(--rt-color-search) !important; }
+.rt-number-text.rt-search-result.rt-non-selected {
   fill: #FFFFFF !important;
 }
-.number-text.scene-is-open.search-result.non-selected {
+.rt-number-text.rt-scene-is-open.rt-search-result.rt-non-selected {
   fill: #FFFFFF !important;
 }
-.number-text.scene-is-open.search-result {
+/* Dynamic classes for search result number text non-selected */
+.rt-number-text.rt-search-result.non-selected {
+  fill: #FFFFFF !important;
+}
+.rt-number-text.rt-scene-is-open.rt-search-result.non-selected {
+  fill: #FFFFFF !important;
+}
+.rt-number-text.rt-scene-is-open.rt-search-result {
   fill: #000000 !important;
 }
-.number-square.search-result.non-selected {
+.rt-number-square.rt-search-result.rt-non-selected {
   fill: #EFEFEF !important;
   stroke: #EFEFEF;
   stroke-width: 2px;
 }
-.number-square.search-result.selected {
-  fill: var(--color-search);
+/* Dynamic classes for search result non-selected */
+.rt-number-square.rt-search-result.non-selected {
+  fill: #EFEFEF !important;
+  stroke: #EFEFEF;
+  stroke-width: 2px;
+}
+.rt-number-square.rt-search-result.rt-selected {
+  fill: var(--rt-color-search);
   stroke: #ff9500;
   stroke-width: 2px;
 }
-.number-square.has-edits {
-  fill: var(--color-due);
+.rt-number-square.rt-has-edits {
+  fill: var(--rt-color-due);
 }
 
-.number-square.has-edits.search-result { fill: var(--color-search) !important; }
-.number-square.has-edits.scene-is-open { fill: var(--color-due); }
-.number-square.has-edits.non-selected {
+.rt-number-square.rt-has-edits.rt-search-result { fill: var(--rt-color-search) !important; }
+.rt-number-square.rt-has-edits.rt-scene-is-open { fill: var(--rt-color-due); }
+.rt-number-square.rt-has-edits.rt-non-selected {
   fill: #EFEFEF !important;
 }
-.number-square.has-edits.scene-is-open.non-selected {
+.rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
  fill: #EFEFEF;
 }
-.number-text.has-edits { fill: #ffffff; } /* Base white text for pending edits */
-.number-text.has-edits.scene-is-open.non-selected { fill: #ffffff; }
-.number-text.has-edits.scene-is-open.selected { fill: #ffffff; }
-.number-text.has-edits.search-result.selected {
+/* Dynamic classes added by JavaScript */
+.rt-number-square.rt-has-edits.non-selected {
+  fill: #EFEFEF !important;
+}
+.rt-number-square.rt-has-edits.rt-scene-is-open.non-selected {
+  fill: #EFEFEF !important;
+}
+.rt-number-text.rt-has-edits { fill: #ffffff; } /* Base white text for pending edits */
+.rt-number-text.rt-has-edits.rt-scene-is-open.rt-non-selected { fill: #ffffff; }
+.rt-number-text.rt-has-edits.rt-scene-is-open.rt-selected { fill: #ffffff; }
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected {
   fill: #ffffff;
   font-weight: bold;
 }
-.clear-search-btn {
+/* Dynamic classes added by JavaScript for number text */
+.rt-number-text.rt-has-edits.non-selected { fill: #ffffff; }
+.rt-number-text.rt-has-edits.rt-scene-is-open.non-selected { fill: #ffffff; }
+.rt-number-text.rt-has-edits.selected { fill: #ffffff; font-weight: bold; }
+.rt-clear-search-btn {
   cursor: pointer;
 }
-.clear-search-btn:hover {
+.rt-clear-search-btn:hover {
   transform: scale(1.1);
 }
 
-.clear-search-btn:hover circle {
+.rt-clear-search-btn:hover circle {
   fill: #FFE5E5;
 }
 
-.highlight-rect {
-  fill: var(--color-search);
+.rt-highlight-rect {
+  fill: var(--rt-color-search);
   rx: 3;
   ry: 3;
   opacity: 0.3;
 }
 
-.highlight-rect.stage-zero   { fill: var(--publishStageColors-Zero,   var(--color-zero)); }
-.highlight-rect.stage-author { fill: var(--publishStageColors-Author, var(--color-author)); }
-.highlight-rect.stage-house  { fill: var(--publishStageColors-House,  var(--color-house)); }
-.highlight-rect.stage-press  { fill: var(--publishStageColors-Press,  var(--color-press)); }
+.rt-highlight-rect.rt-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)); }
+.rt-highlight-rect.rt-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)); }
+.rt-highlight-rect.rt-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)); }
+.rt-highlight-rect.rt-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)); }
 
-.color-picker-modal {
+.rt-color-picker-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -560,43 +594,43 @@ tspan .search-term {
   align-items: center;
   z-index: 1000;
 }
-.color-picker-container {
+.rt-color-picker-container {
   background-color: var(--background-primary);
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   position: relative;
 }
-.color-picker-input {
+.rt-color-picker-input {
   width: 100%;
   height: 40px;
   margin-bottom: 10px;
 }
-.color-picker-text-input {
+.rt-color-picker-text-input {
   width: 100%;
   margin-bottom: 5px;
   padding: 5px;
 }
-.color-picker-buttons {
+.rt-color-picker-buttons {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
 }
-.color-picker-button {
+.rt-color-picker-button {
   padding: 5px 15px;
   border-radius: 4px;
   border: none;
   cursor: pointer;
 }
-.color-picker-button.ok {
+.rt-color-picker-button.ok {
   background-color: var(--interactive-accent);
   color: white;
 }
-.color-picker-button.cancel {
+.rt-color-picker-button.cancel {
   background-color: var(--background-modifier-error);
   color: white;
 }
-.color-swatch {
+.rt-color-swatch {
   display: inline-block;
   width: 20px;
   height: 20px;
@@ -606,23 +640,23 @@ tspan .search-term {
   margin-left: 8px;
 }
 /* Compact grid for color settings (publish stages + subplot palette) */
-.color-grid {
+.rt-color-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px 12px;
   margin-top: 8px;
 }
 @media (max-width: 1100px) {
-  .color-grid {
+  .rt-color-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @media (max-width: 800px) {
-  .color-grid {
+  .rt-color-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-.color-grid-item {
+.rt-color-grid-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -631,23 +665,26 @@ tspan .search-term {
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
 }
-.color-grid-label {
+.rt-color-grid-label {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 2px;
+  margin-bottom: 2px;
 }
-.color-grid-controls {
+.rt-color-grid-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  border-top: 1px solid var(--background-modifier-border);
-  padding-top: 6px;
-  margin-top: 4px;
+  padding-top: 2px;
+  margin-top: 0;
+  justify-content: space-between;
 }
-.color-grid-controls input[type="color"] {
+.rt-color-grid-controls input[type="color"] {
   width: 18px;
   height: 18px;
   padding: 0;
@@ -660,73 +697,99 @@ tspan .search-term {
   box-shadow: none;
   outline: none;
 }
-.color-grid-controls .hidden-color-input {
+.rt-color-grid-controls .rt-hidden-color-input {
   position: absolute;
   width: 1px;
   height: 1px;
   opacity: 0;
   pointer-events: none;
 }
-.color-grid-controls .swatch-trigger {
-  width: 18px;
-  height: 18px;
+.rt-color-grid-controls .rt-swatch-trigger {
+  width: 24px;
+  height: 24px;
   border: 1px solid var(--background-modifier-border);
-  box-sizing: border-box;
+  border-radius: 3px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 /* Stage swatch backgrounds map to CSS variables that the plugin updates */
-.color-grid-controls .swatch-trigger.stage-Zero { background: var(--publishStageColors-Zero); }
-.color-grid-controls .swatch-trigger.stage-Author { background: var(--publishStageColors-Author); }
-.color-grid-controls .swatch-trigger.stage-House { background: var(--publishStageColors-House); }
-.color-grid-controls .swatch-trigger.stage-Press { background: var(--publishStageColors-Press); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Zero { background: var(--rt-publishStageColors-Zero); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Author { background: var(--rt-publishStageColors-Author); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-stage-House { background: var(--rt-publishStageColors-House); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Press { background: var(--rt-publishStageColors-Press); }
 
 /* Subplot swatches map to subplot color CSS variables */
-.color-grid-controls .swatch-trigger.subplot-0 { background: var(--subplot-colors-0); }
-.color-grid-controls .swatch-trigger.subplot-1 { background: var(--subplot-colors-1); }
-.color-grid-controls .swatch-trigger.subplot-2 { background: var(--subplot-colors-2); }
-.color-grid-controls .swatch-trigger.subplot-3 { background: var(--subplot-colors-3); }
-.color-grid-controls .swatch-trigger.subplot-4 { background: var(--subplot-colors-4); }
-.color-grid-controls .swatch-trigger.subplot-5 { background: var(--subplot-colors-5); }
-.color-grid-controls .swatch-trigger.subplot-6 { background: var(--subplot-colors-6); }
-.color-grid-controls .swatch-trigger.subplot-7 { background: var(--subplot-colors-7); }
-.color-grid-controls .swatch-trigger.subplot-8 { background: var(--subplot-colors-8); }
-.color-grid-controls .swatch-trigger.subplot-9 { background: var(--subplot-colors-9); }
-.color-grid-controls .swatch-trigger.subplot-10 { background: var(--subplot-colors-10); }
-.color-grid-controls .swatch-trigger.subplot-11 { background: var(--subplot-colors-11); }
-.color-grid-controls .swatch-trigger.subplot-12 { background: var(--subplot-colors-12); }
-.color-grid-controls .swatch-trigger.subplot-13 { background: var(--subplot-colors-13); }
-.color-grid-controls .swatch-trigger.subplot-14 { background: var(--subplot-colors-14); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-0 { background: var(--rt-subplot-colors-0); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-1 { background: var(--rt-subplot-colors-1); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-2 { background: var(--rt-subplot-colors-2); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-3 { background: var(--rt-subplot-colors-3); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-4 { background: var(--rt-subplot-colors-4); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-5 { background: var(--rt-subplot-colors-5); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-6 { background: var(--rt-subplot-colors-6); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-7 { background: var(--rt-subplot-colors-7); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-8 { background: var(--rt-subplot-colors-8); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-9 { background: var(--rt-subplot-colors-9); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-10 { background: var(--rt-subplot-colors-10); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-11 { background: var(--rt-subplot-colors-11); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-12 { background: var(--rt-subplot-colors-12); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-13 { background: var(--rt-subplot-colors-13); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-14 { background: var(--rt-subplot-colors-14); }
 
 /* Description under color section headers */
-.color-section-desc {
+.rt-color-section-desc {
   margin: 6px 0 10px 0;
   color: var(--text-muted);
   font-size: 12px;
 }
-.color-grid-controls input[type="color"]::-webkit-color-swatch-wrapper {
+.rt-color-grid-controls input[type="color"]::-webkit-color-swatch-wrapper {
   padding: 0;
 }
-.color-grid-controls input[type="color"]::-webkit-color-swatch {
+.rt-color-grid-controls input[type="color"]::-webkit-color-swatch {
   border: none;
   border-radius: 0; /* ensure square inside */
 }
-.color-grid-controls .hex-input {
-  width: 7.5em; /* fits #RRGGBB */
+.rt-color-grid-controls .rt-hex-input {
+  width: 7em; /* fits #RRGGBB with less space */
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  border-radius: 6px;
+  padding: 6px 10px;
+  box-shadow: none;
+  outline: none;
+  flex-shrink: 1;
+  min-width: 5em;
 }
-.color-grid-controls .setting-item {
+/* Focus state for hex input */
+.rt-color-grid-controls .rt-hex-input:focus {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(100, 180, 255, 0.2);
+}
+.rt-color-grid-controls .setting-item {
   margin: 0;
   width: 100%;
   display: block;
-  border: 0 !important; /* remove inner divider so only outer line shows */
+  padding: 0 !important; /* remove default vertical padding */
+  border: none !important; /* remove all borders */
+  border-top: none !important; /* specifically remove top border */
+  border-bottom: none !important; /* specifically remove bottom border */
+  border-left: none !important; /* specifically remove left border */
+  border-right: none !important; /* specifically remove right border */
 }
-.color-grid-controls .setting-item-control {
+/* Also neutralize Obsidian's `.setting-item + .setting-item { border-top: ... }` rule */
+.rt-color-grid-controls .setting-item + .setting-item {
+  border-top: none !important;
+}
+.rt-color-grid-controls .setting-item-control {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
+  padding: 0 !important;   /* remove default padding */
+  margin: 0 !important;    /* remove default margins */
+  justify-content: space-between;
 }
-.debug-info-container {
+.rt-debug-info-container {
   pointer-events: none;
 }
 .debug-info-background {
@@ -746,12 +809,7 @@ tspan .search-term {
   pointer-events: none;
 }
 
-.scene-info text.info-text.title-text-main .search-term {
-  stroke: var(--color-search) !important;
-  stroke-width: .2em !important;
-  paint-order: stroke !important;
-  font-weight: bold !important;
-}
+/* Removed legacy .search-term override for synopsis titles; .rt-search-term handles all cases */
 .synopsis-spacer {
   line-height: 1.5em;
   min-height: 1.5em;
@@ -759,12 +817,12 @@ tspan .search-term {
   visibility: visible !important;
   fill: transparent;
 }
-.number-square.non-selected {
+.rt-number-square.rt-non-selected {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
 }
-.number-text.non-selected {
+.rt-number-text.rt-non-selected {
   fill: #FFFFFF;
 }
 /* styles.css */
@@ -816,7 +874,7 @@ tspan .search-term {
 }
 
 /* Layout containers */
-.flex-container {
+.rt-flex-container {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -824,7 +882,7 @@ tspan .search-term {
 }
 
 /* Button styles */
-.action-button {
+.rt-action-button {
     padding: 10px;
     margin-top: 20px;
 }
@@ -860,7 +918,7 @@ tspan .search-term {
 }
 
 /* Button Container Styles */
-.button-container {
+.rt-button-container {
     display: flex;
     gap: 10px;
     justify-content: flex-end;
@@ -868,7 +926,7 @@ tspan .search-term {
 }
 
 /* Input field styles */
-.search-input {
+.rt-search-input {
     flex: 1;
 }
 
@@ -961,15 +1019,7 @@ tspan .search-term {
 }
 
 /* Ensure search terms maintain their color */
-[data-item-type="subplot"] .search-term,
-[data-item-type="character"] .search-term {
-  fill: inherit !important;
-  stroke: var(--color-search) !important;
-  stroke-width: 0.6em !important;
-  stroke-opacity: 0.6 !important;
-  paint-order: stroke !important;
-  font-weight: bold !important;
-}
+/* Removed legacy subplot/character .search-term overrides; .rt-search-term is used consistently */
 
 .subplot-ring-label-path {
   fill: none;
@@ -977,25 +1027,25 @@ tspan .search-term {
   pointer-events: none;
 }
 
-.subplot-label-text {
-    fill: var(--max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
+.rt-subplot-label-text {
+    fill: var(--rt-max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
     opacity: .2; /* Corrected opacity back to 30% */
     font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
     font-weight: 400; /* Regular weight */
     letter-spacing: -0.02em; /* tighter tracking */
-    font-size: var(--subplot-font-size);
+    font-size: var(--rt-subplot-font-size);
     dominant-baseline: central; /* Try central for potentially better vertical centering */
     text-transform: uppercase;
     pointer-events: none; /* Ignore mouse events */
 }
 
 /* Use .non-selected class for faded state (consistent with other elements) */
-.subplot-label-text.non-selected {
+.rt-subplot-label-text.rt-non-selected {
     opacity: .1; /* Corrected opacity back to 30% */
 }
 
 /* Make subplot labels disappear when any scene is hovered */
-.radial-timeline-svg.scene-hover .subplot-label-text {
+.radial-timeline-svg.scene-hover .rt-subplot-label-text {
     opacity: 0 !important;
 }
 

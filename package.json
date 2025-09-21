@@ -10,7 +10,8 @@
 		"release": "node release-script.mjs",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"prepare": "husky",
-		"check-quality": "node code-quality-check.mjs src/main.ts"
+		"check-quality": "node code-quality-check.mjs src/main.ts",
+		"backup": "node backup.mjs"
 	},
 	"keywords": [
 		"obsidian",
