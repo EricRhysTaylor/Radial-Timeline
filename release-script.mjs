@@ -54,6 +54,18 @@ function updateManifestAndVersions(targetVersion) {
 
 function getLastReleaseTag() {
     try {
+        // First try to get the latest GitHub release (what's actually published)
+        const ghOutput = execSync('gh release list --limit 1 --json tagName', { encoding: 'utf8' });
+        const releases = JSON.parse(ghOutput);
+        if (releases && releases.length > 0) {
+            return releases[0].tagName;
+        }
+    } catch (error) {
+        console.log('⚠️  Could not get GitHub releases, falling back to Git tags');
+    }
+    
+    try {
+        // Fallback to Git tags
         const output = execSync('git tag --sort=-version:refname | head -1', { encoding: 'utf8' });
         const tag = output.trim();
         return tag || null;

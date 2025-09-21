@@ -541,6 +541,33 @@ export class RadialTimelineView extends ItemView {
             }
         });
         
+        // Also highlight matches in synopsis hover titles
+        const synopsisTitles = this.contentEl.querySelectorAll('svg .scene-info text.info-text.rt-title-text-main');
+        synopsisTitles.forEach((titleEl: Element) => {
+            const originalText = titleEl.textContent || '';
+            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
+            const fillColor = (titleEl as SVGTextElement).getAttribute('fill');
+            const regex = wordBoundaryRegex;
+            // Clear existing children
+            while (titleEl.firstChild) titleEl.removeChild(titleEl.firstChild);
+            regex.lastIndex = 0;
+            let lastIndex = 0; let match;
+            while ((match = regex.exec(originalText)) !== null) {
+                if (match.index > lastIndex) {
+                    titleEl.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
+                }
+                const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                highlightSpan.setAttribute('class', 'rt-search-term');
+                if (fillColor) highlightSpan.setAttribute('fill', fillColor);
+                highlightSpan.textContent = match[0];
+                titleEl.appendChild(highlightSpan);
+                lastIndex = match.index + match[0].length;
+            }
+            if (lastIndex < originalText.length) {
+                titleEl.appendChild(document.createTextNode(originalText.substring(lastIndex)));
+            }
+        });
+        
         // Check for scene groups that should be highlighted
         const allSceneGroups = this.contentEl.querySelectorAll('.scene-group');
         this.log(`Found ${allSceneGroups.length} scene groups to check for search matches`);
@@ -1064,7 +1091,7 @@ This is a test scene created to help with initial Radial Timeline setup.
                         const scenePathEl = group.querySelector('.scene-path') as SVGPathElement;
                         if (scenePathEl) {
                             const sceneId = scenePathEl.id;
-                            const numberSquareGroup = this.getSquareGroupForSceneId(svg, sceneId);
+                            const numberSquareGroup = view.getSquareGroupForSceneId(svg, sceneId);
                             
                             if (numberSquareGroup) {
                                 const originalTransform = numberSquareGroup.getAttribute('transform') || '';
@@ -1103,7 +1130,7 @@ This is a test scene created to help with initial Radial Timeline setup.
                             const sceneId = scenePathEl.id;
                             const originalTransform = originalSquareTransforms.get(sceneId);
                             if (originalTransform !== undefined) {
-                                this.setNumberSquareGroupPosition(svg, sceneId, 
+                                view.setNumberSquareGroupPosition(svg, sceneId, 
                                     parseFloat(originalTransform.split('(')[1]), 
                                     parseFloat(originalTransform.split(',')[1]));
                             }
@@ -1159,7 +1186,13 @@ This is a test scene created to help with initial Radial Timeline setup.
 
                     // Use the reusable measurement element to avoid creating/destroying elements
                     measurementText.textContent = titleText;
-                    measurementText.style.fontFamily = getComputedStyle(hoveredSceneTitle).fontFamily || 'sans-serif';
+                    const hoveredComputed = getComputedStyle(hoveredSceneTitle as Element);
+                    
+                    // SAFE: CSS custom properties used for dynamic font measurement copying
+                    const fontFamily = hoveredComputed.fontFamily || 'sans-serif';
+                    const fontSize = hoveredComputed.fontSize || '18px';
+                    measurementText.style.setProperty('--rt-measurement-font-family', fontFamily);
+                    measurementText.style.setProperty('--rt-measurement-font-size', fontSize);
                     
                     const textBBox = measurementText.getBBox();
                     const requiredTextWidth = textBBox.width;
@@ -1262,7 +1295,7 @@ This is a test scene created to help with initial Radial Timeline setup.
                             const squareX = squareRadius * Math.cos(startAngle);
                             const squareY = squareRadius * Math.sin(startAngle);
                             
-                            this.setNumberSquareGroupPosition(svg, sceneId, squareX, squareY);
+                            view.setNumberSquareGroupPosition(svg, sceneId, squareX, squareY);
                         }
 
                         currentAngle = newEnd;

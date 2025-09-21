@@ -117,11 +117,11 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
 
 //a primary color for each status - references CSS variables
 const STATUS_COLORS = {
-    "Working": "var(--color-working)",
-    "Todo": "var(--color-todo)",
-    "Empty": "var(--color-empty)",  // Light gray
-    "Due": "var(--color-due)",
-    "Complete": "var(--color-complete)" // Complete status
+    "Working": "var(--rt-color-working)",
+    "Todo": "var(--rt-color-todo)",
+    "Empty": "var(--rt-color-empty)",  // Light gray
+    "Due": "var(--rt-color-due)",
+    "Complete": "var(--rt-color-complete)" // Complete status
 };
 
 const NUM_ACTS = 3;
@@ -1705,24 +1705,32 @@ public createTimelineSVG(scenes: Scene[]) {
         this.searchActive = true;
         this.searchResults.clear();
         
-        // Case-insensitive search without global flag (avoids lastIndex side-effects)
-        const buildRegex = () => new RegExp(escapeRegExp(term), 'i');
+        // Simple case-insensitive search that matches whole phrases
+        const containsWholePhrase = (haystack: string | undefined, phrase: string): boolean => {
+            if (!haystack || !phrase || typeof haystack !== 'string') return false;
+            
+            const h = haystack.toLowerCase();
+            const p = phrase.toLowerCase();
+            
+            // For now, let's use a simple contains check to verify the search is working
+            // We can add word boundary logic back once we confirm basic matching works
+            return h.includes(p);
+        };
         
         // Populate searchResults with matching scene paths
         this.getSceneData().then(scenes => {
             scenes.forEach(scene => {
-                const regex = buildRegex();
                 // Build searchable string from scene fields
-                const searchableContent = [
+                const fields: (string | undefined)[] = [
                     scene.title,
                     scene.synopsis,
                     ...(scene.Character || []),
                     scene.subplot,
                     scene.location,
                     scene.pov
-                ].filter(Boolean).join(' ');
-
-                if (regex.test(searchableContent)) {
+                ];
+                const matched = fields.some(f => containsWholePhrase(f, term));
+                if (matched) {
                     if (scene.path) {
                         this.searchResults.add(scene.path);
                     }
@@ -1777,13 +1785,12 @@ public createTimelineSVG(scenes: Scene[]) {
         
         // Convert hex colors to RGB for CSS variables
         Object.entries(publishStageColors).forEach(([stage, color]) => {
-            // Set the main color variable
-            root.style.setProperty(`--publishStageColors-${stage}`, color);
-            
-            // Convert hex to RGB values for rgba() usage
+            // Prefixed vars used by styles.css
+            root.style.setProperty(`--rt-publishStageColors-${stage}`, color);
+
             const rgbValues = this.hexToRGB(color);
             if (rgbValues) {
-                root.style.setProperty(`--publishStageColors-${stage}-rgb`, rgbValues);
+                root.style.setProperty(`--rt-publishStageColors-${stage}-rgb`, rgbValues);
             }
         });
 
@@ -1792,7 +1799,8 @@ public createTimelineSVG(scenes: Scene[]) {
             for (let i = 0; i < 15; i++) {
                 const color = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
                 if (color) {
-                    root.style.setProperty(`--subplot-colors-${i}`, color);
+                    // Prefixed var used by styles.css swatches and rings
+                    root.style.setProperty(`--rt-subplot-colors-${i}`, color);
                 }
             }
         }

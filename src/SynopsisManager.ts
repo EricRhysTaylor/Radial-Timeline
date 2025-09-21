@@ -121,7 +121,7 @@ export default class SynopsisManager {
   generateElement(scene: Scene, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number): SVGGElement {
     // Map the publish stage to a CSS class
     const stage = scene["Publish Stage"] || 'Zero';
-    const stageClass = `title-stage-${String(stage).toLowerCase()}`;
+    const stageClass = `rt-title-stage-${String(stage).toLowerCase()}`;
     
     // Get the title color from the publish stage
     const titleColor = this.plugin.settings.publishStageColors[stage as keyof typeof this.plugin.settings.publishStageColors] || '#808080';
@@ -144,7 +144,7 @@ export default class SynopsisManager {
       if (subplotIndexResolver) {
         try {
           const idx = Math.max(0, subplotIndexResolver(subplot)) % 15;
-          const varName = `--subplot-colors-${idx}`;
+          const varName = `--rt-subplot-colors-${idx}`;
           const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
           if (value) return value;
         } catch {}
@@ -156,7 +156,7 @@ export default class SynopsisManager {
           const idxAttr = sceneGroup.getAttribute('data-subplot-index');
           if (idxAttr) {
             const idx = Math.max(0, parseInt(idxAttr, 10)) % 15;
-            const varName = `--subplot-colors-${idx}`;
+            const varName = `--rt-subplot-colors-${idx}`;
             const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
             if (value) return value;
           }
@@ -170,7 +170,7 @@ export default class SynopsisManager {
         const attr = match.getAttribute('data-subplot-index');
         if (attr) idx = Math.max(0, parseInt(attr, 10));
       }
-      const varName = `--subplot-colors-${idx % 15}`;
+      const varName = `--rt-subplot-colors-${idx % 15}`;
       const root = document.documentElement;
       const value = getComputedStyle(root).getPropertyValue(varName).trim();
       return value || '#EFBDEB';
@@ -201,7 +201,7 @@ export default class SynopsisManager {
     // Add the title with publish stage color - at origin (0,0)
     const titleContent = decodedContentLines[0];
     const titleTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    titleTextElement.setAttribute("class", `info-text title-text-main ${stageClass}`);
+    titleTextElement.setAttribute("class", `info-text rt-title-text-main ${stageClass}`);
     titleTextElement.setAttribute("x", "0");
     titleTextElement.setAttribute("y", "0");
     titleTextElement.setAttribute("text-anchor", "start");
@@ -253,7 +253,7 @@ export default class SynopsisManager {
           dueLine.setAttribute("y", String(1 * lineHeight));
           dueLine.setAttribute("text-anchor", "start");
           // Use existing overdue color and ensure it overrides class fill
-          dueLine.setAttribute("style", "fill: var(--color-due) !important");
+          dueLine.setAttribute("style", "fill: var(--rt-color-due) !important");
           dueLine.textContent = `Overdue: ${dueString}`;
           synopsisTextGroup.appendChild(dueLine);
           extraLineCount += 1;

@@ -103,7 +103,8 @@
 
 /* Measurement text node used only for width measurement; keep off-layout and invisible */
 .rt-measure-text {
-  font-size: 18px;
+  font-family: var(--rt-measurement-font-family, sans-serif);
+  font-size: var(--rt-measurement-font-size, 18px);
   visibility: hidden;
   position: absolute;
   pointer-events: none;
@@ -408,6 +409,22 @@ tspan .search-term {
 .synopsis-q2 .title-text-secondary,
 .synopsis-q2 .metadata-text {
   text-anchor: start;
+}
+
+/* Command palette search modal styling */
+.search-container.flex-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.search-input {
+  width: 100%;
+}
+.button-container.button-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: flex-end;
 }
 .synopsis-q3 .info-text,
 .synopsis-q3 .title-text-main,

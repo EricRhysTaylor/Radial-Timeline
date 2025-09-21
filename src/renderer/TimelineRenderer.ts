@@ -14,11 +14,11 @@ interface SceneNumberInfo {
 }
 
 const STATUS_COLORS = {
-  Working: 'var(--color-working)',
-  Todo: 'var(--color-todo)',
-  Empty: 'var(--color-empty)',
-  Due: 'var(--color-due)',
-  Complete: 'var(--color-complete)',
+  Working: 'var(--rt-color-working)',
+  Todo: 'var(--rt-color-todo)',
+  Empty: 'var(--rt-color-empty)',
+  Due: 'var(--rt-color-due)',
+  Complete: 'var(--rt-color-complete)',
 };
 
 // Stage header tooltips (used for grid row headers Z/A/H/P)
@@ -381,24 +381,24 @@ export function createTimelineSVG(
             const desaturatedColor = plugin.desaturateColor(color, 0.75); // 75 % desaturated
             return `
             <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="80" height="20" patternTransform="rotate(-20)">
-                <rect width="80" height="20" fill="var(--color-working)" opacity="var(--color-plaid-opacity)"/>
+                <rect width="80" height="20" fill="var(--rt-color-working)" opacity="var(--rt-color-plaid-opacity)"/>
                 <path d="M 0 10 Q 2.5 -5, 5 10 Q 7.5 25, 10 10 Q 12.5 5, 15 10 Q 17.5 25, 20 10 Q 22.5 -5, 25 10 Q 27.5 25, 30 10 Q 32.5 5, 35 10 Q 37.5 25, 40 10 Q 42.5 -5, 45 10 Q 47.5 25, 50 10 Q 52.5 5, 55 10 Q 57.5 25, 60 10 Q 62.5 -5, 65 10 Q 67.5 25, 70 10 Q 72.5 5, 75 10 Q 77.5 25, 80 10" 
                     stroke="${color}" 
-                    stroke-opacity="var(--color-plaid-stroke-opacity)" 
+                    stroke-opacity="var(--rt-color-plaid-stroke-opacity)" 
                     stroke-width="1.5" 
                     fill="none" />
             </pattern>
             
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="var(--color-todo)" opacity="var(--color-plaid-opacity)"/>
+                <rect width="10" height="10" fill="var(--rt-color-todo)" opacity="var(--rt-color-plaid-opacity)"/>
                 <line x1="0" y1="0" x2="0" y2="10" 
                     stroke="${desaturatedColor}" 
                     stroke-width="1" 
-                    stroke-opacity="var(--color-plaid-stroke-opacity)"/>
+                    stroke-opacity="var(--rt-color-plaid-stroke-opacity)"/>
                 <line x1="0" y1="0" x2="10" y2="0" 
                     stroke="${desaturatedColor}" 
                     stroke-width="1" 
-                    stroke-opacity="var(--color-plaid-stroke-opacity)"/>
+                    stroke-opacity="var(--rt-color-plaid-stroke-opacity)"/>
             </pattern>
         `;}).join('')}`;
         
@@ -852,7 +852,7 @@ export function createTimelineSVG(
             const idx = masterSubplotOrder.indexOf(name);
             if (idx <= 0) return '#EFBDEB'; // fallback for Main Plot or not found
             const colorIdx = (idx - 1) % 15; // subtract 1 to skip Main Plot, start from 0
-            const varName = `--subplot-colors-${colorIdx}`;
+            const varName = `--rt-subplot-colors-${colorIdx}`;
             const root = document.documentElement;
             const computed = getComputedStyle(root).getPropertyValue(varName).trim();
             return computed || '#EFBDEB';
@@ -1083,7 +1083,7 @@ export function createTimelineSVG(
                         // No separator needed; spacing handled in positioning
 
                         svg += `
-                        <g class="scene-group" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
+                        <g class="scene-group" data-item-type="Scene" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
                             <path id="${sceneId}"
                                   d="${arcPath}" 
                                   fill="${color}" 
@@ -1222,7 +1222,7 @@ export function createTimelineSVG(
                             // (No plot labels rendered in inner rings)
             
                             svg += `
-                            <g class="scene-group" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                            <g class="scene-group" data-item-type="Scene" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                 <path id="${sceneId}"
                                       d="${arcPath}" 
                                       fill="${color}" 
@@ -1281,7 +1281,7 @@ export function createTimelineSVG(
                                 const plotArcPath = buildCellArcPath(innerR, outerR, plotStartAngle, plotEndAngle);
                                 const sceneId = `scene-path-${act}-${ring}-${idx}`;
                                 svg += `
-                                <g class="scene-group" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                                <g class="scene-group" data-item-type="Plot" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                     <path id="${sceneId}"
                                           d="${plotArcPath}" 
                                           fill="#E6E6E6" 
@@ -1583,7 +1583,7 @@ export function createTimelineSVG(
             } else if (status === 'Todo') {
                 fillAttr = `fill="url(#plaidTodo${stage})"`;
             } else if (status === 'Due') {
-                fillAttr = `fill="var(--color-due)"`;
+                fillAttr = `fill="var(--rt-color-due)"`;
             } else {
                 fillAttr = `fill="#888888"`;
             }
@@ -1830,7 +1830,7 @@ export function createTimelineSVG(
         if (plugin.settings.outerRingAllScenes) {
             // In outer-ring-all-scenes mode, draw number squares for ALL rings
             
-        svg += `<g class="number-squares">`;
+        svg += `<g class="rt-number-squares">`;
             
             // First, draw squares for the outer ring (all scenes combined)
             const ringOuter = NUM_RINGS - 1;
@@ -1889,33 +1889,35 @@ export function createTimelineSVG(
                     const isSearchMatch = plugin.searchActive && scene.path && plugin.searchResults.has(scene.path);
                     const hasEdits = scene.pendingEdits && scene.pendingEdits.trim() !== '';
 
-                    let squareClasses = 'number-square';
-                    if (isSceneOpen) squareClasses += ' scene-is-open';
-                    if (isSearchMatch) squareClasses += ' search-result';
-                    if (hasEdits) squareClasses += ' has-edits';
+                    let squareClasses = 'rt-number-square';
+                    if (isSceneOpen) squareClasses += ' rt-scene-is-open';
+                    if (isSearchMatch) squareClasses += ' rt-search-result';
+                    if (hasEdits) squareClasses += ' rt-has-edits';
 
                     // Match the sceneId format used in the outer ring scene arcs
                     const sceneId = makeSceneId(act, ringOuter, idx, true, true);
 
                     svg += `
-                        <g transform="translate(${squareX}, ${squareY})">
-                            <rect 
-                                x="-${squareSize.width/2}" 
-                                y="-${squareSize.height/2}" 
-                                width="${squareSize.width}" 
-                                height="${squareSize.height}" 
-                                class="${squareClasses}" 
-                                data-scene-id="${escapeXml(sceneId)}"
-                            />
-                            <text 
-                                x="0" 
-                                y="0" 
-                                text-anchor="middle" 
-                                dominant-baseline="middle" 
-                                class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}${hasEdits ? ' has-edits' : ''}"
-                                data-scene-id="${escapeXml(sceneId)}"
-                                dy="0.1em"
-                            >${number}</text>
+                        <g class="number-square-group" transform="translate(${squareX}, ${squareY})">
+                            <g class="number-square-orient">
+                                <rect 
+                                    x="-${squareSize.width/2}" 
+                                    y="-${squareSize.height/2}" 
+                                    width="${squareSize.width}" 
+                                    height="${squareSize.height}" 
+                                    class="${squareClasses}" 
+                                    data-scene-id="${escapeXml(sceneId)}"
+                                />
+                                <text 
+                                    x="0" 
+                                    y="0" 
+                                    text-anchor="middle" 
+                                    dominant-baseline="middle" 
+                                    class="rt-number-text${isSceneOpen ? ' rt-scene-is-open' : ''}${isSearchMatch ? ' rt-search-result' : ''}${hasEdits ? ' rt-has-edits' : ''}"
+                                    data-scene-id="${escapeXml(sceneId)}"
+                                    dy="0.1em"
+                                >${number}</text>
+                            </g>
                         </g>
                     `;
                 });
@@ -1986,39 +1988,41 @@ export function createTimelineSVG(
                 const isSearchMatch = plugin.searchActive && scene.path && plugin.searchResults.has(scene.path);
                 const hasEdits = scene.pendingEdits && scene.pendingEdits.trim() !== '';
                 
-                let squareClasses = 'number-square';
-                if (isSceneOpen) squareClasses += ' scene-is-open';
-                if (isSearchMatch) squareClasses += ' search-result';
-                if (hasEdits) squareClasses += ' has-edits';
+                let squareClasses = 'rt-number-square';
+                if (isSceneOpen) squareClasses += ' rt-scene-is-open';
+                if (isSearchMatch) squareClasses += ' rt-search-result';
+                if (hasEdits) squareClasses += ' rt-has-edits';
                 
                 const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
                 
                 svg += `
-                    <g transform="translate(${squareX}, ${squareY})">
-                        <rect 
-                            x="-${squareSize.width/2}" 
-                            y="-${squareSize.height/2}" 
-                            width="${squareSize.width}" 
-                            height="${squareSize.height}" 
-                            class="${squareClasses}" 
-                            data-scene-id="${escapeXml(sceneId)}"
-                        />
-                        <text 
-                            x="0" 
-                            y="0" 
-                            text-anchor="middle" 
-                            dominant-baseline="middle" 
-                            class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}${hasEdits ? ' has-edits' : ''}"
-                            data-scene-id="${escapeXml(sceneId)}"
-                            dy="0.1em"
-                        >${number}</text>
+                    <g class="number-square-group" transform="translate(${squareX}, ${squareY})">
+                        <g class="number-square-orient">
+                            <rect 
+                                x="-${squareSize.width/2}" 
+                                y="-${squareSize.height/2}" 
+                                width="${squareSize.width}" 
+                                height="${squareSize.height}" 
+                                class="${squareClasses}" 
+                                data-scene-id="${escapeXml(sceneId)}"
+                            />
+                            <text 
+                                x="0" 
+                                y="0" 
+                                text-anchor="middle" 
+                                dominant-baseline="middle" 
+                                class="rt-number-text${isSceneOpen ? ' rt-scene-is-open' : ''}${isSearchMatch ? ' rt-search-result' : ''}${hasEdits ? ' rt-has-edits' : ''}"
+                                data-scene-id="${escapeXml(sceneId)}"
+                                dy="0.1em"
+                            >${number}</text>
+                        </g>
                     </g>
                 `;
             });
             
             svg += `</g>`;
         } else if (!plugin.settings.outerRingAllScenes) {
-            svg += `<g class="number-squares">`;
+            svg += `<g class="rt-number-squares">`;
             scenes.forEach((scene) => {
                 // Skip number squares for Plot notes
                 if (scene.itemType === "Plot") {
@@ -2084,7 +2088,7 @@ export function createTimelineSVG(
                 const isSearchMatch = plugin.searchActive && scene.path && plugin.searchResults.has(scene.path);
 
                 // Declare base classes first
-                let squareClasses = "number-square";
+                let squareClasses = "rt-number-square";
                 if (isSceneOpen) squareClasses += " scene-is-open";
                 if (isSearchMatch) squareClasses += " search-result";
 
@@ -2113,7 +2117,7 @@ export function createTimelineSVG(
                             y="0" 
                             text-anchor="middle" 
                             dominant-baseline="middle" 
-                            class="number-text${isSceneOpen ? ' scene-is-open' : ''}${isSearchMatch ? ' search-result' : ''}${hasEdits ? ' has-edits' : ''}"
+                            class="rt-number-text${isSceneOpen ? ' rt-scene-is-open' : ''}${isSearchMatch ? ' rt-search-result' : ''}${hasEdits ? ' rt-has-edits' : ''}"
                             data-scene-id="${escapeXml(sceneId)}"
                             dy="0.1em"
                         >${number}</text>
