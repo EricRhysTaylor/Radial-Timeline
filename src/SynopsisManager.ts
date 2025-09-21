@@ -1118,7 +1118,7 @@ export default class SynopsisManager {
       const sceneGroup = parentGroup.closest('.scene-group');
       if (sceneGroup) {
         // Find the number-square in the scene group
-        const numberSquare = sceneGroup.querySelector('.number-square');
+        const numberSquare = sceneGroup.querySelector('.rt-number-square');
         if (numberSquare) {
           // Add the grade class to the number square
           numberSquare.classList.add(`grade-${detectedGrade}`);

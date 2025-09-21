@@ -56,10 +56,10 @@
 }
 
 /* ADD stage-specific fill rules for title text – keep close to highlight-rect definitions so colours are defined in one place */
-.rt-title-text-main.rt-title-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)); }
-.rt-title-text-main.rt-title-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)); }
-.rt-title-text-main.rt-title-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)); }
-.rt-title-text-main.rt-title-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)); }
+.scene-info text.info-text.rt-title-text-main.rt-title-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)) !important; }
+.scene-info text.info-text.rt-title-text-main.rt-title-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important; }
+.scene-info text.info-text.rt-title-text-main.rt-title-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)) !important; }
+.scene-info text.info-text.rt-title-text-main.rt-title-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)) !important; }
 
 /* styles.css */
 .radial-timeline-container {
@@ -465,6 +465,7 @@ tspan .search-term {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 8px;
+  /* Fill will be set by stage-specific classes (rt-title-stage-*) */
 }
 .scene-info text.info-text.rt-title-text-main tspan.date-text {
   font-weight: 700;
@@ -547,7 +548,7 @@ tspan .search-term {
   stroke-width: 2px;
 }
 .rt-number-square.rt-has-edits {
-  fill: var(--rt-color-due);
+  fill: #C0C0C0; /* Light gray for pending edits */
 }
 
 .rt-number-square.rt-has-edits.rt-search-result { fill: var(--rt-color-search) !important; }
@@ -700,6 +701,7 @@ tspan .search-term {
   padding-top: 2px;
   margin-top: 0;
   justify-content: space-between;
+  position: relative;
 }
 .rt-color-grid-controls input[type="color"] {
   width: 18px;
@@ -720,6 +722,8 @@ tspan .search-term {
   height: 1px;
   opacity: 0;
   pointer-events: none;
+  top: 20px;
+  left: 0;
 }
 .rt-color-grid-controls .rt-swatch-trigger {
   width: 24px;
@@ -988,7 +992,7 @@ tspan .search-term {
 
 .beats-text-grade {
   font-size: 16px; /* Let's try 14px, closer to metadata */
-  fill: var(--max-publish-stage-color, var(--text-muted)); /* Darker green for better visibility */
+  fill: var(--rt-max-publish-stage-color, var(--text-muted)); /* Darker green for better visibility */
   font-weight: bold;
 }
 

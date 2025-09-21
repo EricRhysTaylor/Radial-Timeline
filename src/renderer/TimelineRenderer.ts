@@ -3,6 +3,14 @@ import type { Scene } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString } from '../utils/date';
 import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
+import { 
+    extractGradeFromScene, 
+    getSceneState, 
+    buildSquareClasses, 
+    buildTextClasses,
+    type PluginRendererFacade
+} from '../utils/sceneHelpers';
+import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
 
 // Local definition for scene number metadata used in number squares and synopsis
 interface SceneNumberInfo {
@@ -26,7 +34,7 @@ const STAGE_HEADER_TOOLTIPS: Record<string, string> = {
   Zero: 'Zero stage — The raw first draft. Unpolished ideas on the page, no edits yet.',
   Author: 'Author stage — The author revises and refines the draft after letting it rest.',
   House: 'House stage — Alpha and beta readers give feedback. Publisher or editor reviews the manuscript. Copy-edited and proofed.',
-  Press: 'Public stage — Final version is ready for publication.'
+  Press: 'Press stage — Final version is ready for publication.'
 };
 
 // Status header tooltips (used for grid column headers Tdo/Wrk/Due/Cmt)
@@ -37,35 +45,15 @@ const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
   Completed: 'Completed — tasks or scenes finished'
 };
 
-interface PluginRendererFacade {
-  settings: {
-    publishStageColors: Record<string, string>;
-    debug: boolean;
-    targetCompletionDate?: string;
-    outerRingAllScenes?: boolean;
-  };
-  searchActive: boolean;
-  searchResults: Set<string>;
-  searchTerm: string;
-  openScenePaths: Set<string>;
-  desaturateColor(hex: string, amount: number): string;
-  lightenColor(hex: string, percent: number): string;
-  darkenColor(hex: string, percent: number): string;
-  calculateCompletionEstimate(scenes: Scene[]): { date: Date; total: number; remaining: number; rate: number } | null;
-  log<T>(message: string, data?: T): void;
-  synopsisManager: { generateElement: (scene: Scene, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number) => SVGGElement };
-  highlightSearchTerm(text: string): string;
-  safeSvgText(text: string): string;
-  latestStatusCounts?: Record<string, number>;
-  splitIntoBalancedLines: (text: string, maxWidth: number) => string[];
-}
 
 // --- Small helpers to centralize ring logic ---
 
 // Offsets are based solely on the outer scene ring's outer radius
-const PLOT_TITLE_INSET = -3;     // px inward from outer scene edge for plot titles
-const ACT_LABEL_OFFSET = 26;     // px outward from outer scene edge for ACT labels
-const MONTH_TEXT_INSET = 9;     // px inward from month tick ring to month text path
+const PLOT_TITLE_INSET = -3;
+
+     // px inward from outer scene edge for plot beats titles
+const ACT_LABEL_OFFSET = 25;     // px outward from outer scene edge for ACT labels
+const MONTH_TEXT_INSET = 10;     // px inward toward center from outer perimeter (larger = closer to origin)
 const MONTH_TICK_TERMINAL = 35;   // px outward from outer scene edge for month tick lines
 const SCENE_TITLE_INSET = 22; // fixed pixels inward from the scene's outer boundary for title path
 
@@ -95,11 +83,6 @@ function estimateAngleFromTitle(title: string, baseRadius: number, fontPx: numbe
     return px / Math.max(1, baseRadius);
 }
 
-function makeSceneId(actIndex: number, ring: number, idx: number, isOuterAllScenes: boolean, isOuter: boolean): string {
-    return isOuterAllScenes && isOuter
-        ? `scene-path-${actIndex}-${ring}-outer-${idx}`
-        : `scene-path-${actIndex}-${ring}-${idx}`;
-}
 
 function getEffectiveScenesForRing(allScenes: Scene[], actIndex: number, subplot: string | undefined, outerAllScenes: boolean, isOuter: boolean, grouped: { [act: number]: { [subplot: string]: Scene[] } }): Scene[] {
     if (isOuter && outerAllScenes) {
@@ -200,12 +183,10 @@ function getFillForItem(
     const publishStage = scene['Publish Stage'] || 'Zero';
     if (!norm) return `url(#plaidTodo${publishStage})`;
     if (norm === 'Completed') {
-        // Completed: use subplot tint in all-scenes mode for non-Main Plot, else stage color
+        // Completed: use subplot colors in all-scenes mode, else stage color
         if (isOuterAllScenes && subplotColorResolver) {
             const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-            if (subplotName !== 'Main Plot') {
-                return subplotColorResolver(subplotName);
-            }
+            return subplotColorResolver(subplotName);
         }
         const stageColor = publishStageColors[publishStage as keyof typeof publishStageColors] || publishStageColors.Zero;
         return stageColor;
@@ -223,7 +204,7 @@ export function createTimelineSVG(
     
         const sceneCount = scenes.length;
         const size = 1600;
-        const margin = 35; //KEY VALUEOffset from the SVG edge to the First Plot Ring
+        const margin = 36; //KEY VALUE reduce timeline radius to make more room for ring text at top. Offset from the SVG edge to the First Plot Ring
         const innerRadius = 200; // the first ring is 200px from the center
         const outerRadius = size / 2 - margin;
         const maxTextWidth = 500; // Define maxTextWidth for the synopsis text
@@ -377,8 +358,7 @@ export function createTimelineSVG(
         
         // Define patterns for Working and Todo states with Publish Stage colors
         svg += `${Object.entries(PUBLISH_STAGE_COLORS).map(([stage, color]) => {
-            // Desaturate the stage color for the 'Working' and 'Todo' stroke to soften the plaid pattern
-            const desaturatedColor = plugin.desaturateColor(color, 0.75); // 75 % desaturated
+            // Use full stage color for plaid patterns, opacity will control subtlety
             return `
             <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="80" height="20" patternTransform="rotate(-20)">
                 <rect width="80" height="20" fill="var(--rt-color-working)" opacity="var(--rt-color-plaid-opacity)"/>
@@ -392,13 +372,13 @@ export function createTimelineSVG(
             <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
                 <rect width="10" height="10" fill="var(--rt-color-todo)" opacity="var(--rt-color-plaid-opacity)"/>
                 <line x1="0" y1="0" x2="0" y2="10" 
-                    stroke="${desaturatedColor}" 
-                    stroke-width="1" 
-                    stroke-opacity="var(--rt-color-plaid-stroke-opacity)"/>
+                    stroke="${color}" 
+                    stroke-width="1.5" 
+                    stroke-opacity="0.5"/>
                 <line x1="0" y1="0" x2="10" y2="0" 
-                    stroke="${desaturatedColor}" 
-                    stroke-width="1" 
-                    stroke-opacity="var(--rt-color-plaid-stroke-opacity)"/>
+                    stroke="${color}" 
+                    stroke-width="1.5" 
+                    stroke-opacity="0.5"/>
             </pattern>
         `;}).join('')}`;
         
@@ -847,11 +827,13 @@ export function createTimelineSVG(
             return subplotCounts.map(item => item.subplot);
         })();
 
-        // Resolver for subplot CSS color variables (index-based to ensure uniqueness across current subplots)
+        // Resolver for subplot CSS color variables (Ring 1 = outermost = subplotColors[0])
         const subplotCssColor = (name: string): string => {
             const idx = masterSubplotOrder.indexOf(name);
-            if (idx <= 0) return '#EFBDEB'; // fallback for Main Plot or not found
-            const colorIdx = (idx - 1) % 15; // subtract 1 to skip Main Plot, start from 0
+            if (idx < 0) return '#EFBDEB'; // fallback for not found
+            
+            // Map subplot index to settings array - outermost ring (Ring 1) uses subplotColors[0]
+            const colorIdx = idx % 16; // Direct order: outermost (idx=0) = Ring 1 = subplotColors[0]
             const varName = `--rt-subplot-colors-${colorIdx}`;
             const root = document.documentElement;
             const computed = getComputedStyle(root).getPropertyValue(varName).trim();
@@ -890,20 +872,8 @@ export function createTimelineSVG(
 
             const sceneId = makeSceneId(actIndex, ring, sceneIndex, false, false);
             
-            // Extract grade from 2beats here, when we know it's available (NEW)
-            if (scene["2beats"]) {
-                try {
-                    const firstLine2Beats = scene["2beats"].split('\n')[0]?.trim() || '';
-                    // Updated regex to match "[Number] [GradeLetter] / [Comment]"
-                    const gradeMatch = firstLine2Beats.match(/^(?:\d+(?:\.\d+)?\s+)?([ABC])(?![A-Za-z0-9])/i);                    if (gradeMatch && gradeMatch[1]) {
-                        const grade = gradeMatch[1].toUpperCase();
-                        // Store the grade in our Map
-                        sceneGrades.set(sceneId, grade);
-                    }
-                } catch (e) {
-                    plugin.log(`[ERROR][EarlyGradeExtract] Error extracting grade: ${e}`);
-                }
-            }
+            // Extract grade from 2beats using helper function
+            extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
             
             // Skip content generation for placeholder scenes
             if (!scene.title) {
@@ -923,7 +893,8 @@ export function createTimelineSVG(
                 orderedSubplots,
                 (name) => {
                     const idx = masterSubplotOrder.indexOf(name);
-                    return idx <= 0 ? 0 : (idx - 1) % 15; // skip Main Plot, start from 0
+                    if (idx < 0) return 0;
+                    return idx % 16; // Direct order: outermost (idx=0) = Ring 1 = subplotColors[0]
                 }
             );
             synopsesElements.push(synopsisElement);
@@ -1000,6 +971,11 @@ export function createTimelineSVG(
                             if (seenPaths.has(key)) return;
                             seenPaths.add(key);
                             combined.push(s);
+                            
+                            // Extract grade from 2beats for All Scenes mode using helper
+                            const sceneIndex = combined.length - 1; // Current index in combined array
+                            const allScenesSceneId = makeSceneId(act, NUM_RINGS - 1, sceneIndex, true, true);
+                            extractGradeFromScene(s, allScenesSceneId, sceneGrades, plugin);
                         }
                     });
 
@@ -1009,12 +985,14 @@ export function createTimelineSVG(
                     // Stacking removed
 
                     // Render combined items into the outer ring
-                    // Helper to resolve subplot color from CSS variables
+                    // Helper to resolve subplot color from CSS variables (Ring 1 = outermost = subplotColors[0])
                     const subplotColorFor = (subplotName: string) => {
                         const idx = masterSubplotOrder.indexOf(subplotName);
-                        if (idx <= 0) return '#EFBDEB'; // fallback for Main Plot or not found
-                        const colorIdx = (idx - 1) % 15; // subtract 1 to skip Main Plot, start from 0
-                        const varName = `--subplot-colors-${colorIdx}`;
+                        if (idx < 0) return '#EFBDEB'; // fallback for not found
+                        
+                        // Map subplot index to settings array - outermost ring (Ring 1) uses subplotColors[0]
+                        const colorIdx = idx % 16; // Direct order: outermost (idx=0) = Ring 1 = subplotColors[0]
+                        const varName = `--rt-subplot-colors-${colorIdx}`;
                         const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
                         return computed || '#EFBDEB';
                     };
@@ -1047,7 +1025,8 @@ export function createTimelineSVG(
                                 orderedSubplots,
                                 (name) => {
                                     const idx = masterSubplotOrder.indexOf(name);
-                                    return idx <= 0 ? 0 : (idx - 1) % 15; // skip Main Plot, start from 0
+                                    if (idx < 0) return 0;
+                                    return idx % 16; // Direct order: outermost (idx=0) = Ring 1 = subplotColors[0]
                                 }
                             );
                             synopsesElements.push(synopsisElOuter);
@@ -1803,7 +1782,7 @@ export function createTimelineSVG(
             const labelRaw = (isOuterRing && plugin.settings.outerRingAllScenes) ? 'ALL SCENES' : subplot.toUpperCase();
             const safeSubplotText = plugin.safeSvgText(labelRaw);
             
-            // Create the path for the label - Add data-font-size attribute instead of inline style
+            // Create the path for the label - will set CSS variable via JavaScript
             svg += `
                 <g class="subplot-label-group" data-font-size="${fontSize}">
                     <path id="${labelPathId}"
@@ -1812,7 +1791,7 @@ export function createTimelineSVG(
                         ${formatNumber(labelRadius * Math.cos(endAngle))} ${formatNumber(labelRadius * Math.sin(endAngle))}"
                         class="subplot-ring-label-path"
                     />
-                    <text class="subplot-label-text" data-subplot-index="${ringOffset}" data-subplot-name="${escapeXml(subplot)}">
+                    <text class="rt-subplot-label-text" data-subplot-index="${ringOffset}" data-subplot-name="${escapeXml(subplot)}">
                         <textPath href="#${labelPathId}" startOffset="100%" text-anchor="end"
                                 textLength="${arcPixelLength}" lengthAdjust="spacingAndGlyphs">
                             ${safeSubplotText}
@@ -1885,41 +1864,16 @@ export function createTimelineSVG(
                     const squareX = squareRadiusOuter * Math.cos(sceneStartAngle);
                     const squareY = squareRadiusOuter * Math.sin(sceneStartAngle);
 
-                    const isSceneOpen = scene.path && plugin.openScenePaths.has(scene.path);
-                    const isSearchMatch = plugin.searchActive && scene.path && plugin.searchResults.has(scene.path);
-                    const hasEdits = scene.pendingEdits && scene.pendingEdits.trim() !== '';
-
-                    let squareClasses = 'rt-number-square';
-                    if (isSceneOpen) squareClasses += ' rt-scene-is-open';
-                    if (isSearchMatch) squareClasses += ' rt-search-result';
-                    if (hasEdits) squareClasses += ' rt-has-edits';
+                    const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
+                    const squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
+                    const textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
 
                     // Match the sceneId format used in the outer ring scene arcs
                     const sceneId = makeSceneId(act, ringOuter, idx, true, true);
 
-                    svg += `
-                        <g class="number-square-group" transform="translate(${squareX}, ${squareY})">
-                            <g class="number-square-orient">
-                                <rect 
-                                    x="-${squareSize.width/2}" 
-                                    y="-${squareSize.height/2}" 
-                                    width="${squareSize.width}" 
-                                    height="${squareSize.height}" 
-                                    class="${squareClasses}" 
-                                    data-scene-id="${escapeXml(sceneId)}"
-                                />
-                                <text 
-                                    x="0" 
-                                    y="0" 
-                                    text-anchor="middle" 
-                                    dominant-baseline="middle" 
-                                    class="rt-number-text${isSceneOpen ? ' rt-scene-is-open' : ''}${isSearchMatch ? ' rt-search-result' : ''}${hasEdits ? ' rt-has-edits' : ''}"
-                                    data-scene-id="${escapeXml(sceneId)}"
-                                    dy="0.1em"
-                                >${number}</text>
-                            </g>
-                        </g>
-                    `;
+                    // Get grade for this scene from the grades map
+                    const grade = sceneGrades.get(sceneId);
+                    svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
                 });
             }
             
@@ -1984,40 +1938,18 @@ export function createTimelineSVG(
                 const squareX = textPathRadius * Math.cos(sceneStartAngle);
                 const squareY = textPathRadius * Math.sin(sceneStartAngle);
                 
-                const isSceneOpen = scene.path && plugin.openScenePaths.has(scene.path);
-                const isSearchMatch = plugin.searchActive && scene.path && plugin.searchResults.has(scene.path);
-                const hasEdits = scene.pendingEdits && scene.pendingEdits.trim() !== '';
-                
-                let squareClasses = 'rt-number-square';
-                if (isSceneOpen) squareClasses += ' rt-scene-is-open';
-                if (isSearchMatch) squareClasses += ' rt-search-result';
-                if (hasEdits) squareClasses += ' rt-has-edits';
+                const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
+                const squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
+                const textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
                 
                 const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
                 
-                svg += `
-                    <g class="number-square-group" transform="translate(${squareX}, ${squareY})">
-                        <g class="number-square-orient">
-                            <rect 
-                                x="-${squareSize.width/2}" 
-                                y="-${squareSize.height/2}" 
-                                width="${squareSize.width}" 
-                                height="${squareSize.height}" 
-                                class="${squareClasses}" 
-                                data-scene-id="${escapeXml(sceneId)}"
-                            />
-                            <text 
-                                x="0" 
-                                y="0" 
-                                text-anchor="middle" 
-                                dominant-baseline="middle" 
-                                class="rt-number-text${isSceneOpen ? ' rt-scene-is-open' : ''}${isSearchMatch ? ' rt-search-result' : ''}${hasEdits ? ' rt-has-edits' : ''}"
-                                data-scene-id="${escapeXml(sceneId)}"
-                                dy="0.1em"
-                            >${number}</text>
-                        </g>
-                    </g>
-                `;
+                // Extract grade for inner ring scenes too
+                extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
+                
+                // Get grade for this scene from the grades map
+                const grade = sceneGrades.get(sceneId);
+                svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
             });
             
             svg += `</g>`;
@@ -2080,73 +2012,20 @@ export function createTimelineSVG(
                     height: squareSize.height
                 });
 
-                // Determine colors based on Edits metadata
-                const hasEdits = scene.pendingEdits && scene.pendingEdits.trim() !== '';
+                // Use helper functions for consistent behavior
+                const sceneState = getSceneState(scene, plugin);
+                const squareClasses = buildSquareClasses(sceneState.isSceneOpen, sceneState.isSearchMatch, sceneState.hasEdits);
+                const textClasses = buildTextClasses(sceneState.isSceneOpen, sceneState.isSearchMatch, sceneState.hasEdits);
 
-                // Check if scene is open or a search result
-                const isSceneOpen = scene.path && plugin.openScenePaths.has(scene.path);
-                const isSearchMatch = plugin.searchActive && scene.path && plugin.searchResults.has(scene.path);
-
-                // Declare base classes first
-                let squareClasses = "rt-number-square";
-                if (isSceneOpen) squareClasses += " scene-is-open";
-                if (isSearchMatch) squareClasses += " search-result";
-
-                // Get grade from our Map instead of trying to extract it again
+                // Get grade from our Map for this scene
                 const grade = sceneGrades.get(sceneId);
-                if (grade) {
-                    // Log grade information when in debug mode
-                    if (plugin.settings.debug) {
-                        plugin.log(`[GradeDebug] Found grade ${grade} for scene ${sceneId}`);
-                    }
+                if (grade && plugin.settings.debug) {
+                    plugin.log(`[GradeDebug] Found grade ${grade} for scene ${sceneId}`);
                 }
                 
-                // Add the main group for the square and text
-                svg += `
-                    <g transform="translate(${squareX}, ${squareY})">
-                        <rect 
-                            x="-${squareSize.width/2}" 
-                            y="-${squareSize.height/2}" 
-                            width="${squareSize.width}" 
-                            height="${squareSize.height}" 
-                            class="${squareClasses}${hasEdits ? ' has-edits' : ''}" 
-                            data-scene-id="${escapeXml(sceneId)}"
-                        />
-                        <text 
-                            x="0" 
-                            y="0" 
-                            text-anchor="middle" 
-                            dominant-baseline="middle" 
-                            class="rt-number-text${isSceneOpen ? ' rt-scene-is-open' : ''}${isSearchMatch ? ' rt-search-result' : ''}${hasEdits ? ' rt-has-edits' : ''}"
-                            data-scene-id="${escapeXml(sceneId)}"
-                            dy="0.1em"
-                        >${number}</text>
-                    </g>
-                `;
+                // Use helper function for consistent DOM structure
+                svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
 
-                // Add the grade line separately if a grade exists
-                if (grade) {
-                    const lineOffset = 2; // Offset from the edge of the rect
-                    const lineX1 = squareX - squareSize.width / 2;
-                    const lineY1 = squareY + squareSize.height / 2 + lineOffset;
-                    const lineX2 = squareX + squareSize.width / 2;
-                    const lineY2 = lineY1; // Horizontal line
-
-                    // Log positioning data when in debug mode
-                    if (plugin.settings.debug) {
-                        plugin.log(`[GradeDebug] Adding grade line for ${sceneId} at position: x1=${lineX1}, y1=${lineY1}, x2=${lineX2}, y2=${lineY2}`);
-                    }
-
-                    svg += `
-                        <line 
-                            x1="${lineX1}" y1="${lineY1}" 
-                            x2="${lineX2}" y2="${lineY2}" 
-                            class="grade-border-line grade-${grade}" 
-                            data-scene-id="${escapeXml(sceneId)}" 
-                            stroke-width="2"
-                        />
-                    `;
-                }
             }
         });
         svg += `</g>`;

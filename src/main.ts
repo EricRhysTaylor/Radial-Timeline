@@ -23,7 +23,7 @@ interface RadialTimelineSettings {
         House: string;
         Press: string;
     };
-    subplotColors: string[]; // 15 subplot palette colors
+    subplotColors: string[]; // 16 subplot palette colors
     outerRingAllScenes?: boolean; // If true, outer ring shows all scenes; inner rings remain subplots
     logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
     processedBeatContexts: string[]; // <<< ADDED: Cache for processed triplets
@@ -101,7 +101,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         '#F9E784', // 11
         '#CEC3C1', // 12
         '#F3D34A', // 13
-        '#004777'  // 14
+        '#004777', // 14
+        '#8B4513'  // 15 - Brown for Ring 16
     ],
     outerRingAllScenes: false, // Default to per-subplot outer ring
     logApiInteractions: false, // <<< ADDED: Default for new setting
@@ -1794,9 +1795,9 @@ public createTimelineSVG(scenes: Scene[]) {
             }
         });
 
-        // Apply subplot palette colors (15 entries)
+        // Apply subplot palette colors (16 entries)
         if (Array.isArray(subplotColors)) {
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < 16; i++) {
                 const color = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
                 if (color) {
                     // Prefixed var used by styles.css swatches and rings

@@ -735,15 +735,24 @@ This is a test scene created to help with initial Radial Timeline setup.
             const startTime = performance.now();
             const { svgString, maxStageColor: calculatedMaxStageColor } = this.plugin.createTimelineSVG(scenes);
 
-            // Expose the dominant publish-stage colour to CSS so rules can use var(--max-publish-stage-color)
+            // Expose the dominant publish-stage colour to CSS so rules can use var(--rt-max-publish-stage-color)
             if (calculatedMaxStageColor) {
-                document.documentElement.style.setProperty('--max-publish-stage-color', calculatedMaxStageColor);
+                document.documentElement.style.setProperty('--rt-max-publish-stage-color', calculatedMaxStageColor);
             }
             
             // Create the SVG element from the string
             const svgElement = this.createSvgElement(svgString, timelineContainer); // Pass svgString
             
             if (svgElement) {
+                // Set CSS variables for subplot labels based on data attributes
+                const subplotLabelGroups = svgElement.querySelectorAll('.subplot-label-group[data-font-size]');
+                subplotLabelGroups.forEach((group) => {
+                    const fontSize = group.getAttribute('data-font-size');
+                    if (fontSize) {
+                        (group as SVGElement).style.setProperty('--rt-subplot-font-size', `${fontSize}px`);
+                    }
+                });
+                
                 // Attach rotation toggle behavior (inline SVG scripts won't run here)
                 const rotatable = svgElement.querySelector('#timeline-rotatable') as SVGGElement | null;
                 const toggle = svgElement.querySelector('#rotation-toggle') as SVGGElement | null;
@@ -900,15 +909,6 @@ This is a test scene created to help with initial Radial Timeline setup.
                 
                 // Setup search controls after SVG is rendered
                 this.setupSearchControls();
-
-                // Apply dynamic font size for subplot labels after SVG is in the DOM
-                const subplotLabelGroups = svgElement.querySelectorAll('.subplot-label-group');
-                subplotLabelGroups.forEach(group => {
-                    const fontSize = group.getAttribute('data-font-size');
-                    if (fontSize) {
-                        (group as HTMLElement).style.setProperty('--subplot-font-size', `${fontSize}px`);
-                    }
-                });
 
                 // --- START: Add hover effect for scene paths to fade subplot labels ---
                 // Reuse the existing sceneGroups variable declared earlier

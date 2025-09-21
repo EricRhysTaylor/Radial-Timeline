@@ -425,12 +425,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // --- Subplot palette (15 colors) ---
         containerEl.createEl('h2', { text: 'Subplot ring colors'});
-        containerEl.createEl('p', { cls: 'color-section-desc', text: 'Subplot ring colors used for rings 2 through 16 moving inward.' });
+        containerEl.createEl('p', { cls: 'color-section-desc', text: 'Subplot ring colors used for rings 1 through 16 moving inward.' });
         const subplotGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
         const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
         const subplotColors = ensureArray(this.plugin.settings.subplotColors);
-        for (let i = 0; i < 15; i++) {
-            const labelText = `Ring ${i+2}`;
+        for (let i = 0; i < 16; i++) {
+            const labelText = `Ring ${i+1}`;
             const current = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
             const cell = subplotGrid.createDiv({ cls: 'rt-color-grid-item' });
             const label = cell.createDiv({ cls: 'rt-color-grid-label' });
