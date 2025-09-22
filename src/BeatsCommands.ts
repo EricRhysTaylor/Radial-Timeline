@@ -351,9 +351,20 @@ async function logApiInteractionToFile(
 
     const redactPrompt = (text: string | undefined): string => {
         if (!text) return 'Unavailable';
-        // Replace scene bodies with an [omitted] tag
-        const reBlock = /(Scene\s+[^:]+:\s*)([\s\S]*?)(?=^\s*Scene\s+[^:]+:|$)/gmi;
-        return text.replace(reBlock, (_m, p1) => `${p1}[omitted]\n`);
+        // Keep full instructions; strip bodies — keep only Scene headers and blank lines
+        const lines = text.split(/\r?\n/);
+        const headerRe = /^\s*Scene\s+[^:]+:\s*$/i;
+        const out: string[] = [];
+        let inScenes = false;
+        for (const line of lines) {
+            if (!inScenes) {
+                out.push(line);
+                if (headerRe.test(line)) inScenes = true;
+            } else {
+                if (headerRe.test(line) || line.trim() === '') out.push(line.trim() === '' ? '' : line);
+            }
+        }
+        return out.join('\n');
     };
     userPromptContent = redactPrompt(fullUserPrompt);
     fileContent += `## Prompt Template\n\n\\\`\\\`\\\`\n${userPromptContent}\n\\\`\\\`\\\`\n\n`;
