@@ -1,5 +1,5 @@
 import RadialTimelinePlugin from './main'; 
-import { App, TFile, Vault, Notice, parseYaml, getFrontMatterInfo } from "obsidian";
+import { App, TFile, Vault, Notice, parseYaml, getFrontMatterInfo, stringifyYaml } from "obsidian";
 import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
 import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
 import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
@@ -112,7 +112,7 @@ async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Prom
 }
 
 function buildPrompt(prevBody: string | null, currentBody: string, nextBody: string | null, prevNum: string, currentNum: string, nextNum: string): string {
-    return `You are a developmental editor for a sci-fi BioPunk novel.
+    return `You are a developmental editor for a novel.
 
 For each of the three scenes below, generate concise 5 ordered narrative beats from the perspective of the 2beats (middle scene) showing the connections between the 1beats (previous scene) and the 3beats (next scene) and if 2beats is maintaining the momentum of the story. For the first line of the 2beats, give an overall editorial score of A, B or C where A nearly perfect and C needs improvement with instructions on how to improve it.
 
@@ -137,17 +137,21 @@ Instructions:
 - Use "?" if the beat is neutral.
 - Include the scene number (example: 34.5) only for the first item in each beats section.
 - For 2beats (scene under evaluation), apply a rating of A, B or C / Concise editorial comment under 10 words with instructions on how to fix scene.
+- Boundary conditions:
+  - If previous scene is "N/A", leave 1beats empty (no lines).
+  - If next scene is "N/A", leave 3beats empty (no lines).
+  - Do not invent beats for missing scenes.
 - Follow the exact indentation shown (single space before each dash).
 - No other formatting so the YAML formatting is not broken.
 
 Scene ${prevNum}:
-${prevBody || 'N/A'}
+${prevBody ?? 'N/A'}
 
 Scene ${currentNum}:
 ${currentBody || 'N/A'}
 
 Scene ${nextNum}:
-${nextBody || 'N/A'}
+${nextBody ?? 'N/A'}
 `;
 }
 
@@ -185,46 +189,62 @@ async function logApiInteractionToFile(
     let usageString = '**Usage:** N/A';
     try {
         if (responseData && typeof responseData === 'object') {
-            if (provider === 'openai' && (responseData as any).usage) {
-                const u = (responseData as any).usage;
-                if (typeof u.prompt_tokens === 'number' || typeof u.completion_tokens === 'number') {
+            const rd = responseData as unknown;
+            if (provider === 'openai' && rd && typeof rd === 'object' && 'usage' in (rd as Record<string, unknown>)) {
+                const u = (rd as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage;
+                if (u && (typeof u.prompt_tokens === 'number' || typeof u.completion_tokens === 'number')) {
                     usageString = `**Usage (OpenAI):** prompt=${u.prompt_tokens ?? 'n/a'}, output=${u.completion_tokens ?? 'n/a'}`;
                 }
-            } else if (provider === 'anthropic' && (responseData as any).usage) {
-                const u = (responseData as any).usage;
-                if (typeof u.input_tokens === 'number' || typeof u.output_tokens === 'number') {
+            } else if (provider === 'anthropic' && rd && typeof rd === 'object' && 'usage' in (rd as Record<string, unknown>)) {
+                const u = (rd as { usage?: { input_tokens?: number; output_tokens?: number } }).usage;
+                if (u && (typeof u.input_tokens === 'number' || typeof u.output_tokens === 'number')) {
                     usageString = `**Usage (Anthropic):** input=${u.input_tokens ?? 'n/a'}, output=${u.output_tokens ?? 'n/a'}`;
                 }
-            } else if (provider === 'gemini' && (responseData as any).usageMetadata) {
-                const u = (responseData as any).usageMetadata;
-                usageString = `**Usage (Gemini):** total=${u.totalTokenCount ?? 'n/a'}, prompt=${u.promptTokenCount ?? 'n/a'}, output=${u.candidatesTokenCount ?? 'n/a'}`;
+            } else if (provider === 'gemini' && rd && typeof rd === 'object' && 'usageMetadata' in (rd as Record<string, unknown>)) {
+                const u = (rd as { usageMetadata?: { totalTokenCount?: number; promptTokenCount?: number; candidatesTokenCount?: number } }).usageMetadata;
+                usageString = `**Usage (Gemini):** total=${u?.totalTokenCount ?? 'n/a'}, prompt=${u?.promptTokenCount ?? 'n/a'}, output=${u?.candidatesTokenCount ?? 'n/a'}`;
             }
         }
     } catch {}
 
     let outcomeSection = "## Outcome\n\n";
     if (responseData && typeof responseData === 'object') {
-        const responseAsRecord = responseData as Record<string, any>;
+        const responseAsRecord = responseData as Record<string, unknown>;
         if (responseAsRecord.error) {
             outcomeSection += `**Status:** Failed\n`;
-            outcomeSection += `**Error Type:** ${responseAsRecord.error.type || 'Unknown'}\n`;
-            outcomeSection += `**Message:** ${responseAsRecord.error.message || 'No message provided'}\n`;
-            if (responseAsRecord.error.status) {
-                 outcomeSection += `**Status Code:** ${responseAsRecord.error.status}\n`;
+            const errObj = responseAsRecord.error as Record<string, unknown>;
+            outcomeSection += `**Error Type:** ${String(errObj?.type ?? 'Unknown')}\n`;
+            outcomeSection += `**Message:** ${String(errObj?.message ?? 'No message provided')}\n`;
+            if (typeof errObj?.status !== 'undefined') {
+                 outcomeSection += `**Status Code:** ${String(errObj.status)}\n`;
             }
             outcomeSection += "\n";
         } else {
             let success = false;
             let contentForCheck: string | undefined | null = null;
             if (provider === 'openai') {
-                contentForCheck = responseAsRecord.choices?.[0]?.message?.content;
+                const choices = responseAsRecord.choices as unknown;
+                if (Array.isArray(choices) && choices[0] && typeof choices[0] === 'object') {
+                    const msg = (choices[0] as Record<string, unknown>).message as Record<string, unknown> | undefined;
+                    const content = msg?.content as string | undefined;
+                    contentForCheck = content;
+                }
                 success = !!contentForCheck;
             } else if (provider === 'anthropic') {
-                 contentForCheck = responseAsRecord.content?.[0]?.text ?? responseAsRecord.content;
+                 const contentArr = responseAsRecord.content as unknown;
+                 if (Array.isArray(contentArr) && contentArr[0] && typeof contentArr[0] === 'object') {
+                     const text = (contentArr[0] as Record<string, unknown>).text as string | undefined;
+                     contentForCheck = text ?? (responseData as unknown as { content?: string }).content;
+                 }
                  success = !!contentForCheck;
             } else if (provider === 'gemini') {
                   type GeminiPart = { text?: string };
-                  const parts = responseAsRecord.candidates?.[0]?.content?.parts as unknown;
+                  const candidates = responseAsRecord.candidates as unknown;
+                  let parts: unknown = undefined;
+                  if (Array.isArray(candidates) && candidates[0] && typeof candidates[0] === 'object') {
+                      const contentObj = (candidates[0] as Record<string, unknown>).content as Record<string, unknown> | undefined;
+                      parts = contentObj?.parts as unknown;
+                  }
                   if (Array.isArray(parts)) {
                       const arr = parts as GeminiPart[];
                       contentForCheck = arr.map(p => p?.text ?? '').join('').trim();
@@ -240,11 +260,11 @@ async function logApiInteractionToFile(
                 outcomeSection += `**Details:** Could not find expected content structure for ${provider} in the response.\n`;
                 outcomeSection += `**Actual Response Structure (relevant part):**\n\`\`\`json\n`;
                 if (provider === 'openai') {
-                     outcomeSection += JSON.stringify(responseAsRecord.choices, null, 2);
+                     outcomeSection += JSON.stringify((responseAsRecord.choices as unknown), null, 2);
                 } else if (provider === 'anthropic') {
-                     outcomeSection += JSON.stringify(responseAsRecord.content, null, 2);
+                     outcomeSection += JSON.stringify((responseAsRecord.content as unknown), null, 2);
                 } else if (provider === 'gemini') {
-                      outcomeSection += JSON.stringify(responseAsRecord.candidates, null, 2);
+                      outcomeSection += JSON.stringify((responseAsRecord.candidates as unknown), null, 2);
                 } else {
                     outcomeSection += JSON.stringify(responseData, null, 2);
                 }
@@ -272,6 +292,22 @@ async function logApiInteractionToFile(
         return modelId;
     })();
 
+    // Attempt to extract scene numbers from the user prompt for summary
+    const extractScenesSummary = (text: string | undefined): { prev?: string; current?: string; next?: string } => {
+        const result: { prev?: string; current?: string; next?: string } = {};
+        if (!text) return result;
+        const re = /^\s*Scene\s+([^:]+)\s*:/gmi;
+        const matches: string[] = [];
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(text)) !== null) {
+            matches.push(m[1].trim());
+        }
+        if (matches.length >= 1) result.prev = matches[0];
+        if (matches.length >= 2) result.current = matches[1];
+        if (matches.length >= 3) result.next = matches[2];
+        return result;
+    };
+
     const providerTitle = provider.charAt(0).toUpperCase() + provider.slice(1);
     let fileContent = `# ${providerTitle} — ${friendlyModel} API Interaction Log\n\n`;
     fileContent += `**Command:** ${commandContext}\n`;
@@ -280,21 +316,19 @@ async function logApiInteractionToFile(
     fileContent += `**Model ID:** ${modelId}\n`;
     fileContent += `**Timestamp:** ${new Date().toISOString()}\n`;
     fileContent += `${contextHeader}\n`;
-    fileContent += `${usageString}\n\n`;
-    fileContent += `${outcomeSection}`;
-
-    fileContent += `## Request Sent\n\n`;
-    fileContent += `\\\`\\\`\\\`json\n${requestJson}\n\\\`\\\`\\\`\n\n`;
+    
+    // We will fill scenes summary and template next
 
     // <<< FIXED: Use safeRequestData and type guard for messages array >>>
     let userPromptContent = 'User prompt not logged correctly';
+    let fullUserPrompt: string | undefined;
     if (provider === 'openai' && safeRequestData?.messages && Array.isArray(safeRequestData.messages)) {
         const userMessage = safeRequestData.messages.find((m: ApiMessage) => m.role === 'user');
-        if (userMessage) userPromptContent = userMessage.content;
+        if (userMessage) fullUserPrompt = userMessage.content;
     } else if (provider === 'anthropic' && safeRequestData) {
         // For anthropic we logged system separately; user is in the single messages array we sent
         const anthropicMsg = (safeRequestData as any).messages?.[0]?.content;
-        if (typeof anthropicMsg === 'string') userPromptContent = anthropicMsg;
+        if (typeof anthropicMsg === 'string') fullUserPrompt = anthropicMsg;
     } else if (provider === 'gemini') {
         type GeminiPart = { text?: string };
         const rd = requestData as unknown;
@@ -305,12 +339,24 @@ async function logApiInteractionToFile(
                 const parts = first.parts as unknown;
                 if (Array.isArray(parts)) {
                     const arr = parts as GeminiPart[];
-                    userPromptContent = arr.map(p => p?.text ?? '').join('').trim();
+                    fullUserPrompt = arr.map(p => p?.text ?? '').join('').trim();
                 }
             }
         }
     }
-    fileContent += `## User Prompt Used\n\n\\\`\\\`\\\`\n${userPromptContent}\n\\\`\\\`\\\`\n\n`;
+    // Build scenes summary and redacted prompt
+    const scenesSummary = extractScenesSummary(fullUserPrompt);
+    const scenesLine = `**Scenes:** prev=${scenesSummary.prev ?? 'N/A'}, current=${scenesSummary.current ?? 'N/A'}, next=${scenesSummary.next ?? 'N/A'}`;
+    fileContent += `${scenesLine}\n`;
+
+    const redactPrompt = (text: string | undefined): string => {
+        if (!text) return 'Unavailable';
+        // Replace scene bodies with an [omitted] tag
+        const reBlock = /(Scene\s+[^:]+:\s*)([\s\S]*?)(?=^\s*Scene\s+[^:]+:|$)/gmi;
+        return text.replace(reBlock, (_m, p1) => `${p1}[omitted]\n`);
+    };
+    userPromptContent = redactPrompt(fullUserPrompt);
+    fileContent += `## Prompt Template\n\n\\\`\\\`\\\`\n${userPromptContent}\n\\\`\\\`\\\`\n\n`;
 
     // <<< FIXED: Use safeRequestData and check different properties based on provider >>>
     let systemPromptContent: string | undefined | null = null;
@@ -339,8 +385,17 @@ async function logApiInteractionToFile(
         fileContent += `## System Prompt Used\n\n\\\`\\\`\\\`\n${systemPromptContent}\n\\\`\\\`\\\`\n\n`;
     }
 
+    // Full request with instructions + scene text
+    fileContent += `## Request Sent\n\n`;
+    fileContent += `\\\`\\\`\\\`json\n${requestJson}\n\\\`\\\`\\\`\n\n`;
+
+    // Response (raw JSON)
     fileContent += `## Response Received (Full JSON)\n\n`;
     fileContent += `\\\`\\\`\\\`json\n${responseJson}\n\\\`\\\`\\\`\n`;
+
+    // Usage and outcome details
+    fileContent += `\n${usageString}\n\n`;
+    fileContent += `${outcomeSection}`;
 
     try {
         try {
@@ -821,7 +876,7 @@ export async function processBySubplotOrder(
             totalTripletsAcrossSubplots += validScenes.length;
         });
 
-        notice.setMessage(`Analyzing ${totalTripletsAcrossSubplots} scenes across ${subplotNames.length} subplots...`);
+        notice.setMessage(`Analyzing ${totalTripletsAcrossSubplots} scenes for subplot order...`);
 
         for (const subplotName of subplotNames) {
              const scenes = scenesBySubplot[subplotName];
@@ -930,7 +985,7 @@ export async function processBySubplotOrder(
                  await plugin.saveSettings();
 
         notice.hide();
-         new Notice(`✅ Subplot Processing Complete: ${totalProcessedCount}/${totalTripletsAcrossSubplots} total triplets processed across ${subplotNames.length} subplots.`);
+         new Notice(`✅ Subplot Order Processing Complete: ${totalProcessedCount}/${totalTripletsAcrossSubplots} triplets processed.`);
          plugin.refreshTimelineIfNeeded(null);
 
      } catch (error) {

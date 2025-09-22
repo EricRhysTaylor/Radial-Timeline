@@ -439,7 +439,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             .setDesc((() => {
                 const frag = document.createDocumentFragment();
                 const span = document.createElement('span');
-                span.textContent = 'Your OpenAI API key for using ChatGPT AI features. ';
+                span.textContent = 'Your OpenAI API key for using ChatGPT AI features. Keys start with “sk-”. ';
                 const link = document.createElement('a');
                 link.href = 'https://platform.openai.com';
                 link.textContent = 'Get key';
@@ -456,7 +456,17 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     this.plugin.settings.openaiApiKey = value.trim();
                     await this.plugin.saveSettings();
                     this._openaiKeyInput = text.inputEl;
-                    this.scheduleKeyValidation('openai');
+                    // Basic sanity check: OpenAI secret keys begin with "sk-". Warn if it looks like a project id.
+                    const v = value.trim();
+                    text.inputEl.removeClass('setting-input-success');
+                    text.inputEl.removeClass('setting-input-error');
+                    if (v && !v.startsWith('sk-')) {
+                        text.inputEl.addClass('setting-input-error');
+                        new Notice('This does not look like an OpenAI secret key. Keys start with “sk-”.');
+                        // Do not run remote validation in this case
+                    } else {
+                        this.scheduleKeyValidation('openai');
+                    }
                 }));
 
         // (model picker above)
@@ -500,9 +510,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     this.plugin.settings.debug = value;
                     await this.plugin.saveSettings();
                 }));
-
-        // Divider before color sections
-        containerEl.createEl('hr', { cls: 'settings-separator' });
 
         // --- Publishing Stage Colors (compact grid) --- 
         const pubHeading = new Settings(containerEl)
@@ -643,6 +650,15 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const readmeMarkdown = typeof EMBEDDED_README_CONTENT !== 'undefined'
             ? EMBEDDED_README_CONTENT
             : 'README content could not be loaded. Please ensure the plugin was built correctly or view the README.md file directly.';
+
+        // Sanitize external images to avoid network requests or 404s (e.g., YouTube thumbnails)
+        // 1) Convert YouTube thumbnail images to a simple video link
+        const ytThumbRe = /!\[[^\]]*\]\((https?:\/\/i\.ytimg\.com\/vi\/([a-zA-Z0-9_-]+)\/[^)]+)\)/gi;
+        // 2) Convert any other external image markdown to a plain link
+        const externalImgRe = /!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/gi;
+        const safeReadme = readmeMarkdown
+            .replace(ytThumbRe, (_m, _url, vid) => `[Watch on YouTube](https://youtu.be/${vid})`)
+            .replace(externalImgRe, (_m, alt, url) => `[${alt || 'Open link'}](${url})`);
            
         // Create a new component instance specifically for this rendering
         this.readmeComponent = new Component(); 
@@ -652,7 +668,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Note: Switching back to MarkdownRenderer.render as renderMarkdown was part of the error path
         MarkdownRenderer.render(
             this.app,
-            readmeMarkdown,
+            safeReadme,
             readmeContainer,
             '', // No source path: not rendering a specific file
             this.readmeComponent
