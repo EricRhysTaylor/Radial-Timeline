@@ -810,6 +810,13 @@ tspan .search-term {
   border-color: var(--interactive-accent);
   box-shadow: 0 0 0 2px rgba(100, 180, 255, 0.2);
 }
+
+/* Promoted section headings in settings (with bottom border and spacing) */
+.rt-section-heading {
+  margin-top: 18px !important;
+  padding-bottom: 6px !important;
+  border-bottom: 1px solid var(--background-modifier-border) !important;
+}
 .rt-color-grid-controls .setting-item {
   margin: 0;
   width: 100%;

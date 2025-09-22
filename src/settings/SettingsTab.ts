@@ -329,8 +329,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             .addDropdown(dropdown => {
                 type ModelChoice = { id: string; label: string; provider: 'anthropic' | 'gemini' | 'openai'; model: string };
                 const choices: ModelChoice[] = [
-                    { id: 'anthropic:claude-opus-4-1', label: 'Anthropic — Opus 4.1', provider: 'anthropic', model: 'claude-opus-4-1-20250805' },
                     { id: 'anthropic:claude-sonnet-4', label: 'Anthropic — Sonnet 4', provider: 'anthropic', model: 'claude-sonnet-4-20250514' },
+                    { id: 'anthropic:claude-opus-4-1', label: 'Anthropic — Opus 4.1', provider: 'anthropic', model: 'claude-opus-4-1-20250805' },
                     { id: 'gemini:gemini-2.5-pro', label: 'Gemini — Gemini 2.5 Pro', provider: 'gemini', model: 'gemini-2.5-pro' },
                     { id: 'openai:gpt-4.1', label: 'OpenAI — GPT‑4.1', provider: 'openai', model: 'gpt-4.1' },
                 ];
@@ -505,9 +505,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         containerEl.createEl('hr', { cls: 'settings-separator' });
 
         // --- Publishing Stage Colors (compact grid) --- 
-        new Settings(containerEl)
+        const pubHeading = new Settings(containerEl)
             .setName('Publishing stage colors')
             .setHeading();
+        // Promote visual weight: add divider and spacing
+        pubHeading.settingEl.classList.add('rt-section-heading');
         containerEl.createEl('p', { cls: 'color-section-desc', text: 'Used for completed main plot scenes of the outermost ring. Affects other elements as well.' });
         const stageGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
         const stages = Object.entries(this.plugin.settings.publishStageColors);
@@ -566,9 +568,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
 
         // --- Subplot palette (15 colors) ---
-        new Settings(containerEl)
+        const subplotHeading = new Settings(containerEl)
             .setName('Subplot ring colors')
             .setHeading();
+        subplotHeading.settingEl.classList.add('rt-section-heading');
         containerEl.createEl('p', { cls: 'color-section-desc', text: 'Subplot ring colors used for rings 1 through 16 moving inward.' });
         const subplotGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
         const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
