@@ -7,7 +7,12 @@ import {
   Notice,
   TextComponent,
   ColorComponent,
+  AbstractInputSuggest,
+  TFolder,
 } from 'obsidian';
+import { fetchAnthropicModels } from '../api/anthropicApi';
+import { fetchOpenAiModels } from '../api/openaiApi';
+import { fetchGeminiModels } from '../api/geminiApi';
 import RadialTimelinePlugin, { DEFAULT_SETTINGS } from '../main';
 
 declare const EMBEDDED_README_CONTENT: string;
@@ -15,10 +20,117 @@ declare const EMBEDDED_README_CONTENT: string;
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
     private readmeComponent: Component | null = null; // <<< ADD THIS LINE
+    private _providerSections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement } = {};
+    private _keyValidateTimers: Partial<Record<'anthropic'|'gemini'|'openai', number>> = {};
+    private _anthropicKeyInput?: HTMLInputElement;
+    private _geminiKeyInput?: HTMLInputElement;
+    private _openaiKeyInput?: HTMLInputElement;
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app, plugin);
         this.plugin = plugin;
+    }
+
+    // Folder suggest implementation using Obsidian's AbstractInputSuggest
+    private attachFolderSuggest(text: TextComponent) {
+        const plugin = this.plugin;
+        const inputEl = text.inputEl;
+        class FolderSuggest extends AbstractInputSuggest<TFolder> {
+            constructor(app: App, input: HTMLInputElement) {
+                super(app, input);
+            }
+            getSuggestions(query: string): TFolder[] {
+                const q = query?.toLowerCase() ?? '';
+                // Gather all folders in the vault
+                const files = this.app.vault.getAllLoadedFiles();
+                const folders = files.filter((f): f is TFolder => f instanceof TFolder);
+                if (!q) return folders;
+                return folders.filter(f => f.path.toLowerCase().includes(q));
+            }
+            renderSuggestion(folder: TFolder, el: HTMLElement): void {
+                el.setText(folder.path);
+            }
+            selectSuggestion(folder: TFolder, _evt: MouseEvent | KeyboardEvent): void {
+                // Best-effort: update both the TextComponent and the raw input element
+                try { text.setValue(folder.path); } catch {}
+                if ((this as any).inputEl) {
+                    try { (this as any).inputEl.value = folder.path; } catch {}
+                }
+
+                // Persist + validate
+                plugin.settings.sourcePath = folder.path;
+                void plugin.saveSettings();
+                void plugin.validateAndRememberPath(folder.path).then((ok) => {
+                    if (ok) {
+                        inputEl.removeClass('setting-input-error');
+                        inputEl.addClass('setting-input-success');
+                        window.setTimeout(() => inputEl.removeClass('setting-input-success'), 1000);
+                    } else {
+                        inputEl.addClass('setting-input-error');
+                        window.setTimeout(() => inputEl.removeClass('setting-input-error'), 2000);
+                    }
+                });
+                // Close suggestions and focus input
+                try { this.close(); } catch {}
+                try { inputEl.focus(); } catch {}
+            }
+        }
+        new FolderSuggest(this.app, inputEl);
+    }
+
+    // Dims non-selected provider sections based on chosen model/provider
+    private refreshProviderDimming() {
+        const selected = (this.plugin.settings.defaultAiProvider || 'openai') as 'anthropic' | 'gemini' | 'openai';
+        const map = this._providerSections;
+        (['anthropic','gemini','openai'] as const).forEach(key => {
+            const el = map[key];
+            if (!el) return;
+            if (key === selected) el.classList.remove('dimmed');
+            else el.classList.add('dimmed');
+        });
+    }
+
+    // Debounced API key validation using zero-cost model list endpoints
+    private scheduleKeyValidation(provider: 'anthropic'|'gemini'|'openai') {
+        // Clear prior timer
+        const prior = this._keyValidateTimers[provider];
+        if (prior) window.clearTimeout(prior);
+        const inputEl = provider === 'anthropic' ? this._anthropicKeyInput
+                        : provider === 'gemini' ? this._geminiKeyInput
+                        : this._openaiKeyInput;
+        if (!inputEl) return;
+
+        const key = inputEl.value?.trim();
+        if (!key) return; // nothing to validate
+
+        // Quick heuristic: avoid spamming empty/very short inputs
+        if (key.length < 8) return;
+
+        this._keyValidateTimers[provider] = window.setTimeout(async () => {
+            // Remove any old classes
+            inputEl.removeClass('setting-input-success');
+            inputEl.removeClass('setting-input-error');
+
+            try {
+                if (provider === 'anthropic') {
+                    await fetchAnthropicModels(key);
+                } else if (provider === 'gemini') {
+                    await fetchGeminiModels(key);
+                } else {
+                    await fetchOpenAiModels(key);
+                }
+                // Success highlight briefly
+                inputEl.addClass('setting-input-success');
+                window.setTimeout(() => inputEl.removeClass('setting-input-success'), 1200);
+            } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                // Only mark invalid on explicit unauthorized cues; otherwise stay neutral
+                if (/401|unauthorized|invalid/i.test(msg)) {
+                    inputEl.addClass('setting-input-error');
+                    window.setTimeout(() => inputEl.removeClass('setting-input-error'), 1400);
+                }
+            }
+        }, 800);
     }
 
     // Method to show path suggestions
@@ -98,15 +210,15 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             .setDesc('Specify the root folder containing your manuscript scene files.');
 
         let textInput: TextComponent;
-        let suggestionsContainer: HTMLElement;
-        let selectedIndex = -1; // Move this outside the addText callback
         
         sourcePathSetting.addText(text => {
             textInput = text;
             text
                 .setPlaceholder('Example: Manuscript/Scenes')
                 .setValue(this.plugin.settings.sourcePath);
-            
+            // Attach Obsidian native suggest to this input
+            this.attachFolderSuggest(text);
+
             // Validate current path on load to show initial status
             if (this.plugin.settings.sourcePath?.trim()) {
                 setTimeout(async () => {
@@ -115,73 +227,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                         text.inputEl.addClass('setting-input-success');
                         setTimeout(() => {
                             text.inputEl.removeClass('setting-input-success');
-                        }, 2000); // Show success for longer on initial load
+                        }, 2000);
                     }
-                }, 100); // Small delay to ensure DOM is ready
+                }, 100);
             }
-            
-            // Create suggestions container
-            const inputContainer = text.inputEl.parentElement!;
-            inputContainer.classList.add('source-path-input-container'); // Make parent relative for absolute positioning
-            
-            suggestionsContainer = inputContainer.createDiv({ cls: 'source-path-suggestions' });
-            suggestionsContainer.classList.add('hidden');
-            // All positioning and styling handled by CSS classes
-            
-            // Input event for showing suggestions
-            text.inputEl.addEventListener('input', () => {
-                selectedIndex = -1; // Reset selection when typing
-                this.showPathSuggestions(text.inputEl.value, suggestionsContainer, textInput);
-            });
-            
-            // Focus event to show suggestions only if there are valid paths
-            text.inputEl.addEventListener('focus', () => {
-                selectedIndex = -1; // Reset selection on focus
-                if (this.plugin.settings.validFolderPaths.length > 0) {
-                    this.showPathSuggestions(text.inputEl.value, suggestionsContainer, textInput);
-                }
-            });
-            
-            // Blur event to hide suggestions after a short delay
-            text.inputEl.addEventListener('blur', () => {
-                setTimeout(() => {
-                    if (!suggestionsContainer.matches(':hover')) {
-                        suggestionsContainer.classList.add('hidden');
-                        selectedIndex = -1;
-                    }
-                }, 150); // Small delay to allow clicking on suggestions
-            });
-            
-            // Keyboard navigation support
-            text.inputEl.addEventListener('keydown', (e) => {
-                const suggestions = suggestionsContainer.querySelectorAll('.source-path-suggestion-item');
-                
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
-                    this.updateSelectedSuggestion(suggestions, selectedIndex);
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    selectedIndex = Math.max(selectedIndex - 1, -1);
-                    this.updateSelectedSuggestion(suggestions, selectedIndex);
-                } else if (e.key === 'Enter' && selectedIndex >= 0) {
-                    e.preventDefault();
-                    const selectedEl = suggestions[selectedIndex] as HTMLElement;
-                    selectedEl.click();
-                } else if (e.key === 'Escape') {
-                    suggestionsContainer.classList.add('hidden');
-                    selectedIndex = -1;
-                }
-            });
-            
-            // Click outside to hide suggestions
-            document.addEventListener('click', (e) => {
-                if (!text.inputEl.contains(e.target as Node) && !suggestionsContainer.contains(e.target as Node)) {
-                    suggestionsContainer.classList.add('hidden');
-                    selectedIndex = -1;
-                }
-            });
-            
+
             // Handle value changes
             text.onChange(async (value) => {
                 this.plugin.settings.sourcePath = value;
@@ -254,8 +304,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
-        // --- AI Settings for Beats Analysis ---
-        containerEl.createEl('h2', { text: 'AI settings for beats analysis'});
+        // --- AI for Beats Analysis ---
+        new Settings(containerEl)
+            .setName('AI for beats analysis')
+            .setHeading();
         
         // Enable/disable AI beats features
         new Settings(containerEl)
@@ -266,91 +318,165 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.enableAiBeats = value;
                     await this.plugin.saveSettings();
-                    // Refresh timeline to apply visibility changes
-                    if (this.plugin.activeTimelineView) {
-                        this.plugin.activeTimelineView.refreshTimeline();
-                    }
+                    // Refresh timeline(s) to apply visibility changes
+                    this.plugin.refreshTimelineIfNeeded(null);
                 }));
 
-        // --- Default AI Provider Setting ---
+        // --- Single model picker ---
         new Settings(containerEl)
-        .setName('Default AI provider')
-        .setDesc('Select the default AI provider to use for AI features like Beat Analysis.')
-        .addDropdown(dropdown => dropdown
-            .addOption('openai', 'OpenAI (ChatGPT)')
-            .addOption('anthropic', 'Anthropic (Claude)')
-            .setValue(this.plugin.settings.defaultAiProvider || 'openai')
-            .onChange(async (value) => {
-                this.plugin.settings.defaultAiProvider = value as 'openai' | 'anthropic';
-                await this.plugin.saveSettings();
-            }));
-
-        // --- OpenAI ChatGPT SECTION ---
-        containerEl.createEl('h2', { text: 'OpenAI ChatGPT settings'});
-
-
-        // --- OpenAI API Key Setting ---
-        const openaiSetting = new Settings(containerEl)
-            .setName('OpenAI API key')
-            .setDesc('Your OpenAI API key for using ChatGPT AI features.')
-            .addText(text => text
-                .setPlaceholder('Enter your API key')
-                .setValue(this.plugin.settings.openaiApiKey || '')
-                .onChange(async (value) => {
-                    this.plugin.settings.openaiApiKey = value.trim();
-                    await this.plugin.saveSettings();
-                }));
-                
-
-        // --- OpenAI Model Selection ---
-        const modelSetting = new Settings(containerEl)
-            .setName('OpenAI model')
-            .setDesc('Choose the ChatGPT model to use.')
+            .setName('Model')
+            .setDesc('Pick the model you prefer for writing tasks.')
             .addDropdown(dropdown => {
-                const options: { id: string; label: string }[] = [
-                    { id: 'gpt-4o', label: 'gpt-4o' },
-                    { id: 'o3', label: 'o3' },
+                type ModelChoice = { id: string; label: string; provider: 'anthropic' | 'gemini' | 'openai'; model: string };
+                const choices: ModelChoice[] = [
+                    { id: 'anthropic:claude-opus-4-1', label: 'Anthropic — Claude Opus 4.1', provider: 'anthropic', model: 'claude-opus-4-1@20250805' },
+                    { id: 'anthropic:claude-sonnet-4-1', label: 'Anthropic — Claude Sonnet 4.1', provider: 'anthropic', model: 'claude-sonnet-4-1@20250805' },
+                    { id: 'gemini:gemini-2.5-pro', label: 'Gemini — Gemini 2.5 Pro', provider: 'gemini', model: 'gemini-2.5-pro' },
+                    { id: 'openai:gpt-4.1', label: 'OpenAI — GPT‑4.1', provider: 'openai', model: 'gpt-4.1' },
                 ];
-                options.forEach(opt => dropdown.addOption(opt.id, opt.label));
-                dropdown.setValue(this.plugin.settings.openaiModelId || 'gpt-4o');
+                choices.forEach(opt => dropdown.addOption(opt.id, opt.label));
+
+                // Determine current selection from settings
+                const currentProvider = (this.plugin.settings.defaultAiProvider || 'openai') as 'anthropic' | 'gemini' | 'openai';
+                let currentId: string | undefined;
+                if (currentProvider === 'anthropic') {
+                    const id = this.plugin.settings.anthropicModelId;
+                    currentId = choices.find(c => c.provider === 'anthropic' && c.model === id)?.id;
+                    if (!currentId) currentId = 'anthropic:claude-sonnet-4-1';
+                } else if (currentProvider === 'gemini') {
+                    const id = this.plugin.settings.geminiModelId;
+                    currentId = choices.find(c => c.provider === 'gemini' && c.model === id)?.id;
+                    if (!currentId) currentId = 'gemini:gemini-2.5-pro';
+                } else {
+                    const id = this.plugin.settings.openaiModelId;
+                    currentId = choices.find(c => c.provider === 'openai' && c.model === id)?.id;
+                    if (!currentId) currentId = 'openai:gpt-4.1';
+                }
+                dropdown.setValue(currentId);
+
                 dropdown.onChange(async value => {
-                    this.plugin.settings.openaiModelId = value;
+                    const choice = choices.find(c => c.id === value);
+                    if (!choice) return;
+                    // Set provider + provider-specific model id
+                    this.plugin.settings.defaultAiProvider = choice.provider;
+                    if (choice.provider === 'anthropic') this.plugin.settings.anthropicModelId = choice.model;
+                    if (choice.provider === 'gemini') this.plugin.settings.geminiModelId = choice.model;
+                    if (choice.provider === 'openai') this.plugin.settings.openaiModelId = choice.model;
                     await this.plugin.saveSettings();
+                    // Update provider section dimming based on selection
+                    this.refreshProviderDimming();
                 });
+                (dropdown as any).selectEl?.classList.add('rt-setting-dropdown', 'rt-provider-dropdown');
             });
 
-        // --- Anthropic Claude SECTION ---
-        containerEl.createEl('h2', { text: 'Anthropic Claude settings'});
+        // Provider sections (for dimming)
+        const anthropicSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-anthropic' });
+        const geminiSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-gemini' });
+        const openaiSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-openai' });
 
-        
-        // --- Anthropic API Key Setting ---
-        const anthropicSetting = new Settings(containerEl)
+        // Keep refs for dimming updates
+        this._providerSections = { anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection };
+
+        // Anthropic API Key
+        new Settings(anthropicSection)
             .setName('Anthropic API key')
-            .setDesc('Your Anthropic API key for using Claude AI features.')
+            .setDesc(() => {
+                const frag = document.createDocumentFragment();
+                const span = document.createElement('span');
+                span.textContent = 'Your Anthropic API key for using Claude AI features. ';
+                const link = document.createElement('a');
+                link.href = 'https://platform.claude.com';
+                link.textContent = 'Get key';
+                link.target = '_blank';
+                link.rel = 'noopener';
+                frag.appendChild(span);
+                frag.appendChild(link);
+                return frag;
+            })
             .addText(text => text
                 .setPlaceholder('Enter your Anthropic API key')
                 .setValue(this.plugin.settings.anthropicApiKey || '')
                 .onChange(async (value) => {
                     this.plugin.settings.anthropicApiKey = value.trim();
                     await this.plugin.saveSettings();
+                    this._anthropicKeyInput = text.inputEl; // track ref
+                    this.scheduleKeyValidation('anthropic');
                 }));
 
-        // --- Anthropic Model Selection ---
-        new Settings(containerEl)
-            .setName('Anthropic model')
-            .setDesc('Choose the Claude model to use.')
-            .addDropdown(dropdown => {
-                const options: { id: string; label: string }[] = [
-                    { id: 'claude-sonnet-4-0', label: 'claude-sonnet-4-0' },
-                    { id: 'claude-opus-4-0', label: 'claude-opus-4-0' },
-                ];
-                options.forEach(opt => dropdown.addOption(opt.id, opt.label));
-                dropdown.setValue(this.plugin.settings.anthropicModelId || 'claude-sonnet-4-0');
-                dropdown.onChange(async value => {
-                    this.plugin.settings.anthropicModelId = value;
+        // Removed individual model dropdowns in favor of single picker
+
+        // Gemini API Key
+        new Settings(geminiSection)
+            .setName('Gemini API key')
+            .setDesc(() => {
+                const frag = document.createDocumentFragment();
+                const span = document.createElement('span');
+                span.textContent = 'Your Gemini API key for using Google’s Gemini models. ';
+                const link = document.createElement('a');
+                link.href = 'https://aistudio.google.com';
+                link.textContent = 'Get key';
+                link.target = '_blank';
+                link.rel = 'noopener';
+                frag.appendChild(span);
+                frag.appendChild(link);
+                return frag;
+            })
+            .addText(text => text
+                .setPlaceholder('Enter your Gemini API key')
+                .setValue(this.plugin.settings.geminiApiKey || '')
+                .onChange(async (value) => {
+                    this.plugin.settings.geminiApiKey = value.trim();
                     await this.plugin.saveSettings();
-                });
-            });
+                    this._geminiKeyInput = text.inputEl;
+                    this.scheduleKeyValidation('gemini');
+                }));
+
+        // (model picker above)
+
+        // OpenAI API Key
+        new Settings(openaiSection)
+            .setName('OpenAI API key')
+            .setDesc(() => {
+                const frag = document.createDocumentFragment();
+                const span = document.createElement('span');
+                span.textContent = 'Your OpenAI API key for using ChatGPT AI features. ';
+                const link = document.createElement('a');
+                link.href = 'https://platform.openai.com';
+                link.textContent = 'Get key';
+                link.target = '_blank';
+                link.rel = 'noopener';
+                frag.appendChild(span);
+                frag.appendChild(link);
+                return frag;
+            })
+            .addText(text => text
+                .setPlaceholder('Enter your API key')
+                .setValue(this.plugin.settings.openaiApiKey || '')
+                .onChange(async (value) => {
+                    this.plugin.settings.openaiApiKey = value.trim();
+                    await this.plugin.saveSettings();
+                    this._openaiKeyInput = text.inputEl;
+                    this.scheduleKeyValidation('openai');
+                }));
+
+        // (model picker above)
+
+        // Apply provider dimming on first render
+        this.refreshProviderDimming();
+
+        // Kick off passive validation if values already present
+        if (this.plugin.settings.anthropicApiKey?.trim()) {
+            this._anthropicKeyInput = anthropicSection.querySelector('input[type="text"], input[type="password"], input') as HTMLInputElement | undefined;
+            this.scheduleKeyValidation('anthropic');
+        }
+        if (this.plugin.settings.geminiApiKey?.trim()) {
+            this._geminiKeyInput = geminiSection.querySelector('input[type="text"], input[type="password"], input') as HTMLInputElement | undefined;
+            this.scheduleKeyValidation('gemini');
+        }
+        if (this.plugin.settings.openaiApiKey?.trim()) {
+            this._openaiKeyInput = openaiSection.querySelector('input[type="text"], input[type="password"], input') as HTMLInputElement | undefined;
+            this.scheduleKeyValidation('openai');
+        }
 
         // <<< ADD THIS Setting block for API Logging Toggle >>>
         new Settings(containerEl)
@@ -379,7 +505,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         containerEl.createEl('hr', { cls: 'settings-separator' });
 
         // --- Publishing Stage Colors (compact grid) --- 
-        containerEl.createEl('h2', { text: 'Publishing stage colors'});
+        new Settings(containerEl)
+            .setName('Publishing stage colors')
+            .setHeading();
         containerEl.createEl('p', { cls: 'color-section-desc', text: 'Used for completed main plot scenes of the outermost ring. Affects other elements as well.' });
         const stageGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
         const stages = Object.entries(this.plugin.settings.publishStageColors);
@@ -438,7 +566,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
 
         // --- Subplot palette (15 colors) ---
-        containerEl.createEl('h2', { text: 'Subplot ring colors'});
+        new Settings(containerEl)
+            .setName('Subplot ring colors')
+            .setHeading();
         containerEl.createEl('p', { cls: 'color-section-desc', text: 'Subplot ring colors used for rings 1 through 16 moving inward.' });
         const subplotGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
         const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];

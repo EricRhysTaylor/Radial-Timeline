@@ -2,6 +2,7 @@ import RadialTimelinePlugin from './main';
 import { App, TFile, Vault, Notice, parseYaml, stringifyYaml } from "obsidian";
 import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
 import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
+import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
 
 // --- Interfaces --- 
 interface SceneData {
@@ -136,7 +137,7 @@ ${nextBody || 'N/A'}
 async function logApiInteractionToFile(
     plugin: RadialTimelinePlugin,
     vault: Vault,
-    provider: 'openai' | 'anthropic',
+    provider: 'openai' | 'anthropic' | 'gemini',
     modelId: string,
     requestData: unknown, // Keep as unknown initially
     responseData: unknown,
@@ -163,45 +164,26 @@ async function logApiInteractionToFile(
     const requestJson = JSON.stringify(requestData, null, 2);
     const responseJson = JSON.stringify(responseData, null, 2);
 
-    let costString = "**Estimated Cost:** N/A";
+    // Replace cost estimation with simple usage tokens (less error-prone)
+    let usageString = '**Usage:** N/A';
     try {
         if (responseData && typeof responseData === 'object') {
-            const usage = (responseData as Record<string, unknown>)?.usage as Record<string, unknown> | undefined;
-
-            if (usage) {
-                if (provider === 'openai' && typeof usage.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number') {
-                const promptTokens = usage.prompt_tokens;
-                const completionTokens = usage.completion_tokens;
-                    const INPUT_PRICE_PER_MILLION = modelId.includes('gpt-4o') ? 5.00 : (modelId.includes('gpt-4-turbo') ? 10.00 : 0.50);
-                    const OUTPUT_PRICE_PER_MILLION = modelId.includes('gpt-4o') ? 15.00 : (modelId.includes('gpt-4-turbo') ? 30.00 : 1.50);
-                const inputCost = (promptTokens / 1000000) * INPUT_PRICE_PER_MILLION;
-                const outputCost = (completionTokens / 1000000) * OUTPUT_PRICE_PER_MILLION;
-                const totalCost = inputCost + outputCost;
-                    costString = `**Estimated Cost (OpenAI ${modelId}):** $${totalCost.toFixed(6)} (Input: ${promptTokens} tokens, Output: ${completionTokens} tokens)`;
-
-                } else if (provider === 'anthropic' && typeof usage.input_tokens === 'number' && typeof usage.output_tokens === 'number') {
-                    const inputTokens = usage.input_tokens;
-                    const outputTokens = usage.output_tokens;
-                    const INPUT_PRICE_PER_MILLION = modelId.includes('opus') ? 15.00 : (modelId.includes('sonnet-3.5') ? 3.00 : (modelId.includes('haiku') ? 0.25 : 3.00));
-                    const OUTPUT_PRICE_PER_MILLION = modelId.includes('opus') ? 75.00 : (modelId.includes('sonnet-3.5') ? 15.00 : (modelId.includes('haiku') ? 1.25 : 15.00));
-                    const inputCost = (inputTokens / 1000000) * INPUT_PRICE_PER_MILLION;
-                    const outputCost = (outputTokens / 1000000) * OUTPUT_PRICE_PER_MILLION;
-                    const totalCost = inputCost + outputCost;
-                    costString = `**Estimated Cost (Anthropic ${modelId}):** $${totalCost.toFixed(6)} (Input: ${inputTokens} tokens, Output: ${outputTokens} tokens)`;
-
-                } else if (!(responseData as Record<string, any>)?.error) {
-                    costString = `**Estimated Cost:** N/A (Usage data found but provider/format not recognized or incomplete)`;
+            if (provider === 'openai' && (responseData as any).usage) {
+                const u = (responseData as any).usage;
+                if (typeof u.prompt_tokens === 'number' || typeof u.completion_tokens === 'number') {
+                    usageString = `**Usage (OpenAI):** prompt=${u.prompt_tokens ?? 'n/a'}, output=${u.completion_tokens ?? 'n/a'}`;
                 }
-            } else if (!(responseData as Record<string, any>)?.error) {
-                costString = `**Estimated Cost:** N/A (Usage data not found in response)`;
+            } else if (provider === 'anthropic' && (responseData as any).usage) {
+                const u = (responseData as any).usage;
+                if (typeof u.input_tokens === 'number' || typeof u.output_tokens === 'number') {
+                    usageString = `**Usage (Anthropic):** input=${u.input_tokens ?? 'n/a'}, output=${u.output_tokens ?? 'n/a'}`;
+                }
+            } else if (provider === 'gemini' && (responseData as any).usageMetadata) {
+                const u = (responseData as any).usageMetadata;
+                usageString = `**Usage (Gemini):** total=${u.totalTokenCount ?? 'n/a'}, prompt=${u.promptTokenCount ?? 'n/a'}, output=${u.candidatesTokenCount ?? 'n/a'}`;
             }
-        } else {
-             costString = "**Estimated Cost:** N/A (Response is not an object)";
         }
-    } catch (e) {
-        console.error("Error calculating API cost:", e);
-        costString = "**Estimated Cost:** Error calculating cost";
-    }
+    } catch {}
 
     let outcomeSection = "## Outcome\n\n";
     if (responseData && typeof responseData === 'object') {
@@ -223,6 +205,14 @@ async function logApiInteractionToFile(
             } else if (provider === 'anthropic') {
                  contentForCheck = responseAsRecord.content?.[0]?.text ?? responseAsRecord.content;
                  success = !!contentForCheck;
+            } else if (provider === 'gemini') {
+                  type GeminiPart = { text?: string };
+                  const parts = responseAsRecord.candidates?.[0]?.content?.parts as unknown;
+                  if (Array.isArray(parts)) {
+                      const arr = parts as GeminiPart[];
+                      contentForCheck = arr.map(p => p?.text ?? '').join('').trim();
+                      success = !!contentForCheck;
+                  }
             }
 
             if (success) {
@@ -236,6 +226,8 @@ async function logApiInteractionToFile(
                      outcomeSection += JSON.stringify(responseAsRecord.choices, null, 2);
                 } else if (provider === 'anthropic') {
                      outcomeSection += JSON.stringify(responseAsRecord.content, null, 2);
+                } else if (provider === 'gemini') {
+                      outcomeSection += JSON.stringify(responseAsRecord.candidates, null, 2);
                 } else {
                     outcomeSection += JSON.stringify(responseData, null, 2);
                 }
@@ -249,13 +241,29 @@ async function logApiInteractionToFile(
     
     const contextHeader = subplotName ? `**Subplot Context:** ${subplotName}` : `**Context:** Manuscript Order`;
 
-    let fileContent = `# ${provider.charAt(0).toUpperCase() + provider.slice(1)} API Interaction Log\n\n`;
+    // Friendly model name for logs
+    const friendlyModel = (() => {
+        const mid = (modelId || '').toLowerCase();
+        if (provider === 'anthropic') {
+            if (mid.startsWith('claude-opus-4-1')) return 'Claude Opus 4.1';
+            if (mid.startsWith('claude-sonnet-4-1')) return 'Claude Sonnet 4.1';
+        } else if (provider === 'gemini') {
+            if (mid === 'gemini-2.5-pro') return 'Gemini 2.5 Pro';
+        } else if (provider === 'openai') {
+            if (mid === 'gpt-4.1') return 'GPT‑4.1';
+        }
+        return modelId;
+    })();
+
+    const providerTitle = provider.charAt(0).toUpperCase() + provider.slice(1);
+    let fileContent = `# ${providerTitle} — ${friendlyModel} API Interaction Log\n\n`;
     fileContent += `**Command:** ${commandContext}\n`;
     fileContent += `**Provider:** ${provider}\n`;
+    fileContent += `**Model:** ${friendlyModel}\n`;
     fileContent += `**Model ID:** ${modelId}\n`;
     fileContent += `**Timestamp:** ${new Date().toISOString()}\n`;
     fileContent += `${contextHeader}\n`;
-    fileContent += `${costString} <!-- Prices are estimates. Check Anthropic or OpenAI for current pricing. -->\n\n`;
+    fileContent += `${usageString}\n\n`;
     fileContent += `${outcomeSection}`;
 
     fileContent += `## Request Sent\n\n`;
@@ -263,10 +271,26 @@ async function logApiInteractionToFile(
 
     // <<< FIXED: Use safeRequestData and type guard for messages array >>>
     let userPromptContent = 'User prompt not logged correctly';
-    if (safeRequestData?.messages && Array.isArray(safeRequestData.messages)) {
+    if (provider === 'openai' && safeRequestData?.messages && Array.isArray(safeRequestData.messages)) {
         const userMessage = safeRequestData.messages.find((m: ApiMessage) => m.role === 'user');
-        if (userMessage) {
-            userPromptContent = userMessage.content;
+        if (userMessage) userPromptContent = userMessage.content;
+    } else if (provider === 'anthropic' && safeRequestData) {
+        // For anthropic we logged system separately; user is in the single messages array we sent
+        const anthropicMsg = (safeRequestData as any).messages?.[0]?.content;
+        if (typeof anthropicMsg === 'string') userPromptContent = anthropicMsg;
+    } else if (provider === 'gemini') {
+        type GeminiPart = { text?: string };
+        const rd = requestData as unknown;
+        if (rd && typeof rd === 'object' && (rd as Record<string, unknown>).contents) {
+            const contents = (rd as Record<string, unknown>).contents as unknown;
+            if (Array.isArray(contents) && contents[0] && typeof contents[0] === 'object') {
+                const first = contents[0] as Record<string, unknown>;
+                const parts = first.parts as unknown;
+                if (Array.isArray(parts)) {
+                    const arr = parts as GeminiPart[];
+                    userPromptContent = arr.map(p => p?.text ?? '').join('').trim();
+                }
+            }
         }
     }
     fileContent += `## User Prompt Used\n\n\\\`\\\`\\\`\n${userPromptContent}\n\\\`\\\`\\\`\n\n`;
@@ -278,6 +302,19 @@ async function logApiInteractionToFile(
             systemPromptContent = safeRequestData.messages.find((m: ApiMessage) => m.role === 'system')?.content;
         } else if (provider === 'anthropic') {
             systemPromptContent = safeRequestData.system;
+        } else if (provider === 'gemini') {
+            type GeminiPart = { text?: string };
+            const rd = requestData as unknown;
+            if (rd && typeof rd === 'object') {
+                const sys = (rd as Record<string, unknown>).systemInstruction as unknown;
+                if (sys && typeof sys === 'object') {
+                    const parts = (sys as Record<string, unknown>).parts as unknown;
+                    if (Array.isArray(parts)) {
+                        const arr = parts as GeminiPart[];
+                        systemPromptContent = arr.map(p => p?.text ?? '').join('').trim();
+                    }
+                }
+            }
         }
     }
 
@@ -326,9 +363,35 @@ async function callAiProvider(
     let apiErrorMsg: string | undefined;
 
     try {
+        const normalizeModelId = (prov: string, id: string | undefined): string | undefined => {
+            if (!id) return id;
+            switch (prov) {
+                case 'anthropic':
+                    // New canonical Anthropic IDs
+                    if (id === 'claude-opus-4-1' || id === 'claude-4.1-opus') return 'claude-opus-4-1@20250805';
+                    if (id === 'claude-sonnet-4-1' || id === 'claude-4-sonnet') return 'claude-sonnet-4-1@20250805';
+                    // Legacy fallbacks map to latest
+                    if (id === 'claude-opus-4-0' || id === 'claude-3-opus-20240229') return 'claude-opus-4-1@20250805';
+                    if (id === 'claude-sonnet-4-0' || id === 'claude-3-7-sonnet-20250219') return 'claude-sonnet-4-1@20250805';
+                    return id;
+                case 'openai':
+                    // Use GPT‑4.1 as canonical; map older/placeholder ids
+                    if (id === 'gpt-5' || id === 'o3' || id === 'gpt-4o') return 'gpt-4.1';
+                    if (id === 'gpt-4.1') return 'gpt-4.1';
+                    return id;
+                case 'gemini':
+                    // Canonical Gemini: 2.5 Pro
+                    if (id === 'gemini-2.5-pro') return 'gemini-2.5-pro';
+                    if (id === 'gemini-ultra' || id === 'gemini-creative' || id === 'gemini-1.0-pro' || id === 'gemini-1.5-pro') return 'gemini-2.5-pro';
+                    return id;
+                default:
+                    return id;
+            }
+        };
+
         if (provider === 'anthropic') {
             apiKey = plugin.settings.anthropicApiKey;
-            modelId = plugin.settings.anthropicModelId || 'claude-3-7-sonnet-20250219';
+            modelId = normalizeModelId('anthropic', plugin.settings.anthropicModelId) || 'claude-3-7-sonnet-20250219';
 
             if (!apiKey || !modelId) {
                 apiErrorMsg = 'Anthropic API key or Model ID not configured in settings.';
@@ -353,9 +416,35 @@ async function callAiProvider(
             }
             result = apiResponse.content;
 
+        } else if (provider === 'gemini') {
+            apiKey = plugin.settings.geminiApiKey;
+            modelId = normalizeModelId('gemini', plugin.settings.geminiModelId) || 'gemini-1.5-pro';
+
+            if (!apiKey || !modelId) {
+                apiErrorMsg = 'Gemini API key or Model ID not configured.';
+                responseDataForLog = { error: { message: apiErrorMsg, type: 'plugin_config_error' } };
+                throw new Error(apiErrorMsg);
+            }
+
+            requestBodyForLog = {
+                model: modelId,
+                contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+                generationConfig: { temperature: 0.7, maxOutputTokens: 4000 }
+            };
+
+            const apiResponse: GeminiApiResponse = await callGeminiApi(apiKey, modelId, null, userPrompt, 4000, 0.7);
+
+            responseDataForLog = apiResponse.responseData;
+
+            if (!apiResponse.success) {
+                apiErrorMsg = apiResponse.error;
+                throw new Error(apiErrorMsg || `Gemini API call failed.`);
+            }
+            result = apiResponse.content;
+
         } else {
             apiKey = plugin.settings.openaiApiKey;
-            modelId = plugin.settings.openaiModelId || "gpt-4o";
+            modelId = normalizeModelId('openai', plugin.settings.openaiModelId) || "gpt-4o";
 
             if (!apiKey || !modelId) {
                 apiErrorMsg = 'OpenAI API key or Model ID not configured.';
@@ -396,6 +485,7 @@ async function callAiProvider(
          if (!modelId) {
             if (currentProvider === 'anthropic') modelId = plugin.settings.anthropicModelId || 'claude-3-7-sonnet-20250219';
             else if (currentProvider === 'openai') modelId = 'gpt-4o';
+            else if (currentProvider === 'gemini') modelId = plugin.settings.geminiModelId || 'gemini-1.5-pro';
             else modelId = 'unknown';
          }
 

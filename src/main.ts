@@ -1,4 +1,4 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder } from "obsidian";
 import { escapeRegExp } from './utils/regex';
 import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils/colour';
 import { decodeHtmlEntities, parseSceneTitleComponents, renderSceneTitleComponents } from './utils/text';
@@ -32,7 +32,9 @@ interface RadialTimelineSettings {
     openaiApiKey?: string; // <<< ADDED: Optional OpenAI API Key
     anthropicApiKey?: string; // <<< ADDED: Anthropic API Key
     anthropicModelId?: string; // <<< ADDED: Selected Anthropic Model ID
-    defaultAiProvider?: 'openai' | 'anthropic'; // <<< ADDED: Default AI provider
+    geminiApiKey?: string; // <<< ADDED: Gemini API Key
+    geminiModelId?: string; // <<< ADDED: Selected Gemini Model ID
+    defaultAiProvider?: 'openai' | 'anthropic' | 'gemini'; // <<< ADDED: Default AI provider
     openaiModelId?: string; // <<< ADDED: Selected OpenAI Model ID
     // Feature toggles
     enableAiBeats?: boolean; // Show AI beats features (colors + synopsis)
@@ -113,9 +115,11 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     targetCompletionDate: undefined, // Ensure it's undefined by default
     openaiApiKey: '', // Default to empty string
     anthropicApiKey: '', // <<< ADDED: Default empty string
-    anthropicModelId: 'claude-sonnet-4-0', // <<< ADDED: Default to latest Sonnet
-    defaultAiProvider: 'openai', // <<< ADDED: Default to OpenAI
-    openaiModelId: 'gpt-4o' // <<< ADDED: Default to gpt-4o
+    anthropicModelId: 'claude-sonnet-4-1@20250805', // Default to Claude Sonnet 4.1
+    geminiApiKey: '',
+    geminiModelId: 'gemini-2.5-pro', // Default to Gemini 2.5 Pro
+    defaultAiProvider: 'openai',
+    openaiModelId: 'gpt-4.1' // Default to GPT-4.1
     ,enableAiBeats: true
 };
 
@@ -343,8 +347,7 @@ function highlightSearchTermsInText(text: string, searchTerm: string, fragment: 
 export default class RadialTimelinePlugin extends Plugin {
     settings: RadialTimelineSettings;
     
-    // View reference
-    activeTimelineView: RadialTimelineView | null = null;
+    // Do not store persistent references to views (per Obsidian guidelines)
 
     // Track open scene paths
     openScenePaths: Set<string> = new Set<string>();
@@ -368,6 +371,20 @@ export default class RadialTimelinePlugin extends Plugin {
     
     // Add property to store the latest status counts for completion estimate
     public latestStatusCounts?: Record<string, number>;
+
+    // Helper: get all currently open timeline views
+    private getTimelineViews(): RadialTimelineView[] {
+        return this.app.workspace
+            .getLeavesOfType(TIMELINE_VIEW_TYPE)
+            .map(leaf => leaf.view as unknown)
+            .filter((v): v is RadialTimelineView => v instanceof RadialTimelineView);
+    }
+    
+    // Helper: get the first open timeline view (if any)
+    private getFirstTimelineView(): RadialTimelineView | null {
+        const list = this.getTimelineViews();
+        return list.length > 0 ? list[0] : null;
+    }
     
     /**
      * Position and curve the text elements in the SVG
@@ -824,10 +841,17 @@ export default class RadialTimelinePlugin extends Plugin {
                 if (!this.settings.enableAiBeats) return false; // hide when disabled
                 if (checking) return true;
                 (async () => {
-                const apiKey = this.settings.openaiApiKey;
-                if (!apiKey || apiKey.trim() === '') {
-                    new Notice('OpenAI API key is not set in settings.');
-                    return;
+                const provider = this.settings.defaultAiProvider || 'openai';
+                let hasKey = true;
+                if (provider === 'anthropic') {
+                    hasKey = !!this.settings.anthropicApiKey?.trim();
+                    if (!hasKey) { new Notice('Anthropic API key is not set in settings.'); return; }
+                } else if (provider === 'gemini') {
+                    hasKey = !!this.settings.geminiApiKey?.trim();
+                    if (!hasKey) { new Notice('Gemini API key is not set in settings.'); return; }
+                } else {
+                    hasKey = !!this.settings.openaiApiKey?.trim();
+                    if (!hasKey) { new Notice('OpenAI API key is not set in settings.'); return; }
                 }
 
                 new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
@@ -851,10 +875,17 @@ export default class RadialTimelinePlugin extends Plugin {
                 if (!this.settings.enableAiBeats) return false; // hide when disabled
                 if (checking) return true;
                 (async () => {
-                const apiKey = this.settings.openaiApiKey;
-                if (!apiKey || apiKey.trim() === '') {
-                    new Notice('OpenAI API key is not set in settings.');
-                    return;
+                const provider = this.settings.defaultAiProvider || 'openai';
+                let hasKey = true;
+                if (provider === 'anthropic') {
+                    hasKey = !!this.settings.anthropicApiKey?.trim();
+                    if (!hasKey) { new Notice('Anthropic API key is not set in settings.'); return; }
+                } else if (provider === 'gemini') {
+                    hasKey = !!this.settings.geminiApiKey?.trim();
+                    if (!hasKey) { new Notice('Gemini API key is not set in settings.'); return; }
+                } else {
+                    hasKey = !!this.settings.openaiApiKey?.trim();
+                    if (!hasKey) { new Notice('OpenAI API key is not set in settings.'); return; }
                 }
 
                 new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
@@ -947,31 +978,80 @@ export default class RadialTimelinePlugin extends Plugin {
     
     // Helper method to check if a file is a scene in the timeline
     private isSceneFile(filePath: string): boolean {
-        if (!this.activeTimelineView) {
+        const views = this.getTimelineViews();
+        if (views.length === 0) return false;
+
+        try {
+            // Check each view until a match is found
+            for (const view of views) {
+                const scenes = (view as any)['sceneData'] || [];
+
+                if (scenes.length > 0) {
+                    const matchingScene = scenes.find((scene: Scene) => {
+                        if (!scene.path) return false;
+                        if (scene.path === filePath) return true;
+                        if (scene.path.startsWith('/') && scene.path.substring(1) === filePath) return true;
+                        if (!scene.path.startsWith('/') && '/' + scene.path === filePath) return true;
+                        return false;
+                    });
+                    if (matchingScene) return true;
+                } else {
+                    // Fallback to DOM lookup when scene cache isn't populated yet
+                    const container = view.contentEl.querySelector('.radial-timeline-container');
+                    if (!container) continue;
+                    const svgElement = container.querySelector('svg') as SVGSVGElement | null;
+                    if (!svgElement) continue;
+
+                    let encodedPath = encodeURIComponent(filePath);
+                    let sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
+                    if (!sceneGroup && filePath.startsWith('/')) {
+                        const altPath = filePath.substring(1);
+                        encodedPath = encodeURIComponent(altPath);
+                        sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
+                    } else if (!sceneGroup && !filePath.startsWith('/')) {
+                        const altPath = '/' + filePath;
+                        encodedPath = encodeURIComponent(altPath);
+                        sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
+                    }
+                    if (sceneGroup) return true;
+                }
+            }
+
+            return false;
+        } catch (error) {
+            this.log(`Error checking if file is a scene: ${error}`);
             return false;
         }
-        
-        try {
-            // If we have a scene cache, check against it
-            const scenes = this.activeTimelineView['sceneData'] || [];
-            
-            if (scenes.length === 0) {
-                // If no scene data available, check the SVG directly
-                const container = this.activeTimelineView.contentEl.querySelector('.radial-timeline-container');
-                if (!container) {
-                    return false;
+    }
+    
+    // Helper method to highlight a scene in the timeline when hovering over a file
+    private highlightSceneInTimeline(filePath: string, isHighlighting: boolean): void {
+        if (!filePath) return;
+
+        const views = this.getTimelineViews();
+        if (views.length === 0) return;
+
+        this.log(`${isHighlighting ? 'Highlighting' : 'Unhighlighting'} scene in timeline for file: ${filePath}`);
+
+        for (const view of views) {
+            try {
+                const container = view.contentEl.querySelector('.radial-timeline-container');
+                if (!container) continue;
+
+                const svgElement = container.querySelector('svg') as SVGSVGElement | null;
+                if (!svgElement) continue;
+
+                if (isHighlighting) {
+                    const allElements = svgElement.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
+                    allElements.forEach(element => {
+                        element.classList.remove('selected', 'non-selected');
+                    });
                 }
-                
-                const svgElement = container.querySelector('svg') as SVGSVGElement;
-                if (!svgElement) {
-                    return false;
-                }
-                
-                // Try direct path match
+
+                let foundScene = false;
                 let encodedPath = encodeURIComponent(filePath);
                 let sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                
-                // Try with or without leading slash
+
                 if (!sceneGroup && filePath.startsWith('/')) {
                     const altPath = filePath.substring(1);
                     encodedPath = encodeURIComponent(altPath);
@@ -981,141 +1061,50 @@ export default class RadialTimelinePlugin extends Plugin {
                     encodedPath = encodeURIComponent(altPath);
                     sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
                 }
-                
-                return !!sceneGroup;
-            }
-            
-            // Check if any scene has this path
-            const matchingScene = scenes.find(scene => {
-                if (!scene.path) return false;
-                
-                // Match with or without leading slash
-                if (scene.path === filePath) return true;
-                if (scene.path.startsWith('/') && scene.path.substring(1) === filePath) return true;
-                if (!scene.path.startsWith('/') && '/' + scene.path === filePath) return true;
-                
-                return false;
-            });
-            
-            return !!matchingScene;
-        } catch (error) {
-            this.log(`Error checking if file is a scene: ${error}`);
-            return false;
-        }
-    }
-    
-    // Helper method to highlight a scene in the timeline when hovering over a file
-    private highlightSceneInTimeline(filePath: string, isHighlighting: boolean): void {
-        if (!filePath || !this.activeTimelineView) {
-            return;
-        }
-        
-        this.log(`${isHighlighting ? 'Highlighting' : 'Unhighlighting'} scene in timeline for file: ${filePath}`);
-        
-        try {
-            // Get the SVG container element
-            const container = this.activeTimelineView.contentEl.querySelector('.radial-timeline-container');
-            if (!container) {
-                return;
-            }
-            
-            const svgElement = container.querySelector('svg') as SVGSVGElement;
-            if (!svgElement) {
-                return;
-            }
-            
-            // First, we should reset any previous highlighting if we're highlighting a new scene
-            if (isHighlighting) {
-                // Remove existing highlights to start with a clean state
-                const allElements = svgElement.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
-                allElements.forEach(element => {
-                    element.classList.remove('selected', 'non-selected');
-                });
-            }
-            
-            // Try different path matching strategies to find the scene
-            let foundScene = false;
-            
-            // Strategy 1: Direct path match
-            let encodedPath = encodeURIComponent(filePath);
-            let sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-            
-            // Strategy 2: Try with or without leading slash
-            if (!sceneGroup && filePath.startsWith('/')) {
-                const altPath = filePath.substring(1);
-                encodedPath = encodeURIComponent(altPath);
-                sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-            } else if (!sceneGroup && !filePath.startsWith('/')) {
-                const altPath = '/' + filePath;
-                encodedPath = encodeURIComponent(altPath);
-                sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-            }
-            
-            if (sceneGroup) {
-                foundScene = true;
-                
-                if (isHighlighting) {
-                    // Highlight this scene by adding the 'selected' class to its elements
-                    const currentPath = sceneGroup.querySelector('.scene-path');
-                    if (currentPath) {
-                        currentPath.classList.add('selected');
-                        
-                        // Also highlight the scene number and title
-                        const sceneId = currentPath.id;
-                        
-                        const numberSquare = svgElement.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
-                        const numberText = svgElement.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
-                        
-                        if (numberSquare) {
-                            numberSquare.classList.add('selected');
+
+                if (sceneGroup) {
+                    foundScene = true;
+
+                    if (isHighlighting) {
+                        const currentPath = sceneGroup.querySelector('.scene-path');
+                        if (currentPath) {
+                            currentPath.classList.add('selected');
+
+                            const sceneId = (currentPath as SVGPathElement).id;
+                            const numberSquare = svgElement.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
+                            const numberText = svgElement.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
+
+                            if (numberSquare) numberSquare.classList.add('selected');
+                            if (numberText) numberText.classList.add('selected');
+
+                            const sceneTitle = sceneGroup.querySelector('.scene-title');
+                            if (sceneTitle) sceneTitle.classList.add('selected');
+
+                            const allScenePaths = svgElement.querySelectorAll('.scene-path:not(.selected)');
+                            allScenePaths.forEach(element => element.classList.add('non-selected'));
+
+                            const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+                            if (synopsis) synopsis.classList.add('visible');
                         }
-                        
-                        if (numberText) {
-                            numberText.classList.add('selected');
-                        }
-                        
-                        // Highlight the scene title
-                        const sceneTitle = sceneGroup.querySelector('.scene-title');
-                        if (sceneTitle) {
-                            sceneTitle.classList.add('selected');
-                        }
-                        
-                        // Make other scenes less prominent
-                        const allScenePaths = svgElement.querySelectorAll('.scene-path:not(.selected)');
-                        allScenePaths.forEach(element => {
-                            element.classList.add('non-selected');
-                        });
-                        
-                        // Make the tooltip visible if it exists
-                        const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
-                        if (synopsis) {
-                            synopsis.classList.add('visible');
-                        }
-                    }
-                } else {
-                    // Reset highlighting
-                    const allElements = svgElement.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
-                    allElements.forEach(element => {
-                        element.classList.remove('selected', 'non-selected');
-                    });
-                    
-                    // Hide any visible synopsis
-                    const currentPath = sceneGroup.querySelector('.scene-path');
-                    if (currentPath) {
-                        const sceneId = currentPath.id;
-                        const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
-                        if (synopsis) {
-                            synopsis.classList.remove('visible');
+                    } else {
+                        const allElements = svgElement.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
+                        allElements.forEach(element => element.classList.remove('selected', 'non-selected'));
+
+                        const currentPath = sceneGroup.querySelector('.scene-path');
+                        if (currentPath) {
+                            const sceneId = (currentPath as SVGPathElement).id;
+                            const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+                            if (synopsis) synopsis.classList.remove('visible');
                         }
                     }
                 }
+
+                if (!foundScene) {
+                    this.log(`No scene found in timeline matching path: ${filePath}`);
+                }
+            } catch (error) {
+                this.log(`Error highlighting scene in timeline: ${error}`);
             }
-            
-            if (!foundScene) {
-                this.log(`No scene found in timeline matching path: ${filePath}`);
-            }
-        } catch (error) {
-            this.log(`Error highlighting scene in timeline: ${error}`);
         }
     }
     
@@ -1421,17 +1410,48 @@ public createTimelineSVG(scenes: Scene[]) {
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
-        // Ensure a valid Anthropic model ID is set, otherwise use the default
-        if (!this.settings.anthropicModelId) {
-            this.settings.anthropicModelId = DEFAULT_SETTINGS.anthropicModelId;
-        }
-        // Ensure a valid OpenAI model ID is set, otherwise use the default
-        if (!this.settings.openaiModelId) {
-            this.settings.openaiModelId = DEFAULT_SETTINGS.openaiModelId;
-        }
-         // Ensure a valid default provider is set
-        if (!this.settings.defaultAiProvider || !['openai', 'anthropic'].includes(this.settings.defaultAiProvider)) {
+        // Ensure defaults
+        if (!this.settings.anthropicModelId) this.settings.anthropicModelId = DEFAULT_SETTINGS.anthropicModelId;
+        if (!this.settings.openaiModelId) this.settings.openaiModelId = DEFAULT_SETTINGS.openaiModelId;
+        if (!this.settings.geminiModelId) this.settings.geminiModelId = DEFAULT_SETTINGS.geminiModelId;
+        if (!this.settings.defaultAiProvider || !['openai', 'anthropic', 'gemini'].includes(this.settings.defaultAiProvider)) {
             this.settings.defaultAiProvider = DEFAULT_SETTINGS.defaultAiProvider;
+        }
+
+        // One-time (idempotent) migration of legacy model IDs to canonical ones
+        const before = JSON.stringify({
+            anthropicModelId: this.settings.anthropicModelId,
+            openaiModelId: this.settings.openaiModelId,
+            geminiModelId: this.settings.geminiModelId,
+        });
+
+        const normalize = (prov: 'anthropic'|'openai'|'gemini', id: string | undefined): string => {
+            if (!id) return id as unknown as string;
+            if (prov === 'anthropic') {
+                if (id === 'claude-4.1-opus' || id === 'claude-opus-4-1' || id === 'claude-3-opus-20240229' || id === 'claude-opus-4-0') return 'claude-opus-4-1@20250805';
+                if (id === 'claude-4-sonnet' || id === 'claude-sonnet-4-1' || id === 'claude-3-7-sonnet-20250219' || id === 'claude-sonnet-4-0') return 'claude-sonnet-4-1@20250805';
+                return id;
+            }
+            if (prov === 'openai') {
+                if (id === 'gpt-5' || id === 'o3' || id === 'gpt-4o') return 'gpt-4.1';
+                return id;
+            }
+            // gemini
+            if (id !== 'gemini-2.5-pro') return 'gemini-2.5-pro';
+            return id;
+        };
+
+        this.settings.anthropicModelId = normalize('anthropic', this.settings.anthropicModelId);
+        this.settings.openaiModelId = normalize('openai', this.settings.openaiModelId);
+        this.settings.geminiModelId = normalize('gemini', this.settings.geminiModelId);
+
+        const after = JSON.stringify({
+            anthropicModelId: this.settings.anthropicModelId,
+            openaiModelId: this.settings.openaiModelId,
+            geminiModelId: this.settings.geminiModelId,
+        });
+        if (before !== after) {
+            await this.saveSettings();
         }
     }
 
@@ -1445,9 +1465,9 @@ public createTimelineSVG(scenes: Scene[]) {
         
         const trimmedPath = path.trim();
         
-        // Check if the folder exists in the vault
-        const folder = this.app.vault.getAbstractFileByPath(trimmedPath);
-        const isValid = folder && folder.path === trimmedPath;
+        // Check if the folder exists in the vault and is a folder
+        const file = this.app.vault.getAbstractFileByPath(trimmedPath);
+        const isValid = file instanceof TFolder && file.path === trimmedPath;
         
         if (isValid) {
             // Add to valid paths if not already present
@@ -1638,10 +1658,8 @@ public createTimelineSVG(scenes: Scene[]) {
         
         // Update the UI if something changed
         if (hasChanged) {
-            // Use the appropriate method to refresh the timeline
-            if (this.activeTimelineView) {
-                this.activeTimelineView.refreshTimeline();
-            }
+            // Debounced refresh for all open views
+            this.refreshTimelineIfNeeded(null);
         } else {
             this.log('No changes in open files detected');
         }
@@ -1770,11 +1788,6 @@ public createTimelineSVG(scenes: Scene[]) {
                         view.refreshTimeline();
                     }
                 });
-                
-                // Update active view reference
-                if (!this.activeTimelineView && timelineViews.length > 0) {
-                    this.activeTimelineView = timelineViews[0];
-                }
             }
         });
     }
@@ -2219,6 +2232,8 @@ public createTimelineSVG(scenes: Scene[]) {
 
     onunload() {
         console.log('RadialTimeline: Plugin Unloaded');
+        // Detach all timeline view leaves per Obsidian guidelines
+        this.app.workspace.detachLeavesOfType(TIMELINE_VIEW_TYPE);
         // Clean up any other resources
     }
 } // End of RadialTimelinePlugin class

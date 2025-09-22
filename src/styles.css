@@ -37,7 +37,10 @@
   /* Estimation Colors */
   --rt-color-estimation: #ff0000; /* Red not using this right now. defs at bottom of file*/
 
-  /* Subplot palette - 15 fixed colors provided */
+  /* Settings UI sizing */
+  --rt-settings-select-width: 240px; /* consistent width for dropdowns */
+
+  /* Subplot palette - 16 fixed colors provided */
   --rt-subplot-colors-0: #EFBDEB;
   --rt-subplot-colors-1: #a35ca7;
   --rt-subplot-colors-2: #6461A0;
@@ -53,6 +56,7 @@
   --rt-subplot-colors-12: #CEC3C1;
   --rt-subplot-colors-13: #F3D34A;
   --rt-subplot-colors-14: #004777;
+  --rt-subplot-colors-15: #8B4513; /* Ring 16 default (Brown) */
 }
 
 /* ADD stage-specific fill rules for title text – keep close to highlight-rect definitions so colours are defined in one place */
@@ -667,6 +671,22 @@ tspan .search-term {
   gap: 10px 12px;
   margin-top: 8px;
 }
+
+/* Settings dropdown width normalization (works within Obsidian's flex layout) */
+.setting-item .setting-item-control select.rt-setting-dropdown {
+  width: var(--rt-settings-select-width) !important;
+  min-width: var(--rt-settings-select-width);
+  max-width: var(--rt-settings-select-width);
+  flex: 0 0 var(--rt-settings-select-width);
+}
+
+/* Dim non-selected provider sections in settings */
+.rt-provider-section {
+  transition: opacity 120ms ease;
+}
+.rt-provider-section.dimmed {
+  opacity: 0.55;
+}
 @media (max-width: 1100px) {
   .rt-color-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -759,6 +779,7 @@ tspan .search-term {
 .rt-color-grid-controls .rt-swatch-trigger.rt-subplot-12 { background: var(--rt-subplot-colors-12); }
 .rt-color-grid-controls .rt-swatch-trigger.rt-subplot-13 { background: var(--rt-subplot-colors-13); }
 .rt-color-grid-controls .rt-swatch-trigger.rt-subplot-14 { background: var(--rt-subplot-colors-14); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-15 { background: var(--rt-subplot-colors-15); }
 
 /* Description under color section headers */
 .rt-color-section-desc {

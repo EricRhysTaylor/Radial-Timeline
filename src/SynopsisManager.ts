@@ -938,21 +938,27 @@ export default class SynopsisManager {
 
 
 
-          // 2. Determine the correct splitter character and method.
-          let splitChar = '';
+        // 2. Determine the correct splitter character and method.
+        // IMPORTANT: If the beat already includes a title/comment separator (" / "),
+        // do NOT split further on commas or periods — commas belong to the comment.
+        // This prevents unwanted wrapping like "smoother, but decent continuation".
+        let splitChar = '';
+        const hasSlashSeparator = /\s\/\s/.test(line);
+        if (!hasSlashSeparator) {
           if (isGradeLine) {
-              // For grade lines, prefer splitting on ". " to avoid decimals, otherwise use comma.
+              // For grade lines (when not using slash), prefer splitting on ". " to avoid decimals, else comma.
               if (line.match(/\.\s/)) {
                   splitChar = '.';
               } else if (line.includes(',')) {
                   splitChar = ',';
               }
           } else {
-              // Non-grade lines are only split by comma.
+              // Non-grade lines (no slash) may be legacy comma-separated items
               if (line.includes(',')) {
                   splitChar = ',';
               }
           }
+        }
 
           // 3. Perform the split and format the new lines.
           if (splitChar) {

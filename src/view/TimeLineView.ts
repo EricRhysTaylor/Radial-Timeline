@@ -1429,12 +1429,10 @@ This is a test scene created to help with initial Radial timeline setup.
                     
                     // No additional focus behavior required
                 } else {
-                    // When unhighlighting, we don't need to do anything special
-                    // The hover effect disappears naturally when mouse leaves
-                    // But we can restore focus to the timeline view if needed
-                    if (this.plugin.activeTimelineView) {
-                        this.plugin.app.workspace.trigger('active-leaf-change', this.plugin.activeTimelineView.leaf);
-                    }
+                    // When unhighlighting, we don't need to do anything special.
+                    // The hover effect disappears naturally when mouse leaves.
+                    // If we want to restore focus to this view, trigger for this.leaf.
+                    this.plugin.app.workspace.trigger('active-leaf-change', this.leaf);
                 }
             }
         } catch (error) {
