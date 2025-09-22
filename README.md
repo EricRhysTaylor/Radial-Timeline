@@ -23,9 +23,9 @@ A manuscript timeline for creative fiction writing projects that displays scenes
 This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in numeric order, to depict each scene. Various cues and interactions are available through a search feature and hover and click functionality. Hopefully, this will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
 
 
-<a href="https://youtu.be/_T6Q3Hq2HWc?si=4lua4oGeyKwpt8Mo" target="_blank" rel="noopener">
+<a href="https://youtu.be/DctCvSzzZ5M?si=YbZrBo8ulw0wrPZt" target="_blank" rel="noopener">
   <p align="center">
-    <img src="https://i.ytimg.com/vi/lRwHJ-R8rMk/maxresdefault.jpg" alt="Plot Your Novel with Radial Timeline in Obsidian | Complete Author Walkthrough & Setup Guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+    <img src="https://i.ytimg.com/vi/DctCvSzzZ5M/maxresdefault.jpg" alt="Plot Your Novel with Radial Timeline in Obsidian | Complete Author Walkthrough & Setup Guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
   </p>
   <p align="center" style="font-family: 'Lato', sans-serif; font-weight: bold; font-size: 16px; margin-top: 10px;">
     Plot Your Novel with Radial Timeline in Obsidian<br>
