@@ -329,8 +329,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             .addDropdown(dropdown => {
                 type ModelChoice = { id: string; label: string; provider: 'anthropic' | 'gemini' | 'openai'; model: string };
                 const choices: ModelChoice[] = [
-                    { id: 'anthropic:claude-opus-4-1', label: 'Anthropic — Claude Opus 4.1', provider: 'anthropic', model: 'claude-opus-4-1@20250805' },
-                    { id: 'anthropic:claude-sonnet-4-1', label: 'Anthropic — Claude Sonnet 4.1', provider: 'anthropic', model: 'claude-sonnet-4-1@20250805' },
+                    { id: 'anthropic:claude-opus-4-1', label: 'Anthropic — Opus 4.1', provider: 'anthropic', model: 'claude-opus-4-1-20250805' },
+                    { id: 'anthropic:claude-sonnet-4', label: 'Anthropic — Sonnet 4', provider: 'anthropic', model: 'claude-sonnet-4-20250514' },
                     { id: 'gemini:gemini-2.5-pro', label: 'Gemini — Gemini 2.5 Pro', provider: 'gemini', model: 'gemini-2.5-pro' },
                     { id: 'openai:gpt-4.1', label: 'OpenAI — GPT‑4.1', provider: 'openai', model: 'gpt-4.1' },
                 ];
@@ -342,7 +342,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 if (currentProvider === 'anthropic') {
                     const id = this.plugin.settings.anthropicModelId;
                     currentId = choices.find(c => c.provider === 'anthropic' && c.model === id)?.id;
-                    if (!currentId) currentId = 'anthropic:claude-sonnet-4-1';
+                    if (!currentId) currentId = 'anthropic:claude-sonnet-4';
                 } else if (currentProvider === 'gemini') {
                     const id = this.plugin.settings.geminiModelId;
                     currentId = choices.find(c => c.provider === 'gemini' && c.model === id)?.id;
@@ -380,7 +380,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Anthropic API Key
         new Settings(anthropicSection)
             .setName('Anthropic API key')
-            .setDesc(() => {
+            .setDesc((() => {
                 const frag = document.createDocumentFragment();
                 const span = document.createElement('span');
                 span.textContent = 'Your Anthropic API key for using Claude AI features. ';
@@ -392,7 +392,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 frag.appendChild(span);
                 frag.appendChild(link);
                 return frag;
-            })
+            })())
             .addText(text => text
                 .setPlaceholder('Enter your Anthropic API key')
                 .setValue(this.plugin.settings.anthropicApiKey || '')
@@ -408,7 +408,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Gemini API Key
         new Settings(geminiSection)
             .setName('Gemini API key')
-            .setDesc(() => {
+            .setDesc((() => {
                 const frag = document.createDocumentFragment();
                 const span = document.createElement('span');
                 span.textContent = 'Your Gemini API key for using Google’s Gemini models. ';
@@ -420,7 +420,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 frag.appendChild(span);
                 frag.appendChild(link);
                 return frag;
-            })
+            })())
             .addText(text => text
                 .setPlaceholder('Enter your Gemini API key')
                 .setValue(this.plugin.settings.geminiApiKey || '')
@@ -436,7 +436,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // OpenAI API Key
         new Settings(openaiSection)
             .setName('OpenAI API key')
-            .setDesc(() => {
+            .setDesc((() => {
                 const frag = document.createDocumentFragment();
                 const span = document.createElement('span');
                 span.textContent = 'Your OpenAI API key for using ChatGPT AI features. ';
@@ -448,7 +448,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 frag.appendChild(span);
                 frag.appendChild(link);
                 return frag;
-            })
+            })())
             .addText(text => text
                 .setPlaceholder('Enter your API key')
                 .setValue(this.plugin.settings.openaiApiKey || '')
@@ -647,12 +647,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // Use the managed component for the renderer
         // Note: Switching back to MarkdownRenderer.render as renderMarkdown was part of the error path
-        MarkdownRenderer.render( // <<< Using render, not renderMarkdown
-            this.app,           // <<< Pass app instance
+        MarkdownRenderer.render(
+            this.app,
             readmeMarkdown,
-            readmeContainer, // Render directly into the container created above
-            this.plugin.manifest.dir ?? '', 
-            this.readmeComponent // Pass the managed component instance
+            readmeContainer,
+            '', // No source path: not rendering a specific file
+            this.readmeComponent
         );
     }
 

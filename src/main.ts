@@ -115,7 +115,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     targetCompletionDate: undefined, // Ensure it's undefined by default
     openaiApiKey: '', // Default to empty string
     anthropicApiKey: '', // <<< ADDED: Default empty string
-    anthropicModelId: 'claude-sonnet-4-1@20250805', // Default to Claude Sonnet 4.1
+    anthropicModelId: 'claude-sonnet-4-20250514', // Default to Sonnet 4 (20250514)
     geminiApiKey: '',
     geminiModelId: 'gemini-2.5-pro', // Default to Gemini 2.5 Pro
     defaultAiProvider: 'openai',
@@ -1428,8 +1428,8 @@ public createTimelineSVG(scenes: Scene[]) {
         const normalize = (prov: 'anthropic'|'openai'|'gemini', id: string | undefined): string => {
             if (!id) return id as unknown as string;
             if (prov === 'anthropic') {
-                if (id === 'claude-4.1-opus' || id === 'claude-opus-4-1' || id === 'claude-3-opus-20240229' || id === 'claude-opus-4-0') return 'claude-opus-4-1@20250805';
-                if (id === 'claude-4-sonnet' || id === 'claude-sonnet-4-1' || id === 'claude-3-7-sonnet-20250219' || id === 'claude-sonnet-4-0') return 'claude-sonnet-4-1@20250805';
+                if (id === 'claude-4.1-opus' || id === 'claude-opus-4-1' || id === 'claude-3-opus-20240229' || id === 'claude-opus-4-0' || id === 'claude-opus-4-1@20250805') return 'claude-opus-4-1-20250805';
+                if (id === 'claude-4-sonnet' || id === 'claude-sonnet-4-1' || id === 'claude-3-7-sonnet-20250219' || id === 'claude-sonnet-4-0' || id === 'claude-sonnet-4-1@20250805') return 'claude-sonnet-4-20250514';
                 return id;
             }
             if (prov === 'openai') {

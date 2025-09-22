@@ -1,5 +1,5 @@
 import RadialTimelinePlugin from './main'; 
-import { App, TFile, Vault, Notice, parseYaml, stringifyYaml } from "obsidian";
+import { App, TFile, Vault, Notice, parseYaml, getFrontMatterInfo } from "obsidian";
 import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
 import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
 import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
@@ -33,6 +33,13 @@ interface ApiRequestData {
 
 // --- Helper Functions --- 
 
+// Minimal typing for Obsidian's getFrontMatterInfo result
+type FMInfo = {
+    exists: boolean;
+    frontmatter?: string;
+    position?: { start?: { offset: number }, end?: { offset: number } };
+};
+
 function extractSceneNumber(filename: string): number | null {
     const match = filename.match(/^(\d+(\.\d+)?)/);
     return match ? parseFloat(match[1]) : null;
@@ -52,17 +59,15 @@ async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Prom
         const filePath = file.path;
         try {
             const content = await vault.read(file);
-            const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-            if (!frontmatterMatch) {
-
+            const fmInfo = getFrontMatterInfo(content) as unknown as FMInfo;
+            if (!fmInfo || !fmInfo.exists) {
                 return null;
             }
-
             let frontmatter: Record<string, unknown> = {};
             try {
-                frontmatter = parseYaml(frontmatterMatch[1]) || {};
-            } catch (e) {
-
+                const fmText = fmInfo.frontmatter ?? '';
+                frontmatter = fmText ? (parseYaml(fmText) || {}) : {};
+            } catch {
                 return null; // Skip files with invalid YAML
             }
 
@@ -76,7 +81,19 @@ async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Prom
 
 
             const sceneNumber = extractSceneNumber(file.name);
-            const body = content.replace(/^---[\s\S]*?\n---/, "").trim();
+            // Extract body after frontmatter block using offsets
+            let body = content;
+            try {
+                const endOffset = fmInfo.position?.end?.offset as number | undefined;
+                if (typeof endOffset === 'number' && endOffset >= 0 && endOffset <= content.length) {
+                    body = content.slice(endOffset).trim();
+                } else {
+                    // Fallback: regex removal if offsets unavailable
+                    body = content.replace(/^---[\s\S]*?\n---/, "").trim();
+                }
+            } catch {
+                body = content.replace(/^---[\s\S]*?\n---/, "").trim();
+            }
 
             return { file, frontmatter, sceneNumber, body };
 
@@ -245,8 +262,8 @@ async function logApiInteractionToFile(
     const friendlyModel = (() => {
         const mid = (modelId || '').toLowerCase();
         if (provider === 'anthropic') {
-            if (mid.startsWith('claude-opus-4-1')) return 'Claude Opus 4.1';
-            if (mid.startsWith('claude-sonnet-4-1')) return 'Claude Sonnet 4.1';
+            if (mid.includes('claude-opus-4-1')) return 'Opus 4.1';
+            if (mid.includes('claude-sonnet-4-')) return 'Sonnet 4';
         } else if (provider === 'gemini') {
             if (mid === 'gemini-2.5-pro') return 'Gemini 2.5 Pro';
         } else if (provider === 'openai') {
@@ -367,12 +384,12 @@ async function callAiProvider(
             if (!id) return id;
             switch (prov) {
                 case 'anthropic':
-                    // New canonical Anthropic IDs
-                    if (id === 'claude-opus-4-1' || id === 'claude-4.1-opus') return 'claude-opus-4-1@20250805';
-                    if (id === 'claude-sonnet-4-1' || id === 'claude-4-sonnet') return 'claude-sonnet-4-1@20250805';
+                    // Canonical Anthropic IDs (2025)
+                    if (id === 'claude-opus-4-1' || id === 'claude-4.1-opus' || id === 'claude-opus-4-1@20250805') return 'claude-opus-4-1-20250805';
+                    if (id === 'claude-sonnet-4-1' || id === 'claude-4-sonnet' || id === 'claude-sonnet-4-1@20250805') return 'claude-sonnet-4-20250514';
                     // Legacy fallbacks map to latest
-                    if (id === 'claude-opus-4-0' || id === 'claude-3-opus-20240229') return 'claude-opus-4-1@20250805';
-                    if (id === 'claude-sonnet-4-0' || id === 'claude-3-7-sonnet-20250219') return 'claude-sonnet-4-1@20250805';
+                    if (id === 'claude-opus-4-0' || id === 'claude-3-opus-20240229') return 'claude-opus-4-1-20250805';
+                    if (id === 'claude-sonnet-4-0' || id === 'claude-3-7-sonnet-20250219') return 'claude-sonnet-4-20250514';
                     return id;
                 case 'openai':
                     // Use GPT‑4.1 as canonical; map older/placeholder ids
@@ -391,7 +408,7 @@ async function callAiProvider(
 
         if (provider === 'anthropic') {
             apiKey = plugin.settings.anthropicApiKey;
-            modelId = normalizeModelId('anthropic', plugin.settings.anthropicModelId) || 'claude-3-7-sonnet-20250219';
+            modelId = normalizeModelId('anthropic', plugin.settings.anthropicModelId) || 'claude-sonnet-4-20250514';
 
             if (!apiKey || !modelId) {
                 apiErrorMsg = 'Anthropic API key or Model ID not configured in settings.';
@@ -483,7 +500,7 @@ async function callAiProvider(
 
          const currentProvider = provider || plugin.settings.defaultAiProvider || 'unknown';
          if (!modelId) {
-            if (currentProvider === 'anthropic') modelId = plugin.settings.anthropicModelId || 'claude-3-7-sonnet-20250219';
+            if (currentProvider === 'anthropic') modelId = plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
             else if (currentProvider === 'openai') modelId = 'gpt-4o';
             else if (currentProvider === 'gemini') modelId = plugin.settings.geminiModelId || 'gemini-1.5-pro';
             else modelId = 'unknown';
@@ -568,56 +585,42 @@ async function updateSceneFile(
 ): Promise<boolean> {
 
     try {
-        // Clone frontmatter and remove existing beats
-        const frontmatterCopy = { ...scene.frontmatter };
-        delete frontmatterCopy['1beats'];
-        delete frontmatterCopy['2beats'];
-        delete frontmatterCopy['3beats'];
-        
-        // Update BeatsUpdate flag with timestamp and model ID
-        const timestamp = new Date().toISOString();
-        // <<< Construct the new value including model ID >>>
-        const updatedValue = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
+        // Helper to convert a multi-line "- item" string into array of strings
+        const toArray = (block: string): string[] => {
+            return block
+                .split('\n')
+                .map(s => s.replace(/^\s*-\s*/, '').trim())
+                .filter(Boolean);
+        };
 
-        if (frontmatterCopy.hasOwnProperty('BeatsUpdate')) {
-            frontmatterCopy['BeatsUpdate'] = updatedValue; 
-        } else {
-            plugin.log(`[API Beats][updateSceneFile] Flag 'BeatsUpdate' not found for ${scene.file.path} during update. Adding 'BeatsLastUpdated'.`);
-            // Add a fallback key if the original wasn't present 
-            frontmatterCopy['BeatsLastUpdated'] = updatedValue;
-        }
-        
+        // Atomically update frontmatter
+        await plugin.app.fileManager.processFrontMatter(scene.file, (fm) => {
+            // Use a typed record view for safe index operations
+            const fmObj = fm as Record<string, unknown>;
+            delete fmObj['1beats'];
+            delete fmObj['2beats'];
+            delete fmObj['3beats'];
 
-        
-        // Stringify the base frontmatter (without any beats yet)
-        let frontmatterYaml = stringifyYaml(frontmatterCopy).trim();
-        
+            // Always record last update timestamp/model in BeatsLastUpdated.
+            // Do NOT overwrite BeatsUpdate (used as a Yes/No flag for processing).
+            const timestamp = new Date().toISOString();
+            const updatedValue = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
+            fmObj['BeatsLastUpdated'] = updatedValue;
 
-        
-        // Append the new beats content directly to the YAML string
-        let beatsAdded = false;
-        for (const beatKey of ['1beats', '2beats', '3beats'] as const) {
-            const beatContentFromParser = parsedBeats[beatKey];
-            
-
-
-            if (beatContentFromParser && beatContentFromParser.trim()) { 
-                if (frontmatterYaml) frontmatterYaml += '\n';
-                frontmatterYaml += `${beatKey}:\n${beatContentFromParser}`;
-
-                beatsAdded = true;
-            } else {
-
+            // After a successful update, turn the processing flag off
+            if (Object.prototype.hasOwnProperty.call(fmObj, 'BeatsUpdate')) {
+                fmObj['BeatsUpdate'] = 'No';
+            } else if (Object.prototype.hasOwnProperty.call(fmObj, 'beatsupdate')) {
+                fmObj['beatsupdate'] = 'no';
             }
-        }
-        
 
-        
-        const newFileContent = `---\n${frontmatterYaml}\n---\n${scene.body}`;
-        
-
-          
-        await vault.modify(scene.file, newFileContent);
+            const b1 = parsedBeats['1beats']?.trim();
+            const b2 = parsedBeats['2beats']?.trim();
+            const b3 = parsedBeats['3beats']?.trim();
+            if (b1) fmObj['1beats'] = toArray(b1);
+            if (b2) fmObj['2beats'] = toArray(b2);
+            if (b3) fmObj['3beats'] = toArray(b3);
+        });
         return true;
     } catch (error) {
         console.error(`[updateSceneFile] Error updating file:`, error);
