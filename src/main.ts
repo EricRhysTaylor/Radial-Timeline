@@ -1,4 +1,4 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal } from "obsidian";
 import { escapeRegExp } from './utils/regex';
 import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils/colour';
 import { decodeHtmlEntities, parseSceneTitleComponents, renderSceneTitleComponents } from './utils/text';
@@ -12,7 +12,7 @@ import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 declare const EMBEDDED_README_CONTENT: string;
 
 // Import the new beats update function <<< UPDATED IMPORT
-import { processByManuscriptOrder, processBySubplotOrder, testYamlUpdateFormatting } from './BeatsCommands';
+import { processByManuscriptOrder, processBySubplotOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotName } from './BeatsCommands';
 
 interface RadialTimelineSettings {
     sourcePath: string;
@@ -902,6 +902,63 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
+        // Create a ready-to-edit template scene in the configured source path
+        this.addCommand({
+            id: 'create-template-scene',
+            name: 'Create template scene',
+            callback: async () => {
+                await createTemplateScene(this, this.app.vault);
+            }
+        });
+
+
+        // Run beats update for a chosen subplot
+        this.addCommand({
+            id: 'update-beats-choose-subplot',
+            name: 'Update flagged beats (choose subplot)',
+            checkCallback: (checking: boolean) => {
+                if (!this.settings.enableAiBeats) return false;
+                if (checking) return true;
+                (async () => {
+                    // Simple provider key check like other commands
+                    const provider = this.settings.defaultAiProvider || 'openai';
+                    let hasKey = true;
+                    if (provider === 'anthropic') hasKey = !!this.settings.anthropicApiKey?.trim();
+                    else if (provider === 'gemini') hasKey = !!this.settings.geminiApiKey?.trim();
+                    else hasKey = !!this.settings.openaiApiKey?.trim();
+                    if (!hasKey) { new Notice(`${provider[0].toUpperCase()+provider.slice(1)} API key is not set in settings.`); return; }
+
+                    const names = await getDistinctSubplotNames(this, this.app.vault);
+                    if (names.length === 0) { new Notice('No subplots found.'); return; }
+
+                    class SubplotPicker extends SuggestModal<string> {
+                        plugin: RadialTimelinePlugin;
+                        choices: string[];
+                        constructor(app: App, plugin: RadialTimelinePlugin, choices: string[]) {
+                            super(app);
+                            this.plugin = plugin;
+                            this.choices = choices;
+                            this.setPlaceholder('Select subplot to process...');
+                        }
+                        getSuggestions(query: string): string[] {
+                            const q = query.trim().toLowerCase();
+                            return this.choices.filter(n => !q || n.toLowerCase().includes(q));
+                        }
+                        renderSuggestion(value: string, el: HTMLElement) {
+                            const index = this.choices.indexOf(value);
+                            el.setText(`${index + 1}. ${value}`);
+                        }
+                        onChooseSuggestion(value: string) {
+                            processBySubplotName(this.plugin, this.plugin.app.vault, value);
+                        }
+                    }
+
+                    new SubplotPicker(this.app, this, names).open();
+                })();
+                return true;
+            }
+        });
+
         this.app.workspace.onLayoutReady(() => {
             this.setCSSColorVariables(); // Set initial colors
             this.updateOpenFilesTracking(); // Track initially open files
@@ -1154,9 +1211,12 @@ export default class RadialTimelinePlugin extends Plugin {
                 // Fix for date shift issue - ensure dates are interpreted as UTC
                 const whenStr = metadata.When;
                 
+                // Clean up malformed timestamps before parsing
+                const cleanWhenStr = typeof whenStr === 'string' ? whenStr.replace(/T0(\d+):/, 'T$1:') : whenStr;
+                
                 // Directly parse the date in a way that preserves the specified date regardless of timezone
                 // Use a specific time (noon UTC) to avoid any date boundary issues
-                const when = new Date(`${whenStr}T12:00:00Z`);
+                const when = new Date(`${cleanWhenStr}T12:00:00Z`);
                 
                 if (!isNaN(when.getTime())) {
                     // Split subplots if provided, otherwise default to "Main Plot"
@@ -1166,8 +1226,9 @@ export default class RadialTimelinePlugin extends Plugin {
                             : [metadata.Subplot]
                         : ["Main Plot"];
                     
-                    // Read actNumber from metadata, default to 1 if missing
-                    const actNumber = metadata.Act !== undefined ? Number(metadata.Act) : 1;
+                    // Read actNumber from metadata, default to 1 if missing or empty
+                    const actValue = metadata.Act;
+                    const actNumber = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
     
                     // Ensure actNumber is a valid number between 1 and 3
                     const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
@@ -1216,7 +1277,9 @@ export default class RadialTimelinePlugin extends Plugin {
                 
             // Store Plot notes for processing after we know all subplots
             if (metadata && metadata.Class === "Plot") {
-                const actNumber = metadata.Act !== undefined ? Number(metadata.Act) : 1;
+                // Read actNumber from metadata, default to 1 if missing or empty
+                const actValue = metadata.Act;
+                const actNumber = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
                 const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
                 
                 plotsToProcess.push({

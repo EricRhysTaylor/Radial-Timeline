@@ -45,6 +45,60 @@ function extractSceneNumber(filename: string): number | null {
     return match ? parseFloat(match[1]) : null;
 }
 
+// Robust comparator for scene ordering, handling dotted numbers like 16.9 vs 16.10
+function compareScenesByOrder(a: SceneData, b: SceneData): number {
+    const parse = (name: string) => {
+        const m = name.match(/^(\d+)(?:\.(\d+))?/);
+        if (!m) return { major: Number.POSITIVE_INFINITY, minor: Number.POSITIVE_INFINITY };
+        const major = parseInt(m[1], 10);
+        const minor = typeof m[2] !== 'undefined' ? parseInt(m[2], 10) : -1; // -1 means whole scene before fractional
+        return { major, minor };
+    };
+    const A = parse(a.file.name);
+    const B = parse(b.file.name);
+    if (A.major !== B.major) return A.major - B.major;
+    return A.minor - B.minor;
+}
+
+// Extract subplot names from frontmatter with tolerant key handling
+function getSubplotNamesFromFM(fm: Record<string, unknown>): string[] {
+    const candidates = [
+        fm?.subplot,
+        fm?.Subplot,
+        (fm as Record<string, unknown>)['Subplots'],
+        (fm as Record<string, unknown>)['subplots']
+    ];
+    let list: string[] = [];
+    for (const c of candidates) {
+        if (!c) continue;
+        if (typeof c === 'string') list = list.concat([c.trim()]);
+        else if (Array.isArray(c)) list = list.concat(c.map(s => String(s).trim()));
+    }
+    // de-dup and filter empties
+    return Array.from(new Set(list.filter(Boolean)));
+}
+
+function hasWordsContent(fm: Record<string, unknown>): boolean {
+    const w1 = fm?.words as unknown;
+    const w2 = (fm as Record<string, unknown>)['Words'] as unknown;
+    
+    // Handle both number and string values (strings might have commas)
+    const parseWords = (val: unknown): number | undefined => {
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') {
+            const cleaned = val.replace(/,/g, ''); // Remove commas like '2,500'
+            const parsed = parseFloat(cleaned);
+            return isNaN(parsed) ? undefined : parsed;
+        }
+        return undefined;
+    };
+    
+    const n1 = parseWords(w1);
+    const n2 = parseWords(w2);
+    const n = typeof n1 === 'number' ? n1 : (typeof n2 === 'number' ? n2 : undefined);
+    return typeof n === 'number' && n > 0;
+}
+
 async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Promise<SceneData[]> {
     const sourcePath = plugin.settings.sourcePath.trim();
 
@@ -344,27 +398,19 @@ async function logApiInteractionToFile(
             }
         }
     }
-    // Build scenes summary and redacted prompt
+    // Build scenes summary and redacted prompt (instructions only)
     const scenesSummary = extractScenesSummary(fullUserPrompt);
     const scenesLine = `**Scenes:** prev=${scenesSummary.prev ?? 'N/A'}, current=${scenesSummary.current ?? 'N/A'}, next=${scenesSummary.next ?? 'N/A'}`;
     fileContent += `${scenesLine}\n`;
 
     const redactPrompt = (text: string | undefined): string => {
         if (!text) return 'Unavailable';
-        // Keep full instructions; strip bodies — keep only Scene headers and blank lines
+        // Keep only the instructions/template lines BEFORE the first scene header
         const lines = text.split(/\r?\n/);
         const headerRe = /^\s*Scene\s+[^:]+:\s*$/i;
-        const out: string[] = [];
-        let inScenes = false;
-        for (const line of lines) {
-            if (!inScenes) {
-                out.push(line);
-                if (headerRe.test(line)) inScenes = true;
-            } else {
-                if (headerRe.test(line) || line.trim() === '') out.push(line.trim() === '' ? '' : line);
-            }
-        }
-        return out.join('\n');
+        const idx = lines.findIndex(l => headerRe.test(l));
+        const kept = idx >= 0 ? lines.slice(0, idx) : lines;
+        return kept.join('\n');
     };
     userPromptContent = redactPrompt(fullUserPrompt);
     fileContent += `## Prompt Template\n\n\\\`\\\`\\\`\n${userPromptContent}\n\\\`\\\`\\\`\n\n`;
@@ -704,7 +750,7 @@ export async function processByManuscriptOrder(
 
     try {
     const allScenes = await getAllSceneData(plugin, vault);
-        allScenes.sort((a, b) => (a.sceneNumber ?? Infinity) - (b.sceneNumber ?? Infinity));
+        allScenes.sort(compareScenesByOrder);
 
         if (allScenes.length < 1) {
             new Notice("No valid scenes found in the specified source path.");
@@ -833,14 +879,7 @@ export async function processBySubplotOrder(
 
         const scenesBySubplot: Record<string, SceneData[]> = {};
     allScenes.forEach(scene => {
-            const subplots = scene.frontmatter?.subplot || scene.frontmatter?.Subplot;
-            let subplotList: string[] = [];
-            if (typeof subplots === 'string') {
-                subplotList = [subplots.trim()];
-            } else if (Array.isArray(subplots)) {
-                subplotList = subplots.map(s => String(s).trim()).filter(s => s);
-        }
-        
+            const subplotList = getSubplotNamesFromFM(scene.frontmatter);
             subplotList.forEach(subplotKey => {
                  if (subplotKey) {
                      if (!scenesBySubplot[subplotKey]) {
@@ -866,7 +905,7 @@ export async function processBySubplotOrder(
         // Count only valid scenes with Words > 0 for the total
         subplotNames.forEach(subplotName => {
             const scenes = scenesBySubplot[subplotName];
-            scenes.sort((a, b) => (a.sceneNumber ?? Infinity) - (b.sceneNumber ?? Infinity));
+            scenes.sort(compareScenesByOrder);
             
             // Count only scenes with words > 0 and BeatsUpdate: Yes
             const validScenes = scenes.filter(scene => {
@@ -891,44 +930,25 @@ export async function processBySubplotOrder(
 
         for (const subplotName of subplotNames) {
              const scenes = scenesBySubplot[subplotName];
-             scenes.sort((a, b) => (a.sceneNumber ?? Infinity) - (b.sceneNumber ?? Infinity));
+            scenes.sort(compareScenesByOrder);
 
 
 
-            // Build triplets but ensure we handle unwritten scenes properly
-            const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
-            
-            // Filter scenes that actually have content worth analyzing
-            const writtenScenes = scenes.filter(scene => {
-                const words = scene.frontmatter?.words || scene.frontmatter?.Words;
-                return (typeof words === 'number' && words > 0);
-            });
-            
-            if (plugin.settings.debug) {
-            }
-            
-            // For each written scene, find its appropriate prev and next
-            for (let i = 0; i < writtenScenes.length; i++) {
-                const currentScene = writtenScenes[i];
-                
-                // Find previous written scene (if any)
-                let prevScene: SceneData | null = null;
-                if (i > 0) {
-                    prevScene = writtenScenes[i - 1];
-                }
-                
-                // Find next written scene (if any)
-                let nextScene: SceneData | null = null;
-                if (i < writtenScenes.length - 1) {
-                    nextScene = writtenScenes[i + 1];
-                }
-                
-                triplets.push({
-                    prev: prevScene,
-                    current: currentScene,
-                    next: nextScene
-                });
-            }
+        // Build contiguous triplets within this subplot by number (ignore Words),
+        // but only process currents that have Words>0 and BeatsUpdate: Yes
+        const orderedScenes = scenes.slice().sort(compareScenesByOrder);
+        const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
+        for (const currentScene of orderedScenes) {
+            const words = currentScene.frontmatter?.words || currentScene.frontmatter?.Words;
+            const beatsUpdate = currentScene.frontmatter?.beatsupdate || currentScene.frontmatter?.BeatsUpdate;
+            const isProcessable = (typeof words === 'number' && words > 0) && (typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes');
+            if (!isProcessable) continue;
+
+            const idx = orderedScenes.findIndex(s => s.file.path === currentScene.file.path);
+            const prevScene = idx > 0 ? orderedScenes[idx - 1] : null;
+            const nextScene = idx >= 0 && idx < orderedScenes.length - 1 ? orderedScenes[idx + 1] : null;
+            triplets.push({ prev: prevScene, current: currentScene, next: nextScene });
+        }
             
             if (plugin.settings.debug) {
             }
@@ -960,12 +980,15 @@ export async function processBySubplotOrder(
                  if (plugin.settings.debug) {
                 }
 
-                 const prevBody = triplet.prev ? triplet.prev.body : null;
+                 // Only use neighbor if it has content (Words>0); else mark as N/A to avoid invented beats
+                 const prevHasContent = triplet.prev ? hasWordsContent(triplet.prev.frontmatter) : false;
+                 const nextHasContent = triplet.next ? hasWordsContent(triplet.next.frontmatter) : false;
+                 const prevBody = prevHasContent && triplet.prev ? triplet.prev.body : null;
+                 const nextBody = nextHasContent && triplet.next ? triplet.next.body : null;
                  const currentBody = triplet.current.body;
-                 const nextBody = triplet.next ? triplet.next.body : null;
-                 const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
+                 const prevNum = prevHasContent && triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
                  const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
-                 const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+                 const nextNum = nextHasContent && triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
                  const userPrompt = buildPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
 
@@ -1006,6 +1029,171 @@ export async function processBySubplotOrder(
      }
 }
 
+// Process flagged beats for a single chosen subplot name
+export async function processBySubplotName(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    subplotName: string
+): Promise<void> {
+    const notice = new Notice(`Processing Subplot “${subplotName}”: getting scene data...`, 0);
+    try {
+        const allScenes = await getAllSceneData(plugin, vault);
+        if (allScenes.length < 1) {
+            new Notice("No valid scenes found in the specified source path.");
+            notice.hide();
+            return;
+        }
+
+        // Filter scenes to only those containing the chosen subplot
+        const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
+        
+
+        if (filtered.length === 0) {
+            new Notice(`No scenes found for subplot “${subplotName}”.`);
+            notice.hide();
+            return;
+        }
+
+        // Sort by sceneNumber (if present)
+        filtered.sort(compareScenesByOrder);
+
+        // Consider only scenes with Words > 0 and BeatsUpdate: Yes
+        const validScenes = filtered.filter(scene => {
+            const words = (scene.frontmatter?.words || scene.frontmatter?.Words) as unknown;
+            const beatsUpdate = (scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate) as unknown;
+            return (typeof words === 'number' && words > 0)
+                && (typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes');
+        });
+
+        if (validScenes.length === 0) {
+            new Notice(`No flagged scenes (BeatsUpdate: Yes) with content found for “${subplotName}”.`);
+            notice.hide();
+            return;
+        }
+
+        notice.setMessage(`Analyzing ${validScenes.length} scenes in "${subplotName}"...`);
+
+
+        // Build triplets for flagged scenes using ALL filtered scenes for context
+        const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
+        
+        // Only build triplets for scenes that are flagged for processing
+        const flaggedScenes = validScenes; // Already filtered for Words > 0 and BeatsUpdate: Yes
+        
+        for (const flaggedScene of flaggedScenes) {
+            // Find this scene's position in the complete filtered list (for contiguous context)
+            const idx = filtered.findIndex(s => s.file.path === flaggedScene.file.path);
+            
+            // Get prev/next from complete list to maintain contiguity
+            const prev = idx > 0 ? filtered[idx - 1] : null;
+            const next = idx >= 0 && idx < filtered.length - 1 ? filtered[idx + 1] : null;
+            
+            
+            triplets.push({ prev, current: flaggedScene, next });
+        }
+
+        let processedCount = 0;
+        const total = triplets.length;
+
+        for (const triplet of triplets) {
+            // Only process if the current scene is flagged
+            const flag = (triplet.current.frontmatter?.beatsupdate || triplet.current.frontmatter?.BeatsUpdate) as unknown;
+            if (!(typeof flag === 'string' && flag.toLowerCase() === 'yes')) continue;
+
+            const currentPath = triplet.current.file.path;
+            const key = `subplot-${subplotName}-${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
+
+            if (plugin.settings.processedBeatContexts.includes(key)) {
+                processedCount++;
+                notice.setMessage(`Progress: ${processedCount}/${total} scenes (Skipped - Already processed)`);
+                continue;
+            }
+
+            notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${processedCount + 1}/${total}) — "${subplotName}"...`);
+
+            // Only use neighbor if it has content (Words>0); else mark as N/A to avoid invented beats
+            const prevHasContent = triplet.prev ? hasWordsContent(triplet.prev.frontmatter) : false;
+            const nextHasContent = triplet.next ? hasWordsContent(triplet.next.frontmatter) : false;
+            
+            
+            const prevBody = prevHasContent && triplet.prev ? triplet.prev.body : null;
+            const currentBody = triplet.current.body;
+            const nextBody = nextHasContent && triplet.next ? triplet.next.body : null;
+            const prevNum = prevHasContent && triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
+            const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
+            const nextNum = nextHasContent && triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+
+            const userPrompt = buildPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
+            const aiResult = await callAiProvider(plugin, vault, userPrompt, subplotName, 'processBySubplotOrder');
+
+            if (aiResult.result) {
+                const parsedBeats = parseGptResult(aiResult.result, plugin);
+                if (parsedBeats) {
+                    const ok = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
+                    if (ok) {
+                        plugin.settings.processedBeatContexts.push(key);
+                        await plugin.saveSettings();
+                    } else {
+                        plugin.log(`[API Beats][processBySubplotName] Failed to update file for subplot ${subplotName} after getting beats for: ${currentPath}`);
+                    }
+                } else {
+                    plugin.log(`[API Beats][processBySubplotName] Failed to parse AI result for subplot ${subplotName}, scene: ${currentPath}`);
+                }
+            } else {
+                plugin.log(`[API Beats][processBySubplotName] No result from AI for subplot ${subplotName}, scene: ${currentPath}`);
+            }
+
+            processedCount++;
+            notice.setMessage(`Progress: ${processedCount}/${total} scenes processed...`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        await plugin.saveSettings();
+        notice.hide();
+        new Notice(`✅ Subplot “${subplotName}” complete: ${processedCount}/${total} triplets processed.`);
+        plugin.refreshTimelineIfNeeded(null);
+    } catch (error) {
+        console.error("[API Beats][processBySubplotName] Error during processing:", error);
+        notice.hide();
+        new Notice(`❌ Error processing subplot “${subplotName}”. Check console for details.`);
+    }
+}
+
+// Return distinct subplot names found in scene frontmatter, ordered same as timeline
+export async function getDistinctSubplotNames(
+    plugin: RadialTimelinePlugin,
+    vault: Vault
+): Promise<string[]> {
+    const scenes = await getAllSceneData(plugin, vault);
+    const subplotCounts = new Map<string, number>();
+    
+    // Count scenes per subplot
+    scenes.forEach(scene => {
+        const subplotList = getSubplotNamesFromFM(scene.frontmatter);
+        subplotList.forEach(subplot => {
+            if (subplot) {
+                subplotCounts.set(subplot, (subplotCounts.get(subplot) || 0) + 1);
+            }
+        });
+    });
+    
+    // Convert to array and sort (same logic as timeline renderer)
+    const subplotArray = Array.from(subplotCounts.entries()).map(([subplot, count]) => ({
+        subplot,
+        count
+    }));
+    
+    // Sort: "Main Plot" first, then by count descending, then alphabetical
+    subplotArray.sort((a, b) => {
+        if (a.subplot === "Main Plot" || !a.subplot) return -1;
+        if (b.subplot === "Main Plot" || !b.subplot) return 1;
+        if (a.count !== b.count) return b.count - a.count; // Higher count first
+        return a.subplot.localeCompare(b.subplot); // Alphabetical fallback
+    });
+    
+    return subplotArray.map(item => item.subplot);
+}
+
 // <<< ADDED: Dummy data for testing >>>
 const DUMMY_API_RESPONSE = `1beats:
  - 33.2 Trisan Inner Turmoil - / Lacks clarity
@@ -1044,26 +1232,35 @@ export async function testYamlUpdateFormatting(
 
     new Notice(`Starting YAML update test on ${dummyFilePath}...`);
     try {
-        let fileExists = await vault.adapter.exists(dummyFilePath);
-        if (!fileExists) {
+        let file = vault.getAbstractFileByPath(dummyFilePath);
+        if (!(file instanceof TFile)) {
             new Notice(`Creating dummy file: ${dummyFilePath}`);
             const initialContent = `---\n${stringifyYaml(dummyInitialFrontmatter)}---\n${dummyBody}`;
             await vault.create(dummyFilePath, initialContent);
+            file = vault.getAbstractFileByPath(dummyFilePath);
         }
 
-        const file = vault.getAbstractFileByPath(dummyFilePath);
+        
         if (!(file instanceof TFile)) {
             new Notice(`Error: Could not get TFile for ${dummyFilePath}`);
             return;
         }
         const currentContent = await vault.read(file);
-        const currentFrontmatterMatch = currentContent.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-        if (!currentFrontmatterMatch) {
+        const fmInfo = getFrontMatterInfo(currentContent) as unknown as FMInfo;
+        if (!fmInfo || !fmInfo.exists) {
             new Notice(`Error: Dummy file ${dummyFilePath} is missing frontmatter.`);
             return;
         }
-        const currentFrontmatter = parseYaml(currentFrontmatterMatch[1]) || {};
-        const currentBody = currentContent.replace(/^---[\s\S]*?\n---/, "").trim();
+        const fmText = fmInfo.frontmatter ?? '';
+        const currentFrontmatter = fmText ? (parseYaml(fmText) || {}) : {};
+        let currentBody = currentContent;
+        const endOffset = fmInfo.position?.end?.offset as number | undefined;
+        if (typeof endOffset === 'number' && endOffset >= 0 && endOffset <= currentContent.length) {
+            currentBody = currentContent.slice(endOffset).trim();
+        } else {
+            // Fallback: regex removal if offsets unavailable
+            currentBody = currentContent.replace(/^---[\s\S]*?\n---/, "").trim();
+        }
 
         const dummySceneData: SceneData = {
             file: file,
@@ -1090,4 +1287,59 @@ export async function testYamlUpdateFormatting(
         console.error("Error during YAML update test:", error);
         new Notice('Error during YAML update test. Check console.');
     }
-} 
+}
+
+// Create a ready-to-edit template Scene in the source path (or vault root)
+export async function createTemplateScene(
+    plugin: RadialTimelinePlugin,
+    vault: Vault
+): Promise<void> {
+    try {
+        const today = new Date();
+        const isoDate = today.toISOString().slice(0, 10);
+        const timeTag = today.toISOString().replace(/[:.]/g, '-');
+        const baseName = `Scene Template ${timeTag}.md`;
+
+        // Determine target folder: settings.sourcePath if set, else root
+        const folderPath = plugin.settings.sourcePath?.trim() || '';
+        // Ensure folder exists when specified
+        if (folderPath) {
+            const f = vault.getAbstractFileByPath(folderPath);
+            if (!f) {
+                await vault.createFolder(folderPath);
+            }
+        }
+        const targetPath = folderPath ? `${folderPath}/${baseName}` : baseName;
+
+        const frontmatter = {
+            Class: 'Scene',
+            Act: 1,
+            When: isoDate,
+            Synopsis: 'Write a one-sentence summary of this scene.',
+            Subplot: ['Main Plot'],
+            Characters: [],
+            Place: [],
+            Status: 'Todo',
+            'Publish Stage': 'Zero',
+            Revision: '',
+            Due: '',
+            'Pending Edits': '',
+            Words: 0,
+            BeatsUpdate: 'No'
+        } as Record<string, unknown>;
+
+        const body = '\nWrite your scene here. Replace Subplot/Characters/Place in the frontmatter as needed.';
+        const content = `---\n${stringifyYaml(frontmatter)}---\n${body}\n`;
+
+        await vault.create(targetPath, content);
+        new Notice(`Created template scene: ${targetPath}`);
+        // Open the new file
+        const created = vault.getAbstractFileByPath(targetPath);
+        if (created instanceof TFile) {
+            await plugin.app.workspace.getLeaf('tab').openFile(created);
+        }
+    } catch (e) {
+        console.error('[createTemplateScene] Failed:', e);
+        new Notice('❌ Failed to create template scene. Check console for details.');
+    }
+}
