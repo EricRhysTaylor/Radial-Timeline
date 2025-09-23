@@ -116,46 +116,46 @@
 
 /* Debug: visualize the SVG viewport box */
 
-.scene-path {
+.radial-timeline-container .scene-path {
   cursor: pointer;
   stroke: #ffffff;
   stroke-width: 1px;
 }
-.scene-act {
+.radial-timeline-container .scene-act {
   fill-opacity: 0;
 }
-.scene-act:hover {
+.radial-timeline-container .scene-act:hover {
   fill-opacity: 0.3;
   cursor: pointer;
 }
 /* Void cells - empty space in timeline */
-.void-cell {
+.radial-timeline-container .void-cell {
   fill: var(--rt-color-empty);
   fill-opacity: 0.9;
   stroke: white;
   stroke-width: 1;
   cursor: default;
 }
-.scene-path.faded {
+.radial-timeline-container .scene-path.faded {
   opacity: 0.3;
 }
-.scene-path.non-selected {
+.radial-timeline-container .scene-path.non-selected {
   fill: var(--rt-color-empty-selected) !important;
 }
-.scene-path.scene-is-open.non-selected {
+.radial-timeline-container .scene-path.scene-is-open.non-selected {
   fill: var(--rt-color-empty-selected) !important;
 }
-.scene-path.selected {
+.radial-timeline-container .scene-path.selected {
   filter: saturate(1.2) brightness(1.1);
 }
-.scene-title {
+.radial-timeline-container .scene-title {
   cursor: pointer;
   fill: white;
   opacity: 1;
   font-size: 18px;
   pointer-events: none;
 }
-.plot-title {
+.radial-timeline-container .plot-title {
   fill: var(--text-normal);
   font-size:12px;
   font-weight: 500;
@@ -167,7 +167,7 @@
 
 
 /* Hover: emphasize plot titles with a solid black background using stroke */
-.scene-group:hover .plot-title {
+.radial-timeline-container .scene-group:hover .plot-title {
   filter: url(#plotTextBg); /* black background halo */
   fill: #ffffff;
   font-weight: 700; /* heavier for readability */
@@ -188,7 +188,7 @@
 .scene-title.faded {
   opacity: 0.2;
 }
-.scene-info {
+.radial-timeline-container .scene-info {
   opacity: 0;
   pointer-events: none !important;
   z-index: 100;
@@ -203,50 +203,50 @@
   pointer-events: none !important;
 }
 
-.month-label  ,
-.month-label-outer,
-.act-label,
-.plot-title {
+.radial-timeline-container .month-label  ,
+.radial-timeline-container .month-label-outer,
+.radial-timeline-container .act-label,
+.radial-timeline-container .plot-title {
   pointer-events: none;
 }
-.month-label {  
+.radial-timeline-container .month-label {  
   font-size: 16px;
   fill: var(--text-normal);
   text-anchor: middle;
   dominant-baseline: middle;
 }
-.month-label-outer {
+.radial-timeline-container .month-label-outer {
 font-size: 18px;
 fill: var(--text-normal);
 text-anchor: middle;
 dominant-baseline: middle;
 }
-.act-label {
+.radial-timeline-container .act-label {
   font-size: 20px;
   font-weight: 900;
   /* fill: var(--text-normal); */ /* Color is now set dynamically in SVG */
   text-anchor: middle;
   dominant-baseline: middle;
 }
-.month-spoke-line {
+.radial-timeline-container .month-spoke-line {
   stroke: var(--text-normal);
   stroke-width: 1px;
   stroke-dasharray: 2, 2;
   opacity: 1;
 }
-.month-spoke-line.act-boundary {
+.radial-timeline-container .month-spoke-line.act-boundary {
   stroke: var(--text-normal);
   stroke-width: 2px;
   stroke-dasharray: none;
   opacity: 1;
 }
-.scene-title-small {
+.radial-timeline-container .scene-title-small {
   font-size: 9px;
 }
-.scene-title-medium {
+.radial-timeline-container .scene-title-medium {
   font-size: 16px;
 }
-.scene-title-large {
+.radial-timeline-container .scene-title-large {
   font-size: 18px;
 }
 .rt-status-count {
@@ -411,12 +411,12 @@ tspan .search-term {
 }
 
 /* Command palette search modal styling */
-.search-container.flex-container {
+.radial-timeline-container .search-container.flex-container {
   display: flex;
   gap: 8px;
   align-items: center;
 }
-.search-input {
+.radial-timeline-container .search-input {
   width: 100%;
 }
 .button-container.button-container {
@@ -455,7 +455,7 @@ tspan .search-term {
   visibility: visible !important;
   display: block !important;
 }
-.synopsis-title {
+.radial-timeline-container .synopsis-title {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 10px;
@@ -914,7 +914,7 @@ tspan .search-term {
 /* Removed unused dynamic-font-size class */
 
 /* SVG interaction elements */
-.svg-interaction {
+.radial-timeline-container .svg-interaction {
     pointer-events: none;
 }
 
@@ -933,32 +933,32 @@ tspan .search-term {
 }
 
 /* Dynamic positioning */
-.dynamic-position {
+.radial-timeline-container .dynamic-position {
     position: absolute;
 }
 
 /* SVG Element Styles */
-.svg-path {
+.radial-timeline-container .svg-path {
     display: none;
     fill: none;
 }
 
-.svg-text {
+.radial-timeline-container .svg-text {
     font-weight: bold;
 }
 
 /* Title text styles */
-.scene-title-bold {
+.radial-timeline-container .scene-title-bold {
     font-weight: bold;
 }
 
 /* Grade border styles */
-.grade-border {
+.radial-timeline-container .grade-border {
     fill: none;
 }
 
 /* Invisible spacer styles */
-.invisible-spacer {
+.radial-timeline-container .invisible-spacer {
     opacity: 0;
 }
 
@@ -988,12 +988,12 @@ tspan .search-term {
 /* Search term highlighting - consolidated above with other search-term rules */
 
 /* Info container styles */
-.info-container {
+.radial-timeline-container .info-container {
     cursor: pointer;
 }
 
 /* Synopsis text styles */
-.synopsis-text {
+.radial-timeline-container .synopsis-text {
     font-size: 14px;
     line-height: 1.5;
 }
@@ -1096,41 +1096,41 @@ tspan .search-term {
 }
 
 /* Progress Ring Base (thin gray track underneath) */
-.progress-ring-base {
+.radial-timeline-container .progress-ring-base {
   fill: none;
   stroke: #5e0098; /* Purple background to match estimation arc */
   stroke-width: 10px; /* Base width */
 }
 
 /* Year Progress Ring (Rainbow Segments) */
-.progress-ring-fill {
+.radial-timeline-container .progress-ring-fill {
   fill: none;
   stroke-width: 6px; /* Make rainbow ring thinner */
   stroke-linecap: round; /* Optional: round ends */
 }
 
-.estimation-date-label {
+.radial-timeline-container .estimation-date-label {
     font-size: 14px;
     fill: #ff0000;
     font-weight: bold;
 }
 
-.estimated-date-tick {
+.radial-timeline-container .estimated-date-tick {
     stroke: #ff0000;
     stroke-width: 2px;
 }
 
-.estimated-date-dot {
+.radial-timeline-container .estimated-date-dot {
     fill: #ff0000;
 }
 
 /* Target Completion Date Marker Styles */
-.target-date-tick {
+.radial-timeline-container .target-date-tick {
     stroke: #00cc00; /* Bright Green */
     stroke-width: 2px;
 }
 
-.target-date-marker {
+.radial-timeline-container .target-date-marker {
     fill: none; /* No fill */
     stroke: #00cc00; /* Bright Green */
     stroke-width: 2px; /* Outline width */
@@ -1202,7 +1202,7 @@ tspan .search-term {
 }
 
 /* status header hover effect */
-.status-header-letter {
+.radial-timeline-container .status-header-letter {
   transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
   text-decoration: none;
 }
@@ -1213,19 +1213,19 @@ tspan .search-term {
 }
 
 /* bottom-left count inside Completed grid cells */
-.grid-completed-count {
+.radial-timeline-container .grid-completed-count {
   fill: #000000;
   font-size: 14px; /* doubled size */
   pointer-events: none;
 }
 
 /* icon color for Completed grid cells */
-.completed-icon {
+.radial-timeline-container .completed-icon {
   color: #000000;
 }
 
 /* stage header hover effect */
-.stage-header-letter {
+.radial-timeline-container .stage-header-letter {
   transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
   text-decoration: none;
 }

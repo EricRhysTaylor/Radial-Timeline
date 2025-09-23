@@ -1090,57 +1090,48 @@ export default class SynopsisManager {
       }
 
       // --- Create SVG Elements with forced wrap support ([BR]) --- 
-      const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      textElement.setAttribute("class", "beats-text"); // Base class for the line
-      textElement.setAttribute("x", "0");
-      textElement.setAttribute("y", String(currentY));
-      textElement.setAttribute("text-anchor", "start");
+      // Support user-forced line breaks using [br]/[BR] tokens inside title/comment (case-insensitive)
+      const brRe = /\s*\[br\]\s*/i;
+      const titleSegments = (titleText || '').split(brRe);
+      const commentSegments = (useSlashSeparator && commentText) ? (commentText || '').split(brRe) : [];
 
-      // Support user-forced line breaks using [BR] tokens inside title/comment
-      const titleSegments = (titleText || '').split(/\s*\[BR\]\s*/);
-      const commentSegments = (useSlashSeparator && commentText) ? (commentText || '').split(/\s*\[BR\]\s*/) : [];
+      // First visual line: title seg 0 plus optional comment seg 0 with slash
+      const makeLine = (titlePart: string | null, commentPart: string | null) => {
+        const lineText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        lineText.setAttribute("class", "beats-text");
+        lineText.setAttribute("x", "0");
+        lineText.setAttribute("y", String(currentY));
+        lineText.setAttribute("text-anchor", "start");
 
-      // First line: title seg 0 plus optional comment seg 0 with slash
-      const titleTspan0 = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-      titleTspan0.setAttribute("class", titleClass);
-      titleTspan0.textContent = titleSegments[0] ?? '';
-      textElement.appendChild(titleTspan0);
+        if (titlePart !== null) {
+          const tt = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+          tt.setAttribute("class", titleClass);
+          tt.textContent = titlePart;
+          lineText.appendChild(tt);
+        }
+        if (commentPart !== null) {
+          const ct = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+          ct.setAttribute("class", commentClass);
+          ct.textContent = (titlePart ? " / " : "") + commentPart;
+          lineText.appendChild(ct);
+        }
 
-      if (commentSegments.length > 0) {
-        const commentTspan0 = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-        commentTspan0.setAttribute("class", commentClass);
-        commentTspan0.textContent = " / " + (commentSegments[0] ?? '');
-        textElement.appendChild(commentTspan0);
-      }
+        parentGroup.appendChild(lineText);
+        currentY += lineHeight;
+        lineCount += 1;
+      };
 
-      // Additional lines from title segments
+      makeLine(titleSegments[0] ?? '', commentSegments.length > 0 ? (commentSegments[0] ?? '') : null);
+
+      // Additional lines from remaining title segments (each on its own line)
       for (let i = 1; i < titleSegments.length; i++) {
-        const t = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-        t.setAttribute("class", titleClass);
-        t.setAttribute("x", "0");
-        t.setAttribute("dy", String(lineHeight));
-        t.textContent = titleSegments[i];
-        textElement.appendChild(t);
+        makeLine(titleSegments[i], null);
       }
 
-      // Additional lines from comment segments (beyond the first)
+      // Additional lines from remaining comment segments (each on its own line)
       for (let i = 1; i < commentSegments.length; i++) {
-        const c = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-        c.setAttribute("class", commentClass);
-        c.setAttribute("x", "0");
-        c.setAttribute("dy", String(lineHeight));
-        c.textContent = commentSegments[i];
-        textElement.appendChild(c);
+        makeLine(commentSegments[i], null);
       }
-
-      parentGroup.appendChild(textElement);
-
-      // Advance Y by total number of visual lines created
-      const extraTitleLines = Math.max(0, titleSegments.length - 1);
-      const extraCommentLines = Math.max(0, commentSegments.length - 1);
-      const totalLines = 1 + extraTitleLines + extraCommentLines;
-      currentY += lineHeight * totalLines;
-      lineCount += totalLines;
     }
 
     // Removed grade border overlay; grade is now shown by coloring number text

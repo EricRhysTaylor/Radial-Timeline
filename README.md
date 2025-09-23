@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline Logo" width="10%">
 </p>
 <p align="center" style="font-family: 'Lato', sans-serif; font-weight: 100; font-size: 14px; margin-top: 12px; margin-bottom: 0; letter-spacing: 8px;">
-  RADIAL TIMELINE
+  Radial timeline
 </p>
 <p align="center" style="font-family: 'Lato', sans-serif; font-size: 14px; margin-top: 4px;">
   by Eric Rhys Taylor
@@ -54,11 +54,11 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 ## Commands
 
-* Open: open the timeline view
+* Open timeline: open the timeline view
 * Search timeline: filter by title, character, subplot, or date
 * Clear search: reset all search filters
-* Update AI flagged beats (manuscript order): process `BeatsUpdate: Yes` notes in manuscript order
-* Update AI flagged beats (subplot): pick a subplot and process `BeatsUpdate: Yes` notes within that arc (uses contiguous prev/next within the chosen subplot)
+* Update beats (manuscript order): process `BeatsUpdate: Yes` notes in manuscript order
+* Update beats (subplot): pick a subplot and process `BeatsUpdate: Yes` notes within that arc (uses contiguous prev/next within the chosen subplot)
 * Clear beats cache: clear saved beat results to force a full reprocess
 
 <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">

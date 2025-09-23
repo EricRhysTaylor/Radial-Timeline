@@ -664,7 +664,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // Add commands
         this.addCommand({
             id: 'open-timeline-view',
-            name: 'Open', // Sentence case
+            name: 'Open timeline',
             callback: () => {
                 this.activateView();
             }
@@ -672,7 +672,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
         this.addCommand({
             id: 'search-timeline',
-            name: 'Search timeline', // Sentence case
+            name: 'Search timeline',
             callback: () => {
                 this.openSearchPrompt();
             }
@@ -680,7 +680,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
         this.addCommand({
             id: 'clear-timeline-search',
-            name: 'Clear search', // Sentence case
+            name: 'Clear search',
             callback: () => {
                 this.clearSearch();
             }
