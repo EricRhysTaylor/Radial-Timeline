@@ -1,5 +1,6 @@
 import RadialTimelinePlugin from './main'; 
 import { App, TFile, Vault, Notice, parseYaml, getFrontMatterInfo, stringifyYaml } from "obsidian";
+import { sanitizeSourcePath, buildInitialSceneFilename } from './utils/sceneCreation';
 import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
 import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
 import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
@@ -846,7 +847,7 @@ export async function processByManuscriptOrder(
 
             processedCount++;
             notice.setMessage(`Progress: ${processedCount}/${totalTriplets} scenes processed...`);
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise(resolve => window.setTimeout(resolve, 200));
         }
 
             await plugin.saveSettings();
@@ -1012,7 +1013,7 @@ export async function processBySubplotOrder(
                  }
                  totalProcessedCount++;
                  notice.setMessage(`Progress: ${totalProcessedCount}/${totalTripletsAcrossSubplots} scenes processed...`);
-                 await new Promise(resolve => setTimeout(resolve, 200));
+                 await new Promise(resolve => window.setTimeout(resolve, 200));
              }
          }
 
@@ -1145,7 +1146,7 @@ export async function processBySubplotName(
 
             processedCount++;
             notice.setMessage(`Progress: ${processedCount}/${total} scenes processed...`);
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise(resolve => window.setTimeout(resolve, 200));
         }
 
         await plugin.saveSettings();
@@ -1297,11 +1298,9 @@ export async function createTemplateScene(
     try {
         const today = new Date();
         const isoDate = today.toISOString().slice(0, 10);
-        const timeTag = today.toISOString().replace(/[:.]/g, '-');
-        const baseName = `Scene Template ${timeTag}.md`;
 
         // Determine target folder: settings.sourcePath if set, else root
-        const folderPath = plugin.settings.sourcePath?.trim() || '';
+        const folderPath = sanitizeSourcePath(plugin.settings.sourcePath);
         // Ensure folder exists when specified
         if (folderPath) {
             const f = vault.getAbstractFileByPath(folderPath);
@@ -1309,7 +1308,8 @@ export async function createTemplateScene(
                 await vault.createFolder(folderPath);
             }
         }
-        const targetPath = folderPath ? `${folderPath}/${baseName}` : baseName;
+        // Harmonized initial filename with demo/new-vault behavior
+        const targetPath = buildInitialSceneFilename(folderPath, '1 Test Scene.md');
 
         const frontmatter = {
             Class: 'Scene',

@@ -1089,32 +1089,58 @@ export default class SynopsisManager {
         }
       }
 
-      // --- Create SVG Elements --- 
+      // --- Create SVG Elements with forced wrap support ([BR]) --- 
       const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
       textElement.setAttribute("class", "beats-text"); // Base class for the line
       textElement.setAttribute("x", "0");
       textElement.setAttribute("y", String(currentY));
       textElement.setAttribute("text-anchor", "start");
 
-      // Create Tspan for the Title part
-      const titleTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-      titleTspan.setAttribute("class", titleClass); // Apply class based on sign/grade
-      titleTspan.textContent = titleText; // Already processed/sign removed
-      textElement.appendChild(titleTspan);
+      // Support user-forced line breaks using [BR] tokens inside title/comment
+      const titleSegments = (titleText || '').split(/\s*\[BR\]\s*/);
+      const commentSegments = (useSlashSeparator && commentText) ? (commentText || '').split(/\s*\[BR\]\s*/) : [];
 
-      // Create Tspan for the Comment part (if applicable)
-      if (useSlashSeparator && commentText) {
-        const commentTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-        commentTspan.setAttribute("class", commentClass); // Default or grade class
-        commentTspan.textContent = " / " + commentText; // Add the slash separator
-        textElement.appendChild(commentTspan);
-      } else if (commentText && !useSlashSeparator) {
-         // Case where a sign was found at the end but no slash - commentText is empty, so nothing added.
+      // First line: title seg 0 plus optional comment seg 0 with slash
+      const titleTspan0 = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+      titleTspan0.setAttribute("class", titleClass);
+      titleTspan0.textContent = titleSegments[0] ?? '';
+      textElement.appendChild(titleTspan0);
+
+      if (commentSegments.length > 0) {
+        const commentTspan0 = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        commentTspan0.setAttribute("class", commentClass);
+        commentTspan0.textContent = " / " + (commentSegments[0] ?? '');
+        textElement.appendChild(commentTspan0);
+      }
+
+      // Additional lines from title segments
+      for (let i = 1; i < titleSegments.length; i++) {
+        const t = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        t.setAttribute("class", titleClass);
+        t.setAttribute("x", "0");
+        t.setAttribute("dy", String(lineHeight));
+        t.textContent = titleSegments[i];
+        textElement.appendChild(t);
+      }
+
+      // Additional lines from comment segments (beyond the first)
+      for (let i = 1; i < commentSegments.length; i++) {
+        const c = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        c.setAttribute("class", commentClass);
+        c.setAttribute("x", "0");
+        c.setAttribute("dy", String(lineHeight));
+        c.textContent = commentSegments[i];
+        textElement.appendChild(c);
       }
 
       parentGroup.appendChild(textElement);
-      currentY += lineHeight;
-      lineCount++;
+
+      // Advance Y by total number of visual lines created
+      const extraTitleLines = Math.max(0, titleSegments.length - 1);
+      const extraCommentLines = Math.max(0, commentSegments.length - 1);
+      const totalLines = 1 + extraTitleLines + extraCommentLines;
+      currentY += lineHeight * totalLines;
+      lineCount += totalLines;
     }
 
     // Removed grade border overlay; grade is now shown by coloring number text

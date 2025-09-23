@@ -28,7 +28,7 @@ export class RadialTimelineView extends ItemView {
     
     // Frontmatter values to track to reduce unnecessary SVG View refreshes
     private lastFrontmatterValues: Record<string, unknown> = {};
-    private timelineRefreshTimeout: NodeJS.Timeout | null = null;
+    private timelineRefreshTimeout: number | null = null;
         
     // Scene data (scenes)
     sceneData: Scene[] = [];
@@ -234,7 +234,7 @@ export class RadialTimelineView extends ItemView {
         
         // Add highlight rectangles if search is active
         if (this.plugin.searchActive) {
-            setTimeout(() => this.addHighlightRectangles(), 100);
+            window.setTimeout(() => this.addHighlightRectangles(), 100);
         }
     }
     
@@ -243,7 +243,7 @@ export class RadialTimelineView extends ItemView {
     private setupMouseCoordinateTracking(container: HTMLElement) {
         if (!this.plugin.settings.debug) return;
         // Wait a bit for the SVG to be fully rendered
-        setTimeout(() => {
+        window.setTimeout(() => {
             // Get SVG and text elements
             const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement;
             const debugText = svg?.querySelector('#mouse-coords-text') as SVGTextElement;
@@ -400,8 +400,8 @@ export class RadialTimelineView extends ItemView {
                 this.log('Scene/Plot frontmatter changed for file: ' + file.path);
                 
                 // Debounce the refresh with a generous 5 seconds
-                if (this.timelineRefreshTimeout) clearTimeout(this.timelineRefreshTimeout);
-                this.timelineRefreshTimeout = setTimeout(() => {
+                if (this.timelineRefreshTimeout) window.clearTimeout(this.timelineRefreshTimeout);
+                this.timelineRefreshTimeout = window.setTimeout(() => {
                     this.refreshTimeline();
                 }, 5000);
             })
@@ -593,21 +593,9 @@ export class RadialTimelineView extends ItemView {
     }
     
     async createTestSceneFile(): Promise<void> {
-        // --- Sanitize the configured source path so we don't accidentally create
-        //     duplicate folders when a trailing slash or whitespace is present
-        //     1. Trim leading/trailing whitespace
-        //     2. Remove a leading slash so the path is relative to the vault root
-        //     3. Remove a trailing slash (if any)
-
-        let sourcePath = (this.plugin.settings.sourcePath || "").trim();
-        if (sourcePath.startsWith("/")) {
-            sourcePath = sourcePath.slice(1);
-        }
-
-        if (sourcePath.endsWith("/")) {
-            sourcePath = sourcePath.slice(0, -1);
-        }
-
+        // Use shared sanitizer to keep behavior consistent with template creation
+        const { sanitizeSourcePath, buildInitialSceneFilename } = await import('../utils/sceneCreation');
+        const sourcePath = sanitizeSourcePath(this.plugin.settings.sourcePath);
         let targetPath = sourcePath;
         
         if (sourcePath !== "") {
@@ -657,8 +645,8 @@ This is a test scene created to help with initial Radial timeline setup.
 
 `;
         
-        // Generate a unique filename
-        const filename = `${targetPath ? targetPath + "/" : ""}1 Test Scene.md`;
+        // Harmonized initial filename
+        const filename = buildInitialSceneFilename(targetPath, '1 Test Scene.md');
         
         try {
             // Create the file
@@ -666,7 +654,7 @@ This is a test scene created to help with initial Radial timeline setup.
             new Notice(`Created test scene file: ${filename}`);
             
             // Refresh the timeline after a short delay to allow metadata cache to update
-            setTimeout(() => {
+            window.setTimeout(() => {
                 this.refreshTimeline();
             }, 500);
         } catch (error) {
@@ -1441,5 +1429,5 @@ This is a test scene created to help with initial Radial timeline setup.
     }
     
     // Property to track tab highlight timeout
-    private _tabHighlightTimeout: NodeJS.Timeout | null = null;
+    private _tabHighlightTimeout: number | null = null;
 }

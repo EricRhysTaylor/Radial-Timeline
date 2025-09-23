@@ -1,4 +1,4 @@
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, normalizePath } from "obsidian";
 import { escapeRegExp } from './utils/regex';
 import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils/colour';
 import { decodeHtmlEntities, parseSceneTitleComponents, renderSceneTitleComponents } from './utils/text';
@@ -351,6 +351,8 @@ export default class RadialTimelinePlugin extends Plugin {
 
     // Track open scene paths
     openScenePaths: Set<string> = new Set<string>();
+    // Ensure settings tab is only added once per load
+    private _settingsTabAdded: boolean = false;
     
     // Search related properties
     searchTerm: string = '';
@@ -358,7 +360,7 @@ export default class RadialTimelinePlugin extends Plugin {
     searchResults: Set<string> = new Set<string>();
     
     // Debouncing for timeline refresh
-    private refreshTimeout: NodeJS.Timeout | null = null;
+    private refreshTimeout: number | null = null;
     
     // --- Add variables to store latest estimate stats --- START ---
     latestTotalScenes: number = 0;
@@ -631,7 +633,7 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     async onload() {
-        console.log('RadialTimeline: Plugin Loaded');
+        // Loaded
         await this.loadSettings();
 
         // Load embedded fonts (no external requests per Obsidian guidelines)
@@ -643,8 +645,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // Initialize SynopsisManager
         this.synopsisManager = new SynopsisManager(this);
 
-        // Set CSS variables for publish stage colors
-        this.setCSSColorVariables();
+        // CSS variables for publish stage colors are set once on layout ready
         
         // Register the view
         this.registerView(
@@ -685,8 +686,11 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // Add settings tab
-        this.addSettingTab(new RadialTimelineSettingsTab(this.app, this));
+        // Add settings tab (only once)
+        if (!this._settingsTabAdded) {
+            this.addSettingTab(new RadialTimelineSettingsTab(this.app, this));
+            this._settingsTabAdded = true;
+        }
         
         // Note: Frontmatter change detection is handled by the TimelineView with proper debouncing
         // No metadata listener needed here to avoid triggering on body text changes
@@ -836,7 +840,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // --- ADD NEW COMMANDS --- 
         this.addCommand({
             id: 'update-beats-manuscript-order',
-            name: 'Update flagged beats (manuscript order)',
+            name: 'Update beats (manuscript order)',
             checkCallback: (checking: boolean) => {
                 if (!this.settings.enableAiBeats) return false; // hide when disabled
                 if (checking) return true;
@@ -883,7 +887,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // Run beats update for a chosen subplot
         this.addCommand({
             id: 'update-beats-choose-subplot',
-            name: 'Update flagged beats (subplot)',
+            name: 'Update beats (subplot)',
             checkCallback: (checking: boolean) => {
                 if (!this.settings.enableAiBeats) return false;
                 if (checking) return true;
@@ -1493,17 +1497,18 @@ public createTimelineSVG(scenes: Scene[]) {
     // Helper method to validate and remember folder paths
     async validateAndRememberPath(path: string): Promise<boolean> {
         if (!path || path.trim() === '') return false;
-        
-        const trimmedPath = path.trim();
-        
+
+        // Use Obsidian's normalizePath for user-defined paths
+        const normalizedPath = normalizePath(path.trim());
+
         // Check if the folder exists in the vault and is a folder
-        const file = this.app.vault.getAbstractFileByPath(trimmedPath);
-        const isValid = file instanceof TFolder && file.path === trimmedPath;
+        const file = this.app.vault.getAbstractFileByPath(normalizedPath);
+        const isValid = file instanceof TFolder && file.path === normalizedPath;
         
         if (isValid) {
             // Add to valid paths if not already present
-            if (!this.settings.validFolderPaths.includes(trimmedPath)) {
-                this.settings.validFolderPaths.unshift(trimmedPath); // Add to beginning
+            if (!this.settings.validFolderPaths.includes(normalizedPath)) {
+                this.settings.validFolderPaths.unshift(normalizedPath); // Add to beginning
                 // Keep only the last 10 paths to avoid clutter
                 if (this.settings.validFolderPaths.length > 10) {
                     this.settings.validFolderPaths = this.settings.validFolderPaths.slice(0, 10);
@@ -1551,10 +1556,10 @@ public createTimelineSVG(scenes: Scene[]) {
         if (!this.shouldDebugLog()) return;
         // Use console.debug to avoid cluttering normal logs
         try {
-            console.debug('[RadialTimeline]', ...args);
+            // Debug log suppressed in production builds
         } catch {
             // Fallback if console.debug is unavailable
-            console.log('[RadialTimeline]', ...args);
+            // Fallback suppressed
         }
     }
 
@@ -1567,11 +1572,11 @@ public createTimelineSVG(scenes: Scene[]) {
         
         // Clear existing timeout
         if (this.refreshTimeout) {
-            clearTimeout(this.refreshTimeout);
+            window.clearTimeout(this.refreshTimeout);
         }
         
         // Debounce the refresh with a 1-second delay
-        this.refreshTimeout = setTimeout(() => {
+        this.refreshTimeout = window.setTimeout(() => {
             // Get all timeline views
             const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
                 .map(leaf => leaf.view as RadialTimelineView)
@@ -2262,7 +2267,7 @@ public createTimelineSVG(scenes: Scene[]) {
     }
 
     onunload() {
-        console.log('RadialTimeline: Plugin Unloaded');
+        // Unloaded
         // Detach all timeline view leaves per Obsidian guidelines
         this.app.workspace.detachLeavesOfType(TIMELINE_VIEW_TYPE);
         // Clean up any other resources

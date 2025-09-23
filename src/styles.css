@@ -578,12 +578,12 @@ tspan .search-term {
 .rt-number-text.rt-has-edits.selected { fill: #ffffff; font-weight: bold; }
 
 /* Ensure AI grade color persists when tab is open or has edits */
-.rt-number-text.rt-scene-is-open.grade-A:not(.selected), 
-.rt-number-text.rt-has-edits.grade-A:not(.selected) { fill: #00ff48; }
-.rt-number-text.rt-scene-is-open.grade-B:not(.selected), 
-.rt-number-text.rt-has-edits.grade-B:not(.selected) { fill: #ffbb00; }
-.rt-number-text.rt-scene-is-open.grade-C:not(.selected), 
-.rt-number-text.rt-has-edits.grade-C:not(.selected) { fill: #ff0000; }
+.rt-number-text.rt-scene-is-open.grade-A:not(.selected):not(.non-selected), 
+.rt-number-text.rt-has-edits.grade-A:not(.selected):not(.non-selected) { fill: #00ff48; }
+.rt-number-text.rt-scene-is-open.grade-B:not(.selected):not(.non-selected), 
+.rt-number-text.rt-has-edits.grade-B:not(.selected):not(.non-selected) { fill: #ffbb00; }
+.rt-number-text.rt-scene-is-open.grade-C:not(.selected):not(.non-selected), 
+.rt-number-text.rt-has-edits.grade-C:not(.selected):not(.non-selected) { fill: #ff0000; }
 .rt-clear-search-btn {
   cursor: pointer;
 }

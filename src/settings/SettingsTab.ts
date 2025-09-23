@@ -170,7 +170,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 // Clear existing validation classes and show success feedback
                 textInput.inputEl.removeClass('setting-input-error');
                 textInput.inputEl.addClass('setting-input-success');
-                setTimeout(() => {
+                window.setTimeout(() => {
                     textInput.inputEl.removeClass('setting-input-success');
                 }, 1000);
                 
@@ -221,11 +221,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
             // Validate current path on load to show initial status
             if (this.plugin.settings.sourcePath?.trim()) {
-                setTimeout(async () => {
+                window.setTimeout(async () => {
                     const isValid = await this.plugin.validateAndRememberPath(this.plugin.settings.sourcePath);
                     if (isValid) {
                         text.inputEl.addClass('setting-input-success');
-                        setTimeout(() => {
+                        window.setTimeout(() => {
                             text.inputEl.removeClass('setting-input-success');
                         }, 2000);
                     }
@@ -247,12 +247,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     if (!isValid) {
                         // Show visual feedback for invalid paths
                         text.inputEl.addClass('setting-input-error');
-                        setTimeout(() => {
+                        window.setTimeout(() => {
                             text.inputEl.removeClass('setting-input-error');
                         }, 2000);
                     } else {
                         text.inputEl.addClass('setting-input-success');
-                        setTimeout(() => {
+                        window.setTimeout(() => {
                             text.inputEl.removeClass('setting-input-success');
                         }, 1000);
                     }
