@@ -31,3 +31,5 @@ main.lostacts.ts
 
 # Large package installers
 *.pkg
+# Do not commit build artifacts for Obsidian plugin
+release/
