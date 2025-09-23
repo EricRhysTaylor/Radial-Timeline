@@ -12,7 +12,7 @@ import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 declare const EMBEDDED_README_CONTENT: string;
 
 // Import the new beats update function <<< UPDATED IMPORT
-import { processByManuscriptOrder, processBySubplotOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotName } from './BeatsCommands';
+import { processByManuscriptOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotName } from './BeatsCommands';
 
 interface RadialTimelineSettings {
     sourcePath: string;
@@ -868,39 +868,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        this.addCommand({
-            id: 'update-beats-subplot-order',
-            name: 'Update flagged beats (subplot order)',
-            checkCallback: (checking: boolean) => {
-                if (!this.settings.enableAiBeats) return false; // hide when disabled
-                if (checking) return true;
-                (async () => {
-                const provider = this.settings.defaultAiProvider || 'openai';
-                let hasKey = true;
-                if (provider === 'anthropic') {
-                    hasKey = !!this.settings.anthropicApiKey?.trim();
-                    if (!hasKey) { new Notice('Anthropic API key is not set in settings.'); return; }
-                } else if (provider === 'gemini') {
-                    hasKey = !!this.settings.geminiApiKey?.trim();
-                    if (!hasKey) { new Notice('Gemini API key is not set in settings.'); return; }
-                } else {
-                    hasKey = !!this.settings.openaiApiKey?.trim();
-                    if (!hasKey) { new Notice('OpenAI API key is not set in settings.'); return; }
-                }
-
-                new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
-                
-                try {
-                    new Notice('Starting subplot order update...');
-                    await processBySubplotOrder(this, this.app.vault);
-                } catch (error) {
-                    console.error("Error running subplot order beat update:", error);
-                    new Notice("❌ Error during subplot order update.");
-                }
-                })();
-                return true;
-            }
-        });
+        // Removed batch subplot processing to avoid ambiguity with multi-subplot scenes.
 
         // Create a ready-to-edit template scene in the configured source path
         this.addCommand({
@@ -915,7 +883,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // Run beats update for a chosen subplot
         this.addCommand({
             id: 'update-beats-choose-subplot',
-            name: 'Update flagged beats (choose subplot)',
+            name: 'Update flagged beats (subplot)',
             checkCallback: (checking: boolean) => {
                 if (!this.settings.enableAiBeats) return false;
                 if (checking) return true;

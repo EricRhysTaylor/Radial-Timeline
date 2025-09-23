@@ -58,7 +58,7 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Search timeline: filter by title, character, subplot, or date
 * Clear search: reset all search filters
 * Update AI flagged beats (manuscript order): process `BeatsUpdate: Yes` notes in manuscript order
-* Update AI flagged beats (subplot order): process BeatsUpdate: Yes notes in subplot order
+* Update AI flagged beats (subplot): pick a subplot and process `BeatsUpdate: Yes` notes within that arc (uses contiguous prev/next within the chosen subplot)
 * Clear beats cache: clear saved beat results to force a full reprocess
 
 <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
