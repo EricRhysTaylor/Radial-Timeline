@@ -304,6 +304,19 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }));
 
+        
+                // --- Zero draft mode toggle ---
+        new Settings(containerEl)
+        .setName('Zero draft mode')
+        .setDesc('Intercept clicks on scenes with Publish Stage = Zero and Status = Complete to capture Pending Edits without opening the scene.')
+        .addToggle(toggle => toggle
+            .setValue(this.plugin.settings.enableZeroDraftMode ?? false)
+            .onChange(async (value) => {
+                this.plugin.settings.enableZeroDraftMode = value;
+                await this.plugin.saveSettings();
+            }));
+
+            
         // --- AI for Beats Analysis ---
         new Settings(containerEl)
             .setName('AI for beats analysis')
@@ -500,16 +513,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 }));
         // <<< END of added Setting block >>>
 
-        // --- Debug Mode Setting ---
-        new Settings(containerEl)
-            .setName('Debug mode')
-            .setDesc('Enable debug logging to the console for troubleshooting.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.debug)
-                .onChange(async (value) => {
-                    this.plugin.settings.debug = value;
-                    await this.plugin.saveSettings();
-                }));
+        // Debug mode setting removed: console logging only in development builds
 
         // --- Publishing Stage Colors (compact grid) --- 
         const pubHeading = new Settings(containerEl)

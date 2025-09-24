@@ -4,6 +4,7 @@ import RadialTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
 import type { Scene } from '../main';
 import { PlotLabelManager } from '../utils/plotLabelManager';
+import ZeroDraftModal from './ZeroDraftModal';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -1324,24 +1325,78 @@ This is a test scene created to help with initial Radial timeline setup.
             const filePath = decodeURIComponent(encodedPath);
             
             // Set up click handler
-            path.addEventListener("click", () => {
+            path.addEventListener("click", (evt: MouseEvent) => {
                 const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
-                if (file instanceof TFile) {
-                    // Check if the file is already open in any leaf
-                    const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
-                    const existingLeaf = leaves.find(leaf => {
-                        const viewState = leaf.getViewState();
-                        return viewState.state?.file === file.path;
-                    });
-                    
-                    if (existingLeaf) {
-                        // If the file is already open, just reveal that leaf
-                        this.plugin.app.workspace.revealLeaf(existingLeaf);
-                    } else {
-                        // Open in a new tab
-                        const leaf = this.plugin.app.workspace.getLeaf('tab');
-                        leaf.openFile(file);
+                if (!(file instanceof TFile)) return;
+
+                // Intercept for Zero draft mode when conditions match
+                if (this.plugin.settings.enableZeroDraftMode) {
+                    const cache = this.plugin.app.metadataCache.getFileCache(file);
+                    const fm = (cache && cache.frontmatter) ? (cache.frontmatter as Record<string, unknown>) : {};
+
+                    // Case-insensitive lookup helper
+                    const getFm = (key: string): unknown => {
+                        if (!fm) return undefined;
+                        const lower = key.toLowerCase();
+                        for (const k of Object.keys(fm)) {
+                            if (k.toLowerCase() === lower) return (fm as any)[k];
+                        }
+                        return undefined;
+                    };
+
+                    const stageValue = String(getFm('Publish Stage') ?? 'Zero');
+                    const statusValue = String(getFm('Status') ?? 'Todo');
+
+                    const isStageZero = stageValue.trim().toLowerCase() === 'zero';
+                    const isStatusComplete = statusValue.trim().toLowerCase() === 'complete';
+
+                    if (isStageZero && isStatusComplete) {
+                        evt.preventDefault();
+                        evt.stopPropagation();
+
+                        const pendingEdits = String(getFm('Pending Edits') ?? '').trim();
+                        const sceneTitle = file.basename || 'Scene';
+
+                        const modal = new ZeroDraftModal(this.app, {
+                            titleText: `Pending Edits — ${sceneTitle}`,
+                            initialText: pendingEdits,
+                            onOk: async (nextText: string) => {
+                                try {
+                                    await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
+                                        (yaml as any)['Pending Edits'] = nextText; // keep key; overwrite (may be empty)
+                                    });
+                                } catch (e) {
+                                    new Notice('Failed to save Pending Edits');
+                                }
+                            },
+                            onOverride: () => {
+                                // Open without saving
+                                const leaves = this.plugin.app.workspace.getLeavesOfType('markdown');
+                                const existingLeaf = leaves.find(leaf => {
+                                    const viewState = leaf.getViewState();
+                                    return viewState.state?.file === file.path;
+                                });
+                                if (existingLeaf) this.plugin.app.workspace.revealLeaf(existingLeaf);
+                                else this.plugin.app.workspace.getLeaf('tab').openFile(file);
+                            }
+                        });
+
+                        modal.open();
+                        return; // Do not open the note in this path
                     }
+                }
+
+                // Default behavior: open or reveal the note
+                const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
+                const existingLeaf = leaves.find(leaf => {
+                    const viewState = leaf.getViewState();
+                    return viewState.state?.file === file.path;
+                });
+                if (existingLeaf) {
+                    this.plugin.app.workspace.revealLeaf(existingLeaf);
+                } else {
+                    const leaf = this.plugin.app.workspace.getLeaf('tab');
+                    leaf.openFile(file);
                 }
             });
             // Cursor styling handled via CSS (.scene-path)

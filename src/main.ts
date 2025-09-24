@@ -38,6 +38,7 @@ interface RadialTimelineSettings {
     openaiModelId?: string; // <<< ADDED: Selected OpenAI Model ID
     // Feature toggles
     enableAiBeats?: boolean; // Show AI beats features (colors + synopsis)
+    enableZeroDraftMode?: boolean; // Intercept complete scenes in Stage Zero for Pending Edits modal
     // Optional: Store the fetched models list to avoid refetching?
     // availableOpenAiModels?: { id: string, description?: string }[];
 }
@@ -121,6 +122,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     defaultAiProvider: 'openai',
     openaiModelId: 'gpt-4.1' // Default to GPT-4.1
     ,enableAiBeats: true
+    ,enableZeroDraftMode: false
 };
 
 //a primary color for each status - references CSS variables
@@ -1539,14 +1541,14 @@ public createTimelineSVG(scenes: Scene[]) {
         };
     }
 
-    // Centralized debug logger: only logs when debug is enabled or in development
+    // Centralized debug logger: only logs in development builds
     private shouldDebugLog(): boolean {
         // Best-effort dev detection; safe in browser/Obsidian envs
         const isDev = typeof process !== 'undefined'
             && typeof process.env !== 'undefined'
             && process.env.NODE_ENV === 'development';
-        // Allow either explicit setting or dev mode to enable logs
-        return !!this.settings?.debug || isDev === true;
+        // Only allow logs in dev
+        return isDev === true;
     }
 
     // Overloads to satisfy facades expecting (message, data?) while allowing variadic usage

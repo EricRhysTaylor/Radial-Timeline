@@ -932,6 +932,31 @@ tspan .search-term {
     margin-top: 20px;
 }
 
+/* Zero draft modal styles */
+.rt-zero-draft-textarea {
+  width: 100%;
+  min-height: 200px;
+  resize: vertical;
+}
+.rt-zero-draft-info {
+  margin: 6px 0 10px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.rt-zero-draft-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.rt-zero-draft-override {
+  background-color: var(--rt-color-due) !important; /* use defined red */
+  color: #ffffff !important;
+  border-color: var(--rt-color-due) !important;
+}
+.rt-zero-draft-override:hover { filter: brightness(0.9); }
+.rt-zero-draft-override:focus { box-shadow: 0 0 0 2px rgba(208,94,94,0.3); }
+
 /* Dynamic positioning */
 .radial-timeline-container .dynamic-position {
     position: absolute;
