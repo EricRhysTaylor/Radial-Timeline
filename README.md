@@ -128,17 +128,18 @@ When AI beats are enabled in settings, the plugin can generate a triplet of beat
 
 ```yaml
 ---
-# Excerpt of AI beats triplet stored in scene frontmatter
+# Excerpt of AI beats triplet stored in scene frontmatter. [br] forces line break (discretionary)
 1beats:
   - 12 Inciting clue + / Raises stakes for the protagonist. Secondary suspicion grows
 2beats:
-  - 13 A / Tighten pacing in the confrontation [br] Cut repetition in second paragraph
+  - 13 A / Excellent pacing in the confrontation [br] Cut repetition in second paragraph
   - Follow-up + / Ally reveals motive
 3beats:
-  - 14 Setback ? / Plan fails at the last moment [br] New approach needed
+  - 14 Setback ? / Plan fails at the last moment New approach needed
 BeatsUpdate: Yes
 ---
 ```
+<hr>
 
 **Advanced scene example**
 
