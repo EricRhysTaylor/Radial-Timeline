@@ -136,7 +136,8 @@ const context = await esbuild.context({
 	treeShaking: true,
 	outdir: destDirs[0],
 	define: {
-		'EMBEDDED_README_CONTENT': JSON.stringify(readmeContent)
+		'EMBEDDED_README_CONTENT': JSON.stringify(readmeContent),
+		'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development')
 	}
 });
 

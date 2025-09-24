@@ -43,8 +43,8 @@ export class RadialTimelineView extends ItemView {
     }
     
     private log<T>(message: string, data?: T) {
-        // Disable all debug logging
-        return;
+        // Forward to plugin logger; it is dev-guarded
+        this.plugin.log(message, data);
     }
     
     getViewType(): string {

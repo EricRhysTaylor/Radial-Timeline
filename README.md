@@ -122,6 +122,24 @@ Description: The first impression of your story. It should capture the essence o
 
 <hr>
 
+**AI beats analysis**
+
+When AI beats are enabled in settings, the plugin can generate a triplet of beats for each scene: `1beats` (previous scene), `2beats` (current scene, includes a grade), and `3beats` (next scene). These are stored in the scene’s YAML and rendered under the synopsis in the timeline. You can run the commands “Update beats (manuscript order)” or “Update beats (subplot)” to populate or refresh them. To control wrapping in the Timeline hover display, insert `[br]` anywhere within a beat line to force a manual line break at that point. Note: If you have run this scene before, then be sure to Clear beats cache. (prevents unnecessary duplicate API calls).
+
+```yaml
+---
+# Excerpt of AI beats triplet stored in scene frontmatter
+1beats:
+  - 12 Inciting clue + / Raises stakes for the protagonist. Secondary suspicion grows
+2beats:
+  - 13 A / Tighten pacing in the confrontation [br] Cut repetition in second paragraph
+  - Follow-up + / Ally reveals motive
+3beats:
+  - 14 Setback ? / Plan fails at the last moment [br] New approach needed
+BeatsUpdate: Yes
+---
+```
+
 **Advanced scene example**
 
 While the plugin only requires a few specific metadata fields to function, your scene notes can contain any other frontmatter you need for your personal writing process. The Radial Timeline plugin will safely ignore any fields it doesn't use.

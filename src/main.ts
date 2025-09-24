@@ -1554,12 +1554,13 @@ public createTimelineSVG(scenes: Scene[]) {
     public log(...args: unknown[]): void;
     public log(...args: unknown[]) {
         if (!this.shouldDebugLog()) return;
-        // Use console.debug to avoid cluttering normal logs
         try {
-            // Debug log suppressed in production builds
+            // Emit console.debug only in development (guarded by shouldDebugLog)
+            // Avoid noisy logs in production per Obsidian guidelines
+            // eslint-disable-next-line no-console
+            console.debug('[Radial timeline]', ...args);
         } catch {
-            // Fallback if console.debug is unavailable
-            // Fallback suppressed
+            // ignore
         }
     }
 
