@@ -196,6 +196,8 @@ BeatsUpdate:     # Type "Yes" to flag for update. Reminder: erase timestamp and 
 ---
 ```
 
+<hr>
+
 ## Settings
 
 The plugin offers several settings to customize its behavior and enable AI features:
