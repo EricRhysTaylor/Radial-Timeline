@@ -213,6 +213,19 @@ The plugin offers several settings to customize its behavior and enable AI featu
 * Debug mode: enables developer console logging for troubleshooting
 * Publishing stage colors: customize colors for `Publish Stage` values (Zero, Author, House, Press). Each has a reset button.
 
+### Zero draft mode
+
+Zero draft mode helps you focus on capturing edits before reopening finished scenes.
+
+- When enabled in Settings → Zero draft mode, clicking a scene where `Publish Stage` is `Zero` and `Status` is `Complete` shows a small dialog instead of opening the note.
+- The dialog displays a large input field populated from the scene’s `Pending Edits` frontmatter (if any). You can type additional edits and click OK to save.
+- Buttons:
+  - OK: Overwrites `Pending Edits` with the current input (uses Obsidian’s standard `processFrontMatter`). If you cleared previously non‑empty text, you’ll be asked to confirm deleting it (the key remains with an empty value).
+  - Cancel: If there are unsaved changes, you’ll be asked to discard them; otherwise the dialog closes. No write.
+  - Override: Opens the note without saving. If there are unsaved changes, you’ll be asked to discard them first.
+- Matching is case‑insensitive on keys and values. Defaults: `Publish Stage` defaults to `Zero` if missing; `Status` defaults to `Todo` if missing. Interception occurs only when Stage = Zero AND Status = Complete.
+- Turn this off any time in Settings if you prefer to open scenes directly.
+
 ## Installation
 
 **From Obsidian**
