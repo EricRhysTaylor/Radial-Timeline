@@ -61,13 +61,14 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Update beats (subplot): pick a subplot and process BeatsUpdate: Yes notes within that arc (uses contiguous prev/next within the chosen subplot)
 * Clear beats cache: clear saved beat results to force a full reprocess
 
-<a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="max-width: 45%; border-radius: 8px;" />
-</a>
-
-<a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="max-width: 45%; border-radius: 8px;" />
-</a>
+<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="max-width: 45%; border-radius: 8px;" />
+  </a>
+  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="max-width: 45%; border-radius: 8px;" />
+  </a>
+</div>
 
 <div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
   Click image to view full size in browser
