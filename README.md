@@ -57,22 +57,41 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Open timeline: open the timeline view
 * Search timeline: filter by title, character, subplot, or date
 * Clear search: reset all search filters
-* Update beats (manuscript order): process `BeatsUpdate: Yes` notes in manuscript order
-* Update beats (subplot): pick a subplot and process `BeatsUpdate: Yes` notes within that arc (uses contiguous prev/next within the chosen subplot)
+* Update beats (manuscript order): process BeatsUpdate: Yes notes in manuscript order
+* Update beats (subplot): pick a subplot and process BeatsUpdate: Yes notes within that arc (uses contiguous prev/next within the chosen subplot)
 * Clear beats cache: clear saved beat results to force a full reprocess
 
 <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="max-width: 100%; border-radius: 8px;" />
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="max-width: 45%; border-radius: 8px;" />
 </a>
 
 <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="max-width: 100%; border-radius: 8px;" />
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="max-width: 45%; border-radius: 8px;" />
 </a>
 
 <div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
   Click image to view full size in browser
 </div>  
 
+## All scenes mode 
+
+Toggle in settings to display either all scenes mode or main plot mode. For all scenes mode, the timeline with show all scenes from all subplots ordered in the outer ring with plot beats and subplot color coding. All scene mode provides a full picture with all of the details with plot beats.
+
+Main plot mode removes the subplot beats, shows only main plot scenes in the outer ring and uses publish stage coloring for all scenes, emphasizing progress towards getting the book ready for publication in a simplified view.
+
+
+## Zero draft mode
+
+Zero draft mode helps you focus on finishing the Zero draft and not getting caught in a revision loop that never ends by encouraging you to make small additions to the Pending Edits frontmatter field if and when you have ideas about revising a scene with status complete.
+
+- When enabled in Settings → Zero draft mode, clicking a scene where `Publish Stage` is `Zero` and `Status` is `Complete` shows a small dialog instead of opening the note.
+- The dialog displays a large input field populated from the scene’s `Pending Edits` frontmatter (if any). You can type additional edits and click OK to save.
+- Buttons:
+  - OK: Overwrites `Pending Edits` with the current input (uses Obsidian’s standard `processFrontMatter`). If you cleared previously non‑empty text, you’ll be asked to confirm deleting it (the key remains with an empty value).
+  - Cancel: If there are unsaved changes, you’ll be asked to discard them; otherwise the dialog closes. No write.
+  - Override: Opens the note without saving. If there are unsaved changes, you’ll be asked to discard them first.
+- Matching is case‑insensitive on keys and values. Defaults: `Publish Stage` defaults to `Zero` if missing; `Status` defaults to `Todo` if missing. Interception occurs only when Stage = Zero AND Status = Complete.
+- Turn this off any time in Settings if you prefer to open scenes directly.
 
 ## Scene and plot metadata
 
@@ -212,19 +231,6 @@ The plugin offers several settings to customize its behavior and enable AI featu
     * Log AI interactions to file: creates notes in an "AI" folder with request/response details
 * Debug mode: enables developer console logging for troubleshooting
 * Publishing stage colors: customize colors for `Publish Stage` values (Zero, Author, House, Press). Each has a reset button.
-
-### Zero draft mode
-
-Zero draft mode helps you focus on capturing edits before reopening finished scenes.
-
-- When enabled in Settings → Zero draft mode, clicking a scene where `Publish Stage` is `Zero` and `Status` is `Complete` shows a small dialog instead of opening the note.
-- The dialog displays a large input field populated from the scene’s `Pending Edits` frontmatter (if any). You can type additional edits and click OK to save.
-- Buttons:
-  - OK: Overwrites `Pending Edits` with the current input (uses Obsidian’s standard `processFrontMatter`). If you cleared previously non‑empty text, you’ll be asked to confirm deleting it (the key remains with an empty value).
-  - Cancel: If there are unsaved changes, you’ll be asked to discard them; otherwise the dialog closes. No write.
-  - Override: Opens the note without saving. If there are unsaved changes, you’ll be asked to discard them first.
-- Matching is case‑insensitive on keys and values. Defaults: `Publish Stage` defaults to `Zero` if missing; `Status` defaults to `Todo` if missing. Interception occurs only when Stage = Zero AND Status = Complete.
-- Turn this off any time in Settings if you prefer to open scenes directly.
 
 ## Installation
 
