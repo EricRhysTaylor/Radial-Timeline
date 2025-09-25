@@ -1,7 +1,7 @@
 {
 	"id": "radial-timeline",
 	"name": "Radial timeline",
-	"version": "2.5.0",
+	"version": "2.5.1",
 	"minAppVersion": "1.4.0",
 	"description": "A radial manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and numeric order in a radial format for a comprehensive view of the project.",
 	"author": "Eric Rhys Taylor",
