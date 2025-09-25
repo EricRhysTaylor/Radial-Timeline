@@ -80,6 +80,7 @@ Toggle in settings to display either all scenes mode or main plot mode. for all 
 
 Main plot mode removes the subplot beats, shows only main plot scenes in the outer ring and uses publish stage coloring for all scenes, emphasizing progress towards getting the book ready for publication in a simplified view.
 
+<hr>
 
 ## Zero draft mode
 
@@ -93,6 +94,8 @@ Zero draft mode helps you focus on finishing the zero draft and not getting caug
   - override: opens the note without saving. if there are unsaved changes, you’ll be asked to discard them first.
 - Matching is case‑insensitive on keys and values. defaults: publish stage defaults to zero if missing; status defaults to todo if missing. interception occurs only when stage = zero and status = complete.
 - Turn this off any time in settings if you prefer to open scenes directly.
+
+<hr>
 
 ## Scene and plot metadata
 
@@ -233,6 +236,8 @@ The plugin offers several settings to customize its behavior and enable ai featu
 * Debug mode: enables developer console logging for troubleshooting
 * Publishing stage colors: customize colors for publish stage values (zero, author, house, press). each has a reset button.
 
+<hr>
+
 ## Installation
 
 From obsidian
@@ -249,6 +254,8 @@ Manual installation
 1.  Download the latest main.js, styles.css, and manifest.json from the <a href="https://github.com/EricRhysTaylor/radial-timeline/releases" target="_blank" rel="noopener">releases</a> page.
 2.  Extract the files to your vault's .obsidian/plugins/radial-timeline
 
+<hr>
+
 ## Screen resolution suggestions
 
 The radial timeline is designed for high pixel density displays (around 200 ppi or higher) for an optimal visual quality. this means:
@@ -258,6 +265,8 @@ The radial timeline is designed for high pixel density displays (around 200 ppi 
 - Tablets and mobile phones all support high dpi
 
 If you're experiencing visual quality issues on windows, please check your display scaling settings in windows settings > system > display > scale and layout.
+
+<hr>
 
 ## Technical implementation
 
@@ -272,11 +281,15 @@ The radial timeline visualization was inspired by and draws on principles from <
 
 The visualizations are built using pure svg and javascript, offering a lightweight solution that maintains the elegance and interactivity of d3-style visualizations while being fully compatible with obsidian's rendering capabilities.
 
+<hr>
+
 ## Author
 
 Created by eric rhys taylor
 
 This plugin adheres to obsidian.md development best practices, including secure dom manipulation and api compliance.
+
+<hr>
 
 ## Feedback and support
 
