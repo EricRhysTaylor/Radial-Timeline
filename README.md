@@ -62,11 +62,11 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Clear beats cache: clear saved beat results to force a full reprocess
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="max-width: 40%; border-radius: 8px;" />
+  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="width: 300px; max-width: 100%; border-radius: 8px;" />
   </a>
-  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="display: inline-block; cursor: pointer;">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="max-width: 40%; border-radius: 8px;" />
+  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="width: 300px; max-width: 100%; border-radius: 8px;" />
   </a>
 </div>
 
