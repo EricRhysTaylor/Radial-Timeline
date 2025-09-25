@@ -5,7 +5,7 @@
   Radial timeline
 </p>
 <p align="center" style="font-family: 'Lato', sans-serif; font-size: 14px; margin-top: 4px;">
-  by Eric Rhys Taylor
+  by eric rhys taylor
 </p>
 
 
@@ -25,48 +25,48 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 <a href="https://youtu.be/DctCvSzzZ5M?si=YbZrBo8ulw0wrPZt" target="_blank" rel="noopener">
   <p align="center">
-    <img src="https://i.ytimg.com/vi/DctCvSzzZ5M/maxresdefault.jpg" alt="Plot Your Novel with Radial Timeline in Obsidian | Complete Author Walkthrough & Setup Guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+    <img src="https://i.ytimg.com/vi/DctCvSzzZ5M/maxresdefault.jpg" alt="Plot your novel with radial timeline in obsidian | complete author walkthrough & setup guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
   </p>
-  <p align="center" style="font-family: 'Lato', sans-serif; font-weight: bold; font-size: 16px; margin-top: 10px;">
-    Plot Your Novel with Radial Timeline in Obsidian<br>
-    Complete Author Walkthrough & Setup Guide
+  <p align="center" style="font-family: 'Lato', sans-serif; font-size: 16px; margin-top: 10px;">
+    Plot your novel with radial timeline in obsidian<br>
+    Complete author walkthrough & setup guide
   </p>
 </a>
 
 
 ## Features
 
-- Quick setup. Click on Timeline Tool then click button to create a note pre-populated with required metadata (yaml). Duplicate that scene or use other plugins like Templater and Metadata Menu to automate the process.
+- Quick setup. click on timeline tool then click button to create a note pre-populated with required metadata (yaml). duplicate that scene or use other plugins like templater and metadata menu to automate the process.
 - Creates an interactive radial timeline visualization of scenes
 - Organizes scenes by act, subplot, and numeric order
 - Rotates counterclockwise so act 2 can align under act 1 for readability
-- Supports Save the Cat beats via `Class: Plot` notes that render as slices
+- Supports save the cat beats via class: plot notes that render as slices
 - Shows scene details on hover: title, date, synopsis, subplots, characters, overdue and revisions lines
-- Color-codes scenes by status (Complete, Working, Todo, etc.)
+- Color-codes scenes by status (complete, working, todo, etc.)
 - Displays plot notes with graduated shading and narrow width
 - Supports light and dark themes
 - Opens a scene on click
 - Highlights currently open scene tabs in the radial timeline
-- Estimates completion date based on remaining Todo/Working scenes and recent progress rate (excludes plot notes)
+- Estimates completion date based on remaining todo/working scenes and recent progress rate (excludes plot notes)
 - Shows a visual arc and marker for the estimated completion timeframe
 - Labels subplot rings with descriptive titles
-- Fully integrated into Obsidian's interface (no external plugins required)
+- Fully integrated into obsidian's interface (no external plugins required)
 
 ## Commands
 
 * Open timeline: open the timeline view
 * Search timeline: filter by title, character, subplot, or date
 * Clear search: reset all search filters
-* Update beats (manuscript order): process BeatsUpdate: Yes notes in manuscript order
-* Update beats (subplot): pick a subplot and process BeatsUpdate: Yes notes within that arc (uses contiguous prev/next within the chosen subplot)
+* Update beats (manuscript order): process beatsupdate: yes notes in manuscript order
+* Update beats (subplot): pick a subplot and process beatsupdate: yes notes within that arc (uses contiguous prev/next within the chosen subplot)
 * Clear beats cache: clear saved beat results to force a full reprocess
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="width: 400px; max-width: 100%; border-radius: 8px;" />
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="width: 350px; max-width: 100%; border-radius: 8px;" />
   </a>
   <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="width: 400px; max-width: 100%; border-radius: 8px;" />
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="width: 350px; max-width: 100%; border-radius: 8px;" />
   </a>
 </div>
 
@@ -76,31 +76,31 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 ## All scenes mode 
 
-Toggle in settings to display either all scenes mode or main plot mode. For all scenes mode, the timeline with show all scenes from all subplots ordered in the outer ring with plot beats and subplot color coding. All scene mode provides a full picture with all of the details with plot beats.
+Toggle in settings to display either all scenes mode or main plot mode. for all scenes mode, the timeline with show all scenes from all subplots ordered in the outer ring with plot beats and subplot color coding. all scene mode provides a full picture with all of the details with plot beats.
 
 Main plot mode removes the subplot beats, shows only main plot scenes in the outer ring and uses publish stage coloring for all scenes, emphasizing progress towards getting the book ready for publication in a simplified view.
 
 
 ## Zero draft mode
 
-Zero draft mode helps you focus on finishing the Zero draft and not getting caught in a revision loop that never ends by encouraging you to make small additions to the Pending Edits frontmatter field if and when you have ideas about revising a scene with status complete.
+Zero draft mode helps you focus on finishing the zero draft and not getting caught in a revision loop that never ends by encouraging you to make small additions to the pending edits frontmatter field if and when you have ideas about revising a scene with status complete.
 
-- When enabled in Settings → Zero draft mode, clicking a scene where `Publish Stage` is `Zero` and `Status` is `Complete` shows a small dialog instead of opening the note.
-- The dialog displays a large input field populated from the scene’s `Pending Edits` frontmatter (if any). You can type additional edits and click OK to save.
+- When enabled in settings → zero draft mode, clicking a scene where publish stage is zero and status is complete shows a small dialog instead of opening the note.
+- The dialog displays a large input field populated from the scene’s pending edits frontmatter (if any). you can type additional edits and click ok to save.
 - Buttons:
-  - OK: Overwrites `Pending Edits` with the current input (uses Obsidian’s standard `processFrontMatter`). If you cleared previously non‑empty text, you’ll be asked to confirm deleting it (the key remains with an empty value).
-  - Cancel: If there are unsaved changes, you’ll be asked to discard them; otherwise the dialog closes. No write.
-  - Override: Opens the note without saving. If there are unsaved changes, you’ll be asked to discard them first.
-- Matching is case‑insensitive on keys and values. Defaults: `Publish Stage` defaults to `Zero` if missing; `Status` defaults to `Todo` if missing. Interception occurs only when Stage = Zero AND Status = Complete.
-- Turn this off any time in Settings if you prefer to open scenes directly.
+  - ok: overwrites pending edits with the current input (uses obsidian’s standard processfrontmatter). if you cleared previously non‑empty text, you’ll be asked to confirm deleting it (the key remains with an empty value).
+  - cancel: if there are unsaved changes, you’ll be asked to discard them; otherwise the dialog closes. no write.
+  - override: opens the note without saving. if there are unsaved changes, you’ll be asked to discard them first.
+- Matching is case‑insensitive on keys and values. defaults: publish stage defaults to zero if missing; status defaults to todo if missing. interception occurs only when stage = zero and status = complete.
+- Turn this off any time in settings if you prefer to open scenes directly.
 
 ## Scene and plot metadata
 
-The plugin uses YAML frontmatter to identify and organize your scenes and plot points. Here are the key examples, from basic to advanced.
+The plugin uses yaml frontmatter to identify and organize your scenes and plot points. here are the key examples, from basic to advanced.
 
-**Required scene metadata**
+Required scene metadata
 
-Scene files are identified by having `Class: Scene` in their frontmatter. The following fields are used by the timeline:
+Scene files are identified by having class: scene in their frontmatter. the following fields are used by the timeline:
 
 ```yaml
 ---
@@ -126,11 +126,11 @@ Book: Book 1 A New Beginning
 
 <hr>
 
-**Plot beat slices (Save the Cat beats)**
+Plot beat slices (save the cat beats)
 
-The plugin supports plot structuring with `Class: Plot` notes. These appear as narrow slices on the outermost ring when the “outer ring shows all scenes” setting is enabled. Hover a slice to view its description.
+The plugin supports plot structuring with class: plot notes. these appear as narrow slices on the outermost ring when the “outer ring shows all scenes” setting is enabled. hover a slice to view its description.
 
-Create a note titled "01 Opening Image" with this frontmatter:
+Create a note titled "01 opening image" with this frontmatter:
 
 ```yaml
 ---
@@ -142,9 +142,9 @@ Description: The first impression of your story. It should capture the essence o
 
 <hr>
 
-**AI beats analysis**
+AI beats analysis
 
-When AI beats are enabled in settings, the plugin can generate a triplet of beats for each scene: `1beats` (previous scene), `2beats` (current scene, includes a grade), and `3beats` (next scene). These are stored in the scene’s YAML and rendered under the synopsis in the timeline. You can run the commands “Update beats (manuscript order)” or “Update beats (subplot)” to populate or refresh them. To control wrapping in the Timeline hover display, insert `[br]` anywhere within a beat line to force a manual line break at that point. Note: If you have run this scene before, then be sure to Clear beats cache. (prevents unnecessary duplicate API calls).
+When ai beats are enabled in settings, the plugin can generate a triplet of beats for each scene: 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). these are stored in the scene’s yaml and rendered under the synopsis in the timeline. you can run the commands “update beats (manuscript order)” or “update beats (subplot)” to populate or refresh them. to control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point. note: if you have run this scene before, then be sure to clear beats cache. (prevents unnecessary duplicate api calls).
 
 ```yaml
 ---
@@ -161,45 +161,45 @@ BeatsUpdate: Yes
 ```
 <hr>
 
-**Advanced scene example**
+Advanced scene example
 
-While the plugin only requires a few specific metadata fields to function, your scene notes can contain any other frontmatter you need for your personal writing process. The Radial Timeline plugin will safely ignore any fields it doesn't use.
+While the plugin only requires a few specific metadata fields to function, your scene notes can contain any other frontmatter you need for your personal writing process. the radial timeline plugin will safely ignore any fields it doesn't use.
 
 Here is an example of a more detailed scene note that includes both plugin-specific fields and custom fields for personal organization.
 
 ```yaml
 ---
-# All required Radial Plugin fields come first, followed by Story Grid, Optional, and AI Beats.
+# All required radial plugin fields come first, followed by story grid, optional, and AI beats.
 
-Class: Scene     # Always "Scene" for this fileclass
-Act: 1     # Story Act number 1-3
+Class: Scene     # Always "scene" for this fileclass
+Act: 1     # Story act number 1-3
 When: 2000-01-31     # In-world date for the scene
 Duration: 0     # How much story time passes (minutes, hours, days)
 
 Synopsis: Explain concisely what happens in this scene.
 
 Subplots:     # Link to one or more arcs this scene belongs to
-  - Main Plot
-  - Plot 2
+  - main plot
+  - plot 2
 
-Characters:     # Characters on stage; link to Character notes
-  - "[[Protagonist A]]"
-  - "[[Mentor B]]"
+Characters:     # Characters on stage; link to character notes
+  - "[[protagonist a]]"
+  - "[[mentor b]]"
 
-Place:     # Location tags; link to class Place notes
-  - "[[Earth]]"
+Place:     # Location tags; link to class place notes
+  - "[[earth]]"
 
-Status: Todo     # Workflow status: Todo / Working / Complete
-Publish Stage: Zero     # Zero = draft, Author = ready for revision, House = reviewed and edited, Press = ready for publication
-Revision:     # Leave blank until Stage > Zero; increment as revisions occur
+Status: Todo     # Workflow status: todo / working / complete
+Publish Stage: Zero     # Zero = draft, author = ready for revision, house = reviewed and edited, press = ready for publication
+Revision:     # Leave blank until stage > zero; increment as revisions occur
 Due: 2026-01-31     # Deadline for this scene
-Pending Edits:     # Concrete revisions to address (e.g., "Change venue to a Moon of Jupiter.")
+Pending Edits:     # Concrete revisions to address (e.g., "change venue to a moon of jupiter.")
 
 # --- Story Grid Analysis ---
-Type:     # Scene type: Revelation / Turning Point / Confrontation / Decision / Setup / Payoff / Inciting Incident / Deepening
+Type:     # Scene type: revelation / turning point / confrontation / decision / setup / payoff / inciting incident / deepening
 Shift:     # Polarity change: + / - (or +/- if it flips both ways)
-Questions:     # Prompt: What is the reader wondering?
-Reader Emotion:     # e.g., Curious / Shocked / Uneasy / Hopeful / Betrayed / Triumphant
+Questions:     # Prompt: what is the reader wondering?
+Reader Emotion:     # e.g., curious / shocked / uneasy / hopeful / betrayed / triumphant
 Internal:     # How do the characters change? (e.g., from trusting → suspicious)
 
 # --- Optional Fields ---
@@ -209,10 +209,10 @@ Book: Book 1 A New Beginning     # Book project label
 Support Files:     # Attachments, references, research notes
 
 # --- AI-Generated Beats (triplets) ---
-beats3:     # Generated by AI: Scene 3
+beats3:     # Generated by AI: scene 3
 beats2:     # Generated by AI: middle flagged scene
-beats1:     # Generated by AI: Scene 1 
-BeatsUpdate:     # Type "Yes" to flag for update. Reminder: erase timestamp and clear cache
+beats1:     # Generated by AI: scene 1 
+BeatsUpdate:     # Type "yes" to flag for update. reminder: erase timestamp and clear cache
 ---
 ```
 
@@ -220,72 +220,72 @@ BeatsUpdate:     # Type "Yes" to flag for update. Reminder: erase timestamp and 
 
 ## Settings
 
-The plugin offers several settings to customize its behavior and enable AI features:
+The plugin offers several settings to customize its behavior and enable ai features:
 
-* Source path: set the root folder for scene files (for example, "Book 1/Scenes"). Leave blank to scan the entire vault.
-* Target completion date: optional target date (YYYY-MM-DD). A marker appears on the outer ring.
-* Outer ring shows all scenes: when on, the outer ring combines all subplot scenes and shows beat slices there only. When off, the outer ring shows Main Plot only and no beat slices are drawn.
-* AI settings for beats analysis: configure OpenAI or Anthropic for automated beat generation via commands.
-    * Default AI provider: choose OpenAI or Anthropic
-    * OpenAI settings: API key and model
-    * Anthropic settings: API key and model
-    * Log AI interactions to file: creates notes in an "AI" folder with request/response details
+* Source path: set the root folder for scene files (for example, "book 1/scenes"). leave blank to scan the entire vault.
+* Target completion date: optional target date (yyyy-mm-dd). a marker appears on the outer ring.
+* Outer ring shows all scenes: when on, the outer ring combines all subplot scenes and shows beat slices there only. when off, the outer ring shows main plot only and no beat slices are drawn.
+* AI settings for beats analysis: configure openai or anthropic for automated beat generation via commands.
+    * Default ai provider: choose openai or anthropic
+    * Openai settings: api key and model
+    * Anthropic settings: api key and model
+    * Log ai interactions to file: creates notes in an "ai" folder with request/response details
 * Debug mode: enables developer console logging for troubleshooting
-* Publishing stage colors: customize colors for `Publish Stage` values (Zero, Author, House, Press). Each has a reset button.
+* Publishing stage colors: customize colors for publish stage values (zero, author, house, press). each has a reset button.
 
 ## Installation
 
-**From Obsidian**
+From obsidian
 
-1.  Open Settings > Community plugins.
-2.  Turn off Safe mode if it's on.
-3.  Click Browse and search for "Radial Timeline".
-4.  Click Install and then Enable.
+1.  Open settings > community plugins.
+2.  Turn off safe mode if it's on.
+3.  Click browse and search for "radial timeline".
+4.  Click install and then enable.
 
 <hr>
 
-**Manual installation**
+Manual installation
 
-1.  Download the latest `main.js`, `styles.css`, and `manifest.json` from the <a href="https://github.com/EricRhysTaylor/radial-timeline/releases" target="_blank" rel="noopener">releases</a> page.
+1.  Download the latest main.js, styles.css, and manifest.json from the <a href="https://github.com/EricRhysTaylor/radial-timeline/releases" target="_blank" rel="noopener">releases</a> page.
 2.  Extract the files to your vault's .obsidian/plugins/radial-timeline
 
 ## Screen resolution suggestions
 
-The Radial Timeline is designed for high pixel density displays (around 200 PPI or higher) for an optimal visual quality. This means:
+The radial timeline is designed for high pixel density displays (around 200 ppi or higher) for an optimal visual quality. this means:
 
-- All Apple Retina displays or 2x pixel density (MacBooks, iMacs, etc.)
-- Windows systems with 4K displays or higher (may require adjusted scaling) will work well
-- Tablets and Mobile Phones all support High DPI
+- All apple retina displays or 2x pixel density (macbooks, imacs, etc.)
+- Windows systems with 4k displays or higher (may require adjusted scaling) will work well
+- Tablets and mobile phones all support high dpi
 
-If you're experiencing visual quality issues on Windows, please check your display scaling settings in Windows Settings > System > Display > Scale and layout.
+If you're experiencing visual quality issues on windows, please check your display scaling settings in windows settings > system > display > scale and layout.
 
 ## Technical implementation
 
-The Radial Timeline visualization was inspired by and draws on principles from <a href="https://d3js.org" target="_blank" rel="noopener">D3.js</a>, a powerful JavaScript library for producing dynamic, interactive data visualizations. While the plugin doesn't directly use the D3 library to reduce dependencies, it implements several D3-style approaches:
+The radial timeline visualization was inspired by and draws on principles from <a href="https://d3js.org" target="_blank" rel="noopener">d3.js</a>, a powerful javascript library for producing dynamic, interactive data visualizations. while the plugin doesn't directly use the d3 library to reduce dependencies, it implements several d3-style approaches:
 
-- SVG-based visualization techniques
+- Svg-based visualization techniques
 - Data-driven document manipulation
 - Interactive elements with hover and click behaviors
 - Radial layouts and polar coordinates
 - Scale transformations and data mapping
 - Dynamic color manipulation and pattern generation
 
-The visualizations are built using pure SVG and JavaScript, offering a lightweight solution that maintains the elegance and interactivity of D3-style visualizations while being fully compatible with Obsidian's rendering capabilities.
+The visualizations are built using pure svg and javascript, offering a lightweight solution that maintains the elegance and interactivity of d3-style visualizations while being fully compatible with obsidian's rendering capabilities.
 
 ## Author
 
-Created by Eric Rhys Taylor
+Created by eric rhys taylor
 
-This plugin adheres to Obsidian.md development best practices, including secure DOM manipulation and API compliance.
+This plugin adheres to obsidian.md development best practices, including secure dom manipulation and api compliance.
 
 ## Feedback and support
 
-If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">GitHub repository issues page</a>. If you find the Radial Timeline plugin useful and would like to support continued development, please consider buying me a coffee:
+If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">github repository issues page</a>. if you find the radial timeline plugin useful and would like to support continued development, please consider buying me a coffee:
 
 <a href="https://www.buymeacoffee.com/ericrhysTaylor" target="_blank" rel="noopener">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="width: 150px;" >
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="buy me a coffee" style="width: 150px;" >
 </a>
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the mit license - see the license file for details.
