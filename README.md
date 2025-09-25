@@ -2,10 +2,10 @@
   <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline Logo" width="10%">
 </p>
 <p align="center" style="font-family: 'Lato', sans-serif; font-weight: 100; font-size: 14px; margin-top: 12px; margin-bottom: 0; letter-spacing: 8px;">
-  Radial timeline
+  Radial Timeline
 </p>
 <p align="center" style="font-family: 'Lato', sans-serif; font-size: 14px; margin-top: 4px;">
-  by eric rhys taylor
+  by Eric Rhys Taylor
 </p>
 
 
