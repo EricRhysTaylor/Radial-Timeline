@@ -247,8 +247,6 @@ From obsidian
 3.  Click browse and search for "radial timeline".
 4.  Click install and then enable.
 
-<hr>
-
 Manual installation
 
 1.  Download the latest main.js, styles.css, and manifest.json from the <a href="https://github.com/EricRhysTaylor/radial-timeline/releases" target="_blank" rel="noopener">releases</a> page.
@@ -260,7 +258,7 @@ Manual installation
 
 The radial timeline is designed for high pixel density displays (around 200 ppi or higher) for an optimal visual quality. this means:
 
-- All apple retina displays or 2x pixel density (macbooks, imacs, etc.)
+- All Apple retina displays or 2x pixel density (macbooks, imacs, etc.)
 - Windows systems with 4k displays or higher (may require adjusted scaling) will work well
 - Tablets and mobile phones all support high dpi
 
@@ -285,7 +283,7 @@ The visualizations are built using pure svg and javascript, offering a lightweig
 
 ## Author
 
-Created by eric rhys taylor
+Created by Eric Rhys Taylor
 
 This plugin adheres to obsidian.md development best practices, including secure dom manipulation and api compliance.
 
@@ -293,7 +291,7 @@ This plugin adheres to obsidian.md development best practices, including secure 
 
 ## Feedback and support
 
-If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">github repository issues page</a>. if you find the radial timeline plugin useful and would like to support continued development, please consider buying me a coffee:
+Please see the Github Wiki for documentation at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/wiki"  target="_blank" rel="noopener">Github Radial Timeline Wiki</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">github repository issues page</a>. if you find the radial timeline plugin useful and would like to support continued development, please consider buying me a coffee:
 
 <a href="https://www.buymeacoffee.com/ericrhysTaylor" target="_blank" rel="noopener">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="buy me a coffee" style="width: 150px;" >
@@ -301,4 +299,4 @@ If you encounter issues or have feature requests, please file an issue on the <a
 
 ## License
 
-This project is licensed under the mit license - see the license file for details.
+This project is licensed under the MIT license - see the license file for details.
