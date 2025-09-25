@@ -1009,7 +1009,9 @@ export function createTimelineSVG(
                             ? '#E6E6E6' 
                             : getFillForItem(plugin, scene, maxStageColor, PUBLISH_STAGE_COLORS, totalPlotNotes, plotIndexByKey, true, subplotColorFor, true);
 
-                        const arcPath = buildCellArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
+                        // Extend plot slices slightly beyond the outer ring for a subtle "poke"
+                        const effectiveOuterR = scene.itemType === 'Plot' ? (outerR + 2) : outerR;
+                        const arcPath = buildCellArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
                         const sceneId = makeSceneId(act, ring, idx, true, true);
                         
                         // --- Create synopsis for OUTER ring item using matching ID ---
@@ -1062,7 +1064,7 @@ export function createTimelineSVG(
                         // No separator needed; spacing handled in positioning
 
                         svg += `
-                        <g class="scene-group" data-item-type="Scene" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
+                        <g class="scene-group" data-item-type="Scene" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(effectiveOuterR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
                             <path id="${sceneId}"
                                   d="${arcPath}" 
                                   fill="${color}" 
@@ -1257,10 +1259,11 @@ export function createTimelineSVG(
                                 const plotColor = adjustment < 0 
                                     ? plugin.darkenColor(maxStageColor, Math.abs(adjustment))
                                     : plugin.lightenColor(maxStageColor, adjustment);
-                                const plotArcPath = buildCellArcPath(innerR, outerR, plotStartAngle, plotEndAngle);
+                                // Extend the plot slice outer edge by 2px so it slightly exceeds the ring
+                                const plotArcPath = buildCellArcPath(innerR, outerR + 2, plotStartAngle, plotEndAngle);
                                 const sceneId = `scene-path-${act}-${ring}-${idx}`;
                                 svg += `
-                                <g class="scene-group" data-item-type="Plot" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                                <g class="scene-group" data-item-type="Plot" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(plotStartAngle)}" data-end-angle="${formatNumber(plotEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR + 2)}" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                     <path id="${sceneId}"
                                           d="${plotArcPath}" 
                                           fill="#E6E6E6" 
@@ -1268,8 +1271,8 @@ export function createTimelineSVG(
                                     <line 
                                         x1="${formatNumber(innerR * Math.cos(plotEndAngle))}" 
                                         y1="${formatNumber(innerR * Math.sin(plotEndAngle))}"
-                                        x2="${formatNumber(outerR * Math.cos(plotEndAngle))}" 
-                                        y2="${formatNumber(outerR * Math.sin(plotEndAngle))}"
+                                        x2="${formatNumber((outerR + 2) * Math.cos(plotEndAngle))}" 
+                                        y2="${formatNumber((outerR + 2) * Math.sin(plotEndAngle))}"
                                         stroke="#000000" stroke-width="1" shape-rendering="crispEdges" />
                                 </g>`;
                                 currentAngle += plotAngularWidth;
