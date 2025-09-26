@@ -55,10 +55,11 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 ## Commands
 
 * Open timeline: open the timeline view
-* Search timeline: filter by title, character, subplot, or date
+* Search timeline: keyword search across select metadata. Title, Synopsis, Character & Subplot
 * Clear search: reset all search filters
-* Update beats (manuscript order): process beatsupdate: yes notes in manuscript order
-* Update beats (subplot): pick a subplot and process beatsupdate: yes notes within that arc (uses contiguous prev/next within the chosen subplot)
+* Create Template File with frontmatter
+* Update beats (manuscript order)
+* Update beats (subplot)
 * Clear beats cache: clear saved beat results to force a full reprocess
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
