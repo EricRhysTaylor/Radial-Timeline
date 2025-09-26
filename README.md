@@ -290,7 +290,7 @@ This project stands on the shoulders of many generous teachers, tools, and story
 - The Story Grid, Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow; helpful for systematically evaluating arcs across scenes. [storygrid.com](https://storygrid.com).
 - The Obsidian community for a thriving plugin ecosystem and thoughtful feature development and implementation. [obsidian.md](https://obsidian.md).
 - The w3c svg specification and countless browser engineers for making vector graphics on the web dependable. [w3.org/Graphics/SVG](https://www.w3.org/Graphics/SVG/).
-- And more generally, Patricia Henley, literary author and my creative writing professor at Purdue University as well as my English professor at Vincennes University who was so encouraging. Yes, I'm still working on my novel. ;-) 
+- And more generally, Patricia Henley, literary author and my creative writing professor at [Purdue University](https://www.purdue.edu/) as well as my English professor at [Vincennes University](https://www.vinu.edu) who was so encouraging. 
 - All the wonderful science fiction authors I have read since I was a teenager.
 
 <hr>
