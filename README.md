@@ -286,7 +286,7 @@ The visualizations are built using pure svg and javascript, offering a lightweig
 This project stands on the shoulders of many generous teachers, tools, and storytellers:
 
 - d3.js at [d3js.org](https://d3js.org) for pioneering data-driven, svg-based visualization patterns that informed the radial layout, scales, and interaction patterns used here, even though the plugin implements them in plain svg and javascript within the DOM of Obsidian.
-- Save the Cat! Writes a Novel (2018), Jessica Brody — a practical articulation of the Save the Cat beats used by many authors. [Save the Cat](https://www.penguinrandomhouse.com/books/566247/save-the-cat-writes-a-novel-by-jessica-brody/).
+- Save the Cat! Writes a Novel (2018), Jessica Brody — a practical articulation of the Save the Cat beats used by many authors. [Save the Cat](https://www.jessicabrody.com/books/non-fiction/save-cat-writes-novel/about/).
 - The Story Grid, Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow; helpful for systematically evaluating arcs across scenes. [storygrid.com](https://storygrid.com).
 - The Obsidian community for a thriving plugin ecosystem and thoughtful feature development and implementation. [obsidian.md](https://obsidian.md).
 - The w3c svg specification and countless browser engineers for making vector graphics on the web dependable. [w3.org/Graphics/SVG](https://www.w3.org/Graphics/SVG/).
