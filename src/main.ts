@@ -640,10 +640,8 @@ export default class RadialTimelinePlugin extends Plugin {
         await this.loadSettings();
 
         // Load embedded fonts (no external requests per Obsidian guidelines)
-        try {
-            const { loadEmbeddedFonts } = await import('./utils/fontLoader');
-            loadEmbeddedFonts();
-        } catch {}
+        // Embedded font injection removed to avoid inserting <style> tags at runtime.
+        // All styles should live in styles.css so Obsidian can manage load/unload.
 
         // Initialize SynopsisManager
         this.synopsisManager = new SynopsisManager(this);

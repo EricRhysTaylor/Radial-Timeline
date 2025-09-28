@@ -1,12 +1,11 @@
+import { normalizePath } from 'obsidian';
+
 /**
- * Sanitize a vault-relative source path by trimming whitespace and removing
- * any leading or trailing slashes.
+ * Sanitize a vault-relative source path using Obsidian's normalizePath.
  */
 export function sanitizeSourcePath(sourcePath: string | undefined | null): string {
-  let p = (sourcePath || '').trim();
-  if (p.startsWith('/')) p = p.slice(1);
-  if (p.endsWith('/')) p = p.slice(0, -1);
-  return p;
+  const p = (sourcePath || '').trim();
+  return p ? normalizePath(p) : '';
 }
 
 /**

@@ -50,7 +50,7 @@ export class ZeroDraftModal extends Modal {
                 const next = (this.textareaEl.value || '').trim();
                 // If we are clearing existing non-empty content, confirm deletion
                 if (this.originalText.length > 0 && next.length === 0) {
-                    const confirmed = window.confirm('Delete existing Pending Edits content? This will remove all previous text.');
+                    const confirmed = window.confirm('Delete existing pending edits content? This will remove all previous text.');
                     if (!confirmed) return; // Do not close or write
                 }
                 // Proceed with write

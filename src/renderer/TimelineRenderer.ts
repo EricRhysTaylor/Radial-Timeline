@@ -1698,14 +1698,9 @@ export function createTimelineSVG(
                 />
             `;
 
-            // Use estimateResult.date for display format
+            // Use estimateResult.date for display format (no year-count prefix)
             const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
-            
-            // Add year indicator for completion estimates beyond current year
-            const now = new Date();
-            const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
-            const yearIndicator = yearsDiff > 0 ? `[${yearsDiff + 1}] ` : '';
-            const dateDisplay = `${yearIndicator}${dateFormatter.format(estimatedCompletionDate)}`;
+            const dateDisplay = `${dateFormatter.format(estimatedCompletionDate)}`;
             
             // --- Get stats string from estimateResult --- START ---
             const total = estimateResult.total;
@@ -1716,8 +1711,8 @@ export function createTimelineSVG(
 
             // ... (calculate label positions using absoluteDatePos) ...
             const labelRadius = progressRadius - 45;
-            // Adjust offset based on whether there's a year indicator - longer text needs more shift
-            const maxOffset = yearsDiff > 0 ? -30 : -18; // Extra shift for multi-year estimates
+            // Fixed offset for label placement
+            const maxOffset = -18;
             const offsetX = maxOffset * Math.cos(absoluteDatePos);
             const maxYOffset = 5;
             const offsetY = -maxYOffset * Math.sin(absoluteDatePos);

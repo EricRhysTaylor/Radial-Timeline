@@ -7,9 +7,9 @@ import {
   Notice,
   TextComponent,
   ColorComponent,
-  AbstractInputSuggest,
   TFolder,
 } from 'obsidian';
+import { FolderSuggest } from './FolderSuggest';
 import { fetchAnthropicModels } from '../api/anthropicApi';
 import { fetchOpenAiModels } from '../api/openaiApi';
 import { fetchGeminiModels } from '../api/geminiApi';
@@ -31,51 +31,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
-    // Folder suggest implementation using Obsidian's AbstractInputSuggest
+    // Folder suggest implementation delegated to its own class
     private attachFolderSuggest(text: TextComponent) {
-        const plugin = this.plugin;
         const inputEl = text.inputEl;
-        class FolderSuggest extends AbstractInputSuggest<TFolder> {
-            constructor(app: App, input: HTMLInputElement) {
-                super(app, input);
-            }
-            getSuggestions(query: string): TFolder[] {
-                const q = query?.toLowerCase() ?? '';
-                // Gather all folders in the vault
-                const files = this.app.vault.getAllLoadedFiles();
-                const folders = files.filter((f): f is TFolder => f instanceof TFolder);
-                if (!q) return folders;
-                return folders.filter(f => f.path.toLowerCase().includes(q));
-            }
-            renderSuggestion(folder: TFolder, el: HTMLElement): void {
-                el.setText(folder.path);
-            }
-            selectSuggestion(folder: TFolder, _evt: MouseEvent | KeyboardEvent): void {
-                // Best-effort: update both the TextComponent and the raw input element
-                try { text.setValue(folder.path); } catch {}
-                if ((this as any).inputEl) {
-                    try { (this as any).inputEl.value = folder.path; } catch {}
-                }
-
-                // Persist + validate
-                plugin.settings.sourcePath = folder.path;
-                void plugin.saveSettings();
-                void plugin.validateAndRememberPath(folder.path).then((ok) => {
-                    if (ok) {
-                        inputEl.removeClass('setting-input-error');
-                        inputEl.addClass('setting-input-success');
-                        window.setTimeout(() => inputEl.removeClass('setting-input-success'), 1000);
-                    } else {
-                        inputEl.addClass('setting-input-error');
-                        window.setTimeout(() => inputEl.removeClass('setting-input-error'), 2000);
-                    }
-                });
-                // Close suggestions and focus input
-                try { this.close(); } catch {}
-                try { inputEl.focus(); } catch {}
-            }
-        }
-        new FolderSuggest(this.app, inputEl);
+        // Instance wires itself to input events; selection callback handles save/validation
+        new FolderSuggest(this.app, inputEl, this.plugin, text);
     }
 
     // Dims non-selected provider sections based on chosen model/provider
@@ -163,19 +123,24 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             // Click to select
             suggestionEl.addEventListener('click', async () => {
                 textInput.setValue(path);
-                this.plugin.settings.sourcePath = path;
-                await this.plugin.saveSettings();
-                container.classList.add('hidden');
-                
-                // Clear existing validation classes and show success feedback
-                textInput.inputEl.removeClass('setting-input-error');
-                textInput.inputEl.addClass('setting-input-success');
-                window.setTimeout(() => {
-                    textInput.inputEl.removeClass('setting-input-success');
-                }, 1000);
-                
-                // Focus back to input and trigger change event
-                textInput.inputEl.focus();
+                // Validate and remember; only save the setting if valid
+                const ok = await this.plugin.validateAndRememberPath(path);
+                if (ok) {
+                    this.plugin.settings.sourcePath = path;
+                    await this.plugin.saveSettings();
+                    container.classList.add('hidden');
+                    // Clear existing validation classes and show success feedback
+                    textInput.inputEl.removeClass('setting-input-error');
+                    textInput.inputEl.addClass('setting-input-success');
+                    window.setTimeout(() => {
+                        textInput.inputEl.removeClass('setting-input-success');
+                    }, 1000);
+                } else {
+                    textInput.inputEl.addClass('setting-input-error');
+                    window.setTimeout(() => textInput.inputEl.removeClass('setting-input-error'), 2000);
+                }
+                // Focus back to input
+                try { textInput.inputEl.focus(); } catch {}
             });
         });
     }
@@ -234,9 +199,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
             // Handle value changes
             text.onChange(async (value) => {
-                this.plugin.settings.sourcePath = value;
-                await this.plugin.saveSettings();
-                
                 // Clear any existing validation classes
                 text.inputEl.removeClass('setting-input-success');
                 text.inputEl.removeClass('setting-input-error');
@@ -244,17 +206,20 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 // Validate and remember path when Enter is pressed or field loses focus
                 if (value.trim()) {
                     const isValid = await this.plugin.validateAndRememberPath(value);
-                    if (!isValid) {
+                    if (isValid) {
+                        // Save once with normalized, valid path
+                        this.plugin.settings.sourcePath = value;
+                        await this.plugin.saveSettings();
+                        text.inputEl.addClass('setting-input-success');
+                        window.setTimeout(() => {
+                            text.inputEl.removeClass('setting-input-success');
+                        }, 1000);
+                    } else {
                         // Show visual feedback for invalid paths
                         text.inputEl.addClass('setting-input-error');
                         window.setTimeout(() => {
                             text.inputEl.removeClass('setting-input-error');
                         }, 2000);
-                    } else {
-                        text.inputEl.addClass('setting-input-success');
-                        window.setTimeout(() => {
-                            text.inputEl.removeClass('setting-input-success');
-                        }, 1000);
                     }
                 } else {
                     // Empty path - no validation styling

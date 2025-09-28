@@ -673,8 +673,10 @@ This is a test scene created to help with initial Radial timeline setup.
         if (!scenes || scenes.length === 0) {
             // --- Build a contextual message describing why no scenes are shown ---
             let sourcePath = (this.plugin.settings.sourcePath || "").trim();
-            if (sourcePath.startsWith("/")) sourcePath = sourcePath.slice(1);
-            if (sourcePath.endsWith("/")) sourcePath = sourcePath.slice(0, -1);
+            // Use Obsidian's normalizePath to clean user-defined paths
+            if (sourcePath) {
+                sourcePath = normalizePath(sourcePath);
+            }
 
             let messageText: string;
 
