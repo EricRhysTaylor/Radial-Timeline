@@ -40,7 +40,7 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 - Creates an interactive radial timeline visualization of scenes
 - Organizes scenes by act, subplot, and numeric order
 - Rotates counterclockwise so act 2 can align under act 1 for readability
-- Supports save the cat beats via class: plot notes that render as slices
+- Supports Plotting System via class: plot notes that render as fixed-width slices
 - Shows scene details on hover: title, date, synopsis, subplots, characters, overdue and revisions lines
 - Color-codes scenes by status (complete, working, todo, etc.)
 - Displays plot notes with graduated shading and narrow width

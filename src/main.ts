@@ -1555,15 +1555,9 @@ public createTimelineSVG(scenes: Scene[]) {
     public log<T>(message: string, data?: T): void;
     public log(...args: unknown[]): void;
     public log(...args: unknown[]) {
-        if (!this.shouldDebugLog()) return;
-        try {
-            // Emit console.debug only in development (guarded by shouldDebugLog)
-            // Avoid noisy logs in production per Obsidian guidelines
-            // eslint-disable-next-line no-console
-            console.debug('[Radial timeline]', ...args);
-        } catch {
-            // ignore
-        }
+        // No-op to comply with Obsidian plugin guidelines and project policy
+        // Intentionally avoiding console.* calls in plugin code
+        void args; // prevent unused var in some TS configs
     }
 
     // Method to refresh the timeline if the active view exists (with debouncing)
