@@ -20,7 +20,7 @@
 
 A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and numeric order in a radial format for a comprehensive view of project.
 
-This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots and cells, wrapping in numeric order, to depict each scene. Various cues and interactions are available through a search feature and hover and click functionality. Hopefully, this will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
+This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplot and cells, wrapping in numeric order, to depict each scene. Various cues and interactions are available through a search feature and hover and click functionality. Hopefully, this will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
 
 
 <a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">
@@ -41,7 +41,7 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 - Organizes scenes by act, subplot, and numeric order
 - Rotates counterclockwise so act 2 can align under act 1 for readability
 - Supports Plotting System via class: plot notes that render as fixed-width slices
-- Shows scene details on hover: title, date, synopsis, subplots, characters, overdue and revisions lines
+- Shows scene details on hover: title, date, synopsis, subplot, character, overdue and revisions lines
 - Color-codes scenes by status (complete, working, todo, etc.)
 - Displays plot notes with graduated shading and narrow width
 - Supports light and dark themes
@@ -77,7 +77,7 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 ## All scenes mode 
 
-Toggle in settings to display either all scenes mode or main plot mode. for all scenes mode, the timeline with show all scenes from all subplots ordered in the outer ring with plot beats and subplot color coding. all scene mode provides a full picture with all of the details with plot beats.
+Toggle in settings to display either all scenes mode or main plot mode. for all scenes mode, the timeline with show all scenes from all subplot ordered in the outer ring with plot beats and subplot color coding. all scene mode provides a full picture with all of the details with plot beats.
 
 Main plot mode removes the subplot beats, shows only main plot scenes in the outer ring and uses publish stage coloring for all scenes, emphasizing progress towards getting the book ready for publication in a simplified view.
 
@@ -115,7 +115,7 @@ Synopsis: The protagonist discovers a mysterious artifact.
 Subplot:
   - Main Plot
   - Plot 2
-Characters:
+Character:
   - "[[Protagonist A]]"
   - "[[Mentor B]]"
 Status: Todo
@@ -182,11 +182,11 @@ Duration: 0     # How much story time passes (minutes, hours, days)
 
 Synopsis: Explain concisely what happens in this scene.
 
-Subplots:     # Link to one or more arcs this scene belongs to
+Subplot:     # Link to one or more arcs this scene belongs to
   - main plot
   - plot 2
 
-Character:     # Characters on stage; link to character notes
+Character:     # Character on stage; link to character notes
   - "[[protagonist a]]"
   - "[[mentor b]]"
 
@@ -204,7 +204,7 @@ Type:     # Scene type: revelation / turning point / confrontation / decision / 
 Shift:     # Polarity change: + / - (or +/- if it flips both ways)
 Questions:     # Prompt: what is the reader wondering?
 Reader Emotion:     # e.g., curious / shocked / uneasy / hopeful / betrayed / triumphant
-Internal:     # How do the characters change? (e.g., from trusting → suspicious)
+Internal:     # How do the character change? (e.g., from trusting → suspicious)
 
 # --- Optional Fields ---
 Total Time: 0.0     # Writing/production time spent (hours in decimal)

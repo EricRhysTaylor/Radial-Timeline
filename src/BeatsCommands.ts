@@ -61,22 +61,16 @@ function compareScenesByOrder(a: SceneData, b: SceneData): number {
     return A.minor - B.minor;
 }
 
-// Extract subplot names from frontmatter with tolerant key handling
+// Extract subplot names from frontmatter (strict: Subplot or subplot)
 function getSubplotNamesFromFM(fm: Record<string, unknown>): string[] {
-    const candidates = [
-        fm?.subplot,
-        fm?.Subplot,
-        (fm as Record<string, unknown>)['Subplots'],
-        (fm as Record<string, unknown>)['subplots']
-    ];
-    let list: string[] = [];
-    for (const c of candidates) {
-        if (!c) continue;
-        if (typeof c === 'string') list = list.concat([c.trim()]);
-        else if (Array.isArray(c)) list = list.concat(c.map(s => String(s).trim()));
+    const value = (fm?.Subplot ?? fm?.subplot) as unknown;
+    if (typeof value === 'string' && value.trim()) {
+        return [value.trim()];
     }
-    // de-dup and filter empties
-    return Array.from(new Set(list.filter(Boolean)));
+    if (Array.isArray(value)) {
+        return (value as unknown[]).map(v => String(v).trim()).filter(Boolean);
+    }
+    return [];
 }
 
 function hasWordsContent(fm: Record<string, unknown>): boolean {
@@ -868,7 +862,7 @@ export async function processBySubplotOrder(
     vault: Vault
 ): Promise<void> {
      
-     const notice = new Notice("Processing Subplots: Getting scene data...", 0);
+     const notice = new Notice("Processing Subplot: Getting scene data...", 0);
 
     try {
     const allScenes = await getAllSceneData(plugin, vault);
@@ -1020,7 +1014,7 @@ export async function processBySubplotOrder(
                  await plugin.saveSettings();
 
         notice.hide();
-         new Notice(`✅ Subplot Order Processing Complete: ${totalProcessedCount}/${totalTripletsAcrossSubplots} triplets processed.`);
+         new Notice(`✅ Subplot order processing complete: ${totalProcessedCount}/${totalTripletsAcrossSubplots} triplets processed.`);
          plugin.refreshTimelineIfNeeded(null);
 
      } catch (error) {
@@ -1328,7 +1322,7 @@ export async function createTemplateScene(
             BeatsUpdate: 'No'
         } as Record<string, unknown>;
 
-        const body = '\nWrite your scene here. Replace Subplot/Characters/Place in the frontmatter as needed.';
+        const body = '\nWrite your scene here. Replace Subplot/Character/Place in the frontmatter as needed.';
         const content = `---\n${stringifyYaml(frontmatter)}---\n${body}\n`;
 
         await vault.create(targetPath, content);

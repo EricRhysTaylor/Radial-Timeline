@@ -296,7 +296,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // --- Timeline outer ring content ---
         new Settings(containerEl)
             .setName('Outer ring shows all scenes and plot beats')
-            .setDesc('If enabled, the outer ring shows ordered scenes from all subplots with their own colors. Plot Beats slices (gray) with full titles are shown on the outer ring.')
+            .setDesc('If enabled, the outer ring shows ordered scenes from all subplot with their own colors. Plot Beats slices (gray) with full titles are shown on the outer ring.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.outerRingAllScenes || false)
                 .onChange(async (value) => {

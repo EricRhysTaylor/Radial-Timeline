@@ -24,7 +24,7 @@ interface RadialTimelineSettings {
         Press: string;
     };
     subplotColors: string[]; // 16 subplot palette colors
-    outerRingAllScenes?: boolean; // If true, outer ring shows all scenes; inner rings remain subplots
+    outerRingAllScenes?: boolean; // If true, outer ring shows all scenes; inner rings remain subplot
     logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
     processedBeatContexts: string[]; // <<< ADDED: Cache for processed triplets
     debug: boolean; // Add debug setting
@@ -37,7 +37,7 @@ interface RadialTimelineSettings {
     defaultAiProvider?: 'openai' | 'anthropic' | 'gemini'; // <<< ADDED: Default AI provider
     openaiModelId?: string; // <<< ADDED: Selected OpenAI Model ID
     // Feature toggles
-    enableAiBeats?: boolean; // Show AI beats features (colors + synopsis)
+    enableAiBeats: boolean; // Show AI beats features (colors + synopsis)
     enableZeroDraftMode?: boolean; // Intercept complete scenes in Stage Zero for Pending Edits modal
     // Optional: Store the fetched models list to avoid refetching?
     // availableOpenAiModels?: { id: string, description?: string }[];
@@ -53,7 +53,8 @@ export interface Scene {
     path?: string;
     subplot?: string;
     act?: string;
-    characters?: string[];
+    // Use singular meta key: Character
+    // character?: string[]; // removed in favor of Character
     pov?: string;
     location?: string;
     number?: number;
@@ -502,7 +503,7 @@ export default class RadialTimelinePlugin extends Plugin {
             return this.serializeFragment(fragment);
         }
         
-        // Special handling for metadata text (subplots and characters)
+        // Special handling for metadata text (subplots and character)
         if (decodedText.includes(',') && !decodedText.includes('<tspan') && !decodedText.includes('<')) {
             // This is a raw metadata line (comma-separated items)
             
@@ -1208,16 +1209,16 @@ export default class RadialTimelinePlugin extends Plugin {
                     const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
     
                     // Parse Character metadata - it might be a string or array
-                    let characters = metadata.Character;
-                    if (characters) {
+                    let characterList = metadata.Character;
+                    if (characterList) {
                         // Convert to array if it's a string
-                        if (!Array.isArray(characters)) {
-                            characters = [characters];
+                        if (!Array.isArray(characterList)) {
+                            characterList = [characterList];
                         }
                         // Clean up the internal link format (remove [[ and ]])
-                        characters = characters.map((char: string) => char.replace(/[\[\]]/g, ''));
+                        characterList = characterList.map((char: string) => char.replace(/[\[\]]/g, ''));
                     } else {
-                            characters = [];
+                            characterList = [];
                     }
     
                     // Create a separate entry for each subplot
@@ -1228,14 +1229,13 @@ export default class RadialTimelinePlugin extends Plugin {
                                 path: file.path,
                             subplot: subplot,
                                 act: validActNumber.toString(),
-                                characters: characters,
                                 pov: metadata.Pov,
                                 location: metadata.Place,
                                 number: validActNumber,
                                 synopsis: metadata.Synopsis,
                                 when: when,
                             actNumber: validActNumber,
-                                Character: characters,
+                                Character: characterList,
                                 status: metadata.Status,
                                 "Publish Stage": metadata["Publish Stage"],
                                 due: metadata.Due,
@@ -1712,7 +1712,7 @@ public createTimelineSVG(scenes: Scene[]) {
         
         // Create search input
         const searchInput = new TextComponent(searchContainer);
-        searchInput.setPlaceholder('Enter search term (min 3 characters)');
+        searchInput.setPlaceholder('Enter search term (min 3 letters)');
         searchInput.inputEl.classList.add('search-input');
         
         // Prepopulate with current search term if one exists
@@ -1734,7 +1734,7 @@ public createTimelineSVG(scenes: Scene[]) {
                     this.performSearch(term);
                     modal.close();
                 } else {
-                    new Notice('Please enter at least 3 characters to search');
+                    new Notice('Please enter at least 3 letters to search');
                 }
             });
         
@@ -1758,7 +1758,7 @@ public createTimelineSVG(scenes: Scene[]) {
                     this.performSearch(term);
                     modal.close();
                 } else {
-                    new Notice('Please enter at least 3 characters to search');
+                    new Notice('Please enter at least 3 letters to search');
                 }
             }
         });

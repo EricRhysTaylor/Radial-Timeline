@@ -7,7 +7,6 @@ interface Scene {
   path?: string;
   subplot?: string;
   act?: string;
-  characters?: string[];
   pov?: string;
   location?: string;
   number?: number;
@@ -129,7 +128,7 @@ export default class SynopsisManager {
     // Determine where the synopsis content ends and metadata begins
     let synopsisEndIndex = contentLines.findIndex(line => line === '\u00A0' || line === '');
     if (synopsisEndIndex === -1) {
-      // If no separator found, assume last two lines are metadata (subplots & characters)
+      // If no separator found, assume last two lines are metadata (subplot & character)
       synopsisEndIndex = Math.max(0, contentLines.length - 2);
     }
     
@@ -400,13 +399,13 @@ export default class SynopsisManager {
         }
       }
       
-      // Process characters - second metadata item
+      // Process character - second metadata item
       if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim().length > 0) {
          // Calculate character Y based on subplot position plus standard line height
         const characterY = subplotStartY + lineHeight; 
-        const characters = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
+        const characterList = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
         
-        if (characters.length > 0) {
+        if (characterList.length > 0) {
           const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
           characterTextElement.setAttribute("class", "info-text metadata-text");
           characterTextElement.setAttribute("x", "0");
@@ -414,7 +413,7 @@ export default class SynopsisManager {
           characterTextElement.setAttribute("text-anchor", "start");
           
           // Format each character with its own color
-          characters.forEach((character, j) => {
+          characterList.forEach((character, j) => {
             const color = getCharacterColor(character.trim()); // Restore random color
             const characterText = character.trim();
             const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
@@ -423,7 +422,7 @@ export default class SynopsisManager {
             tspan.setAttribute("style", `fill: ${color} !important`);
             tspan.textContent = characterText;
             characterTextElement.appendChild(tspan);
-            if (j < characters.length - 1) {
+            if (j < characterList.length - 1) {
               const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
               comma.setAttribute("fill", "var(--text-muted)");
               comma.textContent = ", ";

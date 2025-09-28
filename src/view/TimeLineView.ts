@@ -436,7 +436,7 @@ export class RadialTimelineView extends ItemView {
         // Iterate through all text elements and replace their content
         // This ensures we completely replace any previous search highlighting
         
-        // First, find all subplots to highlight
+        // First, find all subplot to highlight
         const subplotTspans = this.contentEl.querySelectorAll('tspan[data-item-type="subplot"]');
         const searchTerm = this.plugin.searchTerm;
         
@@ -444,7 +444,7 @@ export class RadialTimelineView extends ItemView {
         const escapedPattern = escapeRegExp(searchTerm);
         const wordBoundaryRegex = new RegExp(`\\b(${escapedPattern})\\b`, 'gi');
         
-        // Process all subplots
+        // Process all subplot
         subplotTspans.forEach((tspan: Element) => {
             // Get the original text content
             const originalText = tspan.textContent || '';
@@ -497,12 +497,12 @@ export class RadialTimelineView extends ItemView {
             }
         });
         
-        // Now, process all character elements
+        // Now, process all character labels
         const characterTspans = this.contentEl.querySelectorAll('tspan[data-item-type="character"]');
         
-        // Process all characters
+        // Process all character
         characterTspans.forEach((tspan: Element) => {
-            // Same logic as for subplots
+            // Same logic as for subplot
             const originalText = tspan.textContent || '';
             
             if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) {

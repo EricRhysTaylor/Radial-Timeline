@@ -815,7 +815,7 @@ export function createTimelineSVG(
                 count
             }));
 
-            // Sort subplots, but ensure "Main Plot" or empty subplot is first
+            // Sort subplot, but ensure "Main Plot" or empty subplot is first
             subplotCounts.sort((a, b) => {
                 // If either subplot is "Main Plot" or empty, prioritize it
                 if (a.subplot === "Main Plot" || !a.subplot) return -1;
@@ -880,7 +880,7 @@ export function createTimelineSVG(
                 return;
             }
             
-            // Build ordered subplots to show with synopsis
+            // Build ordered subplot to show with synopsis
             const allSceneSubplots = scenes.filter(s => s.path === scene.path).map(s => s.subplot).filter((s): s is string => s !== undefined);
             const sceneSubplot = scene.subplot || 'Main Plot';
             const orderedSubplots = [sceneSubplot, ...allSceneSubplots.filter(s => s !== sceneSubplot)];
@@ -1754,7 +1754,7 @@ export function createTimelineSVG(
             const ring = totalRings - ringOffset - 1; // Start from the outermost ring
             const subplot = masterSubplotOrder[ringOffset];
             
-            // Skip empty subplots
+            // Skip empty subplot
             if (!subplot) continue;
             
             const innerR = ringStartRadii[ring];

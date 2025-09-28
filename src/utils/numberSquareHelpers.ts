@@ -1,5 +1,5 @@
 /**
- * Helper function to escape XML/HTML special characters
+ * Helper function to escape XML/HTML special character
  */
 function escapeXml(unsafe: string): string {
     return unsafe.replace(/[<>&'"]/g, (c) => {
