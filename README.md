@@ -182,9 +182,9 @@ Duration: 0     # How much story time passes (minutes, hours, days)
 
 Synopsis: Explain concisely what happens in this scene.
 
-Subplot:     # Link to one or more arcs this scene belongs to
-  - main plot
-  - plot 2
+Subplot:     # Reference one or more arcs this scene belongs to. Default = Main Plot
+  - Main Plot
+  - Plot 2
 
 Character:     # Character on stage; link to character notes
   - "[[protagonist a]]"
