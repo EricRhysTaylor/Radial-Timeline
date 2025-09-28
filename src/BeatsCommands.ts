@@ -1317,7 +1317,7 @@ export async function createTemplateScene(
             When: isoDate,
             Synopsis: 'Write a one-sentence summary of this scene.',
             Subplot: ['Main Plot'],
-            Characters: [],
+            Character: [],
             Place: [],
             Status: 'Todo',
             'Publish Stage': 'Zero',

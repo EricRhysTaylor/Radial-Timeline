@@ -186,7 +186,7 @@ Subplots:     # Link to one or more arcs this scene belongs to
   - main plot
   - plot 2
 
-Characters:     # Characters on stage; link to character notes
+Character:     # Characters on stage; link to character notes
   - "[[protagonist a]]"
   - "[[mentor b]]"
 
