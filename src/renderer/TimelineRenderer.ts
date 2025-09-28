@@ -204,7 +204,7 @@ export function createTimelineSVG(
     
         const sceneCount = scenes.length;
         const size = 1600;
-        const margin = 36; //KEY VALUE reduce timeline radius to make more room for ring text at top. Offset from the SVG edge to the First Plot Ring
+        const margin = 37; //KEY VALUE reduce timeline radius to make more room for ring text at top. Offset from the SVG edge to the First Plot Ring
         const innerRadius = 200; // the first ring is 200px from the center
         const outerRadius = size / 2 - margin;
         const maxTextWidth = 500; // Define maxTextWidth for the synopsis text

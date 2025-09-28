@@ -6,6 +6,7 @@ export interface PluginRendererFacade {
         debug: boolean;
         targetCompletionDate?: string;
         outerRingAllScenes?: boolean;
+        enableAiBeats: boolean;
     };
     searchActive: boolean;
     searchResults: Set<string>;
