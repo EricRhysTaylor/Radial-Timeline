@@ -698,23 +698,7 @@ export default class RadialTimelinePlugin extends Plugin {
         
         // Listen for tab changes and file manager interactions using Obsidian's events
         // This is more reliable than DOM events
-        
-        // Track active file changes
-        this.registerEvent(
-            this.app.workspace.on('file-open', (file: TFile | null) => {
-                if (file) {
-                    this.log('File opened: ' + file.path);
-                    // When a file is opened, highlight it in the timeline
-                    this.highlightSceneInTimeline(file.path, true);
-                    
-                    // Store a reference to clear the highlight when another file is opened
-                    if (this._lastHighlightedFile && this._lastHighlightedFile !== file.path) {
-                        this.highlightSceneInTimeline(this._lastHighlightedFile, false);
-                    }
-                    this._lastHighlightedFile = file.path;
-                }
-            })
-        );
+        // (file-open listener consolidated below at line ~941)
         
         // Track file explorer hover using DOM events since Obsidian doesn't have specific events for this
         this.registerDomEvent(document, 'mouseover', (evt: MouseEvent) => {
@@ -832,11 +816,7 @@ export default class RadialTimelinePlugin extends Plugin {
         });
         
         // Track workspace layout changes to update our view
-        this.registerEvent(
-            this.app.workspace.on('layout-change', () => {
-                this.updateOpenFilesTracking();
-            })
-        );
+        // (layout-change listener consolidated below at line ~949)
 
         // --- ADD NEW COMMANDS --- 
         this.addCommand({
@@ -937,15 +917,25 @@ export default class RadialTimelinePlugin extends Plugin {
             this.updateOpenFilesTracking(); // Track initially open files
         });
 
-         // Register file open/close events  
+         // Register file open/close events (consolidated from duplicate listener above)
         this.registerEvent(this.app.workspace.on('file-open', (file) => {
             if (file) {
-                 // Check if the opened file is within the sourcePath
+                this.log('File opened: ' + file.path);
+                
+                // Clear highlight from previously opened file
+                if (this._lastHighlightedFile && this._lastHighlightedFile !== file.path) {
+                    this.highlightSceneInTimeline(this._lastHighlightedFile, false);
+                }
+                
+                // Highlight newly opened file
+                this.highlightSceneInTimeline(file.path, true);
+                this._lastHighlightedFile = file.path;
+                
+                // Check if the opened file is within the sourcePath
                 if (this.isSceneFile(file.path)) {
                     this.openScenePaths.add(file.path);
-                     this.highlightSceneInTimeline(file.path, true);
-                     this.refreshTimelineIfNeeded(null);
-                 } 
+                    this.refreshTimelineIfNeeded(null);
+                } 
             } else {
                 // Handle case where no file is open (e.g., closing the last tab)
                 // Potentially clear highlights or update state
