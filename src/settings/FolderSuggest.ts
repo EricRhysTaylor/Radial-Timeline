@@ -1,4 +1,4 @@
-import { App, AbstractInputSuggest, TFolder, TextComponent } from 'obsidian';
+import { App, AbstractInputSuggest, TFolder, TextComponent, normalizePath } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 
 /**
@@ -32,15 +32,16 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
   selectSuggestion(folder: TFolder, _evt: MouseEvent | KeyboardEvent): void {
     const inputEl = this.text.inputEl;
     // Update the text field immediately for user feedback
-    try { this.text.setValue(folder.path); } catch {}
+    const normalized = normalizePath(folder.path);
+    try { this.text.setValue(normalized); } catch {}
     if ((this as any).inputEl) {
-      try { (this as any).inputEl.value = folder.path; } catch {}
+      try { (this as any).inputEl.value = normalized; } catch {}
     }
 
     // Validate and remember; only save the setting once on success
-    void this.plugin.validateAndRememberPath(folder.path).then(async (ok) => {
+    void this.plugin.validateAndRememberPath(normalized).then(async (ok) => {
       if (ok) {
-        this.plugin.settings.sourcePath = folder.path;
+        this.plugin.settings.sourcePath = normalized;
         await this.plugin.saveSettings();
         inputEl.removeClass('setting-input-error');
         inputEl.addClass('setting-input-success');

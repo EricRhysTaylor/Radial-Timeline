@@ -8,6 +8,7 @@ import {
   TextComponent,
   ColorComponent,
   TFolder,
+  normalizePath,
 } from 'obsidian';
 import { FolderSuggest } from './FolderSuggest';
 import { fetchAnthropicModels } from '../api/anthropicApi';
@@ -205,10 +206,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 
                 // Validate and remember path when Enter is pressed or field loses focus
                 if (value.trim()) {
-                    const isValid = await this.plugin.validateAndRememberPath(value);
+                    const normalized = normalizePath(value.trim());
+                    const isValid = await this.plugin.validateAndRememberPath(normalized);
                     if (isValid) {
                         // Save once with normalized, valid path
-                        this.plugin.settings.sourcePath = value;
+                        this.plugin.settings.sourcePath = normalized;
                         await this.plugin.saveSettings();
                         text.inputEl.addClass('setting-input-success');
                         window.setTimeout(() => {

@@ -1707,6 +1707,8 @@ public createTimelineSVG(scenes: Scene[]) {
         // Create search input container
         const searchContainer = contentEl.createDiv('search-container');
         searchContainer.classList.add('flex-container');
+        // Add plugin-specific class for scoped styling inside modal
+        searchContainer.classList.add('radial-timeline-search');
         
         // Create search input
         const searchInput = new TextComponent(searchContainer);

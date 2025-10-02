@@ -889,16 +889,19 @@ tspan .search-term {
     display: block;
 }
 
-/* Search container styles */
-.search-container {
+/* Search container styles (scoped to plugin container) */
+.radial-timeline-container .search-container {
     display: flex;
     align-items: center;
     gap: 8px;
 }
-.search-container .search-input {
-    flex: 2 1 0;
-    width: auto;
-    min-width: 0;
+/* removed empty rule: .radial-timeline-container .search-container .search-input */
+
+/* Modal-specific search input sizing */
+.radial-timeline-search .search-input {
+    width: 100%;
+    max-width: 100%;
+    flex: 1;
 }
 
 /* Search banner styles removed */
