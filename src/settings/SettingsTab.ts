@@ -262,8 +262,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // --- Timeline outer ring content ---
         new Settings(containerEl)
-            .setName('Outer ring shows all scenes and plot beats')
-            .setDesc('If enabled, the outer ring shows ordered scenes from all subplot with their own colors. Plot Beats slices (gray) with full titles are shown on the outer ring.')
+            .setName('All scenes mode or main plot mode')
+            .setDesc('If enabled, the outer ring shows ordered scenes from all subplots with subplot colors. Plot beats slices (gray) with labels are shown on the outer ring. When off, the outer ring shows only main plot scenes with publish stage coloring.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.outerRingAllScenes || false)
                 .onChange(async (value) => {
@@ -309,6 +309,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             .addDropdown(dropdown => {
                 type ModelChoice = { id: string; label: string; provider: 'anthropic' | 'gemini' | 'openai'; model: string };
                 const choices: ModelChoice[] = [
+                    { id: 'anthropic:claude-sonnet-4-5', label: 'Anthropic — Sonnet 4.5', provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
                     { id: 'anthropic:claude-sonnet-4', label: 'Anthropic — Sonnet 4', provider: 'anthropic', model: 'claude-sonnet-4-20250514' },
                     { id: 'anthropic:claude-opus-4-1', label: 'Anthropic — Opus 4.1', provider: 'anthropic', model: 'claude-opus-4-1-20250805' },
                     { id: 'gemini:gemini-2.5-pro', label: 'Gemini — Gemini 2.5 Pro', provider: 'gemini', model: 'gemini-2.5-pro' },

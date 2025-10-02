@@ -3,6 +3,7 @@ import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice } f
 import RadialTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
 import type { Scene } from '../main';
+import { SceneNumberInfo } from '../utils/constants';
 import { PlotLabelManager } from '../utils/plotLabelManager';
 import ZeroDraftModal from './ZeroDraftModal';
 
@@ -13,14 +14,7 @@ export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline";
 // CONSTANTS: Scene expansion constants
 const HOVER_EXPAND_FACTOR = 1.1; // expansion multiplier when text doesn't fit
 
-// For SceneNumberInfo we define a concrete interface matching the fields we store
-interface SceneNumberInfo {
-  number: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+// SceneNumberInfo now imported from constants
 
 // Timeline View implementation
 export class RadialTimelineView extends ItemView {
@@ -950,7 +944,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 let rafId: number | null = null;
 
                 const clearSelection = () => {
-                    const all = svg.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title, .grade-border-line');
+                    const all = svg.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
                     all.forEach(el => el.classList.remove('selected', 'non-selected'));
                     if (currentSynopsis) currentSynopsis.classList.remove('visible');
                     currentGroup = null; currentSynopsis = null; currentSceneId = null;
@@ -963,8 +957,6 @@ This is a test scene created to help with initial Radial timeline setup.
                     if (numberSquare) numberSquare.classList.add('selected');
                     const numberText = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
                     if (numberText) numberText.classList.add('selected');
-                    const gradeLine = svg.querySelector(`.grade-border-line[data-scene-id="${sceneId}"]`);
-                    if (gradeLine) gradeLine.classList.add('selected');
                     const sceneTitle = group.querySelector('.scene-title');
                     if (sceneTitle) sceneTitle.classList.add('selected');
 
@@ -983,7 +975,7 @@ This is a test scene created to help with initial Radial timeline setup.
                             }
                         });
                     }
-                    const all = svg.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title, .grade-border-line');
+                    const all = svg.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
                     all.forEach(el => {
                         if (!el.classList.contains('selected') && !related.has(el)) el.classList.add('non-selected');
                     });

@@ -2,6 +2,7 @@ import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, W
 import { escapeRegExp } from './utils/regex';
 import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils/colour';
 import { decodeHtmlEntities, parseSceneTitleComponents, renderSceneTitleComponents } from './utils/text';
+import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
@@ -74,14 +75,7 @@ export interface Scene {
     Description?: string; // For Plot beat descriptions
 }
 
-// Add this interface to store scene number information for the scene square and synopsis
-interface SceneNumberInfo {
-    number: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
+// SceneNumberInfo now imported from constants
 
 export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     sourcePath: '',
@@ -126,14 +120,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     ,enableZeroDraftMode: false
 };
 
-//a primary color for each status - references CSS variables
-const STATUS_COLORS = {
-    "Working": "var(--rt-color-working)",
-    "Todo": "var(--rt-color-todo)",
-    "Empty": "var(--rt-color-empty)",  // Light gray
-    "Due": "var(--rt-color-due)",
-    "Complete": "var(--rt-color-complete)" // Complete status
-};
+// STATUS_COLORS now imported from constants
 
 const NUM_ACTS = 3;
 
@@ -365,11 +352,10 @@ export default class RadialTimelinePlugin extends Plugin {
     // Debouncing for timeline refresh
     private refreshTimeout: number | null = null;
     
-    // --- Add variables to store latest estimate stats --- START ---
+    // Completion estimate stats
     latestTotalScenes: number = 0;
     latestRemainingScenes: number = 0;
     latestScenesPerWeek: number = 0;
-    // --- Add variables to store latest estimate stats --- END ---
     
     // Add a synopsisManager instance
     public synopsisManager: SynopsisManager;
@@ -389,6 +375,25 @@ export default class RadialTimelinePlugin extends Plugin {
     private getFirstTimelineView(): RadialTimelineView | null {
         const list = this.getTimelineViews();
         return list.length > 0 ? list[0] : null;
+    }
+
+    // Settings access helpers
+    private get aiProvider(): 'openai' | 'anthropic' | 'gemini' {
+        return this.settings.defaultAiProvider || 'openai';
+    }
+
+    private getApiKey(): string | undefined {
+        const provider = this.aiProvider;
+        if (provider === 'anthropic') return this.settings.anthropicApiKey;
+        if (provider === 'gemini') return this.settings.geminiApiKey;
+        return this.settings.openaiApiKey;
+    }
+
+    private getModelId(): string {
+        const provider = this.aiProvider;
+        if (provider === 'anthropic') return this.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+        if (provider === 'gemini') return this.settings.geminiModelId || 'gemini-2.5-pro';
+        return this.settings.openaiModelId || 'gpt-4.1';
     }
     
     /**
@@ -1562,21 +1567,9 @@ public createTimelineSVG(scenes: Scene[]) {
         
         // Debounce the refresh with a 1-second delay
         this.refreshTimeout = window.setTimeout(() => {
-            // Get all timeline views
-            const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
-                .map(leaf => leaf.view as RadialTimelineView)
-                .filter(view => view instanceof RadialTimelineView);
-
-            // Refresh each view
-            for (const view of timelineViews) {
-                if (view) {
-                    // Get the leaf that contains the view
-                    const leaf = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)[0];
-                    if (leaf) {
-                        view.refreshTimeline();
-                    }
-                }
-            }
+            // Get all timeline views and refresh them
+            const timelineViews = this.getTimelineViews();
+            timelineViews.forEach(view => view.refreshTimeline());
             
             this.refreshTimeout = null;
         }, 400); // 400 ms debounce
@@ -1800,18 +1793,8 @@ public createTimelineSVG(scenes: Scene[]) {
             });
             
             // Get all timeline views and refresh them
-            const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
-                .map(leaf => leaf.view as RadialTimelineView)
-                .filter(view => view instanceof RadialTimelineView);
-                
-            if (timelineViews.length > 0) {
-                // Update all timeline views with the new search results
-                timelineViews.forEach(view => {
-                    if (view) {
-                        view.refreshTimeline();
-                    }
-                });
-            }
+            const timelineViews = this.getTimelineViews();
+            timelineViews.forEach(view => view.refreshTimeline());
         });
     }
     
@@ -1821,18 +1804,8 @@ public createTimelineSVG(scenes: Scene[]) {
         this.searchResults.clear();
         
         // Get all timeline views and refresh them
-        const timelineViews = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE)
-            .map(leaf => leaf.view as RadialTimelineView)
-            .filter(view => view instanceof RadialTimelineView);
-
-        if (timelineViews.length > 0) {
-            // Refresh each view
-            timelineViews.forEach(view => {
-                if (view) {
-                    view.refreshTimeline();
-                }
-            });
-        }
+        const timelineViews = this.getTimelineViews();
+        timelineViews.forEach(view => view.refreshTimeline());
     }
 
     // Function to set CSS variables for RGB colors

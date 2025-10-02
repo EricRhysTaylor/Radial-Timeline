@@ -60,10 +60,10 @@
 }
 
 /* ADD stage-specific fill rules for title text – keep close to highlight-rect definitions so colours are defined in one place */
-.scene-info text.info-text.rt-title-text-main.rt-title-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)) !important; }
-.scene-info text.info-text.rt-title-text-main.rt-title-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important; }
-.scene-info text.info-text.rt-title-text-main.rt-title-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)) !important; }
-.scene-info text.info-text.rt-title-text-main.rt-title-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)) !important; }
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)) !important; }
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important; }
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)) !important; }
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)) !important; }
 
 /* styles.css */
 .radial-timeline-container {
@@ -185,16 +185,16 @@
 }
 .radial-timeline-svg #rotation-toggle .arrow-icon.is-hidden { display: none; }
 .radial-timeline-svg #rotation-toggle { cursor: pointer; }
-.scene-title.faded {
+.radial-timeline-container .rt-scene-title.rt-faded {
   opacity: 0.2;
 }
-.radial-timeline-container .scene-info {
+.radial-timeline-container .rt-scene-info {
   opacity: 0;
   pointer-events: none !important;
   z-index: 100;
   vector-effect: non-scaling-stroke;
 }
-.scene-info text {
+.radial-timeline-container .rt-scene-info text {
   stroke: white;
   stroke-width: 3px;
   paint-order: stroke;
@@ -324,14 +324,15 @@ dominant-baseline: middle;
   fill: #000000;
   pointer-events: none;
 }
-.rt-number-text.grade-A { fill: #00ff48; }
-.rt-number-text.grade-B { fill: #ffbb00; }
-.rt-number-text.grade-C { fill: #ff0000; }
+/* AI grade text colors - scoped to plugin */
+.rt-number-text.rt-grade-A { fill: #00ff48; }
+.rt-number-text.rt-grade-B { fill: #ffbb00; }
+.rt-number-text.rt-grade-C { fill: #ff0000; }
 .rt-number-square.rt-faded,
 .rt-number-text.rt-faded {
   opacity: 1;
 }
-.scene-title.selected {
+.radial-timeline-container .rt-scene-title.rt-selected {
   stroke: #000000;
   stroke-width: 3px;
   paint-order: stroke;
@@ -578,13 +579,13 @@ tspan .search-term {
 .rt-number-text.rt-has-edits.rt-scene-is-open.non-selected { fill: #ffffff; }
 .rt-number-text.rt-has-edits.selected { fill: #ffffff; font-weight: bold; }
 
-/* Ensure AI grade color persists when tab is open or has edits */
-.rt-number-text.rt-scene-is-open.grade-A:not(.selected):not(.non-selected), 
-.rt-number-text.rt-has-edits.grade-A:not(.selected):not(.non-selected) { fill: #00ff48; }
-.rt-number-text.rt-scene-is-open.grade-B:not(.selected):not(.non-selected), 
-.rt-number-text.rt-has-edits.grade-B:not(.selected):not(.non-selected) { fill: #ff8400; }
-.rt-number-text.rt-scene-is-open.grade-C:not(.selected):not(.non-selected), 
-.rt-number-text.rt-has-edits.grade-C:not(.selected):not(.non-selected) { fill: #ff0000; }
+/* Ensure AI grade text color persists when tab is open or has edits */
+.rt-number-text.rt-scene-is-open.rt-grade-A:not(.selected):not(.non-selected), 
+.rt-number-text.rt-has-edits.rt-grade-A:not(.selected):not(.non-selected) { fill: #00ff48; }
+.rt-number-text.rt-scene-is-open.rt-grade-B:not(.selected):not(.non-selected), 
+.rt-number-text.rt-has-edits.rt-grade-B:not(.selected):not(.non-selected) { fill: #a25400; }
+.rt-number-text.rt-scene-is-open.rt-grade-C:not(.selected):not(.non-selected), 
+.rt-number-text.rt-has-edits.rt-grade-C:not(.selected):not(.non-selected) { fill: #ff0000; }
 .rt-clear-search-btn {
   cursor: pointer;
 }
@@ -1067,34 +1068,6 @@ tspan .search-term {
 .beats-text-neutral {
   fill: #000000; /* Solid black */
   font-weight: bold; /* Match the weight of positive/negative */
-}
-
-
-/* Grade line styles */
-.grade-border-line {
-  stroke-width: 2px; /* Set the thickness of the line */
-  /* Add other line styling if needed, like stroke-linecap: round; */
-}
-
-/* Grade-specific colors */
-.grade-border-line.grade-A {
-  stroke: #00ff48; /*  green */
-}
-.grade-border-line.grade-B {
-  stroke: #ffbb00; /*  yellow */
-}
-.grade-border-line.grade-C {
-  stroke: #ff0000; /*  red */
-}
-
-/* grade line non-selected state for all grades */
-.grade-border-line.non-selected {
-  stroke: none;
-}
-
-/* grade line non-selected state for all grades */
-.grade-border-line.selected {
-  stroke: none;
 }
 
 /* Ensure search terms maintain their color */

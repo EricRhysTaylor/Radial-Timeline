@@ -1,4 +1,4 @@
-import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, PLOT_PIXEL_WIDTH, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID } from '../utils/constants';
+import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, PLOT_PIXEL_WIDTH, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
 import type { Scene } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString } from '../utils/date';
@@ -12,22 +12,7 @@ import {
 } from '../utils/sceneHelpers';
 import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
 
-// Local definition for scene number metadata used in number squares and synopsis
-interface SceneNumberInfo {
-    number: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
-const STATUS_COLORS = {
-  Working: 'var(--rt-color-working)',
-  Todo: 'var(--rt-color-todo)',
-  Empty: 'var(--rt-color-empty)',
-  Due: 'var(--rt-color-due)',
-  Complete: 'var(--rt-color-complete)',
-};
+// STATUS_COLORS and SceneNumberInfo now imported from constants
 
 // Stage header tooltips (used for grid row headers Z/A/H/P)
 const STAGE_HEADER_TOOLTIPS: Record<string, string> = {
@@ -2019,7 +2004,7 @@ export function createTimelineSVG(
 
                 // Get grade from our Map for this scene
                 const grade = sceneGrades.get(sceneId);
-                if (plugin.settings.enableAiBeats && grade) textClasses += ` grade-${grade}`;
+                if (plugin.settings.enableAiBeats && grade) textClasses += ` rt-grade-${grade}`;
                 if (grade && plugin.settings.debug) {
                     plugin.log(`[GradeDebug] Found grade ${grade} for scene ${sceneId}`);
                 }
