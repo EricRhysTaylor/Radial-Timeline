@@ -1008,9 +1008,9 @@ export default class RadialTimelinePlugin extends Plugin {
                                 "Publish Stage": metadata["Publish Stage"],
                                 due: metadata.Due,
                                 pendingEdits: metadata["Pending Edits"],
-                                "1beats": typeof metadata["1beats"] === 'string' ? metadata["1beats"] : (metadata["1beats"] ? String(metadata["1beats"]) : undefined),
-                                "2beats": typeof metadata["2beats"] === 'string' ? metadata["2beats"] : (metadata["2beats"] ? String(metadata["2beats"]) : undefined), 
-                                "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : (metadata["3beats"] ? String(metadata["3beats"]) : undefined),
+                                "1beats": typeof metadata["1beats"] === 'string' ? metadata["1beats"] : (Array.isArray(metadata["1beats"]) ? metadata["1beats"].join('\n') : (metadata["1beats"] ? String(metadata["1beats"]) : undefined)),
+                                "2beats": typeof metadata["2beats"] === 'string' ? metadata["2beats"] : (Array.isArray(metadata["2beats"]) ? metadata["2beats"].join('\n') : (metadata["2beats"] ? String(metadata["2beats"]) : undefined)), 
+                                "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : (Array.isArray(metadata["3beats"]) ? metadata["3beats"].join('\n') : (metadata["3beats"] ? String(metadata["3beats"]) : undefined)),
                                 itemType: "Scene"
                             });
                     });

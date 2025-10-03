@@ -20,7 +20,7 @@
   --rt-color-empty-selected: #EFEFEF; /* Slightly darker gray for selected empty cells */
   
   /* Search and UI Colors */
-  --rt-color-search: #FFCC00;   /* Yellow for search highlighting */
+  --rt-color-search: #ffe374;   /* Yellow for search highlighting */
   --rt-color-debug: #ff3300;    /* Red for debug text */
   /* Search highlight tuning */
   --rt-search-stroke-width: 0.2em;      /* default stroke thickness for search outline */
@@ -328,6 +328,10 @@ dominant-baseline: middle;
 .radial-timeline-container .rt-number-text.rt-grade-A { fill: #00ff48; }
 .radial-timeline-container .rt-number-text.rt-grade-B { fill: #ffbb00; }
 .radial-timeline-container .rt-number-text.rt-grade-C { fill: #ff0000; }
+/* Preserve grade colors when scene is open (higher specificity overrides white fill below) */
+.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-grade-A { fill: #00ff48; }
+.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-grade-B { fill: #ffbb00; }
+.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-grade-C { fill: #ff0000; }
 .radial-timeline-container .rt-number-square.rt-faded,
 .radial-timeline-container .rt-number-text.rt-faded {
   opacity: 1;
@@ -479,7 +483,7 @@ tspan .search-term {
 }
 .radial-timeline-container .rt-number-text.rt-scene-is-open {
   font-weight: normal;
-  fill: #FFFFFF;
+  fill: #FFFFFF; /* white for default case; grade colors override via higher specificity */
 }
 .rt-number-square.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF;
@@ -497,9 +501,13 @@ tspan .search-term {
   fill: #FFFFFF;
 }
 .rt-number-text.rt-scene-is-open.rt-selected {
-  fill: #000000;
+  fill: #000000; /* black for default case; grade colors override via higher specificity */
   font-weight: bold;
 }
+/* Preserve grade colors when scene is open and selected */
+.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A { fill: #00ff48; }
+.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B { fill: #ffbb00; }
+.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C { fill: #ff0000; }
 .radial-timeline-container .rt-number-square.rt-search-result { fill: var(--rt-color-search) !important; }
 .radial-timeline-container .rt-number-text.rt-search-result.rt-non-selected {
   fill: #FFFFFF !important;
@@ -532,15 +540,29 @@ tspan .search-term {
 .radial-timeline-container .rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
 }
-/* Pending edits: all text variations show white */
+/* Pending edits: white for default case */
 .radial-timeline-container .rt-number-text.rt-has-edits { fill: #ffffff; }
+/* Preserve grade colors for pending edits (higher specificity) */
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-grade-A { fill: #00ff48; }
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-grade-B { fill: #ffbb00; }
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-grade-C { fill: #ff0000; }
 .radial-timeline-container .rt-number-text.rt-has-edits.rt-selected,
 .radial-timeline-container .rt-number-text.rt-has-edits.rt-search-result.rt-selected { 
   fill: #ffffff; 
   font-weight: bold; 
 }
+/* Preserve grade colors for pending edits selected state */
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A { fill: #00ff48; }
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B { fill: #ffbb00; }
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C { fill: #ff0000; }
 
-/* AI grade colors turn white on hover (non-selected) - handled by base .rt-non-selected rule */
+/* AI grade colors turn white when non-selected (covers all states: default, open, pending edits) */
+.radial-timeline-container .rt-number-text.rt-non-selected.rt-grade-A,
+.radial-timeline-container .rt-number-text.rt-non-selected.rt-grade-B,
+.radial-timeline-container .rt-number-text.rt-non-selected.rt-grade-C { fill: #FFFFFF !important; }
 .rt-clear-search-btn {
   cursor: pointer;
 }
@@ -1070,7 +1092,7 @@ tspan .search-term {
 /* Progress Ring Base (thin gray track underneath) */
 .radial-timeline-container .progress-ring-base {
   fill: none;
-  stroke: #5e0098; /* Purple background to match estimation arc */
+  stroke: #000000; /* Purple background to match estimation arc #5e0098*/
   stroke-width: 10px; /* Base width */
 }
 

@@ -331,8 +331,9 @@ async function logApiInteractionToFile(
     const friendlyModel = (() => {
         const mid = (modelId || '').toLowerCase();
         if (provider === 'anthropic') {
-            if (mid.includes('claude-opus-4-1')) return 'Opus 4.1';
-            if (mid.includes('claude-sonnet-4-')) return 'Sonnet 4';
+            if (mid.includes('claude-opus-4-1')) return 'Claude Opus 4.1';
+            if (mid.includes('claude-sonnet-4-5')) return 'Claude Sonnet 4.5';
+            if (mid.includes('claude-sonnet-4-')) return 'Claude Sonnet 4';
         } else if (provider === 'gemini') {
             if (mid === 'gemini-2.5-pro') return 'Gemini 2.5 Pro';
         } else if (provider === 'openai') {
@@ -408,7 +409,7 @@ async function logApiInteractionToFile(
         return kept.join('\n');
     };
     userPromptContent = redactPrompt(fullUserPrompt);
-    fileContent += `## Prompt Template\n\n\\\`\\\`\\\`\n${userPromptContent}\n\\\`\\\`\\\`\n\n`;
+    fileContent += `## Prompt Template\n\n\`\`\`\n${userPromptContent}\n\`\`\`\n\n`;
 
     // <<< FIXED: Use safeRequestData and check different properties based on provider >>>
     let systemPromptContent: string | undefined | null = null;
@@ -434,16 +435,16 @@ async function logApiInteractionToFile(
     }
 
     if (systemPromptContent) {
-        fileContent += `## System Prompt Used\n\n\\\`\\\`\\\`\n${systemPromptContent}\n\\\`\\\`\\\`\n\n`;
+        fileContent += `## System Prompt Used\n\n\`\`\`\n${systemPromptContent}\n\`\`\`\n\n`;
     }
 
     // Full request with instructions + scene text
     fileContent += `## Request Sent\n\n`;
-    fileContent += `\\\`\\\`\\\`json\n${requestJson}\n\\\`\\\`\\\`\n\n`;
+    fileContent += `\`\`\`json\n${requestJson}\n\`\`\`\n\n`;
 
     // Response (raw JSON)
     fileContent += `## Response Received (Full JSON)\n\n`;
-    fileContent += `\\\`\\\`\\\`json\n${responseJson}\n\\\`\\\`\\\`\n`;
+    fileContent += `\`\`\`json\n${responseJson}\n\`\`\``;
 
     // Usage and outcome details
     fileContent += `\n${usageString}\n\n`;

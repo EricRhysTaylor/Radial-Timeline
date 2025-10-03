@@ -32,6 +32,9 @@ export class RadialTimelineView extends ItemView {
     // Set of open scene paths (for tracking open files)
     openScenePaths: Set<string> = new Set<string>();
     
+    // Store rotation state to persist across timeline refreshes
+    private rotationState: boolean = false;
+    
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -803,7 +806,8 @@ This is a test scene created to help with initial Radial timeline setup.
                 const arrowUp = svgElement.querySelector('#rotation-arrow-up') as SVGUseElement | null;
                 const arrowDown = svgElement.querySelector('#rotation-arrow-down') as SVGUseElement | null;
                 if (rotatable && toggle && arrowUp && arrowDown) {
-                    let rotated = false;
+                    // Initialize from stored state to preserve rotation across timeline refreshes
+                    let rotated = this.rotationState;
                     const applyRotation = () => {
                         if (rotated) {
                             rotatable.setAttribute('transform', 'rotate(-120)');
@@ -847,6 +851,7 @@ This is a test scene created to help with initial Radial timeline setup.
                     applyRotation();
                     this.registerDomEvent(toggle as unknown as HTMLElement, 'click', () => {
                         rotated = !rotated;
+                        this.rotationState = rotated; // Save state for persistence
                         applyRotation();
                     });
                 }

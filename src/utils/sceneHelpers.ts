@@ -41,8 +41,8 @@ export function extractGradeFromScene(
     if (scene["2beats"]) {
         try {
             const firstLine2Beats = scene["2beats"].split('\n')[0]?.trim() || '';
-            // Updated regex to match "[Number] [GradeLetter] / [Comment]"
-            const gradeMatch = firstLine2Beats.match(/^(?:\d+(?:\.\d+)?\s+)?([ABC])(?![A-Za-z0-9])/i);
+            // Updated regex to match "[Number] [GradeLetter] / [Comment]" with optional YAML list marker
+            const gradeMatch = firstLine2Beats.match(/^-?\s*(?:\d+(?:\.\d+)?\s+)?([ABC])(?![A-Za-z0-9])/i);
             if (gradeMatch && gradeMatch[1]) {
                 const grade = gradeMatch[1].toUpperCase();
                 sceneGrades.set(sceneId, grade);

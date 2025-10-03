@@ -487,7 +487,7 @@ export function createTimelineSVG(
             const pathId = `monthLabelPath-${index}`;
             const isPastMonth = index < currentMonthIndex;
             svg += `
-                <text class="month-label-outer" ${isPastMonth ? 'opacity="0.5"' : ''}>
+                <text class="rt-month-label-outer" ${isPastMonth ? 'opacity="0.5"' : ''}>
                     <textPath href="#${pathId}" startOffset="0" text-anchor="start">
                         ${name}
                     </textPath>
