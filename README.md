@@ -18,9 +18,9 @@
 </p>
 <hr style="margin-bottom: 20px;">
 
-A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and numeric order in a radial format for a comprehensive view of project.
+An inclusive radial timeline for creative fiction writing projects that displays scenes organized by act, subplot, and numeric order in a radial format for a comprehensive view of project.
 
-This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplot and cells, wrapping in numeric order, to depict each scene. Various cues and interactions are available through a search feature and hover and click functionality. Hopefully, this will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
+This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots. Various cues and interactions are available through a search feature and hover and click functionality. Hopefully, this will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
 
 
 <a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">
@@ -55,12 +55,12 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 ## Commands
 
 * Open timeline: open the timeline view
-* Search timeline: keyword search across select metadata. Title, Synopsis, Character & Subplot
+* Search timeline: keyword search across select metadata. Title, Date, Synopsis, AI Beats, Character & Subplot
 * Clear search: reset all search filters
 * Create Template File with frontmatter
 * Update beats (manuscript order)
 * Update beats (subplot)
-* Clear beats cache: clear saved beat results to force a full reprocess
+* Clear beats cache: clear saved beat results to force a full reprocess (for scenes with BeatsUpdate = yes)
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
@@ -249,6 +249,10 @@ From obsidian
 4.  Click install and then enable.
 
 Manual installation
+
+1. Install BRAT community plugin then paste in the GitHub URL and click install. 
+
+-OR-
 
 1.  Download the latest main.js, styles.css, and manifest.json from the <a href="https://github.com/EricRhysTaylor/radial-timeline/releases" target="_blank" rel="noopener">releases</a> page.
 2.  Extract the files to your vault's .obsidian/plugins/radial-timeline
