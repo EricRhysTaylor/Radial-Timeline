@@ -410,6 +410,9 @@ export class RadialTimelineView extends ItemView {
     }
     
     async onClose(): Promise<void> {
+        // Clear search state when view closes to ensure fresh state on reopen
+        this.plugin.clearSearch();
+        
         // Clean up any event listeners or resources
     }
     
@@ -537,34 +540,50 @@ export class RadialTimelineView extends ItemView {
         });
         
         // Also highlight matches in synopsis hover titles
-        const synopsisTitles = this.contentEl.querySelectorAll('svg .scene-info text.info-text.rt-title-text-main');
+        // Note: We need to be careful to preserve the existing tspan structure (rt-date-text, etc.)
+        // that was created by renderSceneTitleComponents
+        const synopsisTitles = this.contentEl.querySelectorAll('svg .rt-scene-info text.rt-info-text.rt-title-text-main');
         synopsisTitles.forEach((titleEl: Element) => {
             const originalText = titleEl.textContent || '';
             if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
-            const fillColor = (titleEl as SVGTextElement).getAttribute('fill');
-            const regex = wordBoundaryRegex;
-            // Clear existing children
-            while (titleEl.firstChild) titleEl.removeChild(titleEl.firstChild);
-            regex.lastIndex = 0;
-            let lastIndex = 0; let match;
-            while ((match = regex.exec(originalText)) !== null) {
-                if (match.index > lastIndex) {
-                    titleEl.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
+            
+            // Process each child node to add highlighting while preserving structure
+            const processNode = (node: Node) => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const text = node.textContent || '';
+                    if (!text || !text.match(new RegExp(escapedPattern, 'i'))) return;
+                    
+                    // Replace this text node with highlighted version
+                    const fragment = document.createDocumentFragment();
+                    const regex = new RegExp(`(${escapedPattern})`, 'gi');
+                    let lastIndex = 0;
+                    let match;
+                    while ((match = regex.exec(text)) !== null) {
+                        if (match.index > lastIndex) {
+                            fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
+                        }
+                        const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                        highlightSpan.setAttribute('class', 'rt-search-term');
+                        highlightSpan.textContent = match[0];
+                        fragment.appendChild(highlightSpan);
+                        lastIndex = match.index + match[0].length;
+                    }
+                    if (lastIndex < text.length) {
+                        fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+                    }
+                    node.parentNode?.replaceChild(fragment, node);
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    // For tspan elements (like rt-date-text), process their children
+                    Array.from(node.childNodes).forEach(child => processNode(child));
                 }
-                const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                highlightSpan.setAttribute('class', 'rt-search-term');
-                if (fillColor) highlightSpan.setAttribute('fill', fillColor);
-                highlightSpan.textContent = match[0];
-                titleEl.appendChild(highlightSpan);
-                lastIndex = match.index + match[0].length;
-            }
-            if (lastIndex < originalText.length) {
-                titleEl.appendChild(document.createTextNode(originalText.substring(lastIndex)));
-            }
+            };
+            
+            // Process all children while preserving tspan structure
+            Array.from(titleEl.childNodes).forEach(child => processNode(child));
         });
         
         // Check for scene groups that should be highlighted
-        const allSceneGroups = this.contentEl.querySelectorAll('.scene-group');
+        const allSceneGroups = this.contentEl.querySelectorAll('.rt-scene-group');
         this.log(`Found ${allSceneGroups.length} scene groups to check for search matches`);
         
         // Add search-result class to all matching scene paths
@@ -576,12 +595,12 @@ export class RadialTimelineView extends ItemView {
                 const numberText = group.querySelector('.rt-number-text');
                 
                 if (numberSquare) {
-                    numberSquare.classList.add('search-result');
-                    this.log(`Added search-result class to number square for ${pathAttr}`);
+                    numberSquare.classList.add('rt-search-result');
+                    this.log(`Added rt-search-result class to number square for ${pathAttr}`);
                 }
                 
                 if (numberText) {
-                    numberText.classList.add('search-result');
+                    numberText.classList.add('rt-search-result');
                 }
             }
         });
@@ -824,8 +843,8 @@ This is a test scene created to help with initial Radial timeline setup.
                     });
                 }
                 // Performance optimization: Use batch operations where possible
-                const allSynopses = Array.from(svgElement.querySelectorAll(".scene-info"));
-                const sceneGroups = Array.from(svgElement.querySelectorAll(".scene-group"));
+                const allSynopses = Array.from(svgElement.querySelectorAll(".rt-scene-info"));
+                const sceneGroups = Array.from(svgElement.querySelectorAll(".rt-scene-group"));
                 
                 
                 // Performance optimization: Process scene groups in chunks to avoid UI blocking
@@ -843,18 +862,18 @@ This is a test scene created to help with initial Radial timeline setup.
                         // Check if this file is currently open in a tab
                         if (this.openScenePaths.has(filePath)) {
                             // Add a class to indicate this scene is open
-                            group.classList.add("scene-is-open");
+                            group.classList.add("rt-scene-is-open");
                             
                                 // Mark the scene path element
-                            const scenePath = group.querySelector(".scene-path");
+                            const scenePath = group.querySelector(".rt-scene-path");
                             if (scenePath) {
-                                scenePath.classList.add("scene-is-open");
+                                scenePath.classList.add("rt-scene-is-open");
                             }
                             
                             // Mark the scene title text if present
-                            const sceneTitle = group.querySelector(".scene-title");
+                            const sceneTitle = group.querySelector(".rt-scene-title");
                             if (sceneTitle) {
-                                sceneTitle.classList.add("scene-is-open");
+                                sceneTitle.classList.add("rt-scene-is-open");
                             }
                             
                                 // Get scene ID from path element
@@ -889,7 +908,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 
                 // All synopses default to the CSS-defined hidden state (opacity 0, pointer-events none)
                 allSynopses.forEach(synopsis => {
-                    synopsis.classList.remove('visible');
+                    synopsis.classList.remove('rt-visible');
                 });
                 
                 // Setup search controls after SVG is rendered
@@ -904,21 +923,21 @@ This is a test scene created to help with initial Radial timeline setup.
                     const onEnterLeave = (hovering: boolean, targetGroup: Element | null) => {
                         if (!targetGroup) return;
                         subplotLabels.forEach(label => {
-                            if (hovering) label.classList.add('non-selected'); else label.classList.remove('non-selected');
+                            if (hovering) label.classList.add('rt-non-selected'); else label.classList.remove('rt-non-selected');
                         });
                     };
                     const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement;
                     if (svg) {
                         let lastHoverGroup: Element | null = null;
                         svg.addEventListener('pointerover', (e: PointerEvent) => {
-                            const g = (e.target as Element).closest('.scene-group');
+                            const g = (e.target as Element).closest('.rt-scene-group');
                             if (g && g !== lastHoverGroup) {
                                 onEnterLeave(true, g);
                                 lastHoverGroup = g;
                             }
                         });
                         svg.addEventListener('pointerout', (e: PointerEvent) => {
-                            const g = (e.target as Element).closest('.scene-group');
+                            const g = (e.target as Element).closest('.rt-scene-group');
                             if (g && g === lastHoverGroup) {
                                 onEnterLeave(false, g);
                                 lastHoverGroup = null;
@@ -944,21 +963,21 @@ This is a test scene created to help with initial Radial timeline setup.
                 let rafId: number | null = null;
 
                 const clearSelection = () => {
-                    const all = svg.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
-                    all.forEach(el => el.classList.remove('selected', 'non-selected'));
-                    if (currentSynopsis) currentSynopsis.classList.remove('visible');
+                    const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
+                    all.forEach(el => el.classList.remove('rt-selected', 'rt-non-selected'));
+                    if (currentSynopsis) currentSynopsis.classList.remove('rt-visible');
                     currentGroup = null; currentSynopsis = null; currentSceneId = null;
                 };
 
                 const applySelection = (group: Element, sceneId: string) => {
-                    const pathEl = group.querySelector('.scene-path');
-                    if (pathEl) (pathEl as Element).classList.add('selected');
+                    const pathEl = group.querySelector('.rt-scene-path');
+                    if (pathEl) (pathEl as Element).classList.add('rt-selected');
                     const numberSquare = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
-                    if (numberSquare) numberSquare.classList.add('selected');
+                    if (numberSquare) numberSquare.classList.add('rt-selected');
                     const numberText = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
-                    if (numberText) numberText.classList.add('selected');
-                    const sceneTitle = group.querySelector('.scene-title');
-                    if (sceneTitle) sceneTitle.classList.add('selected');
+                    if (numberText) numberText.classList.add('rt-selected');
+                    const sceneTitle = group.querySelector('.rt-scene-title');
+                    if (sceneTitle) sceneTitle.classList.add('rt-selected');
 
                     const related = new Set<Element>();
                     const currentPathAttr = group.getAttribute('data-path');
@@ -966,8 +985,8 @@ This is a test scene created to help with initial Radial timeline setup.
                         const matches = svg.querySelectorAll(`[data-path="${currentPathAttr}"]`);
                         matches.forEach(mg => {
                             if (mg === group) return;
-                            const rp = mg.querySelector('.scene-path'); if (rp) related.add(rp);
-                            const rt = mg.querySelector('.scene-title'); if (rt) related.add(rt);
+                            const rp = mg.querySelector('.rt-scene-path'); if (rp) related.add(rp);
+                            const rt = mg.querySelector('.rt-scene-title'); if (rt) related.add(rt);
                             const rid = (rp as SVGPathElement | null)?.id;
                             if (rid) {
                                 const rsq = svg.querySelector(`.rt-number-square[data-scene-id="${rid}"]`); if (rsq) related.add(rsq);
@@ -975,25 +994,25 @@ This is a test scene created to help with initial Radial timeline setup.
                             }
                         });
                     }
-                    const all = svg.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
+                    const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
                     all.forEach(el => {
-                        if (!el.classList.contains('selected') && !related.has(el)) el.classList.add('non-selected');
+                        if (!el.classList.contains('rt-selected') && !related.has(el)) el.classList.add('rt-non-selected');
                     });
                 };
 
                 const getSceneIdFromGroup = (group: Element): string | null => {
-                    const pathEl = group.querySelector('.scene-path') as SVGPathElement | null;
+                    const pathEl = group.querySelector('.rt-scene-path') as SVGPathElement | null;
                     return pathEl?.id || null;
                 };
 
                 const findSynopsisForScene = (sceneId: string): Element | null => {
-                    return svg.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+                    return svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
                 };
 
                 
 
                 svg.addEventListener('pointerover', (e: PointerEvent) => {
-                    const g = (e.target as Element).closest('.scene-group');
+                    const g = (e.target as Element).closest('.rt-scene-group');
                     if (!g || g === currentGroup) return;
                     
                     clearSelection();
@@ -1010,12 +1029,12 @@ This is a test scene created to help with initial Radial timeline setup.
                     applySelection(g, sid);
                     
                     if (currentSynopsis) {
-                        currentSynopsis.classList.add('visible');
+                        currentSynopsis.classList.add('rt-visible');
                         view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
                     }
                     
                     // Only trigger expansion for regular scenes (not plot elements)
-                    const sceneTitle = g.querySelector('.scene-title');
+                    const sceneTitle = g.querySelector('.rt-scene-title');
                     if (sceneTitle) {
                         redistributeActScenes(g);
                     }
@@ -1029,7 +1048,7 @@ This is a test scene created to help with initial Radial timeline setup.
                     
                     // Reset expansion if we had a scene expanded
                     if (currentGroup) {
-                        const sceneTitle = currentGroup.querySelector('.scene-title');
+                        const sceneTitle = currentGroup.querySelector('.rt-scene-title');
                         if (sceneTitle) {
                             resetAngularRedistribution();
                         }
@@ -1065,13 +1084,13 @@ This is a test scene created to help with initial Radial timeline setup.
                 
                 const storeOriginalAngles = () => {
                     if (originalAngles.size > 0) return; // Already stored
-                    svg.querySelectorAll('.scene-group').forEach((group: Element) => {
+                    svg.querySelectorAll('.rt-scene-group').forEach((group: Element) => {
                         const start = Number(group.getAttribute('data-start-angle')) || 0;
                         const end = Number(group.getAttribute('data-end-angle')) || 0;
                         originalAngles.set(group.id, { start, end });
                         
                         // Store original number square transforms
-                        const scenePathEl = group.querySelector('.scene-path') as SVGPathElement;
+                        const scenePathEl = group.querySelector('.rt-scene-path') as SVGPathElement;
                         if (scenePathEl) {
                             const sceneId = scenePathEl.id;
                             const numberSquareGroup = view.getSquareGroupForSceneId(svg, sceneId);
@@ -1091,7 +1110,7 @@ This is a test scene created to help with initial Radial timeline setup.
                         if (!group) return;
                         const innerR = Number(group.getAttribute('data-inner-r')) || 0;
                         const outerR = Number(group.getAttribute('data-outer-r')) || 0;
-                        const path = group.querySelector('.scene-path') as SVGPathElement;
+                        const path = group.querySelector('.rt-scene-path') as SVGPathElement;
                         if (path) {
                             path.setAttribute('d', buildCellArcPath(innerR, outerR, angles.start, angles.end));
                         }
@@ -1108,7 +1127,7 @@ This is a test scene created to help with initial Radial timeline setup.
                         }
                         
                         // Reset number square transform
-                        const scenePathEl = group.querySelector('.scene-path') as SVGPathElement;
+                        const scenePathEl = group.querySelector('.rt-scene-path') as SVGPathElement;
                         if (scenePathEl) {
                             const sceneId = scenePathEl.id;
                             const originalTransform = originalSquareTransforms.get(sceneId);
@@ -1132,14 +1151,14 @@ This is a test scene created to help with initial Radial timeline setup.
                         // Find all elements in the same act and ring (scenes AND plot slices)
                         const actElements: Element[] = [];
                         const sceneElements: Element[] = []; // Track which ones are scenes for text measurement
-                        svg.querySelectorAll('.scene-group').forEach((group: Element) => {
+                        svg.querySelectorAll('.rt-scene-group').forEach((group: Element) => {
                             if (group.getAttribute('data-act') === hoveredAct && 
                                 group.getAttribute('data-ring') === hoveredRing) {
-                                const path = group.querySelector('.scene-path');
+                                const path = group.querySelector('.rt-scene-path');
                                 if (path) {
                                     actElements.push(group);
                                     // Track which ones are scenes (have titles) vs plot slices
-                                    const sceneTitle = group.querySelector('.scene-title');
+                                    const sceneTitle = group.querySelector('.rt-scene-title');
                                     if (sceneTitle) {
                                         sceneElements.push(group);
                                     }
@@ -1161,7 +1180,7 @@ This is a test scene created to help with initial Radial timeline setup.
                     const currentArcPx = (hoveredEnd - hoveredStart) * hoveredMidR;
 
                     // Get the scene title element and measure its text width
-                    const hoveredSceneTitle = hoveredGroup.querySelector('.scene-title');
+                    const hoveredSceneTitle = hoveredGroup.querySelector('.rt-scene-title');
                     if (!hoveredSceneTitle) return; // No title to measure
 
                     const titleText = hoveredSceneTitle.textContent || '';
@@ -1250,7 +1269,7 @@ This is a test scene created to help with initial Radial timeline setup.
                         }
 
                         // Update the scene path
-                        const path = group.querySelector('.scene-path') as SVGPathElement;
+                        const path = group.querySelector('.rt-scene-path') as SVGPathElement;
                         if (path) {
                             path.setAttribute('d', buildCellArcPath(innerR, outerR, newStart, newEnd));
                         }
@@ -1268,7 +1287,7 @@ This is a test scene created to help with initial Radial timeline setup.
                         }
 
                         // Update associated number square position for all scenes (including hovered)
-                        const scenePathEl = group.querySelector('.scene-path') as SVGPathElement;
+                        const scenePathEl = group.querySelector('.rt-scene-path') as SVGPathElement;
                         if (scenePathEl) {
                             const sceneId = scenePathEl.id;
                             // Position at the START of the redistributed scene (not center)
@@ -1311,7 +1330,7 @@ This is a test scene created to help with initial Radial timeline setup.
     // New helper method to set up scene interactions
     private setupSceneInteractions(group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
         // Find path for click interaction
-        const path = group.querySelector(".scene-path");
+        const path = group.querySelector(".rt-scene-path");
         if (!path) return;
         
         const encodedPath = group.getAttribute("data-path");
@@ -1393,7 +1412,7 @@ This is a test scene created to help with initial Radial timeline setup.
                     leaf.openFile(file);
                 }
             });
-            // Cursor styling handled via CSS (.scene-path)
+            // Cursor styling handled via CSS (.rt-scene-path)
             
             // Add mouse enter/leave handlers to highlight files in explorer and tabs
             group.addEventListener("mouseenter", () => {
@@ -1415,7 +1434,7 @@ This is a test scene created to help with initial Radial timeline setup.
         
         // Set up mouseover events for synopses (delegated at svg level; keep only click here)
         const sceneId = path.id;
-        let synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
+        let synopsis = svgElement.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
 
         // If no synopsis found by exact ID match, try fallback methods
         if (!synopsis && group.hasAttribute("data-path") && group.getAttribute("data-path")) {
@@ -1426,7 +1445,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 
                 if (matchingSceneIndex > -1) {
                     // Use the index to match against any available synopsis
-                    const allSynopses = Array.from(svgElement.querySelectorAll('.scene-info'));
+                    const allSynopses = Array.from(svgElement.querySelectorAll('.rt-scene-info'));
                     
                     // As a fallback, just use the synopsis at the same index if available
                     if (matchingSceneIndex < allSynopses.length) {

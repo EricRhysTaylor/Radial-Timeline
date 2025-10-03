@@ -63,13 +63,13 @@ export function renderSceneTitleComponents(
   fragment.appendChild(container);
   if (title.sceneNumber) {
     const num = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-    num.classList.add('scene-title-bold');
+    num.classList.add('rt-scene-title-bold');
     if (titleColor) num.setAttribute('fill', titleColor);
     num.textContent = `${title.sceneNumber} `;
     container.appendChild(num);
   }
   const main = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-  main.classList.add('scene-title-bold');
+  main.classList.add('rt-scene-title-bold');
   if (titleColor) main.setAttribute('fill', titleColor);
   container.appendChild(main);
   if (searchTerm && title.title) {
@@ -79,7 +79,7 @@ export function renderSceneTitleComponents(
     while ((m = regex.exec(title.title))) {
       if (m.index > last) main.appendChild(document.createTextNode(title.title.slice(last, m.index)));
       const hl = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-      hl.setAttribute('class', 'search-term');
+      hl.setAttribute('class', 'rt-search-term');
       if (titleColor) hl.setAttribute('fill', titleColor);
       hl.textContent = m[0];
       main.appendChild(hl);
@@ -92,9 +92,28 @@ export function renderSceneTitleComponents(
   if (title.date) {
     fragment.appendChild(document.createTextNode('    '));
     const dateT = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-    dateT.setAttribute('class', 'date-text');
+    dateT.setAttribute('class', 'rt-date-text');
     if (titleColor) dateT.setAttribute('fill', titleColor);
-    dateT.textContent = title.date;
+    
+    // Apply search highlighting to date if searchTerm provided
+    if (searchTerm && title.date) {
+      const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
+      let last = 0;
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(title.date))) {
+        if (m.index > last) dateT.appendChild(document.createTextNode(title.date.slice(last, m.index)));
+        const hl = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        hl.setAttribute('class', 'rt-search-term');
+        if (titleColor) hl.setAttribute('fill', titleColor);
+        hl.textContent = m[0];
+        dateT.appendChild(hl);
+        last = m.index + m[0].length;
+      }
+      if (last < title.date.length) dateT.appendChild(document.createTextNode(title.date.slice(last)));
+    } else {
+      dateT.textContent = title.date;
+    }
+    
     fragment.appendChild(dateT);
   }
 }

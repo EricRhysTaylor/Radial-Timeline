@@ -24,7 +24,7 @@ export class PlotLabelManager {
      */
     static adjustPlotLabels(svgElement: SVGSVGElement): void {
         try {
-            const plotTextNodes = Array.from(svgElement.querySelectorAll('text.plot-title')) as SVGTextElement[];
+            const plotTextNodes = Array.from(svgElement.querySelectorAll('text.rt-plot-title')) as SVGTextElement[];
             const items = plotTextNodes.map((textEl) => {
                 const tp = textEl.querySelector('textPath') as SVGTextPathElement | null;
                 const href = tp?.getAttribute('href') || '';
@@ -58,7 +58,7 @@ export class PlotLabelManager {
         items.sort((a, b) => a.sliceStart - b.sliceStart);
         
         // Remove any existing dash separators and invisible spacers
-        svgElement.querySelectorAll('.plot-dash-separator').forEach(el => el.remove());
+        svgElement.querySelectorAll('.rt-plot-dash-separator').forEach(el => el.remove());
         svgElement.querySelectorAll('[opacity="0"]').forEach(el => {
             if (el.textContent?.includes('\u2003')) el.remove(); // Remove em-space spacers
         });
@@ -119,7 +119,7 @@ export class PlotLabelManager {
         const dashRotation = (dashAngle + Math.PI / 2) * 180 / Math.PI;
         
         const dashElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        dashElement.setAttribute('class', 'plot-title plot-dash-separator');
+        dashElement.setAttribute('class', 'rt-plot-title rt-plot-dash-separator');
         dashElement.setAttribute('transform', `translate(${dashX}, ${dashY}) rotate(${dashRotation.toFixed(3)})`);
         dashElement.setAttribute('text-anchor', 'middle');
         dashElement.setAttribute('dy', '-3');

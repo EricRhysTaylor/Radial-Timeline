@@ -440,10 +440,6 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // First decode any HTML entities that might be in the text
         const decodedText = decodeHtmlEntities(text);
-
-        // Create safe regex for searching
-        const escapedPattern = escapeRegExp(this.searchTerm);
-        const regex = new RegExp(`(${escapedPattern})`, 'gi');
         
         // Use DocumentFragment for DOM manipulation
         const fragment = document.createDocumentFragment();
@@ -451,58 +447,9 @@ export default class RadialTimelinePlugin extends Plugin {
         // Special handling for title lines containing scene number and date
         // Title format is typically: "SceneNumber SceneTitle   Date"
         if (decodedText.includes('   ') && !decodedText.includes('<tspan')) {
-            // Handle title lines directly with the same approach as other text
-            // Split the title and date
-            const dateMatch = decodedText.match(/\s{3,}(.+?)$/);
-            
-            if (dateMatch) {
-                // Get title part without the date
-                const titlePart = decodedText.substring(0, dateMatch.index).trim();
-                const datePart = dateMatch[1].trim();
-                
-                // Extract scene number from title part
-            const titleMatch = titlePart.match(/^(\d+(\.\d+)?)\s+(.+)$/);
-            
-            if (titleMatch) {
-                    // We have a scene number + title format
-                const sceneNumber = titleMatch[1];
-                    const titleText = titleMatch[3];
-                    
-                    // Add scene number as a separate tspan
-                    const numberTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                    numberTspan.setAttribute("font-weight", "bold");
-                    numberTspan.textContent = `${sceneNumber} `;
-                    fragment.appendChild(numberTspan);
-                    
-                    // Highlight the title text and append directly to the main fragment
-                    highlightSearchTermsInText(titleText, this.searchTerm, fragment);
-                    
-                    // Add 4 spaces *after* the highlighted title content
-                    fragment.appendChild(document.createTextNode('    '));
-                    
-                    // Add the date part
-                    const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                    dateTspan.setAttribute("class", "date-text");
-                    dateTspan.textContent = datePart;
-                    fragment.appendChild(dateTspan);
-            } else {
-                    // No scene number, just the title text and date
-                    // Highlight the title text and append directly to the main fragment
-                    highlightSearchTermsInText(titlePart, this.searchTerm, fragment);
-                    
-                    // Add spacer *after* the highlighted title content
-                    fragment.appendChild(document.createTextNode('    '));
-                    
-                    // Add the date part
-                    const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                    dateTspan.setAttribute("class", "date-text");
-                    dateTspan.textContent = datePart;
-                    fragment.appendChild(dateTspan);
-                }
-            } else {
-                // No date separator found, treat as regular text and highlight
-                highlightSearchTermsInText(decodedText, this.searchTerm, fragment);
-            }
+            // Delegate to the shared title rendering function
+            const titleComponents = parseSceneTitleComponents(decodedText);
+            renderSceneTitleComponents(titleComponents, fragment, this.searchTerm, undefined);
             
             // Convert fragment to string using XMLSerializer
             return this.serializeFragment(fragment);
@@ -1067,9 +1014,9 @@ export default class RadialTimelinePlugin extends Plugin {
                 if (!svgElement) continue;
 
                 if (isHighlighting) {
-                    const allElements = svgElement.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
+                    const allElements = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
                     allElements.forEach(element => {
-                        element.classList.remove('selected', 'non-selected');
+                        element.classList.remove('rt-selected', 'rt-non-selected');
                     });
                 }
 
@@ -1091,35 +1038,35 @@ export default class RadialTimelinePlugin extends Plugin {
                     foundScene = true;
 
                     if (isHighlighting) {
-                        const currentPath = sceneGroup.querySelector('.scene-path');
+                        const currentPath = sceneGroup.querySelector('.rt-scene-path');
                         if (currentPath) {
-                            currentPath.classList.add('selected');
+                            currentPath.classList.add('rt-selected');
 
                             const sceneId = (currentPath as SVGPathElement).id;
                             const numberSquare = svgElement.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
                             const numberText = svgElement.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
 
-                            if (numberSquare) numberSquare.classList.add('selected');
-                            if (numberText) numberText.classList.add('selected');
+                            if (numberSquare) numberSquare.classList.add('rt-selected');
+                            if (numberText) numberText.classList.add('rt-selected');
 
-                            const sceneTitle = sceneGroup.querySelector('.scene-title');
-                            if (sceneTitle) sceneTitle.classList.add('selected');
+                            const sceneTitle = sceneGroup.querySelector('.rt-scene-title');
+                            if (sceneTitle) sceneTitle.classList.add('rt-selected');
 
-                            const allScenePaths = svgElement.querySelectorAll('.scene-path:not(.selected)');
-                            allScenePaths.forEach(element => element.classList.add('non-selected'));
+                            const allScenePaths = svgElement.querySelectorAll('.rt-scene-path:not(.rt-selected)');
+                            allScenePaths.forEach(element => element.classList.add('rt-non-selected'));
 
-                            const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
-                            if (synopsis) synopsis.classList.add('visible');
+                            const synopsis = svgElement.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
+                            if (synopsis) synopsis.classList.add('rt-visible');
                         }
                     } else {
-                        const allElements = svgElement.querySelectorAll('.scene-path, .rt-number-square, .rt-number-text, .scene-title');
+                        const allElements = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
                         allElements.forEach(element => element.classList.remove('selected', 'non-selected'));
 
-                        const currentPath = sceneGroup.querySelector('.scene-path');
+                        const currentPath = sceneGroup.querySelector('.rt-scene-path');
                         if (currentPath) {
                             const sceneId = (currentPath as SVGPathElement).id;
-                            const synopsis = svgElement.querySelector(`.scene-info[data-for-scene="${sceneId}"]`);
-                            if (synopsis) synopsis.classList.remove('visible');
+                            const synopsis = svgElement.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
+                            if (synopsis) synopsis.classList.remove('rt-visible');
                         }
                     }
                 }
@@ -1761,22 +1708,30 @@ public createTimelineSVG(scenes: Scene[]) {
         this.searchResults.clear();
         
         // Simple case-insensitive search that matches whole phrases
-        const containsWholePhrase = (haystack: string | undefined, phrase: string): boolean => {
+        const containsWholePhrase = (haystack: string | undefined, phrase: string, isDate: boolean = false): boolean => {
             if (!haystack || !phrase || typeof haystack !== 'string') return false;
             
             const h = haystack.toLowerCase();
             const p = phrase.toLowerCase();
             
-            // For now, let's use a simple contains check to verify the search is working
-            // We can add word boundary logic back once we confirm basic matching works
+            // Special handling for dates to ensure exact segment matching
+            // e.g., "4/1" should match "4/1/2025" but not "4/12/2025"
+            if (isDate && h.includes('/')) {
+                // For date searches, require the phrase to be followed by a word boundary or slash
+                // This prevents "4/1" from matching "4/12"
+                const datePattern = new RegExp(p.replace(/\//g, '\\/') + '(?:\\/|$)', 'i');
+                return datePattern.test(h);
+            }
+            
+            // For non-date fields, use simple contains check
             return h.includes(p);
         };
         
         // Populate searchResults with matching scene paths
         this.getSceneData().then(scenes => {
             scenes.forEach(scene => {
-                // Build searchable string from scene fields
-                const fields: (string | undefined)[] = [
+                // Check non-date fields
+                const textFields: (string | undefined)[] = [
                     scene.title,
                     scene.synopsis,
                     ...(scene.Character || []),
@@ -1784,8 +1739,13 @@ public createTimelineSVG(scenes: Scene[]) {
                     scene.location,
                     scene.pov
                 ];
-                const matched = fields.some(f => containsWholePhrase(f, term));
-                if (matched) {
+                const textMatched = textFields.some(f => containsWholePhrase(f, term, false));
+                
+                // Check date field separately with special date matching
+                const dateField = scene.when?.toLocaleDateString();
+                const dateMatched = containsWholePhrase(dateField, term, true);
+                
+                if (textMatched || dateMatched) {
                     if (scene.path) {
                         this.searchResults.add(scene.path);
                     }

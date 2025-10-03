@@ -116,46 +116,46 @@
 
 /* Debug: visualize the SVG viewport box */
 
-.radial-timeline-container .scene-path {
+.radial-timeline-container .rt-scene-path {
   cursor: pointer;
   stroke: #ffffff;
   stroke-width: 1px;
 }
-.radial-timeline-container .scene-act {
+.radial-timeline-container .rt-scene-act {
   fill-opacity: 0;
 }
-.radial-timeline-container .scene-act:hover {
+.radial-timeline-container .rt-scene-act:hover {
   fill-opacity: 0.3;
   cursor: pointer;
 }
 /* Void cells - empty space in timeline */
-.radial-timeline-container .void-cell {
+.radial-timeline-container .rt-void-cell {
   fill: var(--rt-color-empty);
   fill-opacity: 0.9;
   stroke: white;
   stroke-width: 1;
   cursor: default;
 }
-.radial-timeline-container .scene-path.faded {
+.radial-timeline-container .rt-scene-path.rt-faded {
   opacity: 0.3;
 }
-.radial-timeline-container .scene-path.non-selected {
+.radial-timeline-container .rt-scene-path.rt-non-selected {
   fill: var(--rt-color-empty-selected) !important;
 }
-.radial-timeline-container .scene-path.scene-is-open.non-selected {
+.radial-timeline-container .rt-scene-path.rt-scene-is-open.rt-non-selected {
   fill: var(--rt-color-empty-selected) !important;
 }
-.radial-timeline-container .scene-path.selected {
+.radial-timeline-container .rt-scene-path.rt-selected {
   filter: saturate(1.2) brightness(1.1);
 }
-.radial-timeline-container .scene-title {
+.radial-timeline-container .rt-scene-title {
   cursor: pointer;
   fill: white;
   opacity: 1;
   font-size: 18px;
   pointer-events: none;
 }
-.radial-timeline-container .plot-title {
+.radial-timeline-container .rt-plot-title {
   fill: var(--text-normal);
   font-size:12px;
   font-weight: 500;
@@ -167,7 +167,7 @@
 
 
 /* Hover: emphasize plot titles with a solid black background using stroke */
-.radial-timeline-container .scene-group:hover .plot-title {
+.radial-timeline-container .rt-scene-group:hover .rt-plot-title {
   filter: url(#plotTextBg); /* black background halo */
   fill: #ffffff;
   font-weight: 700; /* heavier for readability */
@@ -203,50 +203,50 @@
   pointer-events: none !important;
 }
 
-.radial-timeline-container .month-label  ,
-.radial-timeline-container .month-label-outer,
-.radial-timeline-container .act-label,
-.radial-timeline-container .plot-title {
+.radial-timeline-container .rt-month-label,
+.radial-timeline-container .rt-month-label-outer,
+.radial-timeline-container .rt-act-label,
+.radial-timeline-container .rt-plot-title {
   pointer-events: none;
 }
-.radial-timeline-container .month-label {  
+.radial-timeline-container .rt-month-label {  
   font-size: 16px;
   fill: var(--text-normal);
   text-anchor: middle;
   dominant-baseline: middle;
 }
-.radial-timeline-container .month-label-outer {
+.radial-timeline-container .rt-month-label-outer {
 font-size: 18px;
 fill: var(--text-normal);
 text-anchor: middle;
 dominant-baseline: middle;
 }
-.radial-timeline-container .act-label {
+.radial-timeline-container .rt-act-label {
   font-size: 20px;
   font-weight: 900;
   /* fill: var(--text-normal); */ /* Color is now set dynamically in SVG */
   text-anchor: middle;
   dominant-baseline: middle;
 }
-.radial-timeline-container .month-spoke-line {
+.radial-timeline-container .rt-month-spoke-line {
   stroke: var(--text-normal);
   stroke-width: 1px;
   stroke-dasharray: 2, 2;
   opacity: 1;
 }
-.radial-timeline-container .month-spoke-line.act-boundary {
+.radial-timeline-container .rt-month-spoke-line.rt-act-boundary {
   stroke: var(--text-normal);
   stroke-width: 2px;
   stroke-dasharray: none;
   opacity: 1;
 }
-.radial-timeline-container .scene-title-small {
+.radial-timeline-container .rt-scene-title-small {
   font-size: 9px;
 }
-.radial-timeline-container .scene-title-medium {
+.radial-timeline-container .rt-scene-title-medium {
   font-size: 16px;
 }
-.radial-timeline-container .scene-title-large {
+.radial-timeline-container .rt-scene-title-large {
   font-size: 18px;
 }
 .rt-status-count {
@@ -338,13 +338,13 @@ dominant-baseline: middle;
   paint-order: stroke;
 }
 /* Dynamic classes for scene-is-open non-selected */
-.rt-number-square.rt-scene-is-open.non-selected {
+.rt-number-square.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
   stroke: none;
   stroke-width: 0;
 }
 /* Dynamic classes for scene-is-open non-selected text */
-.rt-number-text.rt-scene-is-open.non-selected {
+.rt-number-text.rt-scene-is-open.rt-non-selected {
   fill: #FFFFFF !important;
   opacity: 1;
 }
@@ -360,7 +360,7 @@ dominant-baseline: middle;
   stroke-width: 3px;
   stroke: var(--scene-color, #705DCF);
 }
-.rt-number-square.non-selected {
+.rt-number-square.rt-non-selected {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
@@ -368,10 +368,7 @@ dominant-baseline: middle;
 .rt-number-text.rt-selected {
   font-weight: bold;
 }
-.rt-number-text.selected {
-  font-weight: bold;
-}
-.rt-number-text.non-selected {
+.rt-number-text.rt-non-selected {
   fill: #FFFFFF;
 }
 .rt-search-term {
@@ -386,8 +383,8 @@ dominant-baseline: middle;
 
 
 /* Allow inline subplot/character colors to apply in synopsis */
-.info-text.metadata-text tspan[data-item-type=subplot],
-.info-text.metadata-text tspan[data-item-type=character] {
+.rt-info-text.rt-metadata-text tspan[data-item-type=subplot],
+.rt-info-text.rt-metadata-text tspan[data-item-type=character] {
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;
@@ -398,18 +395,7 @@ tspan[fill].search-term,
 tspan .search-term {
   fill: inherit !important;
 }
-.synopsis-q1 .info-text,
-.synopsis-q1 .title-text-main,
-.synopsis-q1 .title-text-secondary,
-.synopsis-q1 .metadata-text {
-  text-anchor: end;
-}
-.synopsis-q2 .info-text,
-.synopsis-q2 .title-text-main,
-.synopsis-q2 .title-text-secondary,
-.synopsis-q2 .metadata-text {
-  text-anchor: start;
-}
+/* Old quadrant-specific text-anchor rules - replaced with scoped rt- versions below */
 
 /* Command palette search modal styling */
 .radial-timeline-container .search-container.flex-container {
@@ -427,31 +413,20 @@ tspan .search-term {
   margin-top: 12px;
   justify-content: flex-end;
 }
-.synopsis-q3 .info-text,
-.synopsis-q3 .title-text-main,
-.synopsis-q3 .title-text-secondary,
-.synopsis-q3 .metadata-text {
-  text-anchor: start;
-}
-.synopsis-q4 .info-text,
-.synopsis-q4 .title-text-main,
-.synopsis-q4 .title-text-secondary,
-.synopsis-q4 .metadata-text {
-  text-anchor: end;
-}
-.scene-info.synopsis-q1 text,
-.scene-info.synopsis-q4 text {
+/* Quadrant rules consolidated with rt- prefixes below */
+.radial-timeline-container .rt-scene-info.rt-synopsis-q1 text,
+.radial-timeline-container .rt-scene-info.rt-synopsis-q4 text {
   text-anchor: end !important;
   padding: 0 !important;
   margin: 0 !important;
 }
-.scene-info.synopsis-q2 text,
-.scene-info.synopsis-q3 text {
+.radial-timeline-container .rt-scene-info.rt-synopsis-q2 text,
+.radial-timeline-container .rt-scene-info.rt-synopsis-q3 text {
   text-anchor: start !important;
   padding: 0 !important;
   margin: 0 !important;
 }
-.scene-info.visible {
+.radial-timeline-container .rt-scene-info.rt-visible {
   opacity: 1 !important;
   pointer-events: all !important;
   visibility: visible !important;
@@ -462,28 +437,43 @@ tspan .search-term {
   font-weight: 700;
   margin-bottom: 10px;
 }
-.scene-info text.info-text.rt-title-text-main {
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 8px;
   /* Fill will be set by stage-specific classes (rt-title-stage-*) */
 }
-.scene-info text.info-text.rt-title-text-main tspan.date-text {
-  font-weight: 700;
-  font-size: 18px;
-  stroke-width: 2.5px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  vertical-align: super;
-  baseline-shift: .3em;
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-date-text {
+  font-weight: 700 !important;
+  font-size: 18px !important;
+  fill: var(--text-muted) !important;
+  stroke: white !important;
+  stroke-width: 2.5px !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  vertical-align: super !important;
+  baseline-shift: .3em !important;
+  paint-order: stroke !important;
 }
-.scene-info text.info-text.title-text-secondary {
+
+/* Ensure search highlighting inside date text maintains date styling */
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-date-text tspan.rt-search-term {
+  font-weight: 700 !important;
+  font-size: inherit !important;
+  fill: var(--text-muted) !important;
+  stroke: var(--rt-color-search) !important;
+  stroke-width: var(--rt-search-stroke-width, 0.2em) !important;
+  letter-spacing: inherit !important;
+  text-transform: inherit !important;
+  paint-order: stroke !important;
+}
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-secondary {
   font-size: 18px;
   fill: #666666;
   text-transform: uppercase;
   font-weight: normal;
 }
-.scene-info text.info-text.metadata-text {
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-metadata-text {
   font-size: 18px;
   font-weight: normal;
   text-transform: none;
@@ -496,13 +486,13 @@ tspan .search-term {
   font-weight: normal;
   fill: #FFFFFF;
 }
-.rt-number-square.rt-scene-is-open.non-selected {
+.rt-number-square.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
   transition: fill 0.1s;
 }
-.rt-number-text.rt-scene-is-open.non-selected {
+.rt-number-text.rt-scene-is-open.rt-non-selected {
   fill: #ffffff;
   opacity: 1;
 }
@@ -516,29 +506,16 @@ tspan .search-term {
   font-weight: bold;
 }
 .rt-number-square.rt-search-result { fill: var(--rt-color-search) !important; }
-.rt-number-text.rt-search-result.non-selected {
+.rt-number-text.rt-search-result.rt-non-selected {
   fill: #FFFFFF !important;
 }
-.rt-number-text.rt-scene-is-open.rt-search-result.non-selected {
-  fill: #FFFFFF !important;
-}
-/* Dynamic classes for search result number text non-selected */
-.rt-number-text.rt-search-result.non-selected {
-  fill: #FFFFFF !important;
-}
-.rt-number-text.rt-scene-is-open.rt-search-result.non-selected {
+.rt-number-text.rt-scene-is-open.rt-search-result.rt-non-selected {
   fill: #FFFFFF !important;
 }
 .rt-number-text.rt-scene-is-open.rt-search-result {
   fill: #000000 !important;
 }
-.rt-number-square.rt-search-result.non-selected {
-  fill: #EFEFEF !important;
-  stroke: #EFEFEF;
-  stroke-width: 2px;
-}
-/* Dynamic classes for search result non-selected */
-.rt-number-square.rt-search-result.non-selected {
+.rt-number-square.rt-search-result.rt-non-selected {
   fill: #EFEFEF !important;
   stroke: #EFEFEF;
   stroke-width: 2px;
@@ -554,38 +531,31 @@ tspan .search-term {
 
 .rt-number-square.rt-has-edits.rt-search-result { fill: var(--rt-color-search) !important; }
 .rt-number-square.rt-has-edits.rt-scene-is-open { fill: #C0C0C0; }
-.rt-number-square.rt-has-edits.non-selected {
+.rt-number-square.rt-has-edits.rt-non-selected {
   fill: #EFEFEF !important;
 }
-.rt-number-square.rt-has-edits.rt-scene-is-open.non-selected {
- fill: #EFEFEF;
-}
-/* Dynamic classes added by JavaScript */
-.rt-number-square.rt-has-edits.non-selected {
-  fill: #EFEFEF !important;
-}
-.rt-number-square.rt-has-edits.rt-scene-is-open.non-selected {
+.rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
 }
 .rt-number-text.rt-has-edits { fill: #ffffff; } /* Base white text for pending edits */
-.rt-number-text.rt-has-edits.rt-scene-is-open.non-selected { fill: #ffffff; }
+.rt-number-text.rt-has-edits.rt-scene-is-open.rt-non-selected { fill: #ffffff; }
 .rt-number-text.rt-has-edits.rt-scene-is-open.rt-selected { fill: #ffffff; }
 .rt-number-text.rt-has-edits.rt-search-result.rt-selected {
   fill: #ffffff;
   font-weight: bold;
 }
 /* Dynamic classes added by JavaScript for number text */
-.rt-number-text.rt-has-edits.non-selected { fill: #ffffff; }
-.rt-number-text.rt-has-edits.rt-scene-is-open.non-selected { fill: #ffffff; }
-.rt-number-text.rt-has-edits.selected { fill: #ffffff; font-weight: bold; }
+.rt-number-text.rt-has-edits.rt-non-selected { fill: #ffffff; }
+.rt-number-text.rt-has-edits.rt-scene-is-open.rt-non-selected { fill: #ffffff; }
+.rt-number-text.rt-has-edits.rt-selected { fill: #ffffff; font-weight: bold; }
 
 /* Ensure AI grade text color persists when tab is open or has edits */
-.rt-number-text.rt-scene-is-open.rt-grade-A:not(.selected):not(.non-selected), 
-.rt-number-text.rt-has-edits.rt-grade-A:not(.selected):not(.non-selected) { fill: #00ff48; }
-.rt-number-text.rt-scene-is-open.rt-grade-B:not(.selected):not(.non-selected), 
-.rt-number-text.rt-has-edits.rt-grade-B:not(.selected):not(.non-selected) { fill: #a25400; }
-.rt-number-text.rt-scene-is-open.rt-grade-C:not(.selected):not(.non-selected), 
-.rt-number-text.rt-has-edits.rt-grade-C:not(.selected):not(.non-selected) { fill: #ff0000; }
+.rt-number-text.rt-scene-is-open.rt-grade-A:not(.rt-selected):not(.rt-non-selected), 
+.rt-number-text.rt-has-edits.rt-grade-A:not(.rt-selected):not(.rt-non-selected) { fill: #00ff48; }
+.rt-number-text.rt-scene-is-open.rt-grade-B:not(.rt-selected):not(.rt-non-selected), 
+.rt-number-text.rt-has-edits.rt-grade-B:not(.rt-selected):not(.rt-non-selected) { fill: #a25400; }
+.rt-number-text.rt-scene-is-open.rt-grade-C:not(.rt-selected):not(.rt-non-selected), 
+.rt-number-text.rt-has-edits.rt-grade-C:not(.rt-selected):not(.rt-non-selected) { fill: #ff0000; }
 .rt-clear-search-btn {
   cursor: pointer;
 }
@@ -983,8 +953,8 @@ tspan .search-term {
 }
 
 /* Title text styles */
-.radial-timeline-container .scene-title-bold {
-    font-weight: bold;
+.radial-timeline-container .rt-scene-title-bold {
+  font-weight: bold;
 }
 
 /* Grade border styles */
@@ -993,7 +963,7 @@ tspan .search-term {
 }
 
 /* Invisible spacer styles */
-.radial-timeline-container .invisible-spacer {
+.radial-timeline-container .rt-invisible-spacer {
     opacity: 0;
 }
 
@@ -1011,24 +981,33 @@ tspan .search-term {
 }
 
 /* Title text styles */
-.title-text-main {
+.rt-title-text-main {
     --title-color: var(--text-normal);
 }
 
-/* Date text styles */
-.date-text {
-    fill: var(--text-muted);
+/* Date text styles - base rule for all date text */
+.rt-date-text {
+    fill: var(--text-muted) !important;
+    font-weight: 700 !important;
+    font-size: 18px !important;
+    stroke: white !important;
+    stroke-width: 2.5px !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    vertical-align: super !important;
+    baseline-shift: .3em !important;
+    paint-order: stroke !important;
 }
 
 /* Search term highlighting - consolidated above with other search-term rules */
 
 /* Info container styles */
-.radial-timeline-container .info-container {
+.rt-info-container {
     cursor: pointer;
 }
 
 /* Synopsis text styles */
-.radial-timeline-container .synopsis-text {
+.radial-timeline-container .rt-synopsis-text {
     font-size: 14px;
     line-height: 1.5;
 }
@@ -1093,7 +1072,7 @@ tspan .search-term {
 }
 
 /* Use .non-selected class for faded state (consistent with other elements) */
-.rt-subplot-label-text.non-selected {
+.rt-subplot-label-text.rt-non-selected {
     opacity: .1; /* Corrected opacity back to 30% */
 }
 

@@ -189,18 +189,18 @@ export default class SynopsisManager {
     
     // Create the main container group
     const containerGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    containerGroup.setAttribute("class", "scene-info info-container");
+    containerGroup.setAttribute("class", "rt-scene-info rt-info-container");
     containerGroup.setAttribute("data-for-scene", sceneId);
     
     // Create the synopsis text group
     const synopsisTextGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    synopsisTextGroup.setAttribute("class", "synopsis-text");
+    synopsisTextGroup.setAttribute("class", "rt-synopsis-text");
     containerGroup.appendChild(synopsisTextGroup);
     
     // Add the title with publish stage color - at origin (0,0)
     const titleContent = decodedContentLines[0];
     const titleTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    titleTextElement.setAttribute("class", `info-text rt-title-text-main ${stageClass}`);
+    titleTextElement.setAttribute("class", `rt-info-text rt-title-text-main ${stageClass}`);
     titleTextElement.setAttribute("x", "0");
     titleTextElement.setAttribute("y", "0");
     titleTextElement.setAttribute("text-anchor", "start");
@@ -247,7 +247,7 @@ export default class SynopsisManager {
         // Only render when overdue per original behavior AND not complete
         if (isOverdue && !isComplete) {
           const dueLine = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          dueLine.setAttribute("class", "info-text title-text-secondary");
+          dueLine.setAttribute("class", "rt-info-text rt-title-text-secondary");
           dueLine.setAttribute("x", "0");
           dueLine.setAttribute("y", String(1 * lineHeight));
           dueLine.setAttribute("text-anchor", "start");
@@ -269,7 +269,7 @@ export default class SynopsisManager {
       for (let i = 0; i < lines.length; i++) {
         const y = (1 + extraLineCount) * lineHeight + (i * lineHeight);
         const lineEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        lineEl.setAttribute("class", "info-text title-text-secondary");
+        lineEl.setAttribute("class", "rt-info-text rt-title-text-secondary");
         lineEl.setAttribute("x", "0");
         lineEl.setAttribute("y", String(y));
         lineEl.setAttribute("text-anchor", "start");
@@ -286,7 +286,7 @@ export default class SynopsisManager {
       const lineContent = decodedContentLines[i];
       const lineY = (i + extraLineCount) * lineHeight; // shift down by inserted lines
       const synopsisLineElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      synopsisLineElement.setAttribute("class", "info-text title-text-secondary");
+      synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-secondary");
       synopsisLineElement.setAttribute("x", "0");
       synopsisLineElement.setAttribute("y", String(lineY));
       synopsisLineElement.setAttribute("text-anchor", "start");
@@ -310,7 +310,7 @@ export default class SynopsisManager {
         // Setting font-size to 0, as requested, since constants had no effect
         spacerElement.setAttribute("font-size", `0px`); 
         spacerElement.textContent = "\u00A0"; // Non-breaking space
-        spacerElement.classList.add('invisible-spacer'); // Make it invisible
+        spacerElement.classList.add('rt-invisible-spacer'); // Make it invisible
         synopsisTextGroup.appendChild(spacerElement);
         // Return value now adds 0 height, placing next block immediately after previous
         // Need to return the original yPosition so next block starts correctly relative to the last *content* block
@@ -371,7 +371,7 @@ export default class SynopsisManager {
         
           if (subplots.length > 0) {
             const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            subplotTextElement.setAttribute("class", "info-text metadata-text");
+            subplotTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
             subplotTextElement.setAttribute("x", "0");
             // Use the calculated subplotStartY
             subplotTextElement.setAttribute("y", String(subplotStartY)); 
@@ -407,7 +407,7 @@ export default class SynopsisManager {
         
         if (characterList.length > 0) {
           const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          characterTextElement.setAttribute("class", "info-text metadata-text");
+          characterTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
           characterTextElement.setAttribute("x", "0");
           characterTextElement.setAttribute("y", String(characterY));
           characterTextElement.setAttribute("text-anchor", "start");
@@ -481,13 +481,13 @@ export default class SynopsisManager {
       
       // Reset styles and classes
       (synopsis as SVGElement).removeAttribute('style');
-      synopsis.classList.remove('synopsis-q1', 'synopsis-q2', 'synopsis-q3', 'synopsis-q4');
+      synopsis.classList.remove('rt-synopsis-q1', 'rt-synopsis-q2', 'rt-synopsis-q3', 'rt-synopsis-q4');
       
       // Configure position based on quadrant
       const position = this.getPositionForQuadrant(quadrant, adjustedRadius);
       
       // Apply the position class and base transform
-      synopsis.classList.add(`synopsis-${position.quadrantClass}`);
+      synopsis.classList.add(`rt-synopsis-${position.quadrantClass}`);
       
       // Calculate the initial x-position based on Pythagorean theorem
       const y = position.y;
@@ -508,7 +508,7 @@ export default class SynopsisManager {
       synopsis.setAttribute('transform', `translate(${x}, ${y})`);
       
       // Ensure the synopsis is visible
-      synopsis.classList.add('visible');
+      synopsis.classList.add('rt-visible');
       synopsis.setAttribute('opacity', '1');
       synopsis.setAttribute('pointer-events', 'all');
       
@@ -614,7 +614,7 @@ export default class SynopsisManager {
     });
     
     // Get the synopsis text group
-    const synopsisTextGroup = synopsis.querySelector('.synopsis-text');
+    const synopsisTextGroup = synopsis.querySelector('.rt-synopsis-text');
     if (!synopsisTextGroup) {
       this.plugin.log("Error: Could not find synopsis text group");
       return;
@@ -1036,8 +1036,8 @@ export default class SynopsisManager {
         titleText = bodyWrapMatch[1];
         rawContent = titleText;
         // Apply light gray body text formatting  
-        titleClass = 'info-text title-text-secondary'; 
-        commentClass = 'info-text title-text-secondary';
+        titleClass = 'rt-info-text rt-title-text-secondary'; 
+        commentClass = 'rt-info-text rt-title-text-secondary';
       } else {
         // Only do sign detection if this is NOT body text or grade text
         if (!bodyWrapMatch && !gradeWrapMatch) {

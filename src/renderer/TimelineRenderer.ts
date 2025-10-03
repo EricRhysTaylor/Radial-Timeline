@@ -643,7 +643,7 @@ export function createTimelineSVG(
                     y1="${y1}"
                     x2="${x2}"
                     y2="${y2}"
-                    class="month-spoke-line${isActBoundary ? ' act-boundary' : ''}${isPastMonth ? ' past-month' : ''}"
+                    class="rt-month-spoke-line${isActBoundary ? ' rt-act-boundary' : ''}${isPastMonth ? ' rt-past-month' : ''}"
                 />`;
 
             // Create curved path for inner month labels
@@ -662,7 +662,7 @@ export function createTimelineSVG(
                     "
                     fill="none"
                 />
-                <text class="month-label" ${isPastMonth ? 'opacity="0.5"' : ''}>
+                <text class="rt-month-label" ${isPastMonth ? 'opacity="0.5"' : ''}>
                     <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
                         ${months[monthIndex].shortName}
                     </textPath>
@@ -907,7 +907,7 @@ export function createTimelineSVG(
                     "
                     fill="none"
                 />
-                <text class="act-label" fill="${maxStageColor}">
+                <text class="rt-act-label" fill="${maxStageColor}">
                     <textPath href="#${actPathId}" startOffset="0" text-anchor="start">
                         ACT ${act + 1}
                     </textPath>
@@ -1018,8 +1018,8 @@ export function createTimelineSVG(
                             );
                             synopsesElements.push(synopsisElOuter);
                         } catch {}
-                        let sceneClasses = 'scene-path';
-                        if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += ' scene-is-open';
+                        let sceneClasses = 'rt-scene-path';
+                        if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += ' rt-scene-is-open';
                         const dyOffset = 0; // keep scene titles exactly on the midline path
 
                         // Use a single y-axis (radius) for all plot labels; no outward stacking
@@ -1049,7 +1049,7 @@ export function createTimelineSVG(
                         // No separator needed; spacing handled in positioning
 
                         svg += `
-                        <g class="scene-group" data-item-type="Scene" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(effectiveOuterR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
+                        <g class="rt-scene-group" data-item-type="Scene" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(effectiveOuterR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
                             <path id="${sceneId}"
                                   d="${arcPath}" 
                                   fill="${color}" 
@@ -1061,7 +1061,7 @@ export function createTimelineSVG(
                                   d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} 
                                      A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
                                   fill="none"/>
-                            <text class="scene-title${scene.path && plugin.openScenePaths.has(scene.path) ? ' scene-is-open' : ''}" dy="${dyOffset}" data-scene-id="${sceneId}">
+                            <text class="rt-scene-title${scene.path && plugin.openScenePaths.has(scene.path) ? ' rt-scene-is-open' : ''}" dy="${dyOffset}" data-scene-id="${sceneId}">
                                 <textPath href="#textPath-${act}-${ring}-outer-${idx}" startOffset="4">
                                     ${text}
                                 </textPath>
@@ -1070,7 +1070,7 @@ export function createTimelineSVG(
                                   d="M ${formatNumber(plotTextRadius * Math.cos(labelStartAngle))} ${formatNumber(plotTextRadius * Math.sin(labelStartAngle))} 
                                      A ${formatNumber(plotTextRadius)} ${formatNumber(plotTextRadius)} 0 ${largeArcFlag} 1 ${formatNumber(plotTextRadius * Math.cos(labelEndAngle))} ${formatNumber(plotTextRadius * Math.sin(labelEndAngle))}" 
                                   data-slice-start="${formatNumber(sceneStartAngle)}" data-radius="${formatNumber(plotTextRadius)}" fill="none"/>
-                            <text class="plot-title" dy="-3">
+                            <text class="rt-plot-title" dy="-3">
                                 <textPath href="#plotTextPath-outer-${act}-${ring}-${idx}" startOffset="2">
                                     ${escapeXml(rawTitleFull)}
                                 </textPath>
@@ -1089,7 +1089,7 @@ export function createTimelineSVG(
                         const voidStartAngle = startAngle + totalUsedSpace;
                         const voidEndAngle = endAngle;
                         const voidArcPath = buildCellArcPath(innerR, outerR, voidStartAngle, voidEndAngle);
-                        svg += `<path d="${voidArcPath}" class="void-cell"/>`;
+                        svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
                     }
 
                     continue; // Done with outer ring for this act
@@ -1177,8 +1177,8 @@ export function createTimelineSVG(
                             })();
             
                             // Apply appropriate CSS classes based on open status and search match
-                            let sceneClasses = "scene-path";
-                            if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += " scene-is-open";
+                            let sceneClasses = "rt-scene-path";
+                            if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += " rt-scene-is-open";
                             // Don't add search-result class to scene paths anymore
             
                             // In createTimelineSVG method, replace the font size calculation with a fixed size:
@@ -1188,7 +1188,7 @@ export function createTimelineSVG(
                             // (No plot labels rendered in inner rings)
             
                             svg += `
-                            <g class="scene-group" data-item-type="Scene" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                            <g class="rt-scene-group" data-item-type="Scene" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                 <path id="${sceneId}"
                                       d="${arcPath}" 
                                       fill="${color}" 
@@ -1200,7 +1200,7 @@ export function createTimelineSVG(
                                       d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} 
                                          A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
                                       fill="none"/>
-                                <text class="scene-title${scene.path && plugin.openScenePaths.has(scene.path) ? ' scene-is-open' : ''}" data-scene-id="${sceneId}">
+                                <text class="rt-scene-title${scene.path && plugin.openScenePaths.has(scene.path) ? ' rt-scene-is-open' : ''}" data-scene-id="${sceneId}">
                                     <textPath href="#textPath-${act}-${ring}-${idx}" startOffset="4">
                                         ${text}
                                     </textPath>
@@ -1219,7 +1219,7 @@ export function createTimelineSVG(
                             const voidStartAngle = startAngle + totalUsedSpace;
                             const voidEndAngle = endAngle;
                             const voidArcPath = buildCellArcPath(innerR, outerR, voidStartAngle, voidEndAngle);
-                            svg += `<path d="${voidArcPath}" class="void-cell"/>`;
+                            svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
                         }
                     } else {
                         // Empty subplot ring. When outer-ring-all-scenes is ON, do NOT place Plot notes here.
@@ -1248,11 +1248,11 @@ export function createTimelineSVG(
                                 const plotArcPath = buildCellArcPath(innerR, outerR + 2, plotStartAngle, plotEndAngle);
                                 const sceneId = `scene-path-${act}-${ring}-${idx}`;
                                 svg += `
-                                <g class="scene-group" data-item-type="Plot" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(plotStartAngle)}" data-end-angle="${formatNumber(plotEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR + 2)}" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                                <g class="rt-scene-group" data-item-type="Plot" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(plotStartAngle)}" data-end-angle="${formatNumber(plotEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR + 2)}" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
                                     <path id="${sceneId}"
                                           d="${plotArcPath}" 
                                           fill="#E6E6E6" 
-                                          class="scene-path"/>
+                                          class="rt-scene-path"/>
                                     <line 
                                         x1="${formatNumber(innerR * Math.cos(plotEndAngle))}" 
                                         y1="${formatNumber(innerR * Math.sin(plotEndAngle))}"
@@ -1264,16 +1264,16 @@ export function createTimelineSVG(
                             });
                             if (remainingSpace > 0.001) {
                                 const voidArcPath = buildCellArcPath(innerR, outerR, currentAngle, endAngle);
-                                svg += `<path d="${voidArcPath}" class="void-cell"/>`;
+                                svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
                             }
                         } else {
                             const voidArcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
-                                svg += `<path d="${voidArcPath}" class="void-cell"/>`;
+                                svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
                             }
                         } else {
                             // All-scenes mode: just fill empty ring with a void cell
                             const voidArcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
-                            svg += `<path d="${voidArcPath}" class="void-cell"/>`;
+                            svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
                         }
                     }
                 } else {
