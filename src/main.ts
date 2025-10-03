@@ -1,7 +1,7 @@
 import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, normalizePath } from "obsidian";
 import { escapeRegExp } from './utils/regex';
 import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils/colour';
-import { decodeHtmlEntities, parseSceneTitleComponents, renderSceneTitleComponents } from './utils/text';
+import { decodeHtmlEntities } from './utils/text';
 import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG } from './renderer/TimelineRenderer';
@@ -278,61 +278,8 @@ function createSvgArcPath(startAngle: number, endAngle: number, radius: number, 
     `;
 }
 
-/**
- * Create SVG elements for scene title with optional search highlighting
- * @param titleComponents The parsed title components
- * @param fragment The document fragment to append elements to
- * @param searchTerm Optional search term for highlighting
- * @param titleColor Optional color for the title text
- */
-
-
-/**
- * Highlights search terms in regular text content
- * @param text The text to highlight search terms in
- * @param searchTerm The search term to highlight
- * @param fragment The document fragment to append elements to
- */
-function highlightSearchTermsInText(text: string, searchTerm: string, fragment: DocumentFragment): void {
-    if (!text || !searchTerm) {
-        // If no text or search term, just add the text as is
-        if (text) fragment.appendChild(document.createTextNode(text));
-        return;
-    }
-    
-    // Create safe regex for searching
-    const escapedPattern = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(${escapedPattern})`, 'gi');
-    
-    // Process character by character for precise highlighting
-    let lastIndex = 0;
-    let match;
-    
-    // Reset regex to start from beginning
-    regex.lastIndex = 0;
-    
-    while ((match = regex.exec(text)) !== null) {
-        // Add text before match
-        if (match.index > lastIndex) {
-            const textBefore = document.createTextNode(text.substring(lastIndex, match.index));
-            fragment.appendChild(textBefore);
-        }
-        
-        // Add the highlighted match
-        const highlight = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-        highlight.setAttribute("class", "search-term");
-        highlight.textContent = match[0];
-        fragment.appendChild(highlight);
-        
-        lastIndex = match.index + match[0].length;
-    }
-    
-    // Add any remaining text
-    if (lastIndex < text.length) {
-        const textAfter = document.createTextNode(text.substring(lastIndex));
-        fragment.appendChild(textAfter);
-    }
-}
+// Note: Search highlighting is now handled entirely by addHighlightRectangles() in TimeLineView.ts
+// after the SVG is rendered. This simplifies the code and ensures a single source of truth.
 
 export default class RadialTimelinePlugin extends Plugin {
     settings: RadialTimelineSettings;
@@ -432,125 +379,6 @@ export default class RadialTimelinePlugin extends Plugin {
         });
     }
     
-    // Add helper method to highlight search terms
-    public highlightSearchTerm(text: string): string {
-        if (!this.searchActive || !this.searchTerm || !text) {
-            return text;
-        }
-
-        // First decode any HTML entities that might be in the text
-        const decodedText = decodeHtmlEntities(text);
-        
-        // Use DocumentFragment for DOM manipulation
-        const fragment = document.createDocumentFragment();
-        
-        // Special handling for title lines containing scene number and date
-        // Title format is typically: "SceneNumber SceneTitle   Date"
-        if (decodedText.includes('   ') && !decodedText.includes('<tspan')) {
-            // Delegate to the shared title rendering function
-            const titleComponents = parseSceneTitleComponents(decodedText);
-            renderSceneTitleComponents(titleComponents, fragment, this.searchTerm, undefined);
-            
-            // Convert fragment to string using XMLSerializer
-            return this.serializeFragment(fragment);
-        }
-        
-        // Special handling for metadata text (subplots and character)
-        if (decodedText.includes(',') && !decodedText.includes('<tspan') && !decodedText.includes('<')) {
-            // This is a raw metadata line (comma-separated items)
-            
-            // Split by commas to process each item separately
-            const items = decodedText.split(/, */);
-            
-            // Process each item and create appropriate DOM elements
-            items.forEach((item, i) => {
-                if (i > 0) {
-                    // Add comma and space for separator (except before first item)
-                    fragment.appendChild(document.createTextNode(', '));
-                }
-                
-                // Highlight search terms in this item
-                highlightSearchTermsInText(item, this.searchTerm, fragment);
-            });
-            
-            // Convert fragment to string using XMLSerializer
-            return this.serializeFragment(fragment);
-        }
-        
-        // Check if text already contains tspan with fill attributes (metadata lines)
-        if (decodedText.includes('<tspan') && decodedText.includes('fill=')) {
-            // Parse the existing HTML structure using DOMParser
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg"><text>${decodedText}</text></svg>`, 'image/svg+xml');
-            
-            // Check for parsing errors
-            if (doc.querySelector('parsererror')) {
-                // Parsing failed, return original text
-                return decodedText;
-            }
-            
-            // Process each tspan separately
-            const textElement = doc.querySelector('text');
-            if (!textElement) return decodedText;
-            
-            const tspans = textElement.querySelectorAll('tspan');
-            Array.from(tspans).forEach(tspan => {
-                const originalContent = tspan.textContent || '';
-                const fillColor = tspan.getAttribute('fill');
-                
-                // Clear tspan content
-                while (tspan.firstChild) {
-                    tspan.removeChild(tspan.firstChild);
-                }
-                
-                // Create a temporary fragment for this tspan's content
-                const tspanFragment = document.createDocumentFragment();
-                
-                // Highlight search terms in this tspan's content
-                highlightSearchTermsInText(originalContent, this.searchTerm, tspanFragment);
-                
-                // Apply the fill color to all highlight spans if needed
-                if (fillColor) {
-                    const highlights = tspanFragment.querySelectorAll('.search-term');
-                    Array.from(highlights).forEach(highlight => {
-                        highlight.setAttribute('fill', fillColor);
-                    });
-                }
-                
-                // Add the processed content to the tspan
-                tspan.appendChild(tspanFragment);
-            });
-            
-            // Extract the processed HTML using XMLSerializer
-            const serializer = new XMLSerializer();
-            const result = serializer.serializeToString(textElement);
-            
-            // Remove the outer <text></text> tags
-            return result.replace(/<text[^>]*>|<\/text>/g, '');
-        }
-        
-        // Regular processing for text without tspans (synopsis lines)
-        highlightSearchTermsInText(decodedText, this.searchTerm, fragment);
-        
-        // Convert fragment to string using XMLSerializer
-        return this.serializeFragment(fragment);
-    }
-    
-    // Helper method to serialize DocumentFragment to string
-    private serializeFragment(fragment: DocumentFragment): string {
-        // Create a temporary SVG text element
-        const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        
-        // Clone the fragment and append to the text element
-        textElement.appendChild(fragment.cloneNode(true));
-        
-        // Use XMLSerializer to convert to string
-        const serializer = new XMLSerializer();
-        const result = serializer.serializeToString(textElement);
-        
-        // Remove the outer <text></text> tags
-        return result.replace(/<text[^>]*>|<\/text>/g, '');
-    }
 
     private processHighlightedContent(fragment: DocumentFragment): Node[] {
         // Create a temporary container using Obsidian's createEl
@@ -588,7 +416,7 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     async onload() {
-        // Loaded
+        console.log('Radial Timeline plugin loaded');
         await this.loadSettings();
 
         // Load embedded fonts (no external requests per Obsidian guidelines)
@@ -1380,7 +1208,7 @@ public createTimelineSVG(scenes: Scene[]) {
         return items.map((subplot, i) => {
             // Ensure subplot text is safe for SVG
             const safeSubplot = this.safeSvgText(subplot);
-            return `<text class="subplot-text" x="0" y="${-20 + i * 25}" text-anchor="middle">${safeSubplot}</text>`;
+            return `<text class="rt-subplot-text" x="0" y="${-20 + i * 25}" text-anchor="middle">${safeSubplot}</text>`;
         }).join('');
     }
 
@@ -1651,8 +1479,7 @@ public createTimelineSVG(scenes: Scene[]) {
         }
         
         // Create button container
-        const buttonContainer = contentEl.createDiv('button-container');
-        buttonContainer.classList.add('button-container');
+        const buttonContainer = contentEl.createDiv('rt-button-container');
         // All styles now defined in CSS
         
         // Create search button
@@ -2187,7 +2014,7 @@ public createTimelineSVG(scenes: Scene[]) {
     }
 
     onunload() {
-        // Unloaded
+        console.log('Radial Timeline plugin unloaded');
         // Detach all timeline view leaves per Obsidian guidelines
         this.app.workspace.detachLeavesOfType(TIMELINE_VIEW_TYPE);
         // Clean up any other resources

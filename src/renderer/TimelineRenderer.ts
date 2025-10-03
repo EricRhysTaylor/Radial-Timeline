@@ -104,11 +104,11 @@ function buildSynopsis(
     subplotIndexResolver?: (name: string) => number
 ): SVGGElement {
     const contentLines = [
-        plugin.highlightSearchTerm(`${scene.title}   ${scene.when?.toLocaleDateString() || ''}`),
+        `${scene.title}   ${scene.when?.toLocaleDateString() || ''}`,
         ...(scene.itemType === 'Plot' && scene.Description
-            ? plugin.splitIntoBalancedLines(scene.Description, maxTextWidth).map(line => plugin.highlightSearchTerm(line))
+            ? plugin.splitIntoBalancedLines(scene.Description, maxTextWidth)
             : scene.synopsis
-            ? plugin.splitIntoBalancedLines(scene.synopsis, maxTextWidth).map(line => plugin.highlightSearchTerm(line))
+            ? plugin.splitIntoBalancedLines(scene.synopsis, maxTextWidth)
             : []),
         '\u00A0'
     ];
@@ -1856,7 +1856,9 @@ export function createTimelineSVG(
 
                     // Get grade for this scene from the grades map
                     const grade = sceneGrades.get(sceneId);
-                    if (plugin.settings.enableAiBeats && grade) textClasses += ` grade-${grade}`;
+                    if (plugin.settings.enableAiBeats && grade) {
+                        textClasses += ` rt-grade-${grade}`;
+                    }
                     svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
                 });
             }
@@ -1933,7 +1935,9 @@ export function createTimelineSVG(
                 
                 // Get grade for this scene from the grades map
                 const grade = sceneGrades.get(sceneId);
-                if (plugin.settings.enableAiBeats && grade) textClasses += ` grade-${grade}`;
+                if (plugin.settings.enableAiBeats && grade) {
+                    textClasses += ` rt-grade-${grade}`;
+                }
                 svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
             });
             
@@ -2004,9 +2008,8 @@ export function createTimelineSVG(
 
                 // Get grade from our Map for this scene
                 const grade = sceneGrades.get(sceneId);
-                if (plugin.settings.enableAiBeats && grade) textClasses += ` rt-grade-${grade}`;
-                if (grade && plugin.settings.debug) {
-                    plugin.log(`[GradeDebug] Found grade ${grade} for scene ${sceneId}`);
+                if (plugin.settings.enableAiBeats && grade) {
+                    textClasses += ` rt-grade-${grade}`;
                 }
                 
                 // Use helper function for consistent DOM structure

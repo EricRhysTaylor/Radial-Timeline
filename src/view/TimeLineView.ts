@@ -6,6 +6,7 @@ import type { Scene } from '../main';
 import { SceneNumberInfo } from '../utils/constants';
 import { PlotLabelManager } from '../utils/plotLabelManager';
 import ZeroDraftModal from './ZeroDraftModal';
+import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -451,16 +452,25 @@ export class RadialTimelineView extends ItemView {
                 return;
             }
             
-            // Apply highlighting
+            // Apply highlighting - preserve the original fill color AND style
             const fillColor = tspan.getAttribute('fill');
+            const existingStyle = tspan.getAttribute('style') || '';
             
             // Test if we need a word boundary match
             const useWordBoundary = originalText.match(wordBoundaryRegex);
             const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
             
-            // Clear previous content
+            // Clear previous content (but preserve attributes)
             while (tspan.firstChild) {
                 tspan.removeChild(tspan.firstChild);
+            }
+            
+            // IMPORTANT: Restore the fill and style so text nodes inherit correctly
+            if (fillColor) {
+                tspan.setAttribute('fill', fillColor);
+            }
+            if (existingStyle) {
+                tspan.setAttribute('style', existingStyle);
             }
             
             // Reset regex
@@ -471,7 +481,7 @@ export class RadialTimelineView extends ItemView {
             let match;
             
             while ((match = regex.exec(originalText)) !== null) {
-                // Add text before match
+                // Add text before match (inherits fill from parent tspan)
                 if (match.index > lastIndex) {
                     const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
                     tspan.appendChild(textBefore);
@@ -487,7 +497,7 @@ export class RadialTimelineView extends ItemView {
                 lastIndex = match.index + match[0].length;
             }
             
-            // Add any remaining text
+            // Add any remaining text (inherits fill from parent tspan)
             if (lastIndex < originalText.length) {
                 const textAfter = document.createTextNode(originalText.substring(lastIndex));
                 tspan.appendChild(textAfter);
@@ -506,12 +516,19 @@ export class RadialTimelineView extends ItemView {
                 return;
             }
             
+            // Apply highlighting - preserve the original fill color
             const fillColor = tspan.getAttribute('fill');
             const useWordBoundary = originalText.match(wordBoundaryRegex);
             const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
             
             while (tspan.firstChild) {
                 tspan.removeChild(tspan.firstChild);
+            }
+            
+            // IMPORTANT: Ensure the parent tspan keeps its fill and style so text nodes inherit correctly
+            if (fillColor) {
+                tspan.setAttribute('fill', fillColor);
+                tspan.setAttribute('style', `fill: ${fillColor} !important`);
             }
             
             regex.lastIndex = 0;
@@ -540,46 +557,69 @@ export class RadialTimelineView extends ItemView {
         });
         
         // Also highlight matches in synopsis hover titles
-        // Note: We need to be careful to preserve the existing tspan structure (rt-date-text, etc.)
-        // that was created by renderSceneTitleComponents
+        // Use the consolidated renderSceneTitleComponents for proper formatting
         const synopsisTitles = this.contentEl.querySelectorAll('svg .rt-scene-info text.rt-info-text.rt-title-text-main');
         synopsisTitles.forEach((titleEl: Element) => {
             const originalText = titleEl.textContent || '';
             if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
             
-            // Process each child node to add highlighting while preserving structure
-            const processNode = (node: Node) => {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    const text = node.textContent || '';
-                    if (!text || !text.match(new RegExp(escapedPattern, 'i'))) return;
-                    
-                    // Replace this text node with highlighted version
-                    const fragment = document.createDocumentFragment();
-                    const regex = new RegExp(`(${escapedPattern})`, 'gi');
-                    let lastIndex = 0;
-                    let match;
-                    while ((match = regex.exec(text)) !== null) {
-                        if (match.index > lastIndex) {
-                            fragment.appendChild(document.createTextNode(text.substring(lastIndex, match.index)));
-                        }
-                        const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                        highlightSpan.setAttribute('class', 'rt-search-term');
-                        highlightSpan.textContent = match[0];
-                        fragment.appendChild(highlightSpan);
-                        lastIndex = match.index + match[0].length;
-                    }
-                    if (lastIndex < text.length) {
-                        fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
-                    }
-                    node.parentNode?.replaceChild(fragment, node);
-                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                    // For tspan elements (like rt-date-text), process their children
-                    Array.from(node.childNodes).forEach(child => processNode(child));
-                }
-            };
+            // Get the fill color for this title
+            const fillColor = (titleEl as SVGTextElement).getAttribute('fill') || undefined;
             
-            // Process all children while preserving tspan structure
-            Array.from(titleEl.childNodes).forEach(child => processNode(child));
+            // Parse and re-render the title with proper structure and highlighting
+            const titleComponents = parseSceneTitleComponents(originalText);
+            
+            // Clear existing content
+            while (titleEl.firstChild) titleEl.removeChild(titleEl.firstChild);
+            
+            // Create a fragment for the new content
+            const fragment = document.createDocumentFragment();
+            renderSceneTitleComponents(titleComponents, fragment, searchTerm, fillColor);
+            
+            // Append all children from fragment to titleEl
+            while (fragment.firstChild) {
+                titleEl.appendChild(fragment.firstChild);
+            }
+        });
+        
+        // Also highlight matches in synopsis text blocks
+        const synopsisTextElements = this.contentEl.querySelectorAll('svg .rt-synopsis-text text');
+        synopsisTextElements.forEach((textEl: Element) => {
+            // Skip metadata rows that contain colored tspans (subplot/character)
+            if (textEl.querySelector('tspan[data-item-type="subplot"], tspan[data-item-type="character"]')) {
+                return; // handled by the per-tspan logic above
+            }
+
+            const originalText = textEl.textContent || '';
+            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
+            
+            const fillColor = (textEl as SVGTextElement).getAttribute('fill') || '';
+            
+            // Clear existing content
+            while (textEl.firstChild) textEl.removeChild(textEl.firstChild);
+            
+            // Apply highlighting
+            const regex = new RegExp(`(${escapedPattern})`, 'gi');
+            let lastIndex = 0;
+            let match;
+            
+            while ((match = regex.exec(originalText)) !== null) {
+                if (match.index > lastIndex) {
+                    textEl.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
+                }
+                
+                const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                highlightSpan.setAttribute('class', 'rt-search-term');
+                if (fillColor) highlightSpan.setAttribute('fill', fillColor);
+                highlightSpan.textContent = match[0];
+                textEl.appendChild(highlightSpan);
+                
+                lastIndex = match.index + match[0].length;
+            }
+            
+            if (lastIndex < originalText.length) {
+                textEl.appendChild(document.createTextNode(originalText.substring(lastIndex)));
+            }
         });
         
         // Check for scene groups that should be highlighted

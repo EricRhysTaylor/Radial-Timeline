@@ -18,7 +18,6 @@ export interface PluginRendererFacade {
     calculateCompletionEstimate(scenes: Scene[]): { date: Date; total: number; remaining: number; rate: number } | null;
     log<T>(message: string, data?: T): void;
     synopsisManager: { generateElement: (scene: Scene, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number) => SVGGElement };
-    highlightSearchTerm(text: string): string;
     safeSvgText(text: string): string;
     latestStatusCounts?: Record<string, number>;
     splitIntoBalancedLines: (text: string, maxWidth: number) => string[];
@@ -47,12 +46,9 @@ export function extractGradeFromScene(
             if (gradeMatch && gradeMatch[1]) {
                 const grade = gradeMatch[1].toUpperCase();
                 sceneGrades.set(sceneId, grade);
-                if (plugin.settings.debug) {
-                    plugin.log(`[GradeExtract] Extracted grade ${grade} for scene ${sceneId}`);
-                }
             }
         } catch (e) {
-            plugin.log(`[ERROR][GradeExtract] Error extracting grade for ${sceneId}: ${e}`);
+            // Silently handle errors per plugin guidelines
         }
     }
 }

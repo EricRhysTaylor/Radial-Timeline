@@ -309,27 +309,27 @@ dominant-baseline: middle;
   overflow-x: auto;
 }
 
-.subplot-text {
+.radial-timeline-container .rt-subplot-text {
   font-size: 16px;
   fill: var(--text-muted, #555555);
   font-weight: normal;
 }
 
-.rt-number-square{
+.radial-timeline-container .rt-number-square{
   pointer-events: none;
   fill: #FFFFFF;
 }
 
-.rt-number-text {
+.radial-timeline-container .rt-number-text {
   fill: #000000;
   pointer-events: none;
 }
-/* AI grade text colors - scoped to plugin */
-.rt-number-text.rt-grade-A { fill: #00ff48; }
-.rt-number-text.rt-grade-B { fill: #ffbb00; }
-.rt-number-text.rt-grade-C { fill: #ff0000; }
-.rt-number-square.rt-faded,
-.rt-number-text.rt-faded {
+/* AI grade text colors - scoped to plugin (no !important so non-selected can override) */
+.radial-timeline-container .rt-number-text.rt-grade-A { fill: #00ff48; }
+.radial-timeline-container .rt-number-text.rt-grade-B { fill: #ffbb00; }
+.radial-timeline-container .rt-number-text.rt-grade-C { fill: #ff0000; }
+.radial-timeline-container .rt-number-square.rt-faded,
+.radial-timeline-container .rt-number-text.rt-faded {
   opacity: 1;
 }
 .radial-timeline-container .rt-scene-title.rt-selected {
@@ -338,37 +338,32 @@ dominant-baseline: middle;
   paint-order: stroke;
 }
 /* Dynamic classes for scene-is-open non-selected */
-.rt-number-square.rt-scene-is-open.rt-non-selected {
+.radial-timeline-container .rt-number-square.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
   stroke: none;
   stroke-width: 0;
 }
 /* Dynamic classes for scene-is-open non-selected text */
-.rt-number-text.rt-scene-is-open.rt-non-selected {
+.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-non-selected {
   fill: #FFFFFF !important;
   opacity: 1;
 }
-.rt-number-square.rt-selected {
+.radial-timeline-container .rt-number-square.rt-selected {
   transform: scale(1.2);
   z-index: 10;
   stroke-width: 3px;
   stroke: var(--scene-color, #705DCF);
 }
-.rt-number-square.selected {
-  transform: scale(1.2);
-  z-index: 10;
-  stroke-width: 3px;
-  stroke: var(--scene-color, #705DCF);
-}
-.rt-number-square.rt-non-selected {
+/* Removed duplicate - already defined above as .rt-number-square.rt-selected */
+.radial-timeline-container .rt-number-square.rt-non-selected {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
 }
-.rt-number-text.rt-selected {
+.radial-timeline-container .rt-number-text.rt-selected {
   font-weight: bold;
 }
-.rt-number-text.rt-non-selected {
+.radial-timeline-container .rt-number-text.rt-non-selected {
   fill: #FFFFFF;
 }
 .rt-search-term {
@@ -407,10 +402,10 @@ tspan .search-term {
   width: 600px;
   max-width: 90vw;
 }
-.button-container.button-container {
+.radial-timeline-search .rt-button-container {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 20px;
   justify-content: flex-end;
 }
 /* Quadrant rules consolidated with rt- prefixes below */
@@ -432,7 +427,7 @@ tspan .search-term {
   visibility: visible !important;
   display: block !important;
 }
-.radial-timeline-container .synopsis-title {
+.radial-timeline-container .rt-synopsis-title {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 10px;
@@ -482,7 +477,7 @@ tspan .search-term {
   fill: var(--interactive-accent, #705DCF);
   stroke: none;
 }
-.rt-number-text.rt-scene-is-open {
+.radial-timeline-container .rt-number-text.rt-scene-is-open {
   font-weight: normal;
   fill: #FFFFFF;
 }
@@ -505,8 +500,8 @@ tspan .search-term {
   fill: #000000;
   font-weight: bold;
 }
-.rt-number-square.rt-search-result { fill: var(--rt-color-search) !important; }
-.rt-number-text.rt-search-result.rt-non-selected {
+.radial-timeline-container .rt-number-square.rt-search-result { fill: var(--rt-color-search) !important; }
+.radial-timeline-container .rt-number-text.rt-search-result.rt-non-selected {
   fill: #FFFFFF !important;
 }
 .rt-number-text.rt-scene-is-open.rt-search-result.rt-non-selected {
@@ -515,47 +510,37 @@ tspan .search-term {
 .rt-number-text.rt-scene-is-open.rt-search-result {
   fill: #000000 !important;
 }
-.rt-number-square.rt-search-result.rt-non-selected {
+.radial-timeline-container .rt-number-square.rt-search-result.rt-non-selected {
   fill: #EFEFEF !important;
   stroke: #EFEFEF;
   stroke-width: 2px;
 }
-.rt-number-square.rt-search-result.rt-selected {
+.radial-timeline-container .rt-number-square.rt-search-result.rt-selected {
   fill: var(--rt-color-search);
   stroke: #ff9500;
   stroke-width: 2px;
 }
-.rt-number-square.rt-has-edits {
+.radial-timeline-container .rt-number-square.rt-has-edits {
   fill: #C0C0C0; /* Light gray for pending edits */
 }
 
-.rt-number-square.rt-has-edits.rt-search-result { fill: var(--rt-color-search) !important; }
-.rt-number-square.rt-has-edits.rt-scene-is-open { fill: #C0C0C0; }
-.rt-number-square.rt-has-edits.rt-non-selected {
+.radial-timeline-container .rt-number-square.rt-has-edits.rt-search-result { fill: var(--rt-color-search) !important; }
+.radial-timeline-container .rt-number-square.rt-has-edits.rt-scene-is-open { fill: #C0C0C0; }
+.radial-timeline-container .rt-number-square.rt-has-edits.rt-non-selected {
   fill: #EFEFEF !important;
 }
-.rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
+.radial-timeline-container .rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
 }
-.rt-number-text.rt-has-edits { fill: #ffffff; } /* Base white text for pending edits */
-.rt-number-text.rt-has-edits.rt-scene-is-open.rt-non-selected { fill: #ffffff; }
-.rt-number-text.rt-has-edits.rt-scene-is-open.rt-selected { fill: #ffffff; }
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected {
-  fill: #ffffff;
-  font-weight: bold;
+/* Pending edits: all text variations show white */
+.radial-timeline-container .rt-number-text.rt-has-edits { fill: #ffffff; }
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-selected,
+.radial-timeline-container .rt-number-text.rt-has-edits.rt-search-result.rt-selected { 
+  fill: #ffffff; 
+  font-weight: bold; 
 }
-/* Dynamic classes added by JavaScript for number text */
-.rt-number-text.rt-has-edits.rt-non-selected { fill: #ffffff; }
-.rt-number-text.rt-has-edits.rt-scene-is-open.rt-non-selected { fill: #ffffff; }
-.rt-number-text.rt-has-edits.rt-selected { fill: #ffffff; font-weight: bold; }
 
-/* Ensure AI grade text color persists when tab is open or has edits */
-.rt-number-text.rt-scene-is-open.rt-grade-A:not(.rt-selected):not(.rt-non-selected), 
-.rt-number-text.rt-has-edits.rt-grade-A:not(.rt-selected):not(.rt-non-selected) { fill: #00ff48; }
-.rt-number-text.rt-scene-is-open.rt-grade-B:not(.rt-selected):not(.rt-non-selected), 
-.rt-number-text.rt-has-edits.rt-grade-B:not(.rt-selected):not(.rt-non-selected) { fill: #a25400; }
-.rt-number-text.rt-scene-is-open.rt-grade-C:not(.rt-selected):not(.rt-non-selected), 
-.rt-number-text.rt-has-edits.rt-grade-C:not(.rt-selected):not(.rt-non-selected) { fill: #ff0000; }
+/* AI grade colors turn white on hover (non-selected) - handled by base .rt-non-selected rule */
 .rt-clear-search-btn {
   cursor: pointer;
 }
@@ -873,6 +858,7 @@ tspan .search-term {
     width: 100%;
     max-width: 100%;
     flex: 1;
+    margin-bottom: 16px;
 }
 
 /* Search banner styles removed */
