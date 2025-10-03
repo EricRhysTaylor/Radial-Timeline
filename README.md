@@ -250,7 +250,7 @@ From obsidian
 
 Manual installation
 
-1. Install BRAT community plugin then paste in the GitHub URL and click install. 
+1. Install BRAT community plugin then paste in the Radial Timeline GitHub URL and click install. 
 
 -OR-
 
