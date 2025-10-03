@@ -1279,7 +1279,7 @@ export function createTimelineSVG(
                 } else {
                     // Empty subplot code
                     const arcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
-                    svg += `<path d="${arcPath}" class="void-cell"/>`;
+                    svg += `<path d="${arcPath}" class="rt-void-cell"/>`;
                 }
             }
         }
