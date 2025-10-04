@@ -540,15 +540,12 @@ tspan .search-term {
 .radial-timeline-container .rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
 }
-/* Pending edits: white for default case */
-.radial-timeline-container .rt-number-text.rt-has-edits { fill: #ffffff; }
 /* Preserve grade colors for pending edits (higher specificity) */
 .radial-timeline-container .rt-number-text.rt-has-edits.rt-grade-A { fill: #00ff48; }
 .radial-timeline-container .rt-number-text.rt-has-edits.rt-grade-B { fill: #ffbb00; }
 .radial-timeline-container .rt-number-text.rt-has-edits.rt-grade-C { fill: #ff0000; }
 .radial-timeline-container .rt-number-text.rt-has-edits.rt-selected,
 .radial-timeline-container .rt-number-text.rt-has-edits.rt-search-result.rt-selected { 
-  fill: #ffffff; 
   font-weight: bold; 
 }
 /* Preserve grade colors for pending edits selected state */
