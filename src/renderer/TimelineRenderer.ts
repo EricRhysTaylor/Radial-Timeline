@@ -1,3 +1,9 @@
+/**
+ * Radial Timeline Plugin for Obsidian — Renderer
+ * Copyright (c) 2024–2025 Eric Rhys Taylor
+ * Licensed under the MIT License. See LICENSE file for details.
+ */
+
 import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, PLOT_PIXEL_WIDTH, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
 import type { Scene } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';

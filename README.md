@@ -63,11 +63,11 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Clear beats cache: clear saved beat results to force a full reprocess (for scenes with BeatsUpdate = yes)
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot.jpeg" alt="Example Timeline Screenshot" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" alt="Example Timeline Screenshot" style="width: 350px; max-width: 100%; border-radius: 8px;" />
   </a>
-  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" alt="Example Timeline Screenshot Synopsis" style="width: 350px; max-width: 100%; border-radius: 8px;" />
   </a>
 </div>
 
@@ -317,3 +317,6 @@ Please see the Github Wiki for documentation at <a href="https://github.com/Eric
 ## License
 
 This project is licensed under the MIT license - see the license file for details.
+
+© 2024–2025 Eric Rhys Taylor. Licensed under the MIT License.
+Portions of this software were developed with AI assistance under human creative direction.

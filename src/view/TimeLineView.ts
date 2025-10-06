@@ -1,3 +1,9 @@
+/**
+ * Radial Timeline Plugin for Obsidian — View
+ * Copyright (c) 2024–2025 Eric Rhys Taylor
+ * Licensed under the MIT License. See LICENSE file for details.
+ */
+
 // --- Imports and constants added for standalone module ---
 import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice } from 'obsidian';
 import RadialTimelinePlugin from '../main';

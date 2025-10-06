@@ -20,63 +20,1299 @@ SECTION A — FIRST 25 PAGES OF SOURCE CODE
 
 File: src/main.ts (from the top)
 BEGIN CODE — src/main.ts (top)
-[Paste the first 25 pages worth of code from src/main.ts starting at line 1.]
-[Preserve indentation and spacing exactly. Redact any secrets as [REDACTED].]
-END CODE — src/main.ts (top)
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, normalizePath } from "obsidian";
+import { escapeRegExp } from './utils/regex';
+import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils/colour';
+import { decodeHtmlEntities } from './utils/text';
+import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
+import SynopsisManager from './SynopsisManager';
+import { createTimelineSVG } from './renderer/TimelineRenderer';
+import { RadialTimelineView } from './view/TimeLineView';
+import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 
-If src/main.ts is shorter than ~25 pages, continue with the next most central modules:
+
+// Declare the variable that will be injected by the build process
+declare const EMBEDDED_README_CONTENT: string;
+
+// Import the new beats update function <<< UPDATED IMPORT
+import { processByManuscriptOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotName } from './BeatsCommands';
+
+interface RadialTimelineSettings {
+    sourcePath: string;
+    validFolderPaths: string[]; // <<< ADDED: Store previously validated folder paths for autocomplete
+    publishStageColors: {
+        Zero: string;
+        Author: string;
+        House: string;
+        Press: string;
+    };
+    subplotColors: string[]; // 16 subplot palette colors
+    outerRingAllScenes?: boolean; // If true, outer ring shows all scenes; inner rings remain subplot
+    logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
+    processedBeatContexts: string[]; // <<< ADDED: Cache for processed triplets
+    debug: boolean; // Add debug setting
+    targetCompletionDate?: string; // Optional: Target date as yyyy-mm-dd string
+    openaiApiKey?: string; // <<< ADDED: Optional OpenAI API Key
+    anthropicApiKey?: string; // <<< ADDED: Anthropic API Key
+    anthropicModelId?: string; // <<< ADDED: Selected Anthropic Model ID
+    geminiApiKey?: string; // <<< ADDED: Gemini API Key
+    geminiModelId?: string; // <<< ADDED: Selected Gemini Model ID
+    defaultAiProvider?: 'openai' | 'anthropic' | 'gemini'; // <<< ADDED: Default AI provider
+    openaiModelId?: string; // <<< ADDED: Selected OpenAI Model ID
+    // Feature toggles
+    enableAiBeats: boolean; // Show AI beats features (colors + synopsis)
+    enableZeroDraftMode?: boolean; // Intercept complete scenes in Stage Zero for Pending Edits modal
+    // Optional: Store the fetched models list to avoid refetching?
+    // availableOpenAiModels?: { id: string, description?: string }[];
+}
+
+// Constants for the view
+export const TIMELINE_VIEW_TYPE = "radial-timeline";
+const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline"; // Sentence case per guidelines
+
+export interface Scene {
+    title?: string;
+    date: string;
+    path?: string;
+    subplot?: string;
+    act?: string;
+    // Use singular meta key: Character
+    // character?: string[]; // removed in favor of Character
+    pov?: string;
+    location?: string;
+    number?: number;
+    synopsis?: string;
+    when?: Date; // Keep for backward compatibility 
+    actNumber?: number; // Keep for backward compatibility
+    Character?: string[]; // Keep for backward compatibility
+    status?: string | string[]; // Add status property
+    "Publish Stage"?: string; // Add publish stage property
+    due?: string; // Add due date property
+    pendingEdits?: string; // Add pending edits property
+    "1beats"?: string; // Add 1beats property
+    "2beats"?: string; // Add 2beats property 
+    "3beats"?: string; // Add 3beats property
+    // Plot-specific properties  
+    itemType?: "Scene" | "Plot"; // Distinguish between Scene and Plot items
+    Description?: string; // For Plot beat descriptions
+}
+
+// SceneNumberInfo now imported from constants
+
+export const DEFAULT_SETTINGS: RadialTimelineSettings = {
+    sourcePath: '',
+    validFolderPaths: [], // <<< ADDED: Default empty array for folder path history
+    publishStageColors: {
+        Zero: '#9E70CF',   // Purple (Stage Zero)
+        Author: '#5E85CF', // Blue   (Author)
+        House: '#DA7847',  // Orange (House)
+        Press: '#6FB971'   // Green  (Press)
+    },
+    subplotColors: [
+        '#EFBDEB', // 0
+        '#a35ca7', // 1
+        '#6461A0', // 2
+        '#314CB6', // 3
+        '#0A81D1', // 4
+        '#98CE00', // 5
+        '#16E0BD', // 6
+        '#78C3FB', // 7
+        '#273C2C', // 8
+        '#A6D8D4', // 9
+        '#FF8600', // 10
+        '#F9E784', // 11
+        '#CEC3C1', // 12
+        '#F3D34A', // 13
+        '#004777', // 14
+        '#8B4513'  // 15 - Brown for Ring 16
+    ],
+    outerRingAllScenes: false, // Default to per-subplot outer ring
+    logApiInteractions: false, // <<< ADDED: Default for new setting
+    processedBeatContexts: [], // <<< ADDED: Default empty array
+    debug: false,
+    targetCompletionDate: undefined, // Ensure it's undefined by default
+    openaiApiKey: '', // Default to empty string
+    anthropicApiKey: '', // <<< ADDED: Default empty string
+    anthropicModelId: 'claude-sonnet-4-20250514', // Default to Sonnet 4 (20250514)
+    geminiApiKey: '',
+    geminiModelId: 'gemini-2.5-pro', // Default to Gemini 2.5 Pro
+    defaultAiProvider: 'openai',
+    openaiModelId: 'gpt-4.1' // Default to GPT-4.1
+    ,enableAiBeats: true
+    ,enableZeroDraftMode: false
+};
+
+// STATUS_COLORS now imported from constants
+
+const NUM_ACTS = 3;
+
+
+// Helper functions for safe SVG creation - add at the top of the file
+function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
+    const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    
+    // Set attributes
+    for (const [key, value] of Object.entries(attributes)) {
+        element.setAttribute(key, value);
+    }
+    
+    // Add classes
+    if (classes.length > 0) {
+        element.classList.add(...classes);
+    }
+    
+    return element;
+}
+
+function createSvgText(content: string, x: string | number, y: string | number, classes: string[] = []): SVGTextElement {
+    const text = createSvgElement("text", { x: x.toString(), y: y.toString() }) as SVGTextElement;
+    
+    // Add classes
+    if (classes.length > 0) {
+        text.classList.add(...classes);
+    }
+    
+    // Set text content safely
+    if (content) {
+        if (content.includes('<tspan')) {
+            // For content with tspan elements, we need to parse and add each element
+            // Create a temporary container
+            const parser = new DOMParser();
+            // Ensure the content is properly escaped except for tspan tags
+            const safeContent = content
+                .replace(/&(?!\(amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;\))/g, '&amp;')
+                .replace(/</g, (match, offset) => {
+                    // Only allow <tspan and </tspan
+                    return content.substring(offset, offset + 6) === '<tspan' || 
+                           content.substring(offset, offset + 7) === '</tspan' ? '<' : '&lt;';
+                })
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+                
+            const doc = parser.parseFromString(`<svg><text>${safeContent}</text></svg>`, 'image/svg+xml');
+            const parsedText = doc.querySelector('text');
+            
+            if (parsedText) {
+                // Copy all child nodes
+                while (parsedText.firstChild) {
+                    text.appendChild(parsedText.firstChild);
+                }
+            } else {
+                // Fallback to simple text if parsing failed
+                text.textContent = content;
+            }
+        } else {
+            // For plain text, just set the content
+            text.textContent = content;
+        }
+    }
+    
+    return text;
+}
+
+function createSvgTspan(content: string, classes: string[] = []): SVGTSpanElement {
+    const tspan = createSvgElement("tspan") as SVGTSpanElement;
+    
+    // Add classes
+    if (classes.length > 0) {
+        tspan.classList.add(...classes);
+    }
+    
+    // Set text content safely - escape any potential HTML/XML
+    if (content) {
+        tspan.textContent = content;
+    }
+    
+    return tspan;
+}
+
+function formatNumber(num: number): string {
+    if (Math.abs(num) < 0.001) return "0";
+    return num.toFixed(3).replace(/\.?0+$/, '');
+}
+
+function parseSceneTitle(title: string): { number: string; text: string } {
+    if (!title) {
+        return { number: "0", text: "" };
+    }
+    
+    // Extract the scene number from the beginning of the title
+    const match = title.match(/^(\d+(\.\d+)?)\s+(.+)/);
+    
+    if (match) {
+        // Get number and text parts
+        const number = match[1]; // The first capture group (number)
+        let text = match[3];     // The third capture group (text)
+        
+        // Escape XML entities in the text to make it safe for SVG
+        text = text.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&apos;');
+        
+        return { number, text };
+    }
+    
+    // If no number was found, return the whole title as text
+    // Escape XML entities
+    const safeTitle = title.replace(/&/g, '&amp;')
+                         .replace(/</g, '&lt;')
+                         .replace(/>/g, '&gt;')
+                         .replace(/"/g, '&quot;')
+                         .replace(/'/g, '&apos;');
+    
+    return { number: "0", text: safeTitle };
+}
+
+// Helper function for XML escaping (moved outside class to be accessible to all)
+function escapeXml(unsafe: string): string {
+    return unsafe
+        .replace(/&(?!\(amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;\))/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+// Helper function to calculate angle for a given date
+function dateToAngle(date: Date): number {
+    const startOfYear = new Date(date.getFullYear(), 0, 1);
+    const dayOfYear = (date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24);
+    const daysInYear = (new Date(date.getFullYear(), 11, 31).getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24) + 1;
+    const progress = dayOfYear / daysInYear;
+    return (progress * 2 * Math.PI) - (Math.PI / 2); // Offset by -90deg to start at top
+}
+
+// Helper function to create a properly formatted SVG arc path
+function createSvgArcPath(startAngle: number, endAngle: number, radius: number, largeArcFlag: number = 0): string {
+    // Calculate start and end points
+    const startX = radius * Math.cos(startAngle);
+    const startY = radius * Math.sin(startAngle);
+    const endX = radius * Math.cos(endAngle);
+    const endY = radius * Math.sin(endAngle);
+    
+    // Create standardized arc path
+    return `
+        M ${startX} ${startY}
+        A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}
+    `;
+}
+
+// Note: Search highlighting is now handled entirely by addHighlightRectangles() in TimeLineView.ts
+// after the SVG is rendered. This simplifies the code and ensures a single source of truth.
+
+export default class RadialTimelinePlugin extends Plugin {
+    settings: RadialTimelineSettings;
+    
+    // Do not store persistent references to views (per Obsidian guidelines)
+
+    // Track open scene paths
+    openScenePaths: Set<string> = new Set<string>();
+    // Ensure settings tab is only added once per load
+    private _settingsTabAdded: boolean = false;
+    
+    // Search related properties
+    searchTerm: string = '';
+    searchActive: boolean = false;
+    searchResults: Set<string> = new Set<string>();
+    
+    // Debouncing for timeline refresh
+    private refreshTimeout: number | null = null;
+    
+    // Completion estimate stats
+    latestTotalScenes: number = 0;
+    latestRemainingScenes: number = 0;
+    latestScenesPerWeek: number = 0;
+    
+    // Add a synopsisManager instance
+    public synopsisManager: SynopsisManager;
+    
+    // Add property to store the latest status counts for completion estimate
+    public latestStatusCounts?: Record<string, number>;
+
+    // Helper: get all currently open timeline views
+    private getTimelineViews(): RadialTimelineView[] {
+        return this.app.workspace
+            .getLeavesOfType(TIMELINE_VIEW_TYPE)
+            .map(leaf => leaf.view as unknown)
+            .filter((v): v is RadialTimelineView => v instanceof RadialTimelineView);
+    }
+    
+    // Helper: get the first open timeline view (if any)
+    private getFirstTimelineView(): RadialTimelineView | null {
+        const list = this.getTimelineViews();
+        return list.length > 0 ? list[0] : null;
+    }
+
+    // Settings access helpers
+    private get aiProvider(): 'openai' | 'anthropic' | 'gemini' {
+        return this.settings.defaultAiProvider || 'openai';
+    }
+
+    private getApiKey(): string | undefined {
+        const provider = this.aiProvider;
+        if (provider === 'anthropic') return this.settings.anthropicApiKey;
+        if (provider === 'gemini') return this.settings.geminiApiKey;
+        return this.settings.openaiApiKey;
+    }
+
+    private getModelId(): string {
+        const provider = this.aiProvider;
+        if (provider === 'anthropic') return this.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+        if (provider === 'gemini') return this.settings.geminiModelId || 'gemini-2.5-pro';
+        return this.settings.openaiModelId || 'gpt-4.1';
+    }
+    
+    /**
+     * Position and curve the text elements in the SVG
+     * @param container The container element with the SVG
+     */
+    curveTextElements(container: Element, curveFactor: number, angleToCenter: number): void {
+        // Find all text elements inside the container
+        const textElements = container.querySelectorAll('text');
+        if (!textElements.length) return;
+    
+        // Apply the curvature to each text element
+        textElements.forEach((textEl) => {
+            try {
+                // Create a curved path effect for this text
+                const pathId = `path-${Math.random().toString(36).substring(2, 9)}`;
+                
+                // Create a curved path element
+                const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathElement.setAttribute('id', pathId);
+                pathElement.setAttribute('d', `M 0,0 Q ${Math.cos(angleToCenter) * 500},${Math.sin(angleToCenter) * 500 * curveFactor} 1000,0`);
+
+                // Use CSS class instead of inline style
+                pathElement.classList.add('svg-path');
+                
+                // Add the path to the container before the text
+                textEl.parentNode?.insertBefore(pathElement, textEl);
+                
+                // Link the text to the path
+                textEl.setAttribute('path', `url(#${pathId})`);
+                textEl.setAttribute('pathLength', '1');
+                textEl.setAttribute('startOffset', '0');
+            } catch (error) {
+                console.error('Error applying text curvature:', error);
+            }
+        });
+    }
+    
+
+    private processHighlightedContent(fragment: DocumentFragment): Node[] {
+        // Create a temporary container using Obsidian's createEl
+        const container = document.createElement('div');
+        container.appendChild(fragment.cloneNode(true));
+        
+        // Extract all nodes from the container
+        const resultNodes: Node[] = [];
+        
+        // Process each child node
+        Array.from(container.childNodes).forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                // For text nodes, create plain text nodes
+                if (node.textContent) {
+                    resultNodes.push(document.createTextNode(node.textContent));
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                // For element nodes (like tspan), create SVG elements
+                const element = node as Element;
+                if (element.tagName.toLowerCase() === 'tspan') {
+                    const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                    
+                    // Copy attributes
+                    Array.from(element.attributes).forEach(attr => {
+                        svgTspan.setAttribute(attr.name, attr.value);
+                    });
+                    
+                    svgTspan.textContent = element.textContent;
+                    resultNodes.push(svgTspan);
+                }
+            }
+        });
+        
+        return resultNodes;
+    }
+END CODE — src/main.ts (top)
 
 Continuation 1 — File: src/renderer/TimelineRenderer.ts (from the top)
 BEGIN CODE — src/renderer/TimelineRenderer.ts (top)
-[Paste here if needed to reach ~25 pages total for Section A.]
+import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, PLOT_PIXEL_WIDTH, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
+import type { Scene } from '../main';
+import { formatNumber, escapeXml } from '../utils/svg';
+import { dateToAngle, isOverdueDateString } from '../utils/date';
+import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
+import { 
+    extractGradeFromScene, 
+    getSceneState, 
+    buildSquareClasses, 
+    buildTextClasses,
+    type PluginRendererFacade
+} from '../utils/sceneHelpers';
+import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
+
+// STATUS_COLORS and SceneNumberInfo now imported from constants
+
+// Stage header tooltips (used for grid row headers Z/A/H/P)
+const STAGE_HEADER_TOOLTIPS: Record<string, string> = {
+  Zero: 'Zero stage — The raw first draft. Unpolished ideas on the page, no edits yet.',
+  Author: 'Author stage — The author revises and refines the draft after letting it rest.',
+  House: 'House stage — Alpha and beta readers give feedback. Publisher or editor reviews the manuscript. Copy-edited and proofed.',
+  Press: 'Press stage — Final version is ready for publication.'
+};
+
+// Status header tooltips (used for grid column headers Tdo/Wrk/Due/Cmt)
+const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
+  Todo: 'Todo — tasks or scenes not yet started',
+  Working: 'Working — tasks or scenes currently in progress',
+  Due: 'Due — tasks or scenes with a past-due date',
+  Completed: 'Completed — tasks or scenes finished'
+};
+
+
+// --- Small helpers to centralize ring logic ---
+
+// Offsets are based solely on the outer scene ring's outer radius
+const PLOT_TITLE_INSET = -3;
+
+     // px inward from outer scene edge for plot beats titles
+const ACT_LABEL_OFFSET = 25;     // px outward from outer scene edge for ACT labels
+const MONTH_TEXT_INSET = 10;     // px inward toward center from outer perimeter (larger = closer to origin)
+const MONTH_TICK_TERMINAL = 35;   // px outward from outer scene edge for month tick lines
+const SCENE_TITLE_INSET = 22; // fixed pixels inward from the scene's outer boundary for title path
+
+// --- Tuning constants for plot label rendering ---
+const PLOT_FONT_PX = 9; // keep in sync with .plot-title in CSS
+const CHAR_WIDTH_EM = 0.62; // approx glyph width in em
+const LETTER_SPACING_EM = 0.07; // additional spacing in em
+const ESTIMATE_FUDGE_RENDER = 1.35; // generous length when rendering
+const PADDING_RENDER_PX = 24; // extra pixels for render
+const ANGULAR_GAP_PX = 16; // gap used when checking overlaps
+const TEXTPATH_START_NUDGE_RAD = 0.02; // small start nudge for text paths
+
+// --- Small helpers ---
+function stripNumericPrefix(title: string | undefined): string {
+    const full = title || '';
+    const m = full.match(/^(?:\s*\d+(?:\.\d+)?\s+)?(.+)/);
+    return m ? m[1] : full;
+}
+
+function estimatePixelsFromTitle(title: string, fontPx: number, fudge: number, paddingPx: number): number {
+    const approxPerChar = fontPx * (CHAR_WIDTH_EM + LETTER_SPACING_EM) * fudge;
+    return Math.max(0, title.length * approxPerChar + paddingPx);
+}
+
+function estimateAngleFromTitle(title: string, baseRadius: number, fontPx: number, fudge: number, paddingPx: number): number {
+    const px = estimatePixelsFromTitle(title, fontPx, fudge, paddingPx);
+    return px / Math.max(1, baseRadius);
+}
+
+
+function getEffectiveScenesForRing(allScenes: Scene[], actIndex: number, subplot: string | undefined, outerAllScenes: boolean, isOuter: boolean, grouped: { [act: number]: { [subplot: string]: Scene[] } }): Scene[] {
+    if (isOuter && outerAllScenes) {
+        const seenPaths = new Set<string>();
+        const seenPlotKeys = new Set<string>();
+        const result: Scene[] = [];
+        allScenes.forEach(s => {
+            const a = s.actNumber !== undefined ? s.actNumber - 1 : 0;
+            if (a !== actIndex) return;
+            if (s.itemType === 'Plot') {
+                const key = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
+                if (seenPlotKeys.has(key)) return;
+                seenPlotKeys.add(key);
+                result.push(s);
+            } else {
+                const k = s.path || `${s.title || ''}::${String(s.when || '')}`;
+                if (seenPaths.has(k)) return;
+                seenPaths.add(k);
+                result.push(s);
+            }
+        });
+        return result;
+    }
+    const list = subplot ? (grouped[actIndex] && grouped[actIndex][subplot]) || [] : [];
+    return outerAllScenes ? list.filter(s => s.itemType !== 'Plot') : list.filter(s => s.itemType !== 'Plot');
+}
+
+function buildSynopsis(
+    plugin: PluginRendererFacade,
+    scene: Scene,
+    sceneId: string,
+    maxTextWidth: number,
+    orderedSubplots: string[],
+    subplotIndexResolver?: (name: string) => number
+): SVGGElement {
+    const contentLines = [
+        `${scene.title}   ${scene.when?.toLocaleDateString() || ''}`,
+        ...(scene.itemType === 'Plot' && scene.Description
+            ? plugin.splitIntoBalancedLines(scene.Description, maxTextWidth)
+            : scene.synopsis
+            ? plugin.splitIntoBalancedLines(scene.synopsis, maxTextWidth)
+            : []),
+        '\u00A0'
+    ];
+    if (scene.itemType !== 'Plot') {
+        const rawSubplots = orderedSubplots.join(', ');
+        contentLines.push(rawSubplots);
+        const rawCharacters = (scene.Character || []).join(', ');
+        contentLines.push(rawCharacters);
+    }
+    const filtered = contentLines.filter(line => line && line.trim() !== '\u00A0');
+    // Pass resolver so SynopsisManager can map each subplot name to the same CSS var index used in rings
+    return plugin.synopsisManager.generateElement(scene, filtered, sceneId, subplotIndexResolver);
+}
 END CODE — src/renderer/TimelineRenderer.ts (top)
-
-Continuation 2 — File: src/view/TimeLineView.ts (from the top)
-BEGIN CODE — src/view/TimeLineView.ts (top)
-[Paste here if still needed to reach ~25 pages total.]
-END CODE — src/view/TimeLineView.ts (top)
-
-Continuation 3 — File: src/settings/SettingsTab.ts (optional)
-BEGIN CODE — src/settings/SettingsTab.ts (top)
-[Paste here only if still short of ~25 pages.]
-END CODE — src/settings/SettingsTab.ts (top)
 
 
 ============================================================
 SECTION B — LAST 25 PAGES OF SOURCE CODE
 ============================================================
 
-Start at the end of your codebase and include contiguous ending segments until you reach ~25 pages. Clearly label each file as an ending portion.
-
-Ending segment 1 — File: src/renderer/TimelineRenderer.ts (ending pages)
-BEGIN CODE — src/renderer/TimelineRenderer.ts (ending)
-[Paste the ending pages of this file here.]
-END CODE — src/renderer/TimelineRenderer.ts (ending)
-
-Ending segment 2 — File: src/view/TimeLineView.ts (ending pages)
+Ending segment 1 — File: src/view/TimeLineView.ts (ending pages)
 BEGIN CODE — src/view/TimeLineView.ts (ending)
-[Paste the ending pages of this file here.]
+                            if (group.getAttribute('data-act') === hoveredAct && 
+                                group.getAttribute('data-ring') === hoveredRing) {
+                                const path = group.querySelector('.rt-scene-path');
+                                if (path) {
+                                    actElements.push(group);
+                                    // Track which ones are scenes (have titles) vs plot slices
+                                    const sceneTitle = group.querySelector('.rt-scene-title');
+                                    if (sceneTitle) {
+                                        sceneElements.push(group);
+                                    }
+                                }
+                            }
+                        });
+
+                    if (actElements.length <= 1) return; // Need at least 2 elements to redistribute
+
+                    // Only check text measurement if the hovered element is a scene (not a plot slice)
+                    if (!sceneElements.includes(hoveredGroup)) return; // Don't expand plot slices
+
+                    // Measure if the hovered scene's title text fits in its current space
+                    const hoveredStart = Number(hoveredGroup.getAttribute('data-start-angle')) || 0;
+                    const hoveredEnd = Number(hoveredGroup.getAttribute('data-end-angle')) || 0;
+                    const hoveredInnerR = Number(hoveredGroup.getAttribute('data-inner-r')) || 0;
+                    const hoveredOuterR = Number(hoveredGroup.getAttribute('data-outer-r')) || 0;
+                    const hoveredMidR = (hoveredInnerR + hoveredOuterR) / 2;
+                    const currentArcPx = (hoveredEnd - hoveredStart) * hoveredMidR;
+
+                    // Get the scene title element and measure its text width
+                    const hoveredSceneTitle = hoveredGroup.querySelector('.rt-scene-title');
+                    if (!hoveredSceneTitle) return; // No title to measure
+
+                    const titleText = hoveredSceneTitle.textContent || '';
+                    if (!titleText.trim()) return; // No text to measure
+
+                    // Use the reusable measurement element to avoid creating/destroying elements
+                    measurementText.textContent = titleText;
+                    const hoveredComputed = getComputedStyle(hoveredSceneTitle as Element);
+                    
+                    // SAFE: CSS custom properties used for dynamic font measurement copying
+                    const fontFamily = hoveredComputed.fontFamily || 'sans-serif';
+                    const fontSize = hoveredComputed.fontSize || '18px';
+                    measurementText.style.setProperty('--rt-measurement-font-family', fontFamily);
+                    measurementText.style.setProperty('--rt-measurement-font-size', fontSize);
+                    
+                    const textBBox = measurementText.getBBox();
+                    const requiredTextWidth = textBBox.width;
+
+                    // Add padding for readability and account for text path start offsets
+                    const PADDING_PX = 8;
+                    const TEXTPATH_START_NUDGE_RAD = 0.02; // Angular nudge from renderer
+                    const TEXTPATH_START_OFFSET_PX = 4; // Pixel offset from startOffset="4"
+                    
+                    // Convert angular nudge to pixels at this radius
+                    const angularNudgePx = TEXTPATH_START_NUDGE_RAD * hoveredMidR;
+                    
+                    const requiredArcPx = requiredTextWidth + PADDING_PX + TEXTPATH_START_OFFSET_PX + angularNudgePx;
+                    
+                    if (currentArcPx >= requiredArcPx) return; // Text already fits, no need to expand
+
+                    // Calculate target expanded size based on text width
+                    const targetArcPx = requiredArcPx * HOVER_EXPAND_FACTOR;
+                    const targetAngularSize = targetArcPx / hoveredMidR;
+
+                    // Get total angular space for this act/ring by finding act boundaries
+                    let actStartAngle = 0;
+                    let actEndAngle = 2 * Math.PI;
+                    
+                    // Simple approximation: if this is act 0,1,2 out of 3, divide circle
+                    const actNum = Number(hoveredAct);
+                    const NUM_ACTS = 3; // You might want to make this dynamic
+                    actStartAngle = (actNum * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                    actEndAngle = ((actNum + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                    
+                    const totalActSpace = actEndAngle - actStartAngle;
+                    
+                    // Calculate space for plot slices (they keep their original size)
+                    let totalPlotSpace = 0;
+                    const plotElements: Element[] = [];
+                    actElements.forEach(element => {
+                        if (!sceneElements.includes(element)) {
+                            // This is a plot slice
+                            plotElements.push(element);
+                            const plotStart = Number(element.getAttribute('data-start-angle')) || 0;
+                            const plotEnd = Number(element.getAttribute('data-end-angle')) || 0;
+                            totalPlotSpace += (plotEnd - plotStart);
+                        }
+                    });
+                    
+                    const availableSceneSpace = totalActSpace - totalPlotSpace;
+                    const spaceForOtherScenes = availableSceneSpace - targetAngularSize;
+                    const angularSizeForOtherScenes = spaceForOtherScenes / (sceneElements.length - 1);
+
+                    // Redistribute angles for all elements (scenes and plots)
+                    let currentAngle = actStartAngle;
+                    actElements.forEach((group: Element) => {
+                        const innerR = Number(group.getAttribute('data-inner-r')) || 0;
+                        const outerR = Number(group.getAttribute('data-outer-r')) || 0;
+                        
+                        let newStart, newEnd;
+                        if (group === hoveredGroup) {
+                            // Expanded scene
+                            newStart = currentAngle;
+                            newEnd = currentAngle + targetAngularSize;
+                        } else if (sceneElements.includes(group)) {
+                            // Other scenes (compressed)
+                            newStart = currentAngle;
+                            newEnd = currentAngle + angularSizeForOtherScenes;
+                        } else {
+                            // Plot slice (keep original size)
+                            const originalStart = Number(group.getAttribute('data-start-angle')) || 0;
+                            const originalEnd = Number(group.getAttribute('data-end-angle')) || 0;
+                            const originalSize = originalEnd - originalStart;
+                            newStart = currentAngle;
+                            newEnd = currentAngle + originalSize;
+                        }
+
+                        // Update the scene path
+                        const path = group.querySelector('.rt-scene-path') as SVGPathElement;
+                        if (path) {
+                            path.setAttribute('d', buildCellArcPath(innerR, outerR, newStart, newEnd));
+                        }
+
+                        // Update text path if present
+                        const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
+                        if (textPath) {
+                            const textPathRadius = Math.max(innerR, outerR - 22); // SCENE_TITLE_INSET = 22
+                            const TEXTPATH_START_NUDGE_RAD = 0.02;
+                            const textStart = newStart + TEXTPATH_START_NUDGE_RAD;
+                            const formatNumber = (n: number) => n.toFixed(6);
+                            textPath.setAttribute('d', 
+                                `M ${formatNumber(textPathRadius * Math.cos(textStart))} ${formatNumber(textPathRadius * Math.sin(textStart))} A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(newEnd))} ${formatNumber(textPathRadius * Math.sin(newEnd))}`
+                            );
+                        }
+
+                        // Update associated number square position for all scenes (including hovered)
+                        const scenePathEl = group.querySelector('.rt-scene-path') as SVGPathElement;
+                        if (scenePathEl) {
+                            const sceneId = scenePathEl.id;
+                            // Position at the START of the redistributed scene (not center)
+                            const startAngle = newStart;
+                            // Use the same radius calculation as the original renderer
+                            const squareRadius = (innerR + outerR) / 2;
+                            const squareX = squareRadius * Math.cos(startAngle);
+                            const squareY = squareRadius * Math.sin(startAngle);
+                            
+                            view.setNumberSquareGroupPosition(svg, sceneId, squareX, squareY);
+                        }
+
+                        currentAngle = newEnd;
+                    });
+                };
+
+                const onMove = (e: PointerEvent) => {
+                    // Update synopsis position when visible
+                    if (currentSynopsis && currentSceneId) {
+                        view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, currentSceneId);
+                    }
+
+                    rafId = null;
+                };
+                svg.addEventListener('pointermove', (e: PointerEvent) => {
+                    if (rafId !== null) return;
+                    rafId = window.requestAnimationFrame(() => onMove(e));
+                });
+            })(this);
+            // --- end delegated hover ---
+            
+        } catch (error) {
+            console.error("Error rendering timeline:", error);
+            container.createEl("div", {
+                text: "Error rendering timeline. Check console for details."
+            });
+        }
+    }
+    
+    // New helper method to set up scene interactions
+    private setupSceneInteractions(group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
+        // Find path for click interaction
+        const path = group.querySelector(".rt-scene-path");
+        if (!path) return;
+        
+        const encodedPath = group.getAttribute("data-path");
+        if (encodedPath && encodedPath !== "") {
+            const filePath = decodeURIComponent(encodedPath);
+            
+            // Set up click handler
+            path.addEventListener("click", (evt: MouseEvent) => {
+                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+                if (!(file instanceof TFile)) return;
+
+                // Intercept for Zero draft mode when conditions match
+                if (this.plugin.settings.enableZeroDraftMode) {
+                    const cache = this.plugin.app.metadataCache.getFileCache(file);
+                    const fm = (cache && cache.frontmatter) ? (cache.frontmatter as Record<string, unknown>) : {};
+
+                    // Case-insensitive lookup helper
+                    const getFm = (key: string): unknown => {
+                        if (!fm) return undefined;
+                        const lower = key.toLowerCase();
+                        for (const k of Object.keys(fm)) {
+                            if (k.toLowerCase() === lower) return (fm as any)[k];
+                        }
+                        return undefined;
+                    };
+
+                    const stageValue = String(getFm('Publish Stage') ?? 'Zero');
+                    const statusValue = String(getFm('Status') ?? 'Todo');
+
+                    const isStageZero = stageValue.trim().toLowerCase() === 'zero';
+                    const isStatusComplete = statusValue.trim().toLowerCase() === 'complete';
+
+                    if (isStageZero && isStatusComplete) {
+                        evt.preventDefault();
+                        evt.stopPropagation();
+
+                        const pendingEdits = String(getFm('Pending Edits') ?? '').trim();
+                        const sceneTitle = file.basename || 'Scene';
+
+                        const modal = new ZeroDraftModal(this.app, {
+                            titleText: `Pending Edits — ${sceneTitle}`,
+                            initialText: pendingEdits,
+                            onOk: async (nextText: string) => {
+                                try {
+                                    await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
+                                        (yaml as any)['Pending Edits'] = nextText; // keep key; overwrite (may be empty)
+                                    });
+                                } catch (e) {
+                                    new Notice('Failed to save Pending Edits');
+                                }
+                            },
+                            onOverride: () => {
+                                // Open without saving
+                                const leaves = this.plugin.app.workspace.getLeavesOfType('markdown');
+                                const existingLeaf = leaves.find(leaf => {
+                                    const viewState = leaf.getViewState();
+                                    return viewState.state?.file === file.path;
+                                });
+                                if (existingLeaf) this.plugin.app.workspace.revealLeaf(existingLeaf);
+                                else this.plugin.app.workspace.getLeaf('tab').openFile(file);
+                            }
+                        });
+
+                        modal.open();
+                        return; // Do not open the note in this path
+                    }
+                }
+
+                // Default behavior: open or reveal the note
+                const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
+                const existingLeaf = leaves.find(leaf => {
+                    const viewState = leaf.getViewState();
+                    return viewState.state?.file === file.path;
+                });
+                if (existingLeaf) {
+                    this.plugin.app.workspace.revealLeaf(existingLeaf);
+                } else {
+                    const leaf = this.plugin.app.workspace.getLeaf('tab');
+                    leaf.openFile(file);
+                }
+            });
+            // Cursor styling handled via CSS (.rt-scene-path)
+            
+            // Add mouse enter/leave handlers to highlight files in explorer and tabs
+            group.addEventListener("mouseenter", () => {
+                if (filePath && filePath.trim() !== '') {
+                    // Verify the file exists before attempting to highlight
+                    const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+                    if (file instanceof TFile) {
+                        // this.highlightFileInExplorer(filePath, true); // Removed this line
+                    }
+                }
+            });
+            
+            group.addEventListener("mouseleave", () => {
+                if (filePath && filePath.trim() !== '') {
+                    // this.highlightFileInExplorer(filePath, false); // Removed this line
+                }
+            });
+        }
+        
+        // Set up mouseover events for synopses (delegated at svg level; keep only click here)
+        const sceneId = path.id;
+        let synopsis = svgElement.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
+
+        // If no synopsis found by exact ID match, try fallback methods
+        if (!synopsis && group.hasAttribute("data-path") && group.getAttribute("data-path")) {
+            const encodedPath = group.getAttribute("data-path");
+            if (encodedPath) {
+                const path = decodeURIComponent(encodedPath);
+                const matchingSceneIndex = scenes.findIndex(s => s.path === path);
+                
+                if (matchingSceneIndex > -1) {
+                    // Use the index to match against any available synopsis
+                    const allSynopses = Array.from(svgElement.querySelectorAll('.rt-scene-info'));
+                    
+                    // As a fallback, just use the synopsis at the same index if available
+                    if (matchingSceneIndex < allSynopses.length) {
+                        synopsis = allSynopses[matchingSceneIndex] as Element;
+                    }
+                }
+            }
+        }
+
+        // Delegated hover handled at svg level (see above); synopsis use rAF throttle there.
+    }
+    
+    // Helper method to highlight files in the navigator and tab bar
+    private highlightFileInExplorer(filePath: string, isHighlighting: boolean): void {
+        if (!filePath) return;
+        
+        this.log(`${isHighlighting ? 'Highlighting' : 'Unhighlighting'} file in explorer: ${filePath}`);
+        
+        try {
+            // Get the file object
+            const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+            
+            if (file instanceof TFile) {
+                // For highlighting, we'll use Obsidian's file explorer API to reveal the file
+                if (isHighlighting) {
+                    // Use the file explorer view directly
+                    const fileExplorer = this.plugin.app.workspace.getLeavesOfType('file-explorer')[0];
+                    if (fileExplorer && fileExplorer.view) {
+                        // Cast to any to access the internal reveal method
+                        interface ExplorerView { revealInFolder(file: TFile): void }
+                        const explorerView = fileExplorer.view as unknown as ExplorerView;
+                        if (explorerView.revealInFolder) {
+                            // SAFE: Using Obsidian's API
+                            explorerView.revealInFolder(file);
+                        }
+                    }
+                    
+                    // No additional focus behavior required
+                } else {
+                    // When unhighlighting, we don't need to do anything special.
+                    // The hover effect disappears naturally when mouse leaves.
+                    // If we want to restore focus to this view, trigger for this.leaf.
+                    this.plugin.app.workspace.trigger('active-leaf-change', this.leaf);
+                }
+            }
+        } catch (error) {
+            this.log(`Error highlighting file: ${error}`);
+        }
+    }
+    
+    // Property to track tab highlight timeout
+    private _tabHighlightTimeout: number | null = null;
+}
 END CODE — src/view/TimeLineView.ts (ending)
 
-Ending segment 3 — File: src/utils/sceneHelpers.ts (ending pages; optional)
-BEGIN CODE — src/utils/sceneHelpers.ts (ending)
-[Paste ending pages here if needed to reach ~25 pages.]
-END CODE — src/utils/sceneHelpers.ts (ending)
+Ending segment 2 — File: src/utils/sceneHelpers.ts (full file)
+BEGIN CODE — src/utils/sceneHelpers.ts
+import { Scene } from '../main';
 
-Ending segment 4 — File: src/utils/sceneCreation.ts (ending pages; optional)
-BEGIN CODE — src/utils/sceneCreation.ts (ending)
-[Paste ending pages here if needed to reach ~25 pages.]
-END CODE — src/utils/sceneCreation.ts (ending)
+export interface PluginRendererFacade {
+    settings: {
+        publishStageColors: Record<string, string>;
+        debug: boolean;
+        targetCompletionDate?: string;
+        outerRingAllScenes?: boolean;
+        enableAiBeats: boolean;
+    };
+    searchActive: boolean;
+    searchResults: Set<string>;
+    searchTerm: string;
+    openScenePaths: Set<string>;
+    desaturateColor(hex: string, amount: number): string;
+    lightenColor(hex: string, percent: number): string;
+    darkenColor(hex: string, percent: number): string;
+    calculateCompletionEstimate(scenes: Scene[]): { date: Date; total: number; remaining: number; rate: number } | null;
+    log<T>(message: string, data?: T): void;
+    synopsisManager: { generateElement: (scene: Scene, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number) => SVGGElement };
+    safeSvgText(text: string): string;
+    latestStatusCounts?: Record<string, number>;
+    splitIntoBalancedLines: (text: string, maxWidth: number) => string[];
+}
+
+export interface SceneState {
+    isSceneOpen: boolean;
+    isSearchMatch: boolean;
+    hasEdits: boolean;
+}
+
+/**
+ * Helper function to extract AI grades from scenes
+ */
+export function extractGradeFromScene(
+    scene: Scene, 
+    sceneId: string, 
+    sceneGrades: Map<string, string>, 
+    plugin: PluginRendererFacade
+): void {
+    if (scene["2beats"]) {
+        try {
+            const firstLine2Beats = scene["2beats"].split('\n')[0]?.trim() || '';
+            // Updated regex to match "[Number] [GradeLetter] / [Comment]" with optional YAML list marker
+            const gradeMatch = firstLine2Beats.match(/^-?\s*(?:\d+(?:\.\d+)?\s+)?([ABC])(?![A-Za-z0-9])/i);
+            if (gradeMatch && gradeMatch[1]) {
+                const grade = gradeMatch[1].toUpperCase();
+                sceneGrades.set(sceneId, grade);
+            }
+        } catch (e) {
+            // Silently handle errors per plugin guidelines
+        }
+    }
+}
+
+/**
+ * Helper function to check scene state
+ */
+export function getSceneState(scene: Scene, plugin: PluginRendererFacade): SceneState {
+    const isSceneOpen = !!(scene.path && plugin.openScenePaths.has(scene.path));
+    const isSearchMatch = !!(plugin.searchActive && scene.path && plugin.searchResults.has(scene.path));
+    const hasEdits = !!(scene.pendingEdits && scene.pendingEdits.trim() !== '');
+    return { isSceneOpen, isSearchMatch, hasEdits };
+}
+
+/**
+ * Helper function to build square classes
+ */
+export function buildSquareClasses(
+    isSceneOpen: boolean, 
+    isSearchMatch: boolean, 
+    hasEdits: boolean
+): string {
+    let classes = 'rt-number-square';
+    if (isSceneOpen) classes += ' rt-scene-is-open';
+    if (isSearchMatch) classes += ' rt-search-result';
+    if (hasEdits) classes += ' rt-has-edits';
+    return classes;
+}
+
+/**
+ * Helper function to build text classes
+ */
+export function buildTextClasses(
+    isSceneOpen: boolean, 
+    isSearchMatch: boolean, 
+    hasEdits: boolean
+): string {
+    let classes = 'rt-number-text';
+    if (isSceneOpen) classes += ' rt-scene-is-open';
+    if (isSearchMatch) classes += ' rt-search-result';
+    if (hasEdits) classes += ' rt-has-edits';
+    return classes;
+}
+END CODE — src/utils/sceneHelpers.ts
+
+Ending segment 3 — File: src/utils/sceneCreation.ts (full file)
+BEGIN CODE — src/utils/sceneCreation.ts
+import { normalizePath } from 'obsidian';
+
+/**
+ * Sanitize a vault-relative source path using Obsidian's normalizePath.
+ */
+export function sanitizeSourcePath(sourcePath: string | undefined | null): string {
+  const p = (sourcePath || '').trim();
+  return p ? normalizePath(p) : '';
+}
+
+/**
+ * Build the initial scene filename placed under the given (sanitized) source path.
+ * Defaults to using "1 Test Scene.md" as the initial file name.
+ */
+export function buildInitialSceneFilename(sanitizedSourcePath: string, baseName: string = '1 Test Scene.md'): string {
+  return `${sanitizedSourcePath ? sanitizedSourcePath + '/' : ''}${baseName}`;
+}
+END CODE — src/utils/sceneCreation.ts
 
 
-Redaction legend (optional)
-- [REDACTED] API key or token
-- [REDACTED] filesystem path or personal identifier
-- [REDACTED] internal comment
+FEATURE APPENDIX — ADDITIONAL REPRESENTATIVE EXCERPTS
 
-Examples
-const API_KEY = "[REDACTED]";
-const userHomePath = "[REDACTED]";
-/* [REDACTED: internal note] */
+AI Beats analysis — commands and processing hooks (src/main.ts)
+BEGIN CODE — src/main.ts (AI beats commands)
+// --- ADD NEW COMMANDS --- 
+this.addCommand({
+    id: 'update-beats-manuscript-order',
+    name: 'Update beats (manuscript order)',
+    checkCallback: (checking: boolean) => {
+        if (!this.settings.enableAiBeats) return false; // hide when disabled
+        if (checking) return true;
+        (async () => {
+        const provider = this.settings.defaultAiProvider || 'openai';
+        let hasKey = true;
+        if (provider === 'anthropic') {
+            hasKey = !!this.settings.anthropicApiKey?.trim();
+            if (!hasKey) { new Notice('Anthropic API key is not set in settings.'); return; }
+        } else if (provider === 'gemini') {
+            hasKey = !!this.settings.geminiApiKey?.trim();
+            if (!hasKey) { new Notice('Gemini API key is not set in settings.'); return; }
+        } else {
+            hasKey = !!this.settings.openaiApiKey?.trim();
+            if (!hasKey) { new Notice('OpenAI API key is not set in settings.'); return; }
+        }
+
+        new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`);
+
+        try {
+             new Notice('Starting manuscript order update...');
+             await processByManuscriptOrder(this, this.app.vault);
+        } catch (error) {
+            console.error("Error running manuscript order beat update:", error);
+            new Notice("❌ Error during manuscript order update.");
+        }
+        })();
+        return true;
+    }
+});
+
+// Run beats update for a chosen subplot
+this.addCommand({
+    id: 'update-beats-choose-subplot',
+    name: 'Update beats (subplot)',
+    checkCallback: (checking: boolean) => {
+        if (!this.settings.enableAiBeats) return false;
+        if (checking) return true;
+        (async () => {
+            const provider = this.settings.defaultAiProvider || 'openai';
+            let hasKey = true;
+            if (provider === 'anthropic') hasKey = !!this.settings.anthropicApiKey?.trim();
+            else if (provider === 'gemini') hasKey = !!this.settings.geminiApiKey?.trim();
+            else hasKey = !!this.settings.openaiApiKey?.trim();
+            if (!hasKey) { new Notice(`${provider[0].toUpperCase()+provider.slice(1)} API key is not set in settings.`); return; }
+
+            const names = await getDistinctSubplotNames(this, this.app.vault);
+            if (names.length === 0) { new Notice('No subplots found.'); return; }
+
+            class SubplotPicker extends SuggestModal<string> {
+                plugin: RadialTimelinePlugin;
+                choices: string[];
+                constructor(app: App, plugin: RadialTimelinePlugin, choices: string[]) {
+                    super(app);
+                    this.plugin = plugin;
+                    this.choices = choices;
+                    this.setPlaceholder('Select subplot to process...');
+                }
+                getSuggestions(query: string): string[] {
+                    const q = query.trim().toLowerCase();
+                    return this.choices.filter(n => !q || n.toLowerCase().includes(q));
+                }
+                renderSuggestion(value: string, el: HTMLElement) {
+                    const index = this.choices.indexOf(value);
+                    el.setText(`${index + 1}. ${value}`);
+                }
+                onChooseSuggestion(value: string) {
+                    processBySubplotName(this.plugin, this.plugin.app.vault, value);
+                }
+            }
+
+            new SubplotPicker(this.app, this, names).open();
+        })();
+        return true;
+    }
+});
+END CODE — src/main.ts (AI beats commands)
+
+Search feature — prompt + processing (src/main.ts)
+BEGIN CODE — src/main.ts (search modal)
+private openSearchPrompt(): void {
+    const modal = new Modal(this.app);
+    modal.titleEl.setText('Search timeline');
+    
+    const contentEl = modal.contentEl;
+    contentEl.empty();
+    
+    const searchContainer = contentEl.createDiv('search-container');
+    searchContainer.classList.add('flex-container');
+    searchContainer.classList.add('radial-timeline-search');
+    
+    const searchInput = new TextComponent(searchContainer);
+    searchInput.setPlaceholder('Enter search term (min 3 letters)');
+    searchInput.inputEl.classList.add('search-input');
+    
+    if (this.searchActive && this.searchTerm) {
+        searchInput.setValue(this.searchTerm);
+    }
+    
+    const buttonContainer = contentEl.createDiv('rt-button-container');
+    
+    const searchButton = new ButtonComponent(buttonContainer)
+        .setButtonText('Search')
+        .onClick(() => {
+            const term = searchInput.getValue().trim();
+            if (term.length >= 3) {
+                this.performSearch(term);
+                modal.close();
+            } else {
+                new Notice('Please enter at least 3 letters to search');
+            }
+        });
+    
+    const resetButton = new ButtonComponent(buttonContainer)
+        .setButtonText('Reset')
+        .onClick(() => {
+            searchInput.setValue('');
+            this.clearSearch();
+            modal.close();
+        });
+    
+    searchInput.inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const term = searchInput.getValue().trim();
+            if (term.length >= 3) {
+                this.performSearch(term);
+                modal.close();
+            } else {
+                new Notice('Please enter at least 3 letters to search');
+            }
+        }
+    });
+    
+    modal.open();
+}
+END CODE — src/main.ts (search modal)
+
+BEGIN CODE — src/main.ts (search logic)
+public performSearch(term: string): void {
+    if (!term || term.trim().length === 0) {
+        this.clearSearch();
+        return;
+    }
+    
+    this.searchTerm = term;
+    this.searchActive = true;
+    this.searchResults.clear();
+    
+    const containsWholePhrase = (haystack: string | undefined, phrase: string, isDate: boolean = false): boolean => {
+        if (!haystack || !phrase || typeof haystack !== 'string') return false;
+        
+        const h = haystack.toLowerCase();
+        const p = phrase.toLowerCase();
+        
+        if (isDate && h.includes('/')) {
+            const datePattern = new RegExp(p.replace(/\//g, '\\/') + '(?:\\/|$)', 'i');
+            return datePattern.test(h);
+        }
+        
+        return h.includes(p);
+    };
+    
+    this.getSceneData().then(scenes => {
+        scenes.forEach(scene => {
+            const textFields: (string | undefined)[] = [
+                scene.title,
+                scene.synopsis,
+                ...(scene.Character || []),
+                scene.subplot,
+                scene.location,
+                scene.pov
+            ];
+            const textMatched = textFields.some(f => containsWholePhrase(f, term, false));
+            
+            const dateField = scene.when?.toLocaleDateString();
+            const dateMatched = containsWholePhrase(dateField, term, true);
+            
+            if (textMatched || dateMatched) {
+                if (scene.path) {
+                    this.searchResults.add(scene.path);
+                }
+            }
+        });
+        
+        const timelineViews = this.getTimelineViews();
+        timelineViews.forEach(view => view.refreshTimeline());
+    });
+}
+END CODE — src/main.ts (search logic)
+
+Template insertion — command + helpers (src/main.ts)
+BEGIN CODE — src/main.ts (template command)
+this.addCommand({
+    id: 'create-template-scene',
+    name: 'Create template scene',
+    callback: async () => {
+        await createTemplateScene(this, this.app.vault);
+    }
+});
+END CODE — src/main.ts (template command)
+
+Rotate timeline — toggle and state (src/view/TimeLineView.ts)
+BEGIN CODE — src/view/TimeLineView.ts (rotation toggle)
+const rotatable = svgElement.querySelector('#timeline-rotatable') as SVGGElement | null;
+const toggle = svgElement.querySelector('#rotation-toggle') as SVGGElement | null;
+const arrowUp = svgElement.querySelector('#rotation-arrow-up') as SVGUseElement | null;
+const arrowDown = svgElement.querySelector('#rotation-arrow-down') as SVGUseElement | null;
+if (rotatable && toggle && arrowUp && arrowDown) {
+    let rotated = this.rotationState;
+    const applyRotation = () => {
+        if (rotated) {
+            rotatable.setAttribute('transform', 'rotate(-120)');
+            arrowUp.classList.add('is-hidden');
+            arrowDown.classList.remove('is-hidden');
+        } else {
+            rotatable.removeAttribute('transform');
+            arrowUp.classList.remove('is-hidden');
+            arrowDown.classList.add('is-hidden');
+        }
+        svgElement.setAttribute('data-rotated', rotated ? 'true' : 'false');
+        this.applyRotationToNumberSquares(svgElement as unknown as SVGSVGElement, rotated);
+    };
+    applyRotation();
+    this.registerDomEvent(toggle as unknown as HTMLElement, 'click', () => {
+        rotated = !rotated;
+        this.rotationState = rotated;
+        applyRotation();
+    });
+}
+END CODE — src/view/TimeLineView.ts (rotation toggle)
+
+All scenes mode / Main Plot mode — setting toggle (src/settings/SettingsTab.ts)
+BEGIN CODE — src/settings/SettingsTab.ts (outer ring mode)
+new Settings(containerEl)
+    .setName('All scenes mode or main plot mode')
+    .setDesc('If enabled, the outer ring shows ordered scenes from all subplots with subplot colors. Plot beats slices (gray) with labels are shown on the outer ring. When off, the outer ring shows only main plot scenes with publish stage coloring.')
+    .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.outerRingAllScenes || false)
+        .onChange(async (value) => {
+            this.plugin.settings.outerRingAllScenes = value;
+            await this.plugin.saveSettings();
+        }));
+END CODE — src/settings/SettingsTab.ts (outer ring mode)
+
+Save the Cat subplot slices — plot note handling (src/renderer/TimelineRenderer.ts)
+BEGIN CODE — src/renderer/TimelineRenderer.ts (plot slices)
+// Plot notes are narrow slices mixed with scenes; use fixed pixel width converted to angle
+const PLOT_FONT_PX = 9;
+const TEXTPATH_START_NUDGE_RAD = 0.02;
+// ... later when laying out items ...
+if (it.itemType === 'Plot') {
+    positions.set(idx, { startAngle: current, endAngle: current + plotAngularWidth, angularSize: plotAngularWidth });
+    current += plotAngularWidth;
+} else {
+    positions.set(idx, { startAngle: current, endAngle: current + sceneAngularSize, angularSize: sceneAngularSize });
+    current += sceneAngularSize;
+}
+// Synopsis rendering prefers Description for Plot items
+...(scene.itemType === 'Plot' && scene.Description
+    ? plugin.splitIntoBalancedLines(scene.Description, maxTextWidth)
+    : scene.synopsis
+    ? plugin.splitIntoBalancedLines(scene.synopsis, maxTextWidth)
+    : [])
+END CODE — src/renderer/TimelineRenderer.ts (plot slices)
 
 END OF DOCUMENT
