@@ -1,0 +1,82 @@
+Radial Timeline — Code Excerpt for Copyright Registration
+(c) 2024–2025 Eric Rhys Taylor
+
+Submission type: Representative source code (first 25 pages + last 25 pages)
+Format: Plain text (.txt). Use a fixed-width font when viewing/printing.
+
+Notes to examiner (optional)
+- This file contains a representative sample of the Radial Timeline software source code.
+- Section A: First 25 pages from the primary entry module; continue into core modules if needed.
+- Section B: Last 25 pages from the codebase (ending segments).
+- Sensitive strings (paths, tokens) are redacted with "[REDACTED]".
+
+Redaction guidance
+- Replace secrets and personal identifiers with [REDACTED].
+- Keep code layout and spacing unchanged elsewhere.
+
+============================================================
+SECTION A — FIRST 25 PAGES OF SOURCE CODE
+============================================================
+
+File: src/main.ts (from the top)
+BEGIN CODE — src/main.ts (top)
+[Paste the first 25 pages worth of code from src/main.ts starting at line 1.]
+[Preserve indentation and spacing exactly. Redact any secrets as [REDACTED].]
+END CODE — src/main.ts (top)
+
+If src/main.ts is shorter than ~25 pages, continue with the next most central modules:
+
+Continuation 1 — File: src/renderer/TimelineRenderer.ts (from the top)
+BEGIN CODE — src/renderer/TimelineRenderer.ts (top)
+[Paste here if needed to reach ~25 pages total for Section A.]
+END CODE — src/renderer/TimelineRenderer.ts (top)
+
+Continuation 2 — File: src/view/TimeLineView.ts (from the top)
+BEGIN CODE — src/view/TimeLineView.ts (top)
+[Paste here if still needed to reach ~25 pages total.]
+END CODE — src/view/TimeLineView.ts (top)
+
+Continuation 3 — File: src/settings/SettingsTab.ts (optional)
+BEGIN CODE — src/settings/SettingsTab.ts (top)
+[Paste here only if still short of ~25 pages.]
+END CODE — src/settings/SettingsTab.ts (top)
+
+
+============================================================
+SECTION B — LAST 25 PAGES OF SOURCE CODE
+============================================================
+
+Start at the end of your codebase and include contiguous ending segments until you reach ~25 pages. Clearly label each file as an ending portion.
+
+Ending segment 1 — File: src/renderer/TimelineRenderer.ts (ending pages)
+BEGIN CODE — src/renderer/TimelineRenderer.ts (ending)
+[Paste the ending pages of this file here.]
+END CODE — src/renderer/TimelineRenderer.ts (ending)
+
+Ending segment 2 — File: src/view/TimeLineView.ts (ending pages)
+BEGIN CODE — src/view/TimeLineView.ts (ending)
+[Paste the ending pages of this file here.]
+END CODE — src/view/TimeLineView.ts (ending)
+
+Ending segment 3 — File: src/utils/sceneHelpers.ts (ending pages; optional)
+BEGIN CODE — src/utils/sceneHelpers.ts (ending)
+[Paste ending pages here if needed to reach ~25 pages.]
+END CODE — src/utils/sceneHelpers.ts (ending)
+
+Ending segment 4 — File: src/utils/sceneCreation.ts (ending pages; optional)
+BEGIN CODE — src/utils/sceneCreation.ts (ending)
+[Paste ending pages here if needed to reach ~25 pages.]
+END CODE — src/utils/sceneCreation.ts (ending)
+
+
+Redaction legend (optional)
+- [REDACTED] API key or token
+- [REDACTED] filesystem path or personal identifier
+- [REDACTED] internal comment
+
+Examples
+const API_KEY = "[REDACTED]";
+const userHomePath = "[REDACTED]";
+/* [REDACTED: internal note] */
+
+END OF DOCUMENT
