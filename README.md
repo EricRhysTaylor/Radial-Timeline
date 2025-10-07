@@ -302,7 +302,7 @@ This project stands on the shoulders of many generous teachers, tools, and story
 
 ## Feedback and support
 
-Please see the Github Wiki for documentation at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/wiki"  target="_blank" rel="noopener">Github Radial Timeline Wiki</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">github repository issues page</a>. if you find the radial timeline plugin useful and would like to support continued development, please consider buying me a coffee:
+Please see the Github Wiki for documentation at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/wiki"  target="_blank" rel="noopener">Github Radial Timeline Wiki</a>. Also check out the Discussions group at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/discussions" target="_blank" rel="noopener">Discussions</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">Github Repository Issues page</a>. if you find the radial timeline plugin useful and would like to support continued development, please consider buying me a coffee:
 
 <a href="https://www.buymeacoffee.com/ericrhysTaylor" target="_blank" rel="noopener">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="buy me a coffee" style="width: 150px;" >
@@ -323,7 +323,6 @@ This plugin adheres to obsidian.md development best practices, including secure 
 This project is licensed under the MIT license - see the license file for details.
 
 © 2024–2025 Eric Rhys Taylor. Licensed under the MIT License.
-Portions of this software were developed with AI assistance under human creative direction.
 
 ## License & Trademarks
 
