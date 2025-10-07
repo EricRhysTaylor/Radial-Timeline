@@ -77,6 +77,19 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
   Click image to view full size in browser
 </div>  
 
+<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
+  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot3.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot3.jpeg" alt="Main Plot Mode" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+  </a>
+  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" alt="Search Results" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+  </a>
+</div>
+
+<div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
+  Click image to view full size in browser
+</div>  
+
 ## All scenes & main plot mode 
 
 Toggle in settings to display either all scenes mode or main plot mode. For all scenes mode, the timeline with show all scenes from all subplot ordered in the outer ring with plot beats and subplot color coding. all scene mode provides a full picture with all of the details including plot beats.
