@@ -314,18 +314,10 @@ Please see the Github Wiki for documentation at <a href="https://github.com/Eric
 
 Created by Eric Rhys Taylor
 
-This plugin adheres to obsidian.md development best practices, including secure dom manipulation and api compliance.
-
-<hr>
-
-## License
-
-This project is licensed under the MIT license - see the license file for details.
-
-© 2024–2025 Eric Rhys Taylor. Licensed under the MIT License.
+This plugin adheres to obsidian.md development best practices, including secure dom use and api compliance.
 
 ## License & Trademarks
 
-- Code: MIT License © 2025 Eric Rhys Taylor.
+- Code: MIT License © 2024-2025 Eric Rhys Taylor.
 - “Radial Timeline” is a claimed trademark (registration pending).
 - See LICENSE and TRADEMARK.md for details.
