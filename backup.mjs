@@ -81,7 +81,7 @@ try {
   const fileList = files.slice(0, maxList).join(', ');
   const more = files.length > maxList ? `, … (+${files.length - maxList} more)` : '';
   const bodyLines = [
-    areas ? `Areas: ${areas}` : '',
+    topAreas ? `Areas: ${topAreas}` : '',
     fileList ? `Files: ${fileList}${more}` : ''
   ].filter(Boolean);
   const body = bodyLines.join('\n');

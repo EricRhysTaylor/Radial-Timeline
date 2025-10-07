@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline Logo" width="10%">
 </p>
 <p align="center" style="font-family: 'Lato', sans-serif; font-weight: 100; font-size: 14px; margin-top: 12px; margin-bottom: 0; letter-spacing: 8px;">
-  Radial Timeline
+  Radial Timeline™
 </p>
 <p align="center" style="font-family: 'Lato', sans-serif; font-size: 14px; margin-top: 4px;">
   by Eric Rhys Taylor
@@ -18,9 +18,11 @@
 </p>
 <hr style="margin-bottom: 20px;">
 
+Radial Timeline™ — visualization plugin for Obsidian.
+
 An inclusive radial timeline for creative fiction writing projects that displays scenes organized by act, subplot, and numeric order in a radial format for a comprehensive view of project.
 
-This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story outline and timeline. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots. Various cues and interactions are available through a search feature and hover and click functionality. Hopefully, this will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
+This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story scenes comprising the manuscript. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots. Various cues and interactions are available through a search feature and hover and click functionality. This will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
 
 
 <a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">
@@ -298,14 +300,6 @@ This project stands on the shoulders of many generous teachers, tools, and story
 
 <hr>
 
-## Author
-
-Created by Eric Rhys Taylor
-
-This plugin adheres to obsidian.md development best practices, including secure dom manipulation and api compliance.
-
-<hr>
-
 ## Feedback and support
 
 Please see the Github Wiki for documentation at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/wiki"  target="_blank" rel="noopener">Github Radial Timeline Wiki</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">github repository issues page</a>. if you find the radial timeline plugin useful and would like to support continued development, please consider buying me a coffee:
@@ -314,9 +308,25 @@ Please see the Github Wiki for documentation at <a href="https://github.com/Eric
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="buy me a coffee" style="width: 150px;" >
 </a>
 
+<hr>
+
+## Author
+
+Created by Eric Rhys Taylor
+
+This plugin adheres to obsidian.md development best practices, including secure dom manipulation and api compliance.
+
+<hr>
+
 ## License
 
 This project is licensed under the MIT license - see the license file for details.
 
 © 2024–2025 Eric Rhys Taylor. Licensed under the MIT License.
 Portions of this software were developed with AI assistance under human creative direction.
+
+## License & Trademarks
+
+- Code: MIT License © 2025 Eric Rhys Taylor.
+- “Radial Timeline” is a claimed trademark (registration pending).
+- See LICENSE and TRADEMARK.md for details.
