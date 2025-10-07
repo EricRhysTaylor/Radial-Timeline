@@ -20,7 +20,7 @@
 
 Radial Timeline™ — visualization plugin for Obsidian.
 
-An inclusive radial timeline for creative fiction writing projects that displays scenes organized by act, subplot, and numeric order in a radial format for a comprehensive view of project.
+A comprehensive radial timeline for creative fiction writing projects that displays scenes organized by act, subplot, and numeric order in a radial format for a comprehensive view of project.
 
 This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story scenes comprising the manuscript. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots. Various cues and interactions are available through a search feature and hover and click functionality. This will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
 
