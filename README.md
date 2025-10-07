@@ -77,11 +77,11 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
   Click image to view full size in browser
 </div>  
 
-## All scenes mode 
+## All scenes & main plot mode 
 
-Toggle in settings to display either all scenes mode or main plot mode. for all scenes mode, the timeline with show all scenes from all subplot ordered in the outer ring with plot beats and subplot color coding. all scene mode provides a full picture with all of the details with plot beats.
+Toggle in settings to display either all scenes mode or main plot mode. For all scenes mode, the timeline with show all scenes from all subplot ordered in the outer ring with plot beats and subplot color coding. all scene mode provides a full picture with all of the details including plot beats.
 
-Main plot mode removes the subplot beats, shows only main plot scenes in the outer ring and uses publish stage coloring for all scenes, emphasizing progress towards getting the book ready for publication in a simplified view.
+Main plot mode removes the subplot beats, shows only main plot scenes in the outer ring and uses publish stage coloring rather than subplot ring coloring, emphasizing progress towards getting the book ready for publication in a simplified view.
 
 <hr>
 
