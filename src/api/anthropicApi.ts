@@ -1,3 +1,8 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ */
 import { requestUrl } from 'obsidian';
 
 interface AnthropicSuccessResponse {

@@ -1,3 +1,8 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ */
 import { App, AbstractInputSuggest, TFolder, TextComponent, normalizePath } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 

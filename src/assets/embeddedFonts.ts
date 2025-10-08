@@ -1,3 +1,8 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ */
 // Embedded web fonts (base64) used by the plugin.
 // To add a font, paste the base64-encoded WOFF2 strings below.
 // Keeping this in a separate file avoids bloating the main stylesheet.
