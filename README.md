@@ -14,7 +14,7 @@
     <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener"><img src="https://img.shields.io/github/issues/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e93147&style=for-the-badge" alt="Open issues on GitHub"></a>
     <br/>
 	<a href="https://obsidian.md/plugins?id=radial-timeline" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&query=$.radial-timeline.downloads&label=Downloads&style=for-the-badge&colorA=363a4f&colorB=d53984" alt="Plugin Downloads"/></a>
-	<a href="https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE" target="_blank" rel="noopener"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MIT&colorA=363a4f&colorB=b7bdf8" alt="MIT license"/></a>
+	<a href="https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE" target="_blank" rel="noopener"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=Non-Commercial&colorA=363a4f&colorB=b7bdf8" alt="Non-Commercial license"/></a>
 </p>
 <hr style="margin-bottom: 20px;">
 
@@ -341,8 +341,13 @@ Created by Eric Rhys Taylor
 
 This plugin adheres to obsidian.md development best practices, including secure dom use and api compliance.
 
-## License & Trademarks
+## License & Intellectual Property
 
-- Code: MIT License © 2024-2025 Eric Rhys Taylor.
-- “Radial Timeline” is a claimed trademark (registration pending).
-- See LICENSE and TRADEMARK.md for details.
+Radial Timeline™ © 2025 Eric Rhys Taylor  
+Released under a **Source-Available, Non-Commercial License**.  
+
+- You may view, install, and use this plugin for personal or educational purposes.  
+- Commercial use, redistribution, or creation of competing software is prohibited without written permission.  
+- "Radial Timeline" is a trademark of Eric Rhys Taylor.  
+
+See the [LICENSE](./LICENSE) and [NOTICE](./NOTICE) files for full details.

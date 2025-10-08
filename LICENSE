@@ -1,16 +1,35 @@
-MIT License
+Source-Available, Non-Commercial License
 
-Copyright (c) 2025 Eric Rhys Taylor
+Copyright © 2025 Eric Rhys Taylor
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+of this software and associated documentation files (the "Software"), to view,
+install, and use the Software for personal or educational purposes only,
+subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. PERMITTED USES
+   - You may view, install, and use this Software for personal or educational purposes.
+   - You may study the source code to learn from its implementation.
+   - You may make modifications for your own personal use.
+
+2. PROHIBITED USES
+   - Commercial use of this Software is strictly prohibited without prior written
+     permission from Eric Rhys Taylor.
+   - Redistribution of this Software, in whole or in part, modified or unmodified,
+     is prohibited without prior written permission from Eric Rhys Taylor.
+   - Creation of competing software, derivative works, or forks intended for public
+     distribution is prohibited without prior written permission from Eric Rhys Taylor.
+   - Use of the "Radial Timeline" name or trademark to brand derivative works is
+     prohibited without prior written permission from Eric Rhys Taylor.
+
+3. ATTRIBUTION
+   - This copyright notice and permission notice shall be included in all copies
+     or substantial portions of the Software.
+   - "Radial Timeline" is a trademark of Eric Rhys Taylor.
+
+4. PERMISSIONS
+   - For commercial use, redistribution, or other uses not explicitly permitted
+     above, please contact Eric Rhys Taylor for written permission.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -18,4 +37,4 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. 
+SOFTWARE.

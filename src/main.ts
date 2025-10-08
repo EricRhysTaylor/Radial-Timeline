@@ -1,7 +1,7 @@
 /**
  * Radial Timeline Plugin for Obsidian
- * Copyright (c) 2024–2025 Eric Rhys Taylor
- * Licensed under the MIT License. See LICENSE file for details.
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
 import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, normalizePath } from "obsidian";

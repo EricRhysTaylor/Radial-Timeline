@@ -23,7 +23,7 @@
 		"manuscript"
 	],
 	"author": "Eric Rhys Taylor",
-	"license": "MIT",
+	"license": "SEE LICENSE IN LICENSE",
 	"devDependencies": {
 		"@types/node": "^20.10.5",
 		"builtin-modules": "^3.3.0",
