@@ -65,28 +65,40 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Clear beats cache: clear saved beat results to force a full reprocess (for scenes with BeatsUpdate = yes)
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" alt="All Scenes Timeline" style="width: 350px; max-width: 100%; border-radius: 8px;" />
-  </a>
-  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" alt="Timeline Hover Synopsis" style="width: 350px; max-width: 100%; border-radius: 8px;" />
-  </a>
+  <div style="text-align: center;">
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" alt="All Scenes Timeline" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+    </a>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">All Scenes Timeline</div>
+  </div>
+  <div style="text-align: center;">
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" alt="Timeline Hover Synopsis" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+    </a>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline Hover Synopsis</div>
+  </div>
 </div>
 
-<div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
+<div style="text-align: center; font-size: 0.8em; margin-top: 10px; color: #888;">
   Click image to view full size in browser
 </div>  
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
-  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot3.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot3.jpeg" alt="Main Plot Mode" style="width: 350px; max-width: 100%; border-radius: 8px;" />
-  </a>
-  <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-    <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" alt="Search Results" style="width: 350px; max-width: 100%; border-radius: 8px;" />
-  </a>
+  <div style="text-align: center;">
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot3.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot3.jpeg" alt="Main Plot Mode" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+    </a>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Main Plot Mode</div>
+  </div>
+  <div style="text-align: center;">
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" alt="Search Results" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+    </a>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Search Results</div>
+  </div>
 </div>
 
-<div style="text-align: center; font-size: 0.8em; margin-top: 5px; color: #888;">
+<div style="text-align: center; font-size: 0.8em; margin-top: 10px; color: #888;">
   Click image to view full size in browser
 </div>  
 
