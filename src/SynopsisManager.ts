@@ -247,12 +247,10 @@ export default class SynopsisManager {
         // Only render when overdue per original behavior AND not complete
         if (isOverdue && !isComplete) {
           const dueLine = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          dueLine.setAttribute("class", "rt-info-text rt-title-text-secondary");
+          dueLine.setAttribute("class", "rt-info-text rt-title-text-secondary rt-overdue-text");
           dueLine.setAttribute("x", "0");
           dueLine.setAttribute("y", String(1 * lineHeight));
           dueLine.setAttribute("text-anchor", "start");
-          // Use existing overdue color and ensure it overrides class fill
-          dueLine.setAttribute("style", "fill: var(--rt-color-due) !important");
           dueLine.textContent = `Overdue: ${dueString}`;
           synopsisTextGroup.appendChild(dueLine);
           extraLineCount += 1;
@@ -269,12 +267,10 @@ export default class SynopsisManager {
       for (let i = 0; i < lines.length; i++) {
         const y = (1 + extraLineCount) * lineHeight + (i * lineHeight);
         const lineEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        lineEl.setAttribute("class", "rt-info-text rt-title-text-secondary");
+        lineEl.setAttribute("class", "rt-info-text rt-title-text-secondary rt-revisions-text");
         lineEl.setAttribute("x", "0");
         lineEl.setAttribute("y", String(y));
         lineEl.setAttribute("text-anchor", "start");
-        // Match number-square.has-edits background color (light gray) and override class fill
-        lineEl.setAttribute("style", "fill: #C0C0C0 !important");
         lineEl.textContent = `${i === 0 ? 'Revisions: ' : ''}${lines[i]}`;
         synopsisTextGroup.appendChild(lineEl);
       }
@@ -381,10 +377,9 @@ export default class SynopsisManager {
             subplots.forEach((subplot, j) => { 
               const color = getSubplotColor(subplot.trim(), sceneId);
               const subplotText = subplot.trim();
-              const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+              const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
               tspan.setAttribute("data-item-type", "subplot");
-              tspan.setAttribute("fill", color);
-              tspan.setAttribute("style", `fill: ${color} !important`);
+              tspan.style.setProperty('--rt-dynamic-color', color);
               tspan.textContent = subplotText;
               subplotTextElement.appendChild(tspan);
               if (j < subplots.length - 1) {
@@ -416,10 +411,9 @@ export default class SynopsisManager {
           characterList.forEach((character, j) => {
             const color = getCharacterColor(character.trim()); // Restore random color
             const characterText = character.trim();
-            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
             tspan.setAttribute("data-item-type", "character");
-            tspan.setAttribute("fill", color);
-            tspan.setAttribute("style", `fill: ${color} !important`);
+            tspan.style.setProperty('--rt-dynamic-color', color);
             tspan.textContent = characterText;
             characterTextElement.appendChild(tspan);
             if (j < characterList.length - 1) {
@@ -774,12 +768,6 @@ export default class SynopsisManager {
           // Copy attributes
           Array.from(tspan.attributes).forEach(attr => {
             svgTspan.setAttribute(attr.name, attr.value);
-            
-            // Fix any incorrectly formatted style attributes that might contain "limportant" instead of "!important"
-            if (attr.name === 'style' && attr.value.includes('limportant')) {
-              const fixedStyle = attr.value.replace(/\s*limportant\s*;?/g, ' !important;');
-              svgTspan.setAttribute('style', fixedStyle);
-            }
           });
           
           svgTspan.textContent = tspan.textContent;
@@ -798,16 +786,9 @@ export default class SynopsisManager {
         // Copy attributes
         Array.from(tspan.attributes).forEach(attr => {
           svgTspan.setAttribute(attr.name, attr.value);
-          
-          // Fix any incorrectly formatted style attributes
-          if (attr.name === 'style' && attr.value.includes('limportant')) {
-            const fixedStyle = attr.value.replace(/\s*limportant\s*;?/g, ' !important;');
-            svgTspan.setAttribute('style', fixedStyle);
-          }
         });
         
         svgTspan.textContent = tspan.textContent;
-        this.plugin.log(`DEBUG: Added tspan element with text: "${tspan.textContent}"`);
         parentElement.appendChild(svgTspan);
       });
     }

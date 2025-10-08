@@ -125,7 +125,7 @@ function buildSynopsis(
         contentLines.push(rawCharacters);
     }
     const filtered = contentLines.filter(line => line && line.trim() !== '\u00A0');
-    // Pass resolver so SynopsisManager can map each subplot name to the same CSS var index used in rings
+    // Pass resolver so SynopsisManager can map each subplot name to the same CSS variable index used in rings
     return plugin.synopsisManager.generateElement(scene, filtered, sceneId, subplotIndexResolver);
 }
 

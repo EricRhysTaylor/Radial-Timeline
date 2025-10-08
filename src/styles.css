@@ -86,9 +86,6 @@
   padding: 20px;
   text-align: center;
   font-size: 1.2em;
-  color: var(--text-muted);
-}
-.rt-error-message {
   color: var(--text-error);
 }
 .radial-timeline-container svg {
@@ -205,8 +202,7 @@
 
 .radial-timeline-container .rt-month-label,
 .radial-timeline-container .rt-month-label-outer,
-.radial-timeline-container .rt-act-label,
-.radial-timeline-container .rt-plot-title {
+.radial-timeline-container .rt-act-label {
   pointer-events: none;
 }
 .radial-timeline-container .rt-month-label {  
@@ -384,6 +380,7 @@ dominant-baseline: middle;
 /* Allow inline subplot/character colors to apply in synopsis */
 .rt-info-text.rt-metadata-text tspan[data-item-type=subplot],
 .rt-info-text.rt-metadata-text tspan[data-item-type=character] {
+  fill: var(--rt-dynamic-color, var(--text-normal)) !important;
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;
@@ -476,6 +473,21 @@ tspan .search-term {
   font-size: 18px;
   font-weight: normal;
   text-transform: none;
+}
+
+/* Overdue text styling */
+.radial-timeline-container .rt-scene-info text.rt-overdue-text {
+  fill: var(--rt-color-due) !important;
+}
+
+/* Revisions/Pending edits text styling */
+.radial-timeline-container .rt-scene-info text.rt-revisions-text {
+  fill: #C0C0C0 !important;
+}
+
+/* Search highlight parent tspan with dynamic fill */
+.rt-scene-info tspan.rt-with-dynamic-fill {
+  fill: var(--rt-dynamic-fill-color, inherit) !important;
 }
 .rt-number-square.rt-scene-is-open {
   fill: var(--interactive-accent, #705DCF);

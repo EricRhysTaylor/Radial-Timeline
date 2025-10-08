@@ -461,9 +461,8 @@ export class RadialTimelineView extends ItemView {
                 return;
             }
             
-            // Apply highlighting - preserve the original fill color AND style
+            // Apply highlighting - CSS classes handle colors via custom properties
             const fillColor = tspan.getAttribute('fill');
-            const existingStyle = tspan.getAttribute('style') || '';
             
             // Test if we need a word boundary match
             const useWordBoundary = originalText.match(wordBoundaryRegex);
@@ -474,12 +473,9 @@ export class RadialTimelineView extends ItemView {
                 tspan.removeChild(tspan.firstChild);
             }
             
-            // IMPORTANT: Restore the fill and style so text nodes inherit correctly
+            // Restore fill attribute if it existed (CSS custom properties are preserved on element)
             if (fillColor) {
                 tspan.setAttribute('fill', fillColor);
-            }
-            if (existingStyle) {
-                tspan.setAttribute('style', existingStyle);
             }
             
             // Reset regex
@@ -534,10 +530,11 @@ export class RadialTimelineView extends ItemView {
                 tspan.removeChild(tspan.firstChild);
             }
             
-            // IMPORTANT: Ensure the parent tspan keeps its fill and style so text nodes inherit correctly
+            // IMPORTANT: Ensure the parent tspan keeps its fill using CSS custom property
             if (fillColor) {
                 tspan.setAttribute('fill', fillColor);
-                tspan.setAttribute('style', `fill: ${fillColor} !important`);
+                tspan.classList.add('rt-with-dynamic-fill');
+                (tspan as HTMLElement).style.setProperty('--rt-dynamic-fill-color', fillColor);
             }
             
             regex.lastIndex = 0;

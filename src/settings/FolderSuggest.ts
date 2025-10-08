@@ -41,6 +41,7 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
     // Validate and remember; only save the setting once on success
     void this.plugin.validateAndRememberPath(normalized).then(async (ok) => {
       if (ok) {
+        // SAFE: normalized is from normalizePath() above
         this.plugin.settings.sourcePath = normalized;
         await this.plugin.saveSettings();
         inputEl.removeClass('setting-input-error');

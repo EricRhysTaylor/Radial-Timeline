@@ -422,7 +422,6 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     async onload() {
-        console.log('Radial Timeline plugin loaded');
         await this.loadSettings();
 
         // Load embedded fonts (no external requests per Obsidian guidelines)
@@ -1331,7 +1330,7 @@ public createTimelineSVG(scenes: Scene[]) {
     public log(...args: unknown[]) {
         // No-op to comply with Obsidian plugin guidelines and project policy
         // Intentionally avoiding console.* calls in plugin code
-        void args; // prevent unused var in some TS configs
+        void args; // prevent unused variable in some TS configs
     }
 
     // Method to refresh the timeline if the active view exists (with debouncing)
@@ -1622,7 +1621,7 @@ public createTimelineSVG(scenes: Scene[]) {
             for (let i = 0; i < 16; i++) {
                 const color = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
                 if (color) {
-                    // Prefixed var used by styles.css swatches and rings
+                    // CSS custom property used by styles.css swatches and rings
                     root.style.setProperty(`--rt-subplot-colors-${i}`, color);
                 }
             }
@@ -2020,9 +2019,7 @@ public createTimelineSVG(scenes: Scene[]) {
     }
 
     onunload() {
-        console.log('Radial Timeline plugin unloaded');
-        // Detach all timeline view leaves per Obsidian guidelines
-        this.app.workspace.detachLeavesOfType(TIMELINE_VIEW_TYPE);
         // Clean up any other resources
+        // Note: Do NOT detach leaves here - Obsidian handles this automatically
     }
 } // End of RadialTimelinePlugin class

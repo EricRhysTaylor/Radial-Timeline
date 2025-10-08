@@ -121,6 +121,36 @@ const checks = [
     allowSafeComment: false,
     severity: 'error',
   },
+  {
+    id: 'var-declaration',
+    description: 'Use const or let instead of var for variable declarations.',
+    regex: /\bvar\s+\w+/,
+    allowSafeComment: true,
+    severity: 'warn',
+  },
+  {
+    id: 'platform-import-check',
+    description: 'Platform checks require importing Platform from obsidian.',
+    regex: /\bPlatform\.isMobile\b/,
+    allowSafeComment: true,
+    severity: 'warn',
+  },
+  {
+    id: 'detach-leaves-in-onunload',
+    description: 'Do NOT detach leaves in onunload() - Obsidian handles this automatically (antipattern).',
+    regex: /detachLeavesOfType/,
+    allowSafeComment: false,
+    severity: 'error',
+  },
+  {
+    id: 'normalize-path-missing',
+    description: 'User-defined paths should use normalizePath() before assignment to settings.',
+    // Match path assignments, but exclude normalizePath() calls and safe variable names
+    // The lookahead must account for optional whitespace before the value
+    regex: /\.settings\.\w*[Pp]ath\s*=\s*(?!normalizePath\(|[a-zA-Z_]*(?:normaliz|valid|clean|safe)[a-zA-Z_]*\s*[;\)])/,
+    allowSafeComment: true,
+    severity: 'warn',
+  },
 ];
 
 // Provide human-friendly autofix suggestions
@@ -169,6 +199,14 @@ function getSuggestion(issue) {
       return "Run the build/release pipeline to generate release/main.js and release/styles.css.";
     case 'manifest-parse-fail':
       return "Fix JSON syntax in manifest/package.json and ensure they parse.";
+    case 'var-declaration':
+      return "Replace 'var' with 'const' (for immutable values) or 'let' (for mutable values).";
+    case 'platform-import-check':
+      return "Add: import { Platform } from 'obsidian' to use Platform.isMobile.";
+    case 'detach-leaves-in-onunload':
+      return "Remove detachLeavesOfType from onunload() - Obsidian automatically detaches leaves when plugin unloads.";
+    case 'normalize-path-missing':
+      return "User paths should be normalized: use normalizePath() before assignment, or assign a pre-normalized variable.";
     default:
       return '';
   }
@@ -195,7 +233,8 @@ function runChecks(filePath, text) {
   for (const check of checks) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (check.allowSafeComment && /SAFE:/i.test(line)) continue;
+      const prevLine = i > 0 ? lines[i - 1] : '';
+      if (check.allowSafeComment && (/SAFE:/i.test(line) || /SAFE:/i.test(prevLine))) continue;
       if (check.regex.test(line)) {
         issues.push({
           file: filePath,
@@ -305,6 +344,7 @@ function runChecks(filePath, text) {
 
   if (issues.length === 0) {
     console.log('✅ Obsidian compliance checks passed.');
+    console.log('📖 See CODE_STANDARDS.md for full guidelines.');
     process.exit(0);
   }
 
@@ -333,9 +373,11 @@ function runChecks(filePath, text) {
       if (issue.snippet) console.error(`  ${issue.snippet}`);
       if (issue.suggestion) console.error(`  ↳ Suggestion: ${issue.suggestion}`);
     }
+    console.error('\n📖 See CODE_STANDARDS.md for detailed guidelines and best practices.');
     process.exit(1);
   } else {
     // Only warnings
+    console.log('📖 See CODE_STANDARDS.md for full guidelines.');
     process.exit(0);
   }
 })();

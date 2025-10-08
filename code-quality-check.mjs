@@ -152,11 +152,13 @@ function main() {
     console.error('\n\x1b[33mIf you believe this is a false positive, you can add a comment:\x1b[0m');
     console.error('  // SAFE: innerHTML used for <reason>');
     console.error('  // SAFE: inline style used for <reason>');
-    console.error('  // SAFE: any type used for <reason>\n');
+    console.error('  // SAFE: any type used for <reason>');
+    console.error('\n📖 See CODE_STANDARDS.md for detailed guidelines and best practices.\n');
     process.exit(1);
   }
 
   console.log('\x1b[32m✅ Code quality check passed!\x1b[0m');
+  console.log('📖 See CODE_STANDARDS.md for full guidelines.');
 }
 
 main(); 

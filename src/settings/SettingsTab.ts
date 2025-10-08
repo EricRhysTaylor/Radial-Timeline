@@ -127,6 +127,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 // Validate and remember; only save the setting if valid
                 const ok = await this.plugin.validateAndRememberPath(path);
                 if (ok) {
+                    // SAFE: path comes from validFolderPaths which are already normalized
                     this.plugin.settings.sourcePath = path;
                     await this.plugin.saveSettings();
                     container.classList.add('hidden');
@@ -209,7 +210,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     const normalized = normalizePath(value.trim());
                     const isValid = await this.plugin.validateAndRememberPath(normalized);
                     if (isValid) {
-                        // Save once with normalized, valid path
+                        // SAFE: normalized is from normalizePath() above
                         this.plugin.settings.sourcePath = normalized;
                         await this.plugin.saveSettings();
                         text.inputEl.addClass('setting-input-success');
