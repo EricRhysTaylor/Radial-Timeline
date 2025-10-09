@@ -5,9 +5,8 @@ import type RadialTimelinePlugin from './main';
 import { buildGossamerPrompt } from './ai/prompts/gossamer';
 import { buildRunFromDefault, GossamerRun, GossamerBeatStatus, normalizeBeatName, zeroOffsetRun } from './utils/gossamer';
 import { Notice, TFile, Vault } from 'obsidian';
-import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
-import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
-import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
+import { callProvider } from './api/providerRouter';
+import { logExchange } from './ai/log';
 
 type Provider = 'openai' | 'anthropic' | 'gemini';
 
@@ -123,28 +122,11 @@ export async function runGossamerAnalysis(plugin: RadialTimelinePlugin): Promise
   let content: string | null = null;
 
   try {
-    if (provider === 'anthropic') {
-      const apiKey = plugin.settings.anthropicApiKey || '';
-      modelId = plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
-      requestForLog = { model: modelId, messages: [{ role: 'user', content: prompt }], max_tokens: 4000 };
-      const resp: AnthropicApiResponse = await callAnthropicApi(apiKey, modelId, null, prompt, 4000);
-      responseForLog = resp.responseData;
-      if (resp.success) content = resp.content; else throw new Error(resp.error || 'Anthropic call failed');
-    } else if (provider === 'gemini') {
-      const apiKey = plugin.settings.geminiApiKey || '';
-      modelId = plugin.settings.geminiModelId || 'gemini-2.5-pro';
-      requestForLog = { model: modelId, contents: [{ role: 'user', parts: [{ text: prompt }] }] };
-      const resp: GeminiApiResponse = await callGeminiApi(apiKey, modelId, null, prompt, 4000, 0.7);
-      responseForLog = resp.responseData;
-      if (resp.success) content = resp.content; else throw new Error(resp.error || 'Gemini call failed');
-    } else {
-      const apiKey = plugin.settings.openaiApiKey || '';
-      modelId = plugin.settings.openaiModelId || 'gpt-4.1';
-      requestForLog = { model: modelId, messages: [{ role: 'user', content: prompt }], temperature: 0.7, max_tokens: 4000 };
-      const resp: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, null, prompt, 4000, 0.7);
-      responseForLog = resp.responseData;
-      if (resp.success) content = resp.content; else throw new Error(resp.error || 'OpenAI call failed');
-    }
+    const result = await callProvider(plugin, { userPrompt: prompt, systemPrompt: null, maxTokens: 4000, temperature: 0.7 });
+    modelId = result.modelId;
+    requestForLog = { model: modelId, user: prompt };
+    responseForLog = result.responseData;
+    if (result.success) content = result.content; else throw new Error('Provider call failed');
   } catch (e) {
     console.error('[Gossamer] AI call failed, using default:', e);
   }
@@ -159,7 +141,7 @@ export async function runGossamerAnalysis(plugin: RadialTimelinePlugin): Promise
   await persistRunToBeatNotes(plugin, run, modelId, runLabel);
 
   // Log exchange
-  await logGossamerExchange(plugin, plugin.app.vault, provider, modelId, requestForLog, responseForLog, runLabel);
+  await logExchange(plugin, plugin.app.vault, { prefix: 'Gossamer', provider, modelId, request: requestForLog, response: responseForLog, parsed: run, label: runLabel });
 
   // Store in memory
   lastRunByPlugin.set(plugin, run);
