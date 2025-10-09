@@ -188,6 +188,12 @@
 }
 .radial-timeline-svg #rotation-toggle .arrow-icon.is-hidden { display: none; }
 .radial-timeline-svg #rotation-toggle { cursor: pointer; }
+
+/* Gossamer momentum styling */
+.rt-gossamer-layer { pointer-events: none; }
+.rt-gossamer-line { stroke: var(--rt-gossamer-stroke, #7a7a7a); stroke-width: 3; fill: none; }
+/* Phase 2: dots (10px diameter) */
+.rt-gossamer-dot { fill: var(--rt-gossamer-stroke, #7a7a7a); r: 5px; }
 .radial-timeline-container .rt-scene-title.rt-faded {
   opacity: 0.2;
 }

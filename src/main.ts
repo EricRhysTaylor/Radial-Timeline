@@ -12,6 +12,7 @@ import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
+import { runGossamerAnalysis, toggleGossamerMode } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 
 
@@ -469,6 +470,28 @@ export default class RadialTimelinePlugin extends Plugin {
             name: 'Clear search',
             callback: () => {
                 this.clearSearch();
+            }
+        });
+
+        // Gossamer commands
+        this.addCommand({
+            id: 'gossamer-analyze-plot-momentum',
+            name: 'Analyze Plot Momentum (Gossamer)',
+            callback: async () => {
+                try {
+                    await runGossamerAnalysis(this);
+                } catch (e) {
+                    new Notice('Gossamer analysis failed.');
+                }
+            }
+        });
+        this.addCommand({
+            id: 'gossamer-toggle-view',
+            name: 'Toggle Momentum View (Gossamer)',
+            callback: () => {
+                try {
+                    toggleGossamerMode(this);
+                } catch {}
             }
         });
 

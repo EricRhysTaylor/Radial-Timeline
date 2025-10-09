@@ -22,6 +22,7 @@ import {
     type PluginRendererFacade
 } from '../utils/sceneHelpers';
 import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
+import { renderGossamerLayer } from './gossamerLayer';
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
 
@@ -2049,6 +2050,14 @@ export function createTimelineSVG(
 
         // Then add the synopses on top (non-rotating)
         svg += synopsesHTML;
+
+        // --- Gossamer momentum layer (Phase 1) ---
+        {
+            const polar = { innerRadius, outerRadius: actualOuterRadius };
+            const run = (plugin as any)._gossamerLastRun || null;
+            const layer = renderGossamerLayer(scenes, run, polar);
+            if (layer) svg += layer;
+        }
 
         // Close static root container
         svg += `</g>`;

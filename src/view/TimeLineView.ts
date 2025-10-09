@@ -40,6 +40,8 @@ export class RadialTimelineView extends ItemView {
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
     
+    public interactionMode: 'normal' | 'gossamer' = 'normal';
+
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -1059,6 +1061,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 
 
                 svg.addEventListener('pointerover', (e: PointerEvent) => {
+                    if (view.interactionMode === 'gossamer') return; // Disable scene hover in Gossamer
                     const g = (e.target as Element).closest('.rt-scene-group');
                     if (!g || g === currentGroup) return;
                     
@@ -1088,6 +1091,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 });
 
                 svg.addEventListener('pointerout', (e: PointerEvent) => {
+                    if (view.interactionMode === 'gossamer') return; // Disable scene hover in Gossamer
                     const toEl = e.relatedTarget as Element | null;
                     
                     // Check if we're moving within the current group
@@ -1360,6 +1364,7 @@ This is a test scene created to help with initial Radial timeline setup.
                     rafId = null;
                 };
                 svg.addEventListener('pointermove', (e: PointerEvent) => {
+                    if (view.interactionMode === 'gossamer') return; // Disable scene hover in Gossamer
                     if (rafId !== null) return;
                     rafId = window.requestAnimationFrame(() => onMove(e));
                 });
