@@ -110,6 +110,12 @@ async function persistRunToBeatNotes(plugin: RadialTimelinePlugin, run: Gossamer
 
 const lastRunByPlugin = new WeakMap<RadialTimelinePlugin, GossamerRun>();
 
+function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
+  lastRunByPlugin.set(plugin, run);
+  // Provide compatibility for renderer access
+  (plugin as unknown as Record<string, unknown>)._gossamerLastRun = run;
+}
+
 export async function runGossamerAnalysis(plugin: RadialTimelinePlugin): Promise<GossamerRun> {
   const scenes = await plugin.getSceneData();
   const prompt = buildGossamerPrompt(scenes);
@@ -144,7 +150,7 @@ export async function runGossamerAnalysis(plugin: RadialTimelinePlugin): Promise
   await logExchange(plugin, plugin.app.vault, { prefix: 'Gossamer', provider, modelId, request: requestForLog, response: responseForLog, parsed: run, label: runLabel });
 
   // Store in memory
-  lastRunByPlugin.set(plugin, run);
+  setInMemoryRun(plugin, run);
 
   // Enforce All Scenes base mode, reset rotation, clear search, and enter overlay mode
   setBaseModeAllScenes(plugin);
@@ -165,6 +171,11 @@ export function toggleGossamerMode(plugin: RadialTimelinePlugin): void {
   if (current) {
     exitGossamerMode(plugin);
   } else {
+    // Ensure a run exists (use default if none)
+    if (!getActiveGossamerRun(plugin)) {
+      const def = buildRunFromDefault();
+      setInMemoryRun(plugin, def);
+    }
     setBaseModeAllScenes(plugin);
     resetRotation(plugin);
     plugin.clearSearch();

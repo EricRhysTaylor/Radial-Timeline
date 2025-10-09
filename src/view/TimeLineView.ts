@@ -795,6 +795,11 @@ This is a test scene created to help with initial Radial timeline setup.
             const svgElement = this.createSvgElement(svgString, timelineContainer); // Pass svgString
             
             if (svgElement) {
+                // If Gossamer mode is active, apply non-selected styling to all scene elements immediately
+                if (this.interactionMode === 'gossamer') {
+                    const baseEls = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
+                    baseEls.forEach(el => el.classList.add('rt-non-selected'));
+                }
                 // Set CSS variables for subplot labels based on data attributes
                 const subplotLabelGroups = svgElement.querySelectorAll('.subplot-label-group[data-font-size]');
                 subplotLabelGroups.forEach((group) => {
@@ -1367,6 +1372,52 @@ This is a test scene created to help with initial Radial timeline setup.
                     if (view.interactionMode === 'gossamer') return; // Disable scene hover in Gossamer
                     if (rafId !== null) return;
                     rafId = window.requestAnimationFrame(() => onMove(e));
+                });
+
+                // Phase 2: Gossamer dot interactions
+                svg.addEventListener('click', (e: MouseEvent) => {
+                    const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
+                    if (!dot) return;
+                    const path = dot.getAttribute('data-path');
+                    if (!path) return;
+                    const file = view.plugin.app.vault.getAbstractFileByPath(path);
+                    if (file instanceof TFile) {
+                        view.plugin.app.workspace.getLeaf('tab').openFile(file);
+                    }
+                });
+
+                // Dot hover: show existing synopsis bubble for the corresponding Plot note
+                svg.addEventListener('pointerover', (e: PointerEvent) => {
+                    const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
+                    if (!dot) return;
+                    const path = dot.getAttribute('data-path');
+                    if (!path) return;
+                    // Find plot group by data-path
+                    const encoded = encodeURIComponent(path);
+                    const plotGroup = svg.querySelector(`.rt-scene-group[data-path="${encoded}"]`);
+                    if (!plotGroup) return;
+                    const scenePath = plotGroup.querySelector('.rt-scene-path') as SVGPathElement | null;
+                    const sceneId = scenePath?.id;
+                    if (!sceneId) return;
+                    const syn = svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
+                    if (syn) {
+                        (syn as Element).classList.add('rt-visible');
+                        view.plugin.updateSynopsisPosition(syn as Element, e as unknown as MouseEvent, svg, sceneId);
+                    }
+                });
+                svg.addEventListener('pointerout', (e: PointerEvent) => {
+                    const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
+                    if (!dot) return;
+                    const path = dot.getAttribute('data-path');
+                    if (!path) return;
+                    const encoded = encodeURIComponent(path);
+                    const plotGroup = svg.querySelector(`.rt-scene-group[data-path="${encoded}"]`);
+                    if (!plotGroup) return;
+                    const scenePath = plotGroup.querySelector('.rt-scene-path') as SVGPathElement | null;
+                    const sceneId = scenePath?.id;
+                    if (!sceneId) return;
+                    const syn = svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
+                    if (syn) (syn as Element).classList.remove('rt-visible');
                 });
             })(this);
             // --- end delegated hover ---

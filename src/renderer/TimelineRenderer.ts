@@ -22,6 +22,7 @@ import {
     type PluginRendererFacade
 } from '../utils/sceneHelpers';
 import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
+import { normalizeBeatName } from '../utils/gossamer';
 import { renderGossamerLayer } from './gossamerLayer';
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -1028,6 +1029,7 @@ export function createTimelineSVG(
                                     return idx % 16; // Direct order: outermost (idx=0) = Ring 1 = subplotColors[0]
                                 }
                             );
+                            // If this is a Plot note, append Gossamer info if available (Phase 1: skip detailed UI; reserved for Phase 2)
                             synopsesElements.push(synopsisElOuter);
                         } catch {}
                         let sceneClasses = 'rt-scene-path';
@@ -2053,9 +2055,51 @@ export function createTimelineSVG(
 
         // --- Gossamer momentum layer (Phase 1) ---
         {
+            // Map 0–100 to a band that aligns with darker grid lines: use innerRadius for 0 and actualOuterRadius for 100
             const polar = { innerRadius, outerRadius: actualOuterRadius };
             const run = (plugin as any)._gossamerLastRun || null;
-            const layer = renderGossamerLayer(scenes, run, polar);
+
+            // Approximate angles per beat by computing center angles using the same positions used for rendering outer All‑Scenes ring
+            const anglesByBeat = new Map<string, number>();
+            // Group plot notes by act in manuscript order
+            const plotsByAct: Map<number, { title: string }[]> = new Map();
+            scenes.forEach(s => {
+                if (s.itemType !== 'Plot' || typeof s.actNumber !== 'number') return;
+                const list = plotsByAct.get(s.actNumber) || [];
+                list.push({ title: s.title || '' });
+                plotsByAct.set(s.actNumber, list);
+            });
+            // For each act, divide the act sector equally among its plot notes and derive center angle
+            plotsByAct.forEach((list, actNumber) => {
+                const actIdx = actNumber - 1;
+                const aStart = (actIdx * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                const aEnd = ((actIdx + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                const total = Math.max(1, list.length);
+                const span = (aEnd - aStart) / total;
+                list.forEach((p, idx) => {
+                    const center = aStart + (idx + 0.5) * span;
+                    const key = normalizeBeatName(p.title.replace(/^\s*\d+(?:\.\d+)?\s+/, ''));
+                    anglesByBeat.set(key, center);
+                });
+            });
+
+            // Map beat names to their Plot note paths to enable dot click/open
+            const beatPathByName = new Map<string, string>();
+            scenes.forEach(s => {
+                if (s.itemType !== 'Plot' || !s.title || !s.path) return;
+                const key = normalizeBeatName(s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, ''));
+                beatPathByName.set(key, s.path);
+            });
+
+            const layer = renderGossamerLayer(
+                scenes,
+                run,
+                polar,
+                anglesByBeat.size ? anglesByBeat : undefined,
+                beatPathByName,
+                undefined,
+                undefined
+            );
             if (layer) svg += layer;
         }
 

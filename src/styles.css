@@ -193,7 +193,9 @@
 .rt-gossamer-layer { pointer-events: none; }
 .rt-gossamer-line { stroke: var(--rt-gossamer-stroke, #7a7a7a); stroke-width: 3; fill: none; }
 /* Phase 2: dots (10px diameter) */
-.rt-gossamer-dot { fill: var(--rt-gossamer-stroke, #7a7a7a); r: 5px; }
+.rt-gossamer-dot { fill: var(--rt-gossamer-stroke, #7a7a7a); r: 5px; pointer-events: all; cursor: pointer; }
+.rt-gossamer-line.rt-gossamer-overlay { stroke-dasharray: 6,4; opacity: 0.6; }
+.rt-gossamer-band { fill: var(--rt-gossamer-stroke, #7a7a7a); opacity: 0.12; stroke: none; }
 .radial-timeline-container .rt-scene-title.rt-faded {
   opacity: 0.2;
 }
@@ -321,6 +323,12 @@ dominant-baseline: middle;
   font-size: 16px;
   fill: var(--text-muted, #555555);
   font-weight: normal;
+  transition: fill 120ms ease, font-weight 120ms ease;
+}
+.radial-timeline-container .scene-hover .rt-subplot-text,
+.radial-timeline-container .rt-subplot-text.rt-selected {
+  fill: #ffffff;
+  font-weight: 700;
 }
 
 .radial-timeline-container .rt-number-square{

@@ -12,30 +12,30 @@ export interface PolarConfig {
 
 // Helper to map score [0..100] into a band near the outer ring
 function mapScoreToRadius(score: number, inner: number, outer: number): number {
-  const bandSize = Math.max(20, Math.min(80, (outer - inner) * 0.12));
-  const bandInner = outer - bandSize;
+  // Linear map: 0 -> inner, 100 -> outer
   const clamped = Math.max(0, Math.min(100, score));
-  return bandInner + (clamped / 100) * bandSize;
+  return inner + (clamped / 100) * (outer - inner);
 }
 
 export function renderGossamerLayer(
   scenes: Scene[],
   run: GossamerRun | null | undefined,
-  polar: PolarConfig
+  polar: PolarConfig,
+  anglesByBeat?: Map<string, number>,
+  beatPathByName?: Map<string, string>,
+  overlayRuns?: Array<{ label?: string; points: { beat: string; score: number }[] }>,
+  minBand?: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] }
 ): string {
   if (!run) return '';
 
-  // Build angle lookup using existing Plot beats from scenes (All Scenes mode shows them)
-  const plotGroups = scenes.filter(s => s.itemType === 'Plot');
-  // We rely on TimeLineRenderer to have already ordered scenes; here we just collect from DOM order input
-  const anglesByBeat = new Map<string, number>();
-
-  // Fallback: evenly space beats if angles cannot be found (defensive)
-  const fallbackAngles: number[] = STC_BEATS_ORDER.map((_, i) => -Math.PI / 2 + (i / STC_BEATS_ORDER.length) * 2 * Math.PI);
-
-  // Attempt to infer angles from plotGroups’ title order; TimeLineRenderer sets arcs but not exposed here,
-  // so for Phase 1, rely on STC order for angular sequencing and evenly distribute as a temporary approximation.
-  STC_BEATS_ORDER.forEach((name, idx) => anglesByBeat.set(normalizeBeatName(name), fallbackAngles[idx]));
+  // Build angles map with fallback, then override with provided values
+  const localAngles = (() => {
+    const m = new Map<string, number>();
+    const fallbackAngles: number[] = STC_BEATS_ORDER.map((_, i) => -Math.PI / 2 + (i / STC_BEATS_ORDER.length) * 2 * Math.PI);
+    STC_BEATS_ORDER.forEach((name, idx) => m.set(normalizeBeatName(name), fallbackAngles[idx]));
+    if (anglesByBeat) anglesByBeat.forEach((val, key) => m.set(key, val));
+    return m;
+  })();
 
   // Build contiguous segments from present beats with numeric scores
   const present = extractPresentBeatScores(run);
@@ -47,14 +47,21 @@ export function renderGossamerLayer(
   const nameToScore = new Map(present.map(p => [normalizeBeatName(p.beat), p.score]));
   const segments: string[] = [];
   let current: { x: number; y: number }[] = [];
+  const dots: string[] = [];
 
   STC_BEATS_ORDER.forEach(name => {
     const key = normalizeBeatName(name);
     const score = nameToScore.get(key);
-    const angle = anglesByBeat.get(key);
+    const angle = localAngles.get(key);
     if (typeof score === 'number' && typeof angle === 'number') {
       const r = mapScoreToRadius(score, innerRadius, outerRadius);
-      current.push({ x: r * Math.cos(angle), y: r * Math.sin(angle) });
+      const x = r * Math.cos(angle);
+      const y = r * Math.sin(angle);
+      current.push({ x, y });
+      const path = beatPathByName?.get(key) || '';
+      const data = `data-beat="${escapeAttr(name)}" data-score="${String(score)}"${path ? ` data-path="${escapeAttr(path)}"` : ''}${run?.meta?.label ? ` data-label="${escapeAttr(run.meta.label)}"` : ''}`;
+      const title = `<title>${escapeAttr(`${name}${run?.meta?.label ? ` — ${run.meta.label}` : ''}: ${score}`)}</title>`;
+      dots.push(`<circle class="rt-gossamer-dot" cx="${fmt(x)}" cy="${fmt(y)}" r="5" ${data}>${title}</circle>`);
     } else {
       if (current.length > 1) {
         segments.push(buildPath(current));
@@ -64,10 +71,28 @@ export function renderGossamerLayer(
   });
   if (current.length > 1) segments.push(buildPath(current));
 
-  if (segments.length === 0) return '';
+  if (segments.length === 0 && dots.length === 0) return '';
 
-  const paths = segments.map(d => `<path class="rt-gossamer-line" d="${d}"/>`).join('');
-  return `<g class="rt-gossamer-layer">${paths}</g>`;
+  // Optional overlays (dashed)
+  const overlayPaths = (overlayRuns || [])
+    .map(ov => buildOverlayPath(ov.points, localAngles, innerRadius, outerRadius))
+    .filter((d): d is string => !!d);
+
+  // Optional min/max band fill
+  let bandPath = '';
+  if (minBand && minBand.min && minBand.max) {
+    const minPts = toPoints(minBand.min, localAngles, innerRadius, outerRadius);
+    const maxPts = toPoints(minBand.max, localAngles, innerRadius, outerRadius);
+    if (minPts.length >= 3 && maxPts.length >= 3) {
+      bandPath = buildBand(minPts, maxPts);
+    }
+  }
+
+  const mainPaths = segments.map(d => `<path class="rt-gossamer-line" d="${d}"/>`).join('');
+  const overlaySvg = overlayPaths.map(d => `<path class="rt-gossamer-line rt-gossamer-overlay" d="${d}"/>`).join('');
+  const bandSvg = bandPath ? `<path class="rt-gossamer-band" d="${bandPath}"/>` : '';
+  const dotsSvg = dots.join('');
+  return `<g class="rt-gossamer-layer">${bandSvg}${overlaySvg}${mainPaths}${dotsSvg}</g>`;
 }
 
 function buildPath(points: { x: number; y: number }[]): string {
@@ -78,5 +103,34 @@ function buildPath(points: { x: number; y: number }[]): string {
 }
 
 function fmt(n: number): string { return n.toFixed(6).replace(/\.0+$/, ''); }
+
+function toPoints(series: { beat: string; score: number }[], angles: Map<string, number>, inner: number, outer: number): { x: number; y: number }[] {
+  const pts: { x: number; y: number }[] = [];
+  series.forEach(p => {
+    const a = angles.get(normalizeBeatName(p.beat));
+    if (typeof a !== 'number') return;
+    const r = mapScoreToRadius(p.score, inner, outer);
+    pts.push({ x: r * Math.cos(a), y: r * Math.sin(a) });
+  });
+  return pts;
+}
+
+function buildOverlayPath(points: { beat: string; score: number }[], angles: Map<string, number>, inner: number, outer: number): string | null {
+  const pts = toPoints(points, angles, inner, outer);
+  if (pts.length < 2) return null;
+  return buildPath(pts);
+}
+
+function buildBand(minPts: { x: number; y: number }[], maxPts: { x: number; y: number }[]): string {
+  // Build a closed polygon: max path forward, then min path reversed, then Z
+  const maxPart = `${fmt(maxPts[0].x)} ${fmt(maxPts[0].y)} ` + maxPts.slice(1).map(p => `${fmt(p.x)} ${fmt(p.y)}`).join(' ');
+  const minRev = [...minPts].reverse();
+  const minPart = minRev.map(p => `${fmt(p.x)} ${fmt(p.y)}`).join(' ');
+  return `M ${maxPart} L ${minPart} Z`;
+}
+
+function escapeAttr(s: string): string {
+  return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 
