@@ -106,7 +106,7 @@ Main plot mode removes the subplot beats, shows only main plot scenes in the out
 
 ## Zero draft mode
 
-Zero draft mode helps you focus on finishing the zero draft and not getting caught in a revision loop that never ends by encouraging you to make small additions to the pending edits frontmatter field if and when you have ideas about revising a scene with status complete.
+Zero draft mode encourages good writing hygiene so you can finish the zero draft and not get caught in a revision loop that never ends.
 
 - When enabled in settings → zero draft mode, clicking a scene where publish stage is zero and status is complete shows a small dialog instead of opening the note.
 - The dialog displays a large input field populated from the scene's pending edits frontmatter (if any). You can type additional edits and click ok to save.
@@ -114,8 +114,7 @@ Zero draft mode helps you focus on finishing the zero draft and not getting caug
   - ok: overwrites pending edits with the current input (uses Obsidian's standard processfrontmatter). If you cleared previously non‑empty text, you'll be asked to confirm deleting it (the key remains with an empty value).
   - cancel: if there are unsaved changes, you'll be asked to discard them; otherwise the dialog closes. No write.
   - override: opens the note without saving. If there are unsaved changes, you'll be asked to discard them first.
-- Matching is case‑insensitive on keys and values. Defaults: publish stage defaults to zero if missing; status defaults to todo if missing. Interception occurs only when stage = zero and status = complete.
-- Turn this off any time in settings if you prefer to open scenes directly.
+- Turn this off any time in settings.
 
 <hr>
 
