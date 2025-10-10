@@ -2,8 +2,7 @@
  * Gossamer SVG layer helper
  */
 import type { Scene } from '../main';
-import { STC_BEATS_ORDER } from '../ai/prompts/gossamer';
-import { normalizeBeatName, GossamerRun, extractPresentBeatScores } from '../utils/gossamer';
+import { normalizeBeatName, GossamerRun, extractPresentBeatScores, extractBeatOrder } from '../utils/gossamer';
 
 export interface PolarConfig {
   innerRadius: number;
@@ -28,12 +27,26 @@ export function renderGossamerLayer(
 ): string {
   if (!run) return '';
 
-  // Build angles map with fallback, then override with provided values
+  // Extract dynamic beat order from Plot notes
+  const beatOrder = extractBeatOrder(scenes);
+  if (!beatOrder.length) {
+    console.warn('[Gossamer] No Plot beats found in scenes');
+    return '';
+  }
+
+  // Build angles map with fallback, then override with provided values from rendered plot beats
   const localAngles = (() => {
     const m = new Map<string, number>();
-    const fallbackAngles: number[] = STC_BEATS_ORDER.map((_, i) => -Math.PI / 2 + (i / STC_BEATS_ORDER.length) * 2 * Math.PI);
-    STC_BEATS_ORDER.forEach((name, idx) => m.set(normalizeBeatName(name), fallbackAngles[idx]));
-    if (anglesByBeat) anglesByBeat.forEach((val, key) => m.set(key, val));
+    // Fallback: equally-spaced angles if no rendered angles provided
+    const fallbackAngles: number[] = beatOrder.map((_, i) => -Math.PI / 2 + (i / beatOrder.length) * 2 * Math.PI);
+    beatOrder.forEach((name, idx) => m.set(normalizeBeatName(name), fallbackAngles[idx]));
+    
+    // Override with actual rendered plot beat positions for perfect alignment
+    if (anglesByBeat) {
+      anglesByBeat.forEach((val, key) => {
+        m.set(key, val);
+      });
+    }
     return m;
   })();
 
@@ -43,16 +56,18 @@ export function renderGossamerLayer(
 
   const { innerRadius, outerRadius } = polar;
 
-  // Create one path per contiguous present segment in STC order
+  // Create one path per contiguous present segment in dynamic beat order
   const nameToScore = new Map(present.map(p => [normalizeBeatName(p.beat), p.score]));
   const segments: string[] = [];
   let current: { x: number; y: number }[] = [];
   const dots: string[] = [];
+  const spokes: string[] = [];
 
-  STC_BEATS_ORDER.forEach(name => {
+  beatOrder.forEach(name => {
     const key = normalizeBeatName(name);
     const score = nameToScore.get(key);
     const angle = localAngles.get(key);
+    
     if (typeof score === 'number' && typeof angle === 'number') {
       const r = mapScoreToRadius(score, innerRadius, outerRadius);
       const x = r * Math.cos(angle);
@@ -62,6 +77,12 @@ export function renderGossamerLayer(
       const data = `data-beat="${escapeAttr(name)}" data-score="${String(score)}"${path ? ` data-path="${escapeAttr(path)}"` : ''}${run?.meta?.label ? ` data-label="${escapeAttr(run.meta.label)}"` : ''}`;
       const title = `<title>${escapeAttr(`${name}${run?.meta?.label ? ` — ${run.meta.label}` : ''}: ${score}`)}</title>`;
       dots.push(`<circle class="rt-gossamer-dot" cx="${fmt(x)}" cy="${fmt(y)}" r="5" ${data}>${title}</circle>`);
+      // Full y-axis spoke from inner to outer radius at this beat's angle
+      const sx1 = innerRadius * Math.cos(angle);
+      const sy1 = innerRadius * Math.sin(angle);
+      const sx2 = outerRadius * Math.cos(angle);
+      const sy2 = outerRadius * Math.sin(angle);
+      spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`);
     } else {
       if (current.length > 1) {
         segments.push(buildPath(current));
@@ -92,7 +113,9 @@ export function renderGossamerLayer(
   const overlaySvg = overlayPaths.map(d => `<path class="rt-gossamer-line rt-gossamer-overlay" d="${d}"/>`).join('');
   const bandSvg = bandPath ? `<path class="rt-gossamer-band" d="${bandPath}"/>` : '';
   const dotsSvg = dots.join('');
-  return `<g class="rt-gossamer-layer">${bandSvg}${overlaySvg}${mainPaths}${dotsSvg}</g>`;
+  const spokesSvg = spokes.join('');
+  
+  return `<g class="rt-gossamer-layer">${bandSvg}${overlaySvg}${spokesSvg}${mainPaths}${dotsSvg}</g>`;
 }
 
 function buildPath(points: { x: number; y: number }[]): string {

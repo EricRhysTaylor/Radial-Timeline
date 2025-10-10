@@ -795,10 +795,21 @@ This is a test scene created to help with initial Radial timeline setup.
             const svgElement = this.createSvgElement(svgString, timelineContainer); // Pass svgString
             
             if (svgElement) {
-                // If Gossamer mode is active, apply non-selected styling to all scene elements immediately
+                // If Gossamer mode is active, reuse hover-state styling: mute everything except Plot beats
                 if (this.interactionMode === 'gossamer') {
-                    const baseEls = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
-                    baseEls.forEach(el => el.classList.add('rt-non-selected'));
+                    svgElement.setAttribute('data-gossamer-mode', 'true');
+                    // Apply the same logic as scene hover: add rt-non-selected to all elements except Plot beats
+                    const allElements = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
+                    allElements.forEach(el => {
+                        const group = el.closest('.rt-scene-group');
+                        const itemType = group?.getAttribute('data-item-type');
+                        // Treat Plot beats like "selected" items - they stay unmuted
+                        if (itemType !== 'Plot') {
+                            el.classList.add('rt-non-selected');
+                        }
+                    });
+                } else {
+                    svgElement.removeAttribute('data-gossamer-mode');
                 }
                 // Set CSS variables for subplot labels based on data attributes
                 const subplotLabelGroups = svgElement.querySelectorAll('.subplot-label-group[data-font-size]');
@@ -971,7 +982,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 // --- START: Add hover effect for scene paths to fade subplot labels ---
                 // Reuse the existing sceneGroups variable declared earlier
                 // const sceneGroups = svgElement.querySelectorAll('.scene-group'); // REMOVE this redeclaration
-                const subplotLabels = svgElement.querySelectorAll<SVGTextElement>('.subplot-label-text'); // Use type assertion
+                const subplotLabels = svgElement.querySelectorAll<SVGTextElement>('.rt-subplot-ring-label-text'); // Use type assertion for arching ring labels
 
                 if (subplotLabels.length > 0) {
                     const onEnterLeave = (hovering: boolean, targetGroup: Element | null) => {
@@ -1017,8 +1028,15 @@ This is a test scene created to help with initial Radial timeline setup.
                 let rafId: number | null = null;
 
                 const clearSelection = () => {
+                    // Always clear active selection styles
                     const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
-                    all.forEach(el => el.classList.remove('rt-selected', 'rt-non-selected'));
+                    all.forEach(el => el.classList.remove('rt-selected'));
+
+                    // Only clear muted state when NOT in Gossamer mode
+                    if (view.interactionMode !== 'gossamer') {
+                        all.forEach(el => el.classList.remove('rt-non-selected'));
+                    }
+
                     if (currentSynopsis) currentSynopsis.classList.remove('rt-visible');
                     currentGroup = null; currentSynopsis = null; currentSceneId = null;
                 };
@@ -1066,10 +1084,12 @@ This is a test scene created to help with initial Radial timeline setup.
                 
 
                 svg.addEventListener('pointerover', (e: PointerEvent) => {
-                    if (view.interactionMode === 'gossamer') return; // Disable scene hover in Gossamer
                     const g = (e.target as Element).closest('.rt-scene-group');
                     if (!g || g === currentGroup) return;
+                    // In Gossamer mode, only allow plot slices
+                    if (view.interactionMode === 'gossamer' && g.getAttribute('data-item-type') !== 'Plot') return;
                     
+                    // Do not clear muted state while in Gossamer mode
                     clearSelection();
                     const sid = getSceneIdFromGroup(g);
                     if (!sid) return;
@@ -1093,10 +1113,28 @@ This is a test scene created to help with initial Radial timeline setup.
                     if (sceneTitle) {
                         redistributeActScenes(g);
                     }
+
+                    // In Gossamer mode: sync spoke and dot highlight when hovering a Plot slice
+                    if (view.interactionMode === 'gossamer' && g.getAttribute('data-item-type') === 'Plot') {
+                        const encodedPath = g.getAttribute('data-path') || '';
+                        const filePath = encodedPath ? decodeURIComponent(encodedPath) : '';
+                        if (filePath) {
+                            const dot = Array.from(svg.querySelectorAll('.rt-gossamer-dot'))
+                                .find(el => (el as Element).getAttribute('data-path') === filePath) as SVGCircleElement | undefined;
+                            if (dot) {
+                                dot.classList.add('rt-hover');
+                                const beatName = dot.getAttribute('data-beat');
+                                if (beatName) {
+                                    const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
+                                    if (spoke) spoke.classList.add('rt-gossamer-spoke-hover');
+                                }
+                                g.classList.add('rt-gossamer-hover');
+                            }
+                        }
+                    }
                 });
 
                 svg.addEventListener('pointerout', (e: PointerEvent) => {
-                    if (view.interactionMode === 'gossamer') return; // Disable scene hover in Gossamer
                     const toEl = e.relatedTarget as Element | null;
                     
                     // Check if we're moving within the current group
@@ -1113,6 +1151,25 @@ This is a test scene created to help with initial Radial timeline setup.
                     // Remove scene-hover class from SVG
                     svg.classList.remove('scene-hover');
                     
+                    // In Gossamer mode: remove synced spoke and dot highlight when leaving a Plot slice
+                    if (view.interactionMode === 'gossamer' && currentGroup && currentGroup.getAttribute('data-item-type') === 'Plot') {
+                        const encodedPath = currentGroup.getAttribute('data-path') || '';
+                        const filePath = encodedPath ? decodeURIComponent(encodedPath) : '';
+                        if (filePath) {
+                            const dot = Array.from(svg.querySelectorAll('.rt-gossamer-dot'))
+                                .find(el => (el as Element).getAttribute('data-path') === filePath) as SVGCircleElement | undefined;
+                            if (dot) {
+                                dot.classList.remove('rt-hover');
+                                const beatName = dot.getAttribute('data-beat');
+                                if (beatName) {
+                                    const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
+                                    if (spoke) spoke.classList.remove('rt-gossamer-spoke-hover');
+                                }
+                                currentGroup.classList.remove('rt-gossamer-hover');
+                            }
+                        }
+                    }
+
                     clearSelection();
                 });
 
@@ -1369,7 +1426,6 @@ This is a test scene created to help with initial Radial timeline setup.
                     rafId = null;
                 };
                 svg.addEventListener('pointermove', (e: PointerEvent) => {
-                    if (view.interactionMode === 'gossamer') return; // Disable scene hover in Gossamer
                     if (rafId !== null) return;
                     rafId = window.requestAnimationFrame(() => onMove(e));
                 });
@@ -1386,12 +1442,14 @@ This is a test scene created to help with initial Radial timeline setup.
                     }
                 });
 
-                // Dot hover: show existing synopsis bubble for the corresponding Plot note
+                // Dot hover: show synopsis, turn spoke white, trigger plot slice hover styling
                 svg.addEventListener('pointerover', (e: PointerEvent) => {
                     const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
                     if (!dot) return;
                     const path = dot.getAttribute('data-path');
+                    const beatName = dot.getAttribute('data-beat');
                     if (!path) return;
+                    
                     // Find plot group by data-path
                     const encoded = encodeURIComponent(path);
                     const plotGroup = svg.querySelector(`.rt-scene-group[data-path="${encoded}"]`);
@@ -1399,6 +1457,20 @@ This is a test scene created to help with initial Radial timeline setup.
                     const scenePath = plotGroup.querySelector('.rt-scene-path') as SVGPathElement | null;
                     const sceneId = scenePath?.id;
                     if (!sceneId) return;
+                    
+                    // Add scene-hover class to SVG to hide subplot ring labels
+                    svg.classList.add('scene-hover');
+                    
+                    // Trigger plot slice hover styling (add a hover class)
+                    plotGroup.classList.add('rt-gossamer-hover');
+                    
+                    // Turn the corresponding spoke white
+                    if (beatName) {
+                        const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
+                        if (spoke) spoke.classList.add('rt-gossamer-spoke-hover');
+                    }
+                    
+                    // Show synopsis
                     const syn = svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
                     if (syn) {
                         (syn as Element).classList.add('rt-visible');
@@ -1409,6 +1481,7 @@ This is a test scene created to help with initial Radial timeline setup.
                     const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
                     if (!dot) return;
                     const path = dot.getAttribute('data-path');
+                    const beatName = dot.getAttribute('data-beat');
                     if (!path) return;
                     const encoded = encodeURIComponent(path);
                     const plotGroup = svg.querySelector(`.rt-scene-group[data-path="${encoded}"]`);
@@ -1416,8 +1489,50 @@ This is a test scene created to help with initial Radial timeline setup.
                     const scenePath = plotGroup.querySelector('.rt-scene-path') as SVGPathElement | null;
                     const sceneId = scenePath?.id;
                     if (!sceneId) return;
+                    
+                    // Remove scene-hover class from SVG to restore subplot ring labels
+                    svg.classList.remove('scene-hover');
+                    
+                    // Remove plot slice hover styling
+                    plotGroup.classList.remove('rt-gossamer-hover');
+                    
+                    // Remove spoke white styling
+                    if (beatName) {
+                        const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
+                        if (spoke) spoke.classList.remove('rt-gossamer-spoke-hover');
+                    }
+                    
                     const syn = svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
                     if (syn) (syn as Element).classList.remove('rt-visible');
+                });
+
+                // Click-to-exit Gossamer mode: clicking anywhere except Plot beats or Gossamer dots exits
+                svg.addEventListener('click', (e: PointerEvent) => {
+                    if (view.interactionMode !== 'gossamer') return;
+                    
+                    const target = e.target as Element;
+                    
+                    // Check if clicked on a Gossamer dot
+                    const clickedDot = target.closest('.rt-gossamer-dot');
+                    if (clickedDot) return;
+                    
+                    // Check if clicked on a Plot beat (check both the group and any child elements)
+                    const clickedGroup = target.closest('.rt-scene-group');
+                    if (clickedGroup && clickedGroup.getAttribute('data-item-type') === 'Plot') return;
+                    
+                    // Check if clicked directly on Plot-related elements
+                    if (target.classList.contains('rt-scene-path') || 
+                        target.classList.contains('rt-plot-title') ||
+                        target.classList.contains('rt-number-square') ||
+                        target.classList.contains('rt-number-text')) {
+                        const parentGroup = target.closest('.rt-scene-group');
+                        if (parentGroup && parentGroup.getAttribute('data-item-type') === 'Plot') return;
+                    }
+                    
+                    // Otherwise, exit Gossamer mode
+                    import('../GossamerCommands').then(({ toggleGossamerMode }) => {
+                        toggleGossamerMode(view.plugin);
+                    });
                 });
             })(this);
             // --- end delegated hover ---
@@ -1442,6 +1557,13 @@ This is a test scene created to help with initial Radial timeline setup.
             
             // Set up click handler
             path.addEventListener("click", (evt: MouseEvent) => {
+                // Disable scene clicks in Gossamer mode (but allow plot slices)
+                const itemType = group.getAttribute('data-item-type');
+                if (this.interactionMode === 'gossamer' && itemType !== 'Plot') return;
+                // Prevent background click-to-exit from firing when clicking a Plot slice
+                if (this.interactionMode === 'gossamer' && itemType === 'Plot') {
+                    evt.stopPropagation();
+                }
                 const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
                 if (!(file instanceof TFile)) return;
 
@@ -1519,6 +1641,9 @@ This is a test scene created to help with initial Radial timeline setup.
             
             // Add mouse enter/leave handlers to highlight files in explorer and tabs
             group.addEventListener("mouseenter", () => {
+                // Disable scene hover in Gossamer mode (but allow plot slices)
+                const itemType = group.getAttribute('data-item-type');
+                if (this.interactionMode === 'gossamer' && itemType !== 'Plot') return;
                 if (filePath && filePath.trim() !== '') {
                     // Verify the file exists before attempting to highlight
                     const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
@@ -1529,6 +1654,9 @@ This is a test scene created to help with initial Radial timeline setup.
             });
             
             group.addEventListener("mouseleave", () => {
+                // Disable scene hover in Gossamer mode (but allow plot slices)
+                const itemType = group.getAttribute('data-item-type');
+                if (this.interactionMode === 'gossamer' && itemType !== 'Plot') return;
                 if (filePath && filePath.trim() !== '') {
                     // this.highlightFileInExplorer(filePath, false); // Removed this line
                 }

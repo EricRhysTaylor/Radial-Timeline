@@ -928,6 +928,9 @@ export function createTimelineSVG(
             `;
         }
 
+        // Initialize plot beat angles map for Gossamer (clear any stale data from previous render)
+        (plugin as any)._plotBeatAngles = new Map();
+
         // Draw scenes and dummy scenes (existing code remains as is)
         for (let act = 0; act < NUM_ACTS; act++) {
             const totalRings = NUM_RINGS;
@@ -1000,6 +1003,17 @@ export function createTimelineSVG(
                         const position = positions.get(idx)!;
                             const sceneStartAngle = position.startAngle;
                             const sceneEndAngle = position.endAngle;
+                        
+                        // Capture exact angles for Gossamer plot beats (center of slice)
+                        if (scene.itemType === 'Plot' && scene.title) {
+                            // Strip the scene number prefix (e.g., "1 Opening Image" -> "Opening Image")
+                            const titleWithoutNumber = scene.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '');
+                            // Normalize the title to match STC_BEATS_ORDER keys
+                            const key = normalizeBeatName(titleWithoutNumber);
+                            const center = (sceneStartAngle + sceneEndAngle) / 2;
+                            (plugin as any)._plotBeatAngles.set(key, center);
+                        }
+                        
                         // Scene titles: fixed inset from the top (outer) boundary of the cell
                         const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
 
@@ -1788,7 +1802,7 @@ export function createTimelineSVG(
                         ${formatNumber(labelRadius * Math.cos(endAngle))} ${formatNumber(labelRadius * Math.sin(endAngle))}"
                         class="subplot-ring-label-path"
                     />
-                    <text class="rt-subplot-label-text" data-subplot-index="${ringOffset}" data-subplot-name="${escapeXml(subplot)}">
+                    <text class="rt-subplot-ring-label-text" data-subplot-index="${ringOffset}" data-subplot-name="${escapeXml(subplot)}">
                         <textPath href="#${labelPathId}" startOffset="100%" text-anchor="end"
                                 textLength="${arcPixelLength}" lengthAdjust="spacingAndGlyphs">
                             ${safeSubplotText}
@@ -2055,52 +2069,57 @@ export function createTimelineSVG(
 
         // --- Gossamer momentum layer (Phase 1) ---
         {
-            // Map 0–100 to a band that aligns with darker grid lines: use innerRadius for 0 and actualOuterRadius for 100
-            const polar = { innerRadius, outerRadius: actualOuterRadius };
-            const run = (plugin as any)._gossamerLastRun || null;
-
-            // Approximate angles per beat by computing center angles using the same positions used for rendering outer All‑Scenes ring
-            const anglesByBeat = new Map<string, number>();
-            // Group plot notes by act in manuscript order
-            const plotsByAct: Map<number, { title: string }[]> = new Map();
-            scenes.forEach(s => {
-                if (s.itemType !== 'Plot' || typeof s.actNumber !== 'number') return;
-                const list = plotsByAct.get(s.actNumber) || [];
-                list.push({ title: s.title || '' });
-                plotsByAct.set(s.actNumber, list);
+            // Only render Gossamer layer if we're in Gossamer mode
+            // Check if any view is in gossamer mode
+            const views = plugin.app.workspace.getLeavesOfType('radial-timeline');
+            const isGossamerMode = views.some((leaf) => {
+                const view = leaf.view as { interactionMode?: string };
+                return view?.interactionMode === 'gossamer';
             });
-            // For each act, divide the act sector equally among its plot notes and derive center angle
-            plotsByAct.forEach((list, actNumber) => {
-                const actIdx = actNumber - 1;
-                const aStart = (actIdx * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                const aEnd = ((actIdx + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                const total = Math.max(1, list.length);
-                const span = (aEnd - aStart) / total;
-                list.forEach((p, idx) => {
-                    const center = aStart + (idx + 0.5) * span;
-                    const key = normalizeBeatName(p.title.replace(/^\s*\d+(?:\.\d+)?\s+/, ''));
-                    anglesByBeat.set(key, center);
+
+            if (isGossamerMode) {
+                // Map 0–100 to a band that aligns with darker grid lines: use innerRadius for 0 and actualOuterRadius for 100
+                const polar = { innerRadius, outerRadius: actualOuterRadius };
+                const run = (plugin as any)._gossamerLastRun || null;
+
+                // Collect actual angles from rendered plot slices (set during outer ring rendering loop above)
+                const anglesByBeat = (plugin as any)._plotBeatAngles || new Map<string, number>();
+
+                // Map beat names to their Plot note paths to enable dot click/open
+                const beatPathByName = new Map<string, string>();
+                scenes.forEach(s => {
+                    if (s.itemType !== 'Plot' || !s.title || !s.path) return;
+                    const key = normalizeBeatName(s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, ''));
+                    beatPathByName.set(key, s.path);
                 });
-            });
 
-            // Map beat names to their Plot note paths to enable dot click/open
-            const beatPathByName = new Map<string, string>();
-            scenes.forEach(s => {
-                if (s.itemType !== 'Plot' || !s.title || !s.path) return;
-                const key = normalizeBeatName(s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, ''));
-                beatPathByName.set(key, s.path);
-            });
-
-            const layer = renderGossamerLayer(
-                scenes,
-                run,
-                polar,
-                anglesByBeat.size ? anglesByBeat : undefined,
-                beatPathByName,
-                undefined,
-                undefined
-            );
-            if (layer) svg += layer;
+                // Redraw month/act spokes on top so they're visible over scenes
+                const spokesGroup = `<g class="rt-gossamer-spokes">`;
+                let spokesHtml = '';
+                
+                // Redraw month spokes with Gossamer-specific classes for gray styling
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i / 12) * 2 * Math.PI - Math.PI / 2;
+                    const x1 = formatNumber((innerRadius - 5) * Math.cos(angle));
+                    const y1 = formatNumber((innerRadius - 5) * Math.sin(angle));
+                    const x2 = formatNumber(actualOuterRadius * Math.cos(angle));
+                    const y2 = formatNumber(actualOuterRadius * Math.sin(angle));
+                    const isActBoundary = [0, 4, 8].includes(i);
+                    spokesHtml += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="rt-month-spoke-line rt-gossamer-grid-spoke${isActBoundary ? ' rt-act-boundary' : ''}"/>`;
+                }
+                svg += spokesGroup + spokesHtml + '</g>';
+                
+                const layer = renderGossamerLayer(
+                    scenes,
+                    run,
+                    polar,
+                    anglesByBeat.size ? anglesByBeat : undefined,
+                    beatPathByName,
+                    undefined, // overlayRuns
+                    undefined  // minBand
+                );
+                if (layer) svg += layer;
+            }
         }
 
         // Close static root container

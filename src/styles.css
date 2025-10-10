@@ -170,16 +170,21 @@
 
 
 /* Hover: emphasize plot titles with a solid black background using stroke */
-.radial-timeline-container .rt-scene-group:hover .rt-plot-title {
+.radial-timeline-container .rt-scene-group:hover .rt-plot-title,
+.rt-scene-group.rt-gossamer-hover .rt-plot-title,
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Plot"]:hover .rt-plot-title {
   filter: url(#plotTextBg); /* black background halo */
-  fill: #ffffff;
+  fill: #ffffff !important;
   font-weight: 700; /* heavier for readability */
 }
 
-/* Rotation toggle hover animation */
+/* Rotation toggle base styles (timeline only; no animations) */
 .radial-timeline-svg #rotation-toggle use {
-  transition: color 120ms ease, stroke 120ms ease, fill 120ms ease;
+  color: inherit;
+  stroke: currentColor;
+  fill: none;
 }
+
 .radial-timeline-svg #rotation-toggle:hover use {
   /* Make arrow white on hover via currentColor (symbols use stroke=currentColor) */
   color: #ffffff !important;
@@ -193,9 +198,43 @@
 .rt-gossamer-layer { pointer-events: none; }
 .rt-gossamer-line { stroke: var(--rt-gossamer-stroke, #7a7a7a); stroke-width: 3; fill: none; }
 /* Phase 2: dots (10px diameter) */
-.rt-gossamer-dot { fill: var(--rt-gossamer-stroke, #7a7a7a); r: 5px; pointer-events: all; cursor: pointer; }
+.rt-gossamer-dot { 
+  fill: var(--rt-gossamer-stroke, #7a7a7a); 
+  r: 10px; /* 10px diameter */
+  pointer-events: all; 
+  cursor: pointer; 
+  stroke: none;
+}
+.rt-gossamer-dot:hover,
+.rt-gossamer-dot.rt-hover { 
+  fill: var(--rt-gossamer-stroke, #7a7a7a);
+  stroke: white;
+  stroke-width: 10px;
+}
 .rt-gossamer-line.rt-gossamer-overlay { stroke-dasharray: 6,4; opacity: 0.6; }
 .rt-gossamer-band { fill: var(--rt-gossamer-stroke, #7a7a7a); opacity: 0.12; stroke: none; }
+.rt-gossamer-spoke { 
+  stroke: #b0b0b0; /* Light gray for beat spokes */
+  stroke-width: 1px; 
+  stroke-dasharray: none;
+}
+.rt-gossamer-spoke.rt-gossamer-spoke-hover {
+  stroke: white; /* Turn white on dot hover */
+  stroke-width: 2px;
+}
+.rt-gossamer-grid-spoke {
+  stroke: #d0d0d0 !important; /* Even lighter gray for month/act grid spokes - override theme colors */
+  stroke-width: 0.5px !important;
+  stroke-dasharray: none !important;
+  opacity: 0.3 !important;
+}
+
+/* Plot slice hover styling - path turns white on hover or Gossamer sync */
+.rt-scene-group.rt-gossamer-hover .rt-scene-path,
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Plot"]:hover .rt-scene-path {
+  fill: #ffffff !important;
+  opacity: 1 !important;
+}
 .radial-timeline-container .rt-scene-title.rt-faded {
   opacity: 0.2;
 }
@@ -323,12 +362,11 @@ dominant-baseline: middle;
   font-size: 16px;
   fill: var(--text-muted, #555555);
   font-weight: normal;
-  transition: fill 120ms ease, font-weight 120ms ease;
+  
 }
 .radial-timeline-container .scene-hover .rt-subplot-text,
-.radial-timeline-container .rt-subplot-text.rt-selected {
-  fill: #ffffff;
-  font-weight: 700;
+.radial-timeline-container .rt-scene-group:hover .rt-subplot-text { 
+  fill: #ffffff; 
 }
 
 .radial-timeline-container .rt-number-square{
@@ -521,7 +559,7 @@ tspan .search-term {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
-  transition: fill 0.1s;
+  
 }
 .rt-number-text.rt-scene-is-open.rt-non-selected {
   fill: #ffffff;
@@ -689,9 +727,7 @@ tspan .search-term {
 }
 
 /* Dim non-selected provider sections in settings */
-.rt-provider-section {
-  transition: opacity 120ms ease;
-}
+.rt-provider-section { transition: opacity 120ms ease; }
 .rt-provider-section.dimmed {
   opacity: 0.55;
 }
@@ -1095,7 +1131,7 @@ tspan .search-term {
   pointer-events: none;
 }
 
-.rt-subplot-label-text {
+.rt-subplot-ring-label-text {
     fill: var(--rt-max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
     opacity: .2; /* Corrected opacity back to 30% */
     font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
@@ -1109,14 +1145,18 @@ tspan .search-term {
 }
 
 /* Use .non-selected class for faded state (consistent with other elements) */
-.rt-subplot-label-text.rt-non-selected {
+.rt-subplot-ring-label-text.rt-non-selected {
     opacity: .1; /* Corrected opacity back to 30% */
 }
 
-/* Make subplot labels disappear when any scene is hovered */
-.radial-timeline-svg.scene-hover .rt-subplot-label-text {
+/* Hide subplot ring labels in Gossamer mode AND on hover */
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-subplot-ring-label-text {
     opacity: 0 !important;
 }
+.radial-timeline-svg.scene-hover .rt-subplot-ring-label-text {
+    opacity: 0 !important;
+}
+
 
 /* Progress Ring Base (thin gray track underneath) */
 .radial-timeline-container .progress-ring-base {
@@ -1212,6 +1252,7 @@ tspan .search-term {
     padding: 8px 12px;
     cursor: pointer;
     border-bottom: 1px solid var(--background-modifier-border);
+    /* Settings UI can animate hover for better affordance (timeline has no animations) */
     transition: background-color 0.1s ease;
 }
 
@@ -1226,11 +1267,10 @@ tspan .search-term {
 
 /* status header hover effect */
 .radial-timeline-container .status-header-letter {
-  transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
+  
   text-decoration: none;
 }
 .status-header:hover .status-header-letter {
-  transform: scale(1.05);
   fill: #ffffff;
   text-decoration: underline;
 }
@@ -1249,11 +1289,10 @@ tspan .search-term {
 
 /* stage header hover effect */
 .radial-timeline-container .stage-header-letter {
-  transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
+  
   text-decoration: none;
 }
 .stage-header:hover .stage-header-letter {
-  transform: scale(1.07);
   fill: #ffffff;
   text-decoration: underline;
 }

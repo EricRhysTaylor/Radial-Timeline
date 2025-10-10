@@ -138,9 +138,9 @@ export async function runGossamerAnalysis(plugin: RadialTimelinePlugin): Promise
   }
 
   let run = content ? parseAiJson(content) : null;
-  if (!run) run = buildRunFromDefault();
+  if (!run) run = buildRunFromDefault(scenes);
 
-  // Zero-offset Opening to 0
+  // Zero-offset first beat to 0
   run = zeroOffsetRun(run);
 
   // Persist per-beat history
@@ -164,7 +164,7 @@ export function getActiveGossamerRun(plugin: RadialTimelinePlugin): GossamerRun 
   return lastRunByPlugin.get(plugin) ?? null;
 }
 
-export function toggleGossamerMode(plugin: RadialTimelinePlugin): void {
+export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<void> {
   const view = getFirstView(plugin);
   if (!view) return;
   const current = getInteractionMode(view) === 'gossamer';
@@ -173,7 +173,8 @@ export function toggleGossamerMode(plugin: RadialTimelinePlugin): void {
   } else {
     // Ensure a run exists (use default if none)
     if (!getActiveGossamerRun(plugin)) {
-      const def = buildRunFromDefault();
+      const scenes = await plugin.getSceneData();
+      const def = buildRunFromDefault(scenes);
       setInMemoryRun(plugin, def);
     }
     setBaseModeAllScenes(plugin);

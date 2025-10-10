@@ -44,17 +44,55 @@ export const DefaultGossamerMomentum: { beat: string; score: number; notes: stri
 ];
 
 export function normalizeBeatName(name: string): string {
-  return (name || '').trim().toLowerCase();
+  // Strip percentage annotations (e.g., "5%", "1-10%", "20%") and extra whitespace
+  return (name || '')
+    .replace(/\s+\d+(?:-\d+)?%?\s*$/i, '') // Remove trailing percentages like " 5%", " 1-10%", " 20"
+    .trim()
+    .toLowerCase();
 }
 
-export function buildRunFromDefault(): GossamerRun {
-  const beats = DefaultGossamerMomentum.map(({ beat, score, notes }) => ({
-    beat,
-    score,
-    notes,
-    status: 'present' as const,
-  }));
-  // Zero-offset: Opening anchored to 0
+/**
+ * Build a default run using the dynamic beat order from scenes.
+ * If scenes are provided, use their actual beat names; otherwise fallback to template.
+ */
+export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: string; title?: string }[]): GossamerRun {
+  let beats: GossamerBeat[];
+  
+  if (scenes && scenes.length > 0) {
+    // Extract actual beat names from Plot notes
+    const beatOrder = extractBeatOrder(scenes);
+    if (beatOrder.length > 0) {
+      // Map template scores to actual beats (by index)
+      beats = beatOrder.map((beatName, idx) => {
+        const templateScore = DefaultGossamerMomentum[idx]?.score ?? 50; // Default to mid-range if beyond template
+        const templateNotes = DefaultGossamerMomentum[idx]?.notes ?? 'Template score applied.';
+        return {
+          beat: beatName,
+          score: templateScore,
+          notes: templateNotes,
+          status: 'present' as const,
+        };
+      });
+    } else {
+      // No Plot notes found, use template
+      beats = DefaultGossamerMomentum.map(({ beat, score, notes }) => ({
+        beat,
+        score,
+        notes,
+        status: 'present' as const,
+      }));
+    }
+  } else {
+    // No scenes provided, use template
+    beats = DefaultGossamerMomentum.map(({ beat, score, notes }) => ({
+      beat,
+      score,
+      notes,
+      status: 'present' as const,
+    }));
+  }
+  
+  // Zero-offset: first beat anchored to 0
   const opening = beats[0]?.score ?? 0;
   const adjusted = beats.map(b => ({ ...b, score: typeof b.score === 'number' ? Math.max(0, b.score - opening) : b.score }));
   return {
@@ -69,8 +107,9 @@ export function buildRunFromDefault(): GossamerRun {
 }
 
 export function zeroOffsetRun(run: GossamerRun): GossamerRun {
-  const opening = run.beats.find(b => normalizeBeatName(b.beat) === 'opening image');
-  const base = typeof opening?.score === 'number' ? opening.score : 0;
+  // Use the first beat as the zero anchor (instead of hardcoded "opening image")
+  const firstBeat = run.beats[0];
+  const base = typeof firstBeat?.score === 'number' ? firstBeat.score : 0;
   return {
     ...run,
     beats: run.beats.map(b => ({
@@ -84,6 +123,30 @@ export function extractPresentBeatScores(run: GossamerRun): { beat: string; scor
   return run.beats
     .filter(b => b.status === 'present' && typeof b.score === 'number')
     .map(b => ({ beat: b.beat, score: b.score as number }));
+}
+
+/**
+ * Extract dynamic beat order from Plot notes (Main Plot only).
+ * Returns array of beat names in the order they appear, sorted by numeric prefix.
+ * E.g., ["Opening Image", "Theme Stated 5%", "Setup 1-10%", ...]
+ */
+export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; title?: string }[]): string[] {
+  const plotBeats = scenes
+    .filter(s => s.itemType === 'Plot' && (s.subplot === 'Main Plot' || !s.subplot))
+    .map(s => s.title || '')
+    .filter(Boolean);
+  
+  // Sort by numeric prefix (e.g., "1 Opening Image", "2 Theme Stated 5%")
+  plotBeats.sort((a, b) => {
+    const aMatch = a.match(/^(\d+(?:\.\d+)?)/);
+    const bMatch = b.match(/^(\d+(?:\.\d+)?)/);
+    const aNum = aMatch ? parseFloat(aMatch[1]) : 0;
+    const bNum = bMatch ? parseFloat(bMatch[1]) : 0;
+    return aNum - bNum;
+  });
+  
+  // Strip leading numbers: "1 Opening Image" → "Opening Image"
+  return plotBeats.map(title => title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim());
 }
 
 
