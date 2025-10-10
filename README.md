@@ -168,7 +168,7 @@ Beat Model: SaveTheCat
 
 AI beats analysis
 
-When AI beats are enabled in settings, the plugin can generate a triplet of beats for each scene: 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are stored in the scene's yaml and rendered under the synopsis in the timeline. You can run the commands "update beats (manuscript order)" or "update beats (subplot)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point. Note: if you have run this scene before, then be sure to clear beats cache (prevents unnecessary duplicate API calls).
+In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "update beats (manuscript order)" or "update beats (subplot)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point. Note: if you have run this scene before, be sure to clear beats cache to process again (prevents unnecessary duplicate API calls).
 
 ```yaml
 ---
