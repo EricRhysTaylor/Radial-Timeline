@@ -476,7 +476,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // Gossamer commands
         this.addCommand({
             id: 'gossamer-analyze-plot-momentum',
-            name: 'Analyze gossamer momentum',
+            name: 'Gossamer analyze plot momentum',
             callback: async () => {
                 try {
                     await runGossamerAnalysis(this);
@@ -487,7 +487,7 @@ export default class RadialTimelinePlugin extends Plugin {
         });
         this.addCommand({
             id: 'gossamer-toggle-view',
-            name: 'Toggle gossamer view',
+            name: 'Gossamer toggle view',
             callback: () => {
                 try {
                     toggleGossamerMode(this);
