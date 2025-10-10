@@ -151,15 +151,16 @@ Book: Book 1 A New Beginning
 
 Plot beat slices (save the cat beats)
 
-The plugin supports plot structuring with class: plot notes. These appear as narrow slices on the outermost ring when the "outer ring shows all scenes" setting is enabled. Hover a slice to view its description.
+The plugin supports plot structuring using yaml class: plot. These appear as narrow slices on the outermost ring when the "outer ring shows all scenes" setting is enabled. Hover to view details and click to open the plot note.
 
-Create a note titled "01 opening image" with this frontmatter:
+Create a note titled "01 opening image" and paste this frontmatter:
 
 ```yaml
 ---
 Class: Plot
 Act: 1
 Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
+Beat Model: SaveTheCat
 ---
 ```
 
