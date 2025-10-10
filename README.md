@@ -339,8 +339,8 @@ This plugin adheres to Obsidian.md development best practices, including secure 
 Radial Timeline™ © 2025 Eric Rhys Taylor  
 Released under a **Source-Available, Non-Commercial License**.  
 
-- You may view, install, and use this plugin for personal or educational purposes.  
-- Commercial use, redistribution, or creation of competing software is prohibited without written permission.  
-- "Radial Timeline" is a trademark of Eric Rhys Taylor.  
+- You may view, install, and use this plugin for personal or educational purposes.
+- Commercial use, redistribution, or creation of derivative works using this source code is prohibited without written permission.
+- The “Radial Timeline” name is a trademark of Eric Rhys Taylor.  
 
 See the [LICENSE](./LICENSE) and [NOTICE](./NOTICE) files for full details.
