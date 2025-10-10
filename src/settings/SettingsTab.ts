@@ -292,13 +292,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             
         // --- AI for Beats Analysis ---
         new Settings(containerEl)
-            .setName('AI for beats analysis')
+            .setName('AI for beats analysis & gossamer')
             .setHeading();
         
         // Enable/disable AI beats features
         new Settings(containerEl)
-            .setName('Enable AI beats')
-            .setDesc('Show AI beat colors and beats sections in hover synopsis. When off, these visuals are hidden, but scene metadata remains unchanged.')
+            .setName('Enable AI LLM features')
+            .setDesc('Show command palette options and UI beat colors and beats sections in hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAiBeats ?? true)
                 .onChange(async (value) => {
