@@ -41,6 +41,10 @@ export class RadialTimelineView extends ItemView {
     private rotationState: boolean = false;
     
     public interactionMode: 'normal' | 'gossamer' = 'normal';
+    
+    // Store event handler references for clean removal
+    private normalEventHandlers: Map<string, EventListener> = new Map();
+    private gossamerEventHandlers: Map<string, EventListener> = new Map();
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
@@ -870,6 +874,9 @@ This is a test scene created to help with initial Radial timeline setup.
                     };
                     applyRotation();
                     this.registerDomEvent(toggle as unknown as HTMLElement, 'click', () => {
+                        // Disable rotation in Gossamer mode
+                        if (this.interactionMode === 'gossamer') return;
+                        
                         rotated = !rotated;
                         this.rotationState = rotated; // Save state for persistence
                         applyRotation();
@@ -1084,12 +1091,12 @@ This is a test scene created to help with initial Radial timeline setup.
                 
 
                 svg.addEventListener('pointerover', (e: PointerEvent) => {
+                    // In Gossamer mode, normal scene hovers are disabled
+                    if (view.interactionMode === 'gossamer') return;
+                    
                     const g = (e.target as Element).closest('.rt-scene-group');
                     if (!g || g === currentGroup) return;
-                    // In Gossamer mode, only allow plot slices
-                    if (view.interactionMode === 'gossamer' && g.getAttribute('data-item-type') !== 'Plot') return;
                     
-                    // Do not clear muted state while in Gossamer mode
                     clearSelection();
                     const sid = getSceneIdFromGroup(g);
                     if (!sid) return;
@@ -1113,30 +1120,14 @@ This is a test scene created to help with initial Radial timeline setup.
                     if (sceneTitle) {
                         redistributeActScenes(g);
                     }
-
-                    // In Gossamer mode: sync spoke and dot highlight when hovering a Plot slice
-                    if (view.interactionMode === 'gossamer' && g.getAttribute('data-item-type') === 'Plot') {
-                        const encodedPath = g.getAttribute('data-path') || '';
-                        const filePath = encodedPath ? decodeURIComponent(encodedPath) : '';
-                        if (filePath) {
-                            const dot = Array.from(svg.querySelectorAll('.rt-gossamer-dot'))
-                                .find(el => (el as Element).getAttribute('data-path') === filePath) as SVGCircleElement | undefined;
-                            if (dot) {
-                                dot.classList.add('rt-hover');
-                                const beatName = dot.getAttribute('data-beat');
-                                if (beatName) {
-                                    const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
-                                    if (spoke) spoke.classList.add('rt-gossamer-spoke-hover');
-                                }
-                                g.classList.add('rt-gossamer-hover');
-                            }
-                        }
-                    }
                 });
 
                 svg.addEventListener('pointerout', (e: PointerEvent) => {
-                    const toEl = e.relatedTarget as Element | null;
+                    // In Gossamer mode, normal scene hovers are disabled
+                    if (view.interactionMode === 'gossamer') return;
                     
+                    const toEl = e.relatedTarget as Element | null;
+
                     // Check if we're moving within the current group
                     if (currentGroup && toEl && currentGroup.contains(toEl)) return;
                     
@@ -1150,25 +1141,6 @@ This is a test scene created to help with initial Radial timeline setup.
                     
                     // Remove scene-hover class from SVG
                     svg.classList.remove('scene-hover');
-                    
-                    // In Gossamer mode: remove synced spoke and dot highlight when leaving a Plot slice
-                    if (view.interactionMode === 'gossamer' && currentGroup && currentGroup.getAttribute('data-item-type') === 'Plot') {
-                        const encodedPath = currentGroup.getAttribute('data-path') || '';
-                        const filePath = encodedPath ? decodeURIComponent(encodedPath) : '';
-                        if (filePath) {
-                            const dot = Array.from(svg.querySelectorAll('.rt-gossamer-dot'))
-                                .find(el => (el as Element).getAttribute('data-path') === filePath) as SVGCircleElement | undefined;
-                            if (dot) {
-                                dot.classList.remove('rt-hover');
-                                const beatName = dot.getAttribute('data-beat');
-                                if (beatName) {
-                                    const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
-                                    if (spoke) spoke.classList.remove('rt-gossamer-spoke-hover');
-                                }
-                                currentGroup.classList.remove('rt-gossamer-hover');
-                            }
-                        }
-                    }
 
                     clearSelection();
                 });
@@ -1429,113 +1401,22 @@ This is a test scene created to help with initial Radial timeline setup.
                     if (rafId !== null) return;
                     rafId = window.requestAnimationFrame(() => onMove(e));
                 });
-
-                // Phase 2: Gossamer dot interactions
-                svg.addEventListener('click', (e: MouseEvent) => {
-                    const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
-                    if (!dot) return;
-                    const path = dot.getAttribute('data-path');
-                    if (!path) return;
-                    const file = view.plugin.app.vault.getAbstractFileByPath(path);
-                    if (file instanceof TFile) {
-                        view.plugin.app.workspace.getLeaf('tab').openFile(file);
-                    }
-                });
-
-                // Dot hover: show synopsis, turn spoke white, trigger plot slice hover styling
-                svg.addEventListener('pointerover', (e: PointerEvent) => {
-                    const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
-                    if (!dot) return;
-                    const path = dot.getAttribute('data-path');
-                    const beatName = dot.getAttribute('data-beat');
-                    if (!path) return;
-                    
-                    // Find plot group by data-path
-                    const encoded = encodeURIComponent(path);
-                    const plotGroup = svg.querySelector(`.rt-scene-group[data-path="${encoded}"]`);
-                    if (!plotGroup) return;
-                    const scenePath = plotGroup.querySelector('.rt-scene-path') as SVGPathElement | null;
-                    const sceneId = scenePath?.id;
-                    if (!sceneId) return;
-                    
-                    // Add scene-hover class to SVG to hide subplot ring labels
-                    svg.classList.add('scene-hover');
-                    
-                    // Trigger plot slice hover styling (add a hover class)
-                    plotGroup.classList.add('rt-gossamer-hover');
-                    
-                    // Turn the corresponding spoke white
-                    if (beatName) {
-                        const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
-                        if (spoke) spoke.classList.add('rt-gossamer-spoke-hover');
-                    }
-                    
-                    // Show synopsis
-                    const syn = svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
-                    if (syn) {
-                        (syn as Element).classList.add('rt-visible');
-                        view.plugin.updateSynopsisPosition(syn as Element, e as unknown as MouseEvent, svg, sceneId);
-                    }
-                });
-                svg.addEventListener('pointerout', (e: PointerEvent) => {
-                    const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
-                    if (!dot) return;
-                    const path = dot.getAttribute('data-path');
-                    const beatName = dot.getAttribute('data-beat');
-                    if (!path) return;
-                    const encoded = encodeURIComponent(path);
-                    const plotGroup = svg.querySelector(`.rt-scene-group[data-path="${encoded}"]`);
-                    if (!plotGroup) return;
-                    const scenePath = plotGroup.querySelector('.rt-scene-path') as SVGPathElement | null;
-                    const sceneId = scenePath?.id;
-                    if (!sceneId) return;
-                    
-                    // Remove scene-hover class from SVG to restore subplot ring labels
-                    svg.classList.remove('scene-hover');
-                    
-                    // Remove plot slice hover styling
-                    plotGroup.classList.remove('rt-gossamer-hover');
-                    
-                    // Remove spoke white styling
-                    if (beatName) {
-                        const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
-                        if (spoke) spoke.classList.remove('rt-gossamer-spoke-hover');
-                    }
-                    
-                    const syn = svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
-                    if (syn) (syn as Element).classList.remove('rt-visible');
-                });
-
-                // Click-to-exit Gossamer mode: clicking anywhere except Plot beats or Gossamer dots exits
-                svg.addEventListener('click', (e: PointerEvent) => {
-                    if (view.interactionMode !== 'gossamer') return;
-                    
-                    const target = e.target as Element;
-                    
-                    // Check if clicked on a Gossamer dot
-                    const clickedDot = target.closest('.rt-gossamer-dot');
-                    if (clickedDot) return;
-                    
-                    // Check if clicked on a Plot beat (check both the group and any child elements)
-                    const clickedGroup = target.closest('.rt-scene-group');
-                    if (clickedGroup && clickedGroup.getAttribute('data-item-type') === 'Plot') return;
-                    
-                    // Check if clicked directly on Plot-related elements
-                    if (target.classList.contains('rt-scene-path') || 
-                        target.classList.contains('rt-plot-title') ||
-                        target.classList.contains('rt-number-square') ||
-                        target.classList.contains('rt-number-text')) {
-                        const parentGroup = target.closest('.rt-scene-group');
-                        if (parentGroup && parentGroup.getAttribute('data-item-type') === 'Plot') return;
-                    }
-                    
-                    // Otherwise, exit Gossamer mode
-                    import('../GossamerCommands').then(({ toggleGossamerMode }) => {
-                        toggleGossamerMode(view.plugin);
-                    });
-                });
+                
             })(this);
             // --- end delegated hover ---
+            
+            // Set up Gossamer event listeners AFTER everything is rendered
+            if (this.interactionMode === 'gossamer') {
+                const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement;
+                if (svg) {
+                    // Use DOUBLE requestAnimationFrame to ensure DOM is fully painted
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            this.setupGossamerEventListeners(svg);
+                        });
+                    });
+                }
+            }
             
         } catch (error) {
             console.error("Error rendering timeline:", error);
@@ -1547,6 +1428,9 @@ This is a test scene created to help with initial Radial timeline setup.
     
     // New helper method to set up scene interactions
     private setupSceneInteractions(group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
+        // In Gossamer mode, don't add normal scene interactions - they're handled separately
+        if (this.interactionMode === 'gossamer') return;
+        
         // Find path for click interaction
         const path = group.querySelector(".rt-scene-path");
         if (!path) return;
@@ -1557,13 +1441,6 @@ This is a test scene created to help with initial Radial timeline setup.
             
             // Set up click handler
             path.addEventListener("click", (evt: MouseEvent) => {
-                // Disable scene clicks in Gossamer mode (but allow plot slices)
-                const itemType = group.getAttribute('data-item-type');
-                if (this.interactionMode === 'gossamer' && itemType !== 'Plot') return;
-                // Prevent background click-to-exit from firing when clicking a Plot slice
-                if (this.interactionMode === 'gossamer' && itemType === 'Plot') {
-                    evt.stopPropagation();
-                }
                 const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
                 if (!(file instanceof TFile)) return;
 
@@ -1729,4 +1606,240 @@ This is a test scene created to help with initial Radial timeline setup.
     
     // Property to track tab highlight timeout
     private _tabHighlightTimeout: number | null = null;
+    
+    /**
+     * Remove all Gossamer-specific event listeners and restore normal mode
+     */
+    private removeGossamerEventListeners(svg: SVGSVGElement): void {
+        this.gossamerEventHandlers.forEach((handler, key) => {
+            const [eventType, selector] = key.split('::');
+            if (selector === 'svg') {
+                svg.removeEventListener(eventType, handler as EventListenerOrEventListenerObject);
+            } else {
+                // For element-specific handlers, they'll be cleaned up when elements are removed
+            }
+        });
+        this.gossamerEventHandlers.clear();
+    }
+    
+    /**
+     * Setup Gossamer-specific event listeners
+     * These are simpler and don't have conditionals - just Plot slice and dot interactions
+     */
+    private setupGossamerEventListeners(svg: SVGSVGElement): void {
+        // Clear any existing Gossamer handlers first
+        this.removeGossamerEventListeners(svg);
+        
+        const view = this;
+        let currentGroup: Element | null = null;
+        let currentSynopsis: Element | null = null;
+        
+        const findSynopsisForScene = (sceneId: string): Element | null => {
+            return svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
+        };
+        
+        const getSceneIdFromGroup = (group: Element): string | null => {
+            const pathEl = group.querySelector('.rt-scene-path') as SVGPathElement | null;
+            return pathEl?.id || null;
+        };
+        
+        // 1a. Plot Slice Hover (delegated fallback): Show synopsis, sync dot+spoke
+        const plotSliceOver = (e: PointerEvent) => {
+            const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Plot"]');
+            if (!g) return;
+            plotSliceEnter(g as SVGGElement, e);
+        };
+
+        // 1b. Plot Slice direct handlers for reliability
+        const plotSliceEnter = (g: Element, e: Event) => {
+            if (g === currentGroup) return;
+
+            currentGroup = g;
+            svg.classList.add('scene-hover');
+
+            const sid = getSceneIdFromGroup(g);
+            if (sid) {
+                currentSynopsis = findSynopsisForScene(sid);
+                if (currentSynopsis) {
+                    currentSynopsis.classList.add('rt-visible');
+                    view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
+                }
+            }
+
+            const encodedPath = g.getAttribute('data-path') || '';
+            if (encodedPath) {
+                const dot = svg.querySelector(`.rt-gossamer-dot[data-path="${encodedPath}"]`) as SVGCircleElement | null;
+                if (dot) {
+                    dot.classList.add('rt-hover');
+                    const beatName = dot.getAttribute('data-beat');
+                    if (beatName) {
+                        const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
+                        if (spoke) spoke.classList.add('rt-gossamer-spoke-hover');
+                    }
+                    g.classList.add('rt-gossamer-hover');
+                }
+            }
+        };
+        
+        const plotSliceOut = (e: PointerEvent) => {
+            if (!currentGroup) return;
+
+            const toEl = e.relatedTarget as Element | null;
+            if (toEl && (currentGroup.contains(toEl) || !!toEl.closest('.rt-gossamer-dot'))) return;
+
+            svg.classList.remove('scene-hover');
+            if (currentSynopsis) {
+                currentSynopsis.classList.remove('rt-visible');
+                currentSynopsis = null;
+            }
+
+            const encodedPath = currentGroup.getAttribute('data-path') || '';
+            if (encodedPath) {
+                const dot = svg.querySelector(`.rt-gossamer-dot[data-path="${encodedPath}"]`) as SVGCircleElement | null;
+                if (dot) {
+                    dot.classList.remove('rt-hover');
+                    const beatName = dot.getAttribute('data-beat');
+                    if (beatName) {
+                        const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
+                        if (spoke) spoke.classList.remove('rt-gossamer-spoke-hover');
+                    }
+                    currentGroup.classList.remove('rt-gossamer-hover');
+                }
+            }
+
+            currentGroup = null;
+        };
+        
+        // 2. Gossamer Dot Hover: Show synopsis, sync plot slice+spoke
+        const dotOver = (e: PointerEvent) => {
+            const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
+            if (!dot) return;
+            
+            const encodedPath = dot.getAttribute('data-path');
+            const beatName = dot.getAttribute('data-beat');
+            if (!encodedPath) return;
+            
+            svg.classList.add('scene-hover');
+            
+            // Find and highlight the plot slice (both have encoded paths now)
+            const plotGroup = svg.querySelector(`.rt-scene-group[data-path="${encodedPath}"]`);
+            if (plotGroup) {
+                currentGroup = plotGroup;
+                plotGroup.classList.add('rt-gossamer-hover');
+                
+                const sid = getSceneIdFromGroup(plotGroup);
+                if (sid) {
+                    currentSynopsis = findSynopsisForScene(sid);
+                    if (currentSynopsis) {
+                        currentSynopsis.classList.add('rt-visible');
+                        view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
+                    }
+                }
+            }
+            
+            // Highlight spoke
+            if (beatName) {
+                const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
+                if (spoke) {
+                    spoke.classList.add('rt-gossamer-spoke-hover');
+                }
+            }
+        };
+        
+        const dotOut = (e: PointerEvent) => {
+            const toEl = e.relatedTarget as Element | null;
+            // If moving to a plot slice or another dot, keep highlights
+            if (toEl && (toEl.closest('.rt-scene-group[data-item-type="Plot"]') || toEl.closest('.rt-gossamer-dot'))) return;
+
+            svg.classList.remove('scene-hover');
+
+            if (currentSynopsis) {
+                currentSynopsis.classList.remove('rt-visible');
+                currentSynopsis = null;
+            }
+
+            if (currentGroup) {
+                currentGroup.classList.remove('rt-gossamer-hover');
+                currentGroup = null;
+            }
+
+            // Remove all spoke highlights
+            svg.querySelectorAll('.rt-gossamer-spoke-hover').forEach(el => {
+                el.classList.remove('rt-gossamer-spoke-hover');
+            });
+        };
+        
+        // 3. Click handlers
+        const plotSliceClick = (e: MouseEvent) => {
+            const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Plot"]');
+            if (!g) return;
+            
+            e.stopPropagation(); // Prevent background click-to-exit
+            
+            const encodedPath = g.getAttribute('data-path');
+            if (!encodedPath) return;
+            
+            const filePath = decodeURIComponent(encodedPath);
+            const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
+            if (file instanceof TFile) {
+                view.plugin.app.workspace.getLeaf(false).openFile(file);
+            }
+        };
+        
+        const dotClick = (e: MouseEvent) => {
+            const dot = (e.target as Element).closest('.rt-gossamer-dot');
+            if (!dot) return;
+            
+            e.stopPropagation(); // Prevent background click-to-exit
+            
+            const encodedPath = dot.getAttribute('data-path');
+            if (!encodedPath) return;
+            
+            const path = decodeURIComponent(encodedPath);
+            const file = view.plugin.app.vault.getAbstractFileByPath(path);
+            if (file instanceof TFile) {
+                view.plugin.app.workspace.getLeaf(false).openFile(file);
+            }
+        };
+        
+        // 4. Background click to exit Gossamer mode
+        const backgroundClick = (e: MouseEvent) => {
+            const target = e.target as Element;
+            
+            // If clicked on dot or plot slice, don't exit (handled by their stopPropagation)
+            if (target.closest('.rt-gossamer-dot') || target.closest('.rt-scene-group[data-item-type="Plot"]')) {
+                return;
+            }
+            
+            // Exit Gossamer mode
+            import('../GossamerCommands').then(({ toggleGossamerMode }) => {
+                toggleGossamerMode(view.plugin);
+            });
+        };
+        
+        // Register svg-level handlers (use capture for precedence)
+        svg.addEventListener('pointerover', plotSliceOver, true);
+        svg.addEventListener('pointerout', plotSliceOut, true);
+        svg.addEventListener('pointerover', dotOver, true);
+        svg.addEventListener('pointerout', dotOut, true);
+        svg.addEventListener('click', plotSliceClick);
+        svg.addEventListener('click', dotClick);
+        svg.addEventListener('click', backgroundClick);
+        
+        // Store handlers for cleanup
+        this.gossamerEventHandlers.set('pointerover::svg', plotSliceOver as EventListener);
+        this.gossamerEventHandlers.set('pointerout::svg', plotSliceOut as EventListener);
+        // Additionally, attach direct handlers to each Plot slice group to ensure reliability
+        const plotGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Plot"]');
+        plotGroups.forEach((el) => {
+            el.addEventListener('pointerenter', (ev) => plotSliceEnter(el, ev));
+            el.addEventListener('pointerleave', (ev) => plotSliceOut(ev as PointerEvent));
+            el.addEventListener('click', (ev) => plotSliceClick(ev as MouseEvent));
+        });
+        this.gossamerEventHandlers.set('pointerover::dot::svg', dotOver as EventListener);
+        this.gossamerEventHandlers.set('pointerout::dot::svg', dotOut as EventListener);
+        this.gossamerEventHandlers.set('click::plot::svg', plotSliceClick as EventListener);
+        this.gossamerEventHandlers.set('click::dot::svg', dotClick as EventListener);
+        this.gossamerEventHandlers.set('click::bg::svg', backgroundClick as EventListener);
+    }
 }

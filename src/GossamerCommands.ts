@@ -188,12 +188,20 @@ function enterGossamerMode(plugin: RadialTimelinePlugin) {
   const view = getFirstView(plugin);
   if (!view) return;
   setInteractionMode(view, 'gossamer');
+  // Setup will now happen inside renderTimeline after DOM is ready
   plugin.refreshTimelineIfNeeded(undefined);
 }
 
 function exitGossamerMode(plugin: RadialTimelinePlugin) {
   const view = getFirstView(plugin);
   if (!view) return;
+  
+  // Remove Gossamer event listeners before switching mode
+  const svg = view.containerEl.querySelector('.radial-timeline-svg') as SVGSVGElement;
+  if (svg && typeof (view as any).removeGossamerEventListeners === 'function') {
+    (view as any).removeGossamerEventListeners(svg);
+  }
+  
   setInteractionMode(view, 'normal');
   restoreBaseMode(plugin);
   plugin.refreshTimelineIfNeeded(undefined);

@@ -74,7 +74,9 @@ export function renderGossamerLayer(
       const y = r * Math.sin(angle);
       current.push({ x, y });
       const path = beatPathByName?.get(key) || '';
-      const data = `data-beat="${escapeAttr(name)}" data-score="${String(score)}"${path ? ` data-path="${escapeAttr(path)}"` : ''}${run?.meta?.label ? ` data-label="${escapeAttr(run.meta.label)}"` : ''}`;
+      // Use URL-encoded path to match scene groups' data-path attribute
+      const encodedPath = path ? encodeURIComponent(path) : '';
+      const data = `data-beat="${escapeAttr(name)}" data-score="${String(score)}"${encodedPath ? ` data-path="${escapeAttr(encodedPath)}"` : ''}${run?.meta?.label ? ` data-label="${escapeAttr(run.meta.label)}"` : ''}`;
       const title = `<title>${escapeAttr(`${name}${run?.meta?.label ? ` — ${run.meta.label}` : ''}: ${score}`)}</title>`;
       dots.push(`<circle class="rt-gossamer-dot" cx="${fmt(x)}" cy="${fmt(y)}" r="5" ${data}>${title}</circle>`);
       // Full y-axis spoke from inner to outer radius at this beat's angle

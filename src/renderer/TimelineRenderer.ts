@@ -1077,7 +1077,7 @@ export function createTimelineSVG(
                         // No separator needed; spacing handled in positioning
 
                         svg += `
-                        <g class="rt-scene-group" data-item-type="Scene" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(effectiveOuterR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
+                        <g class="rt-scene-group" data-item-type="${scene.itemType === 'Plot' ? 'Plot' : 'Scene'}" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(effectiveOuterR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
                             <path id="${sceneId}"
                                   d="${arcPath}" 
                                   fill="${color}" 

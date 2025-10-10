@@ -194,13 +194,18 @@
 .radial-timeline-svg #rotation-toggle .arrow-icon.is-hidden { display: none; }
 .radial-timeline-svg #rotation-toggle { cursor: pointer; }
 
+/* Hide rotation toggle in Gossamer mode */
+.radial-timeline-svg[data-gossamer-mode="true"] #rotation-toggle {
+  display: none;
+}
+
 /* Gossamer momentum styling */
 .rt-gossamer-layer { pointer-events: none; }
 .rt-gossamer-line { stroke: var(--rt-gossamer-stroke, #7a7a7a); stroke-width: 3; fill: none; }
 /* Phase 2: dots (10px diameter) */
 .rt-gossamer-dot { 
   fill: var(--rt-gossamer-stroke, #7a7a7a); 
-  r: 10px; /* 10px diameter */
+  r: 6px; /* 10px diameter */
   pointer-events: all; 
   cursor: pointer; 
   stroke: none;
@@ -209,7 +214,7 @@
 .rt-gossamer-dot.rt-hover { 
   fill: var(--rt-gossamer-stroke, #7a7a7a);
   stroke: white;
-  stroke-width: 10px;
+  stroke-width: 2px;
 }
 .rt-gossamer-line.rt-gossamer-overlay { stroke-dasharray: 6,4; opacity: 0.6; }
 .rt-gossamer-band { fill: var(--rt-gossamer-stroke, #7a7a7a); opacity: 0.12; stroke: none; }
