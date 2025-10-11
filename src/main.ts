@@ -478,15 +478,9 @@ export default class RadialTimelinePlugin extends Plugin {
             this.activateView();
         });
 
-        // Add commands
-        this.addCommand({
-            id: 'open-timeline-view',
-            name: 'Open timeline',
-            callback: () => {
-                this.activateView();
-            }
-        });
-
+        // Add commands (ordered for command palette)
+        
+        // 1. Search timeline
         this.addCommand({
             id: 'search-timeline',
             name: 'Search timeline',
@@ -495,6 +489,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
+        // 2. Clear search
         this.addCommand({
             id: 'clear-timeline-search',
             name: 'Clear search',
@@ -503,7 +498,18 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // Gossamer commands
+        // 3. Gossamer toggle view
+        this.addCommand({
+            id: 'gossamer-toggle-view',
+            name: 'Gossamer toggle view',
+            callback: () => {
+                try {
+                    toggleGossamerMode(this);
+                } catch {}
+            }
+        });
+
+        // 4. Gossamer analyze plot momentum
         this.addCommand({
             id: 'gossamer-analyze-plot-momentum',
             name: 'Gossamer analyze plot momentum',
@@ -513,15 +519,6 @@ export default class RadialTimelinePlugin extends Plugin {
                 } catch (e) {
                     new Notice('Gossamer analysis failed.');
                 }
-            }
-        });
-        this.addCommand({
-            id: 'gossamer-toggle-view',
-            name: 'Gossamer toggle view',
-            callback: () => {
-                try {
-                    toggleGossamerMode(this);
-                } catch {}
             }
         });
 
@@ -656,10 +653,10 @@ export default class RadialTimelinePlugin extends Plugin {
         // Track workspace layout changes to update our view
         // (layout-change listener consolidated below at line ~949)
 
-        // --- ADD NEW COMMANDS --- 
+        // 5. Beats update (manuscript order)
         this.addCommand({
             id: 'update-beats-manuscript-order',
-            name: 'Update beats (manuscript order)',
+            name: 'Beats update (manuscript order)',
             checkCallback: (checking: boolean) => {
                 if (!this.settings.enableAiBeats) return false; // hide when disabled
                 if (checking) return true;
@@ -691,22 +688,10 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // Removed batch subplot processing to avoid ambiguity with multi-subplot scenes.
-
-        // Create a ready-to-edit template scene in the configured source path
-        this.addCommand({
-            id: 'create-template-scene',
-            name: 'Create template scene',
-            callback: async () => {
-                await createTemplateScene(this, this.app.vault);
-            }
-        });
-
-
-        // Run beats update for a chosen subplot
+        // 6. Beats update (subplot)
         this.addCommand({
             id: 'update-beats-choose-subplot',
-            name: 'Update beats (subplot)',
+            name: 'Beats update (subplot)',
             checkCallback: (checking: boolean) => {
                 if (!this.settings.enableAiBeats) return false;
                 if (checking) return true;
@@ -747,6 +732,46 @@ export default class RadialTimelinePlugin extends Plugin {
                     new SubplotPicker(this.app, this, names).open();
                 })();
                 return true;
+            }
+        });
+
+        // 7. Beats clear cache
+        this.addCommand({
+            id: 'clear-processed-beats-cache', 
+            name: 'Beats clear cache',
+            checkCallback: (checking: boolean) => {
+                if (!this.settings.enableAiBeats) return false; // hide when disabled
+                if (checking) return true;
+                (async () => {
+                    const initialCount = this.settings.processedBeatContexts.length;
+                    if (initialCount === 0) {
+                        new Notice('Beats processing cache is already empty.');
+                        return;
+                    }
+                    this.settings.processedBeatContexts = []; // Clear the array
+                    await this.saveSettings(); // Save the change
+                    new Notice(`Cleared ${initialCount} cached beat contexts. You can now re-run beat processing.`);
+                    this.log(`User cleared processed beats cache. Removed ${initialCount} items.`);
+                })();
+                return true;
+            }
+        });
+
+        // 8. Create template note
+        this.addCommand({
+            id: 'create-template-scene',
+            name: 'Create template note',
+            callback: async () => {
+                await createTemplateScene(this, this.app.vault);
+            }
+        });
+
+        // 9. Open
+        this.addCommand({
+            id: 'open-timeline-view',
+            name: 'Open',
+            callback: () => {
+                this.activateView();
             }
         });
 
@@ -800,33 +825,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.setupHoverListeners();
 
         // Initial status bar update
-        this.updateStatusBar(); 
-        
-
-
-
-        
-        this.addCommand({
-            id: 'clear-processed-beats-cache', 
-            name: 'Clear beats cache', // Use sentence case
-            checkCallback: (checking: boolean) => {
-                if (!this.settings.enableAiBeats) return false; // hide when disabled
-                if (checking) return true;
-                (async () => {
-                    const initialCount = this.settings.processedBeatContexts.length;
-                    if (initialCount === 0) {
-                        new Notice('Beats processing cache is already empty.');
-                        return;
-                    }
-                    this.settings.processedBeatContexts = []; // Clear the array
-                    await this.saveSettings(); // Save the change
-                    new Notice(`Cleared ${initialCount} cached beat contexts. You can now re-run beat processing.`);
-                    this.log(`User cleared processed beats cache. Removed ${initialCount} items.`);
-                })();
-                return true;
-            }
-        });
-
+        this.updateStatusBar();
     }
     
     // Store paths of current hover interactions to avoid redundant processing

@@ -50,13 +50,15 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 ## Commands
 
-* Open timeline: open the timeline view
 * Search timeline: keyword search across select metadata. Title, Date, Synopsis, AI Beats, Character & Subplot
 * Clear search: reset all search filters
-* Create basic template file with frontmatter
-* Update AI beats (manuscript order)
-* Update AI beats (subplot)
-* Clear beats cache: clear saved beat results to force a full reprocess (for scenes with BeatsUpdate = yes)
+* Gossamer toggle view: toggle the Gossamer plot momentum visualization overlay
+* Gossamer analyze plot momentum: run AI analysis of plot momentum across scenes
+* Beats update (manuscript order): update AI beat analysis for all scenes in manuscript order
+* Beats update (subplot): update AI beat analysis for scenes in a selected subplot
+* Beats clear cache: clear saved beat results to force a full reprocess (for scenes with BeatsUpdate = yes)
+* Create template note: create a basic template file with frontmatter
+* Open: open the timeline view
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <div style="text-align: center;">
@@ -168,7 +170,7 @@ Beat Model: SaveTheCat
 
 AI beats analysis
 
-In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "update beats (manuscript order)" or "update beats (subplot)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point. Note: if you have run this scene before, be sure to clear beats cache to process again (prevents unnecessary duplicate API calls).
+In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Beats update (manuscript order)" or "Beats update (subplot)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point. Note: if you have run this scene before, be sure to use "Beats clear cache" to process again (prevents unnecessary duplicate API calls).
 
 ```yaml
 ---
