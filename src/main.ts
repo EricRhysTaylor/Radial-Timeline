@@ -498,10 +498,10 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // 3. Gossamer toggle view
+        // 3. Gossamer view toggle
         this.addCommand({
             id: 'gossamer-toggle-view',
-            name: 'Gossamer toggle view',
+            name: 'Gossamer view toggle',
             callback: () => {
                 try {
                     toggleGossamerMode(this);

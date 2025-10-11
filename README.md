@@ -52,7 +52,7 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 
 * Search timeline: keyword search across select metadata. Title, Date, Synopsis, AI Beats, Character & Subplot
 * Clear search: reset all search filters
-* Gossamer toggle view: toggle the Gossamer plot momentum visualization overlay
+* Gossamer view toggle: toggle the Gossamer plot momentum visualization overlay
 * Gossamer analyze plot momentum: run AI analysis of plot momentum across scenes
 * Beats update (manuscript order): update AI beat analysis for all scenes in manuscript order
 * Beats update (subplot): update AI beat analysis for scenes in a selected subplot
