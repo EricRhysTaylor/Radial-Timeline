@@ -6,7 +6,7 @@
 import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 
-export type ProcessingMode = 'smart' | 'force-flagged' | 'force-all';
+export type ProcessingMode = 'smart' | 'force-flagged' | 'force-all' | 'unprocessed';
 
 export interface ProcessingOptions {
     mode: ProcessingMode;
@@ -32,6 +32,13 @@ export class BeatsProcessingModal extends Modal {
     private statusTextEl?: HTMLElement;
     private errorListEl?: HTMLElement;
     private abortButtonEl?: ButtonComponent;
+    private actionButtonContainer?: HTMLElement;
+    
+    // Statistics
+    private processedCount: number = 0;
+    private totalCount: number = 0;
+    private errorCount: number = 0;
+    private warningCount: number = 0;
     
     constructor(
         app: App,
@@ -69,7 +76,7 @@ export class BeatsProcessingModal extends Modal {
             modesSection,
             'smart',
             'Smart Update (Recommended)',
-            'Only processes scenes with BeatsUpdate: Yes that haven\'t been processed yet. Respects cache.',
+            'Only processes scenes with BeatsUpdate: Yes that haven\'t been processed yet. Respects cache. No Status validation needed.',
             true
         );
         
@@ -78,16 +85,25 @@ export class BeatsProcessingModal extends Modal {
             modesSection,
             'force-flagged',
             'Force Flagged Scenes',
-            'Reprocesses all scenes with BeatsUpdate: Yes, ignoring cache. Use when changing AI templates or wanting fresh analysis.',
+            'Reprocesses all scenes with BeatsUpdate: Yes, ignoring cache. Use when changing AI templates. No Status validation needed.',
             false
         );
         
-        // Mode 3: Force All
+        // Mode 3: Process Unprocessed
         const mode3 = this.createModeOption(
             modesSection,
+            'unprocessed',
+            'Process Unprocessed Scenes',
+            'Processes scenes with Status: Complete or Working that don\'t have beats yet. Perfect for resuming after crashes or rate limits. Ignores BeatsUpdate flag and cache.',
+            false
+        );
+        
+        // Mode 4: Force All
+        const mode4 = this.createModeOption(
+            modesSection,
             'force-all',
-            'Force ALL Written Scenes',
-            'Processes ALL scenes with content, ignoring flags and cache. ⚠️ This may be expensive and time-consuming!',
+            'Force ALL Scenes',
+            'Processes ALL scenes with Status: Complete or Working, ignoring flags and cache. ⚠️ This may be expensive and time-consuming!',
             false
         );
 
@@ -104,7 +120,8 @@ export class BeatsProcessingModal extends Modal {
             
             try {
                 const count = await this.getSceneCount(this.selectedMode);
-                const estimatedMinutes = Math.ceil(count * 0.5); // ~30 seconds per scene
+                // ~6 seconds per scene (1.5s delay + 3-5s API call) = 0.1 minutes
+                const estimatedMinutes = Math.ceil(count * 0.1);
                 countEl.empty();
                 
                 const countText = countEl.createDiv({ cls: 'rt-beats-count-text' });
@@ -147,10 +164,10 @@ export class BeatsProcessingModal extends Modal {
                         return;
                     }
                     
-                    // Extra confirmation for large batches or force-all mode
-                    if (count > 50 || this.selectedMode === 'force-all') {
+                    // Extra confirmation for large batches or aggressive modes
+                    if (count > 50 || this.selectedMode === 'force-all' || this.selectedMode === 'unprocessed') {
                         const confirmed = window.confirm(
-                            `You are about to process ${count} scenes. This may take ${Math.ceil(count * 0.5)} minutes and incur API costs. Continue?`
+                            `You are about to process ${count} scenes. This may take ${Math.ceil(count * 0.1)} minutes and incur API costs. Continue?`
                         );
                         if (!confirmed) return;
                     }
@@ -210,13 +227,14 @@ export class BeatsProcessingModal extends Modal {
             
             // Processing completed successfully
             if (!this.abortController.signal.aborted) {
-                this.showCompletionMessage('✅ Processing completed successfully!');
-                window.setTimeout(() => this.close(), 2000);
+                this.showCompletionSummary('✅ Processing completed successfully!');
             }
         } catch (error) {
             if (!this.abortController.signal.aborted) {
                 this.addError(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
-                this.showCompletionMessage('❌ Processing failed. Check errors above.');
+                this.showCompletionSummary('❌ Processing stopped due to error');
+            } else {
+                this.showCompletionSummary('⚠️ Processing aborted by user or rate limit');
             }
         } finally {
             this.isProcessing = false;
@@ -249,9 +267,9 @@ export class BeatsProcessingModal extends Modal {
         // Error list (hidden by default)
         this.errorListEl = contentEl.createDiv({ cls: 'rt-beats-error-list rt-hidden' });
         
-        // Abort button
-        const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
-        this.abortButtonEl = new ButtonComponent(buttonRow)
+        // Abort button (store container reference for later replacement with Close button)
+        this.actionButtonContainer = contentEl.createDiv({ cls: 'rt-beats-actions' });
+        this.abortButtonEl = new ButtonComponent(this.actionButtonContainer)
             .setButtonText('Abort Processing')
             .setWarning()
             .onClick(() => this.abortProcessing());
@@ -273,6 +291,10 @@ export class BeatsProcessingModal extends Modal {
     public updateProgress(current: number, total: number, sceneName: string): void {
         if (!this.isProcessing) return;
         
+        // Track statistics
+        this.processedCount = current;
+        this.totalCount = total;
+        
         const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
         
         if (this.progressBarEl) {
@@ -292,6 +314,9 @@ export class BeatsProcessingModal extends Modal {
     public addError(message: string): void {
         if (!this.errorListEl) return;
         
+        // Track error count
+        this.errorCount++;
+        
         // Show error list if it was hidden
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
@@ -302,14 +327,106 @@ export class BeatsProcessingModal extends Modal {
         const errorItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item' });
         errorItem.setText(message);
     }
-
-    private showCompletionMessage(message: string): void {
-        if (this.statusTextEl) {
-            this.statusTextEl.setText(message);
+    
+    public addWarning(message: string): void {
+        if (!this.errorListEl) return;
+        
+        // Track warning count (doesn't affect success count)
+        this.warningCount++;
+        
+        // Show error list if it was hidden
+        if (this.errorListEl.hasClass('rt-hidden')) {
+            this.errorListEl.removeClass('rt-hidden');
+            const header = this.errorListEl.createDiv({ cls: 'rt-beats-error-header' });
+            header.setText('⚠️ Issues encountered:');
         }
         
-        if (this.abortButtonEl) {
-            this.abortButtonEl.setDisabled(true);
+        const warningItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item rt-beats-warning-item' });
+        warningItem.setText(`ℹ️ ${message}`);
+    }
+
+    private showCompletionSummary(statusMessage: string): void {
+        const { contentEl, titleEl } = this;
+        
+        // Update title
+        titleEl.setText('Processing Complete');
+        
+        // Keep progress bar at 100% and stop animation to save CPU
+        if (this.progressBarEl) {
+            this.progressBarEl.style.setProperty('--progress-width', '100%');
+            this.progressBarEl.addClass('rt-progress-complete');  // Stops infinite animation
+        }
+        
+        // Update status message
+        if (this.statusTextEl) {
+            this.statusTextEl.setText(statusMessage);
+        }
+        
+        // Create summary section
+        const summaryContainer = contentEl.createDiv({ cls: 'rt-beats-summary' });
+        summaryContainer.createEl('h3', { text: 'Summary', cls: 'rt-beats-summary-title' });
+        
+        const summaryStats = summaryContainer.createDiv({ cls: 'rt-beats-summary-stats' });
+        
+        // Success count
+        const successCount = Math.max(0, this.processedCount - this.errorCount);
+        summaryStats.createDiv({ 
+            cls: 'rt-beats-summary-row',
+            text: `✅ Successfully processed: ${successCount} scene${successCount !== 1 ? 's' : ''}`
+        });
+        
+        // Error count
+        if (this.errorCount > 0) {
+            summaryStats.createDiv({ 
+                cls: 'rt-beats-summary-row rt-beats-summary-error',
+                text: `❌ Errors: ${this.errorCount}`
+            });
+        }
+        
+        // Warning count (informational, doesn't affect success count)
+        if (this.warningCount > 0) {
+            summaryStats.createDiv({ 
+                cls: 'rt-beats-summary-row rt-beats-summary-warning',
+                text: `ℹ️ Warnings: ${this.warningCount} (scenes skipped due to validation)`
+            });
+        }
+        
+        // Total attempted
+        summaryStats.createDiv({ 
+            cls: 'rt-beats-summary-row',
+            text: `📊 Total attempted: ${this.processedCount} of ${this.totalCount}`
+        });
+        
+        // Add tip about resuming
+        const remainingScenes = this.totalCount - this.processedCount;
+        if (remainingScenes > 0 || this.errorCount > 0) {
+            const tipEl = summaryContainer.createDiv({ cls: 'rt-beats-summary-tip' });
+            tipEl.createEl('strong', { text: '💡 Tip: ' });
+            tipEl.appendText('Run the command again in "Smart" mode to process remaining or failed scenes. Already-processed scenes will be skipped automatically.');
+        }
+        
+        // Replace abort button with action buttons
+        if (this.actionButtonContainer) {
+            this.actionButtonContainer.empty();
+            
+            // Show Resume button if there's work remaining
+            if (remainingScenes > 0 || this.errorCount > 0) {
+                new ButtonComponent(this.actionButtonContainer)
+                    .setButtonText(`Resume (${remainingScenes} remaining)`)
+                    .setCta()
+                    .onClick(() => {
+                        this.close();
+                        // Trigger the same command again - smart mode will skip already processed scenes
+                        window.setTimeout(() => {
+                            // @ts-ignore - accessing app commands
+                            this.app.commands.executeCommandById('radial-timeline:process-beats-manuscript-order');
+                        }, 100);
+                    });
+            }
+            
+            new ButtonComponent(this.actionButtonContainer)
+                .setButtonText('Close')
+                .onClick(() => this.close());
         }
     }
 
@@ -319,6 +436,18 @@ export class BeatsProcessingModal extends Modal {
 
     public getAbortSignal(): AbortSignal | null {
         return this.abortController?.signal ?? null;
+    }
+    
+    /**
+     * Programmatically abort processing (e.g., due to rate limiting)
+     * Unlike abortProcessing(), this doesn't show a confirmation dialog
+     */
+    public abort(): void {
+        if (!this.abortController) return;
+        
+        this.abortController.abort();
+        this.statusTextEl?.setText('⚠️ Processing stopped due to error');
+        this.abortButtonEl?.setDisabled(true);
     }
 }
 

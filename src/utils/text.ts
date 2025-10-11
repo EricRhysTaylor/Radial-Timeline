@@ -173,3 +173,13 @@ export function getNumberSquareSize(num: string): { width: number; height: numbe
     height
   };
 }
+
+/**
+ * Remove Obsidian comment blocks (%%...%%) from text.
+ * Handles both single-line and multi-line comments.
+ */
+export function stripObsidianComments(text: string): string {
+  if (!text) return text;
+  // Remove all %%...%% blocks (non-greedy match, multi-line aware)
+  return text.replace(/%%[\s\S]*?%%/g, '').trim();
+}

@@ -11,6 +11,7 @@ import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
 import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
 import { buildBeatsPrompt } from './ai/prompts/beats';
 import { BeatsProcessingModal, type ProcessingMode } from './view/BeatsProcessingModal';
+import { stripObsidianComments } from './utils/text';
 
 // --- Interfaces --- 
 interface SceneData {
@@ -101,6 +102,32 @@ function hasWordsContent(fm: Record<string, unknown>): boolean {
     return typeof n === 'number' && n > 0;
 }
 
+/**
+ * Check if a scene has processable content based on Status field
+ * Returns true if Status is "Complete" or "Working" (or contains these values)
+ */
+function hasProcessableContent(fm: Record<string, unknown>): boolean {
+    const status = fm?.Status || fm?.status;
+    
+    // Status can be a string or an array of strings
+    if (typeof status === 'string') {
+        const lower = status.toLowerCase();
+        return lower === 'complete' || lower === 'working';
+    }
+    
+    if (Array.isArray(status)) {
+        return status.some(s => {
+            if (typeof s === 'string') {
+                const lower = s.toLowerCase();
+                return lower === 'complete' || lower === 'working';
+            }
+            return false;
+        });
+    }
+    
+    return false;
+}
+
 async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Promise<SceneData[]> {
     const sourcePath = plugin.settings.sourcePath.trim();
 
@@ -151,6 +178,9 @@ async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Prom
                 body = content.replace(/^---[\s\S]*?\n---/, "").trim();
             }
 
+            // Strip Obsidian comment blocks (%%...%%) from the scene body
+            body = stripObsidianComments(body);
+
             return { file, frontmatter, sceneNumber, body };
 
         } catch (e) {
@@ -184,20 +214,35 @@ async function calculateSceneCount(
     const allScenes = await getAllSceneData(plugin, vault);
     allScenes.sort(compareScenesByOrder);
     
-    const writtenScenes = allScenes.filter(scene => {
-        const words = scene.frontmatter?.words || scene.frontmatter?.Words;
-        return (typeof words === 'number' && words > 0);
+    // Filter scenes based on mode
+    const processableScenes = allScenes.filter(scene => {
+        // Smart and force-flagged modes: must have BeatsUpdate=Yes (no other validation needed)
+        if (mode === 'smart' || mode === 'force-flagged') {
+            const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate;
+            return (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
+        }
+        
+        // Force-all and unprocessed modes: must have Status=Complete or Working
+        return hasProcessableContent(scene.frontmatter);
     });
     
     if (mode === 'force-all') {
-        return writtenScenes.length;
+        return processableScenes.length;
     }
     
-    // For smart and force-flagged modes, count scenes with BeatsUpdate: Yes
-    const flaggedScenes = writtenScenes.filter(scene => {
-        const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate;
-        return (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
-    });
+    // Unprocessed mode: count scenes without beats
+    if (mode === 'unprocessed') {
+        return processableScenes.filter(scene => {
+            const has1beats = scene.frontmatter?.['1beats'];
+            const has2beats = scene.frontmatter?.['2beats'];
+            const has3beats = scene.frontmatter?.['3beats'];
+            // Scene is unprocessed if it doesn't have all three beats fields
+            return !has1beats || !has2beats || !has3beats;
+        }).length;
+    }
+    
+    // For smart and force-flagged modes, count based on cache
+    const flaggedScenes = processableScenes;
     
     if (mode === 'force-flagged') {
         return flaggedScenes.length;
@@ -205,15 +250,10 @@ async function calculateSceneCount(
     
     // Smart mode: count only scenes not in cache
     let count = 0;
-    for (let i = 0; i < writtenScenes.length; i++) {
-        const scene = writtenScenes[i];
-        const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate;
-        if (typeof beatsUpdateFlag !== 'string' || beatsUpdateFlag.toLowerCase() !== 'yes') {
-            continue;
-        }
-        
-        const prev = i > 0 ? writtenScenes[i - 1] : null;
-        const next = i < writtenScenes.length - 1 ? writtenScenes[i + 1] : null;
+    for (let i = 0; i < processableScenes.length; i++) {
+        const scene = processableScenes[i];
+        const prev = i > 0 ? processableScenes[i - 1] : null;
+        const next = i < processableScenes.length - 1 ? processableScenes[i + 1] : null;
         const tripletId = `${prev?.sceneNumber ?? 'Start'}-${scene.sceneNumber}-${next?.sceneNumber ?? 'End'}`;
         
         if (!plugin.settings.processedBeatContexts.includes(tripletId)) {
@@ -502,6 +542,40 @@ async function logApiInteractionToFile(
     }
 }
 
+/**
+ * Helper: retry with exponential backoff for rate limit errors
+ * Anthropic rate limits reset every minute, so we use longer delays
+ */
+async function retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelayMs: number = 5000
+): Promise<T> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            return await fn();
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') || 
+                                    errorMessage.toLowerCase().includes('overloaded') ||
+                                    errorMessage.toLowerCase().includes('too many requests');
+            
+            // Only retry on rate limit errors, and only if we have retries left
+            if (isRateLimitError && attempt < maxRetries) {
+                // Exponential backoff: 5s, 10s, 20s (allows rate limit window to reset)
+                const delayMs = baseDelayMs * Math.pow(2, attempt);
+                new Notice(`⏳ Rate limit reached. Waiting ${delayMs / 1000}s before retry (${attempt + 1}/${maxRetries})...`, 3000);
+                await new Promise(resolve => window.setTimeout(resolve, delayMs));
+                continue;
+            }
+            
+            // If not rate limit, or out of retries, throw
+            throw error;
+        }
+    }
+    throw new Error('Retry logic exhausted without success');
+}
+
 async function callAiProvider(
     plugin: RadialTimelinePlugin,
     vault: Vault,
@@ -561,7 +635,9 @@ async function callAiProvider(
             };
     
 
-            const apiResponse: AnthropicApiResponse = await callAnthropicApi(apiKey, modelId, null, userPrompt, 4000);
+            const apiResponse: AnthropicApiResponse = await retryWithBackoff(() => 
+                callAnthropicApi(apiKey, modelId, null, userPrompt, 4000)
+            );
 
             responseDataForLog = apiResponse.responseData;
 
@@ -587,7 +663,9 @@ async function callAiProvider(
                 generationConfig: { temperature: 0.7, maxOutputTokens: 4000 }
             };
 
-            const apiResponse: GeminiApiResponse = await callGeminiApi(apiKey, modelId, null, userPrompt, 4000, 0.7);
+            const apiResponse: GeminiApiResponse = await retryWithBackoff(() =>
+                callGeminiApi(apiKey, modelId, null, userPrompt, 4000, 0.7)
+            );
 
             responseDataForLog = apiResponse.responseData;
 
@@ -617,7 +695,9 @@ async function callAiProvider(
             };
     
 
-            const apiResponse: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, null, userPrompt, 4000, 0.7);
+            const apiResponse: OpenAiApiResponse = await retryWithBackoff(() =>
+                callOpenAiApi(apiKey, modelId, null, userPrompt, 4000, 0.7)
+            );
 
             responseDataForLog = apiResponse.responseData;
 
@@ -740,16 +820,17 @@ async function updateSceneFile(
             delete fmObj['3beats'];
 
             // Always record last update timestamp/model in BeatsLastUpdated.
-            // Do NOT overwrite BeatsUpdate (used as a Yes/No flag for processing).
             const timestamp = new Date().toISOString();
             const updatedValue = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
             fmObj['BeatsLastUpdated'] = updatedValue;
 
-            // After a successful update, turn the processing flag off
-            if (Object.prototype.hasOwnProperty.call(fmObj, 'BeatsUpdate')) {
-                fmObj['BeatsUpdate'] = 'No';
-            } else if (Object.prototype.hasOwnProperty.call(fmObj, 'beatsupdate')) {
+            // After a successful update, always set the processing flag to No
+            // If lowercase beatsupdate exists, update it; otherwise use BeatsUpdate
+            if (Object.prototype.hasOwnProperty.call(fmObj, 'beatsupdate')) {
                 fmObj['beatsupdate'] = 'no';
+            } else {
+                // Always set BeatsUpdate=No (canonical form) after processing
+                fmObj['BeatsUpdate'] = 'No';
             }
 
             const b1 = parsedBeats['1beats']?.trim();
@@ -799,27 +880,25 @@ async function processWithModal(
         throw new Error("No valid scenes found in the specified source path.");
     }
 
-    // Filter scenes with content (Words > 0)
-    const writtenScenes = allScenes.filter(scene => {
-        const words = scene.frontmatter?.words || scene.frontmatter?.Words;
-        const beatsFlag = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate;
-
-        // Warn if user requested update but scene has no word count
-        if ((typeof beatsFlag === 'string' && beatsFlag.toLowerCase() === 'yes') &&
-            (!(typeof words === 'number') || words <= 0)) {
-            modal.addError(`Scene ${scene.sceneNumber ?? scene.file.basename} has BeatsUpdate: Yes but 0 words. Skipping.`);
+    // Filter scenes based on mode
+    const processableScenes = allScenes.filter(scene => {
+        // Smart and force-flagged modes: must have BeatsUpdate=Yes (no other validation)
+        if (mode === 'smart' || mode === 'force-flagged') {
+            const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate;
+            return (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
         }
-
-        return (typeof words === 'number' && words > 0);
+        
+        // Force-all and unprocessed modes: must have Status=Complete or Working
+        return hasProcessableContent(scene.frontmatter);
     });
 
     // Build triplets
     const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
-    for (let i = 0; i < writtenScenes.length; i++) {
+    for (let i = 0; i < processableScenes.length; i++) {
         triplets.push({
-            prev: i > 0 ? writtenScenes[i - 1] : null,
-            current: writtenScenes[i],
-            next: i < writtenScenes.length - 1 ? writtenScenes[i + 1] : null
+            prev: i > 0 ? processableScenes[i - 1] : null,
+            current: processableScenes[i],
+            next: i < processableScenes.length - 1 ? processableScenes[i + 1] : null
         });
     }
 
@@ -830,10 +909,16 @@ async function processWithModal(
     for (const triplet of triplets) {
         const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
         const isFlagged = (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
+        const has1beats = triplet.current.frontmatter?.['1beats'];
+        const has2beats = triplet.current.frontmatter?.['2beats'];
+        const has3beats = triplet.current.frontmatter?.['3beats'];
+        const hasBeats = has1beats && has2beats && has3beats;
         
         if (mode === 'force-all') {
             totalToProcess++;
         } else if (mode === 'force-flagged' && isFlagged) {
+            totalToProcess++;
+        } else if (mode === 'unprocessed' && !hasBeats) {
             totalToProcess++;
         } else if (mode === 'smart' && isFlagged) {
             const prev = triplet.prev;
@@ -857,6 +942,10 @@ async function processWithModal(
         const tripletIdentifier = `${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
         const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
         const isFlagged = (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
+        const has1beats = triplet.current.frontmatter?.['1beats'];
+        const has2beats = triplet.current.frontmatter?.['2beats'];
+        const has3beats = triplet.current.frontmatter?.['3beats'];
+        const hasBeats = has1beats && has2beats && has3beats;
 
         // Determine if we should process this scene based on mode
         let shouldProcess = false;
@@ -864,6 +953,8 @@ async function processWithModal(
             shouldProcess = true;
         } else if (mode === 'force-flagged') {
             shouldProcess = isFlagged;
+        } else if (mode === 'unprocessed') {
+            shouldProcess = !hasBeats;
         } else { // smart mode
             shouldProcess = isFlagged && !plugin.settings.processedBeatContexts.includes(tripletIdentifier);
         }
@@ -906,17 +997,37 @@ async function processWithModal(
                 modal.addError(`No result from AI for: ${sceneName}`);
             }
         } catch (error) {
-            modal.addError(`Error processing ${sceneName}: ${error instanceof Error ? error.message : String(error)}`);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            
+            // Check for rate limit or overload errors
+            const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') || 
+                                    errorMessage.toLowerCase().includes('overloaded') ||
+                                    errorMessage.toLowerCase().includes('too many requests');
+            
+            if (isRateLimitError) {
+                modal.addError(`⚠️ API RATE LIMIT EXCEEDED - Processing stopped`);
+                modal.addError(`Details: ${errorMessage}`);
+                modal.addError(`💡 System retried 3 times with delays (5s, 10s, 20s) but rate limit persists. Anthropic limits: 50 requests/min for Sonnet 4.x. The plugin now waits 1.5s between scenes (40 req/min). Use Resume to continue after the rate limit window resets (~1 minute).`);
+                modal.abort(); // Trigger abort flag
+                await plugin.saveSettings();
+                throw new Error(`Processing aborted due to rate limit: ${errorMessage}`);
+            }
+            
+            modal.addError(`Error processing ${sceneName}: ${errorMessage}`);
         }
 
         processedCount++;
-        await new Promise(resolve => window.setTimeout(resolve, 200));
+        
+        // Delay to stay under rate limits
+        // Anthropic Sonnet 4.x: 50 requests/minute = 1.2s minimum
+        // Using 1.5s (40 req/min) to stay safely under the limit
+        await new Promise(resolve => window.setTimeout(resolve, 1500));
     }
 
     await plugin.saveSettings();
     plugin.refreshTimelineIfNeeded(null);
     
-    new Notice(`✅ Processed ${processedCount} scenes successfully`);
+    // Modal will show summary, no need for notice here
 }
 
 export async function processBySubplotOrder(

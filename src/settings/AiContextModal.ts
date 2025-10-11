@@ -14,6 +14,70 @@ interface AiContextTemplate {
 }
 
 /**
+ * Simple text input modal to replace prompt()
+ */
+class TextInputModal extends Modal {
+    private result: string | null = null;
+    private readonly title: string;
+    private readonly defaultValue: string;
+    private readonly onSubmit: (result: string) => void;
+
+    constructor(app: App, title: string, defaultValue: string, onSubmit: (result: string) => void) {
+        super(app);
+        this.title = title;
+        this.defaultValue = defaultValue;
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen(): void {
+        const { contentEl, titleEl } = this;
+        titleEl.setText(this.title);
+
+        // Input field
+        const inputEl = contentEl.createEl('input', {
+            type: 'text',
+            value: this.defaultValue,
+            cls: 'rt-text-input-modal-field'
+        });
+
+        // Focus and select all
+        window.setTimeout(() => {
+            inputEl.focus();
+            inputEl.select();
+        }, 10);
+
+        // Handle Enter key
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.submit(inputEl.value);
+            } else if (e.key === 'Escape') {
+                this.close();
+            }
+        });
+
+        // Buttons
+        const buttonRow = contentEl.createDiv({ cls: 'modal-button-container rt-text-input-modal-buttons' });
+
+        new ButtonComponent(buttonRow)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
+
+        new ButtonComponent(buttonRow)
+            .setButtonText('OK')
+            .setCta()
+            .onClick(() => this.submit(inputEl.value));
+    }
+
+    private submit(value: string): void {
+        if (value && value.trim()) {
+            this.onSubmit(value.trim());
+        }
+        this.close();
+    }
+}
+
+/**
  * AiContextModal allows users to manage AI context templates for story analysis.
  * Users can select, create, edit, rename, and delete custom templates.
  * Built-in templates are read-only but can be copied.
@@ -233,68 +297,82 @@ export class AiContextModal extends Modal {
     }
 
     private createNewTemplate(): void {
-        // Prompt for name
-        const name = prompt('Enter template name:');
-        if (!name || !name.trim()) return;
-        
-        // Generate unique ID
-        const id = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-        
-        // Create new template
-        const newTemplate: AiContextTemplate = {
-            id,
-            name: name.trim(),
-            prompt: '',
-            isBuiltIn: false
-        };
-        
-        this.templates.push(newTemplate);
-        this.updateDropdownOptions();
-        this.dropdownComponent?.setValue(id);
-        this.currentTemplateId = id;
-        this.updateEditorSection();
-        
-        new Notice(`Created template: ${name}`);
+        const modal = new TextInputModal(
+            this.app,
+            'Enter template name',
+            '',
+            (name) => {
+                // Generate unique ID
+                const id = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                
+                // Create new template
+                const newTemplate: AiContextTemplate = {
+                    id,
+                    name: name,
+                    prompt: '',
+                    isBuiltIn: false
+                };
+                
+                this.templates.push(newTemplate);
+                this.updateDropdownOptions();
+                this.dropdownComponent?.setValue(id);
+                this.currentTemplateId = id;
+                this.updateEditorSection();
+                
+                new Notice(`Created template: ${name}`);
+            }
+        );
+        modal.open();
     }
 
     private renameTemplate(): void {
         const currentTemplate = this.getCurrentTemplate();
         if (!currentTemplate || currentTemplate.isBuiltIn) return;
         
-        const newName = prompt('Enter new name:', currentTemplate.name);
-        if (!newName || !newName.trim()) return;
-        
-        currentTemplate.name = newName.trim();
-        this.updateDropdownOptions();
-        this.dropdownComponent?.setValue(this.currentTemplateId);
-        
-        new Notice(`Renamed to: ${newName}`);
+        const modal = new TextInputModal(
+            this.app,
+            'Enter new name',
+            currentTemplate.name,
+            (newName) => {
+                currentTemplate.name = newName;
+                this.updateDropdownOptions();
+                this.dropdownComponent?.setValue(this.currentTemplateId);
+                
+                new Notice(`Renamed to: ${newName}`);
+            }
+        );
+        modal.open();
     }
 
     private copyTemplate(): void {
         const currentTemplate = this.getCurrentTemplate();
         if (!currentTemplate) return;
         
-        const name = prompt('Enter name for copy:', `${currentTemplate.name} (Copy)`);
-        if (!name || !name.trim()) return;
-        
-        // Generate unique ID
-        const id = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-        
-        const newTemplate: AiContextTemplate = {
-            id,
-            name: name.trim(),
-            prompt: currentTemplate.prompt,
-            isBuiltIn: false
-        };
-        
-        this.templates.push(newTemplate);
-        this.updateDropdownOptions();
-        this.dropdownComponent?.setValue(id);
-        this.currentTemplateId = id;
-        this.updateEditorSection();
-        
-        new Notice(`Created copy: ${name}`);
+        const modal = new TextInputModal(
+            this.app,
+            'Enter name for copy',
+            `${currentTemplate.name} (Copy)`,
+            (name) => {
+                // Generate unique ID
+                const id = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                
+                const newTemplate: AiContextTemplate = {
+                    id,
+                    name: name,
+                    prompt: currentTemplate.prompt,
+                    isBuiltIn: false
+                };
+                
+                this.templates.push(newTemplate);
+                this.updateDropdownOptions();
+                this.dropdownComponent?.setValue(id);
+                this.currentTemplateId = id;
+                this.updateEditorSection();
+                
+                new Notice(`Created copy: ${name}`);
+            }
+        );
+        modal.open();
     }
 
     private deleteTemplate(): void {
