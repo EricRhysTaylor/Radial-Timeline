@@ -168,6 +168,11 @@
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
+/* Hide plot titles initially until positioned to prevent flicker */
+.radial-timeline-container .rt-plot-title.rt-plot-title-positioning {
+  visibility: hidden;
+}
+
 
 /* Hover: emphasize plot titles with a solid black background using stroke */
 .radial-timeline-container .rt-scene-group:hover .rt-plot-title,
@@ -400,13 +405,12 @@ dominant-baseline: middle;
   stroke-width: 3px;
   paint-order: stroke;
 }
-/* Dynamic classes for scene-is-open non-selected */
+/* Scene is open: non-selected state */
 .radial-timeline-container .rt-number-square.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
   stroke: none;
   stroke-width: 0;
 }
-/* Dynamic classes for scene-is-open non-selected text */
 .radial-timeline-container .rt-number-text.rt-scene-is-open.rt-non-selected {
   fill: #FFFFFF !important;
   opacity: 1;
@@ -417,7 +421,7 @@ dominant-baseline: middle;
   stroke-width: 3px;
   stroke: var(--scene-color, #705DCF);
 }
-/* Removed duplicate - already defined above as .rt-number-square.rt-selected */
+
 .radial-timeline-container .rt-number-square.rt-non-selected {
   fill: #EFEFEF;
   stroke: none;
@@ -437,9 +441,6 @@ dominant-baseline: middle;
   paint-order: stroke;
 }
 
-/* Using only .rt-search-term for highlight styling; legacy .search-term rules removed */
-
-
 /* Allow inline subplot/character colors to apply in synopsis */
 .rt-info-text.rt-metadata-text tspan[data-item-type=subplot],
 .rt-info-text.rt-metadata-text tspan[data-item-type=character] {
@@ -448,13 +449,6 @@ dominant-baseline: middle;
   stroke-width: 0.07em;
   paint-order: stroke;
 }
-
-tspan[fill] .search-term,
-tspan[fill].search-term,
-tspan .search-term {
-  fill: inherit !important;
-}
-/* Old quadrant-specific text-anchor rules - replaced with scoped rt- versions below */
 
 /* Command palette search modal styling */
 .radial-timeline-container .search-container.flex-container {
@@ -472,7 +466,7 @@ tspan .search-term {
   margin-top: 20px;
   justify-content: flex-end;
 }
-/* Quadrant rules consolidated with rt- prefixes below */
+
 .radial-timeline-container .rt-scene-info.rt-synopsis-q1 text,
 .radial-timeline-container .rt-scene-info.rt-synopsis-q4 text {
   text-anchor: end !important;
@@ -559,16 +553,6 @@ tspan .search-term {
 .radial-timeline-container .rt-number-text.rt-scene-is-open {
   font-weight: normal;
   fill: #FFFFFF; /* white for default case; grade colors override via higher specificity */
-}
-.rt-number-square.rt-scene-is-open.rt-non-selected {
-  fill: #EFEFEF;
-  stroke: none;
-  stroke-width: 0;
-  
-}
-.rt-number-text.rt-scene-is-open.rt-non-selected {
-  fill: #ffffff;
-  opacity: 1;
 }
 .rt-number-square.rt-scene-is-open.rt-selected {
   stroke: #705DCF;
@@ -910,7 +894,6 @@ tspan .search-term {
   pointer-events: none;
 }
 
-/* Removed legacy .search-term override for synopsis titles; .rt-search-term handles all cases */
 .synopsis-spacer {
   line-height: 1.5em;
   min-height: 1.5em;
@@ -918,8 +901,6 @@ tspan .search-term {
   visibility: visible !important;
   fill: transparent;
 }
-/* Removed legacy .rt-non-selected variants; use .non-selected selectors above */
-/* styles.css */
 
 .center-key-text {
   font-size: 18px;
@@ -943,7 +924,6 @@ tspan .search-term {
     align-items: center;
     gap: 8px;
 }
-/* removed empty rule: .radial-timeline-container .search-container .search-input */
 
 /* Modal-specific search input sizing */
 .radial-timeline-search .search-input {
@@ -952,10 +932,6 @@ tspan .search-term {
     flex: 1;
     margin-bottom: 16px;
 }
-
-/* Search banner styles removed */
-
-/* Removed unused utility classes: test-button, path-element, dynamic-element, font-size-element */
 
 /* Dynamic subplot/character colors are set inline in TypeScript - no static CSS needed */
 
@@ -966,10 +942,6 @@ tspan .search-term {
     stroke-width: 0.07em;
     paint-order: stroke;
 }
-
-
-
-/* Removed unused dynamic-font-size class */
 
 /* SVG interaction elements */
 .radial-timeline-container .svg-interaction {
@@ -1342,7 +1314,6 @@ tspan .search-term {
     --title-color: var(--text-normal);
 }
 
-/* Date text styles - base rule for all date text */
 .rt-date-text {
     fill: var(--text-muted) !important;
     font-weight: 700 !important;
@@ -1356,8 +1327,6 @@ tspan .search-term {
     paint-order: stroke !important;
 }
 
-/* Search term highlighting - consolidated above with other search-term rules */
-
 /* Info container styles */
 .rt-info-container {
     cursor: pointer;
@@ -1368,12 +1337,6 @@ tspan .search-term {
     font-size: 14px;
     line-height: 1.5;
 }
-
-/* UNUSED????   Metadata text styles
-.metadata-text {
-    font-size: 12px;
-
-}*/
 
 /* Beat text styles */
 .beats-text {
@@ -1405,9 +1368,6 @@ tspan .search-term {
   fill: #000000; /* Solid black */
   font-weight: bold; /* Match the weight of positive/negative */
 }
-
-/* Ensure search terms maintain their color */
-/* Removed legacy subplot/character .search-term overrides; .rt-search-term is used consistently */
 
 .subplot-ring-label-path {
   fill: none;
@@ -1551,7 +1511,6 @@ tspan .search-term {
 
 /* status header hover effect */
 .radial-timeline-container .status-header-letter {
-  
   text-decoration: none;
 }
 .status-header:hover .status-header-letter {
@@ -1573,7 +1532,6 @@ tspan .search-term {
 
 /* stage header hover effect */
 .radial-timeline-container .stage-header-letter {
-  
   text-decoration: none;
 }
 .stage-header:hover .stage-header-letter {

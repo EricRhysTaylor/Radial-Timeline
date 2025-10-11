@@ -106,8 +106,9 @@ export class PlotLabelManager {
         });
         
         // Make all labels visible now that repositioning is complete
+        // Remove the positioning class to reveal the labels instantly (no flicker)
         items.forEach(item => {
-            item.textEl.setAttribute('opacity', '1');
+            item.textEl.classList.remove('rt-plot-title-positioning');
         });
     }
 
