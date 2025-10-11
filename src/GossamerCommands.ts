@@ -14,6 +14,14 @@ function getProvider(plugin: RadialTimelinePlugin): Provider {
   return plugin.settings.defaultAiProvider || 'openai';
 }
 
+// Helper function to get the active AI context template prompt
+function getActiveContextPrompt(plugin: RadialTimelinePlugin): string | undefined {
+  const templates = plugin.settings.aiContextTemplates || [];
+  const activeId = plugin.settings.activeAiContextTemplateId;
+  const active = templates.find(t => t.id === activeId);
+  return active?.prompt;
+}
+
 async function logGossamerExchange(
   plugin: RadialTimelinePlugin,
   vault: Vault,
@@ -118,7 +126,8 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
 
 export async function runGossamerAnalysis(plugin: RadialTimelinePlugin): Promise<GossamerRun> {
   const scenes = await plugin.getSceneData();
-  const prompt = buildGossamerPrompt(scenes);
+  const contextPrompt = getActiveContextPrompt(plugin);
+  const prompt = buildGossamerPrompt(scenes, contextPrompt);
   const provider = getProvider(plugin);
   const runLabel = 'Run01';
 

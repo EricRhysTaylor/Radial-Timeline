@@ -8,11 +8,15 @@ export function buildBeatsPrompt(
   nextBody: string | null,
   prevNum: string,
   currentNum: string,
-  nextNum: string
+  nextNum: string,
+  contextPrompt?: string
 ): string {
-  return `You are a developmental editor for a novel.
+  // Build context prefix if provided
+  const contextPrefix = contextPrompt?.trim() 
+    ? `${contextPrompt.trim()}\n\nBefore taking action, prepare an action plan.\n\n`
+    : 'You are a developmental editor for a novel.\n\n';
 
-For each of the three scenes below, generate concise 5 ordered narrative beats from the perspective of the 2beats (middle scene) showing the connections between the 1beats (previous scene) and the 3beats (next scene) and if 2beats is maintaining the momentum of the story. For the first line of the 2beats, give an overall editorial score of A, B or C where A nearly perfect and C needs improvement with instructions on how to improve it.
+  return `${contextPrefix}For each of the three scenes below, generate concise 5 ordered narrative beats from the perspective of the 2beats (middle scene) showing the connections between the 1beats (previous scene) and the 3beats (next scene) and if 2beats is maintaining the momentum of the story. For the first line of the 2beats, give an overall editorial score of A, B or C where A nearly perfect and C needs improvement with instructions on how to improve it.
 
 Use the following exact format (to be processed by a script for YAML formatting):
 

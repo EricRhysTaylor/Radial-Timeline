@@ -4,7 +4,7 @@
 import type { Scene } from '../../main';
 import { extractBeatOrder, normalizeBeatName } from '../../utils/gossamer';
 
-export function buildGossamerPrompt(scenes: Scene[]): string {
+export function buildGossamerPrompt(scenes: Scene[], contextPrompt?: string): string {
     const plotNotes = scenes.filter(s => s.itemType === 'Plot' && (s.subplot === 'Main Plot' || !s.subplot));
     
     // Extract dynamic beat order from Plot notes
@@ -36,8 +36,13 @@ export function buildGossamerPrompt(scenes: Scene[]): string {
     // Use first beat name dynamically (instead of hardcoding "Opening Image")
     const firstBeatName = beatOrder[0];
     
+    // Build context prefix if provided
+    const contextPrefix = contextPrompt?.trim()
+        ? `${contextPrompt.trim()}\n\nBefore taking action, prepare an action plan.\n\n`
+        : 'You are a developmental editor analyzing plot momentum across Save-the-Cat beats.\n\n';
+    
     // Incomplete-aware JSON schema output request
-    const prompt = `You are a developmental editor analyzing plot momentum across Save-the-Cat beats.
+    const prompt = `${contextPrefix}
 
 Provide concise tension scoring for each beat with the first beat ("${firstBeatName}") fixed at 0. Use 0–100 for scores.
 Do not invent content for beats with no scenes; instead mark them as missing.

@@ -9,6 +9,8 @@ import { sanitizeSourcePath, buildInitialSceneFilename } from './utils/sceneCrea
 import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
 import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
 import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
+import { buildBeatsPrompt } from './ai/prompts/beats';
+import { BeatsProcessingModal, type ProcessingMode } from './view/BeatsProcessingModal';
 
 // --- Interfaces --- 
 interface SceneData {
@@ -165,48 +167,61 @@ async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Prom
     return validScenes;
 }
 
-function buildPrompt(prevBody: string | null, currentBody: string, nextBody: string | null, prevNum: string, currentNum: string, nextNum: string): string {
-    return `You are a developmental editor for a novel.
+// Helper function to get the active AI context template prompt
+function getActiveContextPrompt(plugin: RadialTimelinePlugin): string | undefined {
+    const templates = plugin.settings.aiContextTemplates || [];
+    const activeId = plugin.settings.activeAiContextTemplateId;
+    const active = templates.find(t => t.id === activeId);
+    return active?.prompt;
+}
 
-For each of the three scenes below, generate concise 5 ordered narrative beats from the perspective of the 2beats (middle scene) showing the connections between the 1beats (previous scene) and the 3beats (next scene) and if 2beats is maintaining the momentum of the story. For the first line of the 2beats, give an overall editorial score of A, B or C where A nearly perfect and C needs improvement with instructions on how to improve it.
-
-Use the following exact format (to be processed by a script for YAML formatting):
-
-1beats: 
- - ${prevNum} Use a short beat title + or - or ? / Short comment under 10 words
- - Follow-up beat title + or - or ? / Short comment under 10 words 
- - ...
-2beats:
- - ${currentNum} A, B or C / Instructions on how to improve it no more than 15 words.
- - Follow-up beat title + or - or ? / Concise editorial comment under 10 words
- - ...
-3beats:
- - ${nextNum} Use a Short beat title + or - or ? / Concise editorial comment under 10 words
- - Follow-up beat title + or - or ? / Concise editorial comment under 10 words
- - ...
-
-Instructions:
-- Use "+" for beats that connect strongly to surrounding scenes.
-- Use "-" for beats that need improvement.
-- Use "?" if the beat is neutral.
-- Include the scene number (example: 34.5) only for the first item in each beats section.
-- For 2beats (scene under evaluation), apply a rating of A, B or C / Concise editorial comment under 10 words with instructions on how to fix scene.
-- Boundary conditions:
-  - If previous scene is "N/A", leave 1beats empty (no lines).
-  - If next scene is "N/A", leave 3beats empty (no lines).
-  - Do not invent beats for missing scenes.
-- Follow the exact indentation shown (single space before each dash).
-- No other formatting so the YAML formatting is not broken.
-
-Scene ${prevNum}:
-${prevBody ?? 'N/A'}
-
-Scene ${currentNum}:
-${currentBody || 'N/A'}
-
-Scene ${nextNum}:
-${nextBody ?? 'N/A'}
-`;
+// Helper function to calculate scene count for each processing mode
+async function calculateSceneCount(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    mode: ProcessingMode
+): Promise<number> {
+    const allScenes = await getAllSceneData(plugin, vault);
+    allScenes.sort(compareScenesByOrder);
+    
+    const writtenScenes = allScenes.filter(scene => {
+        const words = scene.frontmatter?.words || scene.frontmatter?.Words;
+        return (typeof words === 'number' && words > 0);
+    });
+    
+    if (mode === 'force-all') {
+        return writtenScenes.length;
+    }
+    
+    // For smart and force-flagged modes, count scenes with BeatsUpdate: Yes
+    const flaggedScenes = writtenScenes.filter(scene => {
+        const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate;
+        return (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
+    });
+    
+    if (mode === 'force-flagged') {
+        return flaggedScenes.length;
+    }
+    
+    // Smart mode: count only scenes not in cache
+    let count = 0;
+    for (let i = 0; i < writtenScenes.length; i++) {
+        const scene = writtenScenes[i];
+        const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate;
+        if (typeof beatsUpdateFlag !== 'string' || beatsUpdateFlag.toLowerCase() !== 'yes') {
+            continue;
+        }
+        
+        const prev = i > 0 ? writtenScenes[i - 1] : null;
+        const next = i < writtenScenes.length - 1 ? writtenScenes[i + 1] : null;
+        const tripletId = `${prev?.sceneNumber ?? 'Start'}-${scene.sceneNumber}-${next?.sceneNumber ?? 'End'}`;
+        
+        if (!plugin.settings.processedBeatContexts.includes(tripletId)) {
+            count++;
+        }
+    }
+    
+    return count;
 }
 
 async function logApiInteractionToFile(
@@ -336,13 +351,15 @@ async function logApiInteractionToFile(
     const friendlyModel = (() => {
         const mid = (modelId || '').toLowerCase();
         if (provider === 'anthropic') {
-            if (mid.includes('claude-opus-4-1')) return 'Claude Opus 4.1';
-            if (mid.includes('claude-sonnet-4-5')) return 'Claude Sonnet 4.5';
-            if (mid.includes('claude-sonnet-4-')) return 'Claude Sonnet 4';
+            // Check more specific versions first
+            if (mid.includes('sonnet-4-5') || mid.includes('sonnet-4.5')) return 'Claude Sonnet 4.5';
+            if (mid.includes('opus-4-1') || mid.includes('opus-4.1')) return 'Claude Opus 4.1';
+            if (mid.includes('sonnet-4')) return 'Claude Sonnet 4';
+            if (mid.includes('opus-4')) return 'Claude Opus 4';
         } else if (provider === 'gemini') {
-            if (mid === 'gemini-2.5-pro') return 'Gemini 2.5 Pro';
+            if (mid.includes('2.5-pro') || mid.includes('2-5-pro')) return 'Gemini 2.5 Pro';
         } else if (provider === 'openai') {
-            if (mid === 'gpt-4.1') return 'GPT‑4.1';
+            if (mid.includes('gpt-4.1') || mid.includes('gpt-4-1')) return 'GPT-4.1';
         }
         return modelId;
     })();
@@ -370,6 +387,14 @@ async function logApiInteractionToFile(
     fileContent += `**Model:** ${friendlyModel}\n`;
     fileContent += `**Model ID:** ${modelId}\n`;
     fileContent += `**Timestamp:** ${new Date().toISOString()}\n`;
+    
+    // Add active template info for debugging
+    const activeTemplate = plugin.settings.aiContextTemplates?.find(t => t.id === plugin.settings.activeAiContextTemplateId);
+    if (activeTemplate) {
+        fileContent += `**Active Template:** ${activeTemplate.name}\n`;
+    } else {
+        fileContent += `**Active Template:** None (using default)\n`;
+    }
     fileContent += `${contextHeader}\n`;
     
     // We will fill scenes summary and template next
@@ -746,77 +771,112 @@ export async function processByManuscriptOrder(
     plugin: RadialTimelinePlugin,
     vault: Vault
 ): Promise<void> {
+    // Create modal with scene count calculator
+    const modal = new BeatsProcessingModal(
+        plugin.app,
+        plugin,
+        (mode: ProcessingMode) => calculateSceneCount(plugin, vault, mode),
+        async (mode: ProcessingMode) => {
+            // This is the actual processing logic
+            await processWithModal(plugin, vault, mode, modal);
+        }
+    );
+    
+    modal.open();
+}
 
-    const notice = new Notice("Processing Manuscript Order: Getting scene data...", 0);
-
-    try {
+// Internal processing function that works with the modal
+async function processWithModal(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    mode: ProcessingMode,
+    modal: BeatsProcessingModal
+): Promise<void> {
     const allScenes = await getAllSceneData(plugin, vault);
-        allScenes.sort(compareScenesByOrder);
+    allScenes.sort(compareScenesByOrder);
 
-        if (allScenes.length < 1) {
-            new Notice("No valid scenes found in the specified source path.");
-            notice.hide();
-        return;
+    if (allScenes.length < 1) {
+        throw new Error("No valid scenes found in the specified source path.");
     }
 
-        // Filter scenes with content (Words > 0)
-        const writtenScenes = allScenes.filter(scene => {
-            const words = scene.frontmatter?.words || scene.frontmatter?.Words;
-            const beatsFlag = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate;
+    // Filter scenes with content (Words > 0)
+    const writtenScenes = allScenes.filter(scene => {
+        const words = scene.frontmatter?.words || scene.frontmatter?.Words;
+        const beatsFlag = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate;
 
-            // Warn if user requested update but scene has no word count
-            if ((typeof beatsFlag === 'string' && beatsFlag.toLowerCase() === 'yes') &&
-                (!(typeof words === 'number') || words <= 0)) {
-                const msg = `⚠️ Scene ${scene.sceneNumber ?? scene.file.basename} has BeatsUpdate: Yes but 0 words. Skipping.`;
-                // Surface to user via Notice; suppress console noise
-                new Notice(msg, 6000);
-            }
-
-            return (typeof words === 'number' && words > 0);
-        });
-
-
-
-        const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
-        for (let i = 0; i < writtenScenes.length; i++) {
-            triplets.push({
-                prev: i > 0 ? writtenScenes[i - 1] : null,
-                current: writtenScenes[i],
-                next: i < writtenScenes.length - 1 ? writtenScenes[i + 1] : null
-            });
+        // Warn if user requested update but scene has no word count
+        if ((typeof beatsFlag === 'string' && beatsFlag.toLowerCase() === 'yes') &&
+            (!(typeof words === 'number') || words <= 0)) {
+            modal.addError(`Scene ${scene.sceneNumber ?? scene.file.basename} has BeatsUpdate: Yes but 0 words. Skipping.`);
         }
 
-        let processedCount = 0;
-        const totalTriplets = triplets.length;
-        notice.setMessage(`Analyzing ${totalTriplets} scenes in manuscript order...`);
+        return (typeof words === 'number' && words > 0);
+    });
 
-        for (const triplet of triplets) {
-            const currentScenePath = triplet.current.file.path;
-            const tripletIdentifier = `${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
+    // Build triplets
+    const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
+    for (let i = 0; i < writtenScenes.length; i++) {
+        triplets.push({
+            prev: i > 0 ? writtenScenes[i - 1] : null,
+            current: writtenScenes[i],
+            next: i < writtenScenes.length - 1 ? writtenScenes[i + 1] : null
+        });
+    }
 
-            // <<< ADDED: Check for BeatsUpdate flag before cache check >>>
-            const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
-            if (typeof beatsUpdateFlag !== 'string' || beatsUpdateFlag.toLowerCase() !== 'yes') {
-
-                // We don't increment processedCount here, as we only count actual attempts/cache hits
-                continue; // Skip to the next triplet if not flagged
+    let processedCount = 0;
+    let totalToProcess = 0;
+    
+    // Calculate total based on mode
+    for (const triplet of triplets) {
+        const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
+        const isFlagged = (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
+        
+        if (mode === 'force-all') {
+            totalToProcess++;
+        } else if (mode === 'force-flagged' && isFlagged) {
+            totalToProcess++;
+        } else if (mode === 'smart' && isFlagged) {
+            const prev = triplet.prev;
+            const next = triplet.next;
+            const tripletId = `${prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${next?.sceneNumber ?? 'End'}`;
+            if (!plugin.settings.processedBeatContexts.includes(tripletId)) {
+                totalToProcess++;
             }
-            
-            // We've already filtered scenes by Words > 0 when building triplets,
-            // so no need to check again here.
+        }
+    }
 
-            // Check cache *after* confirming the scene is flagged for update
-            if (plugin.settings.processedBeatContexts.includes(tripletIdentifier)) {
- 
-                 processedCount++;
-                 notice.setMessage(`Progress: ${processedCount}/${totalTriplets} scenes (Skipped - Already processed)`);
+    // Process triplets
+    for (const triplet of triplets) {
+        // Check for abort signal
+        if (modal.isAborted()) {
+            await plugin.saveSettings();
+            throw new Error('Processing aborted by user');
+        }
+
+        const currentScenePath = triplet.current.file.path;
+        const tripletIdentifier = `${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
+        const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
+        const isFlagged = (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
+
+        // Determine if we should process this scene based on mode
+        let shouldProcess = false;
+        if (mode === 'force-all') {
+            shouldProcess = true;
+        } else if (mode === 'force-flagged') {
+            shouldProcess = isFlagged;
+        } else { // smart mode
+            shouldProcess = isFlagged && !plugin.settings.processedBeatContexts.includes(tripletIdentifier);
+        }
+
+        if (!shouldProcess) {
             continue;
         }
 
-            notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${processedCount+1}/${totalTriplets})...`);
-            if (plugin.settings.debug) {
-            }
+        // Update progress
+        const sceneName = `${triplet.current.sceneNumber ?? '?'} - ${triplet.current.file.basename}`;
+        modal.updateProgress(processedCount + 1, totalToProcess, sceneName);
 
+        try {
             const prevBody = triplet.prev ? triplet.prev.body : null;
             const currentBody = triplet.current.body;
             const nextBody = triplet.next ? triplet.next.body : null;
@@ -824,7 +884,8 @@ export async function processByManuscriptOrder(
             const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
             const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
-            const userPrompt = buildPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
+            const contextPrompt = getActiveContextPrompt(plugin);
+            const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
             const aiResult = await callAiProvider(plugin, vault, userPrompt, null, 'processByManuscriptOrder');
 
@@ -833,34 +894,29 @@ export async function processByManuscriptOrder(
                 if (parsedBeats) {
                     const updated = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
                     if (updated) {
-                         plugin.settings.processedBeatContexts.push(tripletIdentifier);
-                         await plugin.saveSettings();
+                        plugin.settings.processedBeatContexts.push(tripletIdentifier);
+                        await plugin.saveSettings();
                     } else {
-                        plugin.log(`[API Beats][processByManuscriptOrder] Failed to update file after getting beats for: ${currentScenePath}`);
+                        modal.addError(`Failed to update file: ${currentScenePath}`);
                     }
                 } else {
-                    plugin.log(`[API Beats][processByManuscriptOrder] Failed to parse AI result for: ${currentScenePath}`);
+                    modal.addError(`Failed to parse AI result for: ${sceneName}`);
                 }
             } else {
-                plugin.log(`[API Beats][processByManuscriptOrder] No result from AI for: ${currentScenePath}`);
+                modal.addError(`No result from AI for: ${sceneName}`);
             }
-
-            processedCount++;
-            notice.setMessage(`Progress: ${processedCount}/${totalTriplets} scenes processed...`);
-            await new Promise(resolve => window.setTimeout(resolve, 200));
+        } catch (error) {
+            modal.addError(`Error processing ${sceneName}: ${error instanceof Error ? error.message : String(error)}`);
         }
 
-            await plugin.saveSettings();
-
-        notice.hide();
-        new Notice(`✅ Manuscript Order Processing Complete: ${processedCount}/${totalTriplets} triplets processed.`);
-        plugin.refreshTimelineIfNeeded(null);
-
-    } catch (error) {
-        console.error("[API Beats][processByManuscriptOrder] Error during processing:", error);
-        notice.hide();
-        new Notice("❌ Error processing manuscript order. Check console for details.");
+        processedCount++;
+        await new Promise(resolve => window.setTimeout(resolve, 200));
     }
+
+    await plugin.saveSettings();
+    plugin.refreshTimelineIfNeeded(null);
+    
+    new Notice(`✅ Processed ${processedCount} scenes successfully`);
 }
 
 export async function processBySubplotOrder(
@@ -991,7 +1047,8 @@ export async function processBySubplotOrder(
                  const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
                  const nextNum = nextHasContent && triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
-                 const userPrompt = buildPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
+                 const contextPrompt = getActiveContextPrompt(plugin);
+                 const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
                  const aiResult = await callAiProvider(plugin, vault, userPrompt, subplotName, 'processBySubplotOrder');
 
@@ -1124,7 +1181,8 @@ export async function processBySubplotName(
             const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
             const nextNum = nextHasContent && triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
-            const userPrompt = buildPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
+            const contextPrompt = getActiveContextPrompt(plugin);
+            const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
             const aiResult = await callAiProvider(plugin, vault, userPrompt, subplotName, 'processBySubplotOrder');
 
             if (aiResult.result) {

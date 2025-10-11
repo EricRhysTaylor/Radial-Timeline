@@ -47,6 +47,9 @@ interface RadialTimelineSettings {
     // Feature toggles
     enableAiBeats: boolean; // Show AI beats features (colors + synopsis)
     enableZeroDraftMode?: boolean; // Intercept complete scenes in Stage Zero for Pending Edits modal
+    // AI Context Templates
+    aiContextTemplates?: Array<{id: string; name: string; prompt: string; isBuiltIn: boolean}>;
+    activeAiContextTemplateId?: string;
     // Optional: Store the fetched models list to avoid refetching?
     // availableOpenAiModels?: { id: string, description?: string }[];
 }
@@ -122,9 +125,36 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     geminiApiKey: '',
     geminiModelId: 'gemini-2.5-pro', // Default to Gemini 2.5 Pro
     defaultAiProvider: 'openai',
-    openaiModelId: 'gpt-4.1' // Default to GPT-4.1
-    ,enableAiBeats: true
-    ,enableZeroDraftMode: false
+    openaiModelId: 'gpt-4.1', // Default to GPT-4.1
+    enableAiBeats: true,
+    enableZeroDraftMode: false,
+    aiContextTemplates: [
+        {
+            id: 'generic-editor',
+            name: 'Generic Editor',
+            prompt: 'You are a developmental editor of a novel.',
+            isBuiltIn: true
+        },
+        {
+            id: 'ya-biopunk-scifi',
+            name: 'YA Biopunk Sci-Fi',
+            prompt: 'You are a developmental editor specializing in Young Adult biopunk sci-fi fiction. Consider pacing and themes appropriate for teen readers.',
+            isBuiltIn: true
+        },
+        {
+            id: 'adult-thriller',
+            name: 'Adult Thriller',
+            prompt: 'You are a developmental editor specializing in adult thriller novels. Focus on tension, pacing, and suspense elements.',
+            isBuiltIn: true
+        },
+        {
+            id: 'adult-romance',
+            name: 'Adult Romance',
+            prompt: 'You are a developmental editor specializing in adult romance with mature content. Evaluate emotional beats and relationship development.',
+            isBuiltIn: true
+        }
+    ],
+    activeAiContextTemplateId: 'generic-editor'
 };
 
 // STATUS_COLORS now imported from constants
@@ -1283,7 +1313,31 @@ public createTimelineSVG(scenes: Scene[]) {
             openaiModelId: this.settings.openaiModelId,
             geminiModelId: this.settings.geminiModelId,
         });
-        if (before !== after) {
+        
+        // AI Context Templates migration
+        let templatesMigrated = false;
+        if (!this.settings.aiContextTemplates || this.settings.aiContextTemplates.length === 0) {
+            this.settings.aiContextTemplates = DEFAULT_SETTINGS.aiContextTemplates;
+            templatesMigrated = true;
+        } else {
+            // Ensure built-in templates exist (in case user deleted settings)
+            const builtInTemplates = DEFAULT_SETTINGS.aiContextTemplates!;
+            const existingIds = new Set(this.settings.aiContextTemplates.map(t => t.id));
+            
+            for (const builtIn of builtInTemplates) {
+                if (!existingIds.has(builtIn.id)) {
+                    this.settings.aiContextTemplates.push(builtIn);
+                    templatesMigrated = true;
+                }
+            }
+        }
+        
+        if (!this.settings.activeAiContextTemplateId) {
+            this.settings.activeAiContextTemplateId = DEFAULT_SETTINGS.activeAiContextTemplateId;
+            templatesMigrated = true;
+        }
+        
+        if (before !== after || templatesMigrated) {
             await this.saveSettings();
         }
     }

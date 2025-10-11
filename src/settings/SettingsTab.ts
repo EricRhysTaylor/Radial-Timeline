@@ -16,6 +16,7 @@ import {
   normalizePath,
 } from 'obsidian';
 import { FolderSuggest } from './FolderSuggest';
+import { AiContextModal } from './AiContextModal';
 import { fetchAnthropicModels } from '../api/anthropicApi';
 import { fetchOpenAiModels } from '../api/openaiApi';
 import { fetchGeminiModels } from '../api/geminiApi';
@@ -306,6 +307,28 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     // Refresh timeline(s) to apply visibility changes
                     this.plugin.refreshTimelineIfNeeded(null);
+                }));
+
+        // AI Prompt Context Template setting
+        const getActiveTemplateName = (): string => {
+            const templates = this.plugin.settings.aiContextTemplates || [];
+            const activeId = this.plugin.settings.activeAiContextTemplateId;
+            const active = templates.find(t => t.id === activeId);
+            return active?.name || 'Generic Editor';
+        };
+        
+        const contextTemplateSetting = new Settings(containerEl)
+            .setName('AI prompt context template')
+            .setDesc(`Active: ${getActiveTemplateName()}`)
+            .addExtraButton(button => button
+                .setIcon('gear')
+                .setTooltip('Manage context templates')
+                .onClick(() => {
+                    const modal = new AiContextModal(this.app, this.plugin, () => {
+                        // Refresh the description after saving
+                        contextTemplateSetting.setDesc(`Active: ${getActiveTemplateName()}`);
+                    });
+                    modal.open();
                 }));
 
         // --- Single model picker ---

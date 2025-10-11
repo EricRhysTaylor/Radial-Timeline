@@ -1098,7 +1098,7 @@ export function createTimelineSVG(
                                   d="M ${formatNumber(plotTextRadius * Math.cos(labelStartAngle))} ${formatNumber(plotTextRadius * Math.sin(labelStartAngle))} 
                                      A ${formatNumber(plotTextRadius)} ${formatNumber(plotTextRadius)} 0 ${largeArcFlag} 1 ${formatNumber(plotTextRadius * Math.cos(labelEndAngle))} ${formatNumber(plotTextRadius * Math.sin(labelEndAngle))}" 
                                   data-slice-start="${formatNumber(sceneStartAngle)}" data-radius="${formatNumber(plotTextRadius)}" fill="none"/>
-                            <text class="rt-plot-title" dy="-3">
+                            <text class="rt-plot-title" dy="-3" opacity="0">
                                 <textPath href="#plotTextPath-outer-${act}-${ring}-${idx}" startOffset="2">
                                     ${escapeXml(rawTitleFull)}
                                 </textPath>

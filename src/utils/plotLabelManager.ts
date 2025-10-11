@@ -104,6 +104,11 @@ export class PlotLabelManager {
             // Rewrite the path arc to ensure sufficient length for the measured text
             PlotLabelManager.updatePathArc(item, startAngle, endAngle);
         });
+        
+        // Make all labels visible now that repositioning is complete
+        items.forEach(item => {
+            item.textEl.setAttribute('opacity', '1');
+        });
     }
 
     /**
