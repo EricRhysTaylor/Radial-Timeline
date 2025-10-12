@@ -19,13 +19,9 @@ export async function logExchange(plugin: RadialTimelinePlugin, vault: Vault, pa
   if (!plugin.settings.logApiInteractions) return;
   const folder = 'AI';
   const ts = new Date().toISOString().replace(/[:.]/g, '-');
-  const file = `${folder}/${payload.prefix}-${ts}-${payload.label || 'Run'}.md`;
   
-  // Format timestamp as readable date-time (e.g., "2025-10-12 14:30:45")
-  const readableTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-  
-  // Get friendly model name
-  const friendlyModel = (() => {
+  // Get friendly model name for filename
+  const friendlyModelForFilename = (() => {
     const mid = (payload.modelId || '').toLowerCase();
     const provider = payload.provider.toLowerCase();
     if (provider === 'anthropic') {
@@ -41,13 +37,20 @@ export async function logExchange(plugin: RadialTimelinePlugin, vault: Vault, pa
     return payload.modelId;
   })();
   
-  // Create title in format: "Process Type — Model — Timestamp"
+  // Format: "Process Type — Model — Timestamp"
   const processType = payload.prefix === 'Gossamer' ? 'Gossamer Analysis' : 'Scene Processed';
-  const title = `${processType} — ${friendlyModel} — ${readableTimestamp}`;
+  const fileName = `${processType} — ${friendlyModelForFilename} — ${ts}.md`;
+  const file = `${folder}/${fileName}`;
+  
+  // Format timestamp as readable date-time (e.g., "2025-10-12 14:30:45")
+  const readableTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+  
+  // Create title in format: "Process Type — Model — Timestamp"
+  const title = `${processType} — ${friendlyModelForFilename} — ${readableTimestamp}`;
   
   let fileContent = `# ${title}\n\n`;
   fileContent += `**Provider:** ${payload.provider}\n`;
-  fileContent += `**Model:** ${friendlyModel}\n`;
+  fileContent += `**Model:** ${friendlyModelForFilename}\n`;
   fileContent += `**Model ID:** ${payload.modelId}\n`;
   fileContent += `**Timestamp:** ${new Date().toISOString()}\n\n`;
   

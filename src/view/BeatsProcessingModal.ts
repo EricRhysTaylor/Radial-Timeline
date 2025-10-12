@@ -20,10 +20,10 @@ export interface ProcessingOptions {
 export class BeatsProcessingModal extends Modal {
     private readonly plugin: RadialTimelinePlugin;
     private readonly onConfirm: (mode: ProcessingMode) => Promise<void>;
-    private readonly getSceneCount: (mode: ProcessingMode) => number;
+    private readonly getSceneCount: (mode: ProcessingMode) => Promise<number>;
     
     private selectedMode: ProcessingMode = 'smart';
-    private isProcessing: boolean = false;
+    public isProcessing: boolean = false;
     private abortController: AbortController | null = null;
     
     // Progress tracking
@@ -43,7 +43,7 @@ export class BeatsProcessingModal extends Modal {
     constructor(
         app: App,
         plugin: RadialTimelinePlugin,
-        getSceneCount: (mode: ProcessingMode) => number,
+        getSceneCount: (mode: ProcessingMode) => Promise<number>,
         onConfirm: (mode: ProcessingMode) => Promise<void>
     ) {
         super(app);
@@ -161,7 +161,7 @@ export class BeatsProcessingModal extends Modal {
         updateCount();
 
         // Update count when mode changes
-        [mode1, mode2, mode3].forEach(radio => {
+        [mode1, mode2, mode3, mode4].forEach(radio => {
             radio.addEventListener('change', () => updateCount());
         });
 

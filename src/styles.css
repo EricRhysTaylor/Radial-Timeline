@@ -1172,7 +1172,7 @@ dominant-baseline: middle;
   margin-top: 12px;
   padding: 8px;
   background-color: var(--background-modifier-error);
-  color: var(--text-error);
+  color: var(--text-on-accent);
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
@@ -1396,7 +1396,7 @@ dominant-baseline: middle;
   padding: 10px;
   background-color: var(--background-modifier-error);
   border-radius: 4px;
-  color: var(--text-error);
+  color: var(--text-on-accent);
 }
 
 .rt-gossamer-assembly-modal .rt-gossamer-buttons {

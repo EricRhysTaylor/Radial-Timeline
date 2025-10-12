@@ -135,8 +135,18 @@ export async function runGossamerAnalysis(plugin: RadialTimelinePlugin): Promise
   try {
     // Get all scenes from sourcePath
     const scenes = await plugin.getSceneData();
-    const sceneFiles = scenes
-      .filter(s => s.itemType === 'Scene' && s.path)
+    
+    // Deduplicate scenes by path (scenes can appear multiple times if they have multiple subplots)
+    const uniquePaths = new Set<string>();
+    const uniqueScenes = scenes.filter(s => {
+      if (s.itemType === 'Scene' && s.path && !uniquePaths.has(s.path)) {
+        uniquePaths.add(s.path);
+        return true;
+      }
+      return false;
+    });
+    
+    const sceneFiles = uniqueScenes
       .map(s => plugin.app.vault.getAbstractFileByPath(s.path!))
       .filter((f): f is TFile => f instanceof TFile);
 

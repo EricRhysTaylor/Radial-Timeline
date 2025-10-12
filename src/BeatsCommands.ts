@@ -106,8 +106,10 @@ function hasWordsContent(fm: Record<string, unknown>): boolean {
  * Check if a scene has processable content based on Status field
  * Returns true if Status is "Complete" or "Working" (or contains these values)
  */
-function hasProcessableContent(fm: Record<string, unknown>): boolean {
-    const status = fm?.Status || fm?.status;
+function hasProcessableContent(fm: Record<string, unknown> | undefined): boolean {
+    if (!fm) return false;
+    
+    const status = fm.Status || fm.status;
     
     // Status can be a string or an array of strings
     if (typeof status === 'string') {
@@ -205,6 +207,28 @@ function getActiveContextPrompt(plugin: RadialTimelinePlugin): string | undefine
     return active?.prompt;
 }
 
+/**
+ * Helper function to determine if a scene has already been processed for beats
+ * A scene is considered processed if:
+ * 1. It has a BeatsLastUpdated timestamp, OR
+ * 2. It has any beats fields (1beats, 2beats, or 3beats)
+ */
+function hasBeenProcessedForBeats(frontmatter: Record<string, unknown> | undefined): boolean {
+    if (!frontmatter) return false;
+    
+    // Check for BeatsLastUpdated timestamp
+    const hasBeatsLastUpdated = !!frontmatter['BeatsLastUpdated'];
+    if (hasBeatsLastUpdated) return true;
+    
+    // Check for any beats fields
+    const has1beats = !!frontmatter['1beats'];
+    const has2beats = !!frontmatter['2beats'];
+    const has3beats = !!frontmatter['3beats'];
+    const hasAnyBeats = has1beats || has2beats || has3beats;
+    
+    return hasAnyBeats;
+}
+
 // Helper function to calculate scene count for each processing mode
 async function calculateSceneCount(
     plugin: RadialTimelinePlugin,
@@ -230,14 +254,11 @@ async function calculateSceneCount(
         return processableScenes.length;
     }
     
-    // Unprocessed mode: count scenes without beats
+    // Unprocessed mode: count scenes without beats or BeatsLastUpdated
     if (mode === 'unprocessed') {
         return processableScenes.filter(scene => {
-            const has1beats = scene.frontmatter?.['1beats'];
-            const has2beats = scene.frontmatter?.['2beats'];
-            const has3beats = scene.frontmatter?.['3beats'];
-            // Scene is unprocessed if it doesn't have all three beats fields
-            return !has1beats || !has2beats || !has3beats;
+            // Scene is unprocessed only if it has never been processed
+            return !hasBeenProcessedForBeats(scene.frontmatter);
         }).length;
     }
     
@@ -272,7 +293,8 @@ async function logApiInteractionToFile(
     requestData: unknown, // Keep as unknown initially
     responseData: unknown,
     subplotName: string | null,
-    commandContext: string
+    commandContext: string,
+    sceneName?: string
 ): Promise<void> {
     if (!plugin.settings.logApiInteractions) {
         return;
@@ -280,7 +302,33 @@ async function logApiInteractionToFile(
 
     const logFolder = "AI";
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = `${provider}-log-${timestamp}.md`;
+    
+    // Get friendly model name for filename
+    const friendlyModelForFilename = (() => {
+        const mid = (modelId || '').toLowerCase();
+        if (provider === 'anthropic') {
+            if (mid.includes('sonnet-4-5') || mid.includes('sonnet-4.5')) return 'Claude Sonnet 4.5';
+            if (mid.includes('opus-4-1') || mid.includes('opus-4.1')) return 'Claude Opus 4.1';
+            if (mid.includes('sonnet-4')) return 'Claude Sonnet 4';
+            if (mid.includes('opus-4')) return 'Claude Opus 4';
+        } else if (provider === 'gemini') {
+            if (mid.includes('2.5-pro') || mid.includes('2-5-pro')) return 'Gemini 2.5 Pro';
+        } else if (provider === 'openai') {
+            if (mid.includes('gpt-4.1') || mid.includes('gpt-4-1')) return 'GPT-4.1';
+        }
+        return modelId;
+    })();
+    
+    // Format: "Scene Name — Model — Timestamp" or fallback to provider-log-timestamp
+    let fileName: string;
+    if (sceneName) {
+        // Clean scene name for filename (remove invalid characters)
+        const cleanSceneName = sceneName.replace(/[<>:"/\\|?*]/g, '').trim();
+        fileName = `${cleanSceneName} — ${friendlyModelForFilename} — ${timestamp}.md`;
+    } else {
+        fileName = `${provider}-log-${timestamp}.md`;
+    }
+    
     const filePath = `${logFolder}/${fileName}`;
 
     // Type guard to check if requestData is an object
@@ -614,7 +662,8 @@ async function callAiProvider(
     vault: Vault,
     userPrompt: string,
     subplotName: string | null,
-    commandContext: string
+    commandContext: string,
+    sceneName?: string
 ): Promise<AiProviderResponse> {
     const provider = plugin.settings.defaultAiProvider || 'openai';
     let apiKey: string | undefined;
@@ -669,7 +718,7 @@ async function callAiProvider(
     
 
             const apiResponse: AnthropicApiResponse = await retryWithBackoff(() => 
-                callAnthropicApi(apiKey, modelId, null, userPrompt, 4000)
+                callAnthropicApi(apiKey!, modelId!, null, userPrompt, 4000)
             );
 
             responseDataForLog = apiResponse.responseData;
@@ -697,7 +746,7 @@ async function callAiProvider(
             };
 
             const apiResponse: GeminiApiResponse = await retryWithBackoff(() =>
-                callGeminiApi(apiKey, modelId, null, userPrompt, 4000, 0.7)
+                callGeminiApi(apiKey!, modelId!, null, userPrompt, 4000, 0.7)
             );
 
             responseDataForLog = apiResponse.responseData;
@@ -729,7 +778,7 @@ async function callAiProvider(
     
 
             const apiResponse: OpenAiApiResponse = await retryWithBackoff(() =>
-                callOpenAiApi(apiKey, modelId, null, userPrompt, 4000, 0.7)
+                callOpenAiApi(apiKey!, modelId!, null, userPrompt, 4000, 0.7)
             );
 
             responseDataForLog = apiResponse.responseData;
@@ -742,7 +791,7 @@ async function callAiProvider(
         }
 
     
-        await logApiInteractionToFile(plugin, vault, provider, modelId || 'unknown', requestBodyForLog, responseDataForLog, subplotName, commandContext);
+        await logApiInteractionToFile(plugin, vault, provider, modelId || 'unknown', requestBodyForLog, responseDataForLog, subplotName, commandContext, sceneName);
         return { result: result, modelIdUsed: modelId || 'unknown' };
 
     } catch (error: unknown) {
@@ -762,7 +811,7 @@ async function callAiProvider(
              responseDataForLog = { error: { message: errorMessage, type: (errorMessage.includes('configured')) ? 'plugin_config_error' : 'plugin_execution_error' } };
         }
 
-        await logApiInteractionToFile(plugin, vault, currentProvider, modelId || 'unknown', requestBodyForLog, responseDataForLog, subplotName, commandContext);
+        await logApiInteractionToFile(plugin, vault, currentProvider, modelId || 'unknown', requestBodyForLog, responseDataForLog, subplotName, commandContext, sceneName);
 
         new Notice(`❌ ${errorMessage}`);
 
@@ -938,20 +987,16 @@ async function processWithModal(
     let processedCount = 0;
     let totalToProcess = 0;
     
-    // Calculate total based on mode
+    // Calculate total based on mode - MUST match the processing logic below
     for (const triplet of triplets) {
         const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
         const isFlagged = (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
-        const has1beats = triplet.current.frontmatter?.['1beats'];
-        const has2beats = triplet.current.frontmatter?.['2beats'];
-        const has3beats = triplet.current.frontmatter?.['3beats'];
-        const hasBeats = has1beats && has2beats && has3beats;
         
         if (mode === 'force-all') {
             totalToProcess++;
         } else if (mode === 'force-flagged' && isFlagged) {
             totalToProcess++;
-        } else if (mode === 'unprocessed' && !hasBeats) {
+        } else if (mode === 'unprocessed' && !hasBeenProcessedForBeats(triplet.current.frontmatter)) {
             totalToProcess++;
         } else if (mode === 'smart' && isFlagged) {
             const prev = triplet.prev;
@@ -975,11 +1020,6 @@ async function processWithModal(
         const tripletIdentifier = `${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
         const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
         const isFlagged = (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
-        const has1beats = triplet.current.frontmatter?.['1beats'];
-        const has2beats = triplet.current.frontmatter?.['2beats'];
-        const has3beats = triplet.current.frontmatter?.['3beats'];
-        const hasBeats = has1beats && has2beats && has3beats;
-
         // Determine if we should process this scene based on mode
         let shouldProcess = false;
         if (mode === 'force-all') {
@@ -987,7 +1027,8 @@ async function processWithModal(
         } else if (mode === 'force-flagged') {
             shouldProcess = isFlagged;
         } else if (mode === 'unprocessed') {
-            shouldProcess = !hasBeats;
+            // Skip scenes that have been processed (have BeatsLastUpdated or any beats)
+            shouldProcess = !hasBeenProcessedForBeats(triplet.current.frontmatter);
         } else { // smart mode
             shouldProcess = isFlagged && !plugin.settings.processedBeatContexts.includes(tripletIdentifier);
         }
@@ -996,9 +1037,12 @@ async function processWithModal(
             continue;
         }
 
-        // Update progress
-        const sceneName = `${triplet.current.sceneNumber ?? '?'} - ${triplet.current.file.basename}`;
+        // Update progress - use basename directly (already includes scene number)
+        const sceneName = triplet.current.file.basename;
         modal.updateProgress(processedCount + 1, totalToProcess, sceneName);
+        
+        // For log filename, use the same basename
+        const sceneNameForLog = sceneName;
 
         try {
             const prevBody = triplet.prev ? triplet.prev.body : null;
@@ -1011,7 +1055,7 @@ async function processWithModal(
             const contextPrompt = getActiveContextPrompt(plugin);
             const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
-            const aiResult = await callAiProvider(plugin, vault, userPrompt, null, 'processByManuscriptOrder');
+            const aiResult = await callAiProvider(plugin, vault, userPrompt, null, 'processByManuscriptOrder', sceneNameForLog);
 
             if (aiResult.result) {
                 const parsedBeats = parseGptResult(aiResult.result, plugin);
@@ -1194,7 +1238,9 @@ export async function processBySubplotOrder(
                  const contextPrompt = getActiveContextPrompt(plugin);
                  const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
-                 const aiResult = await callAiProvider(plugin, vault, userPrompt, subplotName, 'processBySubplotOrder');
+                 // Use basename directly (already includes scene number)
+                 const sceneNameForLog = triplet.current.file.basename;
+                 const aiResult = await callAiProvider(plugin, vault, userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog);
 
                  if (aiResult.result) {
                      const parsedBeats = parseGptResult(aiResult.result, plugin);
@@ -1327,7 +1373,9 @@ export async function processBySubplotName(
 
             const contextPrompt = getActiveContextPrompt(plugin);
             const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
-            const aiResult = await callAiProvider(plugin, vault, userPrompt, subplotName, 'processBySubplotOrder');
+            // Use basename directly (already includes scene number)
+            const sceneNameForLog = triplet.current.file.basename;
+            const aiResult = await callAiProvider(plugin, vault, userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog);
 
             if (aiResult.result) {
                 const parsedBeats = parseGptResult(aiResult.result, plugin);
