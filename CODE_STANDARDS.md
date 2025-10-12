@@ -43,6 +43,39 @@ element.innerHTML = trustedContent;
 
 **Why:** Obsidian manages CSS loading/unloading. Inline styles bypass this and can cause conflicts.
 
+### CSS Naming Convention
+✅ **ALL CSS classes MUST use proper prefixes:**
+
+**Required prefixes:**
+- `rt-` for Radial Timeline plugin classes
+- `radial-timeline-` for main container classes
+
+**Examples:**
+```typescript
+// ✅ CORRECT - Proper prefix
+element.addClass('rt-beats-modal');
+element.addClass('rt-gossamer-title');
+element.addClass('rt-hidden');
+
+// ❌ WRONG - No prefix
+element.addClass('beats-modal');
+element.addClass('gossamer-title');
+element.addClass('hidden');
+```
+
+```css
+/* ✅ CORRECT - Proper prefix */
+.rt-beats-modal { ... }
+.rt-gossamer-assembly-modal .rt-gossamer-title { ... }
+.radial-timeline-container { ... }
+
+/* ❌ WRONG - No prefix */
+.beats-modal { ... }
+.gossamer-title { ... }
+```
+
+**Why:** Prevents CSS conflicts with Obsidian core styles and other plugins. Ensures namespace isolation.
+
 ### Network Requests
 ❌ **NEVER use:**
 - `fetch()`
@@ -349,8 +382,9 @@ node code-quality-check.mjs [staged files]
 
 Checks for:
 - innerHTML/outerHTML violations
-- Inline CSS
+- Inline CSS property assignments
 - TypeScript `any` types
+- CSS class names without `rt-` or `radial-timeline-` prefix
 
 ### Build-time Checks
 Runs during `npm run build`:

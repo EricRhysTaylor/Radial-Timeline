@@ -56,7 +56,22 @@ export class BeatsProcessingModal extends Modal {
         const { contentEl, titleEl } = this;
         titleEl.setText('AI Beats Analysis');
         
-        this.showConfirmationView();
+        // If we're already processing (reopening), show progress view
+        if (this.isProcessing) {
+            this.showProgressView();
+        } else {
+            this.showConfirmationView();
+        }
+    }
+
+    /**
+     * Override close() to allow minimizing while processing continues
+     */
+    close(): void {
+        if (this.isProcessing) {
+            new Notice('💡 Processing continues in background. Use command palette to reopen progress window.');
+        }
+        super.close();
     }
 
     private showConfirmationView(): void {
@@ -219,6 +234,10 @@ export class BeatsProcessingModal extends Modal {
         this.isProcessing = true;
         this.abortController = new AbortController();
         
+        // Notify plugin that processing has started
+        this.plugin.activeBeatsModal = this;
+        this.plugin.showBeatsStatusBar(0, 0);
+        
         // Switch to progress view
         this.showProgressView();
         
@@ -239,6 +258,8 @@ export class BeatsProcessingModal extends Modal {
         } finally {
             this.isProcessing = false;
             this.abortController = null;
+            this.plugin.activeBeatsModal = null;
+            this.plugin.hideBeatsStatusBar();
         }
     }
 
@@ -296,6 +317,9 @@ export class BeatsProcessingModal extends Modal {
         this.totalCount = total;
         
         const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+        
+        // Update status bar
+        this.plugin.showBeatsStatusBar(current, total);
         
         if (this.progressBarEl) {
             // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation

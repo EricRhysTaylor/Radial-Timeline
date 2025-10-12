@@ -3,10 +3,12 @@
  */
 import type RadialTimelinePlugin from './main';
 import { buildGossamerPrompt } from './ai/prompts/gossamer';
-import { buildRunFromDefault, GossamerRun, GossamerBeatStatus, normalizeBeatName, zeroOffsetRun } from './utils/gossamer';
+import { buildRunFromDefault, GossamerRun, GossamerBeatStatus, normalizeBeatName, zeroOffsetRun, extractBeatOrder, detectPlotSystem, shiftGossamerHistory } from './utils/gossamer';
 import { Notice, TFile, Vault } from 'obsidian';
 import { callProvider } from './api/providerRouter';
 import { logExchange } from './ai/log';
+import { assembleManuscript, estimateTokens } from './utils/manuscript';
+import { GossamerAssemblyModal } from './view/GossamerAssemblyModal';
 
 type Provider = 'openai' | 'anthropic' | 'gemini';
 
@@ -22,70 +24,51 @@ function getActiveContextPrompt(plugin: RadialTimelinePlugin): string | undefine
   return active?.prompt;
 }
 
-async function logGossamerExchange(
-  plugin: RadialTimelinePlugin,
-  vault: Vault,
-  provider: Provider,
-  modelId: string,
-  requestData: unknown,
-  responseData: unknown,
-  runLabel: string
-): Promise<void> {
-  if (!plugin.settings.logApiInteractions) return;
-  const folder = 'AI';
-  const ts = new Date().toISOString().replace(/[:.]/g, '-');
-  const file = `${folder}/Gossamer-${ts}-${runLabel || 'Run'}.json`;
-  const payload = {
-    provider,
-    modelId,
-    timestamp: new Date().toISOString(),
-    request: requestData,
-    response: responseData,
+// New interface for manuscript analysis response
+interface ManuscriptAnalysisResponse {
+  beats: Array<{
+    beat: string;
+    score: number;
+    location: string;
+    note: string;
+  }>;
+  overall: {
+    summary: string;
   };
-  try {
-    try { await vault.createFolder(folder); } catch {}
-    await vault.create(file, JSON.stringify(payload, null, 2));
-  } catch (e) {
-    console.error('[Gossamer] Failed to write AI log:', e);
-    new Notice('Failed to write Gossamer AI log.');
-  }
 }
 
-function parseAiJson(content: string): GossamerRun | null {
+function parseAiJson(content: string): ManuscriptAnalysisResponse | null {
   try {
-    const objUnknown: unknown = JSON.parse(content);
-    if (!objUnknown || typeof objUnknown !== 'object') return null;
-    const obj = objUnknown as Record<string, unknown>;
-    const beatsRaw = Array.isArray(obj.beats) ? obj.beats as unknown[] : [];
-    const beats = beatsRaw.map((u: unknown) => {
-      const rec = (u && typeof u === 'object') ? u as Record<string, unknown> : {};
-      const beatVal = rec.beat;
-      const scoreVal = rec.score;
-      const notesVal = rec.notes;
-      const statusVal = rec.status as unknown;
-      const status: GossamerBeatStatus = (statusVal === 'present' || statusVal === 'outlineOnly' || statusVal === 'missing') ? statusVal : 'present';
-      return {
-        beat: typeof beatVal === 'string' ? beatVal : String(beatVal ?? ''),
-        score: typeof scoreVal === 'number' ? scoreVal : undefined,
-        notes: typeof notesVal === 'string' ? notesVal : undefined,
-        status
-      };
-    });
-    const overallRaw = (obj.overall && typeof obj.overall === 'object') ? obj.overall as Record<string, unknown> : undefined;
-    const overall = overallRaw ? {
-      summary: typeof overallRaw.summary === 'string' ? overallRaw.summary : undefined,
-      refinements: Array.isArray(overallRaw.refinements) ? (overallRaw.refinements as unknown[]).filter((x): x is string => typeof x === 'string') : undefined,
-      incompleteBeats: Array.isArray(overallRaw.incompleteBeats) ? (overallRaw.incompleteBeats as unknown[]).filter((x): x is string => typeof x === 'string') : undefined,
-    } : undefined;
-    return { beats, overall };
-  } catch {
+    // Try to extract JSON from markdown code blocks if present
+    let jsonStr = content.trim();
+    const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1].trim();
+    }
+
+    const parsed = JSON.parse(jsonStr);
+    
+    // Validate structure
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (!Array.isArray(parsed.beats)) return null;
+    if (!parsed.overall || typeof parsed.overall.summary !== 'string') return null;
+
+    return parsed as ManuscriptAnalysisResponse;
+  } catch (error) {
+    console.error('[Gossamer] Failed to parse AI response:', error);
     return null;
   }
 }
 
-async function persistRunToBeatNotes(plugin: RadialTimelinePlugin, run: GossamerRun, modelId: string, runLabel: string): Promise<void> {
+async function persistRunToBeatNotes(
+  plugin: RadialTimelinePlugin,
+  analysis: ManuscriptAnalysisResponse,
+  modelId: string
+): Promise<void> {
   const files = plugin.app.vault.getMarkdownFiles();
   const byName = new Map<string, TFile>();
+  
+  // Build map of normalized beat names to files
   files.forEach(f => {
     const cache = plugin.app.metadataCache.getFileCache(f);
     const fm = cache?.frontmatter;
@@ -96,24 +79,48 @@ async function persistRunToBeatNotes(plugin: RadialTimelinePlugin, run: Gossamer
   });
 
   const date = new Date().toISOString();
-  const updates = run.beats.map(async b => {
-    const file = byName.get(normalizeBeatName(b.beat));
-    if (!file) return;
+  
+  // Update each beat's Plot note
+  const updates = analysis.beats.map(async beat => {
+    const file = byName.get(normalizeBeatName(beat.beat));
+    if (!file) {
+      console.warn(`[Gossamer] No Plot note found for beat: ${beat.beat}`);
+      return;
+    }
+    
     try {
       await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
         const fm = yaml as Record<string, any>;
-        const n = typeof fm.GossamerLatestRun === 'number' ? fm.GossamerLatestRun + 1 : 1;
-        const entry = { run: n, label: runLabel, score: b.score, notes: b.notes, status: b.status, model: modelId, date };
-        if (!Array.isArray(fm.GossamerRuns)) fm.GossamerRuns = [];
-        fm.GossamerRuns.push(entry);
-        fm.GossamerLatestRun = n;
-        fm[`Gossamer${n}`] = { score: b.score, notes: b.notes, status: b.status, model: modelId, date };
+        
+        // Shift history down (Gossamer1 → Gossamer2, etc.)
+        const shifted = shiftGossamerHistory(fm);
+        Object.assign(fm, shifted);
+        
+        // Set new Gossamer1 with current score
+        fm.Gossamer1 = beat.score;
+        
+        // Set guidance fields (only if location is not empty)
+        if (beat.location && beat.location.trim().length > 0) {
+          fm.GossamerLocation = beat.location;
+        } else {
+          // Clear location if placement is good
+          delete fm.GossamerLocation;
+        }
+        
+        // Always set note
+        fm.GossamerNote = beat.note || '';
+        
+        // Remove old GossamerRuns and GossamerLatestRun fields (legacy cleanup)
+        delete fm.GossamerRuns;
+        delete fm.GossamerLatestRun;
       });
     } catch (e) {
-      console.error('[Gossamer] Failed to persist beat run:', e);
+      console.error(`[Gossamer] Failed to persist beat ${beat.beat}:`, e);
     }
   });
+  
   await Promise.all(updates);
+  new Notice(`Updated ${analysis.beats.length} plot beat notes with Gossamer analysis.`);
 }
 
 const lastRunByPlugin = new WeakMap<RadialTimelinePlugin, GossamerRun>();
@@ -125,48 +132,176 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
 }
 
 export async function runGossamerAnalysis(plugin: RadialTimelinePlugin): Promise<GossamerRun> {
-  const scenes = await plugin.getSceneData();
-  const contextPrompt = getActiveContextPrompt(plugin);
-  const prompt = buildGossamerPrompt(scenes, contextPrompt);
-  const provider = getProvider(plugin);
-  const runLabel = 'Run01';
-
-  let modelId = plugin.settings.openaiModelId || 'gpt-4.1';
-  let requestForLog: unknown = null;
-  let responseForLog: unknown = null;
-  let content: string | null = null;
-
   try {
-    const result = await callProvider(plugin, { userPrompt: prompt, systemPrompt: null, maxTokens: 4000, temperature: 0.7 });
-    modelId = result.modelId;
-    requestForLog = { model: modelId, user: prompt };
-    responseForLog = result.responseData;
-    if (result.success) content = result.content; else throw new Error('Provider call failed');
-  } catch (e) {
-    console.error('[Gossamer] AI call failed, using default:', e);
+    // Get all scenes from sourcePath
+    const scenes = await plugin.getSceneData();
+    const sceneFiles = scenes
+      .filter(s => s.itemType === 'Scene' && s.path)
+      .map(s => plugin.app.vault.getAbstractFileByPath(s.path!))
+      .filter((f): f is TFile => f instanceof TFile);
+
+    if (sceneFiles.length === 0) {
+      new Notice('No scenes found in source path. Please check settings.');
+      return buildRunFromDefault(scenes);
+    }
+
+    // Detect plot system
+    const plotSystem = detectPlotSystem(scenes);
+    const beatOrder = extractBeatOrder(scenes);
+    
+    if (beatOrder.length === 0) {
+      new Notice('No Plot beats found. Please create Plot notes with Class: Plot.');
+      return buildRunFromDefault(scenes);
+    }
+
+    // Open assembly modal
+    const modal = new GossamerAssemblyModal(plugin.app);
+    modal.open();
+
+    // Assemble manuscript with progress updates
+    const manuscript = await assembleManuscript(
+      sceneFiles,
+      plugin.app.vault,
+      (sceneIndex, sceneTitle, totalScenes) => {
+        modal.updateProgress(sceneIndex, sceneTitle, totalScenes, 0);
+      }
+    );
+
+    // Update with final word count
+    modal.updateProgress(
+      manuscript.totalScenes,
+      'Complete',
+      manuscript.totalScenes,
+      manuscript.totalWords
+    );
+
+    // Save manuscript to AI folder
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const manuscriptPath = `AI/Gossamer-Manuscript-${timestamp}.txt`;
+    
+    try {
+      await plugin.app.vault.createFolder('AI');
+    } catch (e) {
+      // Folder might already exist
+    }
+    
+    await plugin.app.vault.create(manuscriptPath, manuscript.text);
+
+    // Show summary and wait for user decision
+    modal.showSummary(
+      manuscript.totalScenes,
+      manuscript.totalWords,
+      plotSystem,
+      beatOrder.length,
+      manuscriptPath
+    );
+
+    const result = await modal.waitForUserDecision();
+
+    if (!result.proceed) {
+      new Notice('Gossamer analysis cancelled.');
+      return buildRunFromDefault(scenes);
+    }
+
+    // User chose to proceed - send to AI
+    new Notice('Sending manuscript to AI... This may take 30-90 seconds.');
+
+    const contextPrompt = getActiveContextPrompt(plugin);
+    const prompt = buildGossamerPrompt(
+      manuscript.text,
+      plotSystem,
+      beatOrder,
+      contextPrompt
+    );
+
+    const provider = getProvider(plugin);
+    let modelId = plugin.settings.openaiModelId || 'gpt-4.1';
+    let requestForLog: unknown = null;
+    let responseForLog: unknown = null;
+    let content: string | null = null;
+
+    try {
+      const result = await callProvider(plugin, {
+        userPrompt: prompt,
+        systemPrompt: null,
+        maxTokens: 8000,
+        temperature: 0.7
+      });
+      
+      modelId = result.modelId;
+      requestForLog = { model: modelId, prompt: 'See Gossamer-Manuscript file' };
+      responseForLog = result.responseData;
+      
+      if (result.success) {
+        content = result.content;
+      } else {
+        throw new Error('Provider call failed');
+      }
+    } catch (e) {
+      console.error('[Gossamer] AI call failed:', e);
+      new Notice('AI analysis failed. Check console for details.');
+      return buildRunFromDefault(scenes);
+    }
+
+    // Parse AI response
+    const analysis = content ? parseAiJson(content) : null;
+    
+    if (!analysis) {
+      new Notice('Failed to parse AI response. Using default template.');
+      return buildRunFromDefault(scenes);
+    }
+
+    // Save AI response
+    const responsePath = `AI/Gossamer-Response-${timestamp}.json`;
+    await plugin.app.vault.create(responsePath, JSON.stringify(analysis, null, 2));
+
+    // Persist to Plot notes
+    await persistRunToBeatNotes(plugin, analysis, modelId);
+
+    // Log exchange
+    await logExchange(plugin, plugin.app.vault, {
+      prefix: 'Gossamer',
+      provider,
+      modelId,
+      request: requestForLog,
+      response: responseForLog,
+      parsed: analysis,
+      label: timestamp
+    });
+
+    // Convert to GossamerRun format for compatibility with view toggle
+    const compatibleRun: GossamerRun = {
+      beats: analysis.beats.map(b => ({
+        beat: b.beat,
+        score: b.score,
+        notes: b.note,
+        status: 'present' as const
+      })),
+      overall: {
+        summary: analysis.overall.summary,
+        refinements: [],
+        incompleteBeats: []
+      }
+    };
+
+    // Store in memory
+    setInMemoryRun(plugin, compatibleRun);
+
+    // Enforce All Scenes base mode, reset rotation, clear search, and enter overlay mode
+    setBaseModeAllScenes(plugin);
+    resetRotation(plugin);
+    plugin.clearSearch();
+    enterGossamerMode(plugin);
+
+    new Notice('Gossamer analysis complete!');
+    return compatibleRun;
+
+  } catch (error) {
+    console.error('[Gossamer] Analysis failed:', error);
+    new Notice('Gossamer analysis failed. See console for details.');
+    const scenes = await plugin.getSceneData();
+    return buildRunFromDefault(scenes);
   }
-
-  let run = content ? parseAiJson(content) : null;
-  if (!run) run = buildRunFromDefault(scenes);
-
-  // Zero-offset first beat to 0
-  run = zeroOffsetRun(run);
-
-  // Persist per-beat history
-  await persistRunToBeatNotes(plugin, run, modelId, runLabel);
-
-  // Log exchange
-  await logExchange(plugin, plugin.app.vault, { prefix: 'Gossamer', provider, modelId, request: requestForLog, response: responseForLog, parsed: run, label: runLabel });
-
-  // Store in memory
-  setInMemoryRun(plugin, run);
-
-  // Enforce All Scenes base mode, reset rotation, clear search, and enter overlay mode
-  setBaseModeAllScenes(plugin);
-  resetRotation(plugin);
-  plugin.clearSearch();
-  enterGossamerMode(plugin);
-  return run;
 }
 
 export function getActiveGossamerRun(plugin: RadialTimelinePlugin): GossamerRun | null {

@@ -419,9 +419,42 @@ async function logApiInteractionToFile(
         if (matches.length >= 3) result.next = matches[2];
         return result;
     };
+    
+    // Extract scene info early for use in title
+    const scenesSummaryForTitle = (() => {
+        if (provider === 'openai' && safeRequestData?.messages && Array.isArray(safeRequestData.messages)) {
+            const userMessage = safeRequestData.messages.find((m: ApiMessage) => m.role === 'user');
+            return extractScenesSummary(userMessage?.content);
+        } else if (provider === 'anthropic' && safeRequestData) {
+            const anthropicMsg = (safeRequestData as any).messages?.[0]?.content;
+            if (typeof anthropicMsg === 'string') return extractScenesSummary(anthropicMsg);
+        } else if (provider === 'gemini') {
+            type GeminiPart = { text?: string };
+            const rd = requestData as unknown;
+            if (rd && typeof rd === 'object' && (rd as Record<string, unknown>).contents) {
+                const contents = (rd as Record<string, unknown>).contents as unknown;
+                if (Array.isArray(contents) && contents[0] && typeof contents[0] === 'object') {
+                    const first = contents[0] as Record<string, unknown>;
+                    const parts = first.parts as unknown;
+                    if (Array.isArray(parts)) {
+                        const arr = parts as GeminiPart[];
+                        const fullPrompt = arr.map(p => p?.text ?? '').join('').trim();
+                        return extractScenesSummary(fullPrompt);
+                    }
+                }
+            }
+        }
+        return { prev: undefined, current: undefined, next: undefined };
+    })();
 
     const providerTitle = provider.charAt(0).toUpperCase() + provider.slice(1);
-    let fileContent = `# ${providerTitle} — ${friendlyModel} API Interaction Log\n\n`;
+    
+    // Format timestamp as readable date-time (e.g., "2025-10-12 14:30:45")
+    const readableTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    
+    // New title format: "Scene Processed — Model — Timestamp"
+    const sceneTitle = scenesSummaryForTitle.current ? `Scene ${scenesSummaryForTitle.current}` : 'Scene Processed';
+    let fileContent = `# ${sceneTitle} — ${friendlyModel} — ${readableTimestamp}\n\n`;
     fileContent += `**Command:** ${commandContext}\n`;
     fileContent += `**Provider:** ${provider}\n`;
     fileContent += `**Model:** ${friendlyModel}\n`;

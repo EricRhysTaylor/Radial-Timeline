@@ -14,6 +14,7 @@ import { createTimelineSVG } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
 import { runGossamerAnalysis, toggleGossamerMode } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
+import { BeatsProcessingModal } from './view/BeatsProcessingModal';
 
 
 // Declare the variable that will be injected by the build process
@@ -83,6 +84,7 @@ export interface Scene {
     // Plot-specific properties  
     itemType?: "Scene" | "Plot"; // Distinguish between Scene and Plot items
     Description?: string; // For Plot beat descriptions
+    "Beat Model"?: string; // Plot system (e.g., "SaveTheCat", "Hero's Journey")
 }
 
 // SceneNumberInfo now imported from constants
@@ -346,6 +348,10 @@ export default class RadialTimelinePlugin extends Plugin {
     
     // Add property to store the latest status counts for completion estimate
     public latestStatusCounts?: Record<string, number>;
+    
+    // Track active beats processing modal and status bar item
+    public activeBeatsModal: BeatsProcessingModal | null = null;
+    private beatsStatusBarItem: HTMLElement | null = null;
 
     // Helper: get all currently open timeline views
     private getTimelineViews(): RadialTimelineView[] {
@@ -661,6 +667,13 @@ export default class RadialTimelinePlugin extends Plugin {
                 if (!this.settings.enableAiBeats) return false; // hide when disabled
                 if (checking) return true;
                 (async () => {
+                // If there's already an active processing modal, just reopen it
+                if (this.activeBeatsModal && this.activeBeatsModal.isProcessing) {
+                    this.activeBeatsModal.open();
+                    new Notice('Reopening active processing session...');
+                    return;
+                }
+                
                 const provider = this.settings.defaultAiProvider || 'openai';
                 let hasKey = true;
                 if (provider === 'anthropic') {
@@ -1114,7 +1127,8 @@ export default class RadialTimelinePlugin extends Plugin {
                     act: plotInfo.validActNumber.toString(),
                     actNumber: plotInfo.validActNumber,
                     itemType: "Plot",
-                    Description: (plotInfo.metadata.Description as string) || ''
+                    Description: (plotInfo.metadata.Description as string) || '',
+                    "Beat Model": (plotInfo.metadata["Beat Model"] as string) || (plotInfo.metadata.BeatModel as string) || undefined
                 });
             });
         });
@@ -2094,8 +2108,40 @@ public createTimelineSVG(scenes: Scene[]) {
         // ... (update logic using latestTotalScenes, etc.) ...
     }
 
+    /**
+     * Show status bar item with beats processing progress
+     */
+    showBeatsStatusBar(current: number, total: number): void {
+        if (!this.beatsStatusBarItem) {
+            this.beatsStatusBarItem = this.addStatusBarItem();
+            this.beatsStatusBarItem.addClass('rt-beats-status-bar');
+            // Make it clickable to reopen the modal
+            this.beatsStatusBarItem.addEventListener('click', () => {
+                if (this.activeBeatsModal) {
+                    this.activeBeatsModal.open();
+                }
+            });
+            this.beatsStatusBarItem.style.cursor = 'pointer';
+            this.beatsStatusBarItem.title = 'Click to view progress';
+        }
+        
+        const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+        this.beatsStatusBarItem.setText(`🔄 AI Beats: ${current}/${total} (${percentage}%)`);
+    }
+    
+    /**
+     * Hide and remove status bar item when processing completes
+     */
+    hideBeatsStatusBar(): void {
+        if (this.beatsStatusBarItem) {
+            this.beatsStatusBarItem.remove();
+            this.beatsStatusBarItem = null;
+        }
+    }
+
     onunload() {
         // Clean up any other resources
+        this.hideBeatsStatusBar();
         // Note: Do NOT detach leaves here - Obsidian handles this automatically
     }
 } // End of RadialTimelinePlugin class

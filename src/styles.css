@@ -1340,6 +1340,80 @@ dominant-baseline: middle;
   line-height: 1.5;
 }
 
+/* Status bar item for active beats processing */
+.rt-beats-status-bar {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  padding: 0 8px;
+  border-radius: 3px;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.rt-beats-status-bar:hover {
+  opacity: 0.8;
+}
+
+/* Gossamer Assembly Modal */
+.rt-gossamer-assembly-modal .rt-gossamer-title {
+  margin-bottom: 20px;
+}
+
+.rt-gossamer-assembly-modal .rt-gossamer-progress {
+  margin-bottom: 20px;
+}
+
+.rt-gossamer-assembly-modal .rt-gossamer-progress-title {
+  margin-bottom: 10px;
+}
+
+.rt-gossamer-assembly-modal .rt-gossamer-progress-status {
+  font-family: var(--font-monospace);
+  padding: 10px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  min-height: 60px;
+}
+
+.rt-gossamer-assembly-modal .rt-gossamer-summary {
+  margin-bottom: 20px;
+}
+
+.rt-gossamer-assembly-modal .rt-gossamer-summary-title {
+  margin-bottom: 15px;
+}
+
+.rt-gossamer-assembly-modal .rt-gossamer-summary-content {
+  font-family: var(--font-monospace);
+  padding: 15px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  line-height: 1.8;
+}
+
+.rt-gossamer-assembly-modal .rt-gossamer-warning {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: var(--background-modifier-error);
+  border-radius: 4px;
+  color: var(--text-error);
+}
+
+.rt-gossamer-assembly-modal .rt-gossamer-buttons {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.rt-gossamer-assembly-modal .rt-gossamer-buttons.rt-hidden {
+  display: none;
+}
+
+.rt-gossamer-assembly-modal .rt-hidden {
+  display: none;
+}
+
 /* Dynamic positioning */
 .radial-timeline-container .dynamic-position {
     position: absolute;

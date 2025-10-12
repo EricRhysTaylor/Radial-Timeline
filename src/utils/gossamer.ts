@@ -149,4 +149,53 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
   return plotBeats.map(title => title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim());
 }
 
+/**
+ * Detect the plot system being used from Beat Model field in Plot notes
+ */
+export function detectPlotSystem(scenes: { itemType?: string; "Beat Model"?: string }[]): string {
+  // Find any Plot note with Beat Model field
+  const plotNote = scenes.find(s => s.itemType === 'Plot' && s["Beat Model"]);
+  
+  if (plotNote && plotNote["Beat Model"]) {
+    return plotNote["Beat Model"];
+  }
+  
+  // Default to SaveTheCat if not found
+  return "SaveTheCat";
+}
+
+/**
+ * Shift Gossamer history down by one (Gossamer1 → Gossamer2, etc.)
+ * Only keeps scores as simple numbers. Returns updated frontmatter.
+ */
+export function shiftGossamerHistory(frontmatter: Record<string, any>): Record<string, any> {
+  const maxHistory = 5;
+  const updated = { ...frontmatter };
+  
+  // Find existing Gossamer scores
+  const existingScores: Record<number, number> = {};
+  for (let i = 1; i <= maxHistory; i++) {
+    const key = `Gossamer${i}`;
+    if (typeof updated[key] === 'number') {
+      existingScores[i] = updated[key];
+    }
+  }
+  
+  // Delete all Gossamer fields (including any beyond maxHistory)
+  for (let i = 1; i <= maxHistory + 5; i++) {
+    delete updated[`Gossamer${i}`];
+  }
+  
+  // Shift down: 1→2, 2→3, 3→4, 4→5
+  Object.entries(existingScores).forEach(([oldIndex, score]) => {
+    const newIndex = parseInt(oldIndex) + 1;
+    if (newIndex <= maxHistory) {
+      updated[`Gossamer${newIndex}`] = score;
+    }
+  });
+  
+  // Gossamer1 will be set by the caller with the new score
+  return updated;
+}
+
 

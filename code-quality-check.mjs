@@ -51,6 +51,50 @@ const ALLOWED_ANY_CONTEXTS = [
   'console.error',
 ];
 
+// CSS class naming pattern - must start with rt- or radial-timeline-
+// Matches: addClass('class-name'), removeClass('class-name'), toggleClass('class-name'), cls: 'class-name'
+const CSS_CLASS_PATTERN = { 
+  pattern: /(?:addClass|removeClass|toggleClass|cls:\s*)[\(\s]['"]([a-z][a-z0-9-]*)['"][\)\s,]/gi, 
+  message: 'CSS class without rt- or radial-timeline- prefix' 
+};
+
+// Allowed class names that don't need the rt- prefix (Obsidian core classes, etc.)
+const ALLOWED_CLASS_NAMES = [
+  // Obsidian core classes
+  'setting-item',
+  'setting-item-control',
+  'setting-item-info',
+  'setting-item-name',
+  'setting-item-description',
+  'modal',
+  'modal-container',
+  'modal-content',
+  'modal-close-button',
+  'workspace-leaf',
+  'view-header',
+  'view-content',
+  // External library classes
+  'cm-',  // CodeMirror prefix
+];
+
+// Check if a CSS class name is allowed (has proper prefix or is in exception list)
+function isAllowedClassName(className) {
+  // Check if it starts with rt- or radial-timeline-
+  if (className.startsWith('rt-') || className.startsWith('radial-timeline-')) {
+    return true;
+  }
+  
+  // Check if it's in the allowed list
+  return ALLOWED_CLASS_NAMES.some(allowed => {
+    if (allowed.endsWith('-')) {
+      // Prefix match (e.g., 'cm-' matches 'cm-editor')
+      return className.startsWith(allowed);
+    }
+    // Exact match
+    return className === allowed;
+  });
+}
+
 // Check if a line with a match should be ignored because it's in the allowlist
 function isInAllowlist(line, pattern) {
   if (ALLOWLIST.some(allowedPattern => line.includes(allowedPattern))) {
@@ -101,6 +145,25 @@ function processFile(filePath) {
           });
         }
       }
+      
+      // Check CSS class naming for TypeScript files (not CSS files)
+      if (isTypeScript && !isInAllowlist(line, CSS_CLASS_PATTERN.pattern)) {
+        const { pattern, message } = CSS_CLASS_PATTERN;
+        let match;
+        // Reset lastIndex for global regex
+        pattern.lastIndex = 0;
+        while ((match = pattern.exec(line)) !== null) {
+          const className = match[1];
+          if (!isAllowedClassName(className)) {
+            hasViolations = true;
+            violations.push({
+              line: lineNumber + 1,
+              content: line.trim(),
+              message: `${message}: '${className}' should be 'rt-${className}'`
+            });
+          }
+        }
+      }
     });
 
     if (hasViolations) {
@@ -148,6 +211,11 @@ function main() {
     console.error('\n\x1b[33mFor TypeScript best practices:\x1b[0m');
     console.error('  - Avoid using the "any" type - use specific types or unknown instead');
     console.error('  - If you must use "any", add a comment explaining why: // SAFE: any type used for <reason>');
+    
+    console.error('\n\x1b[33mFor CSS class naming:\x1b[0m');
+    console.error('  - All CSS class names MUST start with "rt-" or "radial-timeline-"');
+    console.error('  - Example: addClass(\'rt-beats-modal\') NOT addClass(\'beats-modal\')');
+    console.error('  - This prevents conflicts with Obsidian core styles and other plugins');
     
     console.error('\n\x1b[33mIf you believe this is a false positive, you can add a comment:\x1b[0m');
     console.error('  // SAFE: innerHTML used for <reason>');
