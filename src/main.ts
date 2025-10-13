@@ -12,9 +12,11 @@ import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
-import { runGossamerAnalysis, toggleGossamerMode } from './GossamerCommands';
+import { openGossamerScoreEntry, toggleGossamerMode, parseScoresFromClipboard } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { BeatsProcessingModal } from './view/BeatsProcessingModal';
+import { shiftGossamerHistory } from './utils/gossamer';
+import { assembleManuscript } from './utils/manuscript';
 
 
 // Declare the variable that will be injected by the build process
@@ -515,15 +517,95 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // 4. Gossamer analyze plot momentum
+        // 4. Gossamer enter momentum scores
         this.addCommand({
-            id: 'gossamer-analyze-plot-momentum',
-            name: 'Gossamer analyze plot momentum',
+            id: 'gossamer-enter-scores',
+            name: 'Gossamer: Enter momentum scores',
             callback: async () => {
                 try {
-                    await runGossamerAnalysis(this);
+                    await openGossamerScoreEntry(this);
                 } catch (e) {
-                    new Notice('Gossamer analysis failed.');
+                    new Notice('Failed to open Gossamer score entry.');
+                    console.error(e);
+                }
+            }
+        });
+
+        // 4b. Gossamer parse scores from clipboard
+        this.addCommand({
+            id: 'gossamer-parse-clipboard',
+            name: 'Gossamer: Parse scores from clipboard',
+            callback: async () => {
+                try {
+                    const clipboard = await navigator.clipboard.readText();
+                    const scores = parseScoresFromClipboard(clipboard);
+                    
+                    if (scores.size === 0) {
+                        new Notice('No momentum ratings found in clipboard. Expected format: "Beat Name: 42"');
+                        return;
+                    }
+                    
+                    new Notice(`Found ${scores.size} scores in clipboard.`);
+                    await openGossamerScoreEntry(this, scores);
+                } catch (e) {
+                    new Notice('Failed to parse clipboard.');
+                    console.error(e);
+                }
+            }
+        });
+
+        // 4c. Gossamer generate manuscript file
+        this.addCommand({
+            id: 'gossamer-generate-manuscript',
+            name: 'Gossamer: Generate manuscript file',
+            callback: async () => {
+                try {
+                    new Notice('Assembling manuscript...');
+                    
+                    // Get all scenes
+                    const scenes = await this.getSceneData();
+                    
+                    // Deduplicate by path
+                    const uniquePaths = new Set<string>();
+                    const uniqueScenes = scenes.filter(s => {
+                        if (s.itemType === 'Scene' && s.path && !uniquePaths.has(s.path)) {
+                            uniquePaths.add(s.path);
+                            return true;
+                        }
+                        return false;
+                    });
+                    
+                    const sceneFiles = uniqueScenes
+                        .map(s => this.app.vault.getAbstractFileByPath(s.path!))
+                        .filter((f): f is TFile => f instanceof TFile);
+                    
+                    if (sceneFiles.length === 0) {
+                        new Notice('No scenes found in source path.');
+                        return;
+                    }
+                    
+                    // Assemble manuscript
+                    const manuscript = await assembleManuscript(sceneFiles, this.app.vault);
+                    
+                    // Save to AI folder
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const manuscriptPath = `AI/Gossamer-Manuscript-${timestamp}.txt`;
+                    
+                    try {
+                        await this.app.vault.createFolder('AI');
+                    } catch (e) {
+                        // Folder might already exist
+                    }
+                    
+                    await this.app.vault.create(manuscriptPath, manuscript.text);
+                    
+                    // Open the file
+                    await this.app.workspace.openLinkText(manuscriptPath, '', false);
+                    
+                    new Notice(`Manuscript generated: ${manuscript.totalScenes} scenes, ${manuscript.totalWords.toLocaleString()} words. Saved to ${manuscriptPath}`);
+                } catch (e) {
+                    new Notice('Failed to generate manuscript.');
+                    console.error(e);
                 }
             }
         });
@@ -2136,6 +2218,57 @@ public createTimelineSVG(scenes: Scene[]) {
         if (this.beatsStatusBarItem) {
             this.beatsStatusBarItem.remove();
             this.beatsStatusBarItem = null;
+        }
+    }
+
+    /**
+     * Save Gossamer scores to Plot notes with history shifting
+     */
+    async saveGossamerScores(scores: Map<string, number>): Promise<void> {
+        const files = this.app.vault.getMarkdownFiles();
+        let updateCount = 0;
+        
+        for (const [beatTitle, newScore] of scores) {
+            // Find Plot note by title
+            let file: TFile | null = null;
+            for (const f of files) {
+                if (f.basename === beatTitle || f.basename === beatTitle.replace(/^\d+\s+/, '')) {
+                    const cache = this.app.metadataCache.getFileCache(f);
+                    const fm = cache?.frontmatter;
+                    if (fm && (fm.Class === 'Plot' || fm.class === 'Plot')) {
+                        file = f;
+                        break;
+                    }
+                }
+            }
+            
+            if (!file) {
+                console.warn(`[Gossamer] No Plot note found for beat: ${beatTitle}`);
+                continue;
+            }
+            
+            try {
+                await this.app.fileManager.processFrontMatter(file, (yaml) => {
+                    const fm = yaml as Record<string, any>;
+                    
+                    // Shift history down (Gossamer1 → Gossamer2, etc.)
+                    const shifted = shiftGossamerHistory(fm);
+                    Object.assign(fm, shifted);
+                    
+                    // Set new score
+                    fm.Gossamer1 = newScore;
+                    
+                    // Clean up old/deprecated fields
+                    delete fm.GossamerLocation;
+                    delete fm.GossamerNote;
+                    delete fm.GossamerRuns;
+                    delete fm.GossamerLatestRun;
+                });
+                
+                updateCount++;
+            } catch (e) {
+                console.error(`[Gossamer] Failed to update beat ${beatTitle}:`, e);
+            }
         }
     }
 
