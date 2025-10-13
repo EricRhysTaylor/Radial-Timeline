@@ -69,7 +69,7 @@ export class BeatsProcessingModal extends Modal {
      */
     close(): void {
         if (this.isProcessing) {
-            new Notice('💡 Processing continues in background. Use command palette to reopen progress window.');
+            new Notice('Processing continues in background. Use command palette to reopen progress window.');
         }
         super.close();
     }
@@ -118,7 +118,7 @@ export class BeatsProcessingModal extends Modal {
             modesSection,
             'force-all',
             'Force ALL Scenes',
-            'Processes ALL scenes with Status: Complete or Working, ignoring flags and cache. ⚠️ This may be expensive and time-consuming!',
+            'Processes ALL scenes with Status: Complete or Working, ignoring flags and cache. WARNING: This may be expensive and time-consuming!',
             false
         );
 
@@ -149,7 +149,7 @@ export class BeatsProcessingModal extends Modal {
                 
                 if (count > 50) {
                     const warning = countEl.createDiv({ cls: 'rt-beats-warning' });
-                    warning.setText('⚠️ Large batch processing may take significant time and API costs.');
+                    warning.setText('Large batch processing may take significant time and API costs.');
                 }
             } catch (error) {
                 countEl.empty();
@@ -246,14 +246,14 @@ export class BeatsProcessingModal extends Modal {
             
             // Processing completed successfully
             if (!this.abortController.signal.aborted) {
-                this.showCompletionSummary('✅ Processing completed successfully!');
+                this.showCompletionSummary('Processing completed successfully!');
             }
         } catch (error) {
             if (!this.abortController.signal.aborted) {
                 this.addError(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
-                this.showCompletionSummary('❌ Processing stopped due to error');
+                this.showCompletionSummary('Processing stopped due to error');
             } else {
-                this.showCompletionSummary('⚠️ Processing aborted by user or rate limit');
+                this.showCompletionSummary('Processing aborted by user or rate limit');
             }
         } finally {
             this.isProcessing = false;
@@ -303,7 +303,7 @@ export class BeatsProcessingModal extends Modal {
         if (!confirmed) return;
         
         this.abortController.abort();
-        this.statusTextEl?.setText('⚠️ Aborting... Please wait.');
+        this.statusTextEl?.setText('Aborting... Please wait.');
         this.abortButtonEl?.setDisabled(true);
         
         new Notice('Processing aborted by user');
@@ -345,7 +345,7 @@ export class BeatsProcessingModal extends Modal {
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
             const header = this.errorListEl.createDiv({ cls: 'rt-beats-error-header' });
-            header.setText('⚠️ Errors encountered:');
+            header.setText('Errors encountered:');
         }
         
         const errorItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item' });
@@ -362,11 +362,11 @@ export class BeatsProcessingModal extends Modal {
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
             const header = this.errorListEl.createDiv({ cls: 'rt-beats-error-header' });
-            header.setText('⚠️ Issues encountered:');
+            header.setText('Issues encountered:');
         }
         
         const warningItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item rt-beats-warning-item' });
-        warningItem.setText(`ℹ️ ${message}`);
+        warningItem.setText(message);
     }
 
     private showCompletionSummary(statusMessage: string): void {
@@ -396,14 +396,14 @@ export class BeatsProcessingModal extends Modal {
         const successCount = Math.max(0, this.processedCount - this.errorCount);
         summaryStats.createDiv({ 
             cls: 'rt-beats-summary-row',
-            text: `✅ Successfully processed: ${successCount} scene${successCount !== 1 ? 's' : ''}`
+            text: `Successfully processed: ${successCount} scene${successCount !== 1 ? 's' : ''}`
         });
         
         // Error count
         if (this.errorCount > 0) {
             summaryStats.createDiv({ 
                 cls: 'rt-beats-summary-row rt-beats-summary-error',
-                text: `❌ Errors: ${this.errorCount}`
+                text: `Errors: ${this.errorCount}`
             });
         }
         
@@ -411,21 +411,21 @@ export class BeatsProcessingModal extends Modal {
         if (this.warningCount > 0) {
             summaryStats.createDiv({ 
                 cls: 'rt-beats-summary-row rt-beats-summary-warning',
-                text: `ℹ️ Warnings: ${this.warningCount} (scenes skipped due to validation)`
+                text: `Warnings: ${this.warningCount} (scenes skipped due to validation)`
             });
         }
         
         // Total attempted
         summaryStats.createDiv({ 
             cls: 'rt-beats-summary-row',
-            text: `📊 Total attempted: ${this.processedCount} of ${this.totalCount}`
+            text: `Total attempted: ${this.processedCount} of ${this.totalCount}`
         });
         
         // Add tip about resuming
         const remainingScenes = this.totalCount - this.processedCount;
         if (remainingScenes > 0 || this.errorCount > 0) {
             const tipEl = summaryContainer.createDiv({ cls: 'rt-beats-summary-tip' });
-            tipEl.createEl('strong', { text: '💡 Tip: ' });
+            tipEl.createEl('strong', { text: 'Tip: ' });
             tipEl.appendText('Run the command again in "Smart" mode to process remaining or failed scenes. Already-processed scenes will be skipped automatically.');
         }
         
@@ -470,7 +470,7 @@ export class BeatsProcessingModal extends Modal {
         if (!this.abortController) return;
         
         this.abortController.abort();
-        this.statusTextEl?.setText('⚠️ Processing stopped due to error');
+        this.statusTextEl?.setText('Processing stopped due to error');
         this.abortButtonEl?.setDisabled(true);
     }
 }

@@ -645,7 +645,7 @@ async function retryWithBackoff<T>(
             if (isRateLimitError && attempt < maxRetries) {
                 // Exponential backoff: 5s, 10s, 20s (allows rate limit window to reset)
                 const delayMs = baseDelayMs * Math.pow(2, attempt);
-                new Notice(`⏳ Rate limit reached. Waiting ${delayMs / 1000}s before retry (${attempt + 1}/${maxRetries})...`, 3000);
+                new Notice(`Rate limit reached. Waiting ${delayMs / 1000}s before retry (${attempt + 1}/${maxRetries})...`, 3000);
                 await new Promise(resolve => window.setTimeout(resolve, delayMs));
                 continue;
             }
@@ -813,7 +813,7 @@ async function callAiProvider(
 
         await logApiInteractionToFile(plugin, vault, currentProvider, modelId || 'unknown', requestBodyForLog, responseDataForLog, subplotName, commandContext, sceneName);
 
-        new Notice(`❌ ${errorMessage}`);
+        new Notice(`Error: ${errorMessage}`);
 
       return { result: null, modelIdUsed: null };
     }
@@ -835,7 +835,7 @@ function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): { '1be
             if (!section1Match) console.error("[parseGptResult] Couldn't find section starting with '1beats:'");
             if (!section2Match) console.error("[parseGptResult] Couldn't find section starting with '2beats:' after 1beats");
             if (!section3Match) console.error("[parseGptResult] Couldn't find section starting with '3beats:' after 2beats");
-            new Notice('❌ Failed to parse expected 1beats/2beats/3beats structure.');
+            new Notice('Failed to parse expected 1beats/2beats/3beats structure.');
             return null;
         }
         
@@ -865,7 +865,7 @@ function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): { '1be
         
         if (!beats['1beats'].trim() && !beats['2beats'].trim() && !beats['3beats'].trim()) {
              console.error("[parseGptResult] Parsed beats object is effectively empty after trimming check.");
-             new Notice('❌ GPT response parsed but contained no usable beat content.');
+             new Notice('GPT response parsed but contained no usable beat content.');
              return null;
         }
         
@@ -925,7 +925,7 @@ async function updateSceneFile(
         return true;
     } catch (error) {
         console.error(`[updateSceneFile] Error updating file:`, error);
-        new Notice(`❌ Error saving updates to ${scene.file.basename}`);
+        new Notice(`Error saving updates to ${scene.file.basename}`);
         return false;
     }
 }
@@ -1082,9 +1082,9 @@ async function processWithModal(
                                     errorMessage.toLowerCase().includes('too many requests');
             
             if (isRateLimitError) {
-                modal.addError(`⚠️ API RATE LIMIT EXCEEDED - Processing stopped`);
+                modal.addError(`API RATE LIMIT EXCEEDED - Processing stopped`);
                 modal.addError(`Details: ${errorMessage}`);
-                modal.addError(`💡 System retried 3 times with delays (5s, 10s, 20s) but rate limit persists. Anthropic limits: 50 requests/min for Sonnet 4.x. The plugin now waits 1.5s between scenes (40 req/min). Use Resume to continue after the rate limit window resets (~1 minute).`);
+                modal.addError(`System retried 3 times with delays (5s, 10s, 20s) but rate limit persists. Anthropic limits: 50 requests/min for Sonnet 4.x. The plugin now waits 1.5s between scenes (40 req/min). Use Resume to continue after the rate limit window resets (~1 minute).`);
                 modal.abort(); // Trigger abort flag
                 await plugin.saveSettings();
                 throw new Error(`Processing aborted due to rate limit: ${errorMessage}`);
@@ -1159,7 +1159,7 @@ export async function processBySubplotOrder(
 
                 if ((typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes') &&
                     (!(typeof words === 'number') || words <= 0)) {
-                    const msg = `⚠️ Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has BeatsUpdate: Yes but 0 words. Skipping.`;
+                    const msg = `Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has BeatsUpdate: Yes but 0 words. Skipping.`;
                     // Surface to user via Notice; suppress console noise
                     new Notice(msg, 6000);
                 }
@@ -1267,13 +1267,13 @@ export async function processBySubplotOrder(
                  await plugin.saveSettings();
 
         notice.hide();
-         new Notice(`✅ Subplot order processing complete: ${totalProcessedCount}/${totalTripletsAcrossSubplots} triplets processed.`);
+         new Notice(`Subplot order processing complete: ${totalProcessedCount}/${totalTripletsAcrossSubplots} triplets processed.`);
          plugin.refreshTimelineIfNeeded(null);
 
      } catch (error) {
          console.error("[API Beats][processBySubplotOrder] Error during processing:", error);
          notice.hide();
-         new Notice("❌ Error processing subplots. Check console for details.");
+         new Notice("Error processing subplots. Check console for details.");
      }
 }
 
@@ -1401,12 +1401,12 @@ export async function processBySubplotName(
 
         await plugin.saveSettings();
         notice.hide();
-        new Notice(`✅ Subplot “${subplotName}” complete: ${processedCount}/${total} triplets processed.`);
+        new Notice(`Subplot "${subplotName}" complete: ${processedCount}/${total} triplets processed.`);
         plugin.refreshTimelineIfNeeded(null);
     } catch (error) {
         console.error("[API Beats][processBySubplotName] Error during processing:", error);
         notice.hide();
-        new Notice(`❌ Error processing subplot “${subplotName}”. Check console for details.`);
+        new Notice(`Error processing subplot "${subplotName}". Check console for details.`);
     }
 }
 
@@ -1590,6 +1590,6 @@ export async function createTemplateScene(
         }
     } catch (e) {
         console.error('[createTemplateScene] Failed:', e);
-        new Notice('❌ Failed to create template scene. Check console for details.');
+        new Notice('Failed to create template scene. Check console for details.');
     }
 }

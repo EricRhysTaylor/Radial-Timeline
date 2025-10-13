@@ -149,27 +149,195 @@ this.app.workspace.updateOptions();
 
 **Why:** Ensures changes apply to all editors and prevents stale configurations.
 
-### Event Listeners
-✅ **Always register event listeners:**
+### Event Listeners & Lifecycle Management (CRITICAL)
+
+> **Obsidian Component Lifecycle First, AbortController Second**
+> 
+> Use Obsidian's native lifecycle APIs (`registerDomEvent`, `registerEvent`, `registerInterval`) for automatic cleanup. Only use `AbortController` for fetch requests, observers, and workers that Obsidian doesn't manage.
+
+#### ✅ DOM Event Listeners (PRIMARY METHOD)
+
+**ALWAYS use `this.registerDomEvent()`:**
 ```typescript
+// ✅ CORRECT - In Plugin, View, Modal, or SettingsTab
 this.registerDomEvent(element, 'click', (evt) => { ... });
-this.registerEvent(this.app.workspace.on('file-open', (file) => { ... }));
+this.registerDomEvent(svg, 'pointerover', (e) => { ... });
 ```
 
-**Why:** Obsidian automatically cleans up registered listeners on plugin unload.
+**NEVER use raw `addEventListener`:**
+```typescript
+// ❌ WRONG - Memory leak (not cleaned up)
+element.addEventListener('click', (evt) => { ... });
+```
+
+**Why:** `registerDomEvent` is automatically cleaned up when the component (Plugin/View/Modal) unloads. Raw `addEventListener` requires manual cleanup and causes memory leaks.
+
+#### ✅ Workspace Event Listeners
+
+```typescript
+// ✅ CORRECT - Workspace events
+this.registerEvent(this.app.workspace.on('file-open', (file) => { ... }));
+this.registerEvent(this.app.vault.on('delete', (file) => { ... }));
+```
+
+#### ✅ Timers & Intervals
+
+```typescript
+// ✅ CORRECT - Automatically cleaned up
+this.registerInterval(window.setInterval(() => { ... }, 1000));
+
+// ❌ WRONG - Memory leak
+setInterval(() => { ... }, 1000);
+```
+
+#### ✅ Animation Frames
+
+```typescript
+// ✅ CORRECT - With cleanup registration
+const rafId = requestAnimationFrame(() => { ... });
+this.register(() => cancelAnimationFrame(rafId));
+
+// ⚠️ ACCEPTABLE - If one-time and cancelled elsewhere, add comment:
+// SAFE: One-time RAF in view render, cancelled when view unloads
+requestAnimationFrame(() => { ... });
+```
+
+#### ✅ Observers (ResizeObserver, MutationObserver, IntersectionObserver)
+
+```typescript
+// ✅ CORRECT - With cleanup registration
+const observer = new ResizeObserver(() => { ... });
+observer.observe(element);
+this.register(() => observer.disconnect());
+
+// ❌ WRONG - Memory leak
+const observer = new ResizeObserver(() => { ... });
+observer.observe(element);
+// Never disconnected!
+```
+
+#### ✅ Fetch Requests (ABORTCONTROLLER APPROPRIATE)
+
+```typescript
+// ✅ CORRECT - AbortController for fetch
+class MyView extends ItemView {
+    private ctrl = new AbortController();
+
+    onOpen() {
+        fetch(url, { signal: this.ctrl.signal })
+            .then(r => r.json())
+            .then(data => this.render(data))
+            .catch(err => {
+                if (err.name !== 'AbortError') console.error(err);
+            });
+    }
+
+    onClose() {
+        this.ctrl.abort(); // Cancel in-flight requests
+    }
+}
+```
+
+#### ✅ SVG Cleanup (Prevent Detached Nodes)
+
+```typescript
+// ✅ CORRECT - Remove old nodes before re-render
+if (this.svgRoot) {
+    this.svgRoot.remove();
+    this.svgRoot = null;
+}
+this.svgRoot = container.createSvg('svg');
+```
+
+#### ✅ Per-Element State (Use WeakMap)
+
+```typescript
+// ✅ CORRECT - Weak references, auto-collected
+const stateMap = new WeakMap<Element, State>();
+stateMap.set(element, { ... });
+
+// ❌ WRONG - Strong references prevent GC
+const stateMap = new Map<Element, State>();
+```
+
+**Automated Checks:** Run `npm run standards` to detect:
+- Raw `addEventListener` calls
+- `fetch` without `{signal}`  
+- Observers without cleanup
+- Animation frames without cleanup
+- Intervals without `registerInterval`
+
+### Managing Custom Views (Critical Antipattern)
+
+❌ **NEVER store persistent references to views:**
+```typescript
+// ❌ WRONG - Storing view as a property
+export default class MyPlugin extends Plugin {
+  private myView: RadialTimelineView; // DON'T DO THIS
+  private activeView: ItemView; // DON'T DO THIS
+}
+```
+
+✅ **ALWAYS use `getLeavesOfType()` to access views:**
+```typescript
+// ✅ CORRECT - Helper methods that query dynamically
+export default class MyPlugin extends Plugin {
+  // Do not store persistent references to views (per Obsidian guidelines)
+  
+  private getTimelineViews(): RadialTimelineView[] {
+    return this.app.workspace
+      .getLeavesOfType(TIMELINE_VIEW_TYPE)
+      .map(leaf => leaf.view as unknown)
+      .filter((v): v is RadialTimelineView => v instanceof RadialTimelineView);
+  }
+  
+  private getFirstTimelineView(): RadialTimelineView | null {
+    const list = this.getTimelineViews();
+    return list.length > 0 ? list[0] : null;
+  }
+}
+```
+
+**Why:** Obsidian may call the view factory function multiple times. Storing references can lead to stale instances and memory leaks. ([Source](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines#Avoid+managing+references+to+custom+views))
 
 ### Resource Cleanup
-✅ **In `onunload()`:**
-- Clear intervals/timeouts (if not using `window.setTimeout`)
-- Remove any global state
-- Clean up event listeners (if not using `registerEvent/registerDomEvent`)
 
-❌ **DON'T (Critical Antipatterns):**
-- **NEVER call `detachLeavesOfType()` in `onunload()`** - Obsidian handles this automatically
-- Keep references to views or leaves after unload
-- Leave timers running
+> **TL;DR:** Use `register*` methods for automatic cleanup. Only add to `onunload()` what Obsidian doesn't know about.
 
-**Why:** Detaching leaves in `onunload()` can cause issues. Obsidian automatically handles leaf cleanup when plugins are disabled or reloaded. ([Source](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines#Don't+detach+leaves+in+%60onunload%60))
+✅ **Automatic cleanup (preferred):**
+- Use `this.registerDomEvent()` for DOM listeners
+- Use `this.registerEvent()` for workspace events
+- Use `this.registerInterval()` for timers
+- Use `this.register(() => cleanup())` for observers/RAF
+
+✅ **Manual cleanup in `onunload()` (if needed):**
+```typescript
+onunload() {
+    // Only for things Obsidian doesn't manage:
+    this.abortController?.abort(); // fetch requests
+    this.svgLibrary?.dispose();    // third-party libraries
+    // DON'T call detachLeavesOfType() - Obsidian does this
+}
+```
+
+❌ **Critical Antipatterns (DON'T):**
+1. **NEVER call `detachLeavesOfType()` in `onunload()`** - Obsidian handles this automatically
+2. **NEVER store persistent references to views** - Use `getLeavesOfType()` instead  
+3. **NEVER use raw `addEventListener`** - Use `registerDomEvent()` instead
+4. **NEVER leave observers running** - Call `disconnect()` via `this.register()`
+5. **NEVER leave animation frames running** - Cancel via `this.register()`
+
+**Why:** Detaching leaves in `onunload()` causes issues during plugin reload. Obsidian automatically handles leaf cleanup. ([Source](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines#Don't+detach+leaves+in+%60onunload%60))
+
+**Memory Leak Prevention Checklist:**
+- [ ] All `addEventListener` → `registerDomEvent`
+- [ ] All workspace events → `registerEvent`
+- [ ] All timers → `registerInterval`
+- [ ] All observers have `this.register(() => observer.disconnect())`
+- [ ] All RAF have cleanup or `// SAFE:` comment
+- [ ] Old DOM nodes removed before re-render
+- [ ] Per-element state uses `WeakMap`
+- [ ] Third-party libraries have `.dispose()` called
 
 ### Mobile Compatibility
 ✅ **Best practices:**
@@ -392,13 +560,13 @@ Runs during `npm run build`:
 node code-quality-check.mjs src/main.ts
 ```
 
-### Comprehensive Compliance
+### Comprehensive Standards Check
 Manual run:
 ```bash
-npm run compliance
+npm run standards
 ```
 
-Checks **everything** including:
+Runs **both** compliance and code quality checks, including:
 - All Obsidian API violations
 - Security issues (API keys)
 - Manifest consistency
@@ -467,8 +635,7 @@ const normalizedPath = normalizePath(userPath.trim());
 | `npm run dev` | Development build with watch mode |
 | `npm run build` | Production build + quality checks (shows all scripts first) |
 | `npm run check-quality` | Run code quality checks only |
-| `npm run compliance` | Comprehensive Obsidian compliance check |
-| `npm run standards` | Run all compliance + quality checks |
+| `npm run standards` | **Run all compliance + quality checks** (recommended) |
 | `npm run backup` | Build + commit + push |
 | `npm run release` | Full release process |
 | `npm run version` | Bump version and sync manifest files |

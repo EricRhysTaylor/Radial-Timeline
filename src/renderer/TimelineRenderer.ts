@@ -2080,6 +2080,8 @@ export function createTimelineSVG(
             if (isGossamerMode) {
                 // Map 0–100 to a band that aligns with darker grid lines: use innerRadius for 0 and actualOuterRadius for 100
                 const polar = { innerRadius, outerRadius: actualOuterRadius };
+                // Calculate the inner radius of the outer ring (where plot slices begin)
+                const outerRingInnerRadius = ringStartRadii[NUM_RINGS - 1];
                 const run = (plugin as any)._gossamerLastRun || null;
 
                 // Collect actual angles from rendered plot slices (set during outer ring rendering loop above)
@@ -2116,7 +2118,8 @@ export function createTimelineSVG(
                     anglesByBeat.size ? anglesByBeat : undefined,
                     beatPathByName,
                     undefined, // overlayRuns
-                    undefined  // minBand
+                    undefined, // minBand
+                    outerRingInnerRadius
                 );
                 if (layer) svg += layer;
             }

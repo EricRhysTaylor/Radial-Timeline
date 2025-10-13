@@ -564,24 +564,39 @@ export default class RadialTimelinePlugin extends Plugin {
                     // Assemble manuscript
                     const manuscript = await assembleManuscript(sceneFiles, this.app.vault);
                     
-                    // Save to AI folder
+                    if (!manuscript.text || manuscript.text.trim().length === 0) {
+                        new Notice('Manuscript is empty. Check that your scene files have content.');
+                        return;
+                    }
+                    
+                    // Save to AI folder - use .md extension so Obsidian can open it properly
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                    const manuscriptPath = `AI/Manuscript-${timestamp}.txt`;
+                    const manuscriptPath = `AI/Manuscript-${timestamp}.md`;
                     
                     try {
                         await this.app.vault.createFolder('AI');
                     } catch (e) {
-                        // Folder might already exist
+                        // Folder might already exist - ignore error
                     }
                     
-                    await this.app.vault.create(manuscriptPath, manuscript.text);
+                    // Check if file already exists (shouldn't happen with timestamp, but just in case)
+                    const existing = this.app.vault.getAbstractFileByPath(manuscriptPath);
+                    if (existing) {
+                        new Notice(`File ${manuscriptPath} already exists. Try again in a moment.`);
+                        return;
+                    }
                     
-                    // Open the file
-                    await this.app.workspace.openLinkText(manuscriptPath, '', false);
+                    // Create the file
+                    const createdFile = await this.app.vault.create(manuscriptPath, manuscript.text);
+                    
+                    // Open the file in a new tab
+                    const leaf = this.app.workspace.getLeaf('tab');
+                    await leaf.openFile(createdFile);
                     
                     new Notice(`Manuscript generated: ${manuscript.totalScenes} scenes, ${manuscript.totalWords.toLocaleString()} words. Saved to ${manuscriptPath}`);
                 } catch (e) {
-                    new Notice('Failed to generate manuscript.');
+                    const errorMsg = (e as Error)?.message || 'Unknown error';
+                    new Notice(`Failed to generate manuscript: ${errorMsg}`);
                     console.error(e);
                 }
             }
@@ -753,7 +768,7 @@ export default class RadialTimelinePlugin extends Plugin {
                      await processByManuscriptOrder(this, this.app.vault);
                 } catch (error) {
                     console.error("Error running manuscript order beat update:", error);
-                    new Notice("❌ Error during manuscript order update.");
+                    new Notice("Error during manuscript order update.");
                 }
                 })();
                 return true;
@@ -2185,7 +2200,7 @@ public createTimelineSVG(scenes: Scene[]) {
         }
         
         const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
-        this.beatsStatusBarItem.setText(`🔄 AI Beats: ${current}/${total} (${percentage}%)`);
+        this.beatsStatusBarItem.setText(`AI Beats: ${current}/${total} (${percentage}%)`);
     }
     
     /**

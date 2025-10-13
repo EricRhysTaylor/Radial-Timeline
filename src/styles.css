@@ -318,7 +318,7 @@ dominant-baseline: middle;
   line-height: 0;
   dominant-baseline: inherit;
 }
-.settings-separator {
+.rt-settings-separator {
   margin: 1em 0 2em 0;
   border: none;
   border-top: 1px solid var(--background-modifier-border);
@@ -931,6 +931,15 @@ dominant-baseline: middle;
     max-width: 100%;
     flex: 1;
     margin-bottom: 16px;
+}
+
+/* Settings visibility utility classes */
+.rt-settings-visible {
+    display: block;
+}
+
+.rt-settings-hidden {
+    display: none;
 }
 
 /* Dynamic subplot/character colors are set inline in TypeScript - no static CSS needed */
@@ -1681,20 +1690,20 @@ dominant-baseline: middle;
 }
 
 /* Styling for the embedded README container in settings */
-.manuscript-readme-container {
+.rt-manuscript-readme-container {
     padding: 0; 
     margin-top: 15px;
     margin-bottom: 20px;
 }
 
 /* Settings input validation styles */
-.setting-input-success {
+.rt-setting-input-success {
     border-color: #00ff48 !important;
     background-color: rgba(0, 255, 72, 0.1) !important;
     box-shadow: 0 0 0 2px rgba(0, 255, 72, 0.2) !important;
 }
 
-.setting-input-error {
+.rt-setting-input-error {
     border-color: #ff4444 !important;
     background-color: rgba(255, 68, 68, 0.1) !important;
     box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2) !important;
@@ -1729,7 +1738,7 @@ dominant-baseline: middle;
     position: relative;
 }
 
-.source-path-suggestion-item {
+.rt-source-path-suggestion-item {
     padding: 8px 12px;
     cursor: pointer;
     border-bottom: 1px solid var(--background-modifier-border);
@@ -1737,12 +1746,12 @@ dominant-baseline: middle;
     transition: background-color 0.1s ease;
 }
 
-.source-path-suggestion-item:last-child {
+.rt-source-path-suggestion-item:last-child {
     border-bottom: none !important;
 }
 
-.source-path-suggestion-item:hover,
-.source-path-suggestion-item.selected {
+.rt-source-path-suggestion-item:hover,
+.rt-source-path-suggestion-item.selected {
     background-color: var(--background-modifier-hover) !important;
 }
 

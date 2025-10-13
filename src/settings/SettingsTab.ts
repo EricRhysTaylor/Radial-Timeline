@@ -32,6 +32,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _anthropicKeyInput?: HTMLInputElement;
     private _geminiKeyInput?: HTMLInputElement;
     private _openaiKeyInput?: HTMLInputElement;
+    private _aiRelatedElements: HTMLElement[] = []; // Store references to AI-related settings
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app, plugin);
@@ -57,6 +58,19 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
     }
 
+    // Toggle visibility of AI-related settings
+    private toggleAiSettingsVisibility(show: boolean) {
+        this._aiRelatedElements.forEach(el => {
+            if (show) {
+                el.classList.remove('rt-settings-hidden');
+                el.classList.add('rt-settings-visible');
+            } else {
+                el.classList.remove('rt-settings-visible');
+                el.classList.add('rt-settings-hidden');
+            }
+        });
+    }
+
     // Debounced API key validation using zero-cost model list endpoints
     private scheduleKeyValidation(provider: 'anthropic'|'gemini'|'openai') {
         // Clear prior timer
@@ -75,8 +89,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         this._keyValidateTimers[provider] = window.setTimeout(async () => {
             // Remove any old classes
-            inputEl.removeClass('setting-input-success');
-            inputEl.removeClass('setting-input-error');
+            inputEl.removeClass('rt-setting-input-success');
+            inputEl.removeClass('rt-setting-input-error');
 
             try {
                 if (provider === 'anthropic') {
@@ -87,14 +101,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     await fetchOpenAiModels(key);
                 }
                 // Success highlight briefly
-                inputEl.addClass('setting-input-success');
-                window.setTimeout(() => inputEl.removeClass('setting-input-success'), 1200);
+                inputEl.addClass('rt-setting-input-success');
+                window.setTimeout(() => inputEl.removeClass('rt-setting-input-success'), 1200);
             } catch (e) {
                 const msg = e instanceof Error ? e.message : String(e);
                 // Only mark invalid on explicit unauthorized cues; otherwise stay neutral
                 if (/401|unauthorized|invalid/i.test(msg)) {
-                    inputEl.addClass('setting-input-error');
-                    window.setTimeout(() => inputEl.removeClass('setting-input-error'), 1400);
+                    inputEl.addClass('rt-setting-input-error');
+                    window.setTimeout(() => inputEl.removeClass('rt-setting-input-error'), 1400);
                 }
             }
         }, 800);
@@ -121,7 +135,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         container.classList.remove('hidden');
         
         filteredPaths.forEach(path => {
-            const suggestionEl = container.createDiv({ cls: 'source-path-suggestion-item' });
+            const suggestionEl = container.createDiv({ cls: 'rt-source-path-suggestion-item' });
             // Padding, cursor, and border handled by CSS class
             suggestionEl.textContent = path;
             
@@ -138,14 +152,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     container.classList.add('hidden');
                     // Clear existing validation classes and show success feedback
-                    textInput.inputEl.removeClass('setting-input-error');
-                    textInput.inputEl.addClass('setting-input-success');
+                    textInput.inputEl.removeClass('rt-setting-input-error');
+                    textInput.inputEl.addClass('rt-setting-input-success');
                     window.setTimeout(() => {
-                        textInput.inputEl.removeClass('setting-input-success');
+                        textInput.inputEl.removeClass('rt-setting-input-success');
                     }, 1000);
                 } else {
-                    textInput.inputEl.addClass('setting-input-error');
-                    window.setTimeout(() => textInput.inputEl.removeClass('setting-input-error'), 2000);
+                    textInput.inputEl.addClass('rt-setting-input-error');
+                    window.setTimeout(() => textInput.inputEl.removeClass('rt-setting-input-error'), 2000);
                 }
                 // Focus back to input
                 try { textInput.inputEl.focus(); } catch {}
@@ -174,7 +188,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-
+        
+        // Clear AI-related elements array for fresh render
+        this._aiRelatedElements = [];
 
 
         // --- Source Path with Autocomplete --- 
@@ -197,9 +213,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 window.setTimeout(async () => {
                     const isValid = await this.plugin.validateAndRememberPath(this.plugin.settings.sourcePath);
                     if (isValid) {
-                        text.inputEl.addClass('setting-input-success');
+                        text.inputEl.addClass('rt-setting-input-success');
                         window.setTimeout(() => {
-                            text.inputEl.removeClass('setting-input-success');
+                            text.inputEl.removeClass('rt-setting-input-success');
                         }, 2000);
                     }
                 }, 100);
@@ -208,8 +224,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             // Handle value changes
             text.onChange(async (value) => {
                 // Clear any existing validation classes
-                text.inputEl.removeClass('setting-input-success');
-                text.inputEl.removeClass('setting-input-error');
+                text.inputEl.removeClass('rt-setting-input-success');
+                text.inputEl.removeClass('rt-setting-input-error');
                 
                 // Validate and remember path when Enter is pressed or field loses focus
                 if (value.trim()) {
@@ -219,15 +235,15 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                         // SAFE: normalized is from normalizePath() above
                         this.plugin.settings.sourcePath = normalized;
                         await this.plugin.saveSettings();
-                        text.inputEl.addClass('setting-input-success');
+                        text.inputEl.addClass('rt-setting-input-success');
                         window.setTimeout(() => {
-                            text.inputEl.removeClass('setting-input-success');
+                            text.inputEl.removeClass('rt-setting-input-success');
                         }, 1000);
                     } else {
                         // Show visual feedback for invalid paths
-                        text.inputEl.addClass('setting-input-error');
+                        text.inputEl.addClass('rt-setting-input-error');
                         window.setTimeout(() => {
-                            text.inputEl.removeClass('setting-input-error');
+                            text.inputEl.removeClass('rt-setting-input-error');
                         }, 2000);
                     }
                 } else {
@@ -249,7 +265,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
                         if (!value) {
                             this.plugin.settings.targetCompletionDate = undefined;
-                            text.inputEl.removeClass('setting-input-error');
+                            text.inputEl.removeClass('rt-setting-input-error');
                             await this.plugin.saveSettings();
                             return;
                         }
@@ -257,7 +273,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                         const selectedDate = new Date(value + 'T00:00:00');
                         if (selectedDate > today) {
                             this.plugin.settings.targetCompletionDate = value;
-                            text.inputEl.removeClass('setting-input-error');
+                            text.inputEl.removeClass('rt-setting-input-error');
             } else {
                             new Notice('Target date must be in the future.');
                             text.setValue(this.plugin.settings.targetCompletionDate || '');
@@ -305,6 +321,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.enableAiBeats = value;
                     await this.plugin.saveSettings();
+                    // Toggle visibility of AI-related settings
+                    this.toggleAiSettingsVisibility(value);
                     // Refresh timeline(s) to apply visibility changes
                     this.plugin.refreshTimelineIfNeeded(null);
                 }));
@@ -330,9 +348,12 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     });
                     modal.open();
                 }));
+        
+        // Track this element for visibility toggling
+        this._aiRelatedElements.push(contextTemplateSetting.settingEl);
 
         // --- Single model picker ---
-        new Settings(containerEl)
+        const modelPickerSetting = new Settings(containerEl)
             .setName('Model')
             .setDesc('Pick the model you prefer for writing tasks.')
             .addDropdown(dropdown => {
@@ -378,6 +399,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 });
                 (dropdown as any).selectEl?.classList.add('rt-setting-dropdown', 'rt-provider-dropdown');
             });
+        
+        // Track this element for visibility toggling
+        this._aiRelatedElements.push(modelPickerSetting.settingEl);
 
         // Provider sections (for dimming)
         const anthropicSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-anthropic' });
@@ -386,6 +410,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // Keep refs for dimming updates
         this._providerSections = { anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection };
+        
+        // Track provider sections for visibility toggling
+        this._aiRelatedElements.push(anthropicSection, geminiSection, openaiSection);
 
         // Anthropic API Key
         new Settings(anthropicSection)
@@ -449,7 +476,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             .setDesc((() => {
                 const frag = document.createDocumentFragment();
                 const span = document.createElement('span');
-                span.textContent = 'Your OpenAI API key for using ChatGPT AI features. Keys start with “sk-”. ';
+                span.textContent = 'Your OpenAI API key for using ChatGPT AI features.';
                 const link = document.createElement('a');
                 link.href = 'https://platform.openai.com';
                 link.textContent = 'Get key';
@@ -468,11 +495,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     this._openaiKeyInput = text.inputEl;
                     // Basic sanity check: OpenAI secret keys begin with "sk-". Warn if it looks like a project id.
                     const v = value.trim();
-                    text.inputEl.removeClass('setting-input-success');
-                    text.inputEl.removeClass('setting-input-error');
+                    text.inputEl.removeClass('rt-setting-input-success');
+                    text.inputEl.removeClass('rt-setting-input-error');
                     if (v && !v.startsWith('sk-')) {
-                        text.inputEl.addClass('setting-input-error');
-                        new Notice('This does not look like an OpenAI secret key. Keys start with “sk-”.');
+                        text.inputEl.addClass('rt-setting-input-error');
+                        new Notice('This does not look like an OpenAI secret key. Keys start with "sk-".');
                         // Do not run remote validation in this case
                     } else {
                         this.scheduleKeyValidation('openai');
@@ -499,7 +526,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
 
         // <<< ADD THIS Setting block for API Logging Toggle >>>
-        new Settings(containerEl)
+        const apiLoggingSetting = new Settings(containerEl)
             .setName('Log AI interactions to file')
             .setDesc('If enabled, create a new note in the "AI" folder for each AI API request/response.')
             .addToggle(toggle => toggle
@@ -508,7 +535,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     this.plugin.settings.logApiInteractions = value;
                     await this.plugin.saveSettings();
                 }));
+        
+        // Track this element for visibility toggling
+        this._aiRelatedElements.push(apiLoggingSetting.settingEl);
         // <<< END of added Setting block >>>
+        
+        // Set initial visibility state based on current toggle value
+        this.toggleAiSettingsVisibility(this.plugin.settings.enableAiBeats ?? true);
 
         // Debug mode setting removed: console logging only in development builds
 
@@ -518,7 +551,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             .setHeading();
         // Promote visual weight: add divider and spacing
         pubHeading.settingEl.classList.add('rt-section-heading');
-        containerEl.createEl('p', { cls: 'color-section-desc', text: 'Used for completed main plot scenes of the outermost ring. Affects other elements as well.' });
+        containerEl.createEl('p', { cls: 'rt-color-section-desc', text: 'Used for completed scenes, status/stage matrix, act labels and more.' });
         const stageGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
         const stages = Object.entries(this.plugin.settings.publishStageColors);
         stages.forEach(([stage, color]) => {
@@ -580,7 +613,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             .setName('Subplot ring colors')
             .setHeading();
         subplotHeading.settingEl.classList.add('rt-section-heading');
-        containerEl.createEl('p', { cls: 'color-section-desc', text: 'Subplot ring colors used for rings 1 through 16 moving inward.' });
+        containerEl.createEl('p', { cls: 'rt-color-section-desc', text: 'Subplot ring colors used for rings 1 through 16 moving inward.' });
         const subplotGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
         const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
         const subplotColors = ensureArray(this.plugin.settings.subplotColors);
@@ -646,8 +679,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
                     
         // --- Embedded README Section ---
-        containerEl.createEl('hr', { cls: 'settings-separator' });
-        const readmeContainer = containerEl.createDiv({ cls: 'manuscript-readme-container' });
+        containerEl.createEl('hr', { cls: 'rt-settings-separator' });
+        const readmeContainer = containerEl.createDiv({ cls: 'rt-manuscript-readme-container' });
         const readmeMarkdown = typeof EMBEDDED_README_CONTENT !== 'undefined'
             ? EMBEDDED_README_CONTENT
             : 'README content could not be loaded. Please ensure the plugin was built correctly or view the README.md file directly.';

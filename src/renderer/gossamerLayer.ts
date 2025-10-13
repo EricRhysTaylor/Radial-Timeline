@@ -23,7 +23,8 @@ export function renderGossamerLayer(
   anglesByBeat?: Map<string, number>,
   beatPathByName?: Map<string, string>,
   overlayRuns?: Array<{ label?: string; points: { beat: string; score: number }[] }>,
-  minBand?: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] }
+  minBand?: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] },
+  spokeEndRadius?: number
 ): string {
   if (!run) return '';
 
@@ -79,11 +80,12 @@ export function renderGossamerLayer(
       const data = `data-beat="${escapeAttr(name)}" data-score="${String(score)}"${encodedPath ? ` data-path="${escapeAttr(encodedPath)}"` : ''}${run?.meta?.label ? ` data-label="${escapeAttr(run.meta.label)}"` : ''}`;
       const title = `<title>${escapeAttr(`${name}${run?.meta?.label ? ` — ${run.meta.label}` : ''}: ${score}`)}</title>`;
       dots.push(`<circle class="rt-gossamer-dot" cx="${fmt(x)}" cy="${fmt(y)}" r="5" ${data}>${title}</circle>`);
-      // Full y-axis spoke from inner to outer radius at this beat's angle
+      // Spoke from inner to the beginning of the beat slice (or outer radius if not specified)
+      const spokeEnd = spokeEndRadius ?? outerRadius;
       const sx1 = innerRadius * Math.cos(angle);
       const sy1 = innerRadius * Math.sin(angle);
-      const sx2 = outerRadius * Math.cos(angle);
-      const sy2 = outerRadius * Math.sin(angle);
+      const sx2 = spokeEnd * Math.cos(angle);
+      const sy2 = spokeEnd * Math.sin(angle);
       spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`);
     } else {
       if (current.length > 1) {

@@ -12,7 +12,6 @@
 		"prepare": "husky",
 		"check-quality": "node code-quality-check.mjs src/main.ts",
 		"backup": "npm run build && node backup.mjs",
-		"compliance": "node scripts/compliance-check.mjs",
 		"standards": "node scripts/compliance-check.mjs && node code-quality-check.mjs src/main.ts",
 		"scripts": "node show-scripts.mjs"
 	},

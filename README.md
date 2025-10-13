@@ -39,26 +39,26 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 ## Features
 
 - Quick setup. Create a note pre-populated with required metadata (yaml). Duplicate that scene or use other plugins like templater and metadata menu to automate the process.
-- Rotates counterclockwise so act 2 can align under act 1 for readability
-- Supports any plot system (Save The Cat, Hero's Journey) via the yaml class: plot. Plot notes appear as fixed-width slices
 - Shows scene details on hover: title, date, synopsis, subplot, character, overdue and revisions lines
 - Color-codes scenes by status (todo, working, overdue, complete)
 - Opens scene note or plot note on click
-- Color codes currently open scene tabs in the radial timeline
+- Supports any plot system (Save The Cat, Hero's Journey) via the yaml class: plot. Plot notes appear as fixed-width slices
 - Estimates completion date based on remaining todo/working scenes and recent progress rate
-- Labels subplot rings with descriptive titles
+- Headline font used for subplot ring labels in top left quadrant
+- Rotate counterclockwise so act 2 can align under act 1 for readability
+
 
 ## Commands
 
 * Search timeline: keyword search across select metadata. Title, Date, Synopsis, AI Beats, Character & Subplot
 * Clear search: reset all search filters
 * Gossamer view toggle: toggle the Gossamer plot momentum visualization overlay
-* Gossamer analyze plot momentum: run AI analysis of plot momentum across scenes
+* Gossamer enter momentum values
 * Beats update (manuscript order): update AI beat analysis for all scenes in manuscript order
 * Beats update (subplot): update AI beat analysis for scenes in a selected subplot
 * Beats clear cache: clear saved beat results to force a full reprocess (for scenes with BeatsUpdate = yes)
 * Create template note: create a basic template file with frontmatter
-* Open: open the timeline view
+* Open: open the timeline view (or interface button in the command ribbon)
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <div style="text-align: center;">
@@ -151,11 +151,16 @@ Book: Book 1 A New Beginning
 
 <hr>
 
-Plot beat slices (save the cat beats)
+## Plot beats (save the cat beats)
 
-The plugin supports plot structuring using yaml class: plot. These appear as narrow slices on the outermost ring when the "outer ring shows all scenes" setting is enabled. Hover to view details and click to open the plot note.
+The plugin supports plot structuring using yaml class: plot. These appear as narrow slices on the outermost ring when the "outer ring shows all scenes" setting is enabled. Hover to view beat details and click to open the plot note.
 
-Create a note titled "01 opening image" and paste this frontmatter:
+## Gossamer momentum view
+
+This view dims the timeline and displays the momentum values to show how well the manuscript is building tension and excitement. Here, save the cat has 15 beats, offering a good number of points to assess the plot's strength. Use gossamer command generate manuscript, then give it to your AI of choice and ask for a rating between 0 and 100 for each save the cat beat. When I used this in Claude Sonnet 4.5, it provided a detailed analysis with the ratings. You can ask the LLM for a concise list of each rating and copy and paste using the Enter Momentum Scores command.
+
+
+Create a svc beat note titled "1 opening image" and paste this frontmatter:
 
 ```yaml
 ---
@@ -163,14 +168,19 @@ Class: Plot
 Act: 1
 Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
 Beat Model: SaveTheCat
+Gossamer1: 12 #always the most recent score
+Gossamer2: 8 #each successive score will form a second line and range for historical comparison
+Gossamer3: 4
 ---
 ```
 
 <hr>
 
-AI beats analysis
+## AI beats analysis
 
 In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Beats update (manuscript order)" or "Beats update (subplot)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point. Note: if you have run this scene before, be sure to use "Beats clear cache" to process again (prevents unnecessary duplicate API calls).
+
+Note: you can always manually enter these fields and achieve the same effect and avoid using the LLM API. You can also use a web client and produce similar results you can paste into the yaml. It is recommended that you place a spending cap on the API account for your LLM.
 
 ```yaml
 ---
@@ -187,7 +197,7 @@ BeatsUpdate: Yes
 ```
 <hr>
 
-Advanced scene example
+## Advanced scene example
 
 While the plugin only requires a few specific metadata fields to function, your scene notes can contain any other frontmatter you need for your personal writing process. The radial timeline plugin will safely ignore any fields it doesn't use.
 
@@ -251,13 +261,14 @@ The plugin offers several settings to customize its behavior and enable ai featu
 * Source path: set the root folder for scene files (for example, "book 1/scenes"). leave blank to scan the entire vault.
 * Target completion date: optional target date (yyyy-mm-dd). a marker appears on the outer ring.
 * Outer ring shows all scenes: when on, the outer ring combines all subplot scenes and shows beat slices there only. when off, the outer ring shows main plot only and no beat slices are drawn.
-* AI settings for beats analysis: configure openai or anthropic for automated beat generation via commands.
-    * Default ai provider: choose openai or anthropic
-    * Openai settings: api key and model
-    * Anthropic settings: api key and model
-    * Log ai interactions to file: creates notes in an "ai" folder with request/response details
-* Debug mode: enables developer console logging for troubleshooting
+* AI LLM settings for beats analysis: configure model for automated beat generation via commands.
+    * Default ai provider: choose LLM model
+    * Anthropic settings: api key
+    * Gemini settings: api key
+    * Openai settings: api key
+    * Log ai interactions to file: creates notes in an "AI" folder with prompt/request/response details
 * Publishing stage colors: customize colors for publish stage values (zero, author, house, press). each has a reset button.
+* Ring Colors: customize up to 16 rings (after which the colors repeat)
 
 <hr>
 

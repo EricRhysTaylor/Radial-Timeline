@@ -7,6 +7,23 @@ const projectRoot = process.cwd();
 const SRC_DIR = path.join(projectRoot, 'src');
 const ROOT_FILES = [path.join(projectRoot, 'README.md'), path.join(projectRoot, 'manifest.json')];
 
+/*
+ * LIFECYCLE LEAK GUARDS (Obsidian Component Pattern)
+ * 
+ * Obsidian plugins should use Component lifecycle APIs for automatic cleanup:
+ * 
+ * 1. this.registerDomEvent(el, 'event', handler) - NOT addEventListener
+ * 2. this.registerEvent(workspace.on(...)) - for workspace events
+ * 3. this.registerInterval(setInterval(...)) - for timers
+ * 4. this.register(() => cleanup()) - for observers, animation frames, etc.
+ * 5. fetch with AbortController signal + this.register(() => ctrl.abort())
+ * 6. Remove old DOM subtrees before re-render (prevent detached nodes)
+ * 7. Use WeakMap for per-element state (prevent strong references)
+ * 8. Call library.dispose?.() on unload
+ * 
+ * See: https://docs.obsidian.md/Reference/TypeScript+API/Component
+ */
+
 const checks = [
   {
     id: 'innerHTML',
@@ -143,11 +160,68 @@ const checks = [
     severity: 'error',
   },
   {
+    id: 'persistent-view-reference',
+    description: 'Do NOT store persistent references to views as properties. Use getLeavesOfType() instead (antipattern).',
+    // Match property declarations like: private myView: RadialTimelineView or public view: ItemView
+    regex: /(private|public)\s+\w*[Vv]iew\w*:\s*(RadialTimelineView|ItemView|MarkdownView)\s*[;=]/,
+    allowSafeComment: true,
+    severity: 'error',
+  },
+  {
     id: 'normalize-path-missing',
     description: 'User-defined paths should use normalizePath() before assignment to settings.',
     // Match path assignments, but exclude normalizePath() calls and safe variable names
     // The lookahead must account for optional whitespace before the value
     regex: /\.settings\.\w*[Pp]ath\s*=\s*(?!normalizePath\(|[a-zA-Z_]*(?:normaliz|valid|clean|safe)[a-zA-Z_]*\s*[;\)])/,
+    allowSafeComment: true,
+    severity: 'warn',
+  },
+  // LIFECYCLE LEAK GUARDS: Obsidian Component pattern enforcement
+  {
+    id: 'raw-addEventListener',
+    description: 'Use this.registerDomEvent() instead of addEventListener for automatic cleanup (memory leak).',
+    // Match addEventListener calls (will be filtered in runChecks to exclude registerDomEvent contexts)
+    regex: /\.addEventListener\s*\(/,
+    allowSafeComment: true,
+    severity: 'error',
+  },
+  {
+    id: 'fetch-without-signal',
+    description: 'Use fetch with {signal} for abortable requests (memory leak).',
+    // Match fetch calls without signal parameter
+    regex: /\bfetch\s*\([^)]*\)(?!\s*\.|\s*,\s*\{[^}]*signal)/,
+    allowSafeComment: true,
+    severity: 'warn',
+  },
+  {
+    id: 'observer-without-cleanup',
+    description: 'Observers must be disconnected via this.register(() => observer.disconnect()) (memory leak).',
+    // Match observer instantiation without register cleanup nearby
+    regex: /new\s+(ResizeObserver|MutationObserver|IntersectionObserver)\s*\(/,
+    allowSafeComment: true,
+    severity: 'warn',
+  },
+  {
+    id: 'animation-frame-without-cleanup',
+    description: 'Use this.register(() => cancelAnimationFrame(id)) for animation frames (memory leak).',
+    // Match requestAnimationFrame without register cleanup
+    regex: /requestAnimationFrame\s*\(/,
+    allowSafeComment: true,
+    severity: 'warn',
+  },
+  {
+    id: 'interval-without-register',
+    description: 'Use this.registerInterval(setInterval(...)) instead of bare setInterval (memory leak).',
+    // Match setInterval not wrapped in registerInterval
+    regex: /(?<!registerInterval\s*\(\s*)setInterval\s*\(/,
+    allowSafeComment: true,
+    severity: 'warn',
+  },
+  {
+    id: 'svg-innerHTML-reassignment',
+    description: 'Remove old SVG subtree (oldSvg.remove()) before assigning new innerHTML to prevent detached node leaks.',
+    // Match innerHTML assignment in SVG context
+    regex: /svg[^;]*\.innerHTML\s*=/i,
     allowSafeComment: true,
     severity: 'warn',
   },
@@ -205,8 +279,22 @@ function getSuggestion(issue) {
       return "Add: import { Platform } from 'obsidian' to use Platform.isMobile.";
     case 'detach-leaves-in-onunload':
       return "Remove detachLeavesOfType from onunload() - Obsidian automatically detaches leaves when plugin unloads.";
+    case 'persistent-view-reference':
+      return "Remove persistent view property. Instead, use helper methods that call getLeavesOfType() when needed. See: https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines#Avoid+managing+references+to+custom+views";
     case 'normalize-path-missing':
       return "User paths should be normalized: use normalizePath() before assignment, or assign a pre-normalized variable.";
+    case 'raw-addEventListener':
+      return "Replace element.addEventListener('event', handler) with this.registerDomEvent(element, 'event', handler) for automatic cleanup.";
+    case 'fetch-without-signal':
+      return "Add AbortController: const ctrl = new AbortController(); this.register(() => ctrl.abort()); fetch(url, { signal: ctrl.signal }).";
+    case 'observer-without-cleanup':
+      return "Add cleanup: const observer = new ResizeObserver(...); observer.observe(el); this.register(() => observer.disconnect());";
+    case 'animation-frame-without-cleanup':
+      return "Add cleanup: const rafId = requestAnimationFrame(fn); this.register(() => cancelAnimationFrame(rafId));";
+    case 'interval-without-register':
+      return "Replace setInterval(...) with this.registerInterval(setInterval(...)) for automatic cleanup.";
+    case 'svg-innerHTML-reassignment':
+      return "Before innerHTML assignment: if (oldSvg) { oldSvg.remove(); oldSvg = null; } to prevent detached node leaks.";
     default:
       return '';
   }
@@ -235,6 +323,15 @@ function runChecks(filePath, text) {
       const line = lines[i];
       const prevLine = i > 0 ? lines[i - 1] : '';
       if (check.allowSafeComment && (/SAFE:/i.test(line) || /SAFE:/i.test(prevLine))) continue;
+      
+      // Special handling for addEventListener check - skip if part of registerDomEvent call
+      if (check.id === 'raw-addEventListener' && check.regex.test(line)) {
+        // Skip if line contains registerDomEvent (this is the correct pattern)
+        if (/registerDomEvent/.test(line)) continue;
+        // Skip if it's in a comment or string about the correct pattern
+        if (/\/\/.*addEventListener/.test(line) || /['"].*addEventListener.*['"]/.test(line)) continue;
+      }
+      
       if (check.regex.test(line)) {
         issues.push({
           file: filePath,
