@@ -47,7 +47,7 @@ class TextInputModal extends Modal {
         }, 10);
 
         // Handle Enter key
-        inputEl.addEventListener('keydown', (e) => {
+        this.registerDomEvent(inputEl, 'keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 this.submit(inputEl.value);
@@ -176,7 +176,7 @@ export class AiContextModal extends Modal {
         this.textareaEl.placeholder = 'Enter your AI context prompt here...';
         
         // Track changes
-        this.textareaEl.addEventListener('input', () => {
+        this.registerDomEvent(this.textareaEl, 'input', () => {
             const currentTemplate = this.getCurrentTemplate();
             if (currentTemplate && !currentTemplate.isBuiltIn) {
                 this.isDirty = true;
@@ -191,7 +191,7 @@ export class AiContextModal extends Modal {
         const previewText = previewSection.createDiv({ cls: 'rt-ai-context-preview' });
         
         // Update preview on textarea changes
-        this.textareaEl.addEventListener('input', () => {
+        this.registerDomEvent(this.textareaEl, 'input', () => {
             const prompt = this.textareaEl?.value.trim() || '';
             if (prompt) {
                 previewText.textContent = `${prompt}\n\nBefore taking action, prepare an action plan.\n\n[Rest of AI prompt...]`;

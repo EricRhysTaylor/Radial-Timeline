@@ -329,6 +329,9 @@ export class RadialTimelineView extends ItemView {
                 debugContainer.classList.add('visible');
             });
             
+            // Register cleanup for observer
+            this.register(() => settingsObserver.disconnect());
+            
             // Initial visibility check
             debugContainer.classList.remove('debug-container');
             debugContainer.classList.add('visible');
@@ -887,14 +890,26 @@ This is a test scene created to help with initial Radial timeline setup.
                 const scheduleLabelAdjust = () => PlotLabelManager.adjustPlotLabels(svgElement);
                 // Delay to ensure layout is ready for accurate measurements + re-run on visibility/resize
                 let adjustPending = false;
+                let outerRafId: number | null = null;
+                let innerRafId: number | null = null;
                 const debouncedAdjust = () => {
                     if (adjustPending) return;
                     adjustPending = true;
-                    requestAnimationFrame(() => requestAnimationFrame(() => {
-                        scheduleLabelAdjust();
-                        adjustPending = false;
-                    }));
+                    outerRafId = requestAnimationFrame(() => {
+                        innerRafId = requestAnimationFrame(() => {
+                            scheduleLabelAdjust();
+                            adjustPending = false;
+                            outerRafId = null;
+                            innerRafId = null;
+                        });
+                    });
                 };
+                
+                // Register cleanup for RAF IDs
+                this.register(() => {
+                    if (outerRafId !== null) cancelAnimationFrame(outerRafId);
+                    if (innerRafId !== null) cancelAnimationFrame(innerRafId);
+                });
                 debouncedAdjust();
                 const visibilityHandler = () => {
                     if (document.visibilityState === 'visible') debouncedAdjust();
@@ -918,6 +933,8 @@ This is a test scene created to help with initial Radial timeline setup.
                 const allSynopses = Array.from(svgElement.querySelectorAll(".rt-scene-info"));
                 const sceneGroups = Array.from(svgElement.querySelectorAll(".rt-scene-group"));
                 
+                // Track RAF IDs for cleanup
+                const sceneGroupRafIds: number[] = [];
                 
                 // Performance optimization: Process scene groups in chunks to avoid UI blocking
                 const CHUNK_SIZE = 20;
@@ -971,9 +988,15 @@ This is a test scene created to help with initial Radial timeline setup.
                     
                     // Process next chunk if there are more scene groups
                     if (endIdx < sceneGroups.length) {
-                        window.requestAnimationFrame(() => processSceneGroups(endIdx));
+                        const rafId = window.requestAnimationFrame(() => processSceneGroups(endIdx));
+                        sceneGroupRafIds.push(rafId);
                     }
                 };
+                
+                // Register cleanup for RAF IDs
+                this.register(() => {
+                    sceneGroupRafIds.forEach(id => cancelAnimationFrame(id));
+                });
                 
                 // Start processing scene groups in chunks
                 processSceneGroups(0);
@@ -1400,6 +1423,11 @@ This is a test scene created to help with initial Radial timeline setup.
                     rafId = window.requestAnimationFrame(() => onMove(e));
                 });
                 
+                // Register cleanup for hover RAF ID
+                view.register(() => {
+                    if (rafId !== null) cancelAnimationFrame(rafId);
+                });
+                
             })(this);
             // --- end delegated hover ---
             
@@ -1408,10 +1436,20 @@ This is a test scene created to help with initial Radial timeline setup.
                 const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement;
                 if (svg) {
                     // Use DOUBLE requestAnimationFrame to ensure DOM is fully painted
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
+                    let gossamerOuterRafId: number | null = null;
+                    let gossamerInnerRafId: number | null = null;
+                    gossamerOuterRafId = requestAnimationFrame(() => {
+                        gossamerInnerRafId = requestAnimationFrame(() => {
                             this.setupGossamerEventListeners(svg);
+                            gossamerOuterRafId = null;
+                            gossamerInnerRafId = null;
                         });
+                    });
+                    
+                    // Register cleanup for gossamer RAF IDs
+                    this.register(() => {
+                        if (gossamerOuterRafId !== null) cancelAnimationFrame(gossamerOuterRafId);
+                        if (gossamerInnerRafId !== null) cancelAnimationFrame(gossamerInnerRafId);
                     });
                 }
             }

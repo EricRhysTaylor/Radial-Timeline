@@ -1677,7 +1677,7 @@ public createTimelineSVG(scenes: Scene[]) {
             });
         
         // Add keyboard event listener
-        searchInput.inputEl.addEventListener('keydown', (e) => {
+        modal.registerDomEvent(searchInput.inputEl, 'keydown', (e) => {
             if (e.key === 'Enter') {
                 const term = searchInput.getValue().trim();
                 if (term.length >= 3) {
@@ -1932,6 +1932,9 @@ public createTimelineSVG(scenes: Scene[]) {
                     if (!doc.querySelector('parsererror')) {
                         const svgDoc = doc.documentElement;
                         
+                        // Track RAF IDs for cleanup
+                        const rafIds: number[] = [];
+                        
                         // Process elements in chunks to avoid UI blocking (max 100 elements per frame)
                         const processNodes = (nodes: Element[], startIdx: number, callback: () => void) => {
                             const CHUNK_SIZE = 100;
@@ -1956,12 +1959,18 @@ public createTimelineSVG(scenes: Scene[]) {
                             
                             if (endIdx < nodes.length) {
                                 // Process next chunk in next animation frame
-                                window.requestAnimationFrame(() => processNodes(nodes, endIdx, callback));
+                                const rafId = window.requestAnimationFrame(() => processNodes(nodes, endIdx, callback));
+                                rafIds.push(rafId);
                             } else {
                                 // Finished processing all nodes
                                 callback();
                             }
                         };
+                        
+                        // Register cleanup for all RAF IDs
+                        this.register(() => {
+                            rafIds.forEach(id => cancelAnimationFrame(id));
+                        });
                         
                         // Get all element nodes
                         const elementNodes = Array.from(svgDoc.querySelectorAll('*'));
@@ -2190,7 +2199,7 @@ public createTimelineSVG(scenes: Scene[]) {
             this.beatsStatusBarItem = this.addStatusBarItem();
             this.beatsStatusBarItem.addClass('rt-beats-status-bar');
             // Make it clickable to reopen the modal
-            this.beatsStatusBarItem.addEventListener('click', () => {
+            this.registerDomEvent(this.beatsStatusBarItem, 'click', () => {
                 if (this.activeBeatsModal) {
                     this.activeBeatsModal.open();
                 }

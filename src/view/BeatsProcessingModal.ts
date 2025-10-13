@@ -162,7 +162,7 @@ export class BeatsProcessingModal extends Modal {
 
         // Update count when mode changes
         [mode1, mode2, mode3, mode4].forEach(radio => {
-            radio.addEventListener('change', () => updateCount());
+            this.registerDomEvent(radio, 'change', () => updateCount());
         });
 
         // Action buttons
@@ -214,7 +214,7 @@ export class BeatsProcessingModal extends Modal {
         radioEl.checked = isDefault;
         if (isDefault) this.selectedMode = mode;
         
-        radioEl.addEventListener('change', () => {
+        this.registerDomEvent(radioEl, 'change', () => {
             if (radioEl.checked) {
                 this.selectedMode = mode;
             }
