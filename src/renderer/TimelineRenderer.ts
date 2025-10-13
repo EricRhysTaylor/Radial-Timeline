@@ -1075,12 +1075,23 @@ export function createTimelineSVG(
                         })();
 
                         // No separator needed; spacing handled in positioning
+                        
+                        // Get publish stage color for plot slices
+                        const plotStrokeAttr = (() => {
+                            if (scene.itemType === 'Plot') {
+                                const publishStage = scene['Publish Stage'] || 'Zero';
+                                const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
+                                return `stroke="${stageColor}"`;
+                            }
+                            return '';
+                        })();
 
                         svg += `
                         <g class="rt-scene-group" data-item-type="${scene.itemType === 'Plot' ? 'Plot' : 'Scene'}" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(effectiveOuterR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
                             <path id="${sceneId}"
                                   d="${arcPath}" 
                                   fill="${color}" 
+                                  ${plotStrokeAttr}
                                   class="${sceneClasses}"/>
                             ${scene.itemType === 'Plot' ? `` : ``}
 
@@ -2095,6 +2106,16 @@ export function createTimelineSVG(
                     beatPathByName.set(key, s.path);
                 });
 
+                // Map beat names to their publish stage colors for gossamer dots and spokes
+                const publishStageColorByBeat = new Map<string, string>();
+                scenes.forEach(s => {
+                    if (s.itemType !== 'Plot' || !s.title) return;
+                    const key = normalizeBeatName(s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, ''));
+                    const publishStage = s['Publish Stage'] || 'Zero';
+                    const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
+                    publishStageColorByBeat.set(key, stageColor);
+                });
+
                 // Redraw month/act spokes on top so they're visible over scenes
                 const spokesGroup = `<g class="rt-gossamer-spokes">`;
                 let spokesHtml = '';
@@ -2119,7 +2140,8 @@ export function createTimelineSVG(
                     beatPathByName,
                     undefined, // overlayRuns
                     undefined, // minBand
-                    outerRingInnerRadius
+                    outerRingInnerRadius,
+                    publishStageColorByBeat
                 );
                 if (layer) svg += layer;
             }

@@ -24,7 +24,8 @@ export function renderGossamerLayer(
   beatPathByName?: Map<string, string>,
   overlayRuns?: Array<{ label?: string; points: { beat: string; score: number }[] }>,
   minBand?: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] },
-  spokeEndRadius?: number
+  spokeEndRadius?: number,
+  publishStageColorByBeat?: Map<string, string>
 ): string {
   if (!run) return '';
 
@@ -79,14 +80,18 @@ export function renderGossamerLayer(
       const encodedPath = path ? encodeURIComponent(path) : '';
       const data = `data-beat="${escapeAttr(name)}" data-score="${String(score)}"${encodedPath ? ` data-path="${escapeAttr(encodedPath)}"` : ''}${run?.meta?.label ? ` data-label="${escapeAttr(run.meta.label)}"` : ''}`;
       const title = `<title>${escapeAttr(`${name}${run?.meta?.label ? ` — ${run.meta.label}` : ''}: ${score}`)}</title>`;
-      dots.push(`<circle class="rt-gossamer-dot" cx="${fmt(x)}" cy="${fmt(y)}" r="5" ${data}>${title}</circle>`);
+      
+      // Get publish stage color for this beat
+      const stageColor = publishStageColorByBeat?.get(key) || '#7a7a7a';
+      
+      dots.push(`<circle class="rt-gossamer-dot" cx="${fmt(x)}" cy="${fmt(y)}" r="5" style="fill: ${stageColor};" ${data}>${title}</circle>`); // SAFE: inline style used for dynamic per-beat colors based on individual publish stages known only at runtime during SVG generation
       // Spoke from inner to the beginning of the beat slice (or outer radius if not specified)
       const spokeEnd = spokeEndRadius ?? outerRadius;
       const sx1 = innerRadius * Math.cos(angle);
       const sy1 = innerRadius * Math.sin(angle);
       const sx2 = spokeEnd * Math.cos(angle);
       const sy2 = spokeEnd * Math.sin(angle);
-      spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`);
+      spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" style="stroke: ${stageColor};" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`); // SAFE: inline style used for dynamic per-beat colors based on individual publish stages known only at runtime during SVG generation
     } else {
       if (current.length > 1) {
         segments.push(buildPath(current));

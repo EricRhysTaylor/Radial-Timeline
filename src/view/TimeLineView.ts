@@ -448,6 +448,9 @@ export class RadialTimelineView extends ItemView {
         
         this.log(`Adding highlight rectangles for search term: "${this.plugin.searchTerm}" with ${this.plugin.searchResults.size} results`);
         
+        // Check if title tspans exist
+        const allTitleTspans = this.contentEl.querySelectorAll('tspan[data-item-type="title"]');
+        
         // Iterate through all text elements and replace their content
         // This ensures we completely replace any previous search highlighting
         
@@ -570,38 +573,92 @@ export class RadialTimelineView extends ItemView {
             }
         });
         
-        // Also highlight matches in synopsis hover titles
-        // Use the consolidated renderSceneTitleComponents for proper formatting
-        const synopsisTitles = this.contentEl.querySelectorAll('svg .rt-scene-info text.rt-info-text.rt-title-text-main');
-        synopsisTitles.forEach((titleEl: Element) => {
-            const originalText = titleEl.textContent || '';
+        // Highlight matches in title text tspans (scene number and title) - use data-item-type like characters
+        const titleTspans = this.contentEl.querySelectorAll('tspan[data-item-type="title"]');
+        
+        titleTspans.forEach((tspan: Element) => {
+            const originalText = tspan.textContent || '';
             if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
             
-            // Get the fill color for this title
-            const fillColor = (titleEl as SVGTextElement).getAttribute('fill') || undefined;
+            // Title tspans use CSS custom property (--rt-dynamic-color) like characters
+            // Clear content only, preserve tspan element and inline style
+            while (tspan.firstChild) {
+                tspan.removeChild(tspan.firstChild);
+            }
             
-            // Parse and re-render the title with proper structure and highlighting
-            const titleComponents = parseSceneTitleComponents(originalText);
+            const regex = new RegExp(`(${escapedPattern})`, 'gi');
+            regex.lastIndex = 0;
             
-            // Clear existing content
-            while (titleEl.firstChild) titleEl.removeChild(titleEl.firstChild);
+            let lastIndex = 0;
+            let match;
             
-            // Create a fragment for the new content
-            const fragment = document.createDocumentFragment();
-            renderSceneTitleComponents(titleComponents, fragment, searchTerm, fillColor);
+            while ((match = regex.exec(originalText)) !== null) {
+                if (match.index > lastIndex) {
+                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
+                    tspan.appendChild(textBefore);
+                }
+                
+                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                highlightSpan.setAttribute("class", "rt-search-term");
+                // No fill attribute needed; inherits from parent via CSS custom property
+                highlightSpan.textContent = match[0];
+                tspan.appendChild(highlightSpan);
+                
+                lastIndex = match.index + match[0].length;
+            }
             
-            // Append all children from fragment to titleEl
-            while (fragment.firstChild) {
-                titleEl.appendChild(fragment.firstChild);
+            if (lastIndex < originalText.length) {
+                const textAfter = document.createTextNode(originalText.substring(lastIndex));
+                tspan.appendChild(textAfter);
+            }
+        });
+        
+        // Highlight matches in date tspans (like subplot/character approach)
+        const dateTspans = this.contentEl.querySelectorAll('tspan[data-item-type="date"]');
+        
+        dateTspans.forEach((tspan: Element) => {
+            const originalText = tspan.textContent || '';
+            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
+            
+            // Clear previous content (but preserve all attributes including inline styles)
+            // Date uses --rt-date-color CSS custom property like subplots use --rt-dynamic-color
+            while (tspan.firstChild) {
+                tspan.removeChild(tspan.firstChild);
+            }
+            
+            const regex = new RegExp(`(${escapedPattern})`, 'gi');
+            regex.lastIndex = 0;
+            
+            let lastIndex = 0;
+            let match;
+            
+            while ((match = regex.exec(originalText)) !== null) {
+                if (match.index > lastIndex) {
+                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
+                    tspan.appendChild(textBefore);
+                }
+                
+                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                highlightSpan.setAttribute("class", "rt-search-term");
+                // Don't set fill - CSS will inherit from parent via custom property
+                highlightSpan.textContent = match[0];
+                tspan.appendChild(highlightSpan);
+                
+                lastIndex = match.index + match[0].length;
+            }
+            
+            if (lastIndex < originalText.length) {
+                const textAfter = document.createTextNode(originalText.substring(lastIndex));
+                tspan.appendChild(textAfter);
             }
         });
         
         // Also highlight matches in synopsis text blocks
         const synopsisTextElements = this.contentEl.querySelectorAll('svg .rt-synopsis-text text');
         synopsisTextElements.forEach((textEl: Element) => {
-            // Skip metadata rows that contain colored tspans (subplot/character)
-            if (textEl.querySelector('tspan[data-item-type="subplot"], tspan[data-item-type="character"]')) {
-                return; // handled by the per-tspan logic above
+            // NEW: Skip any text element that has tspan children, as they are handled elsewhere.
+            if (textEl.querySelector('tspan')) {
+                return;
             }
 
             const originalText = textEl.textContent || '';
@@ -635,6 +692,45 @@ export class RadialTimelineView extends ItemView {
                 textEl.appendChild(document.createTextNode(originalText.substring(lastIndex)));
             }
         });
+        
+        // --- START NEW LOGIC ---
+        // Target all tspans that do NOT have a data-item-type to apply highlighting
+        // This is safer than the text-level approach and respects mixed-color lines
+        const unhandledTspans = this.contentEl.querySelectorAll('svg .rt-synopsis-text text tspan:not([data-item-type])');
+        unhandledTspans.forEach((tspan: Element) => {
+            const originalText = tspan.textContent || '';
+            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
+
+            // Preserve existing fill color from the tspan itself
+            const fillColor = (tspan as SVGTSpanElement).getAttribute('fill') || 'inherit';
+
+            // Clear existing content
+            while (tspan.firstChild) tspan.removeChild(tspan.firstChild);
+
+            // Apply highlighting
+            const regex = new RegExp(`(${escapedPattern})`, 'gi');
+            let lastIndex = 0;
+            let match;
+
+            while ((match = regex.exec(originalText)) !== null) {
+                if (match.index > lastIndex) {
+                    tspan.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
+                }
+
+                const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                highlightSpan.setAttribute('class', 'rt-search-term');
+                if (fillColor) highlightSpan.setAttribute('fill', fillColor);
+                highlightSpan.textContent = match[0];
+                tspan.appendChild(highlightSpan);
+
+                lastIndex = match.index + match[0].length;
+            }
+
+            if (lastIndex < originalText.length) {
+                tspan.appendChild(document.createTextNode(originalText.substring(lastIndex)));
+            }
+        });
+        // --- END NEW LOGIC ---
         
         // Check for scene groups that should be highlighted
         const allSceneGroups = this.contentEl.querySelectorAll('.rt-scene-group');
@@ -754,10 +850,10 @@ This is a test scene created to help with initial Radial timeline setup.
                 const folderExists = !!this.plugin.app.vault.getAbstractFileByPath(sourcePath);
                 if (folderExists) {
                     // Folder exists, just no scenes inside it
-                    messageText = `No scene files were found in “${sourcePath}”.`;
+                    messageText = `No scene files were found in "${sourcePath}".`;
                 } else {
                     // Folder path set but doesn't exist yet
-                    messageText = `The folder “${sourcePath}” does not exist in your vault yet.`;
+                    messageText = `The folder "${sourcePath}" does not exist in your vault yet.`;
                 }
                 messageText += " Would you like to create a demonstration scene note with example YAML front-matter?";
             }

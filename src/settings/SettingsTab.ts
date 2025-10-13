@@ -142,7 +142,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             // Hover effect handled by CSS :hover pseudo-class
             
             // Click to select
-            this.registerDomEvent(suggestionEl, 'click', async () => {
+            this.plugin.registerDomEvent(suggestionEl, 'click', async () => {
                 textInput.setValue(path);
                 // Validate and remember; only save the setting if valid
                 const ok = await this.plugin.validateAndRememberPath(path);
@@ -577,7 +577,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const colorInput = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
             if (colorInput) colorInput.classList.add('rt-hidden-color-input');
             const swatchEl = control.createDiv({ cls: `rt-swatch-trigger rt-stage-${stage}` });
-            this.registerDomEvent(swatchEl, 'click', () => {
+            this.plugin.registerDomEvent(swatchEl, 'click', () => {
                 colorInput?.click();
             });
             const setting = new Settings(control)
@@ -643,7 +643,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const colorInput2 = control.querySelector('input[type="color"]:last-of-type') as HTMLInputElement | null;
             if (colorInput2) colorInput2.classList.add('rt-hidden-color-input');
             const swatchEl2 = control.createDiv({ cls: `rt-swatch-trigger rt-subplot-${i}` });
-            this.registerDomEvent(swatchEl2, 'click', () => {
+            this.plugin.registerDomEvent(swatchEl2, 'click', () => {
                 colorInput2?.click();
             });
             const setting = new Settings(control)

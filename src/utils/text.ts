@@ -64,19 +64,25 @@ export function renderSceneTitleComponents(
   searchTerm?: string,
   titleColor?: string
 ): void {
-  const container = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-  fragment.appendChild(container);
+  // Don't use a container tspan - add elements directly to fragment as siblings
+  // This prevents the date from inheriting title styles
   if (title.sceneNumber) {
     const num = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
     num.classList.add('rt-scene-title-bold');
-    if (titleColor) num.setAttribute('fill', titleColor);
+    num.setAttribute("data-item-type", "title");
+    if (titleColor) {
+      (num as SVGTSpanElement).style.setProperty('--rt-dynamic-color', titleColor);
+    }
     num.textContent = `${title.sceneNumber} `;
-    container.appendChild(num);
+    fragment.appendChild(num);
   }
   const main = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
   main.classList.add('rt-scene-title-bold');
-  if (titleColor) main.setAttribute('fill', titleColor);
-  container.appendChild(main);
+  main.setAttribute("data-item-type", "title");
+  if (titleColor) {
+    (main as SVGTSpanElement).style.setProperty('--rt-dynamic-color', titleColor);
+  }
+  fragment.appendChild(main);
   if (searchTerm && title.title) {
     const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
     let last = 0;
@@ -85,7 +91,7 @@ export function renderSceneTitleComponents(
       if (m.index > last) main.appendChild(document.createTextNode(title.title.slice(last, m.index)));
       const hl = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
       hl.setAttribute('class', 'rt-search-term');
-      if (titleColor) hl.setAttribute('fill', titleColor);
+      // No fill attribute; inherit from parent via --rt-title-color
       hl.textContent = m[0];
       main.appendChild(hl);
       last = m.index + m[0].length;
@@ -95,10 +101,18 @@ export function renderSceneTitleComponents(
     main.textContent = title.title;
   }
   if (title.date) {
-    fragment.appendChild(document.createTextNode('    '));
+    // Add spacing before date
+    const spacer = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+    spacer.textContent = '    ';
+    fragment.appendChild(spacer);
+    
+    // Create date tspan with EXACT same pattern as characters
     const dateT = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
     dateT.setAttribute('class', 'rt-date-text');
-    if (titleColor) dateT.setAttribute('fill', titleColor);
+    dateT.setAttribute('data-item-type', 'date');
+    
+    // Use EXACT same pattern as characters: --rt-dynamic-color
+    (dateT as SVGTSpanElement).style.setProperty('--rt-dynamic-color', '#888888');
     
     // Apply search highlighting to date if searchTerm provided
     if (searchTerm && title.date) {
@@ -109,7 +123,7 @@ export function renderSceneTitleComponents(
         if (m.index > last) dateT.appendChild(document.createTextNode(title.date.slice(last, m.index)));
         const hl = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         hl.setAttribute('class', 'rt-search-term');
-        if (titleColor) hl.setAttribute('fill', titleColor);
+        // Don't set fill attribute - will inherit from parent's CSS custom property
         hl.textContent = m[0];
         dateT.appendChild(hl);
         last = m.index + m[0].length;

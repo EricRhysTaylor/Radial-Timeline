@@ -66,6 +66,8 @@ export default class SynopsisManager {
    * @param titleColor The color for the title
    */
   private addTitleContent(titleContent: string, titleTextElement: SVGTextElement, titleColor: string): void {
+    // Removed verbose debug logging
+    
     if (titleContent.includes('<tspan')) {
       // For pre-formatted HTML with tspans, parse safely
       const parser = new DOMParser();
@@ -97,6 +99,14 @@ export default class SynopsisManager {
             svgTspan.setAttribute(attr.name, attr.value);
           });
           
+          // Copy inline styles (critical for CSS custom properties like --rt-date-color)
+          if (tspan instanceof HTMLElement || tspan instanceof SVGElement) {
+            const style = (tspan as HTMLElement).getAttribute('style');
+            if (style) {
+              svgTspan.setAttribute('style', style);
+            }
+          }
+          
           svgTspan.textContent = tspan.textContent;
           titleTextElement.appendChild(svgTspan);
           
@@ -115,6 +125,11 @@ export default class SynopsisManager {
       const titleComponents = parseSceneTitleComponents(titleContent);
       renderSceneTitleComponents(titleComponents, fragment, undefined, titleColor);
       titleTextElement.appendChild(fragment);
+      
+      // Debug: Check what was actually added to the parent
+      const addedTspans = titleTextElement.querySelectorAll('tspan[data-item-type="title"]');
+      addedTspans.forEach((tspan, i) => {
+      });
     }
   }
   
@@ -202,10 +217,11 @@ export default class SynopsisManager {
     synopsisTextGroup.setAttribute("class", "rt-synopsis-text");
     containerGroup.appendChild(synopsisTextGroup);
     
-    // Add the title with publish stage color - at origin (0,0)
+    // Add the title at origin (0,0) - stage color moved to child tspans
     const titleContent = decodedContentLines[0];
     const titleTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    titleTextElement.setAttribute("class", `rt-info-text rt-title-text-main ${stageClass}`);
+    // Do NOT apply the stage class on the parent text; it forces fill !important on children
+    titleTextElement.setAttribute("class", `rt-info-text rt-title-text-main`);
     titleTextElement.setAttribute("x", "0");
     titleTextElement.setAttribute("y", "0");
     titleTextElement.setAttribute("text-anchor", "start");

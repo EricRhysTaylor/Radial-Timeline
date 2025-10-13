@@ -65,11 +65,12 @@
   --rt-subplot-colors-15: #8B4513; /* Ring 16 default (Brown) */
 }
 
-/* ADD stage-specific fill rules for title text – keep close to highlight-rect definitions so colours are defined in one place */
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)) !important; }
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important; }
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)) !important; }
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)) !important; }
+/* Stage-specific fill should be applied to the bold title tspans, not the parent text.
+   This mirrors subplot/character behavior and prevents inheritance issues for the date tspan. */
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-scene-title-bold.rt-title-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)) !important; }
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-scene-title-bold.rt-title-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important; }
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-scene-title-bold.rt-title-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)) !important; }
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-scene-title-bold.rt-title-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)) !important; }
 
 /* styles.css */
 .radial-timeline-container {
@@ -106,6 +107,11 @@
   cursor: default;
   background-color: transparent;
   fill: none;
+}
+
+/* In Gossamer mode, ensure default cursor unless over beat elements */
+.radial-timeline-svg[data-gossamer-mode="true"] {
+  cursor: default;
 }
 
 /* Measurement text node used only for width measurement; keep off-layout and invisible */
@@ -209,7 +215,7 @@
 .rt-gossamer-line { stroke: var(--rt-gossamer-stroke, #7a7a7a); stroke-width: 3; fill: none; }
 /* Phase 2: dots (10px diameter) */
 .rt-gossamer-dot { 
-  fill: var(--rt-gossamer-stroke, #7a7a7a); 
+  /* fill color set inline via publish stage color */
   r: 6px; /* 10px diameter */
   pointer-events: all; 
   cursor: pointer; 
@@ -217,19 +223,22 @@
 }
 .rt-gossamer-dot:hover,
 .rt-gossamer-dot.rt-hover { 
-  fill: var(--rt-gossamer-stroke, #7a7a7a);
+  fill: white !important; /* Turn white on hover, override inline styles */
   stroke: white;
   stroke-width: 2px;
 }
 .rt-gossamer-line.rt-gossamer-overlay { stroke-dasharray: 6,4; opacity: 0.6; }
 .rt-gossamer-band { fill: var(--rt-gossamer-stroke, #7a7a7a); opacity: 0.12; stroke: none; }
 .rt-gossamer-spoke { 
-  stroke: #b0b0b0; /* Light gray for beat spokes */
+  /* stroke color set inline via publish stage color */
   stroke-width: 1px; 
   stroke-dasharray: none;
+  pointer-events: all; /* Enable mouse events on spokes */
+  cursor: pointer; /* Show pointer cursor on spokes */
 }
+.rt-gossamer-spoke:hover,
 .rt-gossamer-spoke.rt-gossamer-spoke-hover {
-  stroke: white; /* Turn white on dot hover */
+  stroke: white !important; /* Turn white on hover, override inline styles */
   stroke-width: 2px;
 }
 .rt-gossamer-grid-spoke {
@@ -244,6 +253,12 @@
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Plot"]:hover .rt-scene-path {
   fill: #ffffff !important;
   opacity: 1 !important;
+  stroke: white !important; /* Turn stroke white on hover */
+}
+
+/* Plot slices in Gossamer mode: show cursor pointer and use stage color for stroke */
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Plot"] .rt-scene-path {
+  cursor: pointer;
 }
 .radial-timeline-container .rt-scene-title.rt-faded {
   opacity: 0.2;
@@ -494,31 +509,22 @@ dominant-baseline: middle;
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 8px;
-  /* Fill will be set by stage-specific classes (rt-title-stage-*) */
+  /* No parent fill; child tspans own their colors via custom properties */
 }
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-date-text {
-  font-weight: 700 !important;
-  font-size: 18px !important;
-  fill: var(--text-muted) !important;
-  stroke: white !important;
-  stroke-width: 2.5px !important;
-  letter-spacing: 0.05em !important;
-  text-transform: uppercase !important;
-  vertical-align: super !important;
-  baseline-shift: .3em !important;
-  paint-order: stroke !important;
+/* Title tspans use EXACT same pattern as characters */
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=title] {
+  fill: var(--rt-dynamic-color, var(--text-normal)) !important;
+  stroke: white;
+  stroke-width: 0.07em;
+  paint-order: stroke;
 }
 
-/* Ensure search highlighting inside date text maintains date styling */
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-date-text tspan.rt-search-term {
-  font-weight: 700 !important;
-  font-size: inherit !important;
-  fill: var(--text-muted) !important;
-  stroke: var(--rt-color-search) !important;
-  stroke-width: var(--rt-search-stroke-width, 0.2em) !important;
-  letter-spacing: inherit !important;
-  text-transform: inherit !important;
-  paint-order: stroke !important;
+/* Date tspans use EXACT same pattern as characters */
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=date] {
+  fill: var(--rt-dynamic-color, #888888) !important;
+  stroke: white;
+  stroke-width: 0.07em;
+  paint-order: stroke;
 }
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-secondary {
   font-size: 18px;
@@ -1560,18 +1566,9 @@ dominant-baseline: middle;
     --title-color: var(--text-normal);
 }
 
-.rt-date-text {
-    fill: var(--text-muted) !important;
-    font-weight: 700 !important;
-    font-size: 18px !important;
-    stroke: white !important;
-    stroke-width: 2.5px !important;
-    letter-spacing: 0.05em !important;
-    text-transform: uppercase !important;
-    vertical-align: super !important;
-    baseline-shift: .3em !important;
-    paint-order: stroke !important;
-}
+/* Date text styling is handled by the more specific rule at line 499 
+   (.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-date-text)
+   Removed duplicate rule here to avoid conflicts */
 
 /* Info container styles */
 .rt-info-container {
