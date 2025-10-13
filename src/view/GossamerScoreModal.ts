@@ -5,6 +5,7 @@ import { Modal, App, ButtonComponent, Notice, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { Scene } from '../main';
 import { normalizeBeatName } from '../utils/gossamer';
+import { parseScoresFromClipboard } from '../GossamerCommands';
 
 interface BeatScoreEntry {
   beatTitle: string; // Full title like "1 Opening Image" or "5 Theme Stated 5%"
@@ -19,18 +20,15 @@ export class GossamerScoreModal extends Modal {
   private plugin: RadialTimelinePlugin;
   private plotBeats: Scene[];
   private entries: BeatScoreEntry[] = [];
-  private parsedScores?: Map<string, number>; // Optional pre-filled scores from clipboard
 
   constructor(
     app: App,
     plugin: RadialTimelinePlugin,
-    plotBeats: Scene[],
-    parsedScores?: Map<string, number>
+    plotBeats: Scene[]
   ) {
     super(app);
     this.plugin = plugin;
     this.plotBeats = plotBeats;
-    this.parsedScores = parsedScores;
   }
 
   onOpen(): void {
@@ -88,16 +86,6 @@ export class GossamerScoreModal extends Modal {
       entry.inputEl = new TextComponent(inputRow);
       entry.inputEl.inputEl.addClass('rt-gossamer-score-input');
       entry.inputEl.setPlaceholder('0-100');
-      
-      // Pre-fill if we have parsed scores
-      if (this.parsedScores) {
-        const normalized = normalizeBeatName(entry.beatName);
-        const parsedScore = this.parsedScores.get(normalized);
-        if (parsedScore !== undefined) {
-          entry.inputEl.setValue(parsedScore.toString());
-          entry.newScore = parsedScore;
-        }
-      }
 
       // Validate on input
       entry.inputEl.onChange((value) => {
@@ -122,13 +110,22 @@ export class GossamerScoreModal extends Modal {
     const buttonContainer = contentEl.createDiv('rt-gossamer-score-buttons');
 
     new ButtonComponent(buttonContainer)
+      .setButtonText('Paste from Clipboard')
+      .onClick(async () => {
+        await this.pasteFromClipboard();
+      });
+
+    // Right-side button group
+    const rightButtons = buttonContainer.createDiv('rt-gossamer-score-buttons-right');
+
+    new ButtonComponent(rightButtons)
       .setButtonText('Save Scores')
       .setCta()
       .onClick(async () => {
         await this.saveScores();
       });
 
-    new ButtonComponent(buttonContainer)
+    new ButtonComponent(rightButtons)
       .setButtonText('Cancel')
       .onClick(() => {
         this.close();
@@ -162,21 +159,62 @@ export class GossamerScoreModal extends Modal {
       };
 
       if (fm) {
-        // Get current score
+        // Get current score (handle both string and number)
         if (typeof fm.Gossamer1 === 'number') {
           entry.currentScore = fm.Gossamer1;
+        } else if (typeof fm.Gossamer1 === 'string') {
+          const parsed = parseInt(fm.Gossamer1);
+          if (!isNaN(parsed)) {
+            entry.currentScore = parsed;
+          }
         }
 
-        // Get history
+        // Get history (handle both string and number)
         for (let i = 2; i <= 5; i++) {
           const key = `Gossamer${i}`;
           if (typeof fm[key] === 'number') {
             entry.history.push(fm[key]);
+          } else if (typeof fm[key] === 'string') {
+            const parsed = parseInt(fm[key]);
+            if (!isNaN(parsed)) {
+              entry.history.push(parsed);
+            }
           }
         }
       }
 
       this.entries.push(entry);
+    }
+  }
+
+  private async pasteFromClipboard(): Promise<void> {
+    try {
+      const clipboard = await navigator.clipboard.readText();
+      const parsedScores = parseScoresFromClipboard(clipboard);
+      
+      if (parsedScores.size === 0) {
+        new Notice('No scores found in clipboard. Expected format: "Beat Name: 42"');
+        return;
+      }
+
+      // Populate input fields with parsed scores
+      let matchCount = 0;
+      for (const entry of this.entries) {
+        const normalized = normalizeBeatName(entry.beatName);
+        const score = parsedScores.get(normalized);
+        
+        if (score !== undefined && entry.inputEl) {
+          entry.inputEl.setValue(score.toString());
+          entry.newScore = score;
+          entry.inputEl.inputEl.removeClass('rt-input-error');
+          matchCount++;
+        }
+      }
+
+      new Notice(`Populated ${matchCount} scores from clipboard.`);
+    } catch (error) {
+      console.error('[Gossamer] Failed to paste from clipboard:', error);
+      new Notice('Failed to read clipboard.');
     }
   }
 

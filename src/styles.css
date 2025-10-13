@@ -1414,6 +1414,95 @@ dominant-baseline: middle;
   display: none;
 }
 
+/* Gossamer Score Modal */
+.rt-gossamer-score-modal {
+  padding: 20px;
+}
+
+.rt-gossamer-score-title {
+  margin-bottom: 10px;
+}
+
+.rt-gossamer-score-subtitle {
+  margin-bottom: 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.rt-gossamer-scores-container {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.rt-gossamer-score-entry {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: var(--background-primary);
+  border-radius: 4px;
+}
+
+.rt-gossamer-beat-title {
+  font-weight: 600;
+  margin-bottom: 5px;
+  font-family: var(--font-monospace);
+}
+
+.rt-gossamer-current-score {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.rt-gossamer-score-history {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-bottom: 8px;
+  font-family: var(--font-monospace);
+}
+
+.rt-gossamer-input-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rt-gossamer-input-label {
+  font-size: 13px;
+}
+
+.rt-gossamer-score-input {
+  width: 80px;
+}
+
+.rt-gossamer-score-input.rt-input-error {
+  border-color: var(--text-error);
+}
+
+.rt-gossamer-range-note {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.rt-gossamer-score-buttons {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rt-gossamer-score-buttons-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 /* Dynamic positioning */
 .radial-timeline-container .dynamic-position {
     position: absolute;

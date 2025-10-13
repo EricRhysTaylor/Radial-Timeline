@@ -12,7 +12,7 @@ import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
-import { openGossamerScoreEntry, toggleGossamerMode, parseScoresFromClipboard } from './GossamerCommands';
+import { openGossamerScoreEntry, toggleGossamerMode } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { BeatsProcessingModal } from './view/BeatsProcessingModal';
 import { shiftGossamerHistory } from './utils/gossamer';
@@ -531,30 +531,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // 4b. Gossamer parse scores from clipboard
-        this.addCommand({
-            id: 'gossamer-parse-clipboard',
-            name: 'Gossamer: Parse scores from clipboard',
-            callback: async () => {
-                try {
-                    const clipboard = await navigator.clipboard.readText();
-                    const scores = parseScoresFromClipboard(clipboard);
-                    
-                    if (scores.size === 0) {
-                        new Notice('No momentum ratings found in clipboard. Expected format: "Beat Name: 42"');
-                        return;
-                    }
-                    
-                    new Notice(`Found ${scores.size} scores in clipboard.`);
-                    await openGossamerScoreEntry(this, scores);
-                } catch (e) {
-                    new Notice('Failed to parse clipboard.');
-                    console.error(e);
-                }
-            }
-        });
-
-        // 4c. Gossamer generate manuscript file
+        // 4b. Gossamer generate manuscript file
         this.addCommand({
             id: 'gossamer-generate-manuscript',
             name: 'Gossamer: Generate manuscript file',
@@ -589,7 +566,7 @@ export default class RadialTimelinePlugin extends Plugin {
                     
                     // Save to AI folder
                     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                    const manuscriptPath = `AI/Gossamer-Manuscript-${timestamp}.txt`;
+                    const manuscriptPath = `AI/Manuscript-${timestamp}.txt`;
                     
                     try {
                         await this.app.vault.createFolder('AI');
@@ -2225,7 +2202,13 @@ public createTimelineSVG(scenes: Scene[]) {
      * Save Gossamer scores to Plot notes with history shifting
      */
     async saveGossamerScores(scores: Map<string, number>): Promise<void> {
-        const files = this.app.vault.getMarkdownFiles();
+        // Get files from source path only
+        const sourcePath = this.settings.sourcePath || '';
+        const allFiles = this.app.vault.getMarkdownFiles();
+        const files = sourcePath 
+            ? allFiles.filter(f => f.path.startsWith(sourcePath))
+            : allFiles;
+        
         let updateCount = 0;
         
         for (const [beatTitle, newScore] of scores) {
@@ -2269,6 +2252,12 @@ public createTimelineSVG(scenes: Scene[]) {
             } catch (e) {
                 console.error(`[Gossamer] Failed to update beat ${beatTitle}:`, e);
             }
+        }
+        
+        if (updateCount > 0) {
+            new Notice(`Updated ${updateCount} beat score${updateCount > 1 ? 's' : ''}.`);
+        } else {
+            new Notice('No beats were updated.');
         }
     }
 

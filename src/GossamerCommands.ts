@@ -104,7 +104,7 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
 /**
  * Open Gossamer score entry modal
  */
-export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin, parsedScores?: Map<string, number>): Promise<void> {
+export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin): Promise<void> {
   // Get all Plot notes
   const scenes = await plugin.getSceneData();
   const plotBeats = scenes.filter(s => s.itemType === 'Plot' && (s.subplot === 'Main Plot' || !s.subplot));
@@ -115,7 +115,7 @@ export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin, parse
   }
   
   // Open score entry modal
-  const modal = new GossamerScoreModal(plugin.app, plugin, plotBeats, parsedScores);
+  const modal = new GossamerScoreModal(plugin.app, plugin, plotBeats);
   modal.open();
 }
 
