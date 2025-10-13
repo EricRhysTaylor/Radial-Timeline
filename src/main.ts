@@ -1677,7 +1677,7 @@ public createTimelineSVG(scenes: Scene[]) {
             });
         
         // Add keyboard event listener
-        modal.registerDomEvent(searchInput.inputEl, 'keydown', (e) => {
+        this.registerDomEvent(searchInput.inputEl, 'keydown', (e) => {
             if (e.key === 'Enter') {
                 const term = searchInput.getValue().trim();
                 if (term.length >= 3) {
