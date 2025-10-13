@@ -1081,7 +1081,7 @@ export function createTimelineSVG(
                             if (scene.itemType === 'Plot') {
                                 const publishStage = scene['Publish Stage'] || 'Zero';
                                 const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
-                                return `stroke="${stageColor}"`;
+                                return `stroke="${stageColor}" stroke-width="2"`;
                             }
                             return '';
                         })();

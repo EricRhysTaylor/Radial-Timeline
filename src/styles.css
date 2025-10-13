@@ -212,7 +212,11 @@
 
 /* Gossamer momentum styling */
 .rt-gossamer-layer { pointer-events: none; }
-.rt-gossamer-line { stroke: var(--rt-gossamer-stroke, #7a7a7a); stroke-width: 3; fill: none; }
+.rt-gossamer-line { 
+  stroke: var(--rt-max-publish-stage-color, #7a7a7a); /* Use max publish stage color for connecting line */
+  stroke-width: 3; 
+  fill: none; 
+}
 /* Phase 2: dots (10px diameter) */
 .rt-gossamer-dot { 
   /* fill color set inline via publish stage color */
@@ -233,12 +237,11 @@
   /* stroke color set inline via publish stage color */
   stroke-width: 1px; 
   stroke-dasharray: none;
-  pointer-events: all; /* Enable mouse events on spokes */
-  cursor: pointer; /* Show pointer cursor on spokes */
+  pointer-events: none; /* Spokes don't have their own hover, only respond to dot/slice hover */
+  cursor: default;
 }
-.rt-gossamer-spoke:hover,
 .rt-gossamer-spoke.rt-gossamer-spoke-hover {
-  stroke: white !important; /* Turn white on hover, override inline styles */
+  stroke: white !important; /* Turn white when synchronized with dot/slice hover, override inline styles */
   stroke-width: 2px;
 }
 .rt-gossamer-grid-spoke {
@@ -259,6 +262,14 @@
 /* Plot slices in Gossamer mode: show cursor pointer and use stage color for stroke */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Plot"] .rt-scene-path {
   cursor: pointer;
+  stroke-width: 2px; /* Make beat slice outline visible */
+  pointer-events: all; /* Ensure beat slices are hoverable */
+}
+
+/* Scene slices (non-Plot) in Gossamer mode: no pointer cursor */
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group:not([data-item-type="Plot"]) .rt-scene-path {
+  cursor: default !important;
+  pointer-events: none !important;
 }
 .radial-timeline-container .rt-scene-title.rt-faded {
   opacity: 0.2;
