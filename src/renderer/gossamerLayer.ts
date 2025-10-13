@@ -16,6 +16,13 @@ function mapScoreToRadius(score: number, inner: number, outer: number): number {
   return inner + (clamped / 100) * (outer - inner);
 }
 
+export interface BeatSliceInfo {
+  startAngle: number;
+  endAngle: number;
+  innerR: number;
+  outerR: number;
+}
+
 export function renderGossamerLayer(
   scenes: Scene[],
   run: GossamerRun | null | undefined,
@@ -25,7 +32,8 @@ export function renderGossamerLayer(
   overlayRuns?: Array<{ label?: string; points: { beat: string; score: number }[] }>,
   minBand?: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] },
   spokeEndRadius?: number,
-  publishStageColorByBeat?: Map<string, string>
+  publishStageColorByBeat?: Map<string, string>,
+  beatSlicesByName?: Map<string, BeatSliceInfo>
 ): string {
   if (!run) return '';
 
@@ -63,7 +71,9 @@ export function renderGossamerLayer(
   const segments: string[] = [];
   let current: { x: number; y: number }[] = [];
   const dots: string[] = [];
+  const centerDots: string[] = [];
   const spokes: string[] = [];
+  const beatOutlines: string[] = [];
 
   beatOrder.forEach(name => {
     const key = normalizeBeatName(name);
@@ -85,6 +95,8 @@ export function renderGossamerLayer(
       const stageColor = publishStageColorByBeat?.get(key) || '#7a7a7a';
       
       dots.push(`<circle class="rt-gossamer-dot" cx="${fmt(x)}" cy="${fmt(y)}" r="5" style="fill: ${stageColor};" ${data}>${title}</circle>`); // SAFE: inline style used for dynamic per-beat colors based on individual publish stages known only at runtime during SVG generation
+      // Add center dot (4px radius) that appears on hover with publish stage color
+      centerDots.push(`<circle class="rt-gossamer-dot-center" cx="${fmt(x)}" cy="${fmt(y)}" r="4" style="fill: ${stageColor};" data-beat="${escapeAttr(name)}"/>`); // SAFE: inline style used for dynamic per-beat colors based on individual publish stages known only at runtime during SVG generation
       // Spoke from inner to the beginning of the beat slice (or outer radius if not specified)
       const spokeEnd = spokeEndRadius ?? outerRadius;
       const sx1 = innerRadius * Math.cos(angle);
@@ -92,6 +104,15 @@ export function renderGossamerLayer(
       const sx2 = spokeEnd * Math.cos(angle);
       const sy2 = spokeEnd * Math.sin(angle);
       spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" style="stroke: ${stageColor};" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`); // SAFE: inline style used for dynamic per-beat colors based on individual publish stages known only at runtime during SVG generation
+      
+      // Build beat slice outline if we have slice info
+      if (beatSlicesByName) {
+        const sliceInfo = beatSlicesByName.get(key);
+        if (sliceInfo) {
+          const arcPath = buildCellArcPath(sliceInfo.innerR, sliceInfo.outerR, sliceInfo.startAngle, sliceInfo.endAngle);
+          beatOutlines.push(`<path class="rt-gossamer-beat-outline" d="${arcPath}" style="stroke: ${stageColor};" data-beat="${escapeAttr(name)}"/>`); // SAFE: inline style used for dynamic per-beat colors based on individual publish stages known only at runtime during SVG generation
+        }
+      }
     } else {
       if (current.length > 1) {
         segments.push(buildPath(current));
@@ -122,9 +143,11 @@ export function renderGossamerLayer(
   const overlaySvg = overlayPaths.map(d => `<path class="rt-gossamer-line rt-gossamer-overlay" d="${d}"/>`).join('');
   const bandSvg = bandPath ? `<path class="rt-gossamer-band" d="${bandPath}"/>` : '';
   const dotsSvg = dots.join('');
+  const centerDotsSvg = centerDots.join('');
   const spokesSvg = spokes.join('');
+  const beatOutlinesSvg = beatOutlines.join('');
   
-  return `<g class="rt-gossamer-layer">${bandSvg}${overlaySvg}${spokesSvg}${mainPaths}${dotsSvg}</g>`;
+  return `<g class="rt-gossamer-layer">${bandSvg}${overlaySvg}${spokesSvg}${mainPaths}${beatOutlinesSvg}${dotsSvg}${centerDotsSvg}</g>`;
 }
 
 function buildPath(points: { x: number; y: number }[]): string {
@@ -163,6 +186,20 @@ function buildBand(minPts: { x: number; y: number }[], maxPts: { x: number; y: n
 
 function escapeAttr(s: string): string {
   return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Helper to build arc path for beat slices
+function buildCellArcPath(innerR: number, outerR: number, startAngle: number, endAngle: number): string {
+  const x1 = innerR * Math.cos(startAngle);
+  const y1 = innerR * Math.sin(startAngle);
+  const x2 = outerR * Math.cos(startAngle);
+  const y2 = outerR * Math.sin(startAngle);
+  const x3 = outerR * Math.cos(endAngle);
+  const y3 = outerR * Math.sin(endAngle);
+  const x4 = innerR * Math.cos(endAngle);
+  const y4 = innerR * Math.sin(endAngle);
+  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+  return `M ${fmt(x1)} ${fmt(y1)} L ${fmt(x2)} ${fmt(y2)} A ${fmt(outerR)} ${fmt(outerR)} 0 ${largeArc} 1 ${fmt(x3)} ${fmt(y3)} L ${fmt(x4)} ${fmt(y4)} A ${fmt(innerR)} ${fmt(innerR)} 0 ${largeArc} 0 ${fmt(x1)} ${fmt(y1)} Z`;
 }
 
 

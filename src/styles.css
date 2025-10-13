@@ -231,6 +231,17 @@
   stroke: white;
   stroke-width: 2px;
 }
+
+/* Center dot (4px radius) inside main dot, appears on hover with publish stage color */
+.rt-gossamer-dot-center {
+  /* fill color set inline via publish stage color */
+  pointer-events: none; /* Don't interfere with main dot events */
+  opacity: 0; /* Hidden by default */
+}
+.rt-gossamer-dot:hover + .rt-gossamer-dot-center,
+.rt-gossamer-dot.rt-hover + .rt-gossamer-dot-center {
+  opacity: 1; /* Show on hover - displays publish stage color inside white ring */
+}
 .rt-gossamer-line.rt-gossamer-overlay { stroke-dasharray: 6,4; opacity: 0.6; }
 .rt-gossamer-band { fill: var(--rt-gossamer-stroke, #7a7a7a); opacity: 0.12; stroke: none; }
 .rt-gossamer-spoke { 
@@ -270,6 +281,19 @@
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group:not([data-item-type="Plot"]) .rt-scene-path {
   cursor: default !important;
   pointer-events: none !important;
+}
+
+/* Beat slice outlines in gossamer layer */
+.rt-gossamer-beat-outline {
+  /* stroke color set inline via publish stage color */
+  stroke-width: 2px;
+  fill: none;
+  pointer-events: all;
+  cursor: pointer;
+}
+.rt-gossamer-beat-outline:hover {
+  stroke: white !important; /* Turn white on hover */
+  stroke-width: 3px;
 }
 .radial-timeline-container .rt-scene-title.rt-faded {
   opacity: 0.2;

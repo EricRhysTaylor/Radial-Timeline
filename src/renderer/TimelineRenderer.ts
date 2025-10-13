@@ -1004,7 +1004,10 @@ export function createTimelineSVG(
                             const sceneStartAngle = position.startAngle;
                             const sceneEndAngle = position.endAngle;
                         
-                        // Capture exact angles for Gossamer plot beats (center of slice)
+                        // Extend plot slices slightly beyond the outer ring for a subtle "poke"
+                        const effectiveOuterR = scene.itemType === 'Plot' ? (outerR + 2) : outerR;
+                        
+                        // Capture exact angles and geometry for Gossamer plot beats
                         if (scene.itemType === 'Plot' && scene.title) {
                             // Strip the scene number prefix (e.g., "1 Opening Image" -> "Opening Image")
                             const titleWithoutNumber = scene.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '');
@@ -1012,6 +1015,14 @@ export function createTimelineSVG(
                             const key = normalizeBeatName(titleWithoutNumber);
                             const center = (sceneStartAngle + sceneEndAngle) / 2;
                             (plugin as any)._plotBeatAngles.set(key, center);
+                            // Also capture slice geometry for gossamer outlines
+                            if (!(plugin as any)._plotBeatSlices) (plugin as any)._plotBeatSlices = new Map();
+                            (plugin as any)._plotBeatSlices.set(key, {
+                                startAngle: sceneStartAngle,
+                                endAngle: sceneEndAngle,
+                                innerR: innerR,
+                                outerR: effectiveOuterR
+                            });
                         }
                         
                         // Scene titles: fixed inset from the top (outer) boundary of the cell
@@ -1020,9 +1031,6 @@ export function createTimelineSVG(
                         const color = scene.itemType === 'Plot' 
                             ? '#E6E6E6' 
                             : getFillForItem(plugin, scene, maxStageColor, PUBLISH_STAGE_COLORS, totalPlotNotes, plotIndexByKey, true, subplotColorFor, true);
-
-                        // Extend plot slices slightly beyond the outer ring for a subtle "poke"
-                        const effectiveOuterR = scene.itemType === 'Plot' ? (outerR + 2) : outerR;
                         const arcPath = buildCellArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
                         const sceneId = makeSceneId(act, ring, idx, true, true);
                         
@@ -2116,6 +2124,9 @@ export function createTimelineSVG(
                     publishStageColorByBeat.set(key, stageColor);
                 });
 
+                // Collect beat slice geometry from rendered plot slices (set during outer ring rendering)
+                const beatSlicesByName = (plugin as any)._plotBeatSlices || new Map();
+
                 // Redraw month/act spokes on top so they're visible over scenes
                 const spokesGroup = `<g class="rt-gossamer-spokes">`;
                 let spokesHtml = '';
@@ -2141,7 +2152,8 @@ export function createTimelineSVG(
                     undefined, // overlayRuns
                     undefined, // minBand
                     outerRingInnerRadius,
-                    publishStageColorByBeat
+                    publishStageColorByBeat,
+                    beatSlicesByName
                 );
                 if (layer) svg += layer;
             }
