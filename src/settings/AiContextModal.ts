@@ -46,12 +46,13 @@ class TextInputModal extends Modal {
             inputEl.select();
         }, 10);
 
-        // Handle Enter key (use registerDomEvent for proper cleanup)
-        this.registerDomEvent(inputEl, 'keydown', (e: KeyboardEvent) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
+        // Handle Enter key
+        this.registerDomEvent(inputEl, 'keydown', (e: Event) => {
+            const kbd = e as KeyboardEvent;
+            if (kbd.key === 'Enter') {
+                kbd.preventDefault();
                 this.submit(inputEl.value);
-            } else if (e.key === 'Escape') {
+            } else if (kbd.key === 'Escape') {
                 this.close();
             }
         });
@@ -175,23 +176,20 @@ export class AiContextModal extends Modal {
         this.textareaEl = editorSection.createEl('textarea', { cls: 'rt-ai-context-textarea' });
         this.textareaEl.placeholder = 'Enter your AI context prompt here...';
         
-        // Track changes
+        // Preview section (must be created before the event listener references it)
+        const previewSection = contentEl.createDiv({ cls: 'rt-ai-context-preview-section' });
+        const previewLabel = previewSection.createDiv({ cls: 'rt-ai-context-label' });
+        previewLabel.setText('How it will appear:');
+        const previewText = previewSection.createDiv({ cls: 'rt-ai-context-preview' });
+        
+        // Track changes and update preview
         this.registerDomEvent(this.textareaEl, 'input', () => {
             const currentTemplate = this.getCurrentTemplate();
             if (currentTemplate && !currentTemplate.isBuiltIn) {
                 this.isDirty = true;
                 this.updateButtonStates();
             }
-        });
-
-        // Preview section
-        const previewSection = contentEl.createDiv({ cls: 'rt-ai-context-preview-section' });
-        const previewLabel = previewSection.createDiv({ cls: 'rt-ai-context-label' });
-        previewLabel.setText('How it will appear:');
-        const previewText = previewSection.createDiv({ cls: 'rt-ai-context-preview' });
-        
-        // Update preview on textarea changes
-        this.registerDomEvent(this.textareaEl, 'input', () => {
+            
             const prompt = this.textareaEl?.value.trim() || '';
             if (prompt) {
                 previewText.textContent = `${prompt}\n\nBefore taking action, prepare an action plan.\n\n[Rest of AI prompt...]`;
