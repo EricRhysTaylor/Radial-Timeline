@@ -45,65 +45,242 @@ export const DefaultGossamerMomentum: { beat: string; score: number; notes: stri
 
 export function normalizeBeatName(name: string): string {
   // Strip percentage annotations (e.g., "5%", "1-10%", "20%") and extra whitespace
+  // Then normalize for fuzzy matching (remove hyphens, spaces, lowercase)
   return (name || '')
     .replace(/\s+\d+(?:-\d+)?%?\s*$/i, '') // Remove trailing percentages like " 5%", " 1-10%", " 20"
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/[-\s]/g, ''); // Remove hyphens and spaces for fuzzy matching (e.g., "set-up" → "setup", "dark night of the soul" → "darknightofthesoul")
 }
 
 /**
- * Build a default run using the dynamic beat order from scenes.
- * If scenes are provided, use their actual beat names; otherwise fallback to template.
+ * Build a run from a specific Gossamer field (Gossamer1, Gossamer2, etc.)
+ * Generic builder that can construct runs from any GossamerId field.
  */
-export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: string; title?: string }[]): GossamerRun {
+export function buildRunFromGossamerField(
+  scenes: { itemType?: string; subplot?: string; title?: string; [key: string]: unknown }[] | undefined, // SAFE: any type used for dynamic Gossamer1-5 field access
+  fieldName: string,
+  selectedBeatModel?: string,
+  includeZeroScores: boolean = true // For current run, default missing to 0; for historical, skip missing
+): GossamerRun {
   let beats: GossamerBeat[];
   
-  if (scenes && scenes.length > 0) {
-    // Extract actual beat names from Plot notes
-    const beatOrder = extractBeatOrder(scenes);
-    if (beatOrder.length > 0) {
-      // Map template scores to actual beats (by index)
-      beats = beatOrder.map((beatName, idx) => {
-        const templateScore = DefaultGossamerMomentum[idx]?.score ?? 50; // Default to mid-range if beyond template
-        const templateNotes = DefaultGossamerMomentum[idx]?.notes ?? 'Template score applied.';
-        return {
-          beat: beatName,
-          score: templateScore,
-          notes: templateNotes,
-          status: 'present' as const,
-        };
-      });
-    } else {
-      // No Plot notes found, use template
-      beats = DefaultGossamerMomentum.map(({ beat, score, notes }) => ({
-        beat,
-        score,
-        notes,
-        status: 'present' as const,
-      }));
-    }
-  } else {
-    // No scenes provided, use template
-    beats = DefaultGossamerMomentum.map(({ beat, score, notes }) => ({
-      beat,
-      score,
-      notes,
-      status: 'present' as const,
-    }));
+  if (!scenes || scenes.length === 0) {
+    return {
+      beats: [],
+      overall: {
+        summary: 'No scenes provided.',
+        refinements: [],
+        incompleteBeats: [],
+      },
+      meta: { label: fieldName, date: new Date().toISOString() },
+    };
   }
   
-  // Zero-offset: first beat anchored to 0
-  const opening = beats[0]?.score ?? 0;
-  const adjusted = beats.map(b => ({ ...b, score: typeof b.score === 'number' ? Math.max(0, b.score - opening) : b.score }));
+  // Filter Plot notes by Plot System if specified (case-insensitive match)
+  let plotNotes = scenes.filter(s => s.itemType === 'Plot');
+  if (selectedBeatModel && plotNotes.some(p => p["Plot System"])) {
+    const normalizedSelected = selectedBeatModel.toLowerCase().replace(/\s+/g, '');
+    plotNotes = plotNotes.filter(p => {
+      const plotSystem = p["Plot System"];
+      if (!plotSystem) return false;
+      const normalizedPlotSystem = plotSystem.toLowerCase().replace(/\s+/g, '');
+      return normalizedPlotSystem === normalizedSelected;
+    });
+  }
+  
+  if (plotNotes.length === 0) {
+    return {
+      beats: [],
+      overall: {
+        summary: selectedBeatModel 
+          ? `No Plot notes found with Plot System: ${selectedBeatModel}`
+          : 'No Plot notes found. Create notes with Class: Plot.',
+        refinements: [],
+        incompleteBeats: [],
+      },
+      meta: { label: fieldName, date: new Date().toISOString() },
+    };
+  }
+  
+  // Sort by numeric prefix and keep original titles
+  plotNotes.sort((a, b) => {
+    const aMatch = (a.title || '').match(/^(\d+(?:\.\d+)?)/);
+    const bMatch = (b.title || '').match(/^(\d+(?:\.\d+)?)/);
+    const aNum = aMatch ? parseFloat(aMatch[1]) : 0;
+    const bNum = bMatch ? parseFloat(bMatch[1]) : 0;
+    return aNum - bNum;
+  });
+  
+  // Build beats array directly from plot notes
+  const incompleteBeats: string[] = [];
+  beats = plotNotes.map((plotNote) => {
+    const beatTitle = (plotNote.title || '').replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
+    
+    // Parse score from the specified field
+    let parsedScore: number | undefined = undefined;
+    const fieldValue = plotNote[fieldName];
+    
+    if (fieldValue !== undefined && fieldValue !== null) {
+      const raw: unknown = fieldValue;
+      
+      if (typeof raw === 'number') {
+        parsedScore = raw;
+      } else if (typeof raw === 'string') {
+        const match = raw.match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (!isNaN(num) && num >= 0 && num <= 100) {
+            parsedScore = num;
+          }
+        }
+      }
+    }
+    
+    if (parsedScore !== undefined) {
+      return {
+        beat: beatTitle,
+        score: parsedScore,
+        notes: `Score from Plot note frontmatter (${fieldName}).`,
+        status: 'present' as const,
+      };
+    } else if (includeZeroScores) {
+      // For current run (Gossamer1), default missing to 0 with red dot
+      incompleteBeats.push(beatTitle);
+      return {
+        beat: beatTitle,
+        score: 0,
+        notes: `No ${fieldName} score in frontmatter - defaulting to 0.`,
+        status: 'outlineOnly' as const,
+      };
+    } else {
+      // For historical runs, mark as missing (will be skipped in rendering)
+      return {
+        beat: beatTitle,
+        score: 0,
+        notes: `No ${fieldName} score in frontmatter.`,
+        status: 'missing' as const,
+      };
+    }
+  }).filter(beat => beat.status !== 'missing'); // Remove missing beats from historical runs
+  
+  // Count how many beats have scores
+  const presentCount = beats.filter(b => b.status === 'present').length;
+  
   return {
-    beats: adjusted,
+    beats: beats,
     overall: {
-      summary: 'Default template momentum curve applied. Replace with AI analysis when available.',
+      summary: presentCount > 0
+        ? `${fieldName} scores loaded from ${presentCount} of ${plotNotes.length} Plot notes.`
+        : `No ${fieldName} scores found in Plot notes.`,
       refinements: [],
-      incompleteBeats: [],
+      incompleteBeats,
     },
-    meta: { label: 'Default', date: new Date().toISOString() },
+    meta: { 
+      label: fieldName === 'Gossamer1' ? 'Score' : fieldName,
+      date: new Date().toISOString(),
+      model: selectedBeatModel 
+    },
   };
+}
+
+/**
+ * Build a run from actual Plot notes in the vault.
+ * Uses whatever Plot notes the author created, filtered by Plot System.
+ * Missing Gossamer1 scores default to 0 (red dot).
+ */
+export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Plot System"?: string }[], selectedBeatModel?: string): GossamerRun {
+  return buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true);
+}
+
+/**
+ * Build all gossamer runs (Gossamer1-5) and calculate min/max for band
+ */
+export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]: unknown }[] | undefined, selectedBeatModel?: string): { // SAFE: unknown type used for dynamic Gossamer1-5 field access
+  current: GossamerRun;
+  historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string }>;
+  minMax: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] } | null;
+} {
+  if (!scenes || scenes.length === 0) {
+    return {
+      current: buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true),
+      historical: [],
+      minMax: null
+    };
+  }
+
+  // Build current run (Gossamer1)
+  const current = buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true);
+  
+  // Gray shades for historical runs (lighter = older)
+  const historicalColors = ['#b0b0b0', '#c0c0c0', '#d0d0d0', '#e0e0e0'];
+  
+  // Build historical runs (Gossamer2-5)
+  const historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string }> = [];
+  
+  for (let i = 2; i <= 5; i++) {
+    const fieldName = `Gossamer${i}`;
+    
+    // Check if ANY value exists for this field
+    const hasAnyValue = scenes.some(s => s.itemType === 'Plot' && s[fieldName] !== undefined && s[fieldName] !== null);
+    
+    if (hasAnyValue) {
+      // If any value exists, default ALL missing beats to 0 (encourages complete data)
+      const run = buildRunFromGossamerField(scenes, fieldName, selectedBeatModel, true);
+      
+      historical.push({
+        label: fieldName,
+        points: run.beats.map(b => ({ beat: b.beat, score: b.score as number })),
+        color: historicalColors[i - 2] || '#d0d0d0'
+      });
+    }
+  }
+  
+  // Calculate min/max if we have at least 2 runs
+  let minMax: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] } | null = null;
+  
+  if (historical.length > 0) {
+    // Collect all runs (current + historical)
+    const allRuns = [current, ...historical.map(h => ({ beats: h.points.map(p => ({ ...p, status: 'present' as const, notes: '' })) }))];
+    
+    // Get all beat names from current run
+    const beatNames = current.beats.map(b => b.beat);
+    
+    const minPoints: { beat: string; score: number }[] = [];
+    const maxPoints: { beat: string; score: number }[] = [];
+    
+    beatNames.forEach(beatName => {
+      // Collect all scores for this beat across all runs
+      const scores: number[] = [];
+      
+      // Current run
+      const currentBeat = current.beats.find(b => b.beat === beatName);
+      if (currentBeat && currentBeat.status === 'present') {
+        scores.push(currentBeat.score as number);
+      }
+      
+      // Historical runs
+      historical.forEach(h => {
+        const point = h.points.find(p => p.beat === beatName);
+        if (point) {
+          scores.push(point.score);
+        }
+      });
+      
+      if (scores.length >= 2) {
+        const min = Math.min(...scores);
+        const max = Math.max(...scores);
+        minPoints.push({ beat: beatName, score: min });
+        maxPoints.push({ beat: beatName, score: max });
+      }
+    });
+    
+    if (minPoints.length >= 3 && maxPoints.length >= 3) {
+      minMax = { min: minPoints, max: maxPoints };
+    }
+  }
+  
+  return { current, historical, minMax };
 }
 
 export function zeroOffsetRun(run: GossamerRun): GossamerRun {
@@ -121,43 +298,55 @@ export function zeroOffsetRun(run: GossamerRun): GossamerRun {
 
 export function extractPresentBeatScores(run: GossamerRun): { beat: string; score: number }[] {
   return run.beats
-    .filter(b => b.status === 'present' && typeof b.score === 'number')
+    .filter(b => (b.status === 'present' || b.status === 'outlineOnly') && typeof b.score === 'number')
     .map(b => ({ beat: b.beat, score: b.score as number }));
 }
 
 /**
- * Extract dynamic beat order from Plot notes (Main Plot only).
- * Returns array of beat names in the order they appear, sorted by numeric prefix.
- * E.g., ["Opening Image", "Theme Stated 5%", "Setup 1-10%", ...]
+ * Extract beat order from Plot notes.
+ * Returns array of beat names in order, with leading numbers stripped.
+ * Filters by Beat Model if selectedBeatModel is provided.
  */
-export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; title?: string }[]): string[] {
-  const plotBeats = scenes
-    .filter(s => s.itemType === 'Plot')
-    .map(s => s.title || '')
-    .filter(Boolean);
+export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; title?: string; "Plot System"?: string }[], selectedBeatModel?: string): string[] {
+  let plotBeats = scenes.filter(s => s.itemType === 'Plot');
   
-  // Sort by numeric prefix (e.g., "1 Opening Image", "2 Theme Stated 5%")
+  // Filter by Plot System if specified (case-insensitive match)
+  if (selectedBeatModel && plotBeats.some(p => p["Plot System"])) {
+    const normalizedSelected = selectedBeatModel.toLowerCase().replace(/\s+/g, '');
+    plotBeats = plotBeats.filter(p => {
+      const plotSystem = p["Plot System"];
+      if (!plotSystem) return false;
+      const normalizedPlotSystem = plotSystem.toLowerCase().replace(/\s+/g, '');
+      return normalizedPlotSystem === normalizedSelected;
+    });
+  }
+  
+  // Sort by numeric prefix
   plotBeats.sort((a, b) => {
-    const aMatch = a.match(/^(\d+(?:\.\d+)?)/);
-    const bMatch = b.match(/^(\d+(?:\.\d+)?)/);
+    const aMatch = (a.title || '').match(/^(\d+(?:\.\d+)?)/);
+    const bMatch = (b.title || '').match(/^(\d+(?:\.\d+)?)/);
     const aNum = aMatch ? parseFloat(aMatch[1]) : 0;
     const bNum = bMatch ? parseFloat(bMatch[1]) : 0;
     return aNum - bNum;
   });
   
-  // Strip leading numbers: "1 Opening Image" → "Opening Image"
-  return plotBeats.map(title => title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim());
+  // Strip leading numbers from titles
+  const beatNames = plotBeats
+    .map(p => (p.title || '').replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim())
+    .filter(Boolean);
+  
+  return beatNames;
 }
 
 /**
- * Detect the plot system being used from Beat Model field in Plot notes
+ * Detect the plot system being used from Plot System field in Plot notes
  */
-export function detectPlotSystem(scenes: { itemType?: string; "Beat Model"?: string }[]): string {
-  // Find any Plot note with Beat Model field
-  const plotNote = scenes.find(s => s.itemType === 'Plot' && s["Beat Model"]);
+export function detectPlotSystem(scenes: { itemType?: string; "Plot System"?: string }[]): string {
+  // Find any Plot note with Plot System field
+  const plotNote = scenes.find(s => s.itemType === 'Plot' && s["Plot System"]);
   
-  if (plotNote && plotNote["Beat Model"]) {
-    return plotNote["Beat Model"];
+  if (plotNote && plotNote["Plot System"]) {
+    return plotNote["Plot System"];
   }
   
   // Default to SaveTheCat if not found

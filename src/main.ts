@@ -89,7 +89,7 @@ export interface Scene {
     // Plot-specific properties  
     itemType?: "Scene" | "Plot"; // Distinguish between Scene and Plot items
     Description?: string; // For Plot beat descriptions
-    "Beat Model"?: string; // Plot system (e.g., "SaveTheCat", "Hero's Journey")
+    "Plot System"?: string; // Plot system (e.g., "Save The Cat", "Hero's Journey")
     // Gossamer score fields
     Gossamer1?: number; // Current Gossamer score
     Gossamer2?: number; // Gossamer score history
@@ -1189,37 +1189,27 @@ export default class RadialTimelinePlugin extends Plugin {
         }
         }
 
-        // Process Plot notes - create entry for each unique subplot
-        const uniqueSubplots = new Set<string>();
-        scenes.forEach(scene => {
-            if (scene.subplot) uniqueSubplots.add(scene.subplot);
-        });
-        
-        // If no subplots found, use Main Plot as default
-        if (uniqueSubplots.size === 0) {
-            uniqueSubplots.add("Main Plot");
-        }
-        
-        // Create Plot entries for each subplot
+        // Process Plot notes - create ONE entry per plot note (not duplicated per subplot)
+        // Plot beats are shown only in the outer ring and are not subplot-specific
         plotsToProcess.forEach(plotInfo => {
-            uniqueSubplots.forEach(subplot => {
-                scenes.push({
-                    title: plotInfo.file.basename,
-                    date: "1900-01-01T12:00:00Z", // Dummy date for plots
-                    path: plotInfo.file.path,
-                    subplot: subplot,
-                    act: plotInfo.validActNumber.toString(),
-                    actNumber: plotInfo.validActNumber,
-                    itemType: "Plot",
-                    Description: (plotInfo.metadata.Description as string) || '',
-                    "Beat Model": (plotInfo.metadata["Beat Model"] as string) || (plotInfo.metadata.BeatModel as string) || undefined,
-                    "Publish Stage": (plotInfo.metadata["Publish Stage"] as string) || undefined,
-                    Gossamer1: typeof plotInfo.metadata.Gossamer1 === 'number' ? plotInfo.metadata.Gossamer1 : undefined,
-                    Gossamer2: typeof plotInfo.metadata.Gossamer2 === 'number' ? plotInfo.metadata.Gossamer2 : undefined,
-                    Gossamer3: typeof plotInfo.metadata.Gossamer3 === 'number' ? plotInfo.metadata.Gossamer3 : undefined,
-                    Gossamer4: typeof plotInfo.metadata.Gossamer4 === 'number' ? plotInfo.metadata.Gossamer4 : undefined,
-                    Gossamer5: typeof plotInfo.metadata.Gossamer5 === 'number' ? plotInfo.metadata.Gossamer5 : undefined
-                });
+            const gossamer1Value = typeof plotInfo.metadata.Gossamer1 === 'number' ? plotInfo.metadata.Gossamer1 : undefined;
+            
+            scenes.push({
+                title: plotInfo.file.basename,
+                date: "1900-01-01T12:00:00Z", // Dummy date for plots
+                path: plotInfo.file.path,
+                subplot: undefined, // Plot beats are not associated with any specific subplot
+                act: plotInfo.validActNumber.toString(),
+                actNumber: plotInfo.validActNumber,
+                itemType: "Plot",
+                Description: (plotInfo.metadata.Description as string) || '',
+                "Plot System": (plotInfo.metadata["Plot System"] as string) || undefined,
+                "Publish Stage": (plotInfo.metadata["Publish Stage"] as string) || undefined,
+                Gossamer1: gossamer1Value,
+                Gossamer2: typeof plotInfo.metadata.Gossamer2 === 'number' ? plotInfo.metadata.Gossamer2 : undefined,
+                Gossamer3: typeof plotInfo.metadata.Gossamer3 === 'number' ? plotInfo.metadata.Gossamer3 : undefined,
+                Gossamer4: typeof plotInfo.metadata.Gossamer4 === 'number' ? plotInfo.metadata.Gossamer4 : undefined,
+                Gossamer5: typeof plotInfo.metadata.Gossamer5 === 'number' ? plotInfo.metadata.Gossamer5 : undefined
             });
         });
 

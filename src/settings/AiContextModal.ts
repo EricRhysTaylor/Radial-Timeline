@@ -47,12 +47,11 @@ class TextInputModal extends Modal {
         }, 10);
 
         // Handle Enter key
-        this.registerDomEvent(inputEl, 'keydown', (e: Event) => {
-            const kbd = e as KeyboardEvent;
-            if (kbd.key === 'Enter') {
-                kbd.preventDefault();
+        (this as unknown as import('obsidian').Component).registerDomEvent(inputEl, 'keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
                 this.submit(inputEl.value);
-            } else if (kbd.key === 'Escape') {
+            } else if (e.key === 'Escape') {
                 this.close();
             }
         });
@@ -183,7 +182,7 @@ export class AiContextModal extends Modal {
         const previewText = previewSection.createDiv({ cls: 'rt-ai-context-preview' });
         
         // Track changes and update preview
-        this.registerDomEvent(this.textareaEl, 'input', () => {
+        (this as unknown as import('obsidian').Component).registerDomEvent(this.textareaEl!, 'input', () => {
             const currentTemplate = this.getCurrentTemplate();
             if (currentTemplate && !currentTemplate.isBuiltIn) {
                 this.isDirty = true;
@@ -339,7 +338,6 @@ export class AiContextModal extends Modal {
                 currentTemplate.name = newName;
                 this.updateDropdownOptions();
                 this.dropdownComponent?.setValue(this.currentTemplateId);
-                
                 new Notice(`Renamed to: ${newName}`);
             }
         );
@@ -391,7 +389,7 @@ export class AiContextModal extends Modal {
         if (this.templates.length > 0) {
             this.currentTemplateId = this.templates[0].id;
         } else {
-            // Should never happen as built-in templates always exist
+            // Fallback (should not occur with built-ins present)
             this.currentTemplateId = 'generic-editor';
         }
         
@@ -406,7 +404,6 @@ export class AiContextModal extends Modal {
         const currentTemplate = this.getCurrentTemplate();
         if (!currentTemplate || currentTemplate.isBuiltIn) return;
         
-        // Update prompt from textarea
         if (this.textareaEl) {
             currentTemplate.prompt = this.textareaEl.value;
         }
@@ -418,12 +415,10 @@ export class AiContextModal extends Modal {
     }
 
     private async setActiveAndClose(): Promise<void> {
-        // Save any pending changes first
         if (this.isDirty) {
             this.saveChanges();
         }
         
-        // Update plugin settings
         this.plugin.settings.aiContextTemplates = this.templates;
         this.plugin.settings.activeAiContextTemplateId = this.currentTemplateId;
         await this.plugin.saveSettings();
@@ -431,12 +426,9 @@ export class AiContextModal extends Modal {
         const currentTemplate = this.getCurrentTemplate();
         new Notice(`Active template: ${currentTemplate?.name || 'Unknown'}`);
         
-        // Call the onSave callback to refresh UI
         this.onSave();
-        
         this.close();
     }
 }
 
 export default AiContextModal;
-

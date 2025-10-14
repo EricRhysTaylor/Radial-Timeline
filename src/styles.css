@@ -225,24 +225,37 @@
   cursor: pointer; 
   stroke: none;
 }
-.rt-gossamer-dot:hover,
-.rt-gossamer-dot.rt-hover { 
-  fill: white !important; /* Turn white on hover, override inline styles */
-  stroke: white;
-  stroke-width: 2px;
+.rt-gossamer-dot.rt-gossamer-missing-data {
+  /* Red dot for beats with missing Gossamer1 scores (defaulted to 0) */
+  r: 6px;
+  fill: #ff4444 !important;
+  opacity: 0.8;
+}
+.rt-gossamer-dot.rt-gossamer-missing-data:hover {
+  opacity: 1;
+  fill: #ff6666 !important;
 }
 
-/* Center dot (4px radius) inside main dot, appears on hover with publish stage color */
-.rt-gossamer-dot-center {
-  /* fill color set inline via publish stage color */
-  pointer-events: none; /* Don't interfere with main dot events */
-  opacity: 0; /* Hidden by default */
+/* Gossamer1 dots on hover - add white stroke to create inner dot effect, keep colored fill */
+.rt-gossamer-dot:hover,
+.rt-gossamer-dot.rt-hover {
+  stroke: white;
+  stroke-width: 2;
 }
-.rt-gossamer-dot-center.rt-hover {
-  opacity: 1; /* Show when class is applied - displays publish stage color inside white ring */
+.rt-gossamer-dot-historical {
+  /* Historical run dots - non-interactive, no stroke by default */
+  pointer-events: none;
 }
-.rt-gossamer-line.rt-gossamer-overlay { stroke-dasharray: 6,4; opacity: 0.6; }
-.rt-gossamer-band { fill: var(--rt-gossamer-stroke, #7a7a7a); opacity: 0.12; stroke: none; }
+.rt-gossamer-dot-historical.rt-hover {
+  /* Add white stroke when Gossamer1 dot or plot slice is hovered */
+  stroke: white;
+  stroke-width: 2;
+}
+.rt-gossamer-band { 
+  /* Band showing min/max spread - color set inline (#f5f5f5) */
+  stroke: none;
+  pointer-events: none; /* Don't interfere with hover on dots/slices */
+}
 .rt-gossamer-spoke { 
   /* stroke color set inline via publish stage color */
   stroke-width: 1px; 
@@ -313,29 +326,27 @@
   pointer-events: none !important;
 }
 
-.radial-timeline-container .rt-month-label,
-.radial-timeline-container .rt-month-label-outer,
-.radial-timeline-container .rt-act-label {
+.radial-timeline-container .rt-month-label {
   pointer-events: none;
-}
-.radial-timeline-container .rt-month-label {  
-  font-size: 16px;
-  fill: var(--text-normal);
   text-anchor: middle;
   dominant-baseline: middle;
+  font-size: 16px;
+  fill: var(--text-normal);
 }
 .radial-timeline-container .rt-month-label-outer {
-font-size: 18px;
-fill: var(--text-normal);
-text-anchor: middle;
-dominant-baseline: middle;
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-size: 18px;
+  fill: var(--text-normal);
 }
 .radial-timeline-container .rt-act-label {
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
   font-size: 20px;
   font-weight: 900;
   /* fill: var(--text-normal); */ /* Color is now set dynamically in SVG */
-  text-anchor: middle;
-  dominant-baseline: middle;
 }
 .radial-timeline-container .rt-month-spoke-line {
   stroke: var(--text-normal);

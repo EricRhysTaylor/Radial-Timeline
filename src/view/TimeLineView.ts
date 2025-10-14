@@ -1814,6 +1814,9 @@ This is a test scene created to help with initial Radial timeline setup.
                         // Highlight beat outline
                         const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
                         if (beatOutline) beatOutline.classList.add('rt-hover');
+                        // Highlight all historical dots with matching beat name
+                        const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
+                        historicalDots.forEach(hd => hd.classList.add('rt-hover'));
                     }
                     g.classList.add('rt-gossamer-hover');
                 }
@@ -1893,7 +1896,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 }
             }
             
-            // Highlight spoke and beat outline
+            // Highlight spoke, beat outline, and historical dots
             if (beatName) {
                 const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
                 if (spoke) {
@@ -1903,10 +1906,15 @@ This is a test scene created to help with initial Radial timeline setup.
                 if (beatOutline) {
                     beatOutline.classList.add('rt-hover');
                 }
+                // Highlight all historical dots with matching beat name
+                const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
+                historicalDots.forEach(hd => hd.classList.add('rt-hover'));
             }
         };
         
         const dotOut = (e: PointerEvent) => {
+            // Remove hover from all historical dots
+            svg.querySelectorAll('.rt-gossamer-dot-historical.rt-hover').forEach(hd => hd.classList.remove('rt-hover'));
             const toEl = e.relatedTarget as Element | null;
             // If moving to a plot slice or another dot, keep highlights
             if (toEl && (toEl.closest('.rt-scene-group[data-item-type="Plot"]') || 

@@ -22,7 +22,7 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>): Record<st
   const keyMappings: Record<string, string> = {
     'class': 'Class',
     'itemtype': 'itemType',
-    'beatmodel': 'Beat Model',
+    'plotsystem': 'Plot System',
     'beatsupdate': 'Beats Update',
     'publishstage': 'Publish Stage',
     'scenenumber': 'Scene Number',

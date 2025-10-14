@@ -1023,14 +1023,13 @@ export function createTimelineSVG(
                         // Capture exact angles and geometry for Gossamer plot beats
                         if (scene.itemType === 'Plot' && scene.title) {
                             // Strip the scene number prefix (e.g., "1 Opening Image" -> "Opening Image")
-                            const titleWithoutNumber = scene.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '');
-                            // Normalize the title to match STC_BEATS_ORDER keys
-                            const key = normalizeBeatName(titleWithoutNumber);
+                            const titleWithoutNumber = scene.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
+                            // Use exact title (no normalization) for angle lookup
                             const center = (sceneStartAngle + sceneEndAngle) / 2;
-                            (plugin as any)._plotBeatAngles.set(key, center);
+                            (plugin as any)._plotBeatAngles.set(titleWithoutNumber, center);
                             // Also capture slice geometry for gossamer outlines
                             if (!(plugin as any)._plotBeatSlices) (plugin as any)._plotBeatSlices = new Map();
-                            (plugin as any)._plotBeatSlices.set(key, {
+                            (plugin as any)._plotBeatSlices.set(titleWithoutNumber, {
                                 startAngle: sceneStartAngle,
                                 endAngle: sceneEndAngle,
                                 innerR: innerR,
@@ -2123,32 +2122,36 @@ export function createTimelineSVG(
                 const beatPathByName = new Map<string, string>();
                 scenes.forEach(s => {
                     if (s.itemType !== 'Plot' || !s.title || !s.path) return;
-                    const key = normalizeBeatName(s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, ''));
-                    beatPathByName.set(key, s.path);
+                    const titleWithoutNumber = s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
+                    beatPathByName.set(titleWithoutNumber, s.path);
                 });
 
                 // Map beat names to their publish stage colors for gossamer dots and spokes
                 const publishStageColorByBeat = new Map<string, string>();
                 scenes.forEach(s => {
                     if (s.itemType !== 'Plot' || !s.title) return;
-                    const key = normalizeBeatName(s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, ''));
+                    const titleWithoutNumber = s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
                     const publishStage = s['Publish Stage'] || 'Zero';
                     const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
-                    publishStageColorByBeat.set(key, stageColor);
+                    publishStageColorByBeat.set(titleWithoutNumber, stageColor);
                 });
 
                 // Collect beat slice geometry from rendered plot slices (set during outer ring rendering)
                 const beatSlicesByName = (plugin as any)._plotBeatSlices || new Map();
 
-                // Render gossamer layer first
+                // Get historical runs and min/max band from plugin
+                const historicalRuns = (plugin as any)._gossamerHistoricalRuns || [];
+                const minMax = (plugin as any)._gossamerMinMax || null;
+
+                // Render gossamer layer with all runs and band
                 const layer = renderGossamerLayer(
                     scenes,
                     run,
                     polar,
                     anglesByBeat.size ? anglesByBeat : undefined,
                     beatPathByName,
-                    undefined, // overlayRuns
-                    undefined, // minBand
+                    historicalRuns, // Historical runs (Gossamer2-5)
+                    minMax, // Min/max band
                     outerRingInnerRadius,
                     publishStageColorByBeat,
                     beatSlicesByName

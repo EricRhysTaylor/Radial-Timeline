@@ -2,7 +2,7 @@
  * Gossamer Commands and State - Manual Score Entry
  */
 import type RadialTimelinePlugin from './main';
-import { buildRunFromDefault, GossamerRun, normalizeBeatName, shiftGossamerHistory, extractBeatOrder } from './utils/gossamer';
+import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, shiftGossamerHistory, extractBeatOrder } from './utils/gossamer';
 import { Notice, TFile } from 'obsidian';
 import { GossamerScoreModal } from './view/GossamerScoreModal';
 
@@ -162,12 +162,38 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
   if (current) {
     exitGossamerMode(plugin);
   } else {
-    // Ensure a run exists (use default if none)
-    if (!getActiveGossamerRun(plugin)) {
-      const scenes = await plugin.getSceneData();
-      const def = buildRunFromDefault(scenes);
-      setInMemoryRun(plugin, def);
+    // ALWAYS rebuild run from fresh scene data (reads latest Gossamer1 scores from YAML)
+    const scenes = await plugin.getSceneData();
+    
+    // Check if there are any Plot notes
+    const plotNotes = scenes.filter(s => s.itemType === 'Plot');
+    if (plotNotes.length === 0) {
+      new Notice('Cannot enter Gossamer mode: No Plot notes found. Create notes with Class: Plot.');
+      return;
     }
+    
+    // Use plot system from settings if available
+    const selectedBeatModel = plugin.settings.plotSystem;
+    
+    // Build all runs (Gossamer1-5) with min/max band
+    const allRuns = buildAllGossamerRuns(scenes, selectedBeatModel);
+    
+    if (allRuns.current.beats.length === 0) {
+      new Notice(`Cannot enter Gossamer mode: No Plot notes found${selectedBeatModel ? ` with Plot System: ${selectedBeatModel}` : ''}.`);
+      return;
+    }
+    
+    // Check if ALL plot notes are missing Gossamer1 scores
+    const hasAnyScores = plotNotes.some(s => typeof s.Gossamer1 === 'number');
+    if (!hasAnyScores) {
+      new Notice('Warning: No Gossamer1 scores found in Plot notes. Defaulting all beats to 0. Add Gossamer1: <score> to your Plot note frontmatter.');
+    }
+    
+    // Store all runs on plugin (for renderer)
+    setInMemoryRun(plugin, allRuns.current);
+    (plugin as any)._gossamerHistoricalRuns = allRuns.historical;
+    (plugin as any)._gossamerMinMax = allRuns.minMax;
+    
     setBaseModeAllScenes(plugin);
     resetRotation(plugin);
     plugin.clearSearch();
