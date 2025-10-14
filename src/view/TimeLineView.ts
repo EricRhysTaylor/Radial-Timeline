@@ -1805,8 +1805,15 @@ This is a test scene created to help with initial Radial timeline setup.
                     dot.classList.add('rt-hover');
                     const beatName = dot.getAttribute('data-beat');
                     if (beatName) {
+                        // Show center dot
+                        const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
+                        if (centerDot) centerDot.classList.add('rt-hover');
+                        // Highlight spoke
                         const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
                         if (spoke) spoke.classList.add('rt-gossamer-spoke-hover');
+                        // Highlight beat outline
+                        const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
+                        if (beatOutline) beatOutline.classList.add('rt-hover');
                     }
                     g.classList.add('rt-gossamer-hover');
                 }
@@ -1817,7 +1824,8 @@ This is a test scene created to help with initial Radial timeline setup.
             if (!currentGroup) return;
 
             const toEl = e.relatedTarget as Element | null;
-            if (toEl && (currentGroup.contains(toEl) || !!toEl.closest('.rt-gossamer-dot'))) return;
+            if (toEl && (currentGroup.contains(toEl) ||
+                        !!toEl.closest('.rt-gossamer-dot'))) return;
 
             svg.classList.remove('scene-hover');
             if (currentSynopsis) {
@@ -1832,8 +1840,15 @@ This is a test scene created to help with initial Radial timeline setup.
                     dot.classList.remove('rt-hover');
                     const beatName = dot.getAttribute('data-beat');
                     if (beatName) {
+                        // Hide center dot
+                        const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
+                        if (centerDot) centerDot.classList.remove('rt-hover');
+                        // Remove spoke highlight
                         const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
                         if (spoke) spoke.classList.remove('rt-gossamer-spoke-hover');
+                        // Remove beat outline highlight
+                        const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
+                        if (beatOutline) beatOutline.classList.remove('rt-hover');
                     }
                     currentGroup.classList.remove('rt-gossamer-hover');
                 }
@@ -1842,16 +1857,25 @@ This is a test scene created to help with initial Radial timeline setup.
             currentGroup = null;
         };
         
-        // 2. Gossamer Dot Hover: Show synopsis, sync plot slice+spoke
+        // 2. Gossamer Dot Hover: Show synopsis, sync plot slice+spoke+center dot
         const dotOver = (e: PointerEvent) => {
             const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
             if (!dot) return;
             
+            dot.classList.add('rt-hover');
             const encodedPath = dot.getAttribute('data-path');
             const beatName = dot.getAttribute('data-beat');
             if (!encodedPath) return;
             
             svg.classList.add('scene-hover');
+            
+            // Show center dot and highlight beat outline
+            if (beatName) {
+                const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
+                if (centerDot) centerDot.classList.add('rt-hover');
+                const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
+                if (beatOutline) beatOutline.classList.add('rt-hover');
+            }
             
             // Find and highlight the plot slice (both have encoded paths now)
             const plotGroup = svg.querySelector(`.rt-scene-group[data-path="${encodedPath}"]`);
@@ -1869,11 +1893,15 @@ This is a test scene created to help with initial Radial timeline setup.
                 }
             }
             
-            // Highlight spoke
+            // Highlight spoke and beat outline
             if (beatName) {
                 const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
                 if (spoke) {
                     spoke.classList.add('rt-gossamer-spoke-hover');
+                }
+                const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
+                if (beatOutline) {
+                    beatOutline.classList.add('rt-hover');
                 }
             }
         };
@@ -1881,7 +1909,8 @@ This is a test scene created to help with initial Radial timeline setup.
         const dotOut = (e: PointerEvent) => {
             const toEl = e.relatedTarget as Element | null;
             // If moving to a plot slice or another dot, keep highlights
-            if (toEl && (toEl.closest('.rt-scene-group[data-item-type="Plot"]') || toEl.closest('.rt-gossamer-dot'))) return;
+            if (toEl && (toEl.closest('.rt-scene-group[data-item-type="Plot"]') || 
+                        toEl.closest('.rt-gossamer-dot'))) return;
 
             svg.classList.remove('scene-hover');
 
@@ -1895,9 +1924,18 @@ This is a test scene created to help with initial Radial timeline setup.
                 currentGroup = null;
             }
 
-            // Remove all spoke highlights
+            // Remove all highlights
             svg.querySelectorAll('.rt-gossamer-spoke-hover').forEach(el => {
                 el.classList.remove('rt-gossamer-spoke-hover');
+            });
+            svg.querySelectorAll('.rt-gossamer-dot.rt-hover').forEach(el => {
+                el.classList.remove('rt-hover');
+            });
+            svg.querySelectorAll('.rt-gossamer-dot-center.rt-hover').forEach(el => {
+                el.classList.remove('rt-hover');
+            });
+            svg.querySelectorAll('.rt-gossamer-beat-outline.rt-hover').forEach(el => {
+                el.classList.remove('rt-hover');
             });
         };
         
@@ -1939,7 +1977,8 @@ This is a test scene created to help with initial Radial timeline setup.
             const target = e.target as Element;
             
             // If clicked on dot or plot slice, don't exit (handled by their stopPropagation)
-            if (target.closest('.rt-gossamer-dot') || target.closest('.rt-scene-group[data-item-type="Plot"]')) {
+            if (target.closest('.rt-gossamer-dot') || 
+                target.closest('.rt-scene-group[data-item-type="Plot"]')) {
                 return;
             }
             

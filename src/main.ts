@@ -87,6 +87,12 @@ export interface Scene {
     itemType?: "Scene" | "Plot"; // Distinguish between Scene and Plot items
     Description?: string; // For Plot beat descriptions
     "Beat Model"?: string; // Plot system (e.g., "SaveTheCat", "Hero's Journey")
+    // Gossamer score fields
+    Gossamer1?: number; // Current Gossamer score
+    Gossamer2?: number; // Gossamer score history
+    Gossamer3?: number;
+    Gossamer4?: number;
+    Gossamer5?: number;
 }
 
 // SceneNumberInfo now imported from constants
@@ -1202,7 +1208,13 @@ export default class RadialTimelinePlugin extends Plugin {
                     actNumber: plotInfo.validActNumber,
                     itemType: "Plot",
                     Description: (plotInfo.metadata.Description as string) || '',
-                    "Beat Model": (plotInfo.metadata["Beat Model"] as string) || (plotInfo.metadata.BeatModel as string) || undefined
+                    "Beat Model": (plotInfo.metadata["Beat Model"] as string) || (plotInfo.metadata.BeatModel as string) || undefined,
+                    "Publish Stage": (plotInfo.metadata["Publish Stage"] as string) || undefined,
+                    Gossamer1: typeof plotInfo.metadata.Gossamer1 === 'number' ? plotInfo.metadata.Gossamer1 : undefined,
+                    Gossamer2: typeof plotInfo.metadata.Gossamer2 === 'number' ? plotInfo.metadata.Gossamer2 : undefined,
+                    Gossamer3: typeof plotInfo.metadata.Gossamer3 === 'number' ? plotInfo.metadata.Gossamer3 : undefined,
+                    Gossamer4: typeof plotInfo.metadata.Gossamer4 === 'number' ? plotInfo.metadata.Gossamer4 : undefined,
+                    Gossamer5: typeof plotInfo.metadata.Gossamer5 === 'number' ? plotInfo.metadata.Gossamer5 : undefined
                 });
             });
         });

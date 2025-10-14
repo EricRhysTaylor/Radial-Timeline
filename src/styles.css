@@ -238,9 +238,8 @@
   pointer-events: none; /* Don't interfere with main dot events */
   opacity: 0; /* Hidden by default */
 }
-.rt-gossamer-dot:hover + .rt-gossamer-dot-center,
-.rt-gossamer-dot.rt-hover + .rt-gossamer-dot-center {
-  opacity: 1; /* Show on hover - displays publish stage color inside white ring */
+.rt-gossamer-dot-center.rt-hover {
+  opacity: 1; /* Show when class is applied - displays publish stage color inside white ring */
 }
 .rt-gossamer-line.rt-gossamer-overlay { stroke-dasharray: 6,4; opacity: 0.6; }
 .rt-gossamer-band { fill: var(--rt-gossamer-stroke, #7a7a7a); opacity: 0.12; stroke: none; }
@@ -270,11 +269,11 @@
   stroke: white !important; /* Turn stroke white on hover */
 }
 
-/* Plot slices in Gossamer mode: show cursor pointer and use stage color for stroke */
+/* Plot slices in Gossamer mode: fill is interactive, stroke is hidden to avoid conflicts */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Plot"] .rt-scene-path {
   cursor: pointer;
-  stroke-width: 2px; /* Make beat slice outline visible */
-  pointer-events: all; /* Ensure beat slices are hoverable */
+  stroke: none !important; /* Hide original stroke - gossamer beat outline displays the stroke visually */
+  pointer-events: fill !important; /* Only fill area is interactive - prevents outline from interfering with hover detection */
 }
 
 /* Scene slices (non-Plot) in Gossamer mode: no pointer cursor */
@@ -283,16 +282,17 @@
   pointer-events: none !important;
 }
 
-/* Beat slice outlines in gossamer layer */
+/* Beat slice outlines in gossamer layer - purely visual, not interactive */
 .rt-gossamer-beat-outline {
   /* stroke color set inline via publish stage color */
   stroke-width: 2px;
   fill: none;
-  pointer-events: all;
-  cursor: pointer;
+  pointer-events: none !important; /* Not interactive - fill area handles all hover/click */
+  cursor: default;
 }
-.rt-gossamer-beat-outline:hover {
-  stroke: white !important; /* Turn white on hover */
+.rt-gossamer-beat-outline:hover,
+.rt-gossamer-beat-outline.rt-hover {
+  stroke: white !important; /* Turn white on hover or synchronized hover */
   stroke-width: 3px;
 }
 .radial-timeline-container .rt-scene-title.rt-faded {
@@ -1815,4 +1815,23 @@ dominant-baseline: middle;
 .stage-header:hover .stage-header-letter {
   fill: #ffffff;
   text-decoration: underline;
+}
+
+/* Ensure gossamer score inherits stage color like title */
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-gossamer-score-line tspan[data-item-type=title] {
+  fill: var(--rt-dynamic-color, var(--text-normal)) !important;
+  stroke: white;
+  stroke-width: 0.07em;
+  paint-order: stroke;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.rt-gossamer-score-format-info {
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
 }

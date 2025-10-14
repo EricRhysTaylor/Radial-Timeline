@@ -122,15 +122,28 @@ function buildSynopsis(
             ? plugin.splitIntoBalancedLines(scene.Description, maxTextWidth)
             : scene.synopsis
             ? plugin.splitIntoBalancedLines(scene.synopsis, maxTextWidth)
-            : []),
-        '\u00A0'
+            : [])
     ];
+    
+    // For Plot beats, add Gossamer1 score right after Description (before separator)
+    if (scene.itemType === 'Plot') {
+        const gossamer1 = scene.Gossamer1;
+        if (gossamer1 !== undefined && gossamer1 !== null) {
+            contentLines.push(`<gossamer>${gossamer1}/100</gossamer>`);
+        }
+    }
+    
+    // Add separator
+    contentLines.push('\u00A0');
+    
+    // Add metadata for non-Plot scenes
     if (scene.itemType !== 'Plot') {
         const rawSubplots = orderedSubplots.join(', ');
         contentLines.push(rawSubplots);
         const rawCharacters = (scene.Character || []).join(', ');
         contentLines.push(rawCharacters);
     }
+    
     const filtered = contentLines.filter(line => line && line.trim() !== '\u00A0');
     // Pass resolver so SynopsisManager can map each subplot name to the same CSS variable index used in rings
     return plugin.synopsisManager.generateElement(scene, filtered, sceneId, subplotIndexResolver);
@@ -2127,7 +2140,22 @@ export function createTimelineSVG(
                 // Collect beat slice geometry from rendered plot slices (set during outer ring rendering)
                 const beatSlicesByName = (plugin as any)._plotBeatSlices || new Map();
 
-                // Redraw month/act spokes on top so they're visible over scenes
+                // Render gossamer layer first
+                const layer = renderGossamerLayer(
+                    scenes,
+                    run,
+                    polar,
+                    anglesByBeat.size ? anglesByBeat : undefined,
+                    beatPathByName,
+                    undefined, // overlayRuns
+                    undefined, // minBand
+                    outerRingInnerRadius,
+                    publishStageColorByBeat,
+                    beatSlicesByName
+                );
+                if (layer) svg += layer;
+                
+                // Redraw month/act spokes AFTER gossamer layer so they're visible on top
                 const spokesGroup = `<g class="rt-gossamer-spokes">`;
                 let spokesHtml = '';
                 
@@ -2142,20 +2170,6 @@ export function createTimelineSVG(
                     spokesHtml += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="rt-month-spoke-line rt-gossamer-grid-spoke${isActBoundary ? ' rt-act-boundary' : ''}"/>`;
                 }
                 svg += spokesGroup + spokesHtml + '</g>';
-                
-                const layer = renderGossamerLayer(
-                    scenes,
-                    run,
-                    polar,
-                    anglesByBeat.size ? anglesByBeat : undefined,
-                    beatPathByName,
-                    undefined, // overlayRuns
-                    undefined, // minBand
-                    outerRingInnerRadius,
-                    publishStageColorByBeat,
-                    beatSlicesByName
-                );
-                if (layer) svg += layer;
             }
         }
 

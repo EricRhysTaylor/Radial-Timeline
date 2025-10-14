@@ -106,8 +106,19 @@ export class GossamerScoreModal extends Modal {
       rangeNote.addClass('rt-gossamer-range-note');
     });
 
+    // Info about format
+    const formatInfo = contentEl.createDiv('rt-gossamer-score-format-info');
+    formatInfo.setText('💡 Tip: Use "Copy Template for AI" to get beat names formatted for LLMs. They should return scores like "Beat Name: 42"');
+
     // Buttons
     const buttonContainer = contentEl.createDiv('rt-gossamer-score-buttons');
+
+    new ButtonComponent(buttonContainer)
+      .setButtonText('Copy Template for AI')
+      .setTooltip('Copy beat names in AI-ready format')
+      .onClick(async () => {
+        await this.copyTemplateForAI();
+      });
 
     new ButtonComponent(buttonContainer)
       .setButtonText('Paste from Clipboard')
@@ -187,6 +198,32 @@ export class GossamerScoreModal extends Modal {
     }
   }
 
+  private async copyTemplateForAI(): Promise<void> {
+    try {
+      // Build template with beat names for AI to fill in
+      const lines: string[] = [];
+      lines.push('# Beat Momentum Scores (0-100)');
+      lines.push('# Fill in scores for each beat based on the story progression:');
+      lines.push('');
+      
+      for (const entry of this.entries) {
+        // Use the clean beat name without the number prefix
+        lines.push(`${entry.beatName}: `);
+      }
+      
+      lines.push('');
+      lines.push('# Note: Scores should be 0-100. Leave blank if unsure.');
+      
+      const template = lines.join('\n');
+      await navigator.clipboard.writeText(template);
+      
+      new Notice('✓ Template copied! Paste into your AI and have it fill in the scores.');
+    } catch (error) {
+      console.error('[Gossamer] Failed to copy template:', error);
+      new Notice('Failed to copy template to clipboard.');
+    }
+  }
+
   private async pasteFromClipboard(): Promise<void> {
     try {
       const clipboard = await navigator.clipboard.readText();
@@ -197,11 +234,24 @@ export class GossamerScoreModal extends Modal {
         return;
       }
 
-      // Populate input fields with parsed scores
+      // Populate input fields with parsed scores (case-insensitive matching)
       let matchCount = 0;
       for (const entry of this.entries) {
         const normalized = normalizeBeatName(entry.beatName);
-        const score = parsedScores.get(normalized);
+        
+        // Try exact match first
+        let score = parsedScores.get(normalized);
+        
+        // If no exact match, try case-insensitive search
+        if (score === undefined) {
+          const normalizedLower = normalized.toLowerCase();
+          for (const [key, value] of parsedScores.entries()) {
+            if (key.toLowerCase() === normalizedLower) {
+              score = value;
+              break;
+            }
+          }
+        }
         
         if (score !== undefined && entry.inputEl) {
           entry.inputEl.setValue(score.toString());

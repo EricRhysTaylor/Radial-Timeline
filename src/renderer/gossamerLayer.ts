@@ -152,9 +152,94 @@ export function renderGossamerLayer(
 
 function buildPath(points: { x: number; y: number }[]): string {
   if (!points.length) return '';
-  const move = `M ${fmt(points[0].x)} ${fmt(points[0].y)}`;
-  const rest = points.slice(1).map(p => `L ${fmt(p.x)} ${fmt(p.y)}`).join(' ');
-  return `${move} ${rest}`;
+  if (points.length === 1) return `M ${fmt(points[0].x)} ${fmt(points[0].y)}`;
+  if (points.length === 2) {
+    // For just two points, use a straight line
+    return `M ${fmt(points[0].x)} ${fmt(points[0].y)} L ${fmt(points[1].x)} ${fmt(points[1].y)}`;
+  }
+  
+  // Build smooth bezier curve through all points
+  let path = `M ${fmt(points[0].x)} ${fmt(points[0].y)}`;
+  
+  // Calculate control points for smooth curve with adaptive tension
+  for (let i = 0; i < points.length - 1; i++) {
+    const current = points[i];
+    const next = points[i + 1];
+    const prev = i > 0 ? points[i - 1] : current;
+    const afterNext = i < points.length - 2 ? points[i + 2] : next;
+    
+    // Calculate distances to detect tight curves
+    const distCurrNext = Math.sqrt((next.x - current.x) ** 2 + (next.y - current.y) ** 2);
+    const distPrevCurr = Math.sqrt((current.x - prev.x) ** 2 + (current.y - prev.y) ** 2);
+    const distNextAfter = Math.sqrt((afterNext.x - next.x) ** 2 + (afterNext.y - next.y) ** 2);
+    
+    // Base tension for smooth curves
+    let tension = 0.25;
+    
+    // Reduce tension for tight curves (when points are close together)
+    const avgDist = (distPrevCurr + distCurrNext + distNextAfter) / 3;
+    if (avgDist < 50) {
+      // Very tight curve - use minimal tension
+      tension = 0.1;
+    } else if (avgDist < 100) {
+      // Moderately tight curve
+      tension = 0.15;
+    }
+    
+    // Further reduce tension if we detect a sharp angle (direction change)
+    if (i > 0 && i < points.length - 1) {
+      // Calculate vectors
+      const v1x = current.x - prev.x;
+      const v1y = current.y - prev.y;
+      const v2x = next.x - current.x;
+      const v2y = next.y - current.y;
+      
+      // Calculate dot product and magnitudes
+      const dot = v1x * v2x + v1y * v2y;
+      const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+      const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+      
+      if (mag1 > 0 && mag2 > 0) {
+        const cosAngle = dot / (mag1 * mag2);
+        // If angle is sharp (cosAngle < 0 means > 90 degrees)
+        if (cosAngle < 0.5) {
+          tension *= 0.5; // Reduce tension for sharp turns
+        }
+      }
+    }
+    
+    // Calculate control point distances (limit to fraction of segment length)
+    const maxControlDist = distCurrNext * 0.4;
+    
+    // Control point 1 (outgoing from current point)
+    let cp1x = current.x + (next.x - prev.x) * tension;
+    let cp1y = current.y + (next.y - prev.y) * tension;
+    
+    // Limit control point 1 distance from current point
+    const cp1dist = Math.sqrt((cp1x - current.x) ** 2 + (cp1y - current.y) ** 2);
+    if (cp1dist > maxControlDist && cp1dist > 0) {
+      const scale = maxControlDist / cp1dist;
+      cp1x = current.x + (cp1x - current.x) * scale;
+      cp1y = current.y + (cp1y - current.y) * scale;
+    }
+    
+    // Control point 2 (incoming to next point)
+    let cp2x = next.x - (afterNext.x - current.x) * tension;
+    let cp2y = next.y - (afterNext.y - current.y) * tension;
+    
+    // Limit control point 2 distance from next point
+    const cp2dist = Math.sqrt((cp2x - next.x) ** 2 + (cp2y - next.y) ** 2);
+    if (cp2dist > maxControlDist && cp2dist > 0) {
+      const scale = maxControlDist / cp2dist;
+      cp2x = next.x + (cp2x - next.x) * scale;
+      cp2y = next.y + (cp2y - next.y) * scale;
+    }
+    
+    // Add cubic bezier curve segment
+    path += ` C ${fmt(cp1x)} ${fmt(cp1y)}, ${fmt(cp2x)} ${fmt(cp2y)}, ${fmt(next.x)} ${fmt(next.y)}`;
+  }
+  
+  return path;
 }
 
 function fmt(n: number): string { return n.toFixed(6).replace(/\.0+$/, ''); }

@@ -70,11 +70,12 @@ async function saveGossamerScores(
  * Parse scores from clipboard text in format:
  * "Opening Image: 8"
  * "Theme Stated: 12"
+ * Case-insensitive, handles leading numbers
  */
 export function parseScoresFromClipboard(clipboardText: string): Map<string, number> {
   const scores = new Map<string, number>();
   
-  // Match simple format: "Beat Name: 42"
+  // Match simple format: "Beat Name: 42" (flexible with whitespace)
   const lineRegex = /^(.+?):\s*(\d+)\s*$/gm;
   
   let match;
@@ -82,8 +83,15 @@ export function parseScoresFromClipboard(clipboardText: string): Map<string, num
     const beatName = match[1].trim();
     const score = parseInt(match[2]);
     
-    // Normalize beat name (remove leading numbers if present)
-    const normalizedBeat = beatName.replace(/^\d+\s+/, '');
+    // Normalize beat name (remove leading numbers if present, convert to lowercase for matching)
+    let normalizedBeat = beatName.replace(/^\d+\s+/, ''); // Remove leading number
+    
+    // Convert to title case for better matching
+    normalizedBeat = normalizedBeat
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
     
     if (!isNaN(score) && score >= 0 && score <= 100) {
       scores.set(normalizedBeat, score);

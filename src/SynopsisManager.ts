@@ -301,17 +301,44 @@ export default class SynopsisManager {
     // Add synopsis lines with precise vertical spacing, offset by the number of extra lines
     for (let i = 1; i < synopsisEndIndex; i++) {
       const lineContent = decodedContentLines[i];
+      
+      // Check if this is a Gossamer score line (marked with <gossamer> tags) - check BEFORE decoding
+      const isGossamerLine = contentLines[i].includes('<gossamer>') && contentLines[i].includes('</gossamer>');
+      
       const lineY = (i + extraLineCount) * lineHeight; // shift down by inserted lines
       const synopsisLineElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-secondary");
-      synopsisLineElement.setAttribute("x", "0");
-      synopsisLineElement.setAttribute("y", String(lineY));
-      synopsisLineElement.setAttribute("text-anchor", "start");
-      if (lineContent.includes('<tspan')) {
-        this.processContentWithTspans(lineContent, synopsisLineElement);
+      
+      if (isGossamerLine) {
+        // Apply title styling for Gossamer lines
+        synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-main rt-gossamer-score-line");
+        synopsisLineElement.setAttribute("x", "0");
+        synopsisLineElement.setAttribute("y", String(lineY));
+        synopsisLineElement.setAttribute("text-anchor", "start");
+        
+        // Extract the content between the tags from the original line (before decoding)
+        const gossamerContent = contentLines[i].replace(/<gossamer>/g, '').replace(/<\/gossamer>/g, '');
+        
+        // Create a tspan with the same styling as title tspans
+        const gossamerTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        gossamerTspan.classList.add('rt-scene-title-bold');
+        gossamerTspan.setAttribute("data-item-type", "title");
+        gossamerTspan.style.setProperty('--rt-dynamic-color', titleColor);
+        gossamerTspan.textContent = gossamerContent;
+        synopsisLineElement.appendChild(gossamerTspan);
       } else {
-        synopsisLineElement.textContent = lineContent;
+        // Regular synopsis line styling
+        synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-secondary");
+        synopsisLineElement.setAttribute("x", "0");
+        synopsisLineElement.setAttribute("y", String(lineY));
+        synopsisLineElement.setAttribute("text-anchor", "start");
+        
+        if (lineContent.includes('<tspan')) {
+          this.processContentWithTspans(lineContent, synopsisLineElement);
+        } else {
+          synopsisLineElement.textContent = lineContent;
+        }
       }
+      
       synopsisTextGroup.appendChild(synopsisLineElement);
     }
     
@@ -641,6 +668,7 @@ export default class SynopsisManager {
     // Circle parameters
     const titleLineHeight = 32; // Increased spacing for title/date line
     const synopsisLineHeight = 22; // Reduced spacing for synopsis text
+    const scorePreGap = 46; // Manual gap before the Gossamer score line; adjust as needed
     const radius = 750; // Reduced from 770 by 20px to match the adjustedRadius in updatePosition
     
     // Calculate starting y-position from synopsis position
@@ -657,16 +685,24 @@ export default class SynopsisManager {
     
     
     // Position each text element using Pythagorean theorem relative to circle center
+    let yOffset = 0;
     textElements.forEach((textEl, index) => {
       // Calculate absolute position for this line with variable line heights
-      let yOffset = 0;
-      
-      if (index === 0) {
-        // Title line - position at origin
-        yOffset = 0;
-      } else {
-        // All other lines use the synopsis line height with title spacing
-        yOffset = titleLineHeight + (index - 1) * synopsisLineHeight;
+      if (index > 0) {
+        const isGossamerLine = textEl.classList.contains('rt-gossamer-score-line');
+        const prevEl = textElements[index - 1];
+        const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
+
+        if (index === 1) {
+          // Always use title spacing right after the title line
+          yOffset += titleLineHeight;
+        } else if (isGossamerLine && isPrevLineSynopsis) {
+          // Fixed manual gap before the Gossamer score line
+          yOffset += scorePreGap;
+        } else {
+          // Default spacing between regular synopsis/metadata lines
+          yOffset += synopsisLineHeight;
+        }
       }
       
       const absoluteY = baseY + yOffset;
