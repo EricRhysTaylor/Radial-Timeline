@@ -67,15 +67,39 @@ async function saveGossamerScores(
 }
 
 /**
- * Parse scores from clipboard text in format:
+ * Parse scores from clipboard text in multiple formats:
+ * 
+ * Format 1 - Simple numeric (positional):
+ * "1: 15, 2: 25, 3: 30, 4: 45, 5: 50"
+ * 
+ * Format 2 - Named beats:
  * "Opening Image: 8"
  * "Theme Stated: 12"
+ * 
  * Case-insensitive, handles leading numbers
  */
 export function parseScoresFromClipboard(clipboardText: string): Map<string, number> {
   const scores = new Map<string, number>();
   
-  // Match simple format: "Beat Name: 42" (flexible with whitespace)
+  // Try Format 1 first: Simple numeric format "1: 15, 2: 25, 3: 30"
+  const simpleFormatRegex = /(\d+)\s*:\s*(\d+)/g;
+  const simpleMatches = Array.from(clipboardText.matchAll(simpleFormatRegex));
+  
+  if (simpleMatches.length > 0) {
+    // Use simple numeric format - store as position → score
+    for (const match of simpleMatches) {
+      const position = parseInt(match[1]);
+      const score = parseInt(match[2]);
+      
+      if (!isNaN(position) && !isNaN(score) && score >= 0 && score <= 100) {
+        // Store with position as key for later mapping
+        scores.set(`__position_${position}`, score);
+      }
+    }
+    return scores;
+  }
+  
+  // Format 2: Named format "Beat Name: 42" (flexible with whitespace)
   const lineRegex = /^(.+?):\s*(\d+)\s*$/gm;
   
   let match;
@@ -113,9 +137,9 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
  * Open Gossamer score entry modal
  */
 export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin): Promise<void> {
-  // Get all Plot notes
+  // Get all Plot notes (no subplot filtering - beats are not scenes)
   const scenes = await plugin.getSceneData();
-  const plotBeats = scenes.filter(s => s.itemType === 'Plot' && (s.subplot === 'Main Plot' || !s.subplot));
+  const plotBeats = scenes.filter(s => s.itemType === 'Plot');
   
   if (plotBeats.length === 0) {
     new Notice('No Plot beats found. Create notes with Class: Plot.');

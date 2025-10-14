@@ -6,6 +6,7 @@ import type RadialTimelinePlugin from '../main';
 import type { Scene } from '../main';
 import { normalizeBeatName } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
+import { getPlotSystem, detectPlotSystemFromNotes } from '../utils/plotSystems';
 
 interface BeatScoreEntry {
   beatTitle: string; // Full title like "1 Opening Image" or "5 Theme Stated 5%"
@@ -36,9 +37,33 @@ export class GossamerScoreModal extends Modal {
     contentEl.empty();
     contentEl.addClass('rt-gossamer-score-modal');
 
-    // Title
-    const titleEl = contentEl.createEl('h2', { text: 'Gossamer Momentum Scores' });
+    // Detect plot system from notes or use settings
+    const detectedSystem = detectPlotSystemFromNotes(this.plotBeats);
+    const settingsSystem = this.plugin.settings.plotSystem || 'Save The Cat';
+    const plotSystemTemplate = getPlotSystem(settingsSystem);
+    
+    // Validate beat count
+    const actualCount = this.plotBeats.length;
+    const expectedCount = plotSystemTemplate?.beatCount || 15;
+    const countMismatch = actualCount !== expectedCount;
+
+    // Title with plot system name
+    const titleText = `Gossamer Momentum Scores — ${settingsSystem}`;
+    const titleEl = contentEl.createEl('h2', { text: titleText });
     titleEl.addClass('rt-gossamer-score-title');
+
+    // Show warning if count mismatch
+    if (countMismatch) {
+      const warningEl = contentEl.createEl('div', {
+        text: `⚠️ Expected ${expectedCount} beats for ${settingsSystem}, but found ${actualCount} Plot notes. Check your vault.`
+      });
+      warningEl.addClass('rt-gossamer-warning');
+      warningEl.style.color = '#e67e22'; // SAFE: inline style used for conditional warning display
+      warningEl.style.padding = '8px'; // SAFE: inline style used for conditional warning display
+      warningEl.style.marginBottom = '12px'; // SAFE: inline style used for conditional warning display
+      warningEl.style.backgroundColor = 'rgba(230, 126, 34, 0.1)'; // SAFE: inline style used for conditional warning display
+      warningEl.style.borderRadius = '4px'; // SAFE: inline style used for conditional warning display
+    }
 
     // Subtitle
     const subtitleEl = contentEl.createEl('p', {
@@ -108,7 +133,7 @@ export class GossamerScoreModal extends Modal {
 
     // Info about format
     const formatInfo = contentEl.createDiv('rt-gossamer-score-format-info');
-    formatInfo.setText('💡 Tip: Use "Copy Template for AI" to get beat names formatted for LLMs. They should return scores like "Beat Name: 42"');
+    formatInfo.setText(`💡 Tip: Paste scores in simple format like "1: 15, 2: 25, 3: 30" or detailed format like "Opening Image: 15"`);
 
     // Buttons
     const buttonContainer = contentEl.createDiv('rt-gossamer-score-buttons');
@@ -230,38 +255,66 @@ export class GossamerScoreModal extends Modal {
       const parsedScores = parseScoresFromClipboard(clipboard);
       
       if (parsedScores.size === 0) {
-        new Notice('No scores found in clipboard. Expected format: "Beat Name: 42"');
+        new Notice('No scores found in clipboard. Expected format: "1: 15, 2: 25" or "Beat Name: 42"');
         return;
       }
 
-      // Populate input fields with parsed scores (case-insensitive matching)
+      // Check if this is positional format (keys start with __position_)
+      const isPositionalFormat = Array.from(parsedScores.keys())[0]?.startsWith('__position_');
+      
       let matchCount = 0;
-      for (const entry of this.entries) {
-        const normalized = normalizeBeatName(entry.beatName);
-        
-        // Try exact match first
-        let score = parsedScores.get(normalized);
-        
-        // If no exact match, try case-insensitive search
-        if (score === undefined) {
-          const normalizedLower = normalized.toLowerCase();
-          for (const [key, value] of parsedScores.entries()) {
-            if (key.toLowerCase() === normalizedLower) {
-              score = value;
-              break;
-            }
+      
+      if (isPositionalFormat) {
+        // Positional format: map by index
+        for (let i = 0; i < this.entries.length; i++) {
+          const entry = this.entries[i];
+          const position = i + 1; // 1-based position
+          const score = parsedScores.get(`__position_${position}`);
+          
+          if (score !== undefined && entry.inputEl) {
+            entry.inputEl.setValue(score.toString());
+            entry.newScore = score;
+            entry.inputEl.inputEl.removeClass('rt-input-error');
+            matchCount++;
           }
         }
         
-        if (score !== undefined && entry.inputEl) {
-          entry.inputEl.setValue(score.toString());
-          entry.newScore = score;
-          entry.inputEl.inputEl.removeClass('rt-input-error');
-          matchCount++;
+        // Validate we got all expected scores
+        const expectedCount = this.entries.length;
+        if (matchCount < expectedCount) {
+          new Notice(`⚠️ Warning: Pasted ${matchCount} scores but expected ${expectedCount}. Some beats may be missing scores.`);
+        } else {
+          new Notice(`✓ Populated all ${matchCount} scores from clipboard.`);
         }
-      }
+      } else {
+        // Named format: match by beat name (case-insensitive)
+        for (const entry of this.entries) {
+          const normalized = normalizeBeatName(entry.beatName);
+          
+          // Try exact match first
+          let score = parsedScores.get(normalized);
+          
+          // If no exact match, try case-insensitive search
+          if (score === undefined) {
+            const normalizedLower = normalized.toLowerCase();
+            for (const [key, value] of parsedScores.entries()) {
+              if (key.toLowerCase() === normalizedLower) {
+                score = value;
+                break;
+              }
+            }
+          }
+          
+          if (score !== undefined && entry.inputEl) {
+            entry.inputEl.setValue(score.toString());
+            entry.newScore = score;
+            entry.inputEl.inputEl.removeClass('rt-input-error');
+            matchCount++;
+          }
+        }
 
-      new Notice(`Populated ${matchCount} scores from clipboard.`);
+        new Notice(`Populated ${matchCount} scores from clipboard.`);
+      }
     } catch (error) {
       console.error('[Gossamer] Failed to paste from clipboard:', error);
       new Notice('Failed to read clipboard.');

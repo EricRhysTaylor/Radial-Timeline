@@ -12,6 +12,7 @@ import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
 import { buildBeatsPrompt } from './ai/prompts/beats';
 import { BeatsProcessingModal, type ProcessingMode } from './view/BeatsProcessingModal';
 import { stripObsidianComments } from './utils/text';
+import { normalizeFrontmatterKeys } from './utils/frontmatter';
 
 // --- Interfaces --- 
 interface SceneData {
@@ -151,12 +152,13 @@ async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Prom
             let frontmatter: Record<string, unknown> = {};
             try {
                 const fmText = fmInfo.frontmatter ?? '';
-                frontmatter = fmText ? (parseYaml(fmText) || {}) : {};
+                const rawFrontmatter = fmText ? (parseYaml(fmText) || {}) : {};
+                frontmatter = normalizeFrontmatterKeys(rawFrontmatter);
             } catch {
                 return null; // Skip files with invalid YAML
             }
 
-            const fileClass = frontmatter?.Class || frontmatter?.class;
+            const fileClass = frontmatter?.Class;
             if (typeof fileClass !== 'string' || fileClass.toLowerCase() !== 'scene') {
                 const foundClass = fileClass ? `'${fileClass}'` : 'Not found';
 
@@ -210,14 +212,14 @@ function getActiveContextPrompt(plugin: RadialTimelinePlugin): string | undefine
 /**
  * Helper function to determine if a scene has already been processed for beats
  * A scene is considered processed if:
- * 1. It has a BeatsLastUpdated timestamp, OR
+ * 1. It has a Beats Last Updated timestamp, OR
  * 2. It has any beats fields (1beats, 2beats, or 3beats)
  */
 function hasBeenProcessedForBeats(frontmatter: Record<string, unknown> | undefined): boolean {
     if (!frontmatter) return false;
     
-    // Check for BeatsLastUpdated timestamp
-    const hasBeatsLastUpdated = !!frontmatter['BeatsLastUpdated'];
+    // Check for Beats Last Updated timestamp
+    const hasBeatsLastUpdated = !!frontmatter['Beats Last Updated'];
     if (hasBeatsLastUpdated) return true;
     
     // Check for any beats fields
@@ -240,9 +242,9 @@ async function calculateSceneCount(
     
     // Filter scenes based on mode
     const processableScenes = allScenes.filter(scene => {
-        // Smart and force-flagged modes: must have BeatsUpdate=Yes (no other validation needed)
+        // Smart and force-flagged modes: must have Beats Update=Yes (no other validation needed)
         if (mode === 'smart' || mode === 'force-flagged') {
-            const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate;
+            const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate ?? scene.frontmatter?.['Beats Update'];
             return (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
         }
         
@@ -254,7 +256,7 @@ async function calculateSceneCount(
         return processableScenes.length;
     }
     
-    // Unprocessed mode: count scenes without beats or BeatsLastUpdated
+    // Unprocessed mode: count scenes without beats or Beats Last Updated
     if (mode === 'unprocessed') {
         return processableScenes.filter(scene => {
             // Scene is unprocessed only if it has never been processed
@@ -901,18 +903,18 @@ async function updateSceneFile(
             delete fmObj['2beats'];
             delete fmObj['3beats'];
 
-            // Always record last update timestamp/model in BeatsLastUpdated.
+            // Always record last update timestamp/model in Beats Last Updated.
             const timestamp = new Date().toISOString();
             const updatedValue = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
-            fmObj['BeatsLastUpdated'] = updatedValue;
+            fmObj['Beats Last Updated'] = updatedValue;
 
             // After a successful update, always set the processing flag to No
-            // If lowercase beatsupdate exists, update it; otherwise use BeatsUpdate
+            // If lowercase beatsupdate exists, update it; otherwise use Beats Update
             if (Object.prototype.hasOwnProperty.call(fmObj, 'beatsupdate')) {
                 fmObj['beatsupdate'] = 'no';
             } else {
-                // Always set BeatsUpdate=No (canonical form) after processing
-                fmObj['BeatsUpdate'] = 'No';
+                // Always set Beats Update=No (canonical form) after processing
+                fmObj['Beats Update'] = 'No';
             }
 
             const b1 = parsedBeats['1beats']?.trim();
@@ -964,9 +966,9 @@ async function processWithModal(
 
     // Filter scenes based on mode
     const processableScenes = allScenes.filter(scene => {
-        // Smart and force-flagged modes: must have BeatsUpdate=Yes (no other validation)
+        // Smart and force-flagged modes: must have Beats Update=Yes (no other validation)
         if (mode === 'smart' || mode === 'force-flagged') {
-            const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate;
+            const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate ?? scene.frontmatter?.['Beats Update'];
             return (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
         }
         
@@ -989,7 +991,7 @@ async function processWithModal(
     
     // Calculate total based on mode - MUST match the processing logic below
     for (const triplet of triplets) {
-        const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
+        const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate ?? triplet.current.frontmatter?.['Beats Update'];
         const isFlagged = (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
         
         if (mode === 'force-all') {
@@ -1018,7 +1020,7 @@ async function processWithModal(
 
         const currentScenePath = triplet.current.file.path;
         const tripletIdentifier = `${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
-        const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
+        const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate ?? triplet.current.frontmatter?.['Beats Update'];
         const isFlagged = (typeof beatsUpdateFlag === 'string' && beatsUpdateFlag.toLowerCase() === 'yes');
         // Determine if we should process this scene based on mode
         let shouldProcess = false;
@@ -1027,7 +1029,7 @@ async function processWithModal(
         } else if (mode === 'force-flagged') {
             shouldProcess = isFlagged;
         } else if (mode === 'unprocessed') {
-            // Skip scenes that have been processed (have BeatsLastUpdated or any beats)
+            // Skip scenes that have been processed (have Beats Last Updated or any beats)
             shouldProcess = !hasBeenProcessedForBeats(triplet.current.frontmatter);
         } else { // smart mode
             shouldProcess = isFlagged && !plugin.settings.processedBeatContexts.includes(tripletIdentifier);
@@ -1152,14 +1154,14 @@ export async function processBySubplotOrder(
             const scenes = scenesBySubplot[subplotName];
             scenes.sort(compareScenesByOrder);
             
-            // Count only scenes with words > 0 and BeatsUpdate: Yes
+            // Count only scenes with words > 0 and Beats Update: Yes
             const validScenes = scenes.filter(scene => {
                 const words = scene.frontmatter?.words || scene.frontmatter?.Words;
-                const beatsUpdate = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate;
+                const beatsUpdate = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate || scene.frontmatter?.['Beats Update'];
 
                 if ((typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes') &&
                     (!(typeof words === 'number') || words <= 0)) {
-                    const msg = `Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has BeatsUpdate: Yes but 0 words. Skipping.`;
+                    const msg = `Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has Beats Update: Yes but 0 words. Skipping.`;
                     // Surface to user via Notice; suppress console noise
                     new Notice(msg, 6000);
                 }
@@ -1180,12 +1182,12 @@ export async function processBySubplotOrder(
 
 
         // Build contiguous triplets within this subplot by number (ignore Words),
-        // but only process currents that have Words>0 and BeatsUpdate: Yes
+        // but only process currents that have Words>0 and Beats Update: Yes
         const orderedScenes = scenes.slice().sort(compareScenesByOrder);
         const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
         for (const currentScene of orderedScenes) {
             const words = currentScene.frontmatter?.words || currentScene.frontmatter?.Words;
-            const beatsUpdate = currentScene.frontmatter?.beatsupdate || currentScene.frontmatter?.BeatsUpdate;
+            const beatsUpdate = currentScene.frontmatter?.beatsupdate || currentScene.frontmatter?.BeatsUpdate || currentScene.frontmatter?.['Beats Update'];
             const isProcessable = (typeof words === 'number' && words > 0) && (typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes');
             if (!isProcessable) continue;
 
@@ -1202,8 +1204,8 @@ export async function processBySubplotOrder(
                 const currentScenePath = triplet.current.file.path;
                  const tripletIdentifier = `subplot-${subplotName}-${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
 
-                 // <<< ADDED: Check for BeatsUpdate flag before cache check >>>
-                 const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate;
+                 // <<< ADDED: Check for Beats Update flag before cache check >>>
+                 const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.['Beats Update'];
                  if (typeof beatsUpdateFlag !== 'string' || beatsUpdateFlag.toLowerCase() !== 'yes') {
  
                      // We don't increment totalProcessedCount here, as we only count actual attempts/cache hits
@@ -1305,16 +1307,16 @@ export async function processBySubplotName(
         // Sort by sceneNumber (if present)
         filtered.sort(compareScenesByOrder);
 
-        // Consider only scenes with Words > 0 and BeatsUpdate: Yes
+        // Consider only scenes with Words > 0 and Beats Update: Yes
         const validScenes = filtered.filter(scene => {
             const words = (scene.frontmatter?.words || scene.frontmatter?.Words) as unknown;
-            const beatsUpdate = (scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate) as unknown;
+            const beatsUpdate = (scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate || scene.frontmatter?.['Beats Update']) as unknown;
             return (typeof words === 'number' && words > 0)
                 && (typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes');
         });
 
         if (validScenes.length === 0) {
-            new Notice(`No flagged scenes (BeatsUpdate: Yes) with content found for “${subplotName}”.`);
+            new Notice(`No flagged scenes (Beats Update: Yes) with content found for "${subplotName}".`);
             notice.hide();
             return;
         }
@@ -1345,7 +1347,7 @@ export async function processBySubplotName(
 
         for (const triplet of triplets) {
             // Only process if the current scene is flagged
-            const flag = (triplet.current.frontmatter?.beatsupdate || triplet.current.frontmatter?.BeatsUpdate) as unknown;
+            const flag = (triplet.current.frontmatter?.beatsupdate || triplet.current.frontmatter?.BeatsUpdate || triplet.current.frontmatter?.['Beats Update']) as unknown;
             if (!(typeof flag === 'string' && flag.toLowerCase() === 'yes')) continue;
 
             const currentPath = triplet.current.file.path;
@@ -1478,7 +1480,7 @@ export async function testYamlUpdateFormatting(
         Subplot: ["Test Arc"],
         When: "2024-01-01",
         Words: 10,
-        BeatsUpdate: "Yes"
+        'Beats Update': "Yes"
     };
 
     new Notice(`Starting YAML update test on ${dummyFilePath}...`);
@@ -1575,7 +1577,7 @@ export async function createTemplateScene(
             Due: '',
             'Pending Edits': '',
             Words: 0,
-            BeatsUpdate: 'No'
+            'Beats Update': 'No'
         } as Record<string, unknown>;
 
         const body = '\nWrite your scene here. Replace Subplot/Character/Place in the frontmatter as needed.';

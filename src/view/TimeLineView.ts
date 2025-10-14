@@ -799,7 +799,7 @@ Due: 2025-12-31
 Total Time:
 Revision:
 Pending Edits: 
-BeatsUpdate: 
+Beats Update: 
 Book:
 ---
 

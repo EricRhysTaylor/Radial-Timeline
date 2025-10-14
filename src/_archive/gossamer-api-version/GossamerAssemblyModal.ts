@@ -86,14 +86,14 @@ export class GossamerAssemblyModal extends Modal {
 
     const estimatedTokens = estimateTokens(totalWords);
 
-    summaryContent.createEl('div', { text: `📚 Total scenes: ${totalScenes}` });
-    summaryContent.createEl('div', { text: `📝 Total words: ${totalWords.toLocaleString()}` });
-    summaryContent.createEl('div', { text: `🔢 Estimated tokens: ~${estimatedTokens.toLocaleString()}` });
-    summaryContent.createEl('div', { text: `📊 Plot system: ${plotSystem}` });
-    summaryContent.createEl('div', { text: `🎯 Beats found: ${beatsFound}` });
+    summaryContent.createEl('div', { text: `Total scenes: ${totalScenes}` });
+    summaryContent.createEl('div', { text: `Total words: ${totalWords.toLocaleString()}` });
+    summaryContent.createEl('div', { text: `Estimated tokens: ~${estimatedTokens.toLocaleString()}` });
+    summaryContent.createEl('div', { text: `Plot system: ${plotSystem}` });
+    summaryContent.createEl('div', { text: `Beats found: ${beatsFound}` });
     summaryContent.createEl('div', { text: `` });
     summaryContent.createEl('div', { 
-      text: `💾 Saved to: ${manuscriptPath}`,
+      text: `Saved to: ${manuscriptPath}`,
       cls: 'rt-manuscript-path'
     });
 
@@ -153,4 +153,5 @@ export class GossamerAssemblyModal extends Modal {
     }
   }
 }
+
 

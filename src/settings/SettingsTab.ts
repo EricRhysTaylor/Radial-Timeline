@@ -21,6 +21,9 @@ import { fetchAnthropicModels } from '../api/anthropicApi';
 import { fetchOpenAiModels } from '../api/openaiApi';
 import { fetchGeminiModels } from '../api/geminiApi';
 import RadialTimelinePlugin, { DEFAULT_SETTINGS } from '../main';
+import { CreatePlotTemplatesModal } from '../view/CreatePlotTemplatesModal';
+import { getPlotSystem } from '../utils/plotSystems';
+import { createPlotTemplateNotes } from '../utils/plotTemplates';
 
 declare const EMBEDDED_README_CONTENT: string;
 
@@ -286,7 +289,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // --- Timeline outer ring content ---
         new Settings(containerEl)
             .setName('All scenes mode or main plot mode')
-            .setDesc('If enabled, the outer ring shows ordered scenes from all subplots with subplot colors. Plot beats slices (gray) with labels are shown on the outer ring. When off, the outer ring shows only main plot scenes with publish stage coloring.')
+            .setDesc('If enabled, the outer ring shows ordered scenes from all subplots with subplot colors. Plot beats slices (gray) with labels are shown in the outer ring. When off, the outer ring shows only main plot scenes with publish stage coloring throughout timeline.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.outerRingAllScenes || false)
                 .onChange(async (value) => {
@@ -306,10 +309,50 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
             }));
 
+        // Plot System setting (for Gossamer mode)
+        new Settings(containerEl)
+            .setName('Plot system')
+            .setDesc('Select the story structure model for your manuscript. This will establish the plot system and can be used to create plot notes and to score beats using Gossamer view.')
+            .addDropdown(dropdown => {
+                dropdown
+                    .addOption('Save The Cat', 'Save The Cat (15 beats)')
+                    .addOption('Hero\'s Journey', 'Hero\'s Journey (12 beats)')
+                    .addOption('Story Grid', 'Story Grid (15 beats)')
+                    .setValue(this.plugin.settings.plotSystem || 'Save The Cat')
+                    .onChange(async (value) => {
+                        this.plugin.settings.plotSystem = value;
+                        await this.plugin.saveSettings();
+                        // Update the description styling
+                        this.updatePlotSystemDescription(plotSystemInfo, value);
+                    });
+                
+                // Make the dropdown wider to show full text
+                dropdown.selectEl.style.minWidth = '200px';
+            });
+        
+        // Plot system explanation
+        const plotSystemInfo = containerEl.createEl('div', { cls: 'setting-item-description' });
+        plotSystemInfo.style.marginTop = '-8px';
+        plotSystemInfo.style.marginBottom = '18px';
+        plotSystemInfo.style.paddingLeft = '0';
+        
+        // Set initial description with current selection
+        this.updatePlotSystemDescription(plotSystemInfo, this.plugin.settings.plotSystem || 'Save The Cat');
+
+        // Create template notes button
+        new Settings(containerEl)
+            .setName('Create plot template notes')
+            .setDesc('Generate template plot notes based on the selected plot system including YAML frontmatter and body summary.')
+            .addButton(button => button
+                .setButtonText('Create Templates')
+                .setTooltip('Creates Plot note templates in your source path')
+                .onClick(async () => {
+                    await this.createPlotTemplates();
+                }));
             
         // --- AI for Beats Analysis ---
         new Settings(containerEl)
-            .setName('AI for beats analysis & gossamer')
+            .setName('AI LLM for scene beats triplet analysis')
             .setHeading();
         
         // Enable/disable AI beats features
@@ -717,6 +760,79 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         }
         // If PluginSettingTab has a base hide method you need to call, uncomment below
         // super.hide(); 
+    }
+
+    private updatePlotSystemDescription(container: HTMLElement, selectedSystem: string): void {
+        const descriptions: Record<string, string> = {
+            'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement.',
+            'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery.',
+            'Story Grid': 'Literary fiction and complex narratives. Balances micro and macro structure with progressive complications.'
+        };
+
+        // Clear and rebuild using DOM nodes
+        container.empty();
+        
+        for (const [system, desc] of Object.entries(descriptions)) {
+            const isSelected = system === selectedSystem;
+            const lineDiv = container.createDiv();
+            
+            if (isSelected) {
+                lineDiv.style.color = 'var(--text-success)'; // SAFE: inline style used for dynamic selection highlighting
+                lineDiv.style.fontWeight = '500'; // SAFE: inline style used for dynamic selection highlighting
+            }
+            
+            const boldSpan = lineDiv.createEl('b');
+            boldSpan.textContent = system;
+            lineDiv.appendText(`: ${desc}`);
+        }
+    }
+
+    private async createPlotTemplates(): Promise<void> {
+        const plotSystemName = this.plugin.settings.plotSystem || 'Save The Cat';
+        const plotSystem = getPlotSystem(plotSystemName);
+        
+        if (!plotSystem) {
+            new Notice(`Unknown plot system: ${plotSystemName}`);
+            return;
+        }
+
+        // Show confirmation modal
+        const modal = new CreatePlotTemplatesModal(
+            this.app,
+            this.plugin,
+            plotSystemName,
+            plotSystem.beatCount
+        );
+        modal.open();
+        
+        const result = await modal.waitForConfirmation();
+        
+        if (!result.confirmed) {
+            return;
+        }
+
+        // Create the template notes
+        try {
+            const sourcePath = this.plugin.settings.sourcePath || '';
+            const { created, skipped, errors } = await createPlotTemplateNotes(
+                this.app.vault,
+                plotSystemName,
+                sourcePath
+            );
+
+            // Show results
+            if (errors.length > 0) {
+                new Notice(`Created ${created} notes. ${skipped} skipped. ${errors.length} errors. Check console.`);
+                console.error('[Plot Templates] Errors:', errors);
+            } else if (created === 0 && skipped > 0) {
+                new Notice(`All ${skipped} Plot notes already exist. No new notes created.`);
+            } else {
+                new Notice(`✓ Successfully created ${created} Plot template notes!`);
+            }
+        } catch (error) {
+            console.error('[Plot Templates] Failed:', error);
+            new Notice(`Failed to create Plot templates: ${error}`);
+        }
     }
 
 }

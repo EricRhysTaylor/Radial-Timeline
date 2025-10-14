@@ -56,7 +56,7 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Gossamer enter momentum values
 * Beats update (manuscript order): update AI beat analysis for all scenes in manuscript order
 * Beats update (subplot): update AI beat analysis for scenes in a selected subplot
-* Beats clear cache: clear saved beat results to force a full reprocess (for scenes with BeatsUpdate = yes)
+* Beats clear cache: clear saved beat results to force a full reprocess (for scenes with Beats Update = yes)
 * Create template note: create a basic template file with frontmatter
 * Open: open the timeline view (or interface button in the command ribbon)
 
@@ -119,6 +119,87 @@ Zero draft mode encourages good writing hygiene so you can finish the zero draft
 
 <hr>
 
+## Plot beats (save the cat beats)
+
+The plugin supports plot structuring using yaml class: plot. These appear as narrow slices on the outermost ring when the "outer ring shows all scenes" setting is enabled. Hover to view beat details and click to open the plot note.
+
+<hr>
+
+## Gossamer momentum view
+
+This view grays the timeline and displays the momentum values tied to each plot beat to show how well the manuscript is building tension and excitement. Here, save the cat has 15 beats, offering a good number of points to assess the plot's strength. Use the gossamer command: generate manuscript and hand off to your favorite LLM to generate scores between 0 and 100 for each beat. Quickly enter the scores with Gossamer: Enter momentum scores command or by opening each plot note and editing the yaml directly.
+
+<hr>
+
+## Scene and plot metadata
+
+Yaml frontmatter is used to identify and organize your scenes and plot points. Here are the key examples, from basic to advanced.
+
+Required scene metadata
+
+Scene files are identified by having class: scene in their frontmatter. The following fields are used by the timeline:
+
+```yaml
+---
+Class: Scene
+Act: 1
+When: 2000-01-31
+Synopsis: The protagonist discovers a mysterious artifact.
+Subplot:
+  - Main Plot
+  - Plot 2
+Character:
+  - "[[Protagonist A]]"
+  - "[[Mentor B]]"
+Status: Todo
+Publish Stage: Zero
+Revision:
+Due: 2025-01-31
+Pending Edits:
+BeatsUpdate:
+Book: Book 1 A New Beginning
+---
+```
+
+<hr>
+
+Create a save the cat beat note titled "1 opening image" and paste this frontmatter:
+
+```yaml
+---
+Class: Plot
+Act: 1
+Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
+Beat Model: Save The Cat
+Gossamer1: 12 #always the most recent score
+Gossamer2: 8 #each successive score will form a second line and range for historical comparison
+Gossamer3: 4
+---
+```
+
+<hr>
+
+## AI beats analysis
+
+In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Beats update (manuscript order)" or "Beats update (subplot)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point. Note: if you have run this scene before, be sure to use "Beats clear cache" to process again (prevents unnecessary duplicate API calls).
+
+Note: you can always manually enter these fields and achieve the same effect and avoid using the LLM API. You can also use a web client and produce similar results you can paste into the yaml. It is recommended that you place a spending cap on the API account for your LLM.
+
+```yaml
+---
+# Excerpt of AI beats triplet stored in scene frontmatter. [br] forces line break (discretionary)
+1beats:
+  - 12 Inciting clue + / Raises stakes for the protagonist. Secondary suspicion grows
+2beats:
+  - 13 A / Excellent pacing in the confrontation [br] Cut repetition in second paragraph
+  - Follow-up + / Ally reveals motive
+3beats:
+  - 14 Setback ? / Plan fails at the last moment New approach needed
+Beats Update: Yes
+---
+```
+<hr>
+
 ## Scene and plot metadata
 
 The plugin uses yaml frontmatter to identify and organize your scenes and plot points. Here are the key examples, from basic to advanced.
@@ -149,52 +230,6 @@ Book: Book 1 A New Beginning
 ---
 ```
 
-<hr>
-
-## Plot beats (save the cat beats)
-
-The plugin supports plot structuring using yaml class: plot. These appear as narrow slices on the outermost ring when the "outer ring shows all scenes" setting is enabled. Hover to view beat details and click to open the plot note.
-
-## Gossamer momentum view
-
-This view dims the timeline and displays the momentum values to show how well the manuscript is building tension and excitement. Here, save the cat has 15 beats, offering a good number of points to assess the plot's strength. Use gossamer command generate manuscript, then give it to your AI of choice and ask for a rating between 0 and 100 for each save the cat beat. When I used this in Claude Sonnet 4.5, it provided a detailed analysis with the ratings. You can ask the LLM for a concise list of each rating and copy and paste using the Enter Momentum Scores command.
-
-
-Create a svc beat note titled "1 opening image" and paste this frontmatter:
-
-```yaml
----
-Class: Plot
-Act: 1
-Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
-Beat Model: SaveTheCat
-Gossamer1: 12 #always the most recent score
-Gossamer2: 8 #each successive score will form a second line and range for historical comparison
-Gossamer3: 4
----
-```
-
-<hr>
-
-## AI beats analysis
-
-In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Beats update (manuscript order)" or "Beats update (subplot)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point. Note: if you have run this scene before, be sure to use "Beats clear cache" to process again (prevents unnecessary duplicate API calls).
-
-Note: you can always manually enter these fields and achieve the same effect and avoid using the LLM API. You can also use a web client and produce similar results you can paste into the yaml. It is recommended that you place a spending cap on the API account for your LLM.
-
-```yaml
----
-# Excerpt of AI beats triplet stored in scene frontmatter. [br] forces line break (discretionary)
-1beats:
-  - 12 Inciting clue + / Raises stakes for the protagonist. Secondary suspicion grows
-2beats:
-  - 13 A / Excellent pacing in the confrontation [br] Cut repetition in second paragraph
-  - Follow-up + / Ally reveals motive
-3beats:
-  - 14 Setback ? / Plan fails at the last moment New approach needed
-BeatsUpdate: Yes
----
-```
 <hr>
 
 ## Advanced scene example
@@ -248,7 +283,7 @@ Support Files:     # Attachments, references, research notes
 beats3:     # Generated by AI: scene 3
 beats2:     # Generated by AI: middle flagged scene
 beats1:     # Generated by AI: scene 1 
-BeatsUpdate:     # Type "yes" to flag for update. reminder: erase timestamp and clear cache
+Beats Update:     # Type "yes" to flag for update. reminder: erase timestamp and clear cache
 ---
 ```
 

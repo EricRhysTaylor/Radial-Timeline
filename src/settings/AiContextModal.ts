@@ -46,8 +46,8 @@ class TextInputModal extends Modal {
             inputEl.select();
         }, 10);
 
-        // Handle Enter key
-        this.registerDomEvent(inputEl, 'keydown', (e) => {
+        // Handle Enter key (use registerDomEvent for proper cleanup)
+        this.registerDomEvent(inputEl, 'keydown', (e: KeyboardEvent) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 this.submit(inputEl.value);
@@ -113,7 +113,7 @@ export class AiContextModal extends Modal {
 
         // Info section
         const infoEl = contentEl.createDiv({ cls: 'rt-ai-context-info' });
-        infoEl.setText('Define context for AI analysis. This text prepends all AI prompts for beats and gossamer analysis.');
+        infoEl.setText('Define context for AI LLM analysis. This text prepends all prompts sent to LLM to establish role and context.');
 
         // Template selector section
         const selectorSection = contentEl.createDiv({ cls: 'rt-ai-context-selector-section' });
@@ -297,6 +297,10 @@ export class AiContextModal extends Modal {
     }
 
     private createNewTemplate(): void {
+        // Get current template's prompt to use as starting point
+        const currentTemplate = this.getCurrentTemplate();
+        const basePrompt = currentTemplate?.prompt || '';
+        
         const modal = new TextInputModal(
             this.app,
             'Enter template name',
@@ -305,11 +309,11 @@ export class AiContextModal extends Modal {
                 // Generate unique ID
                 const id = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
                 
-                // Create new template
+                // Create new template with current template's prompt as starting point
                 const newTemplate: AiContextTemplate = {
                     id,
                     name: name,
-                    prompt: '',
+                    prompt: basePrompt,
                     isBuiltIn: false
                 };
                 

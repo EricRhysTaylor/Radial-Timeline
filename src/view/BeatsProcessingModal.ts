@@ -91,7 +91,7 @@ export class BeatsProcessingModal extends Modal {
             modesSection,
             'smart',
             'Smart Update (Recommended)',
-            'Only processes scenes with BeatsUpdate: Yes that haven\'t been processed yet. Respects cache. No Status validation needed.',
+            'Only processes scenes with Beats Update: Yes that haven\'t been processed yet. Respects cache. No Status validation needed.',
             true
         );
         
@@ -100,7 +100,7 @@ export class BeatsProcessingModal extends Modal {
             modesSection,
             'force-flagged',
             'Force Flagged Scenes',
-            'Reprocesses all scenes with BeatsUpdate: Yes, ignoring cache. Use when changing AI templates. No Status validation needed.',
+            'Reprocesses all scenes with Beats Update: Yes, ignoring cache. Use when changing AI templates. No Status validation needed.',
             false
         );
         
@@ -109,7 +109,7 @@ export class BeatsProcessingModal extends Modal {
             modesSection,
             'unprocessed',
             'Process Unprocessed Scenes',
-            'Processes scenes with Status: Complete or Working that don\'t have beats yet. Perfect for resuming after crashes or rate limits. Ignores BeatsUpdate flag and cache.',
+            'Processes scenes with Status: Complete or Working that don\'t have beats yet. Perfect for resuming after crashes or rate limits. Ignores Beats Update flag and cache.',
             false
         );
         

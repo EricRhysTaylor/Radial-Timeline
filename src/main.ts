@@ -17,6 +17,7 @@ import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { BeatsProcessingModal } from './view/BeatsProcessingModal';
 import { shiftGossamerHistory } from './utils/gossamer';
 import { assembleManuscript } from './utils/manuscript';
+import { normalizeFrontmatterKeys } from './utils/frontmatter';
 
 
 // Declare the variable that will be injected by the build process
@@ -53,6 +54,8 @@ interface RadialTimelineSettings {
     // AI Context Templates
     aiContextTemplates?: Array<{id: string; name: string; prompt: string; isBuiltIn: boolean}>;
     activeAiContextTemplateId?: string;
+    // Plot System for Gossamer
+    plotSystem?: string; // Selected plot system (e.g., "Save The Cat", "Hero's Journey", "Story Grid")
     // Optional: Store the fetched models list to avoid refetching?
     // availableOpenAiModels?: { id: string, description?: string }[];
 }
@@ -164,7 +167,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
             isBuiltIn: true
         }
     ],
-    activeAiContextTemplateId: 'generic-editor'
+    activeAiContextTemplateId: 'generic-editor',
+    plotSystem: 'Save The Cat' // Default plot system
 };
 
 // STATUS_COLORS now imported from constants
@@ -1098,7 +1102,8 @@ export default class RadialTimelinePlugin extends Plugin {
     
         for (const file of files) {
             try {
-            const metadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
+            const rawMetadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
+                const metadata = rawMetadata ? normalizeFrontmatterKeys(rawMetadata) : undefined;
                 
                 if (metadata && metadata.Class === "Scene") {
                 // Fix for date shift issue - ensure dates are interpreted as UTC
@@ -1127,37 +1132,36 @@ export default class RadialTimelinePlugin extends Plugin {
                     const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
     
                     // Parse Character metadata - it might be a string or array
-                    let characterList = metadata.Character;
-                    if (characterList) {
+                    let characterList: string[] = [];
+                    const characterData = metadata.Character;
+                    if (characterData) {
                         // Convert to array if it's a string
-                        if (!Array.isArray(characterList)) {
-                            characterList = [characterList];
+                        if (Array.isArray(characterData)) {
+                            characterList = characterData.map((char: unknown) => String(char).replace(/[\[\]]/g, ''));
+                        } else {
+                            characterList = [String(characterData).replace(/[\[\]]/g, '')];
                         }
-                        // Clean up the internal link format (remove [[ and ]])
-                        characterList = characterList.map((char: string) => char.replace(/[\[\]]/g, ''));
-                    } else {
-                            characterList = [];
                     }
     
                     // Create a separate entry for each subplot
                     subplots.forEach(subplot => {
                         scenes.push({
-                            title: metadata.Title || file.basename,
+                            title: (typeof metadata.Title === 'string' ? metadata.Title : file.basename),
                                 date: when.toISOString(),
                                 path: file.path,
                             subplot: subplot,
                                 act: validActNumber.toString(),
-                                pov: metadata.Pov,
-                                location: metadata.Place,
+                                pov: (typeof metadata.POV === 'string' ? metadata.POV : undefined),
+                                location: (typeof metadata.Location === 'string' ? metadata.Location : undefined),
                                 number: validActNumber,
-                                synopsis: metadata.Synopsis,
+                                synopsis: (typeof metadata.Synopsis === 'string' ? metadata.Synopsis : undefined),
                                 when: when,
                             actNumber: validActNumber,
                                 Character: characterList,
-                                status: metadata.Status,
-                                "Publish Stage": metadata["Publish Stage"],
-                                due: metadata.Due,
-                                pendingEdits: metadata["Pending Edits"],
+                                status: (typeof metadata.Status === 'string' || Array.isArray(metadata.Status) ? metadata.Status as string | string[] : undefined),
+                                "Publish Stage": (typeof metadata["Publish Stage"] === 'string' ? metadata["Publish Stage"] : undefined),
+                                due: (typeof metadata.Due === 'string' ? metadata.Due : undefined),
+                                pendingEdits: (typeof metadata["Pending Edits"] === 'string' ? metadata["Pending Edits"] : undefined),
                                 "1beats": typeof metadata["1beats"] === 'string' ? metadata["1beats"] : (Array.isArray(metadata["1beats"]) ? metadata["1beats"].join('\n') : (metadata["1beats"] ? String(metadata["1beats"]) : undefined)),
                                 "2beats": typeof metadata["2beats"] === 'string' ? metadata["2beats"] : (Array.isArray(metadata["2beats"]) ? metadata["2beats"].join('\n') : (metadata["2beats"] ? String(metadata["2beats"]) : undefined)), 
                                 "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : (Array.isArray(metadata["3beats"]) ? metadata["3beats"].join('\n') : (metadata["3beats"] ? String(metadata["3beats"]) : undefined)),
@@ -2253,8 +2257,9 @@ public createTimelineSVG(scenes: Scene[]) {
             for (const f of files) {
                 if (f.basename === beatTitle || f.basename === beatTitle.replace(/^\d+\s+/, '')) {
                     const cache = this.app.metadataCache.getFileCache(f);
-                    const fm = cache?.frontmatter;
-                    if (fm && (fm.Class === 'Plot' || fm.class === 'Plot')) {
+                    const rawFm = cache?.frontmatter;
+                    const fm = rawFm ? normalizeFrontmatterKeys(rawFm) : undefined;
+                    if (fm && fm.Class === 'Plot') {
                         file = f;
                         break;
                     }

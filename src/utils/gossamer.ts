@@ -132,7 +132,7 @@ export function extractPresentBeatScores(run: GossamerRun): { beat: string; scor
  */
 export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; title?: string }[]): string[] {
   const plotBeats = scenes
-    .filter(s => s.itemType === 'Plot' && (s.subplot === 'Main Plot' || !s.subplot))
+    .filter(s => s.itemType === 'Plot')
     .map(s => s.title || '')
     .filter(Boolean);
   
