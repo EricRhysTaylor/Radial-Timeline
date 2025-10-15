@@ -41,9 +41,18 @@ export class PlotLabelManager {
                 const sliceStart = parseFloat(pathNode.getAttribute('data-slice-start') || '0');
                 const lengthPx = textEl.getComputedTextLength();
                 
-                if (!isFinite(lengthPx) || lengthPx <= 0 || radius <= 0) return null;
+                // If text length is 0 (not yet rendered), estimate it based on text content
+                let actualLengthPx = lengthPx;
+                if (!isFinite(lengthPx) || lengthPx <= 0) {
+                    const textContent = textEl.textContent || '';
+                    const computedStyle = window.getComputedStyle(textEl);
+                    const fontSize = parseFloat(computedStyle.fontSize) || 12;
+                    actualLengthPx = textContent.length * fontSize * 0.6; // Rough estimation
+                }
                 
-                const angleSpan = lengthPx / radius;
+                if (actualLengthPx <= 0 || radius <= 0) return null;
+                
+                const angleSpan = actualLengthPx / radius;
                 return { textEl, textPathEl: tp!, pathNode, radius, sliceStart, angleSpan };
             }).filter(Boolean) as PlotLabelItem[];
 

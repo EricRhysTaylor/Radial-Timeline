@@ -10,7 +10,7 @@ import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils
 import { decodeHtmlEntities } from './utils/text';
 import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
-import { createTimelineSVG } from './renderer/TimelineRenderer';
+import { createTimelineSVG, adjustPlotLabelsAfterRender } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
 import { openGossamerScoreEntry, toggleGossamerMode } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
@@ -1248,6 +1248,10 @@ public createTimelineSVG(scenes: Scene[]) {
   return createTimelineSVG(this, scenes);
 }
 
+public adjustPlotLabelsAfterRender(container: HTMLElement) {
+  return adjustPlotLabelsAfterRender(container);
+}
+
     public darkenColor(color: string, percent: number): string {
         const num = parseInt(color.replace("#", ""), 16);
         const amt = Math.round(2.55 * percent);
@@ -1421,14 +1425,22 @@ public createTimelineSVG(scenes: Scene[]) {
         
         // AI Context Templates migration
         let templatesMigrated = false;
+        const oldBuiltInIds = new Set(['generic-editor', 'ya-biopunk-scifi', 'adult-thriller', 'adult-romance']);
+        
         if (!this.settings.aiContextTemplates || this.settings.aiContextTemplates.length === 0) {
             this.settings.aiContextTemplates = DEFAULT_SETTINGS.aiContextTemplates;
             templatesMigrated = true;
         } else {
-            // Ensure built-in templates exist (in case user deleted settings)
+            // Remove old built-in templates and ensure new ones exist
             const builtInTemplates = DEFAULT_SETTINGS.aiContextTemplates!;
-            const existingIds = new Set(this.settings.aiContextTemplates.map(t => t.id));
             
+            // Remove old built-in templates
+            this.settings.aiContextTemplates = this.settings.aiContextTemplates.filter(template => 
+                !template.isBuiltIn || !oldBuiltInIds.has(template.id)
+            );
+            
+            // Add new built-in templates if missing
+            const existingIds = new Set(this.settings.aiContextTemplates.map(t => t.id));
             for (const builtIn of builtInTemplates) {
                 if (!existingIds.has(builtIn.id)) {
                     this.settings.aiContextTemplates.push(builtIn);
@@ -1437,7 +1449,7 @@ public createTimelineSVG(scenes: Scene[]) {
             }
         }
         
-        if (!this.settings.activeAiContextTemplateId) {
+        if (!this.settings.activeAiContextTemplateId || oldBuiltInIds.has(this.settings.activeAiContextTemplateId)) {
             this.settings.activeAiContextTemplateId = DEFAULT_SETTINGS.activeAiContextTemplateId;
             templatesMigrated = true;
         }

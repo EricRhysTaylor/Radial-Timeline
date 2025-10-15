@@ -1043,7 +1043,7 @@
 }
 
 .rt-settings-hidden {
-    display: none;
+    display: none !important;
 }
 
 /* Dynamic subplot/character colors are set inline in TypeScript - no static CSS needed */

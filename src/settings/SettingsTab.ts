@@ -295,6 +295,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.outerRingAllScenes = value;
                     await this.plugin.saveSettings();
+                    // Refresh timeline to show updated outer ring content
+                    this.plugin.refreshTimelineIfNeeded(null);
                 }));
 
         
