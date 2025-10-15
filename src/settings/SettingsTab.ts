@@ -594,7 +594,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             .setHeading();
         // Promote visual weight: add divider and spacing
         pubHeading.settingEl.classList.add('rt-section-heading');
-        containerEl.createEl('p', { cls: 'rt-color-section-desc', text: 'Used for completed scenes, status/stage matrix, act labels and more.' });
+        containerEl.createEl('p', { cls: 'rt-color-section-desc', text: 'Used for completed scenes, stage matrix, act labels and more.' });
         const stageGrid = containerEl.createDiv({ cls: 'rt-color-grid' });
         const stages = Object.entries(this.plugin.settings.publishStageColors);
         stages.forEach(([stage, color]) => {

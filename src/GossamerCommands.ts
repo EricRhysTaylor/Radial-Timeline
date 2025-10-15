@@ -100,6 +100,7 @@ export function parseScoresFromClipboard(clipboardText: string): Map<string, num
   }
   
   // Format 2: Named format "Beat Name: 42" (flexible with whitespace)
+  // Handle both full titles like "1 Opening Image: 14" and simplified like "1openingimage: 14"
   const lineRegex = /^(.+?):\s*(\d+)\s*$/gm;
   
   let match;
@@ -107,17 +108,12 @@ export function parseScoresFromClipboard(clipboardText: string): Map<string, num
     const beatName = match[1].trim();
     const score = parseInt(match[2]);
     
-    // Normalize beat name (remove leading numbers if present, convert to lowercase for matching)
-    let normalizedBeat = beatName.replace(/^\d+\s+/, ''); // Remove leading number
-    
-    // Convert to title case for better matching
-    normalizedBeat = normalizedBeat
-      .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-    
     if (!isNaN(score) && score >= 0 && score <= 100) {
+      // Store the score with the exact beat name for matching
+      scores.set(beatName, score);
+      
+      // Also store with normalized name for fuzzy matching
+      const normalizedBeat = normalizeBeatName(beatName);
       scores.set(normalizedBeat, score);
     }
   }

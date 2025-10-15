@@ -47,14 +47,15 @@ class TextInputModal extends Modal {
         }, 10);
 
         // Handle Enter key
-        (this as unknown as import('obsidian').Component).registerDomEvent(inputEl, 'keydown', (e: KeyboardEvent) => {
+        const handleKeydown = (e: KeyboardEvent) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 this.submit(inputEl.value);
             } else if (e.key === 'Escape') {
                 this.close();
             }
-        });
+        };
+        inputEl.addEventListener('keydown', handleKeydown);
 
         // Buttons
         const buttonRow = contentEl.createDiv({ cls: 'modal-button-container rt-text-input-modal-buttons' });
@@ -182,7 +183,7 @@ export class AiContextModal extends Modal {
         const previewText = previewSection.createDiv({ cls: 'rt-ai-context-preview' });
         
         // Track changes and update preview
-        (this as unknown as import('obsidian').Component).registerDomEvent(this.textareaEl!, 'input', () => {
+        const handleInput = () => {
             const currentTemplate = this.getCurrentTemplate();
             if (currentTemplate && !currentTemplate.isBuiltIn) {
                 this.isDirty = true;
@@ -195,7 +196,8 @@ export class AiContextModal extends Modal {
             } else {
                 previewText.textContent = '[No context set - will use default AI prompt]';
             }
-        });
+        };
+        this.textareaEl.addEventListener('input', handleInput);
 
         // Action buttons
         const actionRow = contentEl.createDiv({ cls: 'rt-ai-context-actions' });

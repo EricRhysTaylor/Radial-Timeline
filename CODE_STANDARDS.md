@@ -41,7 +41,17 @@ element.innerHTML = trustedContent;
 - `element.classList.add()`, `.remove()`, `.toggle()`
 - CSS custom properties (CSS variables) for dynamic theming
 
-**Why:** Obsidian manages CSS loading/unloading. Inline styles bypass this and can cause conflicts.
+**Exception - Modal Sizing ONLY:**
+Modal width/height may be set via inline styles on `modalEl` as this is Obsidian's recommended approach:
+```typescript
+// SAFE: Modal sizing via inline styles (Obsidian pattern)
+if (modalEl) {
+  modalEl.style.width = '900px';
+  modalEl.style.maxWidth = '90vw';
+}
+```
+
+**Why:** Obsidian manages CSS loading/unloading. Inline styles bypass this and can cause conflicts. Modal sizing is an exception because Obsidian's modal system requires direct styling of the `modalEl` element.
 
 ### CSS Naming Convention
 ✅ **ALL CSS classes MUST use proper prefixes:**
@@ -105,6 +115,103 @@ const response = await requestUrl({
 - `app.vault.getMarkdownFiles()`
 
 **Exception:** Build scripts (`.mjs` files) may use Node.js APIs
+
+### Opening Files
+❌ **AVOID:**
+```typescript
+// ❌ WRONG - Creates duplicate tabs
+workspace.getLeaf(false).openFile(file);
+workspace.getLeaf('tab').openFile(file);
+```
+
+✅ **ALWAYS use:**
+```typescript
+// ✅ CORRECT - Prevents duplicate tabs (Obsidian's recommended API)
+await workspace.openLinkText(file.path, '', 'tab');
+await workspace.openLinkText(file.path, '', false); // Reuse active leaf
+```
+
+**Why:** `workspace.openLinkText()` automatically checks if the file is already open and reveals the existing tab instead of creating duplicates. This is Obsidian's recommended approach.
+
+**Helper utility available:**
+```typescript
+import { openOrRevealFile } from './utils/fileUtils';
+
+// Opens file or reveals if already open
+await openOrRevealFile(this.app, file);
+```
+
+**Exception:** If you need custom leaf behavior, add a comment:
+```typescript
+// SAFE: openFile used for split pane with custom view state
+await workspace.getLeaf('split').openFile(file, { state: customState });
+```
+
+### Modal Implementation
+
+✅ **Correct Modal Creation:**
+```typescript
+import { App, Modal } from "obsidian";
+
+export class MyModal extends Modal {
+  constructor(app: App) {
+    super(app);
+  }
+
+  onOpen() {
+    const { contentEl, modalEl } = this;
+    contentEl.empty();
+    
+    // Set modal width using Obsidian's recommended approach
+    // SAFE: Modal sizing via inline styles (Obsidian pattern)
+    if (modalEl) {
+      modalEl.style.width = '800px';
+      modalEl.style.maxWidth = '90vw';
+    }
+    
+    // Apply CSS class for content styling
+    contentEl.addClass('rt-my-modal');
+    
+    // Build your modal content
+    contentEl.createEl('h2', { text: 'Modal Title' });
+    // ...
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
+```
+
+**Modal Element Hierarchy:**
+```
+containerEl (backdrop/overlay - DO NOT style)
+└── modalEl (modal box - SET WIDTH HERE)
+    └── contentEl (content area - ADD CSS CLASSES HERE)
+```
+
+**Key Points:**
+- **`modalEl`**: Apply width/height via inline styles (`modalEl.style.width`)
+- **`contentEl`**: Apply CSS classes for content styling (`contentEl.addClass()`)
+- **`containerEl`**: Never apply styles - Obsidian manages backdrop/positioning
+- **Width setting**: Use `modalEl.style.width` and `modalEl.style.maxWidth` for responsiveness
+- **Content sizing**: Use `width: auto` for modals that should size to content
+
+**Common Patterns:**
+```typescript
+// Fixed width modal
+modalEl.style.width = '900px';
+modalEl.style.maxWidth = '90vw';
+
+// Auto-sizing modal (fits content)
+modalEl.style.width = 'auto';
+
+// Tall modal
+modalEl.style.maxHeight = '80vh';
+```
+
+**Why:** Obsidian's modal system requires direct styling of `modalEl` for width/height. Using CSS classes on `modalEl` or `containerEl` can break centering and backdrop behavior.
 
 ### Markdown Rendering
 ✅ **CORRECT usage:**
@@ -553,6 +660,7 @@ Checks for:
 - Inline CSS property assignments
 - TypeScript `any` types
 - CSS class names without `rt-` or `radial-timeline-` prefix
+- Direct `getLeaf().openFile()` calls (should use `workspace.openLinkText()`)
 
 ### Build-time Checks
 Runs during `npm run build`:

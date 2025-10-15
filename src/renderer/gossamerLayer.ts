@@ -9,6 +9,11 @@ export interface PolarConfig {
   outerRadius: number;
 }
 
+// Helper to get CSS variable value
+function getCSSVar(varName: string, fallback: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback;
+}
+
 // Helper to map score [0..100] into a band near the outer ring
 function mapScoreToRadius(score: number, inner: number, outer: number): number {
   // Linear map: 0 -> inner, 100 -> outer
@@ -102,11 +107,14 @@ export function renderGossamerLayer(
         : `${name}${run?.meta?.label ? ` — ${run.meta.label}` : ''}: ${score}`;
       const title = `<title>${escapeAttr(titleText)}</title>`;
       
-      // Get publish stage color for this beat, or red if missing data
-      const stageColor = isMissingData ? '#ff4444' : (publishStageColorByBeat?.get(name) || '#7a7a7a');
+      // Get publish stage color for this beat, or error color if missing data
+      const errorColor = getCSSVar('--rt-gossamer-error-color', '#ff4444');
+      const defaultColor = getCSSVar('--rt-gossamer-default-color', '#7a7a7a');
+      const dotRadius = getCSSVar('--rt-gossamer-dot-current', '4');
+      const stageColor = isMissingData ? errorColor : (publishStageColorByBeat?.get(name) || defaultColor);
       
       // Gossamer1 dots: normal colored circles (hover CSS will add stroke effect)
-      dots.push(`<circle class="rt-gossamer-dot${isMissingData ? ' rt-gossamer-missing-data' : ''}" cx="${fmt(x)}" cy="${fmt(y)}" r="4" fill="${stageColor}" ${data}>${title}</circle>`);
+      dots.push(`<circle class="rt-gossamer-dot${isMissingData ? ' rt-gossamer-missing-data' : ''}" cx="${fmt(x)}" cy="${fmt(y)}" r="${dotRadius}" fill="${stageColor}" ${data}>${title}</circle>`);
       // Spoke from inner to the beginning of the beat slice (or outer radius if not specified)
       const spokeEnd = spokeEndRadius ?? outerRadius;
       const sx1 = innerRadius * Math.cos(angle);
@@ -140,19 +148,28 @@ export function renderGossamerLayer(
   if (minBand && minBand.min && minBand.max) {
     const minPts = toPoints(minBand.min, localAngles, innerRadius, outerRadius);
     const maxPts = toPoints(minBand.max, localAngles, innerRadius, outerRadius);
-    if (minPts.length >= 3 && maxPts.length >= 3) {
-      // Use Bezier smoothing for band to match plot lines
-      const minPath = buildPath(minPts);
-      const maxPath = buildPath(maxPts);
-      const bandPath = buildBandFromPaths(minPts, maxPts);
+    if (minPts.length >= 2 && maxPts.length >= 2) {
+      // Build ONE continuous path that fills the area between min and max lines
+      // 1. Trace max line forward (beat 1→N) - exact same bezier as max plot line
+      const maxPath = buildBezierPath(maxPts, true);
+      
+      // 2. Build min line forward (beat 1→N) - exact same bezier as min plot line
+      const minPathForward = buildBezierPath(minPts, true);
+      
+      // 3. Reverse the min path commands (not recalculate!) to trace backward
+      const minPathReversed = reverseSvgPath(minPathForward);
+      
+      // 4. Combine: max forward + min reversed + close
+      const bandPath = `${maxPath} ${minPathReversed} Z`;
       
       // Use a light version of publish stage color with transparency
-      // Find the most common publish stage color from current run
+      const defaultColor = getCSSVar('--rt-gossamer-default-color', '#7a7a7a');
+      const bandOpacity = getCSSVar('--rt-gossamer-band-opacity', '0.5');
       const stageColors = Array.from(publishStageColorByBeat?.values() || []);
-      const dominantColor = stageColors.length > 0 ? stageColors[0] : '#7a7a7a';
+      const dominantColor = stageColors.length > 0 ? stageColors[0] : defaultColor;
       const lightColor = lightenColor(dominantColor, 0.7); // 70% lighter
       
-      bandSvg = `<path class="rt-gossamer-band" d="${bandPath}" fill="${lightColor}" fill-opacity="0.3"/>`;
+      bandSvg = `<path class="rt-gossamer-band" d="${bandPath}" fill="${lightColor}" fill-opacity="${bandOpacity}"/>`;
     }
   }
 
@@ -165,22 +182,26 @@ export function renderGossamerLayer(
     [...overlayRuns].reverse().forEach(ov => {
       const path = buildOverlayPath(ov.points, localAngles, innerRadius, outerRadius);
       if (path) {
+        const historicalColor = getCSSVar('--rt-gossamer-historical-color', '#c0c0c0');
         overlayPathsWithColors.push({
           path,
-          color: ov.color || '#c0c0c0'
+          color: ov.color || historicalColor
         });
       }
       
       // Add dots for historical runs (red if score is 0, gray if score > 0)
+      const historicalDotRadius = getCSSVar('--rt-gossamer-dot-historical', '5');
       ov.points.forEach(point => {
         const angle = localAngles.get(point.beat);
         if (typeof angle === 'number') {
           const r = mapScoreToRadius(point.score, innerRadius, outerRadius);
           const x = r * Math.cos(angle);
           const y = r * Math.sin(angle);
-          const dotColor = point.score === 0 ? '#ff4444' : (ov.color || '#c0c0c0');
-          // Historical dots: smaller than current (r=3 vs r=4), no stroke by default
-          overlayDots.push(`<circle class="rt-gossamer-dot-historical" cx="${fmt(x)}" cy="${fmt(y)}" r="5" fill="${dotColor}" data-beat="${escapeAttr(point.beat)}" pointer-events="none"/>`);
+          const errorColor = getCSSVar('--rt-gossamer-error-color', '#ff4444');
+          const historicalColor = getCSSVar('--rt-gossamer-historical-color', '#c0c0c0');
+          const dotColor = point.score === 0 ? errorColor : (ov.color || historicalColor);
+          // Historical dots: use CSS variable for size
+          overlayDots.push(`<circle class="rt-gossamer-dot-historical" cx="${fmt(x)}" cy="${fmt(y)}" r="${historicalDotRadius}" fill="${dotColor}" data-beat="${escapeAttr(point.beat)}" pointer-events="none"/>`);
         }
       });
     });
@@ -304,6 +325,67 @@ function buildPath(points: { x: number; y: number }[]): string {
   return buildBezierPath(points, true);
 }
 
+/**
+ * Reverse an SVG path by reversing the command sequence and swapping control points.
+ * This preserves the exact curve shapes, just traced in the opposite direction.
+ */
+function reverseSvgPath(path: string): string {
+  // Parse path into segments
+  const segments: Array<{ cmd: string; coords: number[] }> = [];
+  const regex = /([MLC])\s*([\d.\s,-]+)/g;
+  let match;
+  
+  while ((match = regex.exec(path)) !== null) {
+    const cmd = match[1];
+    const coords = match[2].trim().split(/[\s,]+/).map(parseFloat);
+    segments.push({ cmd, coords });
+  }
+  
+  if (segments.length === 0) return '';
+  
+  // Extract all points with their control points
+  const points: Array<{ x: number; y: number; cp1?: { x: number; y: number }; cp2?: { x: number; y: number } }> = [];
+  
+  segments.forEach((seg, idx) => {
+    if (seg.cmd === 'M' || seg.cmd === 'L') {
+      points.push({ x: seg.coords[0], y: seg.coords[1] });
+    } else if (seg.cmd === 'C') {
+      // Cubic bezier: cp1x, cp1y, cp2x, cp2y, x, y
+      const prevPoint = points[points.length - 1];
+      if (prevPoint) {
+        prevPoint.cp2 = { x: seg.coords[0], y: seg.coords[1] }; // Control point leaving previous point
+      }
+      points.push({
+        x: seg.coords[4],
+        y: seg.coords[5],
+        cp1: { x: seg.coords[2], y: seg.coords[3] } // Control point entering this point
+      });
+    }
+  });
+  
+  if (points.length < 2) return `L ${fmt(points[0].x)} ${fmt(points[0].y)}`;
+  
+  // Build reversed path
+  let reversedPath = `L ${fmt(points[points.length - 1].x)} ${fmt(points[points.length - 1].y)}`;
+  
+  // Trace backwards through points
+  for (let i = points.length - 1; i > 0; i--) {
+    const current = points[i];
+    const prev = points[i - 1];
+    
+    // If we have control points, use cubic bezier
+    if (current.cp1 && prev.cp2) {
+      // When reversing: cp1 and cp2 swap roles
+      reversedPath += ` C ${fmt(current.cp1.x)} ${fmt(current.cp1.y)}, ${fmt(prev.cp2.x)} ${fmt(prev.cp2.y)}, ${fmt(prev.x)} ${fmt(prev.y)}`;
+    } else {
+      // No control points, just line
+      reversedPath += ` L ${fmt(prev.x)} ${fmt(prev.y)}`;
+    }
+  }
+  
+  return reversedPath;
+}
+
 function fmt(n: number): string { return n.toFixed(6).replace(/\.0+$/, ''); }
 
 function toPoints(series: { beat: string; score: number }[], angles: Map<string, number>, inner: number, outer: number): { x: number; y: number }[] {
@@ -323,20 +405,6 @@ function buildOverlayPath(points: { beat: string; score: number }[], angles: Map
   return buildBezierPath(pts, true);
 }
 
-function buildBandFromPaths(minPts: { x: number; y: number }[], maxPts: { x: number; y: number }[]): string {
-  // Build a closed shape using Bezier curves to match the plot lines
-  if (minPts.length < 2 || maxPts.length < 2) return '';
-  
-  // Build max path forward using shared Bezier function
-  const maxBezier = buildBezierPath(maxPts, true);
-  
-  // Build min path reversed using shared Bezier function (continue from max, no M command)
-  const minReversed = [...minPts].reverse();
-  const minBezier = buildBezierPath(minReversed, false);
-  
-  // Combine: start at first max point, draw max path, then min path reversed, close
-  return `${maxBezier} ${minBezier} Z`;
-}
 
 function lightenColor(hex: string, amount: number): string {
   // Convert hex to RGB, lighten, return hex

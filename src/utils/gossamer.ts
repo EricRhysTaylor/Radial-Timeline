@@ -83,7 +83,7 @@ export function buildRunFromGossamerField(
     const normalizedSelected = selectedBeatModel.toLowerCase().replace(/\s+/g, '');
     plotNotes = plotNotes.filter(p => {
       const plotSystem = p["Plot System"];
-      if (!plotSystem) return false;
+      if (typeof plotSystem !== 'string') return false;
       const normalizedPlotSystem = plotSystem.toLowerCase().replace(/\s+/g, '');
       return normalizedPlotSystem === normalizedSelected;
     });
@@ -253,9 +253,9 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
       // Collect all scores for this beat across all runs
       const scores: number[] = [];
       
-      // Current run
+      // Current run (include both 'present' and 'outlineOnly' status)
       const currentBeat = current.beats.find(b => b.beat === beatName);
-      if (currentBeat && currentBeat.status === 'present') {
+      if (currentBeat && (currentBeat.status === 'present' || currentBeat.status === 'outlineOnly')) {
         scores.push(currentBeat.score as number);
       }
       
@@ -267,7 +267,9 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
         }
       });
       
-      if (scores.length >= 2) {
+      // Include ALL beats that have at least one score
+      // This ensures continuous min/max band even with missing data
+      if (scores.length >= 1) {
         const min = Math.min(...scores);
         const max = Math.max(...scores);
         minPoints.push({ beat: beatName, score: min });

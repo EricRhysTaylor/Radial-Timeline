@@ -75,8 +75,14 @@ export class BeatsProcessingModal extends Modal {
     }
 
     private showConfirmationView(): void {
-        const { contentEl } = this;
+        const { contentEl, modalEl } = this;
         contentEl.empty();
+        
+        // Set modal width using Obsidian's approach
+        if (modalEl) {
+            modalEl.style.width = 'auto'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+        
         contentEl.classList.add('rt-beats-modal');
 
         // Info section

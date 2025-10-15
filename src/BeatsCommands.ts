@@ -1585,11 +1585,8 @@ export async function createTemplateScene(
 
         await vault.create(targetPath, content);
         new Notice(`Created template scene: ${targetPath}`);
-        // Open the new file
-        const created = vault.getAbstractFileByPath(targetPath);
-        if (created instanceof TFile) {
-            await plugin.app.workspace.getLeaf('tab').openFile(created);
-        }
+        // Open the new file using openLinkText (prevents duplicate tabs)
+        await plugin.app.workspace.openLinkText(targetPath, '', 'tab');
     } catch (e) {
         console.error('[createTemplateScene] Failed:', e);
         new Notice('Failed to create template scene. Check console for details.');

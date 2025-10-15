@@ -15,6 +15,8 @@ interface BeatScoreEntry {
   history: number[]; // Gossamer2, Gossamer3, etc.
   newScore?: number; // User-entered score
   inputEl?: TextComponent;
+  scoresToDelete: Set<number>; // Track which Gossamer fields to delete (1, 2, 3, etc.)
+  scoreDisplayEl?: HTMLElement; // Reference to the scores display element
 }
 
 export class GossamerScoreModal extends Modal {
@@ -33,8 +35,15 @@ export class GossamerScoreModal extends Modal {
   }
 
   onOpen(): void {
-    const { contentEl } = this;
+    const { contentEl, modalEl } = this;
     contentEl.empty();
+    
+    // Set modal width using Obsidian's approach
+    if (modalEl) {
+      modalEl.style.width = '700px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+    }
+    
     contentEl.addClass('rt-gossamer-score-modal');
 
     // Detect plot system from notes or use settings
@@ -58,15 +67,13 @@ export class GossamerScoreModal extends Modal {
         text: `⚠️ Expected ${expectedCount} beats for ${settingsSystem}, but found ${actualCount} Plot notes. Check your vault.`
       });
       warningEl.addClass('rt-gossamer-warning');
-      warningEl.style.color = '#e67e22'; // SAFE: inline style used for conditional warning display
-      warningEl.style.padding = '8px'; // SAFE: inline style used for conditional warning display
-      warningEl.style.marginBottom = '12px'; // SAFE: inline style used for conditional warning display
-      warningEl.style.backgroundColor = 'rgba(230, 126, 34, 0.1)'; // SAFE: inline style used for conditional warning display
-      warningEl.style.borderRadius = '4px'; // SAFE: inline style used for conditional warning display
     }
 
+    // Header section with border
+    const headerSection = contentEl.createDiv('rt-gossamer-score-header');
+    
     // Subtitle
-    const subtitleEl = contentEl.createEl('p', {
+    const subtitleEl = headerSection.createEl('p', {
       text: 'Enter momentum scores (0-100) for each beat. Previous scores will be saved as history.'
     });
     subtitleEl.addClass('rt-gossamer-score-subtitle');
@@ -85,30 +92,61 @@ export class GossamerScoreModal extends Modal {
       const beatTitleEl = entryDiv.createEl('div', { text: entry.beatTitle });
       beatTitleEl.addClass('rt-gossamer-beat-title');
 
-      // Current score display
-      if (entry.currentScore !== undefined) {
-        const currentEl = entryDiv.createEl('div', {
-          text: `Current: ${entry.currentScore}`
-        });
-        currentEl.addClass('rt-gossamer-current-score');
-      }
-
-      // History display (if exists)
-      if (entry.history.length > 0) {
-        const historyText = entry.history.join(' → ');
-        const historyEl = entryDiv.createEl('div', {
-          text: `Previous: ${historyText}`
-        });
-        historyEl.addClass('rt-gossamer-score-history');
-      }
-
-      // Input row
-      const inputRow = entryDiv.createDiv('rt-gossamer-input-row');
+      // Score row - compact layout with all scores and input on one line
+      const scoreRow = entryDiv.createDiv('rt-gossamer-score-row');
       
-      const inputLabel = inputRow.createSpan({ text: 'New Score: ' });
+      // Display existing scores with delete buttons
+      const existingScoresEl = scoreRow.createDiv('rt-gossamer-existing-scores-container');
+      entry.scoreDisplayEl = existingScoresEl;
+      
+      const renderScores = () => {
+        existingScoresEl.empty();
+        
+        // Current score (Gossamer1)
+        if (entry.currentScore !== undefined && !entry.scoresToDelete.has(1)) {
+          const scoreSpan = existingScoresEl.createSpan({ 
+            text: `G1:${entry.currentScore}`,
+            cls: 'rt-gossamer-score-item'
+          });
+          
+          const deleteBtn = scoreSpan.createSpan({ 
+            text: '×',
+            cls: 'rt-gossamer-score-delete'
+          });
+          deleteBtn.addEventListener('click', () => {
+            entry.scoresToDelete.add(1);
+            renderScores();
+          });
+        }
+        
+        // History scores (Gossamer2, Gossamer3, etc.)
+        entry.history.forEach((score, idx) => {
+          const gossamerNum = idx + 2;
+          if (entry.scoresToDelete.has(gossamerNum)) return;
+          
+          const scoreSpan = existingScoresEl.createSpan({ 
+            text: `G${gossamerNum}:${score}`,
+            cls: 'rt-gossamer-score-item'
+          });
+          
+          const deleteBtn = scoreSpan.createSpan({ 
+            text: '×',
+            cls: 'rt-gossamer-score-delete'
+          });
+          deleteBtn.addEventListener('click', () => {
+            entry.scoresToDelete.add(gossamerNum);
+            renderScores();
+          });
+        });
+      };
+      
+      renderScores();
+
+      // New score input (to the right)
+      const inputLabel = scoreRow.createSpan({ text: 'New Score: ' });
       inputLabel.addClass('rt-gossamer-input-label');
 
-      entry.inputEl = new TextComponent(inputRow);
+      entry.inputEl = new TextComponent(scoreRow);
       entry.inputEl.inputEl.addClass('rt-gossamer-score-input');
       entry.inputEl.setPlaceholder('0-100');
 
@@ -117,23 +155,17 @@ export class GossamerScoreModal extends Modal {
         const num = parseInt(value);
         if (!isNaN(num) && num >= 0 && num <= 100) {
           entry.newScore = num;
-          entry.inputEl.inputEl.removeClass('rt-input-error');
+          entry.inputEl?.inputEl.removeClass('rt-input-error');
         } else if (value.trim().length > 0) {
-          entry.inputEl.inputEl.addClass('rt-input-error');
+          entry.inputEl?.inputEl.addClass('rt-input-error');
           entry.newScore = undefined;
         } else {
-          entry.inputEl.inputEl.removeClass('rt-input-error');
+          entry.inputEl?.inputEl.removeClass('rt-input-error');
           entry.newScore = undefined;
         }
       });
-
-      const rangeNote = inputRow.createSpan({ text: ' (0-100)' });
-      rangeNote.addClass('rt-gossamer-range-note');
     });
 
-    // Info about format
-    const formatInfo = contentEl.createDiv('rt-gossamer-score-format-info');
-    formatInfo.setText(`💡 Tip: Paste scores in simple format like "1: 15, 2: 25, 3: 30" or detailed format like "Opening Image: 15"`);
 
     // Buttons
     const buttonContainer = contentEl.createDiv('rt-gossamer-score-buttons');
@@ -185,13 +217,14 @@ export class GossamerScoreModal extends Modal {
       const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
       if (!file) continue;
 
-      const cache = this.plugin.app.metadataCache.getFileCache(file);
+      const cache = this.plugin.app.metadataCache.getFileCache(file as any);
       const fm = cache?.frontmatter;
 
       const entry: BeatScoreEntry = {
         beatTitle: beat.title,
         beatName: normalizeBeatName(beat.title),
-        history: []
+        history: [],
+        scoresToDelete: new Set<number>()
       };
 
       if (fm) {
@@ -232,8 +265,8 @@ export class GossamerScoreModal extends Modal {
       lines.push('');
       
       for (const entry of this.entries) {
-        // Use the clean beat name without the number prefix
-        lines.push(`${entry.beatName}: `);
+        // Use the full beat title for better matching when pasting back
+        lines.push(`${entry.beatTitle}: `);
       }
       
       lines.push('');
@@ -323,14 +356,20 @@ export class GossamerScoreModal extends Modal {
 
   private async saveScores(): Promise<void> {
     const scores = new Map<string, number>();
+    const deletions = new Map<string, Set<number>>(); // beatTitle -> Set of Gossamer numbers to delete
     const errors: string[] = [];
 
-    // Collect scores
+    // Collect scores and deletions
     for (const entry of this.entries) {
       if (entry.newScore !== undefined) {
         scores.set(entry.beatTitle, entry.newScore);
-      } else if (entry.inputEl?.getValue().trim().length > 0) {
+      } else if (entry.inputEl && entry.inputEl.getValue().trim().length > 0) {
         errors.push(`Invalid score for "${entry.beatTitle}"`);
+      }
+      
+      // Track deletions
+      if (entry.scoresToDelete.size > 0) {
+        deletions.set(entry.beatTitle, entry.scoresToDelete);
       }
     }
 
@@ -339,19 +378,71 @@ export class GossamerScoreModal extends Modal {
       return;
     }
 
-    if (scores.size === 0) {
-      new Notice('No scores entered.');
+    if (scores.size === 0 && deletions.size === 0) {
+      new Notice('No changes to save.');
       return;
     }
 
-    // Save scores
+    // Save scores and handle deletions
     try {
-      await this.plugin.saveGossamerScores(scores);
-      new Notice(`Updated ${scores.size} beat scores.`);
+      // Only save new scores if there are any
+      if (scores.size > 0) {
+        await this.plugin.saveGossamerScores(scores);
+      }
+      
+      // Process deletions if there are any
+      if (deletions.size > 0) {
+        await this.processDeletions(deletions);
+      }
+      
+      const changeCount = scores.size + deletions.size;
+      new Notice(`Updated ${changeCount} beat(s).`);
       this.close();
     } catch (error) {
       console.error('[Gossamer] Failed to save scores:', error);
       new Notice('Failed to save scores. Check console for details.');
+    }
+  }
+  
+  private async processDeletions(deletions: Map<string, Set<number>>): Promise<void> {
+    // Get files from source path (same as saveGossamerScores)
+    const sourcePath = this.plugin.settings.sourcePath || '';
+    const allFiles = this.plugin.app.vault.getMarkdownFiles();
+    const files = sourcePath 
+      ? allFiles.filter(f => f.path.startsWith(sourcePath))
+      : allFiles;
+    
+    for (const [beatTitle, gossamerNums] of deletions) {
+      // Find Plot note by title (same logic as saveGossamerScores)
+      let file = null;
+      for (const f of files) {
+        if (f.basename === beatTitle || f.basename === beatTitle.replace(/^\d+\s+/, '')) {
+          const cache = this.plugin.app.metadataCache.getFileCache(f);
+          const fm = cache?.frontmatter;
+          if (fm && fm.Class === 'Plot') {
+            file = f;
+            break;
+          }
+        }
+      }
+      
+      if (!file) {
+        console.warn(`[Gossamer] No Plot note found for beat: ${beatTitle}`);
+        continue;
+      }
+      
+      try {
+        await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
+          const fm = yaml as Record<string, any>;
+          
+          // Delete specified Gossamer fields
+          for (const num of gossamerNums) {
+            delete fm[`Gossamer${num}`];
+          }
+        });
+      } catch (error) {
+        console.error(`[Gossamer] Failed to delete scores for ${beatTitle}:`, error);
+      }
     }
   }
 

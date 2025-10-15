@@ -46,6 +46,29 @@
   /* Settings UI sizing */
   --rt-settings-select-width: 240px; /* consistent width for dropdowns */
 
+  /* ============================================
+     GOSSAMER VISUAL CONFIGURATION
+     All gossamer plot appearance settings in one place
+     ============================================ */
+  /* Colors */
+  --rt-gossamer-error-color: #ff4444;           /* Missing data / zero scores (red) */
+  --rt-gossamer-default-color: #7a7a7a;         /* Default fallback (gray) */
+  --rt-gossamer-historical-color: #c0c0c0;      /* Historical runs (Gossamer2-5, light gray) */
+  
+  /* Dot Sizes */
+  --rt-gossamer-dot-current: 4px;               /* Current run (Gossamer1) dot radius */
+  --rt-gossamer-dot-historical: 5px;            /* Historical runs (Gossamer2-5) dot radius */
+  
+  /* Strokes & Lines */
+  --rt-gossamer-line-width: 2px;                /* Plot line thickness */
+  --rt-gossamer-line-historical-width: 1.5px;   /* Historical plot line thickness */
+  --rt-gossamer-spoke-width: 1px;               /* Spoke line thickness */
+  --rt-gossamer-spoke-color: #e0e0e0;           /* Spoke line color */
+  
+  /* Opacity & Transparency */
+  --rt-gossamer-band-opacity: 0.5;              /* Min/max shading band opacity */
+  --rt-gossamer-line-historical-opacity: 0.6;   /* Historical line opacity */
+
   /* Subplot palette - 16 fixed colors provided */
   --rt-subplot-colors-0: #EFBDEB;
   --rt-subplot-colors-1: #a35ca7;
@@ -213,9 +236,13 @@
 /* Gossamer momentum styling */
 .rt-gossamer-layer { pointer-events: none; }
 .rt-gossamer-line { 
-  stroke: var(--rt-max-publish-stage-color, #7a7a7a); /* Use max publish stage color for connecting line */
-  stroke-width: 3; 
+  stroke: var(--rt-max-publish-stage-color, var(--rt-gossamer-default-color)); /* Use max publish stage color for connecting line */
+  stroke-width: var(--rt-gossamer-line-width); 
   fill: none; 
+}
+.rt-gossamer-line.rt-gossamer-overlay {
+  stroke-width: var(--rt-gossamer-line-historical-width);
+  opacity: var(--rt-gossamer-line-historical-opacity);
 }
 /* Phase 2: dots (10px diameter) */
 .rt-gossamer-dot { 
@@ -257,8 +284,8 @@
   pointer-events: none; /* Don't interfere with hover on dots/slices */
 }
 .rt-gossamer-spoke { 
-  /* stroke color set inline via publish stage color */
-  stroke-width: 1px; 
+  stroke: var(--rt-gossamer-spoke-color); /* Use CSS variable for spoke color */
+  stroke-width: var(--rt-gossamer-spoke-width); 
   stroke-dasharray: none;
   pointer-events: none; /* Spokes don't have their own hover, only respond to dot/slice hover */
   cursor: default;
@@ -314,7 +341,7 @@
 .radial-timeline-container .rt-scene-info {
   opacity: 0;
   pointer-events: none !important;
-  z-index: 100;
+  z-index: 10000;
   vector-effect: non-scaling-stroke;
 }
 .radial-timeline-container .rt-scene-info text {
@@ -772,6 +799,22 @@
 .rt-provider-section.dimmed {
   opacity: 0.55;
 }
+
+/* Fix alignment of extra buttons (like gear icon) with setting item text */
+.setting-item {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.setting-item-control {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.clickable-icon.extra-setting-button {
+  align-self: center !important;
+  margin-top: 0 !important;
+}
 @media (max-width: 1100px) {
   .rt-color-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1142,10 +1185,7 @@
 }
 
 /* Beats Processing Modal Styles */
-.rt-beats-modal {
-  min-width: 500px;
-  max-width: 600px;
-}
+/* Width is set via JavaScript for better control */
 
 .rt-beats-info {
   margin: 6px 0 20px 0;
@@ -1477,39 +1517,67 @@
 
 /* Gossamer Score Modal */
 .rt-gossamer-score-modal {
-  padding: 20px;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
 }
 
 .rt-gossamer-score-title {
-  margin-bottom: 10px;
+  margin: 0;
+  padding: 16px 20px 12px 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-normal);
+  border-bottom: none;
+}
+
+.rt-gossamer-warning {
+  margin: 0 20px 12px 20px;
+  padding: 8px;
+  color: #e67e22;
+  background-color: rgba(230, 126, 34, 0.1);
+  border-radius: 4px;
+  font-size: 13px;
 }
 
 .rt-gossamer-score-subtitle {
-  margin-bottom: 20px;
+  margin: 0;
+  padding: 0 20px 16px 20px;
   color: var(--text-muted);
   font-size: 14px;
+  line-height: 1.6;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  min-height: 40px;
 }
 
 .rt-gossamer-scores-container {
-  max-height: 400px;
+  flex: 1;
   overflow-y: auto;
-  margin-bottom: 20px;
-  padding: 10px;
-  background-color: var(--background-secondary);
-  border-radius: 4px;
+  padding: 16px 20px;
+  background-color: transparent;
+  min-height: 0;
 }
 
 .rt-gossamer-score-entry {
-  margin-bottom: 15px;
-  padding: 10px;
-  background-color: var(--background-primary);
-  border-radius: 4px;
+  margin-bottom: 4px;
+  padding: 8px 12px;
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
 }
 
 .rt-gossamer-beat-title {
   font-weight: 600;
-  margin-bottom: 5px;
-  font-family: var(--font-monospace);
+  margin: 0 0 6px 0;
+  color: var(--text-normal);
+  font-size: 14px;
 }
 
 .rt-gossamer-current-score {
@@ -1525,18 +1593,93 @@
   font-family: var(--font-monospace);
 }
 
-.rt-gossamer-input-row {
+.rt-gossamer-score-row {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.rt-gossamer-existing-scores-container {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-monospace);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rt-gossamer-score-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 6px;
+  margin-right: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: var(--radius-s);
+  background-color: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+.rt-gossamer-score-delete {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-muted);
+  background-color: var(--background-modifier-border);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  transition: all 0.15s ease;
+  vertical-align: middle;
+}
+
+.rt-gossamer-score-delete:hover {
+  color: var(--text-on-accent);
+  background-color: var(--text-error);
+  border-color: var(--text-error);
+  transform: scale(1.05);
+}
+
+.rt-gossamer-score-delete:active {
+  transform: scale(0.95);
+}
+
+.rt-gossamer-score-separator {
+  color: var(--text-faint);
 }
 
 .rt-gossamer-input-label {
-  font-size: 13px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .rt-gossamer-score-input {
-  width: 80px;
+  width: 70px;
+  flex-shrink: 0;
+  height: 28px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
 }
 
 .rt-gossamer-score-input.rt-input-error {
@@ -1549,19 +1692,23 @@
 }
 
 .rt-gossamer-score-buttons {
-  margin-top: 20px;
-  padding-top: 15px;
+  margin: 0;
+  padding: 16px 20px;
   border-top: 1px solid var(--background-modifier-border);
   display: flex;
-  gap: 10px;
-  justify-content: space-between;
+  gap: 8px;
+  justify-content: flex-end;
   align-items: center;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  background-color: var(--background-primary);
 }
 
 .rt-gossamer-score-buttons-right {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 /* Dynamic positioning */

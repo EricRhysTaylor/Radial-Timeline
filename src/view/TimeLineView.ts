@@ -12,6 +12,7 @@ import { SceneNumberInfo } from '../utils/constants';
 import { PlotLabelManager } from '../utils/plotLabelManager';
 import ZeroDraftModal from './ZeroDraftModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
+import { openOrRevealFile } from '../utils/fileUtils';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -1572,7 +1573,7 @@ This is a test scene created to help with initial Radial timeline setup.
             const filePath = decodeURIComponent(encodedPath);
             
             // Set up click handler
-            this.registerDomEvent(path, "click", (evt: MouseEvent) => {
+            this.registerDomEvent(path, "click", async (evt: MouseEvent) => {
                 const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
                 if (!(file instanceof TFile)) return;
 
@@ -1616,15 +1617,9 @@ This is a test scene created to help with initial Radial timeline setup.
                                     new Notice('Failed to save Pending Edits');
                                 }
                             },
-                            onOverride: () => {
-                                // Open without saving
-                                const leaves = this.plugin.app.workspace.getLeavesOfType('markdown');
-                                const existingLeaf = leaves.find(leaf => {
-                                    const viewState = leaf.getViewState();
-                                    return viewState.state?.file === file.path;
-                                });
-                                if (existingLeaf) this.plugin.app.workspace.revealLeaf(existingLeaf);
-                                else this.plugin.app.workspace.getLeaf('tab').openFile(file);
+                            onOverride: async () => {
+                                // Open without saving (uses openLinkText to prevent duplicate tabs)
+                                await this.plugin.app.workspace.openLinkText(file.path, '', 'tab');
                             }
                         });
 
@@ -1633,18 +1628,8 @@ This is a test scene created to help with initial Radial timeline setup.
                     }
                 }
 
-                // Default behavior: open or reveal the note
-                const leaves = this.plugin.app.workspace.getLeavesOfType("markdown");
-                const existingLeaf = leaves.find(leaf => {
-                    const viewState = leaf.getViewState();
-                    return viewState.state?.file === file.path;
-                });
-                if (existingLeaf) {
-                    this.plugin.app.workspace.revealLeaf(existingLeaf);
-                } else {
-                    const leaf = this.plugin.app.workspace.getLeaf('tab');
-                    leaf.openFile(file);
-                }
+                // Default behavior: open or reveal the note (uses openLinkText to prevent duplicate tabs)
+                await this.plugin.app.workspace.openLinkText(file.path, '', 'tab');
             });
             // Cursor styling handled via CSS (.rt-scene-path)
             
@@ -1948,7 +1933,7 @@ This is a test scene created to help with initial Radial timeline setup.
         };
         
         // 3. Click handlers
-        const plotSliceClick = (e: MouseEvent) => {
+        const plotSliceClick = async (e: MouseEvent) => {
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Plot"]');
             if (!g) return;
             
@@ -1960,11 +1945,11 @@ This is a test scene created to help with initial Radial timeline setup.
             const filePath = decodeURIComponent(encodedPath);
             const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
             if (file instanceof TFile) {
-                view.plugin.app.workspace.getLeaf(false).openFile(file);
+                await openOrRevealFile(view.plugin.app, file);
             }
         };
         
-        const dotClick = (e: MouseEvent) => {
+        const dotClick = async (e: MouseEvent) => {
             const dot = (e.target as Element).closest('.rt-gossamer-dot');
             if (!dot) return;
             
@@ -1976,7 +1961,7 @@ This is a test scene created to help with initial Radial timeline setup.
             const path = decodeURIComponent(encodedPath);
             const file = view.plugin.app.vault.getAbstractFileByPath(path);
             if (file instanceof TFile) {
-                view.plugin.app.workspace.getLeaf(false).openFile(file);
+                await openOrRevealFile(view.plugin.app, file);
             }
         };
         

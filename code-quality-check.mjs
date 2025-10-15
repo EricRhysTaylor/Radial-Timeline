@@ -19,6 +19,7 @@ const PATTERNS = [
   { pattern: /\.style\.(backgroundColor|color|fontSize|fontWeight|margin|padding|border|width|height|display|position)\s*=/g, message: 'inline CSS property assignment' },
   { pattern: /style\s*=\s*["'][^"']+["']/g, message: 'inline style attribute' },
   { pattern: /document\.createElement.*style\s*=/g, message: 'inline style during element creation' },
+  { pattern: /getLeaf\([^)]*\)\.openFile\(/g, message: 'direct getLeaf().openFile() call - use workspace.openLinkText() instead' },
 ];
 
 // Allowlist for specific patterns that are known to be safe
@@ -26,7 +27,9 @@ const PATTERNS = [
 const ALLOWLIST = [
   '// SAFE: innerHTML used for',  // Special comment to mark safe usage
   '// SAFE: inline style used for', // Special comment for inline styles
+  '// SAFE: Modal sizing',        // Modal sizing via modalEl (Obsidian pattern)
   '// SAFE: any type used for',   // Special comment for allowed 'any' types
+  '// SAFE: openFile used for',  // Special comment for allowed openFile usage
   'document.createElementNS',     // Safe SVG creation pattern
   'createSvgElement',             // Our safe SVG helper
   '.DOMParser',                   // Using DOM parser is safe
@@ -217,10 +220,17 @@ function main() {
     console.error('  - Example: addClass(\'rt-beats-modal\') NOT addClass(\'beats-modal\')');
     console.error('  - This prevents conflicts with Obsidian core styles and other plugins');
     
+    console.error('\n\x1b[33mFor opening files:\x1b[0m');
+    console.error('  - Use workspace.openLinkText(filePath, \'\', \'tab\') instead of getLeaf().openFile()');
+    console.error('  - openLinkText() automatically prevents duplicate tabs (recommended by Obsidian)');
+    console.error('  - If you must use openFile(), add a comment: // SAFE: openFile used for <reason>');
+    
     console.error('\n\x1b[33mIf you believe this is a false positive, you can add a comment:\x1b[0m');
     console.error('  // SAFE: innerHTML used for <reason>');
     console.error('  // SAFE: inline style used for <reason>');
+    console.error('  // SAFE: Modal sizing via inline styles (Obsidian pattern)');
     console.error('  // SAFE: any type used for <reason>');
+    console.error('  // SAFE: openFile used for <reason>');
     console.error('\n📖 See CODE_STANDARDS.md for detailed guidelines and best practices.\n');
     process.exit(1);
   }
