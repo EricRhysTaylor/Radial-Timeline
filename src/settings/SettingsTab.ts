@@ -358,7 +358,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Enable/disable AI beats features
         new Settings(containerEl)
             .setName('Enable AI LLM features')
-            .setDesc('Show command palette options and UI beat colors and beats sections in hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.')
+            .setDesc('Show command palette options and ui beat colors and hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAiBeats ?? true)
                 .onChange(async (value) => {

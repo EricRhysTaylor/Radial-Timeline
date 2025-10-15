@@ -21,6 +21,7 @@ class TextInputModal extends Modal {
     private readonly title: string;
     private readonly defaultValue: string;
     private readonly onSubmit: (result: string) => void;
+    private keydownHandler?: (e: KeyboardEvent) => void;
 
     constructor(app: App, title: string, defaultValue: string, onSubmit: (result: string) => void) {
         super(app);
@@ -47,34 +48,56 @@ class TextInputModal extends Modal {
         }, 10);
 
         // Handle Enter key
-      const handleKeydown = (e: KeyboardEvent) => {
-          if (e.key === 'Enter') {
-              e.preventDefault();
-              this.submit(inputEl.value);
-          } else if (e.key === 'Escape') {
-              this.close();
-          }
-      };
-      (this as any).registerDomEvent(inputEl, 'keydown', handleKeydown);
+        this.keydownHandler = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.submit(inputEl.value);
+            } else if (e.key === 'Escape') {
+                this.close();
+            }
+        };
+        inputEl.addEventListener('keydown', this.keydownHandler);
 
         // Buttons
         const buttonRow = contentEl.createDiv({ cls: 'modal-button-container rt-text-input-modal-buttons' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Cancel')
-            .onClick(() => this.close());
+            .onClick(() => {
+                console.log('Cancel button clicked');
+                this.close();
+            });
 
         new ButtonComponent(buttonRow)
             .setButtonText('OK')
             .setCta()
-            .onClick(() => this.submit(inputEl.value));
+            .onClick(() => {
+                console.log('OK button clicked, value:', inputEl.value);
+                this.submit(inputEl.value);
+            });
+    }
+
+    onClose(): void {
+        // Clean up event listeners
+        if (this.keydownHandler) {
+            const inputEl = this.contentEl.querySelector('input');
+            if (inputEl) {
+                inputEl.removeEventListener('keydown', this.keydownHandler);
+            }
+        }
     }
 
     private submit(value: string): void {
-        if (value && value.trim()) {
-            this.onSubmit(value.trim());
+        console.log('Submit called with value:', value);
+        const trimmedValue = value.trim();
+        if (trimmedValue) {
+            console.log('Calling onSubmit with:', trimmedValue);
+            this.onSubmit(trimmedValue);
+            this.close();
+        } else {
+            console.log('Empty value, showing notice');
+            new Notice('Please enter a template name');
         }
-        this.close();
     }
 }
 
@@ -97,6 +120,7 @@ export class AiContextModal extends Modal {
     private deleteButton?: ButtonComponent;
     private renameButton?: ButtonComponent;
     private copyButton?: ButtonComponent;
+    private inputHandler?: () => void;
 
     constructor(app: App, plugin: RadialTimelinePlugin, onSave: () => void) {
         super(app);
@@ -183,21 +207,21 @@ export class AiContextModal extends Modal {
         const previewText = previewSection.createDiv({ cls: 'rt-ai-context-preview' });
         
         // Track changes and update preview
-      const handleInput = () => {
-          const currentTemplate = this.getCurrentTemplate();
-          if (currentTemplate && !currentTemplate.isBuiltIn) {
-              this.isDirty = true;
-              this.updateButtonStates();
-          }
+        this.inputHandler = () => {
+            const currentTemplate = this.getCurrentTemplate();
+            if (currentTemplate && !currentTemplate.isBuiltIn) {
+                this.isDirty = true;
+                this.updateButtonStates();
+            }
 
-          const prompt = this.textareaEl?.value.trim() || '';
-          if (prompt) {
-              previewText.textContent = `${prompt}\n\nBefore taking action, prepare an action plan.\n\n[Rest of AI prompt...]`;
-          } else {
-              previewText.textContent = '[No context set - will use default AI prompt]';
-          }
-      };
-      (this as any).registerDomEvent(this.textareaEl, 'input', handleInput);
+            const prompt = this.textareaEl?.value.trim() || '';
+            if (prompt) {
+                previewText.textContent = `${prompt}\n\nBefore taking action, prepare an action plan.\n\n[Rest of AI prompt...]`;
+            } else {
+                previewText.textContent = '[No context set - will use default AI prompt]';
+            }
+        };
+        this.textareaEl.addEventListener('input', this.inputHandler);
 
         // Action buttons
         const actionRow = contentEl.createDiv({ cls: 'rt-ai-context-actions' });
@@ -227,6 +251,13 @@ export class AiContextModal extends Modal {
         // Initialize editor state
         this.updateEditorSection();
         this.updateButtonStates();
+    }
+
+    onClose(): void {
+        // Clean up event listeners
+        if (this.inputHandler && this.textareaEl) {
+            this.textareaEl.removeEventListener('input', this.inputHandler);
+        }
     }
 
     private updateDropdownOptions(): void {

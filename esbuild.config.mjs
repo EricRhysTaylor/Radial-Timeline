@@ -38,6 +38,7 @@ if (isCI) {
 	destDirs = [
 		"/Users/ericrhystaylor/Documents/Author/Author Obsidian Vault .nosync/.obsidian/plugins/radial-timeline",
 		"/Users/ericrhystaylor/Documents/Code Projects/Test Obsidian Vault/.obsidian/plugins/radial-timeline",
+		"/Users/ericrhystaylor/Documents/Code Projects/Test Obsidian Vault Jane Austin/.obsidian/plugins/radial-timeline",
 		"./release"  // Add release folder for distribution
 	];
 }
