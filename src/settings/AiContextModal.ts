@@ -56,46 +56,28 @@ class TextInputModal extends Modal {
                 this.close();
             }
         };
-        inputEl.addEventListener('keydown', this.keydownHandler);
+        (this as any).registerDomEvent(inputEl, 'keydown', this.keydownHandler);
 
         // Buttons
         const buttonRow = contentEl.createDiv({ cls: 'modal-button-container rt-text-input-modal-buttons' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Cancel')
-            .onClick(() => {
-                console.log('Cancel button clicked');
-                this.close();
-            });
+            .onClick(() => this.close());
 
         new ButtonComponent(buttonRow)
             .setButtonText('OK')
             .setCta()
-            .onClick(() => {
-                console.log('OK button clicked, value:', inputEl.value);
-                this.submit(inputEl.value);
-            });
+            .onClick(() => this.submit(inputEl.value));
     }
 
-    onClose(): void {
-        // Clean up event listeners
-        if (this.keydownHandler) {
-            const inputEl = this.contentEl.querySelector('input');
-            if (inputEl) {
-                inputEl.removeEventListener('keydown', this.keydownHandler);
-            }
-        }
-    }
 
     private submit(value: string): void {
-        console.log('Submit called with value:', value);
         const trimmedValue = value.trim();
         if (trimmedValue) {
-            console.log('Calling onSubmit with:', trimmedValue);
             this.onSubmit(trimmedValue);
             this.close();
         } else {
-            console.log('Empty value, showing notice');
             new Notice('Please enter a template name');
         }
     }
@@ -221,7 +203,7 @@ export class AiContextModal extends Modal {
                 previewText.textContent = '[No context set - will use default AI prompt]';
             }
         };
-        this.textareaEl.addEventListener('input', this.inputHandler);
+        (this as any).registerDomEvent(this.textareaEl, 'input', this.inputHandler);
 
         // Action buttons
         const actionRow = contentEl.createDiv({ cls: 'rt-ai-context-actions' });
@@ -253,12 +235,6 @@ export class AiContextModal extends Modal {
         this.updateButtonStates();
     }
 
-    onClose(): void {
-        // Clean up event listeners
-        if (this.inputHandler && this.textareaEl) {
-            this.textareaEl.removeEventListener('input', this.inputHandler);
-        }
-    }
 
     private updateDropdownOptions(): void {
         if (!this.dropdownComponent) return;
