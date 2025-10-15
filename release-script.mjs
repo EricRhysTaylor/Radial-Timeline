@@ -190,6 +190,49 @@ function injectEmbeddedFontsIntoReleaseCss() {
 async function main() {
     console.log("🚀 Obsidian Plugin Release Process\n");
 
+    // Enforce releasing from master only
+    try {
+        const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+        if (branch !== 'master') {
+            console.error(`❌ Releases must be cut from 'master'. Current branch: '${branch}'.`);
+            console.error(`👉 Run:  git switch master && git pull  then re-run: npm run release`);
+            process.exit(1);
+        }
+    } catch (e) {
+        console.error('❌ Could not determine current git branch. Ensure you are on master.');
+        process.exit(1);
+    }
+
+    // Ensure working tree on master is clean before we attempt a merge or build
+    try {
+        const dirty = execSync('git status --porcelain', { encoding: 'utf8' }).trim();
+        if (dirty) {
+            console.error('❌ Your working tree on master has uncommitted changes.');
+            console.error('👉 Commit or stash them, then run npm run release again.');
+            process.exit(1);
+        }
+    } catch (e) {
+        console.error('❌ Could not verify working tree state.');
+        process.exit(1);
+    }
+
+    // Optionally merge dev -> master as a safety step before releasing
+    let shouldMergeDev = true;
+    if (String(process.env.NO_MERGE_DEV || '').trim() === '1') {
+        shouldMergeDev = false;
+    } else {
+        const mergeAnswer = await question(`🔁 Merge 'dev' into 'master' before release? (Y/n): `);
+        shouldMergeDev = !mergeAnswer || mergeAnswer.toLowerCase() === 'y' || mergeAnswer.toLowerCase() === 'yes';
+    }
+    if (shouldMergeDev) {
+        // Fetch is safe (doesn't modify local files) and helps detect remote divergence
+        runCommand('git fetch --all', 'Fetching remotes', true);
+        runCommand('git merge --no-ff --no-edit dev', "Merging 'dev' into 'master'");
+        console.log("✅ 'dev' merged into 'master'.");
+    } else {
+        console.log("ℹ️  Skipping 'dev' -> 'master' merge before release.");
+    }
+
     // Read current version
     const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
     const currentVersion = packageJson.version;
