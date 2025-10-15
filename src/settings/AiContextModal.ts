@@ -21,7 +21,7 @@ class TextInputModal extends Modal {
     private readonly title: string;
     private readonly defaultValue: string;
     private readonly onSubmit: (result: string) => void;
-    private keydownHandler?: (e: KeyboardEvent) => void;
+    private inputEl?: HTMLInputElement;
 
     constructor(app: App, title: string, defaultValue: string, onSubmit: (result: string) => void) {
         super(app);
@@ -35,7 +35,7 @@ class TextInputModal extends Modal {
         titleEl.setText(this.title);
 
         // Input field
-        const inputEl = contentEl.createEl('input', {
+        this.inputEl = contentEl.createEl('input', {
             type: 'text',
             value: this.defaultValue,
             cls: 'rt-text-input-modal-field'
@@ -43,20 +43,24 @@ class TextInputModal extends Modal {
 
         // Focus and select all
         window.setTimeout(() => {
-            inputEl.focus();
-            inputEl.select();
+            this.inputEl?.focus();
+            this.inputEl?.select();
         }, 10);
 
-        // Handle Enter key
-        this.keydownHandler = (e: KeyboardEvent) => {
+        // Handle Enter key - using arrow function to maintain 'this' context
+        const handleKeydown = (e: KeyboardEvent) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                this.submit(inputEl.value);
+                this.submit(this.inputEl?.value || '');
             } else if (e.key === 'Escape') {
                 this.close();
             }
         };
-        (this as any).registerDomEvent(inputEl, 'keydown', this.keydownHandler);
+        // SAFE: Modal classes don't have registerDomEvent, manual cleanup in onClose
+        this.inputEl.addEventListener('keydown', handleKeydown);
+
+        // Store handler reference for cleanup
+        (this as any)._keydownHandler = handleKeydown;
 
         // Buttons
         const buttonRow = contentEl.createDiv({ cls: 'modal-button-container rt-text-input-modal-buttons' });
@@ -68,9 +72,15 @@ class TextInputModal extends Modal {
         new ButtonComponent(buttonRow)
             .setButtonText('OK')
             .setCta()
-            .onClick(() => this.submit(inputEl.value));
+            .onClick(() => this.submit(this.inputEl?.value || ''));
     }
 
+    onClose(): void {
+        // Clean up event listeners to prevent memory leaks
+        if (this.inputEl && (this as any)._keydownHandler) {
+            this.inputEl.removeEventListener('keydown', (this as any)._keydownHandler);
+        }
+    }
 
     private submit(value: string): void {
         const trimmedValue = value.trim();
@@ -102,7 +112,6 @@ export class AiContextModal extends Modal {
     private deleteButton?: ButtonComponent;
     private renameButton?: ButtonComponent;
     private copyButton?: ButtonComponent;
-    private inputHandler?: () => void;
 
     constructor(app: App, plugin: RadialTimelinePlugin, onSave: () => void) {
         super(app);
@@ -111,7 +120,7 @@ export class AiContextModal extends Modal {
         
         // Clone templates to allow cancel without saving
         this.templates = JSON.parse(JSON.stringify(plugin.settings.aiContextTemplates || []));
-        this.currentTemplateId = plugin.settings.activeAiContextTemplateId || 'generic-editor';
+        this.currentTemplateId = plugin.settings.activeAiContextTemplateId || 'commercial_genre';
     }
 
     onOpen(): void {
@@ -189,7 +198,7 @@ export class AiContextModal extends Modal {
         const previewText = previewSection.createDiv({ cls: 'rt-ai-context-preview' });
         
         // Track changes and update preview
-        this.inputHandler = () => {
+        const handleInput = () => {
             const currentTemplate = this.getCurrentTemplate();
             if (currentTemplate && !currentTemplate.isBuiltIn) {
                 this.isDirty = true;
@@ -203,7 +212,11 @@ export class AiContextModal extends Modal {
                 previewText.textContent = '[No context set - will use default AI prompt]';
             }
         };
-        (this as any).registerDomEvent(this.textareaEl, 'input', this.inputHandler);
+        // SAFE: Modal classes don't have registerDomEvent, manual cleanup in onClose
+        this.textareaEl.addEventListener('input', handleInput);
+        
+        // Store handler reference for cleanup
+        (this as any)._inputHandler = handleInput;
 
         // Action buttons
         const actionRow = contentEl.createDiv({ cls: 'rt-ai-context-actions' });
@@ -233,6 +246,13 @@ export class AiContextModal extends Modal {
         // Initialize editor state
         this.updateEditorSection();
         this.updateButtonStates();
+    }
+
+    onClose(): void {
+        // Clean up event listeners to prevent memory leaks
+        if (this.textareaEl && (this as any)._inputHandler) {
+            this.textareaEl.removeEventListener('input', (this as any)._inputHandler);
+        }
     }
 
 
@@ -399,7 +419,7 @@ export class AiContextModal extends Modal {
             this.currentTemplateId = this.templates[0].id;
         } else {
             // Fallback (should not occur with built-ins present)
-            this.currentTemplateId = 'generic-editor';
+            this.currentTemplateId = 'commercial_genre';
         }
         
         this.updateDropdownOptions();
