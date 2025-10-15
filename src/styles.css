@@ -295,10 +295,17 @@
   stroke-width: 2px;
 }
 .rt-gossamer-grid-spoke {
-  stroke: #d0d0d0 !important; /* Even lighter gray for month/act grid spokes - override theme colors */
-  stroke-width: 0.5px !important;
-  stroke-dasharray: none !important;
-  opacity: 0.3 !important;
+  stroke: #808080 !important; /* Medium gray for month grid spokes - override theme colors */
+  stroke-width: 1px !important;
+  stroke-dasharray: 2, 2 !important; /* Dotted lines for months */
+  opacity: 0.7 !important;
+}
+
+.rt-gossamer-grid-spoke.rt-act-boundary {
+  stroke: #404040 !important; /* Darker gray for act boundary spokes */
+  stroke-width: 1px !important;
+  stroke-dasharray: none !important; /* Solid lines for acts */
+  opacity: 0.5 !important;
 }
 
 /* Plot slice hover styling - path turns white on hover or Gossamer sync */
@@ -593,11 +600,13 @@
 }
 
 /* Date tspans use EXACT same pattern as characters */
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=date] {
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=date],
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-date-text {
   fill: var(--rt-dynamic-color, #888888) !important;
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;
+  font-size: 20px !important; /* Reduced by 2pt from default 24px */
 }
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-secondary {
   font-size: 18px;

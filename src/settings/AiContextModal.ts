@@ -47,15 +47,15 @@ class TextInputModal extends Modal {
         }, 10);
 
         // Handle Enter key
-        const handleKeydown = (e: KeyboardEvent) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.submit(inputEl.value);
-            } else if (e.key === 'Escape') {
-                this.close();
-            }
-        };
-        inputEl.addEventListener('keydown', handleKeydown);
+      const handleKeydown = (e: KeyboardEvent) => {
+          if (e.key === 'Enter') {
+              e.preventDefault();
+              this.submit(inputEl.value);
+          } else if (e.key === 'Escape') {
+              this.close();
+          }
+      };
+      (this as any).registerDomEvent(inputEl, 'keydown', handleKeydown);
 
         // Buttons
         const buttonRow = contentEl.createDiv({ cls: 'modal-button-container rt-text-input-modal-buttons' });
@@ -183,21 +183,21 @@ export class AiContextModal extends Modal {
         const previewText = previewSection.createDiv({ cls: 'rt-ai-context-preview' });
         
         // Track changes and update preview
-        const handleInput = () => {
-            const currentTemplate = this.getCurrentTemplate();
-            if (currentTemplate && !currentTemplate.isBuiltIn) {
-                this.isDirty = true;
-                this.updateButtonStates();
-            }
-            
-            const prompt = this.textareaEl?.value.trim() || '';
-            if (prompt) {
-                previewText.textContent = `${prompt}\n\nBefore taking action, prepare an action plan.\n\n[Rest of AI prompt...]`;
-            } else {
-                previewText.textContent = '[No context set - will use default AI prompt]';
-            }
-        };
-        this.textareaEl.addEventListener('input', handleInput);
+      const handleInput = () => {
+          const currentTemplate = this.getCurrentTemplate();
+          if (currentTemplate && !currentTemplate.isBuiltIn) {
+              this.isDirty = true;
+              this.updateButtonStates();
+          }
+
+          const prompt = this.textareaEl?.value.trim() || '';
+          if (prompt) {
+              previewText.textContent = `${prompt}\n\nBefore taking action, prepare an action plan.\n\n[Rest of AI prompt...]`;
+          } else {
+              previewText.textContent = '[No context set - will use default AI prompt]';
+          }
+      };
+      (this as any).registerDomEvent(this.textareaEl, 'input', handleInput);
 
         // Action buttons
         const actionRow = contentEl.createDiv({ cls: 'rt-ai-context-actions' });

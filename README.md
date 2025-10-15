@@ -88,9 +88,9 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
   </div>
   <div style="text-align: center;">
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" alt="Search Results" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" alt="Gossamer View" style="width: 350px; max-width: 100%; border-radius: 8px;" />
     </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Search Results</div>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer View</div>
   </div>
 </div>
 

@@ -219,7 +219,7 @@ export function renderGossamerLayer(
   // 1. Band (behind everything)
   // 2. Historical runs (oldest to newest)
   // 3. Main current line
-  // 4. Spokes (behind all dots)
+  // 4. Spokes (behind dots but in front of plots)
   // 5. Beat outlines
   // 6. Historical dots (small, non-interactive)
   // 7. Current dots (on top, interactive)

@@ -2095,8 +2095,8 @@ export function createTimelineSVG(
         const serializer = new XMLSerializer();
         const synopsesHTML = serializer.serializeToString(synopsesContainer);
 
-        // Then add the synopses on top (non-rotating)
-        svg += synopsesHTML;
+        // Store synopsis HTML to add later (after gossamer layer)
+        const synopsisHTML = synopsesHTML;
 
         // --- Gossamer momentum layer (Phase 1) ---
         {
@@ -2139,11 +2139,28 @@ export function createTimelineSVG(
                 // Collect beat slice geometry from rendered plot slices (set during outer ring rendering)
                 const beatSlicesByName = (plugin as any)._plotBeatSlices || new Map();
 
+                // Render month/act spokes BEFORE gossamer layer so they appear on top of scenes but behind gossamer plots
+                const spokesGroup = `<g class="rt-gossamer-spokes">`;
+                let spokesHtml = '';
+                
+                // Redraw month spokes with Gossamer-specific classes for gray styling
+                // Extend from inner radius to outer edge, avoiding central core
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i / 12) * 2 * Math.PI - Math.PI / 2;
+                    const x1 = formatNumber(innerRadius * Math.cos(angle)); // Start from inner radius
+                    const y1 = formatNumber(innerRadius * Math.sin(angle)); // Start from inner radius
+                    const x2 = formatNumber(actualOuterRadius * Math.cos(angle));
+                    const y2 = formatNumber(actualOuterRadius * Math.sin(angle));
+                    const isActBoundary = [0, 4, 8].includes(i);
+                    spokesHtml += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="rt-month-spoke-line rt-gossamer-grid-spoke${isActBoundary ? ' rt-act-boundary' : ''}"/>`;
+                }
+                svg += spokesGroup + spokesHtml + '</g>';
+
                 // Get historical runs and min/max band from plugin
                 const historicalRuns = (plugin as any)._gossamerHistoricalRuns || [];
                 const minMax = (plugin as any)._gossamerMinMax || null;
 
-                // Render gossamer layer with all runs and band
+                // Render gossamer layer with all runs and band AFTER spokes so plots appear on top
                 const layer = renderGossamerLayer(
                     scenes,
                     run,
@@ -2157,24 +2174,11 @@ export function createTimelineSVG(
                     beatSlicesByName
                 );
                 if (layer) svg += layer;
-                
-                // Redraw month/act spokes AFTER gossamer layer so they're visible on top
-                const spokesGroup = `<g class="rt-gossamer-spokes">`;
-                let spokesHtml = '';
-                
-                // Redraw month spokes with Gossamer-specific classes for gray styling
-                for (let i = 0; i < 12; i++) {
-                    const angle = (i / 12) * 2 * Math.PI - Math.PI / 2;
-                    const x1 = formatNumber((innerRadius - 5) * Math.cos(angle));
-                    const y1 = formatNumber((innerRadius - 5) * Math.sin(angle));
-                    const x2 = formatNumber(actualOuterRadius * Math.cos(angle));
-                    const y2 = formatNumber(actualOuterRadius * Math.sin(angle));
-                    const isActBoundary = [0, 4, 8].includes(i);
-                    spokesHtml += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="rt-month-spoke-line rt-gossamer-grid-spoke${isActBoundary ? ' rt-act-boundary' : ''}"/>`;
-                }
-                svg += spokesGroup + spokesHtml + '</g>';
             }
         }
+
+        // Add synopses LAST so they appear on top of everything (including gossamer plots)
+        svg += synopsisHTML;
 
         // Close static root container
         svg += `</g>`;

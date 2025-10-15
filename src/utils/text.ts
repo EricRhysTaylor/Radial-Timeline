@@ -110,9 +110,11 @@ export function renderSceneTitleComponents(
     const dateT = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
     dateT.setAttribute('class', 'rt-date-text');
     dateT.setAttribute('data-item-type', 'date');
+    dateT.setAttribute('dy', '-4px'); // Shift baseline up slightly
     
     // Use EXACT same pattern as characters: --rt-dynamic-color
     (dateT as SVGTSpanElement).style.setProperty('--rt-dynamic-color', '#888888');
+    (dateT as SVGTSpanElement).style.setProperty('font-size', '22px'); // Inline style to ensure it applies
     
     // Apply search highlighting to date if searchTerm provided
     if (searchTerm && title.date) {
