@@ -127,7 +127,21 @@ The plugin supports plot structuring using yaml class: plot. These appear as nar
 
 ## Gossamer momentum view
 
-This view grays the timeline and displays the momentum values tied to each plot beat to show how well the manuscript is building tension and excitement. Here, save the cat has 15 beats, offering a good number of points to assess the plot's strength. Use the gossamer command: generate manuscript and hand off to your favorite LLM to generate scores between 0 and 100 for each beat. Quickly enter the scores with Gossamer: Enter momentum scores command or by opening each plot note and editing the yaml directly.
+Using your plot beats system, this view grays the timeline and displays the momentum values tied to each plot beat to show how well the manuscript is building tension and excitement. Here, save the cat has 15 beats, offering a good number of points to assess the plot's strength. Use the gossamer command: generate manuscript and hand off to your favorite LLM to generate scores between 0 and 100 for each beat. Quickly enter the scores with Gossamer: Enter momentum scores command or by opening each plot note and editing the yaml directly.
+
+Example yaml of save the cat beat note titled "1 opening image":
+
+```yaml
+---
+Class: Plot
+Act: 1
+Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
+Beat Model: Save The Cat
+Gossamer1: 12 #always the most recent score
+Gossamer2: 8 #each successive score will form a second line and range for historical comparison
+Gossamer3: 4
+---
+```
 
 <hr>
 
@@ -158,22 +172,6 @@ Due: 2025-01-31
 Pending Edits:
 BeatsUpdate:
 Book: Book 1 A New Beginning
----
-```
-
-<hr>
-
-Create a save the cat beat note titled "1 opening image" and paste this frontmatter:
-
-```yaml
----
-Class: Plot
-Act: 1
-Description: The first impression of your story. It should capture the essence of your story and establish the "before" snapshot of your protagonist's world.
-Beat Model: Save The Cat
-Gossamer1: 12 #always the most recent score
-Gossamer2: 8 #each successive score will form a second line and range for historical comparison
-Gossamer3: 4
 ---
 ```
 
@@ -295,8 +293,13 @@ The plugin offers several settings to customize its behavior and enable ai featu
 
 * Source path: set the root folder for scene files (for example, "book 1/scenes"). leave blank to scan the entire vault.
 * Target completion date: optional target date (yyyy-mm-dd). a marker appears on the outer ring.
-* Outer ring shows all scenes: when on, the outer ring combines all subplot scenes and shows beat slices there only. when off, the outer ring shows main plot only and no beat slices are drawn.
+* Show all scenes and beats: when on, the outer ring combines all subplot scenes and shows beat slices. when off, the outer ring shows main plot only and no beat slices are drawn.
+* Zero draft mode: prevents edits to scenes marked complete and stage zero, instead providing a modal to enter any ideas that can be saved for later revision stages.
+* Plot system: Set plot structure system and generate plot notes.
+* Create plot system templates in source folder.
 * AI LLM settings for beats analysis: configure model for automated beat generation via commands.
+    * Enable features and display of ratings in timeline
+    * Contextual prompt template
     * Default ai provider: choose LLM model
     * Anthropic settings: api key
     * Gemini settings: api key
