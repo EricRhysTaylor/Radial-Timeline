@@ -1589,7 +1589,7 @@ This is a test scene created to help with initial Radial timeline setup.
                             },
                             onOverride: async () => {
                                 // Open without saving (uses openLinkText to prevent duplicate tabs)
-                                await this.plugin.app.workspace.openLinkText(file.path, '', 'tab');
+                                await openOrRevealFile(this.plugin.app, file, false);
                             }
                         });
 
@@ -1599,7 +1599,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 }
 
                 // Default behavior: open or reveal the note (uses openLinkText to prevent duplicate tabs)
-                await this.plugin.app.workspace.openLinkText(file.path, '', 'tab');
+                await openOrRevealFile(this.plugin.app, file, false);
             });
             // Cursor styling handled via CSS (.rt-scene-path)
             

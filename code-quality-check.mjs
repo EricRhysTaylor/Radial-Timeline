@@ -221,7 +221,7 @@ function main() {
     console.error('  - This prevents conflicts with Obsidian core styles and other plugins');
     
     console.error('\n\x1b[33mFor opening files:\x1b[0m');
-    console.error('  - Use workspace.openLinkText(filePath, \'\', \'tab\') instead of getLeaf().openFile()');
+    console.error('  - Use workspace.openLinkText(filePath, \'\', false) instead of getLeaf().openFile()');
     console.error('  - openLinkText() automatically prevents duplicate tabs (recommended by Obsidian)');
     console.error('  - If you must use openFile(), add a comment: // SAFE: openFile used for <reason>');
     

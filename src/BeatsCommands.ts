@@ -13,6 +13,7 @@ import { buildBeatsPrompt } from './ai/prompts/beats';
 import { BeatsProcessingModal, type ProcessingMode } from './view/BeatsProcessingModal';
 import { stripObsidianComments } from './utils/text';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
+import { openOrRevealFileByPath } from './utils/fileUtils';
 
 // --- Interfaces --- 
 interface SceneData {
@@ -1586,7 +1587,7 @@ export async function createTemplateScene(
         await vault.create(targetPath, content);
         new Notice(`Created template scene: ${targetPath}`);
         // Open the new file using openLinkText (prevents duplicate tabs)
-        await plugin.app.workspace.openLinkText(targetPath, '', 'tab');
+        await openOrRevealFileByPath(plugin.app, targetPath, false);
     } catch (e) {
         console.error('[createTemplateScene] Failed:', e);
         new Notice('Failed to create template scene. Check console for details.');

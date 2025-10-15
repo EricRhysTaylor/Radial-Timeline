@@ -249,14 +249,13 @@ export function adjustPlotLabelsAfterRender(container: HTMLElement, attempt: num
     const isHidden = !svgRoot || svgRoot.getBoundingClientRect().width === 0 || document.visibilityState === 'hidden';
     const MAX_ATTEMPTS = 10;
     const signature = getLabelSignature(container);
-    // Reset state for this render so adjustments always run
-    state.signature = signature;
-    state.success = false;
-    plotAdjustState.set(container, state);
+    
+    // Reset state if signature changed (new labels), otherwise keep existing state
     if (state.signature !== signature) {
         state.signature = signature;
         state.success = false;
         if (state.retryId) cancelAnimationFrame(state.retryId);
+        plotAdjustState.set(container, state);
     }
 
     if (isHidden && attempt < MAX_ATTEMPTS) {
