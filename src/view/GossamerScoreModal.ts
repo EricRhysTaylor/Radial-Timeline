@@ -34,6 +34,36 @@ export class GossamerScoreModal extends Modal {
     this.plotBeats = plotBeats;
   }
 
+  // Helper to create Lucide circle-x SVG icon
+  private createCircleXIcon(): SVGElement {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', '12');
+    circle.setAttribute('cy', '12');
+    circle.setAttribute('r', '10');
+    
+    const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path1.setAttribute('d', 'm15 9-6 6');
+    
+    const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path2.setAttribute('d', 'm9 9 6 6');
+    
+    svg.appendChild(circle);
+    svg.appendChild(path1);
+    svg.appendChild(path2);
+    
+    return svg;
+  }
+
   onOpen(): void {
     const { contentEl, modalEl } = this;
     contentEl.empty();
@@ -102,20 +132,27 @@ export class GossamerScoreModal extends Modal {
       const renderScores = () => {
         existingScoresEl.empty();
         
+        // Count total scores to display
+        const totalScores = (entry.currentScore !== undefined && !entry.scoresToDelete.has(1) ? 1 : 0) + 
+                           entry.history.filter((_, idx) => !entry.scoresToDelete.has(idx + 2)).length;
+        
         // Current score (Gossamer1)
         if (entry.currentScore !== undefined && !entry.scoresToDelete.has(1)) {
-          const scoreSpan = existingScoresEl.createSpan({ 
-            text: `G1:${entry.currentScore}`,
-            cls: 'rt-gossamer-score-item'
-          });
+          const scoreContainer = existingScoresEl.createDiv();
+          scoreContainer.addClass('rt-gossamer-score-item-container');
           
-          const deleteBtn = scoreSpan.createSpan({ 
-            text: '×',
-            cls: 'rt-gossamer-score-delete'
-          });
+          // Icon column
+          const iconColumn = scoreContainer.createDiv();
+          iconColumn.addClass('rt-gossamer-icon-column');
+          iconColumn.appendChild(this.createCircleXIcon());
           
-          // Modal classes don't have registerDomEvent, use addEventListener
-          deleteBtn.addEventListener('click', () => {
+          // Text column
+          const textColumn = scoreContainer.createDiv();
+          textColumn.addClass('rt-gossamer-text-column');
+          textColumn.textContent = `G1:${entry.currentScore}`;
+          
+          // Click handler for the entire container
+          scoreContainer.addEventListener('click', () => {
             entry.scoresToDelete.add(1);
             renderScores();
           });
@@ -126,22 +163,33 @@ export class GossamerScoreModal extends Modal {
           const gossamerNum = idx + 2;
           if (entry.scoresToDelete.has(gossamerNum)) return;
           
-          const scoreSpan = existingScoresEl.createSpan({ 
-            text: `G${gossamerNum}:${score}`,
-            cls: 'rt-gossamer-score-item'
-          });
+          const scoreContainer = existingScoresEl.createDiv();
+          scoreContainer.addClass('rt-gossamer-score-item-container');
           
-          const deleteBtn = scoreSpan.createSpan({ 
-            text: '×',
-            cls: 'rt-gossamer-score-delete'
-          });
+          // Icon column
+          const iconColumn = scoreContainer.createDiv();
+          iconColumn.addClass('rt-gossamer-icon-column');
+          iconColumn.appendChild(this.createCircleXIcon());
           
-          // Modal classes don't have registerDomEvent, use addEventListener
-          deleteBtn.addEventListener('click', () => {
+          // Text column
+          const textColumn = scoreContainer.createDiv();
+          textColumn.addClass('rt-gossamer-text-column');
+          textColumn.textContent = `G${gossamerNum}:${score}`;
+          
+          // Click handler for the entire container
+          scoreContainer.addEventListener('click', () => {
             entry.scoresToDelete.add(gossamerNum);
             renderScores();
           });
         });
+        
+        // Add count indicator if there are many scores
+        if (totalScores > 10) {
+          const countSpan = existingScoresEl.createSpan({ 
+            text: `(${totalScores} scores)`,
+            cls: 'rt-gossamer-score-count'
+          });
+        }
       };
       
       renderScores();

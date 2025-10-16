@@ -314,7 +314,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Plot System setting (for Gossamer mode)
         new Settings(containerEl)
             .setName('Plot system and gossamer')
-            .setDesc('Select the story structure model for your manuscript. This will establish the optional plot system and can be used to create plot notes and graph scores using Gossamer view. Choose "User" to use your own custom plot structure with any Plot notes.')
+            .setDesc('Select the story structure model for your manuscript. This will establish the optional plot system and can be used to create plot notes and graph scores using Gossamer view.')
             .addDropdown(dropdown => {
                 dropdown
                     .addOption('User', 'User (Custom plot structure)')

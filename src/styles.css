@@ -63,7 +63,7 @@
   --rt-gossamer-line-width: 2px;                /* Plot line thickness */
   --rt-gossamer-line-historical-width: 1.5px;   /* Historical plot line thickness */
   --rt-gossamer-spoke-width: 1px;               /* Spoke line thickness */
-  --rt-gossamer-spoke-color: #e0e0e0;           /* Spoke line color */
+  --rt-gossamer-spoke-color: var(--rt-max-publish-stage-color, #e0e0e0); /* Spoke line color - use publish stage color */
   
   /* Opacity & Transparency */
   --rt-gossamer-band-opacity: 0.5;              /* Min/max shading band opacity */
@@ -278,7 +278,7 @@
   pointer-events: none; /* Don't interfere with hover on dots/slices */
 }
 .rt-gossamer-spoke { 
-  stroke: var(--rt-gossamer-spoke-color); /* Use CSS variable for spoke color */
+  stroke: var(--rt-max-publish-stage-color, var(--rt-gossamer-spoke-color)); /* Use publish stage color for spokes */
   stroke-width: var(--rt-gossamer-spoke-width); 
   stroke-dasharray: none;
   pointer-events: none; /* Spokes don't have their own hover, only respond to dot/slice hover */
@@ -325,7 +325,7 @@
 
 /* Beat slice outlines in gossamer layer - purely visual, not interactive */
 .rt-gossamer-beat-outline {
-  /* stroke color set inline via publish stage color */
+  stroke: var(--rt-max-publish-stage-color, var(--rt-gossamer-default-color)); /* Use publish stage color for beat outlines */
   stroke-width: 2px;
   fill: none;
   pointer-events: none !important; /* Not interactive - fill area handles all hover/click */
@@ -585,9 +585,9 @@
   margin-bottom: 8px;
   /* No parent fill; child tspans own their colors via custom properties */
 }
-/* Title tspans use EXACT same pattern as characters */
+/* Title tspans use publish stage color like Act labels */
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=title] {
-  fill: var(--rt-dynamic-color, var(--text-normal)) !important;
+  fill: var(--rt-max-publish-stage-color, var(--text-normal)) !important;
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;
@@ -1565,6 +1565,7 @@
   min-height: 0;
 }
 
+
 .rt-gossamer-score-entry {
   margin-bottom: 4px;
   padding: 8px 12px;
@@ -1615,6 +1616,8 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 4px;
+  min-width: 0; /* Allow shrinking */
+  max-width: 100%; /* Prevent overflow */
 }
 
 .rt-gossamer-score-item {
@@ -1626,40 +1629,75 @@
   font-size: 11px;
   font-weight: 500;
   border-radius: var(--radius-s);
-  background-color: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-normal);
 }
 
-.rt-gossamer-score-delete {
+.rt-gossamer-score-count {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-style: italic;
+  margin-left: 4px;
+}
+
+/* Gossamer score item container - two column layout */
+.rt-gossamer-score-item-container {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 3px 8px;
+  margin-right: 6px;
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: var(--radius-s);
+  background-color: var(--background-modifier-border);
+  border: 1px solid var(--background-modifier-border);
   cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  min-height: 20px;
+  box-sizing: border-box;
+}
+
+.rt-gossamer-score-item-container:hover {
+  background-color: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Icon column - left side */
+.rt-gossamer-icon-column {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  margin-left: 4px;
-  padding: 0 4px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
+  width: 14px;
+  height: 14px;
   color: var(--text-muted);
-  background-color: var(--background-modifier-border);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  transition: all 0.15s ease;
-  vertical-align: middle;
+  transition: color 0.2s ease, transform 0.2s ease;
+  flex-shrink: 0;
+  flex-grow: 0;
 }
 
-.rt-gossamer-score-delete:hover {
-  color: var(--text-on-accent);
-  background-color: var(--text-error);
-  border-color: var(--text-error);
-  transform: scale(1.05);
+.rt-gossamer-score-item-container:hover .rt-gossamer-icon-column {
+  color: var(--text-error);
+  transform: scale(1.1);
 }
 
-.rt-gossamer-score-delete:active {
-  transform: scale(0.95);
+/* Text column - right side */
+.rt-gossamer-text-column {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  transition: color 0.2s ease;
+  font-weight: 600;
+  line-height: 1.2;
+  flex-shrink: 0;
+  flex-grow: 0;
+}
+
+.rt-gossamer-score-item-container:hover .rt-gossamer-text-column {
+  color: var(--text-accent);
 }
 
 .rt-gossamer-score-separator {
@@ -2001,9 +2039,9 @@
   text-decoration: underline;
 }
 
-/* Ensure gossamer score inherits stage color like title */
+/* Ensure gossamer score uses publish stage color like Act labels */
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-gossamer-score-line tspan[data-item-type=title] {
-  fill: var(--rt-dynamic-color, var(--text-normal)) !important;
+  fill: var(--rt-max-publish-stage-color, var(--text-normal)) !important;
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;

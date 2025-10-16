@@ -105,11 +105,11 @@ export function renderGossamerLayer(
       
       // Get publish stage color for this beat, or error color if missing data
       const errorColor = getCSSVar('--rt-gossamer-error-color', '#ff4444');
-      const defaultColor = getCSSVar('--rt-gossamer-default-color', '#7a7a7a');
+      const maxStageColor = getCSSVar('--rt-max-publish-stage-color', '#7a7a7a');
       const dotRadius = getCSSVar('--rt-gossamer-dot-current', '4');
-      const stageColor = isMissingData ? errorColor : (publishStageColorByBeat?.get(name) || defaultColor);
+      const stageColor = isMissingData ? errorColor : maxStageColor;
       
-      // Gossamer1 dots: normal colored circles (hover CSS will add stroke effect)
+      // Gossamer1 dots: use max publish stage color (hover CSS will add stroke effect)
       dots.push(`<circle class="rt-gossamer-dot${isMissingData ? ' rt-gossamer-missing-data' : ''}" cx="${fmt(x)}" cy="${fmt(y)}" r="${dotRadius}" fill="${stageColor}" ${data}></circle>`);
       // Spoke from inner to the beginning of the beat slice (or outer radius if not specified)
       const spokeEnd = spokeEndRadius ?? outerRadius;
@@ -117,14 +117,14 @@ export function renderGossamerLayer(
       const sy1 = innerRadius * Math.sin(angle);
       const sx2 = spokeEnd * Math.cos(angle);
       const sy2 = spokeEnd * Math.sin(angle);
-      spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" style="stroke: ${stageColor};" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`); // SAFE: inline style used for dynamic per-beat colors based on individual publish stages known only at runtime during SVG generation
+      spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`); // Use CSS variable for spoke color instead of inline style
       
       // Build beat slice outline if we have slice info
       if (beatSlicesByName) {
         const sliceInfo = beatSlicesByName.get(name);
         if (sliceInfo) {
           const arcPath = buildCellArcPath(sliceInfo.innerR, sliceInfo.outerR, sliceInfo.startAngle, sliceInfo.endAngle);
-          beatOutlines.push(`<path class="rt-gossamer-beat-outline" d="${arcPath}" style="stroke: ${stageColor};" data-beat="${escapeAttr(name)}"/>`); // SAFE: inline style used for dynamic per-beat colors based on individual publish stages known only at runtime during SVG generation
+          beatOutlines.push(`<path class="rt-gossamer-beat-outline" d="${arcPath}" data-beat="${escapeAttr(name)}"/>`); // Use CSS variable for beat outline color
         }
       }
     } else {
