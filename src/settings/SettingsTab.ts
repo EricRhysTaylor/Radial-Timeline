@@ -327,6 +327,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                         // Update the description styling
                         this.updatePlotSystemDescription(plotSystemInfo, value);
+                        // Update template button
+                        this.updateTemplateButton(templateSetting, value);
                     });
                 
                 // Make the dropdown wider to show full text
@@ -343,7 +345,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         this.updatePlotSystemDescription(plotSystemInfo, this.plugin.settings.plotSystem || 'User');
 
         // Create template notes button
-        new Settings(containerEl)
+        const templateSetting = new Settings(containerEl)
             .setName('Create plot template notes')
             .setDesc('Generate template plot notes based on the selected plot system including YAML frontmatter and body summary.')
             .addButton(button => button
@@ -352,6 +354,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 .onClick(async () => {
                     await this.createPlotTemplates();
                 }));
+        
+        // Set initial state
+        this.updateTemplateButton(templateSetting, this.plugin.settings.plotSystem || 'User');
             
         // --- AI for Beats Analysis ---
         new Settings(containerEl)
@@ -788,6 +793,27 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             const boldSpan = lineDiv.createEl('b');
             boldSpan.textContent = system;
             lineDiv.appendText(`: ${desc}`);
+        }
+    }
+
+    private updateTemplateButton(setting: Settings, selectedSystem: string): void {
+        const isCustom = selectedSystem === 'User';
+        
+        // Update the setting name
+        if (isCustom) {
+            setting.setName('Create plot template notes');
+            setting.setDesc('Custom plot systems must be created manually by the author.');
+        } else {
+            setting.setName(`Create plot template notes for ${selectedSystem}`);
+            setting.setDesc(`Generate ${selectedSystem} template plot notes including YAML frontmatter and body summary.`);
+        }
+        
+        // Gray out the setting for custom systems
+        const settingEl = setting.settingEl;
+        if (isCustom) {
+            settingEl.style.opacity = '0.6'; // SAFE: inline style used for dynamic UI state
+        } else {
+            settingEl.style.opacity = '1'; // SAFE: inline style used for dynamic UI state
         }
     }
 

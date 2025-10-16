@@ -236,6 +236,14 @@ export class BeatsProcessingModal extends Modal {
         const descEl = labelContainer.createDiv({ cls: 'rt-beats-mode-desc' });
         descEl.setText(description);
         
+        // Make the entire option clickable
+        optionEl.addEventListener('click', () => {
+            radioEl.checked = true;
+            this.selectedMode = mode;
+            // Trigger change event to update scene count
+            radioEl.dispatchEvent(new Event('change'));
+        });
+        
         return radioEl;
     }
 
