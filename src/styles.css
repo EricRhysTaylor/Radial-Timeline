@@ -197,12 +197,6 @@
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* Hide plot titles initially until positioned to prevent flicker */
-.radial-timeline-container .rt-plot-title.rt-plot-title-positioning {
-  visibility: hidden;
-}
-
-
 /* Hover: emphasize plot titles with a solid black background using stroke */
 .radial-timeline-container .rt-scene-group:hover .rt-plot-title,
 .rt-scene-group.rt-gossamer-hover .rt-plot-title,
@@ -302,10 +296,10 @@
 }
 
 .rt-gossamer-grid-spoke.rt-act-boundary {
-  stroke: #404040 !important; /* Darker gray for act boundary spokes */
-  stroke-width: 1px !important;
+  stroke: var(--text-normal) !important; /* Use theme text color for consistency */
+  stroke-width: 2px !important; /* Same thickness as regular timeline act spokes */
   stroke-dasharray: none !important; /* Solid lines for acts */
-  opacity: 0.5 !important;
+  opacity: 1 !important; /* Fully opaque for prominence */
 }
 
 /* Plot slice hover styling - path turns white on hover or Gossamer sync */
@@ -1043,7 +1037,7 @@
 }
 
 .rt-settings-hidden {
-    display: none;
+    display: none !important;
 }
 
 /* Dynamic subplot/character colors are set inline in TypeScript - no static CSS needed */

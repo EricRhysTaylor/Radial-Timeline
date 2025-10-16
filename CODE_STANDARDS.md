@@ -127,8 +127,8 @@ workspace.getLeaf('tab').openFile(file);
 ✅ **ALWAYS use:**
 ```typescript
 // ✅ CORRECT - Prevents duplicate tabs (Obsidian's recommended API)
-await workspace.openLinkText(file.path, '', 'tab');
-await workspace.openLinkText(file.path, '', false); // Reuse active leaf
+await workspace.openLinkText(file.path, '', false); // Reuse active leaf (prevents duplicates)
+await workspace.openLinkText(file.path, '', true); // Open in new leaf
 ```
 
 **Why:** `workspace.openLinkText()` automatically checks if the file is already open and reveals the existing tab instead of creating duplicates. This is Obsidian's recommended approach.

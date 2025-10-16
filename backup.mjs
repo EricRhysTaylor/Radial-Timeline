@@ -39,7 +39,22 @@ try {
   const dateStr = `${iso.getFullYear()}-${pad(iso.getMonth()+1)}-${pad(iso.getDate())} ${pad(iso.getHours())}:${pad(iso.getMinutes())}`;
 
   const files = run('git diff --cached --name-only').split('\n').filter(Boolean);
-  const userNote = (process.argv.slice(2).join(' ') || '').trim() || (process.env.BACKUP_NOTE || '').trim();
+  // Determine user note from (in order): direct CLI args, BACKUP_NOTE env, npm_config_argv trailing args
+  let npmArgvNote = '';
+  const npmArgvRaw = process.env.npm_config_argv || '';
+  if (npmArgvRaw) {
+    try {
+      const parsed = JSON.parse(npmArgvRaw);
+      const original = Array.isArray(parsed?.original) ? parsed.original : [];
+      // Find anything after the first occurrence of 'backup' that is not an option (doesn't start with '-')
+      const backupIdx = original.indexOf('backup');
+      if (backupIdx !== -1 && backupIdx + 1 < original.length) {
+        const tail = original.slice(backupIdx + 1).filter((t) => typeof t === 'string' && !t.startsWith('--'));
+        npmArgvNote = tail.join(' ').trim();
+      }
+    } catch (_) { /* ignore */ }
+  }
+  const userNote = (process.argv.slice(2).join(' ') || '').trim() || (process.env.BACKUP_NOTE || '').trim() || npmArgvNote;
   const shortstat = safeRun('git diff --cached --shortstat');
   let insertions = 0, deletions = 0;
   if (shortstat) {

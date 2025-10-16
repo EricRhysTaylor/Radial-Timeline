@@ -6,12 +6,14 @@
 	"type": "module",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
+		"prebackup": "node scripts/echo-branch.mjs backup",
 		"build": "node show-scripts.mjs && node code-quality-check.mjs src/main.ts && node check-css-duplicates.mjs && node esbuild.config.mjs production",
+		"prerelease": "node scripts/echo-branch.mjs release",
 		"release": "node release-script.mjs",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"prepare": "husky",
 		"check-quality": "node code-quality-check.mjs src/main.ts",
-		"backup": "node check-css-duplicates.mjs && npm run build && node backup.mjs",
+		"backup": "node check-css-duplicates.mjs && npm run build && BACKUP_NOTE=\"${npm_config_note:-$npm_config_message}\" node backup.mjs",
 		"standards": "node scripts/compliance-check.mjs && node code-quality-check.mjs src/main.ts && node check-css-duplicates.mjs",
 		"scripts": "node show-scripts.mjs"
 	},

@@ -10,7 +10,7 @@ import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils
 import { decodeHtmlEntities } from './utils/text';
 import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
-import { createTimelineSVG } from './renderer/TimelineRenderer';
+import { createTimelineSVG, adjustPlotLabelsAfterRender } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
 import { openGossamerScoreEntry, toggleGossamerMode } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
@@ -143,31 +143,43 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     enableZeroDraftMode: false,
     aiContextTemplates: [
         {
-            id: 'generic-editor',
-            name: 'Generic Editor',
-            prompt: 'You are a developmental editor of a novel.',
+            id: "commercial_genre",
+            name: "Commercial Genre Fiction (Balanced Depth)",
+            prompt: `Act as a developmental editor for a commercial genre novel. Prioritize pacing, clarity, and emotional stakes. Ensure each scene moves the plot or deepens character conflict. Keep prose lean; prefer tension and subtext to exposition. Focus feedback on momentum, scene purpose, and reader engagement.`,
             isBuiltIn: true
         },
         {
-            id: 'ya-biopunk-scifi',
-            name: 'YA Biopunk Sci-Fi',
-            prompt: 'You are a developmental editor specializing in Young Adult biopunk sci-fi fiction. Consider pacing and themes appropriate for teen readers.',
+            id: "literary",
+            name: "Literary / Character-Driven Fiction",
+            prompt: `Act as a developmental editor for a literary or character-driven novel. Emphasize emotional resonance, internal conflict, and subtext. Feedback should focus on authenticity of character motivation, narrative voice, and thematic depth. Avoid line-level polish; focus on the psychological realism of each beat.`,
             isBuiltIn: true
         },
         {
-            id: 'adult-thriller',
-            name: 'Adult Thriller',
-            prompt: 'You are a developmental editor specializing in adult thriller novels. Focus on tension, pacing, and suspense elements.',
+            id: "young_adult",
+            name: "Young Adult / Coming-of-Age",
+            prompt: `Act as a developmental editor for a young adult coming-of-age novel. Focus on pacing, clear emotional arcs, and voice consistency. Ensure stakes feel personal and immediate. Highlight areas where dialogue or internal monologue can better show growth or vulnerability. Keep feedback concise and energetic.`,
             isBuiltIn: true
         },
         {
-            id: 'adult-romance',
-            name: 'Adult Romance',
-            prompt: 'You are a developmental editor specializing in adult romance with mature content. Evaluate emotional beats and relationship development.',
+            id: "science_fiction",
+            name: "Epic or Hard Science Fiction / World-Building Focus",
+            prompt: `Act as a developmental editor for a science-fiction novel with complex world-building. Balance clarity and immersion; ensure exposition is dramatized through character action or dialogue. Focus feedback on world logic, pacing through discovery, and integrating big ideas without slowing emotional momentum. Prioritize cohesion between technology, society, and theme.`,
+            isBuiltIn: true
+        },
+        {
+            id: "thriller",
+            name: "Mystery / Thriller / Suspense",
+            prompt: `Act as a developmental editor for a mystery or thriller novel. Emphasize pacing, tension, and clarity of motive. Identify where reveals or reversals land too early or too late. Ensure reader curiosity and suspense are sustained through every scene. Keep feedback focused on plot mechanics and emotional rhythm.`,
+            isBuiltIn: true
+        },
+        {
+            id: "romance",
+            name: "Romance / Emotional-Arc Focused Fiction",
+            prompt: `Act as a developmental editor for a romance or emotionally driven narrative. Focus feedback on relationship dynamics, emotional authenticity, and pacing of attraction/conflict/resolution. Ensure internal and external conflicts are intertwined. Highlight where subtext or tension could replace exposition.`,
             isBuiltIn: true
         }
     ],
-    activeAiContextTemplateId: 'generic-editor',
+    activeAiContextTemplateId: 'commercial_genre',
     plotSystem: 'Save The Cat' // Default plot system
 };
 
@@ -1236,6 +1248,10 @@ public createTimelineSVG(scenes: Scene[]) {
   return createTimelineSVG(this, scenes);
 }
 
+public adjustPlotLabelsAfterRender(container: HTMLElement) {
+  return adjustPlotLabelsAfterRender(container);
+}
+
     public darkenColor(color: string, percent: number): string {
         const num = parseInt(color.replace("#", ""), 16);
         const amt = Math.round(2.55 * percent);
@@ -1409,14 +1425,22 @@ public createTimelineSVG(scenes: Scene[]) {
         
         // AI Context Templates migration
         let templatesMigrated = false;
+        const oldBuiltInIds = new Set(['generic-editor', 'ya-biopunk-scifi', 'adult-thriller', 'adult-romance']);
+        
         if (!this.settings.aiContextTemplates || this.settings.aiContextTemplates.length === 0) {
             this.settings.aiContextTemplates = DEFAULT_SETTINGS.aiContextTemplates;
             templatesMigrated = true;
         } else {
-            // Ensure built-in templates exist (in case user deleted settings)
+            // Remove old built-in templates and ensure new ones exist
             const builtInTemplates = DEFAULT_SETTINGS.aiContextTemplates!;
-            const existingIds = new Set(this.settings.aiContextTemplates.map(t => t.id));
             
+            // Remove old built-in templates
+            this.settings.aiContextTemplates = this.settings.aiContextTemplates.filter(template => 
+                !template.isBuiltIn || !oldBuiltInIds.has(template.id)
+            );
+            
+            // Add new built-in templates if missing
+            const existingIds = new Set(this.settings.aiContextTemplates.map(t => t.id));
             for (const builtIn of builtInTemplates) {
                 if (!existingIds.has(builtIn.id)) {
                     this.settings.aiContextTemplates.push(builtIn);
@@ -1425,7 +1449,7 @@ public createTimelineSVG(scenes: Scene[]) {
             }
         }
         
-        if (!this.settings.activeAiContextTemplateId) {
+        if (!this.settings.activeAiContextTemplateId || oldBuiltInIds.has(this.settings.activeAiContextTemplateId)) {
             this.settings.activeAiContextTemplateId = DEFAULT_SETTINGS.activeAiContextTemplateId;
             templatesMigrated = true;
         }

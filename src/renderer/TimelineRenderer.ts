@@ -49,6 +49,17 @@ const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
 // Offsets are based solely on the outer scene ring's outer radius
 const PLOT_TITLE_INSET = -3;
 
+// --- Plot label post-adjust state (prevents duplicate/clobber passes) ---
+type PlotAdjustState = { retryId?: number; signature?: string; success?: boolean; lastAbortSignature?: string };
+const plotAdjustState = new WeakMap<HTMLElement, PlotAdjustState>();
+
+function getLabelSignature(container: HTMLElement): string {
+    const ids = Array.from(container.querySelectorAll('.rt-plot-title textPath'))
+        .map((tp) => (tp as SVGTextPathElement).getAttribute('href') || '')
+        .join('|');
+    return ids;
+}
+
      // px inward from outer scene edge for plot beats titles
 const ACT_LABEL_OFFSET = 25;     // px outward from outer scene edge for ACT labels
 const MONTH_TEXT_INSET = 10;     // px inward toward center from outer perimeter (larger = closer to origin)
@@ -80,7 +91,6 @@ function estimateAngleFromTitle(title: string, baseRadius: number, fontPx: numbe
     const px = estimatePixelsFromTitle(title, fontPx, fudge, paddingPx);
     return px / Math.max(1, baseRadius);
 }
-
 
 function getEffectiveScenesForRing(allScenes: Scene[], actIndex: number, subplot: string | undefined, outerAllScenes: boolean, isOuter: boolean, grouped: { [act: number]: { [subplot: string]: Scene[] } }): Scene[] {
     if (isOuter && outerAllScenes) {
@@ -206,6 +216,214 @@ function getFillForItem(
     if (norm === 'Working') return `url(#plaidWorking${publishStage})`;
     if (norm === 'Todo') return `url(#plaidTodo${publishStage})`;
     return STATUS_COLORS[statusList[0] as keyof typeof STATUS_COLORS] || STATUS_COLORS.Todo;
+}
+
+/**
+ * Measures and adjusts plot label positions after SVG is rendered
+ * Uses actual SVG getComputedTextLength() for perfect accuracy
+ */
+export function adjustPlotLabelsAfterRender(container: HTMLElement, attempt: number = 0): void {
+    const state = plotAdjustState.get(container) || {};
+    // If container is no longer in DOM, stop
+    if (!container.isConnected) return;
+    const labels = container.querySelectorAll('.rt-plot-title');
+    if (labels.length === 0) return;
+    
+    const SPACE_BEFORE_DASH = 6; // pixels - tighter spacing before dash
+    const SPACE_AFTER_DASH = 4;   // pixels - tighter spacing after dash
+    const TEXT_START_OFFSET = 2;  // pixels - matches the startOffset in textPath
+    const EXTRA_BREATHING_ROOM = 16; // pixels - extra space to ensure text doesn't crowd
+    
+    interface LabelData {
+        element: SVGTextElement;
+        textPath: SVGTextPathElement;
+        pathElement: SVGPathElement;
+        pathId: string;
+        originalStartAngle: number;
+        textLength: number;
+        radius: number;
+    }
+    
+    // If container or SVG isn't visible yet, defer
+    const svgRoot = container.querySelector('svg.radial-timeline-svg') as SVGSVGElement | null;
+    const isHidden = !svgRoot || svgRoot.getBoundingClientRect().width === 0 || document.visibilityState === 'hidden';
+    const MAX_ATTEMPTS = 10;
+    const signature = getLabelSignature(container);
+    
+    // Reset state if signature changed (new labels), otherwise keep existing state
+    if (state.signature !== signature) {
+        state.signature = signature;
+        state.success = false;
+        if (state.retryId) cancelAnimationFrame(state.retryId);
+        plotAdjustState.set(container, state);
+    }
+
+    if (isHidden && attempt < MAX_ATTEMPTS) {
+        state.retryId = requestAnimationFrame(() => adjustPlotLabelsAfterRender(container, attempt + 1));
+        plotAdjustState.set(container, state);
+        return;
+    }
+
+    // Gather all label data
+    const labelData: LabelData[] = [];
+    let measurableCount = 0;
+    labels.forEach((label) => {
+        const textElement = label as SVGTextElement;
+        const textPath = textElement.querySelector('textPath') as SVGTextPathElement;
+        if (!textPath) return;
+        
+        const pathId = textPath.getAttribute('href')?.substring(1);
+        if (!pathId) return;
+        
+        const pathElement = container.querySelector(`#${pathId}`) as SVGPathElement;
+        if (!pathElement) return;
+        
+        // Get actual rendered text length
+        const textLength = textPath.getComputedTextLength();
+        if (textLength === 0) {
+            return; // Skip if not yet rendered
+        }
+        measurableCount++;
+        
+        // Get the path's d attribute to extract start angle and radius
+        const d = pathElement.getAttribute('d');
+        if (!d) return;
+        
+        // Parse the arc path: M x1 y1 A radius radius 0 largeArc sweep x2 y2
+        const arcMatch = d.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+A\s+([-\d.]+)/);
+        if (!arcMatch) return;
+        
+        const x = parseFloat(arcMatch[1]);
+        const y = parseFloat(arcMatch[2]);
+        const radius = parseFloat(arcMatch[3]);
+        
+        // Calculate original start angle from x,y coordinates
+        const originalStartAngle = Math.atan2(y, x);
+        
+        labelData.push({
+            element: textElement,
+            textPath,
+            pathElement,
+            pathId,
+            originalStartAngle,
+            textLength,
+            radius
+        });
+    });
+
+    // If some labels weren't measurable yet, try again shortly (max attempts)
+    if (measurableCount < labels.length && attempt < MAX_ATTEMPTS) {
+        // When text is not laid out yet (hidden), allow a small timeout to settle
+        state.signature = signature;
+        state.success = false;
+        plotAdjustState.set(container, state);
+        window.setTimeout(() => adjustPlotLabelsAfterRender(container, attempt + 1), 50);
+        return;
+    }
+
+    // If still not measurable, abort to avoid clobbering previous good layout
+    if (measurableCount === 0 && attempt >= MAX_ATTEMPTS) {
+        // Silent abort: preserve previous positions without logging
+        state.lastAbortSignature = signature;
+        plotAdjustState.set(container, state);
+        return;
+    }
+
+    // Always proceed with adjustment when measurable
+
+    // (debug logs removed)
+    
+    // Sort by original start angle; if equal, sort by path id to keep stable order
+    labelData.sort((a, b) => {
+        if (a.originalStartAngle === b.originalStartAngle) return a.pathId.localeCompare(b.pathId);
+        return a.originalStartAngle - b.originalStartAngle;
+    });
+    
+    // Adjust positions to prevent overlap
+    let lastEnd = Number.NEGATIVE_INFINITY;
+    const adjustments: Array<{ data: LabelData; newStartAngle: number; needsDash: boolean; dashAngle?: number; pathAngleSpan: number }> = [];
+    
+    labelData.forEach((data) => {
+        // Path needs to be longer than text: startOffset + textLength + breathing room
+        const pathWidth = TEXT_START_OFFSET + data.textLength + EXTRA_BREATHING_ROOM;
+        const pathAngleSpan = pathWidth / Math.max(1, data.radius);
+        
+        // For overlap detection, use just the text + offset (tighter)
+        const textOnlyWidth = TEXT_START_OFFSET + data.textLength;
+        const textAngleSpan = textOnlyWidth / Math.max(1, data.radius);
+        
+        let startAngle = data.originalStartAngle;
+        let needsDash = false;
+        let dashAngle: number | undefined;
+        
+        // Check for overlap using text-only span with small epsilon
+        const epsilon = 2 / Math.max(1, data.radius); // ~2px
+        if (startAngle <= lastEnd + epsilon) {
+            const spaceBeforeDash = SPACE_BEFORE_DASH / Math.max(1, data.radius);
+            const spaceAfterDash = SPACE_AFTER_DASH / Math.max(1, data.radius);
+            dashAngle = lastEnd + spaceBeforeDash;
+            startAngle = lastEnd + spaceBeforeDash + spaceAfterDash;
+            needsDash = true;
+        }
+        
+        // Track last end using text-only span (tighter for next overlap check)
+        const endAngle = startAngle + textAngleSpan;
+        lastEnd = endAngle;
+        
+        // But render with the fuller path span
+        adjustments.push({ 
+            data, 
+            newStartAngle: startAngle, 
+            needsDash, 
+            dashAngle,
+            pathAngleSpan 
+        });
+    });
+    
+    // Apply adjustments
+    adjustments.forEach(({ data, newStartAngle, needsDash, dashAngle, pathAngleSpan }) => {
+        const endAngle = newStartAngle + pathAngleSpan;
+        
+        const x1 = data.radius * Math.cos(newStartAngle);
+        const y1 = data.radius * Math.sin(newStartAngle);
+        const x2 = data.radius * Math.cos(endAngle);
+        const y2 = data.radius * Math.sin(endAngle);
+        const largeArc = pathAngleSpan > Math.PI ? 1 : 0;
+        
+        const newPath = `M ${formatNumber(x1)} ${formatNumber(y1)} A ${formatNumber(data.radius)} ${formatNumber(data.radius)} 0 ${largeArc} 1 ${formatNumber(x2)} ${formatNumber(y2)}`;
+        data.pathElement.setAttribute('d', newPath);
+        
+        // Add or remove dash separator (glyph along tangent)
+        if (needsDash && dashAngle !== undefined) {
+            let separator = container.querySelector(`#plot-separator-${data.pathId}`) as SVGTextElement;
+            if (!separator) {
+                separator = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                // Use full path id for uniqueness
+                separator.setAttribute('id', `plot-separator-${data.pathId}`);
+                // Match previous implementation for styling/visibility
+                separator.setAttribute('class', 'rt-plot-title rt-plot-dash-separator');
+                // Ensure centered on tangent
+                separator.setAttribute('text-anchor', 'middle');
+                // Match plot label baseline offset
+                separator.setAttribute('dy', '-3');
+                separator.textContent = '—';
+                data.pathElement.parentElement?.appendChild(separator);
+            }
+            const dashRadius = data.radius + 1; // 2px closer to origin
+            const dx = dashRadius * Math.cos(dashAngle);
+            const dy = dashRadius * Math.sin(dashAngle);
+            const deg = (dashAngle + Math.PI / 2) * 180 / Math.PI;
+            separator.setAttribute('transform', `translate(${formatNumber(dx)}, ${formatNumber(dy)}) rotate(${formatNumber(deg)})`);
+        } else {
+            const separator = container.querySelector(`#plot-separator-${data.pathId}`);
+            separator?.remove();
+        }
+
+        // (debug logs removed)
+    });
+    // (debug logs removed)
+    state.success = true;
+    plotAdjustState.set(container, state);
 }
 
 export function createTimelineSVG(
@@ -1011,6 +1229,9 @@ export function createTimelineSVG(
                         return computed || '#EFBDEB';
                     };
 
+                    // Plot labels will be measured and adjusted after SVG is rendered
+                    const plotTextRadius = outerR - PLOT_TITLE_INSET;
+
                     combined.forEach((scene, idx) => {
                             const { number, text } = parseSceneTitle(scene.title || '');
                         const position = positions.get(idx)!;
@@ -1074,18 +1295,18 @@ export function createTimelineSVG(
                         // Plot titles are inset a fixed amount from the outer scene edge
                         const plotTextRadius = outerR - PLOT_TITLE_INSET;
 
-                        // Compute a path that starts at the slice but is long enough for the full title
+                        // Strip numeric prefix for plot titles
                         const rawTitleFull = (() => {
                             const full = scene.title || '';
                             const m = full.match(/^(?:\s*\d+(?:\.\d+)?\s+)?(.+)/);
                             return m ? m[1] : full;
                         })();
-                        const fontPxForPlot = PLOT_FONT_PX;
-                        const desiredPixels = estimatePixelsFromTitle(rawTitleFull, PLOT_FONT_PX, ESTIMATE_FUDGE_RENDER, PADDING_RENDER_PX);
-                        const desiredAngleArc = desiredPixels / plotTextRadius;
                         
-                        const labelStartAngle = sceneStartAngle; // initial; post-layout adjuster will move if needed
-                        const labelEndAngle = sceneStartAngle + desiredAngleArc;
+                        // Initial rendering uses a generous estimate - will be adjusted after DOM insertion
+                        const estimatedWidth = estimatePixelsFromTitle(rawTitleFull, PLOT_FONT_PX, ESTIMATE_FUDGE_RENDER, PADDING_RENDER_PX);
+                        const labelStartAngle = sceneStartAngle;
+                        const labelEndAngle = sceneStartAngle + (estimatedWidth / plotTextRadius);
+                        const desiredAngleArc = labelEndAngle - labelStartAngle;
                         const largeArcFlag = desiredAngleArc > Math.PI ? 1 : 0;
 
                         const subplotIdxAttr = (() => {
@@ -1125,12 +1346,12 @@ export function createTimelineSVG(
                                     ${text}
                                 </textPath>
                             </text>` : `
-                            <path id="plotTextPath-outer-${act}-${ring}-${idx}" 
+                            <path id="plot-label-arc-${act}-${ring}-outer-${idx}" 
                                   d="M ${formatNumber(plotTextRadius * Math.cos(labelStartAngle))} ${formatNumber(plotTextRadius * Math.sin(labelStartAngle))} 
                                      A ${formatNumber(plotTextRadius)} ${formatNumber(plotTextRadius)} 0 ${largeArcFlag} 1 ${formatNumber(plotTextRadius * Math.cos(labelEndAngle))} ${formatNumber(plotTextRadius * Math.sin(labelEndAngle))}" 
                                   data-slice-start="${formatNumber(sceneStartAngle)}" data-radius="${formatNumber(plotTextRadius)}" fill="none"/>
-                            <text class="rt-plot-title rt-plot-title-positioning" dy="-3">
-                                <textPath href="#plotTextPath-outer-${act}-${ring}-${idx}" startOffset="2">
+                            <text class="rt-plot-title" dy="-3">
+                                <textPath href="#plot-label-arc-${act}-${ring}-outer-${idx}" startOffset="2">
                                     ${escapeXml(rawTitleFull)}
                                 </textPath>
                             </text>

@@ -8,7 +8,7 @@
  * - Handles PaneType configuration properly
  */
 
-import { App, TFile } from 'obsidian';
+import { App, TFile, MarkdownView } from 'obsidian';
 
 /**
  * Opens a file in the workspace using Obsidian's recommended approach.
@@ -20,6 +20,18 @@ import { App, TFile } from 'obsidian';
  * @returns Promise that resolves when the file is opened/revealed
  */
 export async function openOrRevealFile(app: App, file: TFile, newLeaf: boolean = false): Promise<void> {
+  // Check if file is already open
+  const leaves = app.workspace.getLeavesOfType('markdown');
+  const existingLeaf = leaves.find(leaf => {
+    const view = leaf.view;
+    return view instanceof MarkdownView && view.file?.path === file.path;
+  });
+  
+  if (existingLeaf) {
+    app.workspace.setActiveLeaf(existingLeaf);
+    return;
+  }
+  
   // Use Obsidian's openLinkText which handles duplicate tab prevention automatically
   // Pass the file path as linktext and sourcePath (can be empty string for absolute paths)
   await app.workspace.openLinkText(file.path, '', newLeaf);

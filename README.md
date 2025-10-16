@@ -200,11 +200,9 @@ Beats Update: Yes
 
 ## Scene and plot metadata
 
-The plugin uses yaml frontmatter to identify and organize your scenes and plot points. Here are the key examples, from basic to advanced.
+The plugin uses yaml frontmatter to identify and organize your scenes and plot points. Here are the key examples, from basic to advanced. Scene files are identified by having class: scene in their frontmatter. 
 
-Required scene metadata
-
-Scene files are identified by having class: scene in their frontmatter. The following fields are used by the timeline:
+Required scene metadata used by the timeline:
 
 ```yaml
 ---
@@ -315,9 +313,8 @@ The plugin offers several settings to customize its behavior and enable ai featu
 From Obsidian
 
 1.  Open settings > community plugins.
-2.  Turn off safe mode if it's on.
-3.  Click browse and search for "radial timeline".
-4.  Click install and then enable.
+2.  Click browse and search for "radial timeline".
+3.  Click install and then enable.
 
 Manual installation
 

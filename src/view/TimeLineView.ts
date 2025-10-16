@@ -9,7 +9,6 @@ import RadialTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
 import type { Scene } from '../main';
 import { SceneNumberInfo } from '../utils/constants';
-import { PlotLabelManager } from '../utils/plotLabelManager';
 import ZeroDraftModal from './ZeroDraftModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
 import { openOrRevealFile } from '../utils/fileUtils';
@@ -895,9 +894,9 @@ This is a test scene created to help with initial Radial timeline setup.
                 document.documentElement.style.setProperty('--rt-max-publish-stage-color', calculatedMaxStageColor);
             }
             
-            // Create the SVG element from the string
-            const svgElement = this.createSvgElement(svgString, timelineContainer); // Pass svgString
-            
+            // Render directly into the container
+            const svgElement = this.createSvgElement(svgString, timelineContainer);
+
             if (svgElement) {
                 // If Gossamer mode is active, reuse hover-state styling: mute everything except Plot beats
                 if (this.interactionMode === 'gossamer') {
@@ -983,49 +982,20 @@ This is a test scene created to help with initial Radial timeline setup.
                     });
                 }
 
-                // Post-layout adjustment: prevent plot label overlap and add separators
-                const scheduleLabelAdjust = () => PlotLabelManager.adjustPlotLabels(svgElement);
-                // Delay to ensure layout is ready for accurate measurements + re-run on visibility/resize
-                let adjustPending = false;
-                let outerRafId: number | null = null;
-                let innerRafId: number | null = null;
-                const debouncedAdjust = () => {
-                    if (adjustPending) return;
-                    adjustPending = true;
-                    outerRafId = requestAnimationFrame(() => {
-                        innerRafId = requestAnimationFrame(() => {
-                            scheduleLabelAdjust();
-                            adjustPending = false;
-                            outerRafId = null;
-                            innerRafId = null;
-                        });
-                    });
-                };
+                // Adjust plot labels after render
+                const adjustLabels = () => this.plugin.adjustPlotLabelsAfterRender(timelineContainer);
+                requestAnimationFrame(adjustLabels);
                 
-                // Register cleanup for RAF IDs
-                this.register(() => {
-                    if (outerRafId !== null) cancelAnimationFrame(outerRafId);
-                    if (innerRafId !== null) cancelAnimationFrame(innerRafId);
-                });
-                debouncedAdjust();
-                const visibilityHandler = () => {
-                    if (document.visibilityState === 'visible') debouncedAdjust();
-                };
-                this.registerDomEvent(document, 'visibilitychange', visibilityHandler);
-                if ((window as any).ResizeObserver) {
-                    const ro = new (window as any).ResizeObserver(() => debouncedAdjust());
-                    // Ensure any previous observer is disconnected to avoid stacking observers
-                    const selfAny = this as unknown as { _plotLabelRO?: ResizeObserver };
-                    if (selfAny._plotLabelRO) {
-                        try { selfAny._plotLabelRO.disconnect(); } catch {}
+                // Re-adjust when the timeline view becomes active (workspace active-leaf-change)
+                const leafChangeHandler = () => {
+                    // Check if this timeline view is now the active leaf
+                    if (this.app.workspace.getActiveViewOfType(RadialTimelineView) === this) {
+                        // Small delay to ensure layout is settled
+                        window.setTimeout(() => requestAnimationFrame(adjustLabels), 50);
                     }
-                    ro.observe(svgElement);
-                    selfAny._plotLabelRO = ro as unknown as ResizeObserver;
-                    this.register(() => {
-                        try { ro.disconnect(); } catch {}
-                        if (selfAny._plotLabelRO === ro) delete selfAny._plotLabelRO;
-                    });
-                }
+                };
+                this.registerEvent(this.app.workspace.on('active-leaf-change', leafChangeHandler));
+                
                 // Performance optimization: Use batch operations where possible
                 const allSynopses = Array.from(svgElement.querySelectorAll(".rt-scene-info"));
                 const sceneGroups = Array.from(svgElement.querySelectorAll(".rt-scene-group"));
@@ -1619,7 +1589,7 @@ This is a test scene created to help with initial Radial timeline setup.
                             },
                             onOverride: async () => {
                                 // Open without saving (uses openLinkText to prevent duplicate tabs)
-                                await this.plugin.app.workspace.openLinkText(file.path, '', 'tab');
+                                await openOrRevealFile(this.plugin.app, file, false);
                             }
                         });
 
@@ -1629,7 +1599,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 }
 
                 // Default behavior: open or reveal the note (uses openLinkText to prevent duplicate tabs)
-                await this.plugin.app.workspace.openLinkText(file.path, '', 'tab');
+                await openOrRevealFile(this.plugin.app, file, false);
             });
             // Cursor styling handled via CSS (.rt-scene-path)
             
