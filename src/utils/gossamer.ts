@@ -77,9 +77,9 @@ export function buildRunFromGossamerField(
     };
   }
   
-  // Filter Plot notes by Plot System if specified (case-insensitive match)
+  // Filter Plot notes by Plot System only if explicitly specified and not empty
   let plotNotes = scenes.filter(s => s.itemType === 'Plot');
-  if (selectedBeatModel && plotNotes.some(p => p["Plot System"])) {
+  if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotNotes.some(p => p["Plot System"])) {
     const normalizedSelected = selectedBeatModel.toLowerCase().replace(/\s+/g, '');
     plotNotes = plotNotes.filter(p => {
       const plotSystem = p["Plot System"];
@@ -212,13 +212,13 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
   // Build current run (Gossamer1)
   const current = buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true);
   
-  // Gray shades for historical runs (lighter = older)
-  const historicalColors = ['#b0b0b0', '#c0c0c0', '#d0d0d0', '#e0e0e0'];
+  // Use single gray color for all historical runs (matches CSS variable)
+  const historicalColor = '#c0c0c0'; // Same as --rt-gossamer-historical-color
   
-  // Build historical runs (Gossamer2-5)
+  // Build historical runs (Gossamer2-30)
   const historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string }> = [];
   
-  for (let i = 2; i <= 5; i++) {
+  for (let i = 2; i <= 30; i++) {
     const fieldName = `Gossamer${i}`;
     
     // Check if ANY value exists for this field
@@ -231,7 +231,7 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
       historical.push({
         label: fieldName,
         points: run.beats.map(b => ({ beat: b.beat, score: b.score as number })),
-        color: historicalColors[i - 2] || '#d0d0d0'
+        color: historicalColor
       });
     }
   }
@@ -312,8 +312,8 @@ export function extractPresentBeatScores(run: GossamerRun): { beat: string; scor
 export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; title?: string; "Plot System"?: string }[], selectedBeatModel?: string): string[] {
   let plotBeats = scenes.filter(s => s.itemType === 'Plot');
   
-  // Filter by Plot System if specified (case-insensitive match)
-  if (selectedBeatModel && plotBeats.some(p => p["Plot System"])) {
+  // Filter by Plot System only if explicitly specified and not empty
+  if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotBeats.some(p => p["Plot System"])) {
     const normalizedSelected = selectedBeatModel.toLowerCase().replace(/\s+/g, '');
     plotBeats = plotBeats.filter(p => {
       const plotSystem = p["Plot System"];
@@ -342,6 +342,7 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
 
 /**
  * Detect the plot system being used from Plot System field in Plot notes
+ * Returns the detected system or empty string if none found (no forced defaults)
  */
 export function detectPlotSystem(scenes: { itemType?: string; "Plot System"?: string }[]): string {
   // Find any Plot note with Plot System field
@@ -351,8 +352,8 @@ export function detectPlotSystem(scenes: { itemType?: string; "Plot System"?: st
     return plotNote["Plot System"];
   }
   
-  // Default to SaveTheCat if not found
-  return "SaveTheCat";
+  // Return empty string if no plot system detected - let users work with their own structure
+  return "";
 }
 
 /**
@@ -360,7 +361,7 @@ export function detectPlotSystem(scenes: { itemType?: string; "Plot System"?: st
  * Only keeps scores as simple numbers. Returns updated frontmatter.
  */
 export function shiftGossamerHistory(frontmatter: Record<string, any>): Record<string, any> {
-  const maxHistory = 5;
+  const maxHistory = 30;
   const updated = { ...frontmatter };
   
   // Find existing Gossamer scores
@@ -373,11 +374,11 @@ export function shiftGossamerHistory(frontmatter: Record<string, any>): Record<s
   }
   
   // Delete all Gossamer fields (including any beyond maxHistory)
-  for (let i = 1; i <= maxHistory + 5; i++) {
+  for (let i = 1; i <= maxHistory + 10; i++) {
     delete updated[`Gossamer${i}`];
   }
   
-  // Shift down: 1→2, 2→3, 3→4, 4→5
+  // Shift down: 1→2, 2→3, 3→4, etc.
   Object.entries(existingScores).forEach(([oldIndex, score]) => {
     const newIndex = parseInt(oldIndex) + 1;
     if (newIndex <= maxHistory) {

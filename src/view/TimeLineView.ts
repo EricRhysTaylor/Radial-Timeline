@@ -1951,15 +1951,14 @@ This is a test scene created to help with initial Radial timeline setup.
             });
         };
         
-        // Register svg-level handlers using registerDomEvent
-        // Note: registerDomEvent doesn't support capture phase, so we use regular addEventListener
-        // for these specific Gossamer handlers. They will be cleaned up when the view unloads.
+        // Register svg-level handlers using registerDomEvent (available in View classes)
+        // Event cleanup is handled automatically when the view unloads
         view.registerDomEvent(svg, 'click', plotSliceClick);
         view.registerDomEvent(svg, 'click', dotClick);
         view.registerDomEvent(svg, 'click', backgroundClick);
         
-        // For pointerover/out, we need capture phase for proper event ordering
-        // These are cleaned up automatically when view unloads
+        // Register pointer event handlers
+        // Event cleanup is handled automatically when the view unloads
         view.registerDomEvent(svg, 'pointerover', plotSliceOver);
         view.registerDomEvent(svg, 'pointerout', plotSliceOut);
         view.registerDomEvent(svg, 'pointerover', dotOver);

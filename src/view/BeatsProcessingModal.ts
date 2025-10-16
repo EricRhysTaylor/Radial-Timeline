@@ -80,14 +80,15 @@ export class BeatsProcessingModal extends Modal {
         
         // Set modal width using Obsidian's approach
         if (modalEl) {
-            modalEl.style.width = 'auto'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.width = '700px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         
         contentEl.classList.add('rt-beats-modal');
 
         // Info section
         const infoEl = contentEl.createDiv({ cls: 'rt-beats-info' });
-        infoEl.setText('Select processing mode for AI beats analysis. This will analyze scenes and update their beat metadata.');
+        infoEl.setText('Select processing mode for AI LLM beats analysis. This will analyze based on manuscript order all scenes and update their beat metadata.');
 
         // Mode selection
         const modesSection = contentEl.createDiv({ cls: 'rt-beats-modes' });
@@ -167,8 +168,9 @@ export class BeatsProcessingModal extends Modal {
         updateCount();
 
         // Update count when mode changes
+        // Modal classes don't have registerDomEvent, use addEventListener
         [mode1, mode2, mode3, mode4].forEach(radio => {
-            this.registerDomEvent(radio, 'change', () => updateCount());
+            radio.addEventListener('change', () => updateCount());
         });
 
         // Action buttons
@@ -220,7 +222,8 @@ export class BeatsProcessingModal extends Modal {
         radioEl.checked = isDefault;
         if (isDefault) this.selectedMode = mode;
         
-        this.registerDomEvent(radioEl, 'change', () => {
+        // Modal classes don't have registerDomEvent, use addEventListener
+        radioEl.addEventListener('change', () => {
             if (radioEl.checked) {
                 this.selectedMode = mode;
             }

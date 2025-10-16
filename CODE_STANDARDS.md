@@ -9,6 +9,23 @@ This document outlines the coding standards and best practices for the Radial Ti
 - [Security](#security)
 - [Automated Checks](#automated-checks)
 
+## Related Documentation
+
+### Official Obsidian Resources
+- **[Obsidian Plugin Guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines)** - Official plugin development standards
+- **[Obsidian API Reference](https://docs.obsidian.md/Reference/TypeScript+API)** - Complete TypeScript API documentation
+- **[Component API](https://docs.obsidian.md/Reference/TypeScript+API/Component)** - Details on `registerDomEvent`, `registerEvent`, etc.
+- **[Modal API](https://docs.obsidian.md/Reference/TypeScript+API/Modal)** - Modal class documentation
+
+### Special Comment Markers
+When code intentionally violates a standard for valid reasons, use comment markers:
+- `// SAFE: innerHTML used for [reason]` - Bypass innerHTML check
+- `// SAFE: inline style used for [reason]` - Bypass inline style check  
+- `// SAFE: any type used for [reason]` - Bypass TypeScript any check
+- `// SAFE: Modal sizing via inline styles` - Modal width/height (Obsidian pattern)
+
+These comments tell automated checkers to skip the line and document why the code is correct.
+
 ---
 
 ## Obsidian Plugin Guidelines
@@ -262,22 +279,33 @@ this.app.workspace.updateOptions();
 > 
 > Use Obsidian's native lifecycle APIs (`registerDomEvent`, `registerEvent`, `registerInterval`) for automatic cleanup. Only use `AbortController` for fetch requests, observers, and workers that Obsidian doesn't manage.
 
-#### ✅ DOM Event Listeners (PRIMARY METHOD)
+#### ✅ DOM Event Listeners
 
-**ALWAYS use `this.registerDomEvent()`:**
+**In Plugin and View classes, use `this.registerDomEvent()`:**
 ```typescript
-// ✅ CORRECT - In Plugin, View, Modal, or SettingsTab
+// ✅ CORRECT - In Plugin or View (ItemView, FileView, etc.) classes
 this.registerDomEvent(element, 'click', (evt) => { ... });
 this.registerDomEvent(svg, 'pointerover', (e) => { ... });
 ```
 
-**NEVER use raw `addEventListener`:**
+**In Modal classes, use `addEventListener`:**
 ```typescript
-// ❌ WRONG - Memory leak (not cleaned up)
+// ✅ CORRECT - Modal classes don't have registerDomEvent
 element.addEventListener('click', (evt) => { ... });
+// Cleanup happens automatically via contentEl.empty() in onClose()
 ```
 
-**Why:** `registerDomEvent` is automatically cleaned up when the component (Plugin/View/Modal) unloads. Raw `addEventListener` requires manual cleanup and causes memory leaks.
+**In Settings tabs, use `this.plugin.registerDomEvent()`:**
+```typescript
+// ✅ CORRECT - Access via plugin instance
+this.plugin.registerDomEvent(element, 'click', (evt) => { ... });
+```
+
+**Why:** 
+- `registerDomEvent` is only available in Plugin and View classes, not Modal classes
+- Plugin/View: Automatic cleanup when component unloads
+- Modal: Event listeners are removed when `contentEl.empty()` is called in `onClose()`
+- See [Component API docs](https://docs.obsidian.md/Reference/TypeScript+API/Component) and [Modal API docs](https://docs.obsidian.md/Reference/TypeScript+API/Modal) for details
 
 #### ✅ Workspace Event Listeners
 
@@ -737,16 +765,24 @@ const normalizedPath = normalizePath(userPath.trim());
 
 ## Quick Reference: npm Scripts
 
-| Command | Purpose |
-|---------|---------|
-| `npm run scripts` | **Display all available npm commands** |
-| `npm run dev` | Development build with watch mode |
-| `npm run build` | Production build + quality checks (shows all scripts first) |
-| `npm run check-quality` | Run code quality checks only |
-| `npm run standards` | **Run all compliance + quality checks** (recommended) |
-| `npm run backup` | Build + commit + push |
-| `npm run release` | Full release process |
-| `npm run version` | Bump version and sync manifest files |
+| Command | Purpose | What it Runs |
+|---------|---------|--------------|
+| `npm run scripts` | **Display all available npm commands** | show-scripts.mjs |
+| `npm run dev` | Development build with watch mode | esbuild (watch mode) |
+| `npm run build` | Production build + quality checks | code-quality-check + check-css-duplicates + esbuild |
+| `npm run check-quality` | Run code quality checks only | code-quality-check.mjs |
+| `npm run standards` | **Run all compliance + quality checks** (recommended before releases) | compliance-check + code-quality-check + check-css-duplicates |
+| `npm run backup` | Build + commit + push | check-css-duplicates + build + backup.mjs |
+| `npm run release` | Full release process | release-script.mjs |
+| `npm run version` | Bump version and sync manifest files | version-bump.mjs |
+
+### Checker Scripts Breakdown
+
+| Script | When to Run | Performance | Checks |
+|--------|-------------|-------------|--------|
+| **code-quality-check.mjs** | Pre-commit (automatic) | Fast | innerHTML, inline CSS, `any` types, CSS naming, openFile calls |
+| **compliance-check.mjs** | Before releases | Slower | All Obsidian API violations, security, lifecycle leaks, manifest validation |
+| **check-css-duplicates.mjs** | Build time | Fast | Duplicate CSS selectors, empty rulesets |
 
 **💡 Tip:** Run `npm run scripts` anytime to see all available commands with descriptions!
 
@@ -774,6 +810,6 @@ When violations occur, the build will fail with specific guidance on how to fix 
 
 ---
 
-**Last Updated:** 2025-10-08  
+**Last Updated:** 2025-10-16  
 **Based on:** [Obsidian Plugin Guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines)
 

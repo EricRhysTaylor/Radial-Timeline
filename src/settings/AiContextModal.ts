@@ -56,7 +56,8 @@ class TextInputModal extends Modal {
                 this.close();
             }
         };
-        // SAFE: Modal classes don't have registerDomEvent, manual cleanup in onClose
+        // Note: Modal classes don't have registerDomEvent, use addEventListener instead
+        // Cleanup handled in onClose()
         this.inputEl.addEventListener('keydown', handleKeydown);
 
         // Store handler reference for cleanup
@@ -212,7 +213,8 @@ export class AiContextModal extends Modal {
                 previewText.textContent = '[No context set - will use default AI prompt]';
             }
         };
-        // SAFE: Modal classes don't have registerDomEvent, manual cleanup in onClose
+        // Note: Modal classes don't have registerDomEvent, use addEventListener instead
+        // Cleanup handled in onClose()
         this.textareaEl.addEventListener('input', handleInput);
         
         // Store handler reference for cleanup

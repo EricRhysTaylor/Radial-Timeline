@@ -53,7 +53,7 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Search timeline: keyword search across select metadata. Title, Date, Synopsis, AI Beats, Character & Subplot
 * Clear search: reset all search filters
 * Gossamer view toggle: toggle the Gossamer plot momentum visualization overlay
-* Gossamer enter momentum values
+* Gossamer enter momentum scores
 * Beats update (manuscript order): update AI beat analysis for all scenes in manuscript order
 * Beats update (subplot): update AI beat analysis for scenes in a selected subplot
 * Beats clear cache: clear saved beat results to force a full reprocess (for scenes with Beats Update = yes)
@@ -127,9 +127,22 @@ The plugin supports plot structuring using yaml class: plot. These appear as nar
 
 ## Gossamer momentum view
 
-Using your plot beats system, this view grays the timeline and displays the momentum values tied to each plot beat to show how well the manuscript is building tension and excitement. Here, save the cat has 15 beats, offering a good number of points to assess the plot's strength. Use the gossamer command: generate manuscript and hand off to your favorite LLM to generate scores between 0 and 100 for each beat. Quickly enter the scores with Gossamer: Enter momentum scores command or by opening each plot note and editing the yaml directly.
+Using your plot beats system, this view grays the timeline and displays the momentum values tied to each plot beat to show how well the manuscript is building tension and excitement. Works with any plot structure - whether you use Save the Cat (15 beats), Hero's Journey, or your own custom plot system. Simply create Plot notes with `Class: Plot` and Gossamer will analyze whatever structure you've built.
 
-Example yaml of save the cat beat note titled "1 opening image":
+Workflow:
+- Use the "Gossamer: Generate manuscript" command and hand off to your favorite LLM to generate scores between 0 and 100 for each beat
+- Quickly enter the scores with "Gossamer: Enter momentum scores" command or by opening each plot note and editing the YAML directly
+
+Features:
+- Historical tracking: Supports up to 30 historical runs (Gossamer1-30) with automatic history shifting (#1 is always the current)
+- Min/Max band visualization: Shows range between historical scores
+- Score entry modal: Complete interface for adding or deleting scores with validation
+- Clipboard integration: Copy/paste functionality for AI-generated scores
+- Template generation: Copy Prompt Template for AI LLM
+- Plot system filtering: Works with any plot system or custom structures (only filters if you explicitly set a plot system in settings)
+- Score validation: 0-100 range validation with error highlighting (red dot for missing value, defaults to 0)
+
+Example yaml of Save The Cat beat note titled "1 opening image":
 
 ```yaml
 ---
@@ -139,7 +152,9 @@ Description: The first impression of your story. It should capture the essence o
 Beat Model: Save The Cat
 Gossamer1: 12 #always the most recent score
 Gossamer2: 8 #each successive score will form a second line and range for historical comparison
-Gossamer3: 4
+Gossamer3: 4 #older scores for trend analysis
+Gossamer4: 15 #even older scores
+Gossamer5: 6 #oldest scores capped at 30
 ---
 ```
 
@@ -147,11 +162,9 @@ Gossamer3: 4
 
 ## Scene and plot metadata
 
-Yaml frontmatter is used to identify and organize your scenes and plot points. Here are the key examples, from basic to advanced.
+The plugin uses yaml frontmatter to identify and organize your scenes and plot points. Below are key examples, from basic to advanced. Scene files are identified by having class: scene in their frontmatter. 
 
-Required scene metadata
-
-Scene files are identified by having class: scene in their frontmatter. The following fields are used by the timeline:
+Required minimum scene metadata used by the timeline:
 
 ```yaml
 ---
@@ -196,36 +209,6 @@ Note: you can always manually enter these fields and achieve the same effect and
 Beats Update: Yes
 ---
 ```
-<hr>
-
-## Scene and plot metadata
-
-The plugin uses yaml frontmatter to identify and organize your scenes and plot points. Here are the key examples, from basic to advanced. Scene files are identified by having class: scene in their frontmatter. 
-
-Required scene metadata used by the timeline:
-
-```yaml
----
-Class: Scene
-Act: 1
-When: 2000-01-31
-Synopsis: The protagonist discovers a mysterious artifact.
-Subplot:
-  - Main Plot
-  - Plot 2
-Character:
-  - "[[Protagonist A]]"
-  - "[[Mentor B]]"
-Status: Todo
-Publish Stage: Zero
-Revision:
-Due: 2025-01-31
-Pending Edits:
-BeatsUpdate:
-Book: Book 1 A New Beginning
----
-```
-
 <hr>
 
 ## Advanced scene example
@@ -293,18 +276,51 @@ The plugin offers several settings to customize its behavior and enable ai featu
 * Target completion date: optional target date (yyyy-mm-dd). a marker appears on the outer ring.
 * Show all scenes and beats: when on, the outer ring combines all subplot scenes and shows beat slices. when off, the outer ring shows main plot only and no beat slices are drawn.
 * Zero draft mode: prevents edits to scenes marked complete and stage zero, instead providing a modal to enter any ideas that can be saved for later revision stages.
-* Plot system: Set plot structure system and generate plot notes.
-* Create plot system templates in source folder.
-* AI LLM settings for beats analysis: configure model for automated beat generation via commands.
-    * Enable features and display of ratings in timeline
-    * Contextual prompt template
-    * Default ai provider: choose LLM model
-    * Anthropic settings: api key
-    * Gemini settings: api key
-    * Openai settings: api key
-    * Log ai interactions to file: creates notes in an "AI" folder with prompt/request/response details
+* Plot beat system: Set plot structure system and generate plot notes.
+* Select gossamer plot system templates or create your own then generate notes in source folder.
+* AI LLM Beats Analysis (see below)
 * Publishing stage colors: customize colors for publish stage values (zero, author, house, press). each has a reset button.
 * Ring Colors: customize up to 16 rings (after which the colors repeat)
+
+### Gossamer momentum view
+
+The Gossamer momentum analysis can present a whole new way to gauge the progress of your manuscript:
+
+* AI streamlined manual workflow using copy and paste templates and quick entry input fields
+* Gossamer Workflow: 
+    - Use "Gossamer: Generate manuscript" to create a formatted text (as native md markdown file) version of your scenes
+    - Copy the output to your preferred AI tool and use the beat template to prompt
+    - Use "Gossamer: Enter momentum scores" to paste the AI-generated scores back or enter manually
+* Gossamer scores complement the AI beats analysis - use both systems together for comprehensive scene evaluation
+
+### AI Beats Analysis
+
+The plugin can automatically generate scene analysis using AI LLM to evaluate story beats and pacing:
+
+* Triplet Analysis: AI analyzes 3 scenes at a time (previous, current, next) from the perspective of the middle scene
+* Beat Evaluation: Each scene gets a grade and specific feedback on pacing, tension, and story progression
+* Metadata Integration: Results are stored in scene frontmatter as `1beats`, `2beats`, and `3beats` fields
+* Manual Line Breaks: Use `[br]` anywhere in beat text to force line breaks in timeline hover display
+
+Configuration:
+- AI Provider: Choose between Anthropic, Gemini, or OpenAI
+- Contextual Prompt: Customize the analysis prompt for your specific needs
+- API Logging: Track all AI interactions in the "AI" folder
+- Spending Controls: Set API spending caps on your LLM account
+
+Commands:
+- Beats update (manuscript order): Process all scenes in manuscript order
+- Beats update (subplot): Process scenes within a selected subplot only
+- Beats clear cache: Clear saved results to force reprocessing (prevents duplicate API calls)
+
+Workflow:
+1. Ensure scenes have `BeatsUpdate: Yes` in frontmatter to flag for processing
+2. Run "Beats update" commands across subplots or all scenes to generate triplet analysis
+3. View results in timeline hover synopsis
+4. Use "Beats clear cache" if you need to reprocess with updated prompts
+
+Manual Alternative: You can manually enter beat fields in YAML or use web clients to generate similar results, avoiding API costs entirely.
+
 
 <hr>
 
@@ -392,3 +408,13 @@ Released under a **Source-Available, Non-Commercial License**.
 - The “Radial Timeline” name is a trademark of Eric Rhys Taylor.  
 
 See the [LICENSE](./LICENSE) and [NOTICE](./NOTICE) files for full details.
+
+## Disclaimer & Limitation of Liability
+
+This software is provided “as is” without warranty of any kind, express or implied.
+The author makes no guarantees regarding performance, reliability, or compatibility with third-party plugins, APIs, or services.
+
+By using Radial Timeline, you agree that:
+	•	You assume full responsibility for any data loss, file corruption, or unintended behavior.
+	•	The author and contributors are not liable for any damages, including but not limited to loss of manuscripts, project data, or costs arising from external API or AI service usage.
+	•	Use of third-party integrations (e.g., AI APIs) is at your own risk and subject to those services’ terms and pricing.

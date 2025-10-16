@@ -13,11 +13,11 @@ try {
   // Ensure we are in a git repo
   run('git rev-parse --is-inside-work-tree');
 
-  // Always use dev branch for backups
-  const branch = 'dev';
+  // Always use master branch for backups
+  const branch = 'master';
   const currentBranch = safeRun('git rev-parse --abbrev-ref HEAD') || 'master';
   
-  // Switch to dev branch if not already on it
+  // Switch to master branch if not already on it
   if (currentBranch !== branch) {
     console.log(`[backup] Switching from ${currentBranch} to ${branch} branch...`);
     run(`git checkout ${branch}`);
@@ -112,9 +112,9 @@ try {
   run(`git commit -m ${JSON.stringify(title)} ${body ? '-m ' + JSON.stringify(body) : ''}`);
   console.log(`[backup] Committed changes: ${title}`);
 
-  // Push to dev branch
+  // Push to master branch
   run(`git push origin ${branch}`);
-  console.log(`[backup] ✅ Pushed to origin/${branch} (safe development backup)`);
+  console.log(`[backup] ✅ Pushed to origin/${branch} (safe backup)`);
 } catch (err) {
   console.error('[backup] Failed:', err?.message || err);
   process.exit(1);

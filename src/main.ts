@@ -96,6 +96,31 @@ export interface Scene {
     Gossamer3?: number;
     Gossamer4?: number;
     Gossamer5?: number;
+    Gossamer6?: number;
+    Gossamer7?: number;
+    Gossamer8?: number;
+    Gossamer9?: number;
+    Gossamer10?: number;
+    Gossamer11?: number;
+    Gossamer12?: number;
+    Gossamer13?: number;
+    Gossamer14?: number;
+    Gossamer15?: number;
+    Gossamer16?: number;
+    Gossamer17?: number;
+    Gossamer18?: number;
+    Gossamer19?: number;
+    Gossamer20?: number;
+    Gossamer21?: number;
+    Gossamer22?: number;
+    Gossamer23?: number;
+    Gossamer24?: number;
+    Gossamer25?: number;
+    Gossamer26?: number;
+    Gossamer27?: number;
+    Gossamer28?: number;
+    Gossamer29?: number;
+    Gossamer30?: number;
 }
 
 // SceneNumberInfo now imported from constants
@@ -542,7 +567,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // 4. Gossamer enter momentum scores
         this.addCommand({
             id: 'gossamer-enter-scores',
-            name: 'Gossamer: Enter momentum scores',
+            name: 'Gossamer enter momentum scores',
             callback: async () => {
                 try {
                     await openGossamerScoreEntry(this);
@@ -556,7 +581,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // 4b. Gossamer generate manuscript file
         this.addCommand({
             id: 'gossamer-generate-manuscript',
-            name: 'Gossamer: Generate manuscript file',
+            name: 'Gossamer generate manuscript file',
             callback: async () => {
                 try {
                     new Notice('Assembling manuscript...');
@@ -1221,7 +1246,32 @@ export default class RadialTimelinePlugin extends Plugin {
                 Gossamer2: typeof plotInfo.metadata.Gossamer2 === 'number' ? plotInfo.metadata.Gossamer2 : undefined,
                 Gossamer3: typeof plotInfo.metadata.Gossamer3 === 'number' ? plotInfo.metadata.Gossamer3 : undefined,
                 Gossamer4: typeof plotInfo.metadata.Gossamer4 === 'number' ? plotInfo.metadata.Gossamer4 : undefined,
-                Gossamer5: typeof plotInfo.metadata.Gossamer5 === 'number' ? plotInfo.metadata.Gossamer5 : undefined
+                Gossamer5: typeof plotInfo.metadata.Gossamer5 === 'number' ? plotInfo.metadata.Gossamer5 : undefined,
+                Gossamer6: typeof plotInfo.metadata.Gossamer6 === 'number' ? plotInfo.metadata.Gossamer6 : undefined,
+                Gossamer7: typeof plotInfo.metadata.Gossamer7 === 'number' ? plotInfo.metadata.Gossamer7 : undefined,
+                Gossamer8: typeof plotInfo.metadata.Gossamer8 === 'number' ? plotInfo.metadata.Gossamer8 : undefined,
+                Gossamer9: typeof plotInfo.metadata.Gossamer9 === 'number' ? plotInfo.metadata.Gossamer9 : undefined,
+                Gossamer10: typeof plotInfo.metadata.Gossamer10 === 'number' ? plotInfo.metadata.Gossamer10 : undefined,
+                Gossamer11: typeof plotInfo.metadata.Gossamer11 === 'number' ? plotInfo.metadata.Gossamer11 : undefined,
+                Gossamer12: typeof plotInfo.metadata.Gossamer12 === 'number' ? plotInfo.metadata.Gossamer12 : undefined,
+                Gossamer13: typeof plotInfo.metadata.Gossamer13 === 'number' ? plotInfo.metadata.Gossamer13 : undefined,
+                Gossamer14: typeof plotInfo.metadata.Gossamer14 === 'number' ? plotInfo.metadata.Gossamer14 : undefined,
+                Gossamer15: typeof plotInfo.metadata.Gossamer15 === 'number' ? plotInfo.metadata.Gossamer15 : undefined,
+                Gossamer16: typeof plotInfo.metadata.Gossamer16 === 'number' ? plotInfo.metadata.Gossamer16 : undefined,
+                Gossamer17: typeof plotInfo.metadata.Gossamer17 === 'number' ? plotInfo.metadata.Gossamer17 : undefined,
+                Gossamer18: typeof plotInfo.metadata.Gossamer18 === 'number' ? plotInfo.metadata.Gossamer18 : undefined,
+                Gossamer19: typeof plotInfo.metadata.Gossamer19 === 'number' ? plotInfo.metadata.Gossamer19 : undefined,
+                Gossamer20: typeof plotInfo.metadata.Gossamer20 === 'number' ? plotInfo.metadata.Gossamer20 : undefined,
+                Gossamer21: typeof plotInfo.metadata.Gossamer21 === 'number' ? plotInfo.metadata.Gossamer21 : undefined,
+                Gossamer22: typeof plotInfo.metadata.Gossamer22 === 'number' ? plotInfo.metadata.Gossamer22 : undefined,
+                Gossamer23: typeof plotInfo.metadata.Gossamer23 === 'number' ? plotInfo.metadata.Gossamer23 : undefined,
+                Gossamer24: typeof plotInfo.metadata.Gossamer24 === 'number' ? plotInfo.metadata.Gossamer24 : undefined,
+                Gossamer25: typeof plotInfo.metadata.Gossamer25 === 'number' ? plotInfo.metadata.Gossamer25 : undefined,
+                Gossamer26: typeof plotInfo.metadata.Gossamer26 === 'number' ? plotInfo.metadata.Gossamer26 : undefined,
+                Gossamer27: typeof plotInfo.metadata.Gossamer27 === 'number' ? plotInfo.metadata.Gossamer27 : undefined,
+                Gossamer28: typeof plotInfo.metadata.Gossamer28 === 'number' ? plotInfo.metadata.Gossamer28 : undefined,
+                Gossamer29: typeof plotInfo.metadata.Gossamer29 === 'number' ? plotInfo.metadata.Gossamer29 : undefined,
+                Gossamer30: typeof plotInfo.metadata.Gossamer30 === 'number' ? plotInfo.metadata.Gossamer30 : undefined
             });
         });
 
@@ -2266,33 +2316,24 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
         let updateCount = 0;
         
         for (const [beatTitle, newScore] of scores) {
-            // Find Plot note by title - use the same approach as GossamerScoreModal
+            // Find Plot note by title
             let file: TFile | null = null;
             
-            // First, try to find by exact title match in our scene data
-            const matchingScene = this.scenes.find(s => s.title === beatTitle && s.itemType === 'Plot');
-            if (matchingScene && matchingScene.path) {
-                file = this.app.vault.getAbstractFileByPath(matchingScene.path) as TFile;
-            }
-            
-            // Fallback: search through files if not found in scene data
-            if (!file) {
-                for (const f of files) {
-                    const cache = this.app.metadataCache.getFileCache(f);
-                    const rawFm = cache?.frontmatter;
-                    const fm = rawFm ? normalizeFrontmatterKeys(rawFm) : undefined;
-                    if (fm && fm.Class === 'Plot') {
-                        // Try multiple matching strategies
-                        const filename = f.basename;
-                        const titleMatch = filename === beatTitle || 
-                                         filename === beatTitle.replace(/^\d+\s+/, '') ||
-                                         filename.toLowerCase() === beatTitle.toLowerCase() ||
-                                         filename.toLowerCase().replace(/[-\s]/g, '') === beatTitle.toLowerCase().replace(/[-\s]/g, '');
-                        
-                        if (titleMatch) {
-                            file = f;
-                            break;
-                        }
+            for (const f of files) {
+                const cache = this.app.metadataCache.getFileCache(f);
+                const rawFm = cache?.frontmatter;
+                const fm = rawFm ? normalizeFrontmatterKeys(rawFm) : undefined;
+                if (fm && fm.Class === 'Plot') {
+                    // Try multiple matching strategies
+                    const filename = f.basename;
+                    const titleMatch = filename === beatTitle || 
+                                     filename === beatTitle.replace(/^\d+\s+/, '') ||
+                                     filename.toLowerCase() === beatTitle.toLowerCase() ||
+                                     filename.toLowerCase().replace(/[-\s]/g, '') === beatTitle.toLowerCase().replace(/[-\s]/g, '');
+                    
+                    if (titleMatch) {
+                        file = f;
+                        break;
                     }
                 }
             }

@@ -113,7 +113,9 @@ export class GossamerScoreModal extends Modal {
             text: '×',
             cls: 'rt-gossamer-score-delete'
           });
-          this.registerDomEvent(deleteBtn, 'click', () => {
+          
+          // Modal classes don't have registerDomEvent, use addEventListener
+          deleteBtn.addEventListener('click', () => {
             entry.scoresToDelete.add(1);
             renderScores();
           });
@@ -133,7 +135,9 @@ export class GossamerScoreModal extends Modal {
             text: '×',
             cls: 'rt-gossamer-score-delete'
           });
-          this.registerDomEvent(deleteBtn, 'click', () => {
+          
+          // Modal classes don't have registerDomEvent, use addEventListener
+          deleteBtn.addEventListener('click', () => {
             entry.scoresToDelete.add(gossamerNum);
             renderScores();
           });
@@ -181,6 +185,13 @@ export class GossamerScoreModal extends Modal {
       .setButtonText('Paste from Clipboard')
       .onClick(async () => {
         await this.pasteFromClipboard();
+      });
+
+    new ButtonComponent(buttonContainer)
+      .setButtonText('Delete All Scores')
+      .setWarning()
+      .onClick(async () => {
+        await this.deleteAllScores();
       });
 
     // Right-side button group
@@ -239,7 +250,7 @@ export class GossamerScoreModal extends Modal {
         }
 
         // Get history (handle both string and number)
-        for (let i = 2; i <= 5; i++) {
+        for (let i = 2; i <= 30; i++) {
           const key = `Gossamer${i}`;
           if (typeof fm[key] === 'number') {
             entry.history.push(fm[key]);
@@ -443,6 +454,90 @@ export class GossamerScoreModal extends Modal {
       } catch (error) {
         console.error(`[Gossamer] Failed to delete scores for ${beatTitle}:`, error);
       }
+    }
+  }
+
+  private async deleteAllScores(): Promise<void> {
+    // Show confirmation dialog
+    const confirmed = await new Promise<boolean>((resolve) => {
+      const modal = new Modal(this.app);
+      modal.titleEl.setText('Delete All Gossamer Scores');
+      
+      const content = modal.contentEl.createDiv();
+      content.createEl('p', { 
+        text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) from ALL Plot notes. This action cannot be undone.' 
+      });
+      
+      const buttonContainer = content.createDiv('rt-gossamer-confirm-buttons');
+      
+      new ButtonComponent(buttonContainer)
+        .setButtonText('Cancel')
+        .onClick(() => {
+          modal.close();
+          resolve(false);
+        });
+        
+      new ButtonComponent(buttonContainer)
+        .setButtonText('Delete All Scores')
+        .setWarning()
+        .onClick(async () => {
+          modal.close();
+          resolve(true);
+        });
+        
+      modal.open();
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+      // Get all Plot notes
+      const sourcePath = this.plugin.settings.sourcePath || '';
+      const allFiles = this.plugin.app.vault.getMarkdownFiles();
+      const files = sourcePath 
+        ? allFiles.filter(f => f.path.startsWith(sourcePath))
+        : allFiles;
+      
+      let deletedCount = 0;
+      
+      for (const file of files) {
+        const cache = this.plugin.app.metadataCache.getFileCache(file);
+        const fm = cache?.frontmatter;
+        
+        if (fm && (fm.Class === 'Plot' || fm.class === 'Plot')) {
+          // Check if this file has any Gossamer scores
+          let hasGossamerScores = false;
+          for (let i = 1; i <= 30; i++) {
+            if (fm[`Gossamer${i}`] !== undefined) {
+              hasGossamerScores = true;
+              break;
+            }
+          }
+          
+          if (hasGossamerScores) {
+            await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
+              const frontmatter = yaml as Record<string, any>;
+              
+              // Delete all Gossamer fields (Gossamer1-30)
+              for (let i = 1; i <= 30; i++) {
+                delete frontmatter[`Gossamer${i}`];
+              }
+            });
+            deletedCount++;
+          }
+        }
+      }
+      
+      if (deletedCount > 0) {
+        new Notice(`✓ Deleted all Gossamer scores from ${deletedCount} Plot note(s).`);
+        this.close(); // Close the modal since all scores are cleared
+      } else {
+        new Notice('No Gossamer scores found to delete.');
+      }
+      
+    } catch (error) {
+      console.error('[Gossamer] Failed to delete all scores:', error);
+      new Notice('Failed to delete all scores. Check console for details.');
     }
   }
 

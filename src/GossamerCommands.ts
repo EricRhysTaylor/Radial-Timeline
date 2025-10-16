@@ -168,14 +168,15 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
       return;
     }
     
-    // Use plot system from settings if available
-    const selectedBeatModel = plugin.settings.plotSystem;
+    // Use plot system from settings if explicitly set (not empty)
+    const selectedBeatModel = plugin.settings.plotSystem?.trim() || undefined;
     
-    // Build all runs (Gossamer1-5) with min/max band
+    // Build all runs (Gossamer1-30) with min/max band
     const allRuns = buildAllGossamerRuns(scenes, selectedBeatModel);
     
     if (allRuns.current.beats.length === 0) {
-      new Notice(`Cannot enter Gossamer mode: No Plot notes found${selectedBeatModel ? ` with Plot System: ${selectedBeatModel}` : ''}.`);
+      const systemMsg = selectedBeatModel ? ` with Plot System: ${selectedBeatModel}` : '';
+      new Notice(`Cannot enter Gossamer mode: No Plot notes found${systemMsg}. Create notes with Class: Plot.`);
       return;
     }
     

@@ -503,10 +503,11 @@ async function logApiInteractionToFile(
     // Format timestamp as readable date-time (e.g., "2025-10-12 14:30:45")
     const readableTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
     
-    // New title format: "Scene Processed — Model — Timestamp"
+    // New title format: "Scene Processed — Model — Timestamp" (for filename only)
     const sceneTitle = scenesSummaryForTitle.current ? `Scene ${scenesSummaryForTitle.current}` : 'Scene Processed';
-    let fileContent = `# ${sceneTitle} — ${friendlyModel} — ${readableTimestamp}\n\n`;
-    fileContent += `**Command:** ${commandContext}\n`;
+    
+    // Start file content without duplicating the title
+    let fileContent = `**Command:** ${commandContext}\n`;
     fileContent += `**Provider:** ${provider}\n`;
     fileContent += `**Model:** ${friendlyModel}\n`;
     fileContent += `**Model ID:** ${modelId}\n`;
@@ -1150,24 +1151,23 @@ export async function processBySubplotOrder(
         let totalProcessedCount = 0;
          let totalTripletsAcrossSubplots = 0;
 
-        // Count only valid scenes with Words > 0 for the total
+        // Count only valid scenes with Status: working/complete for the total
         subplotNames.forEach(subplotName => {
             const scenes = scenesBySubplot[subplotName];
             scenes.sort(compareScenesByOrder);
             
-            // Count only scenes with words > 0 and Beats Update: Yes
+            // Count only scenes with Status: working/complete and Beats Update: Yes
             const validScenes = scenes.filter(scene => {
-                const words = scene.frontmatter?.words || scene.frontmatter?.Words;
                 const beatsUpdate = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate || scene.frontmatter?.['Beats Update'];
 
                 if ((typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes') &&
-                    (!(typeof words === 'number') || words <= 0)) {
-                    const msg = `Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has Beats Update: Yes but 0 words. Skipping.`;
+                    !hasProcessableContent(scene.frontmatter)) {
+                    const msg = `Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has Beats Update: Yes but Status is not working/complete. Skipping.`;
                     // Surface to user via Notice; suppress console noise
                     new Notice(msg, 6000);
                 }
 
-                return (typeof words === 'number' && words > 0) && 
+                return hasProcessableContent(scene.frontmatter) && 
                        (typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes');
             });
             
@@ -1183,13 +1183,12 @@ export async function processBySubplotOrder(
 
 
         // Build contiguous triplets within this subplot by number (ignore Words),
-        // but only process currents that have Words>0 and Beats Update: Yes
+        // but only process currents that have Status: working/complete and Beats Update: Yes
         const orderedScenes = scenes.slice().sort(compareScenesByOrder);
         const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
         for (const currentScene of orderedScenes) {
-            const words = currentScene.frontmatter?.words || currentScene.frontmatter?.Words;
             const beatsUpdate = currentScene.frontmatter?.beatsupdate || currentScene.frontmatter?.BeatsUpdate || currentScene.frontmatter?.['Beats Update'];
-            const isProcessable = (typeof words === 'number' && words > 0) && (typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes');
+            const isProcessable = hasProcessableContent(currentScene.frontmatter) && (typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes');
             if (!isProcessable) continue;
 
             const idx = orderedScenes.findIndex(s => s.file.path === currentScene.file.path);
@@ -1213,14 +1212,14 @@ export async function processBySubplotOrder(
                      continue; // Skip to the next triplet if not flagged
                  }
                  
-                 // We've already filtered scenes by Words > 0 when building triplets,
+                 // We've already filtered scenes by Status: working/complete when building triplets,
                  // so no need to check again here.
 
                  // Check cache *after* confirming the scene is flagged for update
                  if (plugin.settings.processedBeatContexts.includes(tripletIdentifier)) {
  
                      totalProcessedCount++;
-                     notice.setMessage(`Progress: ${totalProcessedCount}/${totalTripletsAcrossSubplots} scenes (Skipped - Already processed)`);
+                     notice.setMessage(`Progress: ${totalProcessedCount}/${totalTripletsAcrossSubplots} scenes (Skipped - Cached from previous run)`);
                 continue;
             }
 
@@ -1228,9 +1227,9 @@ export async function processBySubplotOrder(
                  if (plugin.settings.debug) {
                 }
 
-                 // Only use neighbor if it has content (Words>0); else mark as N/A to avoid invented beats
-                 const prevHasContent = triplet.prev ? hasWordsContent(triplet.prev.frontmatter) : false;
-                 const nextHasContent = triplet.next ? hasWordsContent(triplet.next.frontmatter) : false;
+                 // Only use neighbor if it has processable content (Status: working/complete); else mark as N/A to avoid invented beats
+                 const prevHasContent = triplet.prev ? hasProcessableContent(triplet.prev.frontmatter) : false;
+                 const nextHasContent = triplet.next ? hasProcessableContent(triplet.next.frontmatter) : false;
                  const prevBody = prevHasContent && triplet.prev ? triplet.prev.body : null;
                  const nextBody = nextHasContent && triplet.next ? triplet.next.body : null;
                  const currentBody = triplet.current.body;
@@ -1308,11 +1307,10 @@ export async function processBySubplotName(
         // Sort by sceneNumber (if present)
         filtered.sort(compareScenesByOrder);
 
-        // Consider only scenes with Words > 0 and Beats Update: Yes
+        // Consider only scenes with Status: working/complete and Beats Update: Yes
         const validScenes = filtered.filter(scene => {
-            const words = (scene.frontmatter?.words || scene.frontmatter?.Words) as unknown;
             const beatsUpdate = (scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate || scene.frontmatter?.['Beats Update']) as unknown;
-            return (typeof words === 'number' && words > 0)
+            return hasProcessableContent(scene.frontmatter)
                 && (typeof beatsUpdate === 'string' && beatsUpdate.toLowerCase() === 'yes');
         });
 
@@ -1329,7 +1327,7 @@ export async function processBySubplotName(
         const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
         
         // Only build triplets for scenes that are flagged for processing
-        const flaggedScenes = validScenes; // Already filtered for Words > 0 and BeatsUpdate: Yes
+        const flaggedScenes = validScenes; // Already filtered for Status: working/complete and BeatsUpdate: Yes
         
         for (const flaggedScene of flaggedScenes) {
             // Find this scene's position in the complete filtered list (for contiguous context)
@@ -1356,15 +1354,15 @@ export async function processBySubplotName(
 
             if (plugin.settings.processedBeatContexts.includes(key)) {
                 processedCount++;
-                notice.setMessage(`Progress: ${processedCount}/${total} scenes (Skipped - Already processed)`);
+                notice.setMessage(`Progress: ${processedCount}/${total} scenes (Skipped - Cached from previous run)`);
                 continue;
             }
 
             notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${processedCount + 1}/${total}) — "${subplotName}"...`);
 
-            // Only use neighbor if it has content (Words>0); else mark as N/A to avoid invented beats
-            const prevHasContent = triplet.prev ? hasWordsContent(triplet.prev.frontmatter) : false;
-            const nextHasContent = triplet.next ? hasWordsContent(triplet.next.frontmatter) : false;
+            // Only use neighbor if it has processable content (Status: working/complete); else mark as N/A to avoid invented beats
+            const prevHasContent = triplet.prev ? hasProcessableContent(triplet.prev.frontmatter) : false;
+            const nextHasContent = triplet.next ? hasProcessableContent(triplet.next.frontmatter) : false;
             
             
             const prevBody = prevHasContent && triplet.prev ? triplet.prev.body : null;

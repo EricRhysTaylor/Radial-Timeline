@@ -313,14 +313,15 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // Plot System setting (for Gossamer mode)
         new Settings(containerEl)
-            .setName('Plot system')
-            .setDesc('Select the story structure model for your manuscript. This will establish the plot system and can be used to create plot notes and to score beats using Gossamer view.')
+            .setName('Plot system and gossamer')
+            .setDesc('Select the story structure model for your manuscript. This will establish the optional plot system and can be used to create plot notes and graph scores using Gossamer view. Choose "User" to use your own custom plot structure with any Plot notes.')
             .addDropdown(dropdown => {
                 dropdown
+                    .addOption('User', 'User (Custom plot structure)')
                     .addOption('Save The Cat', 'Save The Cat (15 beats)')
                     .addOption('Hero\'s Journey', 'Hero\'s Journey (12 beats)')
                     .addOption('Story Grid', 'Story Grid (15 beats)')
-                    .setValue(this.plugin.settings.plotSystem || 'Save The Cat')
+                    .setValue(this.plugin.settings.plotSystem || 'User')
                     .onChange(async (value) => {
                         this.plugin.settings.plotSystem = value;
                         await this.plugin.saveSettings();
@@ -339,7 +340,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         plotSystemInfo.style.paddingLeft = '0';
         
         // Set initial description with current selection
-        this.updatePlotSystemDescription(plotSystemInfo, this.plugin.settings.plotSystem || 'Save The Cat');
+        this.updatePlotSystemDescription(plotSystemInfo, this.plugin.settings.plotSystem || 'User');
 
         // Create template notes button
         new Settings(containerEl)
@@ -766,6 +767,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     private updatePlotSystemDescription(container: HTMLElement, selectedSystem: string): void {
         const descriptions: Record<string, string> = {
+            'User': 'Custom plot structure. Uses any Plot notes you create without filtering by plot system. Perfect for custom story structures or when you don\'t follow a formal plot system.',
             'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement.',
             'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery.',
             'Story Grid': 'Literary fiction and complex narratives. Balances micro and macro structure with progressive complications.'
@@ -790,7 +792,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     private async createPlotTemplates(): Promise<void> {
-        const plotSystemName = this.plugin.settings.plotSystem || 'Save The Cat';
+        const plotSystemName = this.plugin.settings.plotSystem || 'User';
+        
+        if (plotSystemName === 'User') {
+            new Notice('User plot system selected. Create your own Plot notes with Class: Plot. No templates will be generated.');
+            return;
+        }
+        
         const plotSystem = getPlotSystem(plotSystemName);
         
         if (!plotSystem) {

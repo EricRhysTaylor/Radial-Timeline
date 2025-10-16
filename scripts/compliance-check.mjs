@@ -284,7 +284,7 @@ function getSuggestion(issue) {
     case 'normalize-path-missing':
       return "User paths should be normalized: use normalizePath() before assignment, or assign a pre-normalized variable.";
     case 'raw-addEventListener':
-      return "Replace element.addEventListener('event', handler) with this.registerDomEvent(element, 'event', handler) for automatic cleanup.";
+      return "Replace element.addEventListener('event', handler) with this.registerDomEvent(element, 'event', handler) for automatic cleanup. Note: Modal classes don't have registerDomEvent and must use addEventListener.";
     case 'fetch-without-signal':
       return "Add AbortController: const ctrl = new AbortController(); this.register(() => ctrl.abort()); fetch(url, { signal: ctrl.signal }).";
     case 'observer-without-cleanup':
@@ -328,6 +328,8 @@ function runChecks(filePath, text) {
       if (check.id === 'raw-addEventListener' && check.regex.test(line)) {
         // Skip if line contains registerDomEvent (this is the correct pattern)
         if (/registerDomEvent/.test(line)) continue;
+        // Skip if in a Modal class file (Modal classes must use addEventListener)
+        if (/Modal\.ts$/.test(filePath)) continue;
         // Skip if it's in a comment or string about the correct pattern
         if (/\/\/.*addEventListener/.test(line) || /['"].*addEventListener.*['"]/.test(line)) continue;
       }
