@@ -19,7 +19,7 @@ const readmePath = path.resolve('README.md'); // Get absolute path to README
 let readmeContent = '';
 try {
 	readmeContent = fs.readFileSync(readmePath, 'utf-8');
-	console.log('Read README.md for embedding.');
+	// console.log('Read README.md for embedding.'); // Suppressed for cleaner build output
 } catch (err) {
 	console.error('Failed to read README.md for embedding:', err);
 	readmeContent = 'Error: Could not load README content.'; // Fallback content
@@ -107,7 +107,9 @@ async function copyBuildAssets() {
 	// Note: Release files are now maintained in the release/ folder
 	// No need to copy to project root since release/ is the source of truth
 	
-	console.log(`Build assets copied to: ${destDirs.join(", ")}`);
+	// Show full destination paths, one per line for better readability
+	console.log('Build assets copied to:');
+	destDirs.forEach(dir => console.log(`  ${dir}`));
 }
 
 const context = await esbuild.context({

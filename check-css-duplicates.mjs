@@ -12,6 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const cssPath = join(__dirname, 'src', 'styles.css');
+const quiet = process.argv.includes('--quiet');
 
 try {
   const css = readFileSync(cssPath, 'utf-8');
@@ -115,7 +116,9 @@ try {
   }
   
   if (!hasIssues) {
-    console.log('✅ No duplicate selectors or empty rulesets found.');
+    if (!quiet) {
+      console.log('✅ No duplicate selectors or empty rulesets found.');
+    }
     process.exit(0);
   } else {
     process.exit(1);

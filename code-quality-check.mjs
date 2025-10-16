@@ -186,13 +186,16 @@ function processFile(filePath) {
 // Process files passed as arguments
 function main() {
   const args = process.argv.slice(2);
-  if (args.length === 0) {
+  const quiet = args.includes('--quiet');
+  const files = args.filter(arg => !arg.startsWith('--'));
+  
+  if (files.length === 0) {
     console.error('No files specified');
     process.exit(1);
   }
 
   let allFilesPass = true;
-  for (const file of args) {
+  for (const file of files) {
     const passes = processFile(file);
     allFilesPass = allFilesPass && passes;
   }
@@ -235,8 +238,10 @@ function main() {
     process.exit(1);
   }
 
-  console.log('\x1b[32m✅ Code quality check passed!\x1b[0m');
-  console.log('📖 See CODE_STANDARDS.md for full guidelines.');
+  if (!quiet) {
+    console.log('\x1b[32m✅ Code quality check passed!\x1b[0m');
+    console.log('📖 See CODE_STANDARDS.md for full guidelines.');
+  }
 }
 
 main(); 

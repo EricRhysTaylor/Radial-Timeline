@@ -216,21 +216,30 @@ async function main() {
         process.exit(1);
     }
 
-    // Optionally merge dev -> master as a safety step before releasing
-    let shouldMergeDev = true;
-    if (String(process.env.NO_MERGE_DEV || '').trim() === '1') {
-        shouldMergeDev = false;
-    } else {
-        const mergeAnswer = await question(`🔁 Merge 'dev' into 'master' before release? (Y/n): `);
-        shouldMergeDev = !mergeAnswer || mergeAnswer.toLowerCase() === 'y' || mergeAnswer.toLowerCase() === 'yes';
-    }
-    if (shouldMergeDev) {
-        // Fetch is safe (doesn't modify local files) and helps detect remote divergence
-        runCommand('git fetch --all', 'Fetching remotes', true);
-        runCommand('git merge --no-ff --no-edit dev', "Merging 'dev' into 'master'");
-        console.log("✅ 'dev' merged into 'master'.");
-    } else {
-        console.log("ℹ️  Skipping 'dev' -> 'master' merge before release.");
+    // Fetch latest changes from remote master
+    runCommand('git fetch origin master', 'Fetching latest changes from remote master', true);
+    
+    // Check if local master is behind remote master
+    try {
+        const localCommit = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+        const remoteCommit = execSync('git rev-parse origin/master', { encoding: 'utf8' }).trim();
+        
+        if (localCommit !== remoteCommit) {
+            console.log("ℹ️  Local master is behind remote master. Consider pulling latest changes.");
+            const pullAnswer = await question(`📥 Pull latest changes from remote master? (Y/n): `);
+            const shouldPull = !pullAnswer || pullAnswer.toLowerCase() === 'y' || pullAnswer.toLowerCase() === 'yes';
+            
+            if (shouldPull) {
+                runCommand('git pull origin master', "Pulling latest changes from remote master");
+                console.log("✅ Latest changes pulled from remote master.");
+            } else {
+                console.log("ℹ️  Skipping pull. Proceeding with local changes.");
+            }
+        } else {
+            console.log("✅ Local master is up to date with remote master.");
+        }
+    } catch (e) {
+        console.log("ℹ️  Could not check remote status. Proceeding with local changes.");
     }
 
     // Read current version
