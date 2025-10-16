@@ -47,7 +47,7 @@ export function normalizeBeatName(name: string): string {
   // Strip percentage annotations (e.g., "5%", "1-10%", "20%") and extra whitespace
   // Then normalize for fuzzy matching (remove hyphens, spaces, lowercase)
   return (name || '')
-    .replace(/\s+\d+(?:-\d+)?%?\s*$/i, '') // Remove trailing percentages like " 5%", " 1-10%", " 20"
+    .replace(/\s*\d+(?:\s*-\s*\d+)?\s*%?\s*$/i, '') // Remove trailing percentages like " 5%", " 1-10%", " 20", " 75 - 80%"
     .trim()
     .toLowerCase()
     .replace(/[-\s]/g, ''); // Remove hyphens and spaces for fuzzy matching (e.g., "set-up" → "setup", "dark night of the soul" → "darknightofthesoul")

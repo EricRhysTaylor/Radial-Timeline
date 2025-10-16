@@ -54,7 +54,7 @@ export class BeatsProcessingModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl } = this;
-        titleEl.setText('AI Beats Analysis');
+        titleEl.setText('AI beats analysis');
         
         // If we're already processing (reopening), show progress view
         if (this.isProcessing) {
@@ -177,7 +177,7 @@ export class BeatsProcessingModal extends Modal {
         const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
         
         new ButtonComponent(buttonRow)
-            .setButtonText('Start Processing')
+            .setButtonText('Start processing')
             .setCta()
             .onClick(async () => {
                 try {
@@ -275,7 +275,7 @@ export class BeatsProcessingModal extends Modal {
     private showProgressView(): void {
         const { contentEl, titleEl } = this;
         contentEl.empty();
-        titleEl.setText('Processing AI Beats Analysis...');
+        titleEl.setText('Processing AI beats analysis...');
 
         // Progress bar container
         const progressContainer = contentEl.createDiv({ cls: 'rt-beats-progress-container' });
@@ -300,7 +300,7 @@ export class BeatsProcessingModal extends Modal {
         // Abort button (store container reference for later replacement with Close button)
         this.actionButtonContainer = contentEl.createDiv({ cls: 'rt-beats-actions' });
         this.abortButtonEl = new ButtonComponent(this.actionButtonContainer)
-            .setButtonText('Abort Processing')
+            .setButtonText('Abort processing')
             .setWarning()
             .onClick(() => this.abortProcessing());
     }
@@ -382,7 +382,7 @@ export class BeatsProcessingModal extends Modal {
         const { contentEl, titleEl } = this;
         
         // Update title
-        titleEl.setText('Processing Complete');
+        titleEl.setText('Processing complete');
         
         // Keep progress bar at 100% and stop animation to save CPU
         if (this.progressBarEl) {

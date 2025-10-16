@@ -20,7 +20,7 @@ if (mode === 'release' && branch !== 'master') {
 }
 
 if (mode === 'backup') {
-  console.log(`[note] Backup will commit to 'dev'.`);
+  console.log(`[note] Backup will commit to 'master'.`);
 }
 
 

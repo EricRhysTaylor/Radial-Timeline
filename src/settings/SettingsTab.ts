@@ -347,7 +347,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             .setName('Create plot template notes')
             .setDesc('Generate template plot notes based on the selected plot system including YAML frontmatter and body summary.')
             .addButton(button => button
-                .setButtonText('Create Templates')
+                .setButtonText('Create templates')
                 .setTooltip('Creates Plot note templates in your source path')
                 .onClick(async () => {
                     await this.createPlotTemplates();

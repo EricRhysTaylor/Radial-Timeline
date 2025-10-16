@@ -126,7 +126,7 @@ export class AiContextModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl } = this;
-        titleEl.setText('AI Context Templates');
+        titleEl.setText('AI context templates');
 
         // Info section
         const infoEl = contentEl.createDiv({ cls: 'rt-ai-context-info' });
@@ -163,7 +163,7 @@ export class AiContextModal extends Modal {
         
         // New Template button
         new ButtonComponent(buttonRow)
-            .setButtonText('New Template')
+            .setButtonText('New template')
             .onClick(() => this.createNewTemplate());
         
         // Rename button
@@ -173,7 +173,7 @@ export class AiContextModal extends Modal {
         
         // Copy button (for built-in templates)
         this.copyButton = new ButtonComponent(buttonRow)
-            .setButtonText('Create Copy')
+            .setButtonText('Create copy')
             .onClick(() => this.copyTemplate());
         
         // Delete button
@@ -225,13 +225,13 @@ export class AiContextModal extends Modal {
         
         // Save button
         this.saveButton = new ButtonComponent(actionRow)
-            .setButtonText('Save Changes')
+            .setButtonText('Save changes')
             .setCta()
             .onClick(() => this.saveChanges());
         
         // Set Active button
         new ButtonComponent(actionRow)
-            .setButtonText('Set as Active & Close')
+            .setButtonText('Set as active & close')
             .onClick(() => this.setActiveAndClose());
         
         // Close button

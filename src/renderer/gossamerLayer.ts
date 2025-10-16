@@ -102,10 +102,6 @@ export function renderGossamerLayer(
       // Check if this beat is missing data (outlineOnly status)
       const beatStatus = beatStatusMap.get(name);
       const isMissingData = beatStatus === 'outlineOnly';
-      const titleText = isMissingData 
-        ? `${name}: Missing data (defaulted to 0)`
-        : `${name}${run?.meta?.label ? ` — ${run.meta.label}` : ''}: ${score}`;
-      const title = `<title>${escapeAttr(titleText)}</title>`;
       
       // Get publish stage color for this beat, or error color if missing data
       const errorColor = getCSSVar('--rt-gossamer-error-color', '#ff4444');
@@ -114,7 +110,7 @@ export function renderGossamerLayer(
       const stageColor = isMissingData ? errorColor : (publishStageColorByBeat?.get(name) || defaultColor);
       
       // Gossamer1 dots: normal colored circles (hover CSS will add stroke effect)
-      dots.push(`<circle class="rt-gossamer-dot${isMissingData ? ' rt-gossamer-missing-data' : ''}" cx="${fmt(x)}" cy="${fmt(y)}" r="${dotRadius}" fill="${stageColor}" ${data}>${title}</circle>`);
+      dots.push(`<circle class="rt-gossamer-dot${isMissingData ? ' rt-gossamer-missing-data' : ''}" cx="${fmt(x)}" cy="${fmt(y)}" r="${dotRadius}" fill="${stageColor}" ${data}></circle>`);
       // Spoke from inner to the beginning of the beat slice (or outer radius if not specified)
       const spokeEnd = spokeEndRadius ?? outerRadius;
       const sx1 = innerRadius * Math.cos(angle);

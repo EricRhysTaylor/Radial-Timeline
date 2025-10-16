@@ -96,7 +96,7 @@ Gossamer1:
       });
 
     new ButtonComponent(buttonContainer)
-      .setButtonText(`Create ${this.beatCount} Notes`)
+      .setButtonText(`Create ${this.beatCount} notes`)
       .setCta()
       .onClick(() => {
         if (this.resolve) {

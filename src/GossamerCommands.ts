@@ -115,6 +115,42 @@ export function parseScoresFromClipboard(clipboardText: string): Map<string, num
       // Also store with normalized name for fuzzy matching
       const normalizedBeat = normalizeBeatName(beatName);
       scores.set(normalizedBeat, score);
+      
+      // Store additional variations for better matching
+      // Remove leading numbers and periods for flexible matching
+      const withoutNumber = beatName.replace(/^\d+\.?\s*/, '').trim();
+      if (withoutNumber !== beatName) {
+        scores.set(withoutNumber, score);
+        scores.set(normalizeBeatName(withoutNumber), score);
+      }
+      
+      // Store without percentage annotations (handle various space formats)
+      const withoutPercent = beatName.replace(/\s*\d+(?:\s*-\s*\d+)?\s*%?\s*$/i, '').trim();
+      if (withoutPercent !== beatName) {
+        scores.set(withoutPercent, score);
+        scores.set(normalizeBeatName(withoutPercent), score);
+      }
+      
+      // Store without both number prefix AND percentage for maximum flexibility
+      const withoutNumberAndPercent = beatName
+        .replace(/^\d+\.?\s*/, '') // Remove number prefix
+        .replace(/\s*\d+(?:\s*-\s*\d+)?\s*%?\s*$/i, '') // Remove percentage (handle various space formats)
+        .trim();
+      if (withoutNumberAndPercent !== beatName && withoutNumberAndPercent !== withoutNumber && withoutNumberAndPercent !== withoutPercent) {
+        scores.set(withoutNumberAndPercent, score);
+        scores.set(normalizeBeatName(withoutNumberAndPercent), score);
+      }
+      
+      // Store with just the core beat name (most flexible)
+      const coreBeatName = beatName
+        .replace(/^\d+\.?\s*/, '') // Remove number prefix
+        .replace(/\s*\d+(?:\s*-\s*\d+)?\s*%?\s*$/i, '') // Remove percentage (handle various space formats)
+        .replace(/\s+of\s+/gi, ' ') // Normalize "of" spacing
+        .trim();
+      if (coreBeatName !== beatName && coreBeatName !== withoutNumber && coreBeatName !== withoutPercent && coreBeatName !== withoutNumberAndPercent) {
+        scores.set(coreBeatName, score);
+        scores.set(normalizeBeatName(coreBeatName), score);
+      }
     }
   }
   

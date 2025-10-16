@@ -40,7 +40,7 @@ export class GossamerScoreModal extends Modal {
     
     // Set modal width using Obsidian's approach
     if (modalEl) {
-      modalEl.style.width = '700px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
     }
     
@@ -57,7 +57,7 @@ export class GossamerScoreModal extends Modal {
     const countMismatch = actualCount !== expectedCount;
 
     // Title with plot system name
-    const titleText = `Gossamer Momentum Scores — ${settingsSystem}`;
+    const titleText = `Gossamer momentum scores — ${settingsSystem}`;
     const titleEl = contentEl.createEl('h2', { text: titleText });
     titleEl.addClass('rt-gossamer-score-title');
 
@@ -175,20 +175,20 @@ export class GossamerScoreModal extends Modal {
     const buttonContainer = contentEl.createDiv('rt-gossamer-score-buttons');
 
     new ButtonComponent(buttonContainer)
-      .setButtonText('Copy Template for AI')
+      .setButtonText('Copy template for AI')
       .setTooltip('Copy beat names in AI-ready format')
       .onClick(async () => {
         await this.copyTemplateForAI();
       });
 
     new ButtonComponent(buttonContainer)
-      .setButtonText('Paste from Clipboard')
+      .setButtonText('Paste from clipboard')
       .onClick(async () => {
         await this.pasteFromClipboard();
       });
 
     new ButtonComponent(buttonContainer)
-      .setButtonText('Delete All Scores')
+      .setButtonText('Delete all scores')
       .setWarning()
       .onClick(async () => {
         await this.deleteAllScores();
@@ -198,7 +198,7 @@ export class GossamerScoreModal extends Modal {
     const rightButtons = buttonContainer.createDiv('rt-gossamer-score-buttons-right');
 
     new ButtonComponent(rightButtons)
-      .setButtonText('Save Scores')
+      .setButtonText('Save scores')
       .setCta()
       .onClick(async () => {
         await this.saveScores();
@@ -458,31 +458,66 @@ export class GossamerScoreModal extends Modal {
   }
 
   private async deleteAllScores(): Promise<void> {
-    // Show confirmation dialog
+    // First check if there are any scores to delete
+    const sourcePath = this.plugin.settings.sourcePath || '';
+    const allFiles = this.plugin.app.vault.getMarkdownFiles();
+    const files = sourcePath 
+      ? allFiles.filter(f => f.path.startsWith(sourcePath))
+      : allFiles;
+    
+    let hasAnyScores = false;
+    for (const file of files) {
+      const cache = this.plugin.app.metadataCache.getFileCache(file);
+      const fm = cache?.frontmatter;
+      
+      if (fm && (fm.Class === 'Plot' || fm.class === 'Plot')) {
+        // Check if this file has any Gossamer scores
+        for (let i = 1; i <= 30; i++) {
+          if (fm[`Gossamer${i}`] !== undefined) {
+            hasAnyScores = true;
+            break;
+          }
+        }
+        if (hasAnyScores) break;
+      }
+    }
+    
+    // If no scores found, show alert and return
+    if (!hasAnyScores) {
+      new Notice('No Gossamer scores found to delete.');
+      return;
+    }
+    
+    // Show confirmation dialog with improved styling
     const confirmed = await new Promise<boolean>((resolve) => {
       const modal = new Modal(this.app);
-      modal.titleEl.setText('Delete All Gossamer Scores');
+      modal.titleEl.setText('Delete all Gossamer scores');
       
       const content = modal.contentEl.createDiv();
-      content.createEl('p', { 
-        text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) from ALL Plot notes. This action cannot be undone.' 
-      });
+      content.addClass('rt-gossamer-confirm-content');
       
+      // Warning message with proper styling
+      const warningEl = content.createEl('div', {
+        text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) from ALL Plot notes. This action cannot be undone.'
+      });
+      warningEl.addClass('rt-gossamer-confirm-warning');
+      
+      // Button container with proper Obsidian styling
       const buttonContainer = content.createDiv('rt-gossamer-confirm-buttons');
       
+      new ButtonComponent(buttonContainer)
+        .setButtonText('Delete all scores')
+        .setWarning()
+        .onClick(async () => {
+          modal.close();
+          resolve(true);
+        });
+        
       new ButtonComponent(buttonContainer)
         .setButtonText('Cancel')
         .onClick(() => {
           modal.close();
           resolve(false);
-        });
-        
-      new ButtonComponent(buttonContainer)
-        .setButtonText('Delete All Scores')
-        .setWarning()
-        .onClick(async () => {
-          modal.close();
-          resolve(true);
         });
         
       modal.open();
@@ -491,13 +526,6 @@ export class GossamerScoreModal extends Modal {
     if (!confirmed) return;
     
     try {
-      // Get all Plot notes
-      const sourcePath = this.plugin.settings.sourcePath || '';
-      const allFiles = this.plugin.app.vault.getMarkdownFiles();
-      const files = sourcePath 
-        ? allFiles.filter(f => f.path.startsWith(sourcePath))
-        : allFiles;
-      
       let deletedCount = 0;
       
       for (const file of files) {
@@ -528,12 +556,8 @@ export class GossamerScoreModal extends Modal {
         }
       }
       
-      if (deletedCount > 0) {
-        new Notice(`✓ Deleted all Gossamer scores from ${deletedCount} Plot note(s).`);
-        this.close(); // Close the modal since all scores are cleared
-      } else {
-        new Notice('No Gossamer scores found to delete.');
-      }
+      new Notice(`✓ Deleted all Gossamer scores from ${deletedCount} Plot note(s).`);
+      this.close(); // Close the modal since all scores are cleared
       
     } catch (error) {
       console.error('[Gossamer] Failed to delete all scores:', error);
