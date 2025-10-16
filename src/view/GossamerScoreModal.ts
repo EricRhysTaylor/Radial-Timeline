@@ -113,7 +113,7 @@ export class GossamerScoreModal extends Modal {
             text: '×',
             cls: 'rt-gossamer-score-delete'
           });
-          (this as any).registerDomEvent(deleteBtn, 'click', () => {
+          this.registerDomEvent(deleteBtn, 'click', () => {
             entry.scoresToDelete.add(1);
             renderScores();
           });
@@ -133,7 +133,7 @@ export class GossamerScoreModal extends Modal {
             text: '×',
             cls: 'rt-gossamer-score-delete'
           });
-          (this as any).registerDomEvent(deleteBtn, 'click', () => {
+          this.registerDomEvent(deleteBtn, 'click', () => {
             entry.scoresToDelete.add(gossamerNum);
             renderScores();
           });

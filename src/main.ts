@@ -2242,16 +2242,33 @@ public createTimelineSVG(scenes: Scene[]) {
         let updateCount = 0;
         
         for (const [beatTitle, newScore] of scores) {
-            // Find Plot note by title
+            // Find Plot note by title - use the same approach as GossamerScoreModal
             let file: TFile | null = null;
-            for (const f of files) {
-                if (f.basename === beatTitle || f.basename === beatTitle.replace(/^\d+\s+/, '')) {
+            
+            // First, try to find by exact title match in our scene data
+            const matchingScene = this.scenes.find(s => s.title === beatTitle && s.itemType === 'Plot');
+            if (matchingScene && matchingScene.path) {
+                file = this.app.vault.getAbstractFileByPath(matchingScene.path) as TFile;
+            }
+            
+            // Fallback: search through files if not found in scene data
+            if (!file) {
+                for (const f of files) {
                     const cache = this.app.metadataCache.getFileCache(f);
                     const rawFm = cache?.frontmatter;
                     const fm = rawFm ? normalizeFrontmatterKeys(rawFm) : undefined;
                     if (fm && fm.Class === 'Plot') {
-                        file = f;
-                        break;
+                        // Try multiple matching strategies
+                        const filename = f.basename;
+                        const titleMatch = filename === beatTitle || 
+                                         filename === beatTitle.replace(/^\d+\s+/, '') ||
+                                         filename.toLowerCase() === beatTitle.toLowerCase() ||
+                                         filename.toLowerCase().replace(/[-\s]/g, '') === beatTitle.toLowerCase().replace(/[-\s]/g, '');
+                        
+                        if (titleMatch) {
+                            file = f;
+                            break;
+                        }
                     }
                 }
             }

@@ -55,7 +55,7 @@ class TextInputModal extends Modal {
               this.close();
           }
       };
-      (this as any).registerDomEvent(inputEl, 'keydown', handleKeydown);
+      this.registerDomEvent(inputEl, 'keydown', handleKeydown);
 
         // Buttons
         const buttonRow = contentEl.createDiv({ cls: 'modal-button-container rt-text-input-modal-buttons' });
@@ -197,7 +197,7 @@ export class AiContextModal extends Modal {
               previewText.textContent = '[No context set - will use default AI prompt]';
           }
       };
-      (this as any).registerDomEvent(this.textareaEl, 'input', handleInput);
+      this.registerDomEvent(this.textareaEl, 'input', handleInput);
 
         // Action buttons
         const actionRow = contentEl.createDiv({ cls: 'rt-ai-context-actions' });
