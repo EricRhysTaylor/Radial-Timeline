@@ -152,8 +152,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         '#004777', // 14
         '#8B4513'  // 15 - Brown for Ring 16
     ],
-    outerRingAllScenes: false, // Default to per-subplot outer ring
-    logApiInteractions: false, // <<< ADDED: Default for new setting
+    outerRingAllScenes: true, // Default to all scenes mode
+    logApiInteractions: true, // <<< ADDED: Default for new setting
     processedBeatContexts: [], // <<< ADDED: Default empty array
     debug: false,
     targetCompletionDate: undefined, // Ensure it's undefined by default
