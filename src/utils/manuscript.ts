@@ -93,12 +93,12 @@ export async function assembleManuscript(
       scenes.push({ title, bodyText, wordCount });
       totalWords += wordCount;
 
-      // Format: === 44 Michi Updates Rel Newlan ===
-      textParts.push(`=== ${title} ===\n\n${bodyText}\n\n`);
+      // Format: ## 44 Michi Updates Rel Newlan (markdown heading for TOC)
+      textParts.push(`## ${title}\n\n${bodyText}\n\n`);
     } catch (error) {
       console.error(`Error reading scene file ${file.path}:`, error);
       // Add placeholder for failed scene
-      textParts.push(`=== ${title} ===\n\n[Error reading scene]\n\n`);
+      textParts.push(`## ${title}\n\n[Error reading scene]\n\n`);
     }
   }
 

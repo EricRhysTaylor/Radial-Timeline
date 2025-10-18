@@ -2,6 +2,57 @@
  * Beats Triplet Prompt Builder
  */
 
+// JSON schema for beats response
+const BEATS_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    "1beats": {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          scene: { type: "string", description: "Scene number" },
+          title: { type: "string", description: "Short beat title" },
+          grade: { type: "string", enum: ["+", "-", "?"], description: "Connection strength" },
+          comment: { type: "string", description: "Editorial comment (max 10 words)" }
+        },
+        required: ["scene", "title", "grade", "comment"]
+      }
+    },
+    "2beats": {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          scene: { type: "string", description: "Scene number" },
+          title: { type: "string", description: "Short beat title or grade (A/B/C for first item)" },
+          grade: { type: "string", enum: ["+", "-", "?", "A", "B", "C"], description: "Grade or connection strength" },
+          comment: { type: "string", description: "Editorial comment (max 15 words for first item, 10 for others)" }
+        },
+        required: ["scene", "title", "grade", "comment"]
+      }
+    },
+    "3beats": {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          scene: { type: "string", description: "Scene number" },
+          title: { type: "string", description: "Short beat title" },
+          grade: { type: "string", enum: ["+", "-", "?"], description: "Connection strength" },
+          comment: { type: "string", description: "Editorial comment (max 10 words)" }
+        },
+        required: ["scene", "title", "grade", "comment"]
+      }
+    }
+  },
+  required: ["2beats"]
+};
+
+export function getBeatsJsonSchema() {
+  return BEATS_JSON_SCHEMA;
+}
+
 export function buildBeatsPrompt(
   prevBody: string | null,
   currentBody: string,
@@ -13,38 +64,177 @@ export function buildBeatsPrompt(
 ): string {
   // Build context prefix if provided
   const contextPrefix = contextPrompt?.trim() 
-    ? `${contextPrompt.trim()}\n\nBefore taking action, prepare an action plan.\n\n`
+    ? `${contextPrompt.trim()}\n\n`
     : 'You are a developmental editor for a novel.\n\n';
 
-  return `${contextPrefix}For each of the three scenes below, generate concise 5 ordered narrative beats from the perspective of the 2beats (middle scene) showing the connections between the 1beats (previous scene) and the 3beats (next scene) and if 2beats is maintaining the momentum of the story. For the first line of the 2beats, give an overall editorial score of A, B or C where A nearly perfect and C needs improvement with instructions on how to improve it.
+  const isPrevAvailable = !!prevBody;
+  const isNextAvailable = !!nextBody;
 
-Use the following exact format (to be processed by a script for YAML formatting):
+  // Boundary-specific prompts to reduce confusion for first/last scenes
+  if (!isPrevAvailable && !isNextAvailable) {
+    // Only one scene in manuscript (or both neighbors missing): evaluate current only
+    return `${contextPrefix}Evaluate the single scene below. Return ONLY valid JSON matching this structure:
 
-1beats: 
- - ${prevNum} Use a short beat title + or - or ? / Short comment under 10 words
- - Follow-up beat title + or - or ? / Short comment under 10 words 
- - ...
-2beats:
- - ${currentNum} A, B or C / Instructions on how to improve it no more than 15 words.
- - Follow-up beat title + or - or ? / Concise editorial comment under 10 words
- - ...
-3beats:
- - ${nextNum} Use a Short beat title + or - or ? / Concise editorial comment under 10 words
- - Follow-up beat title + or - or ? / Concise editorial comment under 10 words
- - ...
+{
+  "2beats": [
+    {
+      "scene": "${currentNum}",
+      "title": "Overall Scene Grade",
+      "grade": "A" or "B" or "C",
+      "comment": "Instructions on how to improve it (max 15 words)"
+    },
+    {
+      "scene": "${currentNum}",
+      "title": "Beat title",
+      "grade": "+" or "-" or "?",
+      "comment": "Concise editorial comment (max 10 words)"
+    }
+    // ... 3-5 more beats
+  ]
+}
 
-Instructions:
-- Use "+" for beats that connect strongly to surrounding scenes.
-- Use "-" for beats that need improvement.
-- Use "?" if the beat is neutral.
-- Include the scene number (example: 34.5) only for the first item in each beats section.
-- For 2beats (scene under evaluation), apply a rating of A, B or C / Concise editorial comment under 10 words with instructions on how to fix scene.
-- Boundary conditions:
-  - If previous scene is "N/A", leave 1beats empty (no lines).
-  - If next scene is "N/A", leave 3beats empty (no lines).
-  - Do not invent beats for missing scenes.
-- Follow the exact indentation shown (single space before each dash).
-- No other formatting so the YAML formatting is not broken.
+Rules:
+- Output ONLY valid JSON. No markdown code blocks, no preamble, no commentary.
+- First item in 2beats must have grade A/B/C (overall scene quality).
+- Subsequent items use +/-/? for connection strength.
+- Keep comments concise (first item max 15 words, others max 10 words).
+
+Scene ${currentNum}:
+${currentBody || 'N/A'}
+`;
+  }
+
+  if (!isPrevAvailable && isNextAvailable) {
+    // First scene: no previous, only 2beats and 3beats
+    return `${contextPrefix}Evaluate the first scene in context of the following scene. Return ONLY valid JSON matching this structure:
+
+{
+  "2beats": [
+    {
+      "scene": "${currentNum}",
+      "title": "Overall Scene Grade",
+      "grade": "A" or "B" or "C",
+      "comment": "Instructions on how to improve it (max 15 words)"
+    },
+    {
+      "scene": "${currentNum}",
+      "title": "Beat title",
+      "grade": "+" or "-" or "?",
+      "comment": "Editorial comment (max 10 words)"
+    }
+    // ... 3-5 more beats
+  ],
+  "3beats": [
+    {
+      "scene": "${nextNum}",
+      "title": "Beat title",
+      "grade": "+" or "-" or "?",
+      "comment": "Editorial comment (max 10 words)"
+    }
+    // ... 3-5 more beats analyzing next scene
+  ]
+}
+
+Rules:
+- Output ONLY valid JSON. No markdown code blocks, no preamble.
+- First 2beats item: grade A/B/C (overall quality). Others: +/-/? (connection strength).
+- 3beats items: +/-/? showing how next scene builds on current.
+
+Scene ${currentNum}:
+${currentBody || 'N/A'}
+
+Scene ${nextNum}:
+${nextBody ?? 'N/A'}
+`;
+  }
+
+  if (isPrevAvailable && !isNextAvailable) {
+    // Last scene: no next, only 1beats and 2beats
+    return `${contextPrefix}Evaluate the last scene in context of the previous scene. Return ONLY valid JSON matching this structure:
+
+{
+  "1beats": [
+    {
+      "scene": "${prevNum}",
+      "title": "Beat title",
+      "grade": "+" or "-" or "?",
+      "comment": "Editorial comment (max 10 words)"
+    }
+    // ... 3-5 more beats analyzing previous scene
+  ],
+  "2beats": [
+    {
+      "scene": "${currentNum}",
+      "title": "Overall Scene Grade",
+      "grade": "A" or "B" or "C",
+      "comment": "Instructions on how to improve it (max 15 words)"
+    },
+    {
+      "scene": "${currentNum}",
+      "title": "Beat title",
+      "grade": "+" or "-" or "?",
+      "comment": "Editorial comment (max 10 words)"
+    }
+    // ... 3-5 more beats
+  ]
+}
+
+Rules:
+- Output ONLY valid JSON. No markdown code blocks, no preamble.
+- 1beats items: +/-/? showing how previous scene sets up current.
+- First 2beats item: grade A/B/C (overall quality). Others: +/-/? (connection strength).
+
+Scene ${prevNum}:
+${prevBody ?? 'N/A'}
+
+Scene ${currentNum}:
+${currentBody || 'N/A'}
+`;
+  }
+
+  return `${contextPrefix}For each of the three scenes below, generate concise narrative beats from the perspective of the middle scene (${currentNum}), showing connections between previous (${prevNum}) and next (${nextNum}) scenes. Return ONLY valid JSON matching this structure:
+
+{
+  "1beats": [
+    {
+      "scene": "${prevNum}",
+      "title": "Beat title",
+      "grade": "+" or "-" or "?",
+      "comment": "Editorial comment (max 10 words)"
+    }
+    // ... 3-5 more beats analyzing how previous scene sets up current
+  ],
+  "2beats": [
+    {
+      "scene": "${currentNum}",
+      "title": "Overall Scene Grade",
+      "grade": "A" or "B" or "C",
+      "comment": "Instructions on how to improve it (max 15 words)"
+    },
+    {
+      "scene": "${currentNum}",
+      "title": "Beat title",
+      "grade": "+" or "-" or "?",
+      "comment": "Editorial comment (max 10 words)"
+    }
+    // ... 3-5 more beats analyzing current scene
+  ],
+  "3beats": [
+    {
+      "scene": "${nextNum}",
+      "title": "Beat title",
+      "grade": "+" or "-" or "?",
+      "comment": "Editorial comment (max 10 words)"
+    }
+    // ... 3-5 more beats analyzing how next scene builds on current
+  ]
+}
+
+Rules:
+- Output ONLY valid JSON. No markdown code blocks (no \`\`\`json), no preamble, no commentary.
+- First 2beats item must have grade A/B/C (A=nearly perfect, C=needs improvement).
+- All other items use +/-/?: "+" for strong connections, "-" for weak, "?" for neutral.
+- Keep comments concise (first 2beats max 15 words, all others max 10 words).
 
 Scene ${prevNum}:
 ${prevBody ?? 'N/A'}

@@ -44,7 +44,8 @@ export async function callOpenAiApi(
     systemPrompt: string | null,
     userPrompt: string,
     maxTokens: number | null = 4000,
-    temperature: number = 0.7
+    temperature: number = 0.7,
+    enableJsonMode: boolean = false  // Enable JSON mode for structured output
 ): Promise<OpenAiApiResponse> {
     const apiUrl = 'https://api.openai.com/v1/chat/completions';
     if (!apiKey) {
@@ -63,8 +64,13 @@ export async function callOpenAiApi(
         messages: { role: string; content: string }[];
         temperature: number;
         max_tokens?: number;
+        response_format?: { type: string };
     } = { model: modelId, messages, temperature };
     if (maxTokens !== null) requestBody.max_tokens = maxTokens;
+    // Enable JSON mode if requested
+    if (enableJsonMode) {
+        requestBody.response_format = { type: 'json_object' };
+    }
 
     let responseData: unknown;
 

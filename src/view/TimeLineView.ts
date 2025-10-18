@@ -9,7 +9,7 @@ import RadialTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
 import type { Scene } from '../main';
 import { SceneNumberInfo } from '../utils/constants';
-import ZeroDraftModal from './ZeroDraftModal';
+import ZeroDraftModal from '../modals/ZeroDraftModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
 import { openOrRevealFile } from '../utils/fileUtils';
 

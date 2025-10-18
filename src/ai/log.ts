@@ -18,7 +18,13 @@ export interface LogPayload {
 export async function logExchange(plugin: RadialTimelinePlugin, vault: Vault, payload: LogPayload): Promise<void> {
   if (!plugin.settings.logApiInteractions) return;
   const folder = 'AI';
-  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  // Build a local-time, file-safe timestamp (e.g., "10-18-2025 08-38-45 AM PDT")
+  const localStamp = new Date().toLocaleString(undefined, {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: true, timeZoneName: 'short'
+  } as Intl.DateTimeFormatOptions);
+  const ts = localStamp.replace(/[\\/:,]/g, '-').replace(/\s+/g, ' ').trim();
   
   // Get friendly model name for filename
   const friendlyModelForFilename = (() => {
@@ -42,8 +48,12 @@ export async function logExchange(plugin: RadialTimelinePlugin, vault: Vault, pa
   const fileName = `${processType} — ${friendlyModelForFilename} — ${ts}.md`;
   const file = `${folder}/${fileName}`;
   
-  // Format timestamp as readable date-time (e.g., "2025-10-12 14:30:45")
-  const readableTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+  // Human-friendly local timestamp (e.g., "Oct 18, 2025 8:38:45 AM PDT")
+  const readableTimestamp = new Date().toLocaleString(undefined, {
+    year: 'numeric', month: 'short', day: '2-digit',
+    hour: 'numeric', minute: '2-digit', second: '2-digit',
+    hour12: true, timeZoneName: 'short'
+  } as Intl.DateTimeFormatOptions);
   
   // Create title in format: "Process Type — Model — Timestamp"
   const title = `${processType} — ${friendlyModelForFilename} — ${readableTimestamp}`;
@@ -52,7 +62,7 @@ export async function logExchange(plugin: RadialTimelinePlugin, vault: Vault, pa
   fileContent += `**Provider:** ${payload.provider}\n`;
   fileContent += `**Model:** ${friendlyModelForFilename}\n`;
   fileContent += `**Model ID:** ${payload.modelId}\n`;
-  fileContent += `**Timestamp:** ${new Date().toISOString()}\n\n`;
+  fileContent += `**Timestamp:** ${readableTimestamp}\n\n`;
   
   fileContent += `## Request Sent\n\n`;
   fileContent += `\`\`\`json\n${JSON.stringify(payload.request, null, 2)}\n\`\`\`\n\n`;

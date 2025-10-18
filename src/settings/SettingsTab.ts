@@ -21,7 +21,7 @@ import { fetchAnthropicModels } from '../api/anthropicApi';
 import { fetchOpenAiModels } from '../api/openaiApi';
 import { fetchGeminiModels } from '../api/geminiApi';
 import RadialTimelinePlugin, { DEFAULT_SETTINGS } from '../main';
-import { CreatePlotTemplatesModal } from '../view/CreatePlotTemplatesModal';
+import { CreatePlotTemplatesModal } from '../modals/CreatePlotTemplatesModal';
 import { getPlotSystem } from '../utils/plotSystems';
 import { createPlotTemplateNotes } from '../utils/plotTemplates';
 

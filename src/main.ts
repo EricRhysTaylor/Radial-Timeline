@@ -14,7 +14,7 @@ import { createTimelineSVG, adjustPlotLabelsAfterRender } from './renderer/Timel
 import { RadialTimelineView } from './view/TimeLineView';
 import { openGossamerScoreEntry, toggleGossamerMode } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
-import { BeatsProcessingModal } from './view/BeatsProcessingModal';
+import { BeatsProcessingModal } from './modals/BeatsProcessingModal';
 import { shiftGossamerHistory } from './utils/gossamer';
 import { assembleManuscript } from './utils/manuscript';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
@@ -38,7 +38,6 @@ interface RadialTimelineSettings {
     subplotColors: string[]; // 16 subplot palette colors
     outerRingAllScenes?: boolean; // If true, outer ring shows all scenes; inner rings remain subplot
     logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
-    processedBeatContexts: string[]; // <<< ADDED: Cache for processed triplets
     debug: boolean; // Add debug setting
     targetCompletionDate?: string; // Optional: Target date as yyyy-mm-dd string
     openaiApiKey?: string; // <<< ADDED: Optional OpenAI API Key
@@ -154,7 +153,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     ],
     outerRingAllScenes: true, // Default to all scenes mode
     logApiInteractions: true, // <<< ADDED: Default for new setting
-    processedBeatContexts: [], // <<< ADDED: Default empty array
     debug: false,
     targetCompletionDate: undefined, // Ensure it's undefined by default
     openaiApiKey: '', // Default to empty string
@@ -578,10 +576,10 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // 4b. Gossamer generate manuscript file
+        // 4b. Generate manuscript file
         this.addCommand({
             id: 'gossamer-generate-manuscript',
-            name: 'Gossamer generate manuscript file',
+            name: 'Generate manuscript',
             callback: async () => {
                 try {
                     new Notice('Assembling manuscript...');
@@ -616,9 +614,29 @@ export default class RadialTimelinePlugin extends Plugin {
                         return;
                     }
                     
-                    // Save to AI folder - use .md extension so Obsidian can open it properly
-                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                    const manuscriptPath = `AI/Manuscript-${timestamp}.md`;
+                    // Build table of contents
+                    let tableOfContents = '# Table of Contents\n\n';
+                    manuscript.scenes.forEach((scene, index) => {
+                        tableOfContents += `${index + 1}. [${scene.title}](#${scene.title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')})\n`;
+                    });
+                    tableOfContents += '\n---\n\n';
+                    
+                    // Combine TOC with manuscript text
+                    const fullManuscript = tableOfContents + manuscript.text;
+                    
+                    // Save to AI folder - use local timezone for filename
+                    const now = new Date();
+                    const localTimestamp = now.toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    }).replace(/[/:,\s]/g, '-');
+                    
+                    const manuscriptPath = `AI/Manuscript-${localTimestamp}.md`;
                     
                     try {
                         await this.app.vault.createFolder('AI');
@@ -634,7 +652,7 @@ export default class RadialTimelinePlugin extends Plugin {
                     }
                     
                     // Create the file
-                    const createdFile = await this.app.vault.create(manuscriptPath, manuscript.text);
+                    const createdFile = await this.app.vault.create(manuscriptPath, fullManuscript);
                     
                     // Open the file in a new tab
                     const leaf = this.app.workspace.getLeaf('tab');
@@ -841,57 +859,103 @@ export default class RadialTimelinePlugin extends Plugin {
                     const names = await getDistinctSubplotNames(this, this.app.vault);
                     if (names.length === 0) { new Notice('No subplots found.'); return; }
 
-                    class SubplotPicker extends SuggestModal<string> {
+                    // Create a modal for subplot selection with action buttons
+                    class SubplotPickerModal extends Modal {
                         plugin: RadialTimelinePlugin;
                         choices: string[];
+                        selectedSubplot: string;
+                        
                         constructor(app: App, plugin: RadialTimelinePlugin, choices: string[]) {
                             super(app);
                             this.plugin = plugin;
                             this.choices = choices;
-                            this.setPlaceholder('Select subplot to process...');
+                            this.selectedSubplot = choices[0]; // Default to first subplot
                         }
-                        getSuggestions(query: string): string[] {
-                            const q = query.trim().toLowerCase();
-                            return this.choices.filter(n => !q || n.toLowerCase().includes(q));
-                        }
-                        renderSuggestion(value: string, el: HTMLElement) {
-                            const index = this.choices.indexOf(value);
-                            el.setText(`${index + 1}. ${value}`);
-                        }
-                        onChooseSuggestion(value: string) {
-                            processBySubplotName(this.plugin, this.plugin.app.vault, value);
+                        
+                        onOpen(): void {
+                            const { contentEl, titleEl } = this;
+                            titleEl.setText('Select subplot for beats processing');
+                            
+                            // Info text with active AI provider
+                            const provider = this.plugin.settings.defaultAiProvider || 'openai';
+                            let modelName = 'Unknown';
+                            
+                            if (provider === 'anthropic') {
+                                const modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+                                // Check more specific versions first
+                                if (modelId.includes('sonnet-4-5') || modelId.includes('sonnet-4.5')) modelName = 'Claude Sonnet 4.5';
+                                else if (modelId.includes('opus-4-1') || modelId.includes('opus-4.1')) modelName = 'Claude Opus 4.1';
+                                else if (modelId.includes('opus-4')) modelName = 'Claude Opus 4';
+                                else if (modelId.includes('sonnet-4')) modelName = 'Claude Sonnet 4';
+                                else modelName = modelId;
+                            } else if (provider === 'gemini') {
+                                const modelId = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
+                                if (modelId.includes('2.5-pro') || modelId.includes('2-5-pro')) modelName = 'Gemini 2.5 Pro';
+                                else if (modelId.includes('2.0-pro') || modelId.includes('2-0-pro')) modelName = 'Gemini 2.0 Pro';
+                                else modelName = modelId;
+                            } else if (provider === 'openai') {
+                                const modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
+                                if (modelId.includes('4.1') || modelId.includes('4-1')) modelName = 'GPT-4.1';
+                                else if (modelId.includes('4o')) modelName = 'GPT-4o';
+                                else if (modelId.includes('o1')) modelName = 'GPT-o1';
+                                else modelName = modelId;
+                            }
+                            
+                            const infoEl = contentEl.createDiv({ cls: 'rt-subplot-picker-info' });
+                            infoEl.setText(`Choose a subplot to process or purge beats from using ${modelName}:`);
+                            
+                            // Dropdown for subplot selection
+                            const selectContainer = contentEl.createDiv({ cls: 'rt-subplot-picker-select' });
+                            const dropdown = new DropdownComponent(selectContainer);
+                            
+                            this.choices.forEach((name, index) => {
+                                dropdown.addOption(name, `${index + 1}. ${name}`);
+                            });
+                            
+                            dropdown.setValue(this.selectedSubplot);
+                            dropdown.onChange((value) => {
+                                this.selectedSubplot = value;
+                            });
+                            
+                            // Action buttons
+                            const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
+                            
+                            new ButtonComponent(buttonRow)
+                                .setButtonText('Process beats')
+                                .setCta()
+                                .onClick(async () => {
+                                    this.close();
+                                    await processBySubplotName(this.plugin, this.plugin.app.vault, this.selectedSubplot);
+                                });
+                            
+                            new ButtonComponent(buttonRow)
+                                .setButtonText('Purge all beats')
+                                .setWarning()
+                                .onClick(async () => {
+                                    try {
+                                        // Dynamic import to avoid circular dependency
+                                        const { purgeBeatsBySubplotName } = await import('./BeatsCommands');
+                                        
+                                        this.close();
+                                        await purgeBeatsBySubplotName(this.plugin, this.plugin.app.vault, this.selectedSubplot);
+                                    } catch (error) {
+                                        new Notice(`Error: ${error instanceof Error ? error.message : String(error)}`);
+                                    }
+                                });
+                            
+                            new ButtonComponent(buttonRow)
+                                .setButtonText('Cancel')
+                                .onClick(() => this.close());
                         }
                     }
 
-                    new SubplotPicker(this.app, this, names).open();
+                    new SubplotPickerModal(this.app, this, names).open();
                 })();
                 return true;
             }
         });
 
-        // 7. Beats clear cache
-        this.addCommand({
-            id: 'clear-processed-beats-cache', 
-            name: 'Beats clear cache',
-            checkCallback: (checking: boolean) => {
-                if (!this.settings.enableAiBeats) return false; // hide when disabled
-                if (checking) return true;
-                (async () => {
-                    const initialCount = this.settings.processedBeatContexts.length;
-                    if (initialCount === 0) {
-                        new Notice('Beats processing cache is already empty.');
-                        return;
-                    }
-                    this.settings.processedBeatContexts = []; // Clear the array
-                    await this.saveSettings(); // Save the change
-                    new Notice(`Cleared ${initialCount} cached beat contexts. You can now re-run beat processing.`);
-                    this.log(`User cleared processed beats cache. Removed ${initialCount} items.`);
-                })();
-                return true;
-            }
-        });
-
-        // 8. Create template note
+        // 7. Create template note
         this.addCommand({
             id: 'create-template-scene',
             name: 'Create template note',
@@ -900,7 +964,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // 9. Open
+        // 8. Open
         this.addCommand({
             id: 'open-timeline-view',
             name: 'Open',

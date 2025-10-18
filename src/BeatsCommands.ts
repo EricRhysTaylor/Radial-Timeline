@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 import RadialTimelinePlugin from './main'; 
-import { App, TFile, Vault, Notice, parseYaml, getFrontMatterInfo, stringifyYaml } from "obsidian";
+import { App, TFile, Vault, Notice, parseYaml, getFrontMatterInfo, stringifyYaml, Modal, ButtonComponent } from "obsidian";
 import { sanitizeSourcePath, buildInitialSceneFilename } from './utils/sceneCreation';
 import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
 import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
@@ -29,8 +29,8 @@ function normalizeBooleanValue(value: unknown): boolean {
     return false;
 }
 import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
-import { buildBeatsPrompt } from './ai/prompts/beats';
-import { BeatsProcessingModal, type ProcessingMode } from './view/BeatsProcessingModal';
+import { buildBeatsPrompt, getBeatsJsonSchema } from './ai/prompts/beats';
+import { BeatsProcessingModal, type ProcessingMode } from './modals/BeatsProcessingModal';
 import { stripObsidianComments } from './utils/text';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { openOrRevealFileByPath } from './utils/fileUtils';
@@ -47,6 +47,27 @@ interface SceneData {
 interface AiProviderResponse {
     result: string | null;       // The text content from the AI
     modelIdUsed: string | null;  // The specific model ID used for the successful call
+}
+
+// JSON structure for beats response from LLM
+interface BeatItem {
+    scene: string;      // e.g., "82" or "90"
+    title?: string;     // Optional beat title
+    grade: '+' | '-' | '?' | 'A' | 'B' | 'C';  // Grade indicator (A/B/C for overall scene quality, +/-/? for beat connections)
+    comment: string;    // Editorial comment
+}
+
+interface BeatsJsonResponse {
+    '1beats'?: BeatItem[];  // Optional for first scene
+    '2beats': BeatItem[];   // Required for current scene
+    '3beats'?: BeatItem[];  // Optional for last scene
+}
+
+// Internal format after parsing (for compatibility with existing code)
+interface ParsedBeats {
+    '1beats': string;
+    '2beats': string;
+    '3beats': string;
 }
 
 // <<< ADDED: Interface for the expected message structure >>>
@@ -253,7 +274,7 @@ function hasBeenProcessedForBeats(frontmatter: Record<string, unknown> | undefin
 }
 
 // Helper function to calculate scene count for each processing mode
-async function calculateSceneCount(
+export async function calculateSceneCount(
     plugin: RadialTimelinePlugin,
     vault: Vault,
     mode: ProcessingMode
@@ -263,10 +284,10 @@ async function calculateSceneCount(
     
     // Filter scenes based on mode
     const processableScenes = allScenes.filter(scene => {
-        // Smart and force-flagged modes: must have Beats Update=Yes/True (no other validation needed)
-        if (mode === 'smart' || mode === 'force-flagged') {
+        // Flagged mode: must be flagged AND have processable content (Working/Complete)
+        if (mode === 'flagged') {
             const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate ?? scene.frontmatter?.['Beats Update'];
-            return normalizeBooleanValue(beatsUpdateFlag);
+            return normalizeBooleanValue(beatsUpdateFlag) && hasProcessableContent(scene.frontmatter);
         }
         
         // Force-all and unprocessed modes: must have Status=Complete or Working
@@ -285,27 +306,30 @@ async function calculateSceneCount(
         }).length;
     }
     
-    // For smart and force-flagged modes, count based on cache
-    const flaggedScenes = processableScenes;
-    
-    if (mode === 'force-flagged') {
-        return flaggedScenes.length;
+    // For flagged mode, count flagged scenes
+    if (mode === 'flagged') {
+        return processableScenes.length;
     }
     
-    // Smart mode: count only scenes not in cache
-    let count = 0;
-    for (let i = 0; i < processableScenes.length; i++) {
-        const scene = processableScenes[i];
-        const prev = i > 0 ? processableScenes[i - 1] : null;
-        const next = i < processableScenes.length - 1 ? processableScenes[i + 1] : null;
-        const tripletId = `${prev?.sceneNumber ?? 'Start'}-${scene.sceneNumber}-${next?.sceneNumber ?? 'End'}`;
-        
-        if (!plugin.settings.processedBeatContexts.includes(tripletId)) {
-            count++;
-        }
+    // Fallback (should not be reached)
+    return 0;
+}
+
+// Return flagged scene count (used for UI hints)
+export async function calculateFlaggedCount(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    mode: ProcessingMode
+): Promise<number> {
+    const allScenes = await getAllSceneData(plugin, vault);
+    allScenes.sort(compareScenesByOrder);
+    const isFlagged = (scene: SceneData) => normalizeBooleanValue(scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate ?? scene.frontmatter?.['Beats Update']);
+    if (mode === 'flagged') {
+        return allScenes.filter(isFlagged).length;
     }
-    
-    return count;
+    if (mode === 'force-all') return allScenes.length;
+    if (mode === 'unprocessed') return allScenes.filter(s => hasProcessableContent(s.frontmatter) && !hasBeenProcessedForBeats(s.frontmatter)).length;
+    return 0;
 }
 
 async function logApiInteractionToFile(
@@ -324,7 +348,13 @@ async function logApiInteractionToFile(
     }
 
     const logFolder = "AI";
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    // Local-time, file-safe timestamp for filenames
+    const localStamp = new Date().toLocaleString(undefined, {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: true, timeZoneName: 'short'
+    } as Intl.DateTimeFormatOptions);
+    const timestamp = localStamp.replace(/[\\/:,]/g, '-').replace(/\s+/g, ' ').trim();
     
     // Get friendly model name for filename
     const friendlyModelForFilename = (() => {
@@ -479,15 +509,63 @@ async function logApiInteractionToFile(
     const extractScenesSummary = (text: string | undefined): { prev?: string; current?: string; next?: string } => {
         const result: { prev?: string; current?: string; next?: string } = {};
         if (!text) return result;
-        const re = /^\s*Scene\s+([^:]+)\s*:/gmi;
-        const matches: string[] = [];
-        let m: RegExpExecArray | null;
-        while ((m = re.exec(text)) !== null) {
-            matches.push(m[1].trim());
+        
+        // Find all "Scene X:" patterns in the prompt
+        const sceneMatches = text.match(/Scene\s+([^:]+):/g);
+        if (!sceneMatches) return result;
+        
+        // Extract scene numbers and their content
+        const scenes: { num: string; content: string }[] = [];
+        for (const match of sceneMatches) {
+            const numMatch = match.match(/Scene\s+([^:]+):/);
+            if (numMatch) {
+                const sceneNum = numMatch[1].trim();
+                // Find the content after this scene header (until next scene or end)
+                const afterMatch = text.split(match)[1];
+                const nextSceneMatch = afterMatch?.match(/Scene\s+[^:]+:/);
+                const content = nextSceneMatch ? 
+                    afterMatch.substring(0, afterMatch.indexOf(nextSceneMatch[0])).trim() :
+                    afterMatch?.trim() || '';
+                scenes.push({ num: sceneNum, content });
+            }
         }
-        if (matches.length >= 1) result.prev = matches[0];
-        if (matches.length >= 2) result.current = matches[1];
-        if (matches.length >= 3) result.next = matches[2];
+        
+        // NEW LOGIC: Look for section headers (1beats:, 2beats:, 3beats:) to determine structure
+        const has1beats = /\n1beats:/i.test(text);
+        const has2beats = /\n2beats:/i.test(text);
+        const has3beats = /\n3beats:/i.test(text);
+        
+        // Map scene positions based on which sections are present
+        if (has1beats && has2beats && has3beats && scenes.length === 3) {
+            // Standard triplet: prev, current, next
+            result.prev = scenes[0].num;
+            result.current = scenes[1].num;
+            result.next = scenes[2].num;
+        } else if (!has1beats && has2beats && has3beats && scenes.length === 2) {
+            // First scene case: only 2beats and 3beats
+            result.current = scenes[0].num;
+            result.next = scenes[1].num;
+        } else if (has1beats && has2beats && !has3beats && scenes.length === 2) {
+            // Last scene case: only 1beats and 2beats
+            result.prev = scenes[0].num;
+            result.current = scenes[1].num;
+        } else if (!has1beats && has2beats && !has3beats && scenes.length === 1) {
+            // Single scene case: only 2beats
+            result.current = scenes[0].num;
+        } else {
+            // Fallback: use order from prompt if pattern doesn't match expected structure
+            if (scenes.length === 1) {
+                result.current = scenes[0].num;
+            } else if (scenes.length === 2) {
+                result.prev = scenes[0].num;
+                result.current = scenes[1].num;
+            } else if (scenes.length === 3) {
+                result.prev = scenes[0].num;
+                result.current = scenes[1].num;
+                result.next = scenes[2].num;
+            }
+        }
+        
         return result;
     };
     
@@ -520,8 +598,12 @@ async function logApiInteractionToFile(
 
     const providerTitle = provider.charAt(0).toUpperCase() + provider.slice(1);
     
-    // Format timestamp as readable date-time (e.g., "2025-10-12 14:30:45")
-    const readableTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    // Human-friendly local timestamp (e.g., "Oct 18, 2025 8:38:45 AM PDT")
+    const readableTimestamp = new Date().toLocaleString(undefined, {
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: 'numeric', minute: '2-digit', second: '2-digit',
+        hour12: true, timeZoneName: 'short'
+    } as Intl.DateTimeFormatOptions);
     
     // New title format: "Scene Processed — Model — Timestamp" (for filename only)
     const sceneTitle = scenesSummaryForTitle.current ? `Scene ${scenesSummaryForTitle.current}` : 'Scene Processed';
@@ -531,7 +613,7 @@ async function logApiInteractionToFile(
     fileContent += `**Provider:** ${provider}\n`;
     fileContent += `**Model:** ${friendlyModel}\n`;
     fileContent += `**Model ID:** ${modelId}\n`;
-    fileContent += `**Timestamp:** ${new Date().toISOString()}\n`;
+    fileContent += `**Timestamp:** ${readableTimestamp}\n`;
     
     // Add active template info for debugging
     const activeTemplate = plugin.settings.aiContextTemplates?.find(t => t.id === plugin.settings.activeAiContextTemplateId);
@@ -763,14 +845,22 @@ async function callAiProvider(
                 throw new Error(apiErrorMsg);
             }
 
+            // Get JSON schema for beats
+            const jsonSchema = getBeatsJsonSchema();
+
             requestBodyForLog = {
                 model: modelId,
                 contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-                generationConfig: { temperature: 0.7, maxOutputTokens: 4000 }
+                generationConfig: { 
+                    temperature: 0.7, 
+                    maxOutputTokens: 4000,
+                    responseMimeType: 'application/json',
+                    responseSchema: jsonSchema
+                }
             };
 
             const apiResponse: GeminiApiResponse = await retryWithBackoff(() =>
-                callGeminiApi(apiKey!, modelId!, null, userPrompt, 4000, 0.7)
+                callGeminiApi(apiKey!, modelId!, null, userPrompt, 4000, 0.7, jsonSchema)
             );
 
             responseDataForLog = apiResponse.responseData;
@@ -797,12 +887,13 @@ async function callAiProvider(
                     { role: "user", content: userPrompt }
                 ],
                 temperature: 0.7,
-                max_tokens: 4000
+                max_tokens: 4000,
+                response_format: { type: 'json_object' }
             };
     
 
             const apiResponse: OpenAiApiResponse = await retryWithBackoff(() =>
-                callOpenAiApi(apiKey!, modelId!, null, userPrompt, 4000, 0.7)
+                callOpenAiApi(apiKey!, modelId!, null, userPrompt, 4000, 0.7, true)
             );
 
             responseDataForLog = apiResponse.responseData;
@@ -843,59 +934,148 @@ async function callAiProvider(
     }
 }
 
-function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): { '1beats': string, '2beats': string, '3beats': string } | null {
-
+/**
+ * Parse JSON response from LLM into the format expected by updateSceneFile
+ */
+function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin): ParsedBeats | null {
     try {
+        // Remove markdown code blocks if present
+        let cleanedJson = jsonResult.trim();
+        if (cleanedJson.startsWith('```json')) {
+            cleanedJson = cleanedJson.replace(/^```json\s*\n?/, '').replace(/\n?```\s*$/, '');
+        } else if (cleanedJson.startsWith('```')) {
+            cleanedJson = cleanedJson.replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
+        }
+        
+        console.log(`[parseJsonBeatsResponse] Parsing JSON response (length: ${cleanedJson.length})`);
+        
+        const parsed = JSON.parse(cleanedJson) as BeatsJsonResponse;
+        
+        // Convert JSON structure to string format for compatibility with existing code
+        const formatBeatsArray = (beats: BeatItem[] | undefined, is2beats: boolean = false): string => {
+            if (!beats || beats.length === 0) return '';
+            
+            return beats.map((beat, index) => {
+                // First line always includes scene number
+                if (index === 0) {
+                    // Special handling for first 2beats item (overall scene grade A/B/C)
+                    // Format: " - {scene} {grade} / {comment}" (no title)
+                    const isOverallGrade = is2beats && ['A', 'B', 'C'].includes(beat.grade);
+                    if (isOverallGrade) {
+                        return ` - ${beat.scene} ${beat.grade} / ${beat.comment}`;
+                    }
+                    
+                    // Standard format with scene number: " - {scene} {title} {grade} / {comment}"
+                    const parts = [beat.scene];
+                    if (beat.title) parts.push(beat.title);
+                    parts.push(beat.grade);
+                    return ` - ${parts.join(' ')} / ${beat.comment}`;
+                }
+                
+                // Subsequent lines: omit scene number, just " - {title} {grade} / {comment}"
+                const parts: string[] = [];
+                if (beat.title) parts.push(beat.title);
+                parts.push(beat.grade);
+                return ` - ${parts.join(' ')} / ${beat.comment}`;
+            }).join('\n');
+        };
+        
+        const result: ParsedBeats = {
+            '1beats': formatBeatsArray(parsed['1beats'], false),
+            '2beats': formatBeatsArray(parsed['2beats'], true),  // Special handling for overall grade
+            '3beats': formatBeatsArray(parsed['3beats'], false)
+        };
+        
+        console.log(`[parseJsonBeatsResponse] Parsed beats: 1beats=${result['1beats'].length} chars, 2beats=${result['2beats'].length} chars, 3beats=${result['3beats'].length} chars`);
+        
+        // Require at least 2beats content
+        if (!result['2beats'].trim()) {
+            console.error("[parseJsonBeatsResponse] Missing required 2beats content");
+            new Notice('LLM response is missing required 2beats analysis.');
+            return null;
+        }
+        
+        return result;
+    } catch (error) {
+        console.error("[parseJsonBeatsResponse] Error parsing JSON beats response:", error);
+        console.error("[parseJsonBeatsResponse] Raw response:", jsonResult.substring(0, 500));
+        new Notice('Failed to parse LLM JSON response. Check console for details.');
+        return null;
+    }
+}
+
+// Keep old regex parser as fallback for now
+function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): ParsedBeats | null {
+    // Try JSON parsing first
+    const jsonResult = parseJsonBeatsResponse(gptResult, plugin);
+    if (jsonResult) {
+        console.log('[parseGptResult] Successfully parsed as JSON');
+        return jsonResult;
+    }
+    
+    console.log('[parseGptResult] JSON parsing failed, falling back to regex parser');
+    
+    try {
+        // Fallback to old regex parser for backwards compatibility
+        let text = (gptResult || '').replace(/\r\n?/g, '\n');
+        text = text.replace(/^\s*[•–—]\s+/gm, '- ');
+
+        const normalizeHeader = (key: '1beats'|'2beats'|'3beats') => {
+            const headerRegex = new RegExp(
+                `^\\s*(?:[#>*_` + "'" + `\-]{0,5}\\s*)*` + key + `\\s*:?\\s*(?:[#>*_` + "'" + `\-]{0,5})?\\s*$`,
+                'gmi'
+            );
+            text = text.replace(headerRegex, `${key}:`);
+        };
+        normalizeHeader('1beats');
+        normalizeHeader('2beats');
+        normalizeHeader('3beats');
+
         const section1Pattern = /^1beats:\s*([\s\S]*?)(?=^\s*(?:2beats:|3beats:|$))/m;
         const section2Pattern = /^2beats:\s*([\s\S]*?)(?=^\s*(?:3beats:|$))/m;
         const section3Pattern = /^3beats:\s*([\s\S]*)$/m;
         
-        const section1Match = gptResult.match(section1Pattern);
-        const section2Match = gptResult.match(section2Pattern);
-        const section3Match = gptResult.match(section3Pattern);
-        
-        if (!section1Match || !section2Match || !section3Match) {
-            console.error("[parseGptResult] Failed to extract sections from content:", gptResult);
-            if (!section1Match) console.error("[parseGptResult] Couldn't find section starting with '1beats:'");
-            if (!section2Match) console.error("[parseGptResult] Couldn't find section starting with '2beats:' after 1beats");
-            if (!section3Match) console.error("[parseGptResult] Couldn't find section starting with '3beats:' after 2beats");
-            new Notice('Failed to parse expected 1beats/2beats/3beats structure.');
-            return null;
-        }
+        const section1Match = text.match(section1Pattern);
+        const section2Match = text.match(section2Pattern);
+        const section3Match = text.match(section3Pattern);
         
         const processSection = (content: string | undefined): string => {
             if (!content) return '';
-            // Convert any literal "\n" sequences to real newlines and remove trailing ones
             const normalized = content.replace(/\\n/g, '\n').replace(/(\\n)+\s*$/, '');
             const trimmedContent = normalized.trim();
-
             if (!trimmedContent) return '';
-            return trimmedContent
-                .split('\n')
-                .map(l => l.trim())
-                .filter(l => l.startsWith('-'))
-                .map(l => l.replace(/(\w+):/g, '$1 -'))
-                .map(l => ` ${l}`)
-                .join('\n');
+            
+            const lines = trimmedContent.split('\n').map(l => l.trim());
+            const normalizedBullets = lines.map(l => l.replace(/^([•–—])\s+/, '- '));
+            const bulletLines = normalizedBullets.filter(l => /^-\s+/.test(l));
+            
+            if (bulletLines.length > 0) {
+                return bulletLines.map(l => ` ${l}`).join('\n');
+            }
+            
+            const nonEmpty = normalizedBullets.filter(l => l.length > 0);
+            if (nonEmpty.length > 0) {
+                return nonEmpty.map(l => ` - ${l}`).join('\n');
+            }
+            return '';
         };
         
-        const beats = {
-            '1beats': processSection(section1Match[1]),
-            '2beats': processSection(section2Match[1]),
-            '3beats': processSection(section3Match[1])
+        const beats: ParsedBeats = {
+            '1beats': processSection(section1Match?.[1]),
+            '2beats': processSection(section2Match?.[1]),
+            '3beats': processSection(section3Match?.[1])
         };
-        
-
         
         if (!beats['1beats'].trim() && !beats['2beats'].trim() && !beats['3beats'].trim()) {
-             console.error("[parseGptResult] Parsed beats object is effectively empty after trimming check.");
-             new Notice('GPT response parsed but contained no usable beat content.');
+             console.error("[parseGptResult] Regex fallback: Parsed beats object is empty");
+             new Notice('Failed to parse beats from LLM response.');
              return null;
         }
         
+        console.log('[parseGptResult] Regex fallback succeeded');
         return beats;
     } catch (error) {
-        console.error("[parseGptResult] Error parsing GPT response:", error);
+        console.error("[parseGptResult] Regex fallback error:", error);
         return null;
     }
 }
@@ -903,7 +1083,7 @@ function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): { '1be
 async function updateSceneFile(
     vault: Vault, 
     scene: SceneData, 
-    parsedBeats: { '1beats': string, '2beats': string, '3beats': string }, 
+    parsedBeats: ParsedBeats, 
     plugin: RadialTimelinePlugin,
     modelIdUsed: string | null
 ): Promise<boolean> {
@@ -926,7 +1106,16 @@ async function updateSceneFile(
             delete fmObj['3beats'];
 
             // Always record last update timestamp/model in Beats Last Updated.
-            const timestamp = new Date().toISOString();
+            // Use friendly local time format instead of ISO
+            const now = new Date();
+            const timestamp = now.toLocaleString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
             const updatedValue = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
             fmObj['Beats Last Updated'] = updatedValue;
 
@@ -942,6 +1131,25 @@ async function updateSceneFile(
             const b1 = parsedBeats['1beats']?.trim();
             const b2 = parsedBeats['2beats']?.trim();
             const b3 = parsedBeats['3beats']?.trim();
+            
+            // Debug logging for what's being saved
+            console.log(`[updateSceneFile] Saving to ${scene.file.basename}: 1beats=${b1 ? 'YES' : 'NO'}, 2beats=${b2 ? 'YES' : 'NO'}, 3beats=${b3 ? 'YES' : 'NO'}`);
+            if (b1) {
+                const arr1 = toArray(b1);
+                console.log(`[updateSceneFile] 1beats has ${arr1.length} items`);
+                console.log(`[updateSceneFile] 1beats array:`, arr1);
+            }
+            if (b2) {
+                const arr2 = toArray(b2);
+                console.log(`[updateSceneFile] 2beats has ${arr2.length} items`);
+                console.log(`[updateSceneFile] 2beats array:`, arr2);
+            }
+            if (b3) {
+                const arr3 = toArray(b3);
+                console.log(`[updateSceneFile] 3beats has ${arr3.length} items`);
+                console.log(`[updateSceneFile] 3beats array:`, arr3);
+            }
+            
             if (b1) fmObj['1beats'] = toArray(b1);
             if (b2) fmObj['2beats'] = toArray(b2);
             if (b3) fmObj['3beats'] = toArray(b3);
@@ -988,8 +1196,8 @@ async function processWithModal(
 
     // Filter scenes based on mode
     const processableScenes = allScenes.filter(scene => {
-        // Smart and force-flagged modes: must have Beats Update=Yes/True/1 (no other validation)
-        if (mode === 'smart' || mode === 'force-flagged') {
+        // Flagged mode: must have Beats Update=Yes/True/1
+        if (mode === 'flagged') {
             const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate ?? scene.frontmatter?.['Beats Update'];
             return normalizeBooleanValue(beatsUpdateFlag);
         }
@@ -998,15 +1206,18 @@ async function processWithModal(
         return hasProcessableContent(scene.frontmatter);
     });
 
-    // Build triplets using complete scene list for context, but only process flagged scenes
+    // Build list of scenes with processable content (Status=Working or Complete) for context
+    const processableContentScenes = allScenes.filter(scene => hasProcessableContent(scene.frontmatter));
+    
+    // Build triplets using only processable scenes for context, but only process flagged scenes
     const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
     for (const flaggedScene of processableScenes) {
-        // Find this scene's position in the complete ordered scene list
-        const idx = allScenes.findIndex(s => s.file.path === flaggedScene.file.path);
+        // Find this scene's position in the processable content list
+        const idx = processableContentScenes.findIndex(s => s.file.path === flaggedScene.file.path);
         
-        // Get prev/next from complete list to maintain proper scene sequence
-        const prev = idx > 0 ? allScenes[idx - 1] : null;
-        const next = idx >= 0 && idx < allScenes.length - 1 ? allScenes[idx + 1] : null;
+        // Get prev/next from processable content list (scenes with Status=Working or Complete only)
+        const prev = idx > 0 ? processableContentScenes[idx - 1] : null;
+        const next = idx >= 0 && idx < processableContentScenes.length - 1 ? processableContentScenes[idx + 1] : null;
         
         triplets.push({ prev, current: flaggedScene, next });
     }
@@ -1021,15 +1232,10 @@ async function processWithModal(
         
         if (mode === 'force-all') {
             totalToProcess++;
-        } else if (mode === 'force-flagged' && isFlagged) {
+        } else if (mode === 'flagged' && isFlagged) {
             totalToProcess++;
         } else if (mode === 'unprocessed' && !hasBeenProcessedForBeats(triplet.current.frontmatter)) {
             totalToProcess++;
-        } else if (mode === 'smart' && isFlagged) {
-            const tripletIdentifier = `${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
-            if (!plugin.settings.processedBeatContexts.includes(tripletIdentifier)) {
-                totalToProcess++;
-            }
         }
     }
 
@@ -1049,13 +1255,11 @@ async function processWithModal(
         let shouldProcess = false;
         if (mode === 'force-all') {
             shouldProcess = true;
-        } else if (mode === 'force-flagged') {
+        } else if (mode === 'flagged') {
             shouldProcess = isFlagged;
         } else if (mode === 'unprocessed') {
             // Skip scenes that have been processed (have Beats Last Updated or any beats)
             shouldProcess = !hasBeenProcessedForBeats(triplet.current.frontmatter);
-        } else { // smart mode
-            shouldProcess = isFlagged && !plugin.settings.processedBeatContexts.includes(tripletIdentifier);
         }
 
         if (!shouldProcess) {
@@ -1070,6 +1274,8 @@ async function processWithModal(
         const sceneNameForLog = sceneName;
 
         try {
+            // Boundary cases: include neighbors if they exist in sequence, regardless of content status
+            // This ensures proper triplet context for the LLM (first scene: N/A,1,2; last scene: N-1,N,N/A)
             const prevBody = triplet.prev ? triplet.prev.body : null;
             const currentBody = triplet.current.body;
             const nextBody = triplet.next ? triplet.next.body : null;
@@ -1085,10 +1291,20 @@ async function processWithModal(
             if (aiResult.result) {
                 const parsedBeats = parseGptResult(aiResult.result, plugin);
                 if (parsedBeats) {
+                    // Post-processing: for boundary cases, ensure only the expected sections are saved
+                    if (!triplet.prev) {
+                        // First-scene case: no previous scene, drop any 1beats content
+                        parsedBeats['1beats'] = '';
+                    }
+                    if (!triplet.next) {
+                        // Last-scene case: no next scene, drop any 3beats content
+                        parsedBeats['3beats'] = '';
+                    }
                     const updated = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
                     if (updated) {
-                        plugin.settings.processedBeatContexts.push(tripletIdentifier);
                         await plugin.saveSettings();
+                        // Ensure progress UI is consistent when abort requested after finishing this scene
+                        modal.updateProgress(processedCount + 1, totalToProcess, sceneName);
                     } else {
                         modal.addError(`Failed to update file: ${currentScenePath}`);
                     }
@@ -1120,10 +1336,12 @@ async function processWithModal(
 
         processedCount++;
         
-        // Delay to stay under rate limits
+        // Delay to stay under rate limits (skip delay if aborted to let modal finish immediately)
         // Anthropic Sonnet 4.x: 50 requests/minute = 1.2s minimum
         // Using 1.5s (40 req/min) to stay safely under the limit
-        await new Promise(resolve => window.setTimeout(resolve, 1500));
+        if (!modal.isAborted()) {
+            await new Promise(resolve => window.setTimeout(resolve, 1500));
+        }
     }
 
     await plugin.saveSettings();
@@ -1206,57 +1424,43 @@ export async function processBySubplotOrder(
         // Build contiguous triplets within this subplot by number (ignore Words),
         // but only process currents that have Status: working/complete and Beats Update: Yes
         const orderedScenes = scenes.slice().sort(compareScenesByOrder);
+        
+        // Filter to only scenes with processable content for triplet context
+        const processableContentScenes = orderedScenes.filter(scene => hasProcessableContent(scene.frontmatter));
+        
         const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
         for (const currentScene of orderedScenes) {
             const beatsUpdate = currentScene.frontmatter?.beatsupdate || currentScene.frontmatter?.BeatsUpdate || currentScene.frontmatter?.['Beats Update'];
             const isProcessable = hasProcessableContent(currentScene.frontmatter) && normalizeBooleanValue(beatsUpdate);
             if (!isProcessable) continue;
 
-            const idx = orderedScenes.findIndex(s => s.file.path === currentScene.file.path);
-            const prevScene = idx > 0 ? orderedScenes[idx - 1] : null;
-            const nextScene = idx >= 0 && idx < orderedScenes.length - 1 ? orderedScenes[idx + 1] : null;
+            // Find position in processable content list (not all scenes)
+            const idx = processableContentScenes.findIndex(s => s.file.path === currentScene.file.path);
+            const prevScene = idx > 0 ? processableContentScenes[idx - 1] : null;
+            const nextScene = idx >= 0 && idx < processableContentScenes.length - 1 ? processableContentScenes[idx + 1] : null;
             triplets.push({ prev: prevScene, current: currentScene, next: nextScene });
         }
-            
-            if (plugin.settings.debug) {
-            }
         
             for (const triplet of triplets) {
                 const currentScenePath = triplet.current.file.path;
                  const tripletIdentifier = `subplot-${subplotName}-${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
 
-                 // <<< ADDED: Check for Beats Update flag before cache check >>>
                  const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.['Beats Update'];
                  if (!normalizeBooleanValue(beatsUpdateFlag)) {
- 
-                     // We don't increment totalProcessedCount here, as we only count actual attempts/cache hits
                      continue; // Skip to the next triplet if not flagged
                  }
                  
                  // We've already filtered scenes by Status: working/complete when building triplets,
                  // so no need to check again here.
 
-                 // Check cache *after* confirming the scene is flagged for update
-                 if (plugin.settings.processedBeatContexts.includes(tripletIdentifier)) {
- 
-                     totalProcessedCount++;
-                     notice.setMessage(`Progress: ${totalProcessedCount}/${totalTripletsAcrossSubplots} scenes (Skipped - Cached from previous run)`);
-                continue;
-            }
-
                 notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${totalProcessedCount+1}/${totalTripletsAcrossSubplots}) - Subplot: '${subplotName}'...`);
-                 if (plugin.settings.debug) {
-                }
-
-                 // Only use neighbor if it has processable content (Status: working/complete); else mark as N/A to avoid invented beats
-                 const prevHasContent = triplet.prev ? hasProcessableContent(triplet.prev.frontmatter) : false;
-                 const nextHasContent = triplet.next ? hasProcessableContent(triplet.next.frontmatter) : false;
-                 const prevBody = prevHasContent && triplet.prev ? triplet.prev.body : null;
-                 const nextBody = nextHasContent && triplet.next ? triplet.next.body : null;
+                 // Include neighbors if they exist in the subplot sequence, regardless of content status
+                 const prevBody = triplet.prev ? triplet.prev.body : null;
                  const currentBody = triplet.current.body;
-                 const prevNum = prevHasContent && triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
+                 const nextBody = triplet.next ? triplet.next.body : null;
+                 const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
                  const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
-                 const nextNum = nextHasContent && triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+                 const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
                  const contextPrompt = getActiveContextPrompt(plugin);
                  const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
@@ -1268,10 +1472,19 @@ export async function processBySubplotOrder(
                  if (aiResult.result) {
                      const parsedBeats = parseGptResult(aiResult.result, plugin);
                      if (parsedBeats) {
+                         // Post-processing: for boundary cases, ensure only the expected sections are saved
+                         if (!triplet.prev) {
+                             // First-scene case: no previous scene, drop any 1beats content
+                             parsedBeats['1beats'] = '';
+                         }
+                         if (!triplet.next) {
+                             // Last-scene case: no next scene, drop any 3beats content
+                             parsedBeats['3beats'] = '';
+                         }
+                         
                          const updated = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
                          if (updated) {
-                              plugin.settings.processedBeatContexts.push(tripletIdentifier);
-                              await plugin.saveSettings();
+                             await plugin.saveSettings();
                          } else {
                              plugin.log(`[API Beats][processBySubplotOrder] Failed to update file for subplot ${subplotName} after getting beats for: ${currentScenePath}`);
                          }
@@ -1306,7 +1519,7 @@ export async function processBySubplotName(
     vault: Vault,
     subplotName: string
 ): Promise<void> {
-    const notice = new Notice(`Processing Subplot “${subplotName}”: getting scene data...`, 0);
+    const notice = new Notice(`Processing Subplot "${subplotName}": getting scene data...`, 0);
     try {
         const allScenes = await getAllSceneData(plugin, vault);
         if (allScenes.length < 1) {
@@ -1320,7 +1533,7 @@ export async function processBySubplotName(
         
 
         if (filtered.length === 0) {
-            new Notice(`No scenes found for subplot “${subplotName}”.`);
+            new Notice(`No scenes found for subplot "${subplotName}".`);
             notice.hide();
             return;
         }
@@ -1344,20 +1557,22 @@ export async function processBySubplotName(
         notice.setMessage(`Analyzing ${validScenes.length} scenes in "${subplotName}"...`);
 
 
-        // Build triplets for flagged scenes using ALL filtered scenes for context
+        // Build triplets for flagged scenes using only processable content scenes for context
         const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
+        
+        // Filter to only scenes with processable content (Status=Working or Complete) for context
+        const processableContentScenes = filtered.filter(scene => hasProcessableContent(scene.frontmatter));
         
         // Only build triplets for scenes that are flagged for processing
         const flaggedScenes = validScenes; // Already filtered for Status: working/complete and BeatsUpdate: Yes
         
         for (const flaggedScene of flaggedScenes) {
-            // Find this scene's position in the complete filtered list (for contiguous context)
-            const idx = filtered.findIndex(s => s.file.path === flaggedScene.file.path);
+            // Find this scene's position in the processable content list
+            const idx = processableContentScenes.findIndex(s => s.file.path === flaggedScene.file.path);
             
-            // Get prev/next from complete list to maintain contiguity
-            const prev = idx > 0 ? filtered[idx - 1] : null;
-            const next = idx >= 0 && idx < filtered.length - 1 ? filtered[idx + 1] : null;
-            
+            // Get prev/next from processable content list only (Status=Working or Complete)
+            const prev = idx > 0 ? processableContentScenes[idx - 1] : null;
+            const next = idx >= 0 && idx < processableContentScenes.length - 1 ? processableContentScenes[idx + 1] : null;
             
             triplets.push({ prev, current: flaggedScene, next });
         }
@@ -1373,25 +1588,15 @@ export async function processBySubplotName(
             const currentPath = triplet.current.file.path;
             const key = `subplot-${subplotName}-${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
 
-            if (plugin.settings.processedBeatContexts.includes(key)) {
-                processedCount++;
-                notice.setMessage(`Progress: ${processedCount}/${total} scenes (Skipped - Cached from previous run)`);
-                continue;
-            }
-
             notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${processedCount + 1}/${total}) — "${subplotName}"...`);
 
-            // Only use neighbor if it has processable content (Status: working/complete); else mark as N/A to avoid invented beats
-            const prevHasContent = triplet.prev ? hasProcessableContent(triplet.prev.frontmatter) : false;
-            const nextHasContent = triplet.next ? hasProcessableContent(triplet.next.frontmatter) : false;
-            
-            
-            const prevBody = prevHasContent && triplet.prev ? triplet.prev.body : null;
+            // Include neighbors if they exist in the subplot sequence, regardless of content status
+            const prevBody = triplet.prev ? triplet.prev.body : null;
             const currentBody = triplet.current.body;
-            const nextBody = nextHasContent && triplet.next ? triplet.next.body : null;
-            const prevNum = prevHasContent && triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
+            const nextBody = triplet.next ? triplet.next.body : null;
+            const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
             const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
-            const nextNum = nextHasContent && triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+            const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
             const contextPrompt = getActiveContextPrompt(plugin);
             const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
@@ -1402,9 +1607,18 @@ export async function processBySubplotName(
             if (aiResult.result) {
                 const parsedBeats = parseGptResult(aiResult.result, plugin);
                 if (parsedBeats) {
+                    // Post-processing: for boundary cases, ensure only the expected sections are saved
+                    if (!triplet.prev) {
+                        // First-scene case: no previous scene, drop any 1beats content
+                        parsedBeats['1beats'] = '';
+                    }
+                    if (!triplet.next) {
+                        // Last-scene case: no next scene, drop any 3beats content
+                        parsedBeats['3beats'] = '';
+                    }
+                    
                     const ok = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
                     if (ok) {
-                        plugin.settings.processedBeatContexts.push(key);
                         await plugin.saveSettings();
                     } else {
                         plugin.log(`[API Beats][processBySubplotName] Failed to update file for subplot ${subplotName} after getting beats for: ${currentPath}`);
@@ -1423,7 +1637,13 @@ export async function processBySubplotName(
 
         await plugin.saveSettings();
         notice.hide();
-        new Notice(`Subplot "${subplotName}" complete: ${processedCount}/${total} triplets processed.`);
+        
+        let completionMessage = `Subplot "${subplotName}" complete: ${processedCount}/${total} triplets processed.`;
+        if (plugin.settings.logApiInteractions) {
+            completionMessage += ' AI interaction logs have been saved to the AI folder for review.';
+        }
+        new Notice(completionMessage, 5000);
+        
         plugin.refreshTimelineIfNeeded(null);
     } catch (error) {
         console.error("[API Beats][processBySubplotName] Error during processing:", error);
@@ -1610,5 +1830,186 @@ export async function createTemplateScene(
     } catch (e) {
         console.error('[createTemplateScene] Failed:', e);
         new Notice('Failed to create template scene. Check console for details.');
+    }
+}
+
+/**
+ * Confirmation modal for purging beats
+ */
+class PurgeConfirmationModal extends Modal {
+    private readonly message: string;
+    private readonly details: string[];
+    private readonly onConfirm: () => void;
+    
+    constructor(app: App, message: string, details: string[], onConfirm: () => void) {
+        super(app);
+        this.message = message;
+        this.details = details;
+        this.onConfirm = onConfirm;
+    }
+    
+    onOpen(): void {
+        const { contentEl, titleEl } = this;
+        titleEl.setText('Confirm purge beats');
+        
+        // Warning message
+        const messageEl = contentEl.createDiv({ cls: 'rt-purge-message' });
+        messageEl.setText(this.message);
+        
+        // Details list
+        const detailsEl = contentEl.createDiv({ cls: 'rt-purge-details' });
+        detailsEl.createEl('strong', { text: 'This will permanently delete:' });
+        const listEl = detailsEl.createEl('ul');
+        this.details.forEach(detail => {
+            listEl.createEl('li', { text: detail });
+        });
+        
+        // Warning text
+        const warningEl = contentEl.createDiv({ cls: 'rt-purge-warning' });
+        warningEl.createEl('strong', { text: 'This cannot be undone. Continue?' });
+        
+        // Action buttons
+        const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
+        
+        new ButtonComponent(buttonRow)
+            .setButtonText('Purge beats')
+            .setWarning()
+            .onClick(() => {
+                this.close();
+                this.onConfirm();
+            });
+        
+        new ButtonComponent(buttonRow)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
+    }
+}
+
+/**
+ * Helper function to purge beats from a scene's frontmatter
+ */
+async function purgeScenesBeats(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    scenes: SceneData[]
+): Promise<number> {
+    let purgedCount = 0;
+    
+    for (const scene of scenes) {
+        try {
+            await plugin.app.fileManager.processFrontMatter(scene.file, (fm) => {
+                const fmObj = fm as Record<string, unknown>;
+                
+                // Remove beats fields
+                const had1beats = fmObj['1beats'] !== undefined;
+                const had2beats = fmObj['2beats'] !== undefined;
+                const had3beats = fmObj['3beats'] !== undefined;
+                const hadBeatsLastUpdated = fmObj['Beats Last Updated'] !== undefined;
+                
+                delete fmObj['1beats'];
+                delete fmObj['2beats'];
+                delete fmObj['3beats'];
+                delete fmObj['Beats Last Updated'];
+                
+                // Only count as purged if it actually had beats
+                if (had1beats || had2beats || had3beats || hadBeatsLastUpdated) {
+                    purgedCount++;
+                }
+            });
+        } catch (error) {
+            console.error(`[purgeScenesBeats] Error purging beats from ${scene.file.path}:`, error);
+        }
+    }
+    
+    return purgedCount;
+}
+
+/**
+ * Purge all beats from all scenes in manuscript order
+ */
+export async function purgeBeatsByManuscriptOrder(
+    plugin: RadialTimelinePlugin,
+    vault: Vault
+): Promise<void> {
+    try {
+        const allScenes = await getAllSceneData(plugin, vault);
+        
+        if (allScenes.length === 0) {
+            new Notice('No scenes found in manuscript.');
+            return;
+        }
+        
+        // Show themed confirmation modal
+        const modal = new PurgeConfirmationModal(
+            plugin.app,
+            `Purge ALL beats from ${allScenes.length} scene${allScenes.length !== 1 ? 's' : ''} in your manuscript?`,
+            [
+                '1beats, 2beats, 3beats fields',
+                'Beats Last Updated timestamps'
+            ],
+            async () => {
+                const notice = new Notice('Purging beats from all scenes...', 0);
+                const purgedCount = await purgeScenesBeats(plugin, vault, allScenes);
+                
+                notice.hide();
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+                
+                new Notice(`Purged beats from ${purgedCount} of ${allScenes.length} scene${allScenes.length !== 1 ? 's' : ''}.`);
+            }
+        );
+        
+        modal.open();
+    } catch (error) {
+        console.error('[purgeBeatsByManuscriptOrder] Error:', error);
+        new Notice('Error purging beats. Check console for details.');
+    }
+}
+
+/**
+ * Purge beats from scenes in a specific subplot
+ */
+export async function purgeBeatsBySubplotName(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    subplotName: string
+): Promise<void> {
+    try {
+        const allScenes = await getAllSceneData(plugin, vault);
+        
+        // Filter scenes to only those containing the chosen subplot
+        const filtered = allScenes.filter(scene => 
+            getSubplotNamesFromFM(scene.frontmatter).includes(subplotName)
+        );
+        
+        if (filtered.length === 0) {
+            new Notice(`No scenes found for subplot "${subplotName}".`);
+            return;
+        }
+        
+        // Show themed confirmation modal
+        const modal = new PurgeConfirmationModal(
+            plugin.app,
+            `Purge beats from ${filtered.length} scene${filtered.length !== 1 ? 's' : ''} in subplot "${subplotName}"?`,
+            [
+                '1beats, 2beats, 3beats fields',
+                'Beats Last Updated timestamps'
+            ],
+            async () => {
+                const notice = new Notice(`Purging beats from "${subplotName}"...`, 0);
+                const purgedCount = await purgeScenesBeats(plugin, vault, filtered);
+                
+                notice.hide();
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+                
+                new Notice(`Purged beats from ${purgedCount} of ${filtered.length} scene${filtered.length !== 1 ? 's' : ''} in subplot "${subplotName}".`);
+            }
+        );
+        
+        modal.open();
+    } catch (error) {
+        console.error(`[purgeBeatsBySubplotName] Error purging subplot "${subplotName}":`, error);
+        new Notice(`Error purging beats from "${subplotName}". Check console for details.`);
     }
 }

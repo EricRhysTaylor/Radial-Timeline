@@ -6,7 +6,43 @@
 import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 
-export type ProcessingMode = 'smart' | 'force-flagged' | 'force-all' | 'unprocessed';
+export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all';
+
+/**
+ * Simple confirmation modal that matches Obsidian theme
+ */
+class ConfirmationModal extends Modal {
+    private readonly message: string;
+    private readonly onConfirm: () => void;
+    
+    constructor(app: App, message: string, onConfirm: () => void) {
+        super(app);
+        this.message = message;
+        this.onConfirm = onConfirm;
+    }
+    
+    onOpen(): void {
+        const { contentEl, titleEl } = this;
+        titleEl.setText('Confirm action');
+        
+        const messageEl = contentEl.createDiv({ cls: 'rt-confirmation-message' });
+        messageEl.setText(this.message);
+        
+        const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
+        
+        new ButtonComponent(buttonRow)
+            .setButtonText('Continue')
+            .setCta()
+            .onClick(() => {
+                this.close();
+                this.onConfirm();
+            });
+        
+        new ButtonComponent(buttonRow)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
+    }
+}
 
 export interface ProcessingOptions {
     mode: ProcessingMode;
@@ -22,7 +58,7 @@ export class BeatsProcessingModal extends Modal {
     private readonly onConfirm: (mode: ProcessingMode) => Promise<void>;
     private readonly getSceneCount: (mode: ProcessingMode) => Promise<number>;
     
-    private selectedMode: ProcessingMode = 'smart';
+    private selectedMode: ProcessingMode = 'flagged';
     public isProcessing: boolean = false;
     private abortController: AbortController | null = null;
     
@@ -86,46 +122,61 @@ export class BeatsProcessingModal extends Modal {
         
         contentEl.classList.add('rt-beats-modal');
 
-        // Info section
+        // Info section with active AI provider
+        const provider = this.plugin.settings.defaultAiProvider || 'openai';
+        let modelName = 'Unknown';
+        
+        if (provider === 'anthropic') {
+            const modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+            // Check more specific versions first
+            if (modelId.includes('sonnet-4-5') || modelId.includes('sonnet-4.5')) modelName = 'Claude Sonnet 4.5';
+            else if (modelId.includes('opus-4-1') || modelId.includes('opus-4.1')) modelName = 'Claude Opus 4.1';
+            else if (modelId.includes('opus-4')) modelName = 'Claude Opus 4';
+            else if (modelId.includes('sonnet-4')) modelName = 'Claude Sonnet 4';
+            else modelName = modelId;
+        } else if (provider === 'gemini') {
+            const modelId = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
+            if (modelId.includes('2.5-pro') || modelId.includes('2-5-pro')) modelName = 'Gemini 2.5 Pro';
+            else if (modelId.includes('2.0-pro') || modelId.includes('2-0-pro')) modelName = 'Gemini 2.0 Pro';
+            else modelName = modelId;
+        } else if (provider === 'openai') {
+            const modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
+            if (modelId.includes('4.1') || modelId.includes('4-1')) modelName = 'GPT-4.1';
+            else if (modelId.includes('4o')) modelName = 'GPT-4o';
+            else if (modelId.includes('o1')) modelName = 'GPT-o1';
+            else modelName = modelId;
+        }
+        
         const infoEl = contentEl.createDiv({ cls: 'rt-beats-info' });
-        infoEl.setText('Select processing mode for AI LLM beats analysis. This will analyze based on manuscript order all scenes and update their beat metadata.');
+        infoEl.setText(`Select processing mode for AI LLM beats analysis using ${modelName}. This will analyze based on manuscript order all scenes and update their beat metadata.`);
 
         // Mode selection
         const modesSection = contentEl.createDiv({ cls: 'rt-beats-modes' });
         
-        // Mode 1: Smart Update
+        // Mode 1: Process Flagged Scenes (Recommended)
         const mode1 = this.createModeOption(
             modesSection,
-            'smart',
-            'Smart Update (Recommended)',
-            'Only processes scenes with Beats Update: Yes that haven\'t been processed yet. Respects cache. No Status validation needed.',
+            'flagged',
+            'Process flagged scenes (Recommended)',
+            'Processes scenes with Beats Update: Yes and Status: Working or Complete. Use when you\'ve revised scenes and want to update their beats.',
             true
         );
         
-        // Mode 2: Force Flagged
+        // Mode 2: Process Unprocessed
         const mode2 = this.createModeOption(
             modesSection,
-            'force-flagged',
-            'Force Flagged Scenes',
-            'Reprocesses all scenes with Beats Update: Yes, ignoring cache. Use when changing AI templates. No Status validation needed.',
+            'unprocessed',
+            'Process unprocessed scenes',
+            'Processes scenes with Status: Complete or Working that don\'t have beats yet. Perfect for resuming after interruptions. Ignores Beats Update flag.',
             false
         );
         
-        // Mode 3: Process Unprocessed
+        // Mode 3: Force All
         const mode3 = this.createModeOption(
             modesSection,
-            'unprocessed',
-            'Process Unprocessed Scenes',
-            'Processes scenes with Status: Complete or Working that don\'t have beats yet. Perfect for resuming after crashes or rate limits. Ignores Beats Update flag and cache.',
-            false
-        );
-        
-        // Mode 4: Force All
-        const mode4 = this.createModeOption(
-            modesSection,
             'force-all',
-            'Force ALL Scenes',
-            'Processes ALL scenes with Status: Complete or Working, ignoring flags and cache. WARNING: This may be expensive and time-consuming!',
+            'Reprocess ALL scenes',
+            'Reprocesses ALL scenes with Status: Complete or Working, even if they already have beats. Use when changing AI templates or doing complete reanalysis. WARNING: May be expensive!',
             false
         );
 
@@ -169,7 +220,7 @@ export class BeatsProcessingModal extends Modal {
 
         // Update count when mode changes
         // Modal classes don't have registerDomEvent, use addEventListener
-        [mode1, mode2, mode3, mode4].forEach(radio => {
+        [mode1, mode2, mode3].forEach(radio => {
             radio.addEventListener('change', () => updateCount());
         });
 
@@ -189,13 +240,36 @@ export class BeatsProcessingModal extends Modal {
                     
                     // Extra confirmation for large batches or aggressive modes
                     if (count > 50 || this.selectedMode === 'force-all' || this.selectedMode === 'unprocessed') {
-                        const confirmed = window.confirm(
-                            `You are about to process ${count} scenes. This may take ${Math.ceil(count * 0.1)} minutes and incur API costs. Continue?`
+                        const confirmModal = new ConfirmationModal(
+                            this.app,
+                            `You are about to process ${count} scenes. This may take ${Math.ceil(count * 0.1)} minutes and incur API costs. Continue?`,
+                            async () => {
+                                await this.startProcessing();
+                            }
                         );
-                        if (!confirmed) return;
+                        confirmModal.open();
+                        return;
                     }
                     
                     await this.startProcessing();
+                } catch (error) {
+                    new Notice(`Error: ${error instanceof Error ? error.message : String(error)}`);
+                }
+            });
+        
+        new ButtonComponent(buttonRow)
+            .setButtonText('Purge all beats')
+            .setWarning()
+            .onClick(async () => {
+                try {
+                    // Dynamic import to avoid circular dependency
+                    const { purgeBeatsByManuscriptOrder } = await import('../BeatsCommands');
+                    
+                    // Close this modal before showing purge confirmation
+                    this.close();
+                    
+                    // Execute purge (it has its own confirmation dialog)
+                    await purgeBeatsByManuscriptOrder(this.plugin, this.plugin.app.vault);
                 } catch (error) {
                     new Notice(`Error: ${error instanceof Error ? error.message : String(error)}`);
                 }
@@ -261,8 +335,10 @@ export class BeatsProcessingModal extends Modal {
         try {
             await this.onConfirm(this.selectedMode);
             
-            // Processing completed successfully
-            if (!this.abortController.signal.aborted) {
+            // Show appropriate summary even if the last/only scene finished after an abort request
+            if (this.abortController && this.abortController.signal.aborted) {
+                this.showCompletionSummary('Processing aborted by user or rate limit');
+            } else {
                 this.showCompletionSummary('Processing completed successfully!');
             }
         } catch (error) {
@@ -316,14 +392,17 @@ export class BeatsProcessingModal extends Modal {
     private abortProcessing(): void {
         if (!this.abortController) return;
         
-        const confirmed = window.confirm('Are you sure you want to abort processing? Progress will be saved up to the current scene.');
-        if (!confirmed) return;
-        
-        this.abortController.abort();
-        this.statusTextEl?.setText('Aborting... Please wait.');
-        this.abortButtonEl?.setDisabled(true);
-        
-        new Notice('Processing aborted by user');
+        const confirmModal = new ConfirmationModal(
+            this.app,
+            'Are you sure you want to abort processing? Progress will be saved up to the current scene.',
+            () => {
+                this.abortController?.abort();
+                this.statusTextEl?.setText('Aborting... Please wait.');
+                this.abortButtonEl?.setDisabled(true);
+                new Notice('Processing aborted by user');
+            }
+        );
+        confirmModal.open();
     }
 
     public updateProgress(current: number, total: number, sceneName: string): void {
@@ -444,6 +523,13 @@ export class BeatsProcessingModal extends Modal {
             const tipEl = summaryContainer.createDiv({ cls: 'rt-beats-summary-tip' });
             tipEl.createEl('strong', { text: 'Tip: ' });
             tipEl.appendText('Run the command again in "Smart" mode to process remaining or failed scenes. Already-processed scenes will be skipped automatically.');
+        }
+        
+        // Add note about AI logs if logging is enabled
+        if (this.plugin.settings.logApiInteractions) {
+            const logNoteEl = summaryContainer.createDiv({ cls: 'rt-beats-summary-tip' });
+            logNoteEl.createEl('strong', { text: 'Note: ' });
+            logNoteEl.appendText('Detailed AI interaction logs have been saved to the AI folder for review.');
         }
         
         // Replace abort button with action buttons

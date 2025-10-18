@@ -4,7 +4,7 @@
 import type RadialTimelinePlugin from './main';
 import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, shiftGossamerHistory, extractBeatOrder } from './utils/gossamer';
 import { Notice, TFile, App } from 'obsidian';
-import { GossamerScoreModal } from './view/GossamerScoreModal';
+import { GossamerScoreModal } from './modals/GossamerScoreModal';
 
 // Helper to find Plot note by beat title
 function findPlotNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile | null {

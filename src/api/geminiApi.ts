@@ -31,6 +31,7 @@ export async function callGeminiApi(
   userPrompt: string,
   maxTokens: number | null = 4000,
   temperature: number = 0.7,
+  jsonSchema?: Record<string, unknown>  // Optional JSON schema for structured output
 ): Promise<GeminiApiResponse> {
   if (!apiKey) {
     return { success: false, content: null, responseData: { error: { message: 'Gemini API key not configured.' } }, error: 'Gemini API key not configured.' };
@@ -43,7 +44,12 @@ export async function callGeminiApi(
 
   type GeminiRequest = {
     contents: { role: 'user'; parts: { text: string }[] }[];
-    generationConfig: { temperature: number; maxOutputTokens?: number };
+    generationConfig: { 
+      temperature: number; 
+      maxOutputTokens?: number;
+      responseMimeType?: string;
+      responseSchema?: Record<string, unknown>;
+    };
     systemInstruction?: { parts: { text: string }[] };
   };
   const body: GeminiRequest = {
@@ -63,6 +69,11 @@ export async function callGeminiApi(
   }
   if (maxTokens !== null) {
     body.generationConfig.maxOutputTokens = maxTokens;
+  }
+  // Enable JSON mode if schema provided
+  if (jsonSchema) {
+    body.generationConfig.responseMimeType = 'application/json';
+    body.generationConfig.responseSchema = jsonSchema;
   }
 
   let responseData: unknown;
