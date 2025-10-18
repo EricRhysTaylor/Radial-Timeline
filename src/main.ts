@@ -85,6 +85,7 @@ export interface Scene {
     "1beats"?: string; // Add 1beats property
     "2beats"?: string; // Add 2beats property 
     "3beats"?: string; // Add 3beats property
+    "Beats Update"?: boolean | string; // Add beats update flag
     // Plot-specific properties  
     itemType?: "Scene" | "Plot"; // Distinguish between Scene and Plot items
     Description?: string; // For Plot beat descriptions
@@ -614,29 +615,31 @@ export default class RadialTimelinePlugin extends Plugin {
                         return;
                     }
                     
-                    // Build table of contents
+                    // Build table of contents with Obsidian-style internal links
                     let tableOfContents = '# Table of Contents\n\n';
                     manuscript.scenes.forEach((scene, index) => {
-                        tableOfContents += `${index + 1}. [${scene.title}](#${scene.title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '')})\n`;
+                        // Use Obsidian internal link format: [[#Heading Name]]
+                        tableOfContents += `${index + 1}. [[#${scene.title}]]\n`;
                     });
                     tableOfContents += '\n---\n\n';
                     
                     // Combine TOC with manuscript text
                     const fullManuscript = tableOfContents + manuscript.text;
                     
-                    // Save to AI folder - use local timezone for filename
+                    // Save to AI folder - use friendly local timestamp
                     const now = new Date();
-                    const localTimestamp = now.toLocaleString(undefined, {
+                    const dateStr = now.toLocaleDateString(undefined, {
                         year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    const timeStr = now.toLocaleTimeString(undefined, {
+                        hour: 'numeric',
                         minute: '2-digit',
-                        second: '2-digit',
-                        hour12: false
-                    }).replace(/[/:,\s]/g, '-');
+                        hour12: true
+                    }).replace(/:/g, '-'); // Replace colon with dash for valid filename
                     
-                    const manuscriptPath = `AI/Manuscript-${localTimestamp}.md`;
+                    const manuscriptPath = `AI/Manuscript ${dateStr} ${timeStr}.md`;
                     
                     try {
                         await this.app.vault.createFolder('AI');
@@ -798,6 +801,78 @@ export default class RadialTimelinePlugin extends Plugin {
         // Track workspace layout changes to update our view
         // (layout-change listener consolidated below at line ~949)
 
+        // Helper: Get active AI model name for display
+        const getActiveModelName = (): string => {
+            const provider = this.settings.defaultAiProvider || 'openai';
+            let modelName = 'Unknown';
+            
+            if (provider === 'anthropic') {
+                const modelId = this.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+                if (modelId.includes('sonnet-4-5') || modelId.includes('sonnet-4.5')) modelName = 'Claude Sonnet 4.5';
+                else if (modelId.includes('opus-4-1') || modelId.includes('opus-4.1')) modelName = 'Claude Opus 4.1';
+                else if (modelId.includes('opus-4')) modelName = 'Claude Opus 4';
+                else if (modelId.includes('sonnet-4')) modelName = 'Claude Sonnet 4';
+                else modelName = modelId;
+            } else if (provider === 'gemini') {
+                const modelId = this.settings.geminiModelId || 'gemini-2.5-pro';
+                if (modelId.includes('2.5-pro') || modelId.includes('2-5-pro')) modelName = 'Gemini 2.5 Pro';
+                else if (modelId.includes('2.0-pro') || modelId.includes('2-0-pro')) modelName = 'Gemini 2.0 Pro';
+                else modelName = modelId;
+            } else if (provider === 'openai') {
+                const modelId = this.settings.openaiModelId || 'gpt-4o';
+                if (modelId.includes('4.1') || modelId.includes('4-1')) modelName = 'GPT-4.1';
+                else if (modelId.includes('4o')) modelName = 'GPT-4o';
+                else if (modelId.includes('o1')) modelName = 'GPT-o1';
+                else modelName = modelId;
+            }
+            
+            return modelName;
+        };
+
+        // Helper: Count processable scenes (Working or Complete status) and flagged scenes (Beats Update = True)
+        const countProcessableScenes = async (subplotName?: string): Promise<{ flagged: number; processable: number; total: number }> => {
+            try {
+                const allScenes = await this.getSceneData();
+                
+                // Filter by subplot if provided
+                const targetScenes = subplotName ? allScenes.filter(scene => {
+                    const subplots = scene.subplot ? 
+                        (Array.isArray(scene.subplot) ? scene.subplot : [scene.subplot]) : [];
+                    return subplots.includes(subplotName);
+                }) : allScenes;
+                
+                // Normalize boolean value (handle Yes/True/1/true)
+                const normalizeBool = (val: unknown): boolean => {
+                    if (typeof val === 'boolean') return val;
+                    if (typeof val === 'number') return val !== 0;
+                    if (typeof val === 'string') {
+                        const lower = val.toLowerCase().trim();
+                        return lower === 'yes' || lower === 'true' || lower === '1';
+                    }
+                    return false;
+                };
+                
+                // Count scenes with processable content (Working or Complete status)
+                const processableScenes = targetScenes.filter(scene => {
+                    const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
+                    return statusValue === 'Working' || statusValue === 'Complete';
+                });
+                
+                // Count scenes that are both processable AND flagged for beats processing
+                const flaggedCount = processableScenes.filter(scene => {
+                    return normalizeBool(scene["Beats Update"]);
+                }).length;
+                
+                return {
+                    flagged: flaggedCount,
+                    processable: processableScenes.length,
+                    total: targetScenes.length
+                };
+            } catch (error) {
+                return { flagged: 0, processable: 0, total: 0 };
+            }
+        };
+
         // 5. Beats update (manuscript order)
         this.addCommand({
             id: 'update-beats-manuscript-order',
@@ -864,6 +939,7 @@ export default class RadialTimelinePlugin extends Plugin {
                         plugin: RadialTimelinePlugin;
                         choices: string[];
                         selectedSubplot: string;
+                        statsEl: HTMLElement | null = null;
                         
                         constructor(app: App, plugin: RadialTimelinePlugin, choices: string[]) {
                             super(app);
@@ -872,40 +948,30 @@ export default class RadialTimelinePlugin extends Plugin {
                             this.selectedSubplot = choices[0]; // Default to first subplot
                         }
                         
+                        async updateStats(subplotName: string): Promise<void> {
+                            if (!this.statsEl) return;
+                            
+                            try {
+                                const stats = await countProcessableScenes(subplotName);
+                                this.statsEl.setText(`${stats.flagged} scene${stats.flagged !== 1 ? 's' : ''} will be processed (${stats.processable} processable, ${stats.total} total)`);
+                            } catch (error) {
+                                this.statsEl.setText('Unable to calculate scene count');
+                            }
+                        }
+                        
                         onOpen(): void {
                             const { contentEl, titleEl } = this;
                             titleEl.setText('Select subplot for beats processing');
                             
-                            // Info text with active AI provider
-                            const provider = this.plugin.settings.defaultAiProvider || 'openai';
-                            let modelName = 'Unknown';
-                            
-                            if (provider === 'anthropic') {
-                                const modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
-                                // Check more specific versions first
-                                if (modelId.includes('sonnet-4-5') || modelId.includes('sonnet-4.5')) modelName = 'Claude Sonnet 4.5';
-                                else if (modelId.includes('opus-4-1') || modelId.includes('opus-4.1')) modelName = 'Claude Opus 4.1';
-                                else if (modelId.includes('opus-4')) modelName = 'Claude Opus 4';
-                                else if (modelId.includes('sonnet-4')) modelName = 'Claude Sonnet 4';
-                                else modelName = modelId;
-                            } else if (provider === 'gemini') {
-                                const modelId = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
-                                if (modelId.includes('2.5-pro') || modelId.includes('2-5-pro')) modelName = 'Gemini 2.5 Pro';
-                                else if (modelId.includes('2.0-pro') || modelId.includes('2-0-pro')) modelName = 'Gemini 2.0 Pro';
-                                else modelName = modelId;
-                            } else if (provider === 'openai') {
-                                const modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
-                                if (modelId.includes('4.1') || modelId.includes('4-1')) modelName = 'GPT-4.1';
-                                else if (modelId.includes('4o')) modelName = 'GPT-4o';
-                                else if (modelId.includes('o1')) modelName = 'GPT-o1';
-                                else modelName = modelId;
-                            }
+                            // Get model name using common helper
+                            const modelName = getActiveModelName();
                             
                             const infoEl = contentEl.createDiv({ cls: 'rt-subplot-picker-info' });
-                            infoEl.setText(`Choose a subplot to process or purge beats from using ${modelName}:`);
+                            infoEl.createEl('p', { text: `Process or purge beats using ${modelName}` });
                             
-                            // Dropdown for subplot selection
+                            // Dropdown for subplot selection with better spacing
                             const selectContainer = contentEl.createDiv({ cls: 'rt-subplot-picker-select' });
+                            selectContainer.createEl('label', { text: 'Select subplot:', cls: 'rt-subplot-picker-label' });
                             const dropdown = new DropdownComponent(selectContainer);
                             
                             this.choices.forEach((name, index) => {
@@ -913,9 +979,17 @@ export default class RadialTimelinePlugin extends Plugin {
                             });
                             
                             dropdown.setValue(this.selectedSubplot);
-                            dropdown.onChange((value) => {
+                            dropdown.onChange(async (value) => {
                                 this.selectedSubplot = value;
+                                await this.updateStats(value);
                             });
+                            
+                            // Stats display
+                            this.statsEl = contentEl.createDiv({ cls: 'rt-subplot-picker-stats' });
+                            this.statsEl.setText('Calculating...');
+                            
+                            // Update stats for initial selection
+                            this.updateStats(this.selectedSubplot);
                             
                             // Action buttons
                             const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
@@ -933,9 +1007,7 @@ export default class RadialTimelinePlugin extends Plugin {
                                 .setWarning()
                                 .onClick(async () => {
                                     try {
-                                        // Dynamic import to avoid circular dependency
                                         const { purgeBeatsBySubplotName } = await import('./BeatsCommands');
-                                        
                                         this.close();
                                         await purgeBeatsBySubplotName(this.plugin, this.plugin.app.vault, this.selectedSubplot);
                                     } catch (error) {
@@ -1266,6 +1338,7 @@ export default class RadialTimelinePlugin extends Plugin {
                                 "1beats": typeof metadata["1beats"] === 'string' ? metadata["1beats"] : (Array.isArray(metadata["1beats"]) ? metadata["1beats"].join('\n') : (metadata["1beats"] ? String(metadata["1beats"]) : undefined)),
                                 "2beats": typeof metadata["2beats"] === 'string' ? metadata["2beats"] : (Array.isArray(metadata["2beats"]) ? metadata["2beats"].join('\n') : (metadata["2beats"] ? String(metadata["2beats"]) : undefined)), 
                                 "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : (Array.isArray(metadata["3beats"]) ? metadata["3beats"].join('\n') : (metadata["3beats"] ? String(metadata["3beats"]) : undefined)),
+                                "Beats Update": (typeof metadata["Beats Update"] === 'boolean' || typeof metadata["Beats Update"] === 'string') ? metadata["Beats Update"] as (boolean | string) : undefined,
                                 itemType: "Scene"
                             });
                     });

@@ -66,6 +66,7 @@ export class BeatsProcessingModal extends Modal {
     private progressBarEl?: HTMLElement;
     private progressTextEl?: HTMLElement;
     private statusTextEl?: HTMLElement;
+    private tripletTextEl?: HTMLElement;
     private errorListEl?: HTMLElement;
     private abortButtonEl?: ButtonComponent;
     private actionButtonContainer?: HTMLElement;
@@ -215,8 +216,10 @@ export class BeatsProcessingModal extends Modal {
             }
         };
         
-        // Initial count
-        updateCount();
+        // Initial count (defer to next frame so modal paints immediately)
+        requestAnimationFrame(() => {
+            updateCount();
+        });
 
         // Update count when mode changes
         // Modal classes don't have registerDomEvent, use addEventListener
@@ -377,6 +380,10 @@ export class BeatsProcessingModal extends Modal {
         // Current status (e.g., "Processing scene 15...")
         this.statusTextEl = contentEl.createDiv({ cls: 'rt-beats-status-text' });
         this.statusTextEl.setText('Initializing...');
+
+        // Triplet info (prev/current/next) for the current request
+        this.tripletTextEl = contentEl.createDiv({ cls: 'rt-beats-triplet-text' });
+        this.tripletTextEl.setText('Triplet: prev=N/A, current=N/A, next=N/A');
         
         // Error list (hidden by default)
         this.errorListEl = contentEl.createDiv({ cls: 'rt-beats-error-list rt-hidden' });
@@ -446,6 +453,11 @@ export class BeatsProcessingModal extends Modal {
         
         const errorItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item' });
         errorItem.setText(message);
+    }
+    
+    public setTripletInfo(prevNum: string, currentNum: string, nextNum: string): void {
+        if (!this.tripletTextEl) return;
+        this.tripletTextEl.setText(`Triplet: prev=${prevNum || 'N/A'}, current=${currentNum || 'N/A'}, next=${nextNum || 'N/A'}`);
     }
     
     public addWarning(message: string): void {

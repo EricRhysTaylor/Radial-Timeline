@@ -848,6 +848,8 @@ async function callAiProvider(
             // Get JSON schema for beats
             const jsonSchema = getBeatsJsonSchema();
 
+            const safetySystem = 'Follow policy: respond with purely editorial, non-explicit analysis. Avoid sexual detail, graphic violence, or instructions for harm. Output must be valid JSON only.';
+
             requestBodyForLog = {
                 model: modelId,
                 contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
@@ -856,12 +858,45 @@ async function callAiProvider(
                     maxOutputTokens: 4000,
                     responseMimeType: 'application/json',
                     responseSchema: jsonSchema
-                }
+                },
+                systemInstruction: { parts: [{ text: safetySystem }] }
             };
 
-            const apiResponse: GeminiApiResponse = await retryWithBackoff(() =>
-                callGeminiApi(apiKey!, modelId!, null, userPrompt, 4000, 0.7, jsonSchema)
+            let apiResponse: GeminiApiResponse = await retryWithBackoff(() =>
+                callGeminiApi(apiKey!, modelId!, safetySystem, userPrompt, 4000, 0.7, jsonSchema)
             );
+
+            // If Gemini was safety-blocked, try OpenAI fallback if configured
+            if (!apiResponse.success && typeof apiResponse.error === 'string' && apiResponse.error.toLowerCase().includes('safety')) {
+                const oaiKey = plugin.settings.openaiApiKey;
+                const oaiModel = plugin.settings.openaiModelId || 'gpt-4.1';
+                if (oaiKey) {
+                    // Build OpenAI request for accurate logging and scene extraction
+                    const openAiRequestForLog = {
+                        model: oaiModel,
+                        messages: [
+                            { role: "user", content: userPrompt }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 4000,
+                        response_format: { type: 'json_object' }
+                    };
+                    const oaiResp: OpenAiApiResponse = await retryWithBackoff(() =>
+                        callOpenAiApi(oaiKey, oaiModel, null, userPrompt, 4000, 0.7, true)
+                    );
+                    responseDataForLog = oaiResp.responseData;
+                    if (!oaiResp.success) {
+                        apiErrorMsg = oaiResp.error || 'Fallback (OpenAI) failed after Gemini safety block.';
+                        throw new Error(apiErrorMsg);
+                    }
+                    result = oaiResp.content;
+                    modelId = oaiModel;
+                    // Log and return (use OpenAI request body for correct scene extraction in logs)
+                    requestBodyForLog = openAiRequestForLog;
+                    await logApiInteractionToFile(plugin, vault, 'openai', modelId, requestBodyForLog, responseDataForLog, subplotName, commandContext, sceneName);
+                    return { result, modelIdUsed: modelId };
+                }
+            }
 
             responseDataForLog = apiResponse.responseData;
 
@@ -947,8 +982,6 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
             cleanedJson = cleanedJson.replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
         }
         
-        console.log(`[parseJsonBeatsResponse] Parsing JSON response (length: ${cleanedJson.length})`);
-        
         const parsed = JSON.parse(cleanedJson) as BeatsJsonResponse;
         
         // Convert JSON structure to string format for compatibility with existing code
@@ -986,11 +1019,8 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
             '3beats': formatBeatsArray(parsed['3beats'], false)
         };
         
-        console.log(`[parseJsonBeatsResponse] Parsed beats: 1beats=${result['1beats'].length} chars, 2beats=${result['2beats'].length} chars, 3beats=${result['3beats'].length} chars`);
-        
         // Require at least 2beats content
         if (!result['2beats'].trim()) {
-            console.error("[parseJsonBeatsResponse] Missing required 2beats content");
             new Notice('LLM response is missing required 2beats analysis.');
             return null;
         }
@@ -998,7 +1028,6 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
         return result;
     } catch (error) {
         console.error("[parseJsonBeatsResponse] Error parsing JSON beats response:", error);
-        console.error("[parseJsonBeatsResponse] Raw response:", jsonResult.substring(0, 500));
         new Notice('Failed to parse LLM JSON response. Check console for details.');
         return null;
     }
@@ -1009,12 +1038,10 @@ function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): Parsed
     // Try JSON parsing first
     const jsonResult = parseJsonBeatsResponse(gptResult, plugin);
     if (jsonResult) {
-        console.log('[parseGptResult] Successfully parsed as JSON');
         return jsonResult;
     }
     
-    console.log('[parseGptResult] JSON parsing failed, falling back to regex parser');
-    
+    // Fallback to regex parser if JSON parsing fails
     try {
         // Fallback to old regex parser for backwards compatibility
         let text = (gptResult || '').replace(/\r\n?/g, '\n');
@@ -1067,15 +1094,13 @@ function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): Parsed
         };
         
         if (!beats['1beats'].trim() && !beats['2beats'].trim() && !beats['3beats'].trim()) {
-             console.error("[parseGptResult] Regex fallback: Parsed beats object is empty");
              new Notice('Failed to parse beats from LLM response.');
              return null;
         }
         
-        console.log('[parseGptResult] Regex fallback succeeded');
         return beats;
     } catch (error) {
-        console.error("[parseGptResult] Regex fallback error:", error);
+        console.error("[parseGptResult] Error parsing beats response:", error);
         return null;
     }
 }
@@ -1131,24 +1156,6 @@ async function updateSceneFile(
             const b1 = parsedBeats['1beats']?.trim();
             const b2 = parsedBeats['2beats']?.trim();
             const b3 = parsedBeats['3beats']?.trim();
-            
-            // Debug logging for what's being saved
-            console.log(`[updateSceneFile] Saving to ${scene.file.basename}: 1beats=${b1 ? 'YES' : 'NO'}, 2beats=${b2 ? 'YES' : 'NO'}, 3beats=${b3 ? 'YES' : 'NO'}`);
-            if (b1) {
-                const arr1 = toArray(b1);
-                console.log(`[updateSceneFile] 1beats has ${arr1.length} items`);
-                console.log(`[updateSceneFile] 1beats array:`, arr1);
-            }
-            if (b2) {
-                const arr2 = toArray(b2);
-                console.log(`[updateSceneFile] 2beats has ${arr2.length} items`);
-                console.log(`[updateSceneFile] 2beats array:`, arr2);
-            }
-            if (b3) {
-                const arr3 = toArray(b3);
-                console.log(`[updateSceneFile] 3beats has ${arr3.length} items`);
-                console.log(`[updateSceneFile] 3beats array:`, arr3);
-            }
             
             if (b1) fmObj['1beats'] = toArray(b1);
             if (b2) fmObj['2beats'] = toArray(b2);
@@ -1282,6 +1289,11 @@ async function processWithModal(
             const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
             const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
             const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+
+            // Show runtime triplet in modal
+            if (plugin.activeBeatsModal && typeof plugin.activeBeatsModal.setTripletInfo === 'function') {
+                plugin.activeBeatsModal.setTripletInfo(prevNum, currentNum, nextNum);
+            }
 
             const contextPrompt = getActiveContextPrompt(plugin);
             const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);

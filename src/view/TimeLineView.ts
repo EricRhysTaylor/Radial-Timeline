@@ -12,6 +12,8 @@ import { SceneNumberInfo } from '../utils/constants';
 import ZeroDraftModal from '../modals/ZeroDraftModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
 import { openOrRevealFile } from '../utils/fileUtils';
+import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt } from './interactions';
+import { setupGossamerMode, setupAllScenesDelegatedHover, setupSceneInteractionsAll, setupMainPlotMode, AllScenesView } from './modes';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -40,11 +42,16 @@ export class RadialTimelineView extends ItemView {
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
     
-    public interactionMode: 'normal' | 'gossamer' = 'normal';
+    public interactionMode: 'normal' | 'mainplot' | 'gossamer' = 'normal';
     
     // Store event handler references for clean removal
     private normalEventHandlers: Map<string, EventListener> = new Map();
     private gossamerEventHandlers: Map<string, EventListener> = new Map();
+
+    // Expose a safe registrar for Gossamer handlers so external modules can record svg-level listeners
+    public registerGossamerHandler(key: string, handler: EventListener): void {
+        this.gossamerEventHandlers.set(key, handler);
+    }
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
@@ -70,7 +77,7 @@ export class RadialTimelineView extends ItemView {
     }
 
     // --- Helpers for number-square orientation/position (shared across modes) ---
-    private applyRotationToNumberSquares(svg: SVGSVGElement, rotated: boolean): void {
+    public applyRotationToNumberSquares(svg: SVGSVGElement, rotated: boolean): void {
         const angle = 120; // degrees to counter-rotate when the whole timeline rotates -120
         const orients = svg.querySelectorAll<SVGGElement>('.number-square-orient');
         orients.forEach((el) => {
@@ -83,14 +90,17 @@ export class RadialTimelineView extends ItemView {
         });
     }
 
-    private getSquareGroupForSceneId(svg: SVGSVGElement, sceneId: string): SVGGElement | null {
+    public getRotationState(): boolean { return this.rotationState; }
+    public setRotationState(rotated: boolean): void { this.rotationState = rotated; }
+
+    public getSquareGroupForSceneId(svg: SVGSVGElement, sceneId: string): SVGGElement | null {
         const rect = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`) as SVGRectElement | null;
         if (!rect) return null;
         const group = rect.closest('.number-square-group') as SVGGElement | null;
         return group;
     }
 
-    private setNumberSquareGroupPosition(svg: SVGSVGElement, sceneId: string, x: number, y: number): void {
+    public setNumberSquareGroupPosition(svg: SVGSVGElement, sceneId: string, x: number, y: number): void {
         const group = this.getSquareGroupForSceneId(svg, sceneId);
         if (group) {
             // Only translate on the outer group; orientation is handled by inner wrapper
@@ -100,12 +110,7 @@ export class RadialTimelineView extends ItemView {
 
     // Add this method to handle search indicator clicks
     private setupSearchControls(): void {
-        const clearSearchBtn = this.contentEl.querySelector('.rt-clear-search-btn');
-        if (clearSearchBtn) {
-            this.registerDomEvent(clearSearchBtn as HTMLElement, 'click', () => {
-                this.plugin.clearSearch();
-            });
-        }
+        setupSearchControlsExt(this);
     }
     
     updateOpenFilesTracking(): void {
@@ -442,318 +447,8 @@ export class RadialTimelineView extends ItemView {
     
     // Add missing addHighlightRectangles method
     private addHighlightRectangles(): void {
-        if (!this.plugin.searchActive) {
-            return;
-        }
-        
         this.log(`Adding highlight rectangles for search term: "${this.plugin.searchTerm}" with ${this.plugin.searchResults.size} results`);
-        
-        // Check if title tspans exist
-        const allTitleTspans = this.contentEl.querySelectorAll('tspan[data-item-type="title"]');
-        
-        // Iterate through all text elements and replace their content
-        // This ensures we completely replace any previous search highlighting
-        
-        // First, find all subplot to highlight
-        const subplotTspans = this.contentEl.querySelectorAll('tspan[data-item-type="subplot"]');
-        const searchTerm = this.plugin.searchTerm;
-        
-        // Create a word boundary regex for exact matches only
-        const escapedPattern = escapeRegExp(searchTerm);
-        const wordBoundaryRegex = new RegExp(`\\b(${escapedPattern})\\b`, 'gi');
-        
-        // Process all subplot
-        subplotTspans.forEach((tspan: Element) => {
-            // Get the original text content
-            const originalText = tspan.textContent || '';
-            
-            // Skip if there's no match
-            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) {
-                return;
-            }
-            
-            // Apply highlighting - CSS classes handle colors via custom properties
-            const fillColor = tspan.getAttribute('fill');
-            
-            // Test if we need a word boundary match
-            const useWordBoundary = originalText.match(wordBoundaryRegex);
-            const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
-            
-            // Clear previous content (but preserve attributes)
-            while (tspan.firstChild) {
-                tspan.removeChild(tspan.firstChild);
-            }
-            
-            // Restore fill attribute if it existed (CSS custom properties are preserved on element)
-            if (fillColor) {
-                tspan.setAttribute('fill', fillColor);
-            }
-            
-            // Reset regex
-            regex.lastIndex = 0;
-            
-            // Process the text parts
-            let lastIndex = 0;
-            let match;
-            
-            while ((match = regex.exec(originalText)) !== null) {
-                // Add text before match (inherits fill from parent tspan)
-                if (match.index > lastIndex) {
-                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
-                    tspan.appendChild(textBefore);
-                }
-                
-                // Add the highlighted match
-                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                highlightSpan.setAttribute("class", "rt-search-term");
-                highlightSpan.setAttribute("fill", fillColor || "");
-                highlightSpan.textContent = match[0];
-                tspan.appendChild(highlightSpan);
-                
-                lastIndex = match.index + match[0].length;
-            }
-            
-            // Add any remaining text (inherits fill from parent tspan)
-            if (lastIndex < originalText.length) {
-                const textAfter = document.createTextNode(originalText.substring(lastIndex));
-                tspan.appendChild(textAfter);
-            }
-        });
-        
-        // Now, process all character labels
-        const characterTspans = this.contentEl.querySelectorAll('tspan[data-item-type="character"]');
-        
-        // Process all character
-        characterTspans.forEach((tspan: Element) => {
-            // Same logic as for subplot
-            const originalText = tspan.textContent || '';
-            
-            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) {
-                return;
-            }
-            
-            // Apply highlighting - preserve the original fill color
-            const fillColor = tspan.getAttribute('fill');
-            const useWordBoundary = originalText.match(wordBoundaryRegex);
-            const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
-            
-            while (tspan.firstChild) {
-                tspan.removeChild(tspan.firstChild);
-            }
-            
-            // IMPORTANT: Ensure the parent tspan keeps its fill using CSS custom property
-            if (fillColor) {
-                tspan.setAttribute('fill', fillColor);
-                tspan.classList.add('rt-with-dynamic-fill');
-                (tspan as HTMLElement).style.setProperty('--rt-dynamic-fill-color', fillColor);
-            }
-            
-            regex.lastIndex = 0;
-            let lastIndex = 0;
-            let match;
-            
-            while ((match = regex.exec(originalText)) !== null) {
-                if (match.index > lastIndex) {
-                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
-                    tspan.appendChild(textBefore);
-                }
-                
-                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                highlightSpan.setAttribute("class", "rt-search-term");
-                highlightSpan.setAttribute("fill", fillColor || "");
-                highlightSpan.textContent = match[0];
-                tspan.appendChild(highlightSpan);
-                
-                lastIndex = match.index + match[0].length;
-            }
-            
-            if (lastIndex < originalText.length) {
-                const textAfter = document.createTextNode(originalText.substring(lastIndex));
-                tspan.appendChild(textAfter);
-            }
-        });
-        
-        // Highlight matches in title text tspans (scene number and title) - use data-item-type like characters
-        const titleTspans = this.contentEl.querySelectorAll('tspan[data-item-type="title"]');
-        
-        titleTspans.forEach((tspan: Element) => {
-            const originalText = tspan.textContent || '';
-            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
-            
-            // Title tspans use CSS custom property (--rt-dynamic-color) like characters
-            // Clear content only, preserve tspan element and inline style
-            while (tspan.firstChild) {
-                tspan.removeChild(tspan.firstChild);
-            }
-            
-            const regex = new RegExp(`(${escapedPattern})`, 'gi');
-            regex.lastIndex = 0;
-            
-            let lastIndex = 0;
-            let match;
-            
-            while ((match = regex.exec(originalText)) !== null) {
-                if (match.index > lastIndex) {
-                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
-                    tspan.appendChild(textBefore);
-                }
-                
-                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                highlightSpan.setAttribute("class", "rt-search-term");
-                // No fill attribute needed; inherits from parent via CSS custom property
-                highlightSpan.textContent = match[0];
-                tspan.appendChild(highlightSpan);
-                
-                lastIndex = match.index + match[0].length;
-            }
-            
-            if (lastIndex < originalText.length) {
-                const textAfter = document.createTextNode(originalText.substring(lastIndex));
-                tspan.appendChild(textAfter);
-            }
-        });
-        
-        // Highlight matches in date tspans (like subplot/character approach)
-        const dateTspans = this.contentEl.querySelectorAll('tspan[data-item-type="date"]');
-        
-        dateTspans.forEach((tspan: Element) => {
-            const originalText = tspan.textContent || '';
-            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
-            
-            // Clear previous content (but preserve all attributes including inline styles)
-            // Date uses --rt-date-color CSS custom property like subplots use --rt-dynamic-color
-            while (tspan.firstChild) {
-                tspan.removeChild(tspan.firstChild);
-            }
-            
-            const regex = new RegExp(`(${escapedPattern})`, 'gi');
-            regex.lastIndex = 0;
-            
-            let lastIndex = 0;
-            let match;
-            
-            while ((match = regex.exec(originalText)) !== null) {
-                if (match.index > lastIndex) {
-                    const textBefore = document.createTextNode(originalText.substring(lastIndex, match.index));
-                    tspan.appendChild(textBefore);
-                }
-                
-                const highlightSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                highlightSpan.setAttribute("class", "rt-search-term");
-                // Don't set fill - CSS will inherit from parent via custom property
-                highlightSpan.textContent = match[0];
-                tspan.appendChild(highlightSpan);
-                
-                lastIndex = match.index + match[0].length;
-            }
-            
-            if (lastIndex < originalText.length) {
-                const textAfter = document.createTextNode(originalText.substring(lastIndex));
-                tspan.appendChild(textAfter);
-            }
-        });
-        
-        // Also highlight matches in synopsis text blocks
-        const synopsisTextElements = this.contentEl.querySelectorAll('svg .rt-synopsis-text text');
-        synopsisTextElements.forEach((textEl: Element) => {
-            // NEW: Skip any text element that has tspan children, as they are handled elsewhere.
-            if (textEl.querySelector('tspan')) {
-                return;
-            }
-
-            const originalText = textEl.textContent || '';
-            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
-            
-            const fillColor = (textEl as SVGTextElement).getAttribute('fill') || '';
-            
-            // Clear existing content
-            while (textEl.firstChild) textEl.removeChild(textEl.firstChild);
-            
-            // Apply highlighting
-            const regex = new RegExp(`(${escapedPattern})`, 'gi');
-            let lastIndex = 0;
-            let match;
-            
-            while ((match = regex.exec(originalText)) !== null) {
-                if (match.index > lastIndex) {
-                    textEl.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
-                }
-                
-                const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                highlightSpan.setAttribute('class', 'rt-search-term');
-                if (fillColor) highlightSpan.setAttribute('fill', fillColor);
-                highlightSpan.textContent = match[0];
-                textEl.appendChild(highlightSpan);
-                
-                lastIndex = match.index + match[0].length;
-            }
-            
-            if (lastIndex < originalText.length) {
-                textEl.appendChild(document.createTextNode(originalText.substring(lastIndex)));
-            }
-        });
-        
-        // --- START NEW LOGIC ---
-        // Target all tspans that do NOT have a data-item-type to apply highlighting
-        // This is safer than the text-level approach and respects mixed-color lines
-        const unhandledTspans = this.contentEl.querySelectorAll('svg .rt-synopsis-text text tspan:not([data-item-type])');
-        unhandledTspans.forEach((tspan: Element) => {
-            const originalText = tspan.textContent || '';
-            if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
-
-            // Preserve existing fill color from the tspan itself
-            const fillColor = (tspan as SVGTSpanElement).getAttribute('fill') || 'inherit';
-
-            // Clear existing content
-            while (tspan.firstChild) tspan.removeChild(tspan.firstChild);
-
-            // Apply highlighting
-            const regex = new RegExp(`(${escapedPattern})`, 'gi');
-            let lastIndex = 0;
-            let match;
-
-            while ((match = regex.exec(originalText)) !== null) {
-                if (match.index > lastIndex) {
-                    tspan.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
-                }
-
-                const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                highlightSpan.setAttribute('class', 'rt-search-term');
-                if (fillColor) highlightSpan.setAttribute('fill', fillColor);
-                highlightSpan.textContent = match[0];
-                tspan.appendChild(highlightSpan);
-
-                lastIndex = match.index + match[0].length;
-            }
-
-            if (lastIndex < originalText.length) {
-                tspan.appendChild(document.createTextNode(originalText.substring(lastIndex)));
-            }
-        });
-        // --- END NEW LOGIC ---
-        
-        // Check for scene groups that should be highlighted
-        const allSceneGroups = this.contentEl.querySelectorAll('.rt-scene-group');
-        this.log(`Found ${allSceneGroups.length} scene groups to check for search matches`);
-        
-        // Add search-result class to all matching scene paths
-        allSceneGroups.forEach((group: Element) => {
-            const pathAttr = group.getAttribute('data-path');
-            if (pathAttr && this.plugin.searchResults.has(decodeURIComponent(pathAttr))) {
-                // Find the number square in this group
-                const numberSquare = group.querySelector('.rt-number-square');
-                const numberText = group.querySelector('.rt-number-text');
-                
-                if (numberSquare) {
-                    numberSquare.classList.add('rt-search-result');
-                    this.log(`Added rt-search-result class to number square for ${pathAttr}`);
-                }
-                
-                if (numberText) {
-                    numberText.classList.add('rt-search-result');
-                }
-            }
-        });
+        addHighlightRectanglesExt(this);
     }
     
     async createTestSceneFile(): Promise<void> {
@@ -897,9 +592,9 @@ This is a test scene created to help with initial Radial timeline setup.
             // Render directly into the container
             const svgElement = this.createSvgElement(svgString, timelineContainer);
 
-            if (svgElement) {
-                // If Gossamer mode is active, reuse hover-state styling: mute everything except Plot beats
-                if (this.interactionMode === 'gossamer') {
+                if (svgElement) {
+                    // If Gossamer mode is active, reuse hover-state styling: mute everything except Plot beats
+                    if (this.interactionMode === 'gossamer') {
                     svgElement.setAttribute('data-gossamer-mode', 'true');
                     // Apply the same logic as scene hover: add rt-non-selected to all elements except Plot beats
                     const allElements = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
@@ -911,9 +606,14 @@ This is a test scene created to help with initial Radial timeline setup.
                             el.classList.add('rt-non-selected');
                         }
                     });
-                } else {
-                    svgElement.removeAttribute('data-gossamer-mode');
-                }
+                    } else {
+                        svgElement.removeAttribute('data-gossamer-mode');
+                    }
+
+                    // If Main Plot mode is active, enhance plot interactions and mute others
+                    if (this.interactionMode === 'mainplot') {
+                        setupMainPlotMode(this, svgElement as unknown as SVGSVGElement);
+                    }
                 // Set CSS variables for subplot labels based on data attributes
                 const subplotLabelGroups = svgElement.querySelectorAll('.subplot-label-group[data-font-size]');
                 subplotLabelGroups.forEach((group) => {
@@ -924,63 +624,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 });
                 
                 // Attach rotation toggle behavior (inline SVG scripts won't run here)
-                const rotatable = svgElement.querySelector('#timeline-rotatable') as SVGGElement | null;
-                const toggle = svgElement.querySelector('#rotation-toggle') as SVGGElement | null;
-                const arrowUp = svgElement.querySelector('#rotation-arrow-up') as SVGUseElement | null;
-                const arrowDown = svgElement.querySelector('#rotation-arrow-down') as SVGUseElement | null;
-                if (rotatable && toggle && arrowUp && arrowDown) {
-                    // Initialize from stored state to preserve rotation across timeline refreshes
-                    let rotated = this.rotationState;
-                    const applyRotation = () => {
-                        if (rotated) {
-                            rotatable.setAttribute('transform', 'rotate(-120)');
-                            arrowUp.classList.add('is-hidden');
-                            arrowDown.classList.remove('is-hidden');
-                        } else {
-                            rotatable.removeAttribute('transform');
-                            arrowUp.classList.remove('is-hidden');
-                            arrowDown.classList.add('is-hidden');
-                        }
-                        // Expose rotation state on the root SVG so other logic (hover redistribution) can respect it
-                        svgElement.setAttribute('data-rotated', rotated ? 'true' : 'false');
-                        // Keep squares upright by rotating only the inner orientation wrapper, not the translate group
-                        this.applyRotationToNumberSquares(svgElement as unknown as SVGSVGElement, rotated);
-
-                        // Counter-rotate center grid and estimate markers if they live under the rotatable group
-                        const counterSelectors = [
-                            '.color-key-center',
-                            '.estimated-date-tick',
-                            '.estimated-date-dot',
-                            '.estimation-date-label',
-                            '.target-date-tick',
-                            '.target-date-marker'
-                        ];
-                        counterSelectors.forEach((sel) => {
-                            const nodes = svgElement.querySelectorAll(sel);
-                            nodes.forEach((node) => {
-                                const el = node as SVGGraphicsElement;
-                                // Only counter-rotate if this node is inside the rotatable group
-                                if (!el.closest('#timeline-rotatable')) return;
-                                const t = el.getAttribute('transform') || '';
-                                const base = t.replace(/\s*rotate\([^)]*\)/g, '').trim();
-                                if (rotated) {
-                                    el.setAttribute('transform', `${base} rotate(120)`.trim());
-                                } else {
-                                    el.setAttribute('transform', base);
-                                }
-                            });
-                        });
-                    };
-                    applyRotation();
-                    this.registerDomEvent(toggle as unknown as HTMLElement, 'click', () => {
-                        // Disable rotation in Gossamer mode
-                        if (this.interactionMode === 'gossamer') return;
-                        
-                        rotated = !rotated;
-                        this.rotationState = rotated; // Save state for persistence
-                        applyRotation();
-                    });
-                }
+                setupRotationController(this, svgElement as unknown as SVGSVGElement);
 
                 // Adjust plot labels after render
                 const adjustLabels = () => this.plugin.adjustPlotLabelsAfterRender(timelineContainer);
@@ -1050,7 +694,7 @@ This is a test scene created to help with initial Radial timeline setup.
                         }
                         
                         // Set up click and hover events for path elements
-                        this.setupSceneInteractions(group, svgElement, scenes);
+                        setupSceneInteractionsAll(this as unknown as AllScenesView, group, svgElement, scenes);
                     }
                     
                     // Process next chunk if there are more scene groups
@@ -1073,8 +717,8 @@ This is a test scene created to help with initial Radial timeline setup.
                     synopsis.classList.remove('rt-visible');
                 });
                 
-                // Setup search controls after SVG is rendered
-                this.setupSearchControls();
+        // Setup search controls after SVG is rendered
+        this.setupSearchControls();
 
                 // --- START: Add hover effect for scene paths to fade subplot labels ---
                 // Reuse the existing sceneGroups variable declared earlier
@@ -1529,129 +1173,7 @@ This is a test scene created to help with initial Radial timeline setup.
         }
     }
     
-    // New helper method to set up scene interactions
-    private setupSceneInteractions(group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
-        // In Gossamer mode, don't add normal scene interactions - they're handled separately
-        if (this.interactionMode === 'gossamer') return;
-        
-        // Find path for click interaction
-        const path = group.querySelector(".rt-scene-path");
-        if (!path) return;
-        
-        const encodedPath = group.getAttribute("data-path");
-        if (encodedPath && encodedPath !== "") {
-            const filePath = decodeURIComponent(encodedPath);
-            
-            // Set up click handler
-            this.registerDomEvent(path as HTMLElement, "click", async (evt: MouseEvent) => {
-                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
-                if (!(file instanceof TFile)) return;
-
-                // Intercept for Zero draft mode when conditions match
-                if (this.plugin.settings.enableZeroDraftMode) {
-                    const cache = this.plugin.app.metadataCache.getFileCache(file);
-                    const fm = (cache && cache.frontmatter) ? (cache.frontmatter as Record<string, unknown>) : {};
-
-                    // Case-insensitive lookup helper
-                    const getFm = (key: string): unknown => {
-                        if (!fm) return undefined;
-                        const lower = key.toLowerCase();
-                        for (const k of Object.keys(fm)) {
-                            if (k.toLowerCase() === lower) return (fm as any)[k];
-                        }
-                        return undefined;
-                    };
-
-                    const stageValue = String(getFm('Publish Stage') ?? 'Zero');
-                    const statusValue = String(getFm('Status') ?? 'Todo');
-
-                    const isStageZero = stageValue.trim().toLowerCase() === 'zero';
-                    const isStatusComplete = statusValue.trim().toLowerCase() === 'complete';
-
-                    if (isStageZero && isStatusComplete) {
-                        evt.preventDefault();
-                        evt.stopPropagation();
-
-                        const pendingEdits = String(getFm('Pending Edits') ?? '').trim();
-                        const sceneTitle = file.basename || 'Scene';
-
-                        const modal = new ZeroDraftModal(this.app, {
-                            titleText: `Pending Edits — ${sceneTitle}`,
-                            initialText: pendingEdits,
-                            onOk: async (nextText: string) => {
-                                try {
-                                    await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
-                                        (yaml as any)['Pending Edits'] = nextText; // keep key; overwrite (may be empty)
-                                    });
-                                } catch (e) {
-                                    new Notice('Failed to save Pending Edits');
-                                }
-                            },
-                            onOverride: async () => {
-                                // Open without saving (uses openLinkText to prevent duplicate tabs)
-                                await openOrRevealFile(this.plugin.app, file, false);
-                            }
-                        });
-
-                        modal.open();
-                        return; // Do not open the note in this path
-                    }
-                }
-
-                // Default behavior: open or reveal the note (uses openLinkText to prevent duplicate tabs)
-                await openOrRevealFile(this.plugin.app, file, false);
-            });
-            // Cursor styling handled via CSS (.rt-scene-path)
-            
-            // Add mouse enter/leave handlers to highlight files in explorer and tabs
-            this.registerDomEvent(group as HTMLElement, "mouseenter", () => {
-                // Disable scene hover in Gossamer mode (but allow plot slices)
-                const itemType = group.getAttribute('data-item-type');
-                if (this.interactionMode === 'gossamer' && itemType !== 'Plot') return;
-                if (filePath && filePath.trim() !== '') {
-                    // Verify the file exists before attempting to highlight
-                    const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
-                    if (file instanceof TFile) {
-                        // this.highlightFileInExplorer(filePath, true); // Removed this line
-                    }
-                }
-            });
-            
-            this.registerDomEvent(group as HTMLElement, "mouseleave", () => {
-                // Disable scene hover in Gossamer mode (but allow plot slices)
-                const itemType = group.getAttribute('data-item-type');
-                if (this.interactionMode === 'gossamer' && itemType !== 'Plot') return;
-                if (filePath && filePath.trim() !== '') {
-                    // this.highlightFileInExplorer(filePath, false); // Removed this line
-                }
-            });
-        }
-        
-        // Set up mouseover events for synopses (delegated at svg level; keep only click here)
-        const sceneId = path.id;
-        let synopsis = svgElement.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
-
-        // If no synopsis found by exact ID match, try fallback methods
-        if (!synopsis && group.hasAttribute("data-path") && group.getAttribute("data-path")) {
-            const encodedPath = group.getAttribute("data-path");
-            if (encodedPath) {
-                const path = decodeURIComponent(encodedPath);
-                const matchingSceneIndex = scenes.findIndex(s => s.path === path);
-                
-                if (matchingSceneIndex > -1) {
-                    // Use the index to match against any available synopsis
-                    const allSynopses = Array.from(svgElement.querySelectorAll('.rt-scene-info'));
-                    
-                    // As a fallback, just use the synopsis at the same index if available
-                    if (matchingSceneIndex < allSynopses.length) {
-                        synopsis = allSynopses[matchingSceneIndex] as Element;
-                    }
-                }
-            }
-        }
-
-        // Delegated hover handled at svg level (see above); synopsis use rAF throttle there.
-    }
+    // New helper removed; interactions moved to modes/AllScenesMode
     
     // Helper method to highlight files in the navigator and tab bar
     private highlightFileInExplorer(filePath: string, isHighlighting: boolean): void {
@@ -1716,268 +1238,7 @@ This is a test scene created to help with initial Radial timeline setup.
     private setupGossamerEventListeners(svg: SVGSVGElement): void {
         // Clear any existing Gossamer handlers first
         this.removeGossamerEventListeners(svg);
-        
-        const view = this;
-        let currentGroup: Element | null = null;
-        let currentSynopsis: Element | null = null;
-        
-        const findSynopsisForScene = (sceneId: string): Element | null => {
-            return svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
-        };
-        
-        const getSceneIdFromGroup = (group: Element): string | null => {
-            const pathEl = group.querySelector('.rt-scene-path') as SVGPathElement | null;
-            return pathEl?.id || null;
-        };
-        
-        // 1a. Plot Slice Hover (delegated fallback): Show synopsis, sync dot+spoke
-        const plotSliceOver = (e: PointerEvent) => {
-            const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Plot"]');
-            if (!g) return;
-            plotSliceEnter(g as SVGGElement, e);
-        };
-
-        // 1b. Plot Slice direct handlers for reliability
-        const plotSliceEnter = (g: Element, e: Event) => {
-            if (g === currentGroup) return;
-
-            currentGroup = g;
-            svg.classList.add('scene-hover');
-
-            const sid = getSceneIdFromGroup(g);
-            if (sid) {
-                currentSynopsis = findSynopsisForScene(sid);
-                if (currentSynopsis) {
-                    currentSynopsis.classList.add('rt-visible');
-                    view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
-                }
-            }
-
-            const encodedPath = g.getAttribute('data-path') || '';
-            if (encodedPath) {
-                const dot = svg.querySelector(`.rt-gossamer-dot[data-path="${encodedPath}"]`) as SVGCircleElement | null;
-                if (dot) {
-                    dot.classList.add('rt-hover');
-                    const beatName = dot.getAttribute('data-beat');
-                    if (beatName) {
-                        // Show center dot
-                        const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
-                        if (centerDot) centerDot.classList.add('rt-hover');
-                        // Highlight spoke
-                        const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
-                        if (spoke) spoke.classList.add('rt-gossamer-spoke-hover');
-                        // Highlight beat outline
-                        const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
-                        if (beatOutline) beatOutline.classList.add('rt-hover');
-                        // Highlight all historical dots with matching beat name
-                        const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
-                        historicalDots.forEach(hd => hd.classList.add('rt-hover'));
-                    }
-                    g.classList.add('rt-gossamer-hover');
-                }
-            }
-        };
-        
-        const plotSliceOut = (e: PointerEvent) => {
-            if (!currentGroup) return;
-
-            const toEl = e.relatedTarget as Element | null;
-            if (toEl && (currentGroup.contains(toEl) ||
-                        !!toEl.closest('.rt-gossamer-dot'))) return;
-
-            svg.classList.remove('scene-hover');
-            if (currentSynopsis) {
-                currentSynopsis.classList.remove('rt-visible');
-                currentSynopsis = null;
-            }
-
-            const encodedPath = currentGroup.getAttribute('data-path') || '';
-            if (encodedPath) {
-                const dot = svg.querySelector(`.rt-gossamer-dot[data-path="${encodedPath}"]`) as SVGCircleElement | null;
-                if (dot) {
-                    dot.classList.remove('rt-hover');
-                    const beatName = dot.getAttribute('data-beat');
-                    if (beatName) {
-                        // Hide center dot
-                        const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
-                        if (centerDot) centerDot.classList.remove('rt-hover');
-                        // Remove spoke highlight
-                        const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
-                        if (spoke) spoke.classList.remove('rt-gossamer-spoke-hover');
-                        // Remove beat outline highlight
-                        const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
-                        if (beatOutline) beatOutline.classList.remove('rt-hover');
-                    }
-                    currentGroup.classList.remove('rt-gossamer-hover');
-                }
-            }
-
-            currentGroup = null;
-        };
-        
-        // 2. Gossamer Dot Hover: Show synopsis, sync plot slice+spoke+center dot
-        const dotOver = (e: PointerEvent) => {
-            const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
-            if (!dot) return;
-            
-            dot.classList.add('rt-hover');
-            const encodedPath = dot.getAttribute('data-path');
-            const beatName = dot.getAttribute('data-beat');
-            if (!encodedPath) return;
-            
-            svg.classList.add('scene-hover');
-            
-            // Show center dot and highlight beat outline
-            if (beatName) {
-                const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
-                if (centerDot) centerDot.classList.add('rt-hover');
-                const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
-                if (beatOutline) beatOutline.classList.add('rt-hover');
-            }
-            
-            // Find and highlight the plot slice (both have encoded paths now)
-            const plotGroup = svg.querySelector(`.rt-scene-group[data-path="${encodedPath}"]`);
-            if (plotGroup) {
-                currentGroup = plotGroup;
-                plotGroup.classList.add('rt-gossamer-hover');
-                
-                const sid = getSceneIdFromGroup(plotGroup);
-                if (sid) {
-                    currentSynopsis = findSynopsisForScene(sid);
-                    if (currentSynopsis) {
-                        currentSynopsis.classList.add('rt-visible');
-                        view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
-                    }
-                }
-            }
-            
-            // Highlight spoke, beat outline, and historical dots
-            if (beatName) {
-                const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
-                if (spoke) {
-                    spoke.classList.add('rt-gossamer-spoke-hover');
-                }
-                const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
-                if (beatOutline) {
-                    beatOutline.classList.add('rt-hover');
-                }
-                // Highlight all historical dots with matching beat name
-                const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
-                historicalDots.forEach(hd => hd.classList.add('rt-hover'));
-            }
-        };
-        
-        const dotOut = (e: PointerEvent) => {
-            // Remove hover from all historical dots
-            svg.querySelectorAll('.rt-gossamer-dot-historical.rt-hover').forEach(hd => hd.classList.remove('rt-hover'));
-            const toEl = e.relatedTarget as Element | null;
-            // If moving to a plot slice or another dot, keep highlights
-            if (toEl && (toEl.closest('.rt-scene-group[data-item-type="Plot"]') || 
-                        toEl.closest('.rt-gossamer-dot'))) return;
-
-            svg.classList.remove('scene-hover');
-
-            if (currentSynopsis) {
-                currentSynopsis.classList.remove('rt-visible');
-                currentSynopsis = null;
-            }
-
-            if (currentGroup) {
-                currentGroup.classList.remove('rt-gossamer-hover');
-                currentGroup = null;
-            }
-
-            // Remove all highlights
-            svg.querySelectorAll('.rt-gossamer-spoke-hover').forEach(el => {
-                el.classList.remove('rt-gossamer-spoke-hover');
-            });
-            svg.querySelectorAll('.rt-gossamer-dot.rt-hover').forEach(el => {
-                el.classList.remove('rt-hover');
-            });
-            svg.querySelectorAll('.rt-gossamer-dot-center.rt-hover').forEach(el => {
-                el.classList.remove('rt-hover');
-            });
-            svg.querySelectorAll('.rt-gossamer-beat-outline.rt-hover').forEach(el => {
-                el.classList.remove('rt-hover');
-            });
-        };
-        
-        // 3. Click handlers
-        const plotSliceClick = async (e: MouseEvent) => {
-            const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Plot"]');
-            if (!g) return;
-            
-            e.stopPropagation(); // Prevent background click-to-exit
-            
-            const encodedPath = g.getAttribute('data-path');
-            if (!encodedPath) return;
-            
-            const filePath = decodeURIComponent(encodedPath);
-            const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
-            if (file instanceof TFile) {
-                await openOrRevealFile(view.plugin.app, file);
-            }
-        };
-        
-        const dotClick = async (e: MouseEvent) => {
-            const dot = (e.target as Element).closest('.rt-gossamer-dot');
-            if (!dot) return;
-            
-            e.stopPropagation(); // Prevent background click-to-exit
-            
-            const encodedPath = dot.getAttribute('data-path');
-            if (!encodedPath) return;
-            
-            const path = decodeURIComponent(encodedPath);
-            const file = view.plugin.app.vault.getAbstractFileByPath(path);
-            if (file instanceof TFile) {
-                await openOrRevealFile(view.plugin.app, file);
-            }
-        };
-        
-        // 4. Background click to exit Gossamer mode
-        const backgroundClick = (e: MouseEvent) => {
-            const target = e.target as Element;
-            
-            // If clicked on dot or plot slice, don't exit (handled by their stopPropagation)
-            if (target.closest('.rt-gossamer-dot') || 
-                target.closest('.rt-scene-group[data-item-type="Plot"]')) {
-                return;
-            }
-            
-            // Exit Gossamer mode
-            import('../GossamerCommands').then(({ toggleGossamerMode }) => {
-                toggleGossamerMode(view.plugin);
-            });
-        };
-        
-        // Register svg-level handlers using registerDomEvent (available in View classes)
-        // Event cleanup is handled automatically when the view unloads
-        view.registerDomEvent(svg as unknown as HTMLElement, 'click', plotSliceClick);
-        view.registerDomEvent(svg as unknown as HTMLElement, 'click', dotClick);
-        view.registerDomEvent(svg as unknown as HTMLElement, 'click', backgroundClick);
-        
-        // Register pointer event handlers
-        // Event cleanup is handled automatically when the view unloads
-        view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', plotSliceOver);
-        view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', plotSliceOut);
-        view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', dotOver);
-        view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', dotOut);
-        
-        // Store handlers for manual cleanup when switching modes
-        this.gossamerEventHandlers.set('pointerover::svg', plotSliceOver as EventListener);
-        this.gossamerEventHandlers.set('pointerout::svg', plotSliceOut as EventListener);
-        // Additionally, attach direct handlers to each Plot slice group to ensure reliability
-        const plotGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Plot"]');
-        plotGroups.forEach((el) => {
-            view.registerDomEvent(el as HTMLElement, 'pointerenter', (ev) => plotSliceEnter(el, ev));
-            view.registerDomEvent(el as HTMLElement, 'pointerleave', (ev) => plotSliceOut(ev as PointerEvent));
-            view.registerDomEvent(el as HTMLElement, 'click', (ev) => plotSliceClick(ev as MouseEvent));
-        });
-        this.gossamerEventHandlers.set('pointerover::dot::svg', dotOver as EventListener);
-        this.gossamerEventHandlers.set('pointerout::dot::svg', dotOut as EventListener);
-        this.gossamerEventHandlers.set('click::plot::svg', plotSliceClick as EventListener);
-        this.gossamerEventHandlers.set('click::dot::svg', dotClick as EventListener);
-        this.gossamerEventHandlers.set('click::bg::svg', backgroundClick as EventListener);
+        // Delegate full setup to external mode module
+        setupGossamerMode(this, svg);
     }
 }

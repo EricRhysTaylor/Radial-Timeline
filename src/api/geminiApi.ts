@@ -11,6 +11,7 @@ interface GeminiCandidate { content: GeminiContent }
 
 interface GeminiGenerateSuccess {
   candidates?: GeminiCandidate[];
+  promptFeedback?: { blockReason?: string };
 }
 
 interface GeminiErrorResponse {
@@ -92,6 +93,11 @@ export async function callGeminiApi(
       return { success: false, content: null, responseData, error: msg };
     }
     const success = responseData as GeminiGenerateSuccess;
+    // Detect safety block explicitly
+    if (success?.promptFeedback && success.promptFeedback.blockReason) {
+      const reason = success.promptFeedback.blockReason;
+      return { success: false, content: null, responseData, error: `Gemini safety blocked: ${reason}` };
+    }
     const text = success?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
     if (text) return { success: true, content: text, responseData };
     return { success: false, content: null, responseData, error: 'Invalid response structure from Gemini.' };

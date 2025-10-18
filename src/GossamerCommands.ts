@@ -313,7 +313,7 @@ function getInteractionMode(view: unknown): 'normal' | 'gossamer' | undefined {
 
 function setInteractionMode(view: unknown, mode: 'normal' | 'gossamer'): void {
   if (hasKey(view, 'interactionMode')) {
-    (view as { interactionMode: 'normal' | 'gossamer' }).interactionMode = mode;
+    (view as { interactionMode: 'normal' | 'mainplot' | 'gossamer' }).interactionMode = mode;
   }
 }
 

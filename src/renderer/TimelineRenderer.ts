@@ -24,6 +24,14 @@ import {
 import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
 import { normalizeBeatName } from '../utils/gossamer';
 import { renderGossamerLayer } from './gossamerLayer';
+import { computeRingGeometry } from './layout/Rings';
+import { arcPath } from './layout/Paths';
+import { renderCenterGrid } from './components/Grid';
+import { renderMonthLabelDefs } from './components/Months';
+import { renderSubplotLabels } from './components/SubplotLabels';
+import { renderDefs } from './components/Defs';
+import { renderSceneGroup } from './components/Scenes';
+import { renderPlotGroup } from './components/Plots';
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
 
@@ -542,33 +550,17 @@ export function createTimelineSVG(
             return { name, shortName, angle };
         });
     
-        // Calculate total available space
-        const availableSpace = outerRadius - innerRadius;
-    
-        // Set the reduction factor for ring widths (if you want equal widths, set reductionFactor to 1)
-        const reductionFactor = 1; // For equal ring widths
+        // Compute ring widths and radii via helper
         const N = NUM_RINGS;
-    
-        // Calculate the sum of the geometric series (simplifies to N when reductionFactor is 1)
-        const sumOfSeries = (reductionFactor === 1) ? N : (1 - Math.pow(reductionFactor, N)) / (1 - reductionFactor);
-    
-        // Calculate the initial ring width to fill the available space
-        const initialRingWidth = availableSpace / sumOfSeries;
-    
-        // Calculate each ring's width
-        const ringWidths = Array.from({ length: N }, (_, i) => initialRingWidth * Math.pow(reductionFactor, i));
-    
-        // Calculate the start radii for each ring
-        const ringStartRadii = ringWidths.reduce((acc, width, i) => {
-            const previousRadius = i === 0 ? innerRadius : acc[i - 1] + ringWidths[i - 1];
-            acc.push(previousRadius);
-            return acc;
-        }, [] as number[]);
-    
-        // Months radius outer and inner
-        const lineInnerRadius = ringStartRadii[0] - 20;
-        // Month tick ring sits a fixed offset from the outer scene edge
-        const lineOuterRadius = ringStartRadii[N - 1] + ringWidths[N - 1] + MONTH_TICK_TERMINAL;
+        const ringGeo = computeRingGeometry({
+            size,
+            innerRadius,
+            outerRadius,
+            numRings: N,
+            monthTickTerminal: MONTH_TICK_TERMINAL,
+            monthTextInset: MONTH_TEXT_INSET,
+        });
+        const { ringWidths, ringStartRadii, lineInnerRadius, lineOuterRadius, monthLabelRadius } = ringGeo;
     
         // **Include the `<style>` code here**
         svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg" preserveAspectRatio="xMidYMid meet">`;
@@ -586,114 +578,12 @@ export function createTimelineSVG(
         svg += `<defs>`;
         
         // Define patterns for Working and Todo states with Publish Stage colors
-        svg += `${Object.entries(PUBLISH_STAGE_COLORS).map(([stage, color]) => {
-            // Use full stage color for plaid patterns, opacity will control subtlety
-            return `
-            <pattern id="plaidWorking${stage}" patternUnits="userSpaceOnUse" width="80" height="20" patternTransform="rotate(-20)">
-                <rect width="80" height="20" fill="var(--rt-color-working)" opacity="var(--rt-color-plaid-opacity)"/>
-                <path d="M 0 10 Q 2.5 -5, 5 10 Q 7.5 25, 10 10 Q 12.5 5, 15 10 Q 17.5 25, 20 10 Q 22.5 -5, 25 10 Q 27.5 25, 30 10 Q 32.5 5, 35 10 Q 37.5 25, 40 10 Q 42.5 -5, 45 10 Q 47.5 25, 50 10 Q 52.5 5, 55 10 Q 57.5 25, 60 10 Q 62.5 -5, 65 10 Q 67.5 25, 70 10 Q 72.5 5, 75 10 Q 77.5 25, 80 10" 
-                    stroke="${color}" 
-                    stroke-opacity="var(--rt-color-plaid-stroke-opacity)" 
-                    stroke-width="1.5" 
-                    fill="none" />
-            </pattern>
-            
-            <pattern id="plaidTodo${stage}" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
-                <rect width="10" height="10" fill="var(--rt-color-todo)" opacity="var(--rt-color-plaid-opacity)"/>
-                <line x1="0" y1="0" x2="0" y2="10" 
-                    stroke="${color}" 
-                    stroke-width="1.5" 
-                    stroke-opacity="0.5"/>
-                <line x1="0" y1="0" x2="10" y2="0" 
-                    stroke="${color}" 
-                    stroke-width="1.5" 
-                    stroke-opacity="0.5"/>
-            </pattern>
-        `;}).join('')}`;
+        svg += renderDefs(PUBLISH_STAGE_COLORS);
         
-        // Define Lucide icon symbols for center publish-stage key
-        svg += `
-            <symbol id="icon-circle-slash" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <line x1="9" x2="15" y1="15" y2="9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </symbol>
-            <symbol id="icon-smile" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M8 14s1.5 2 4 2 4-2 4-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <line x1="9" x2="9.01" y1="9" y2="9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <line x1="15" x2="15.01" y1="9" y2="9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </symbol>
-            <symbol id="icon-house" viewBox="0 0 24 24">
-                <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </symbol>
-            <symbol id="icon-printer" viewBox="0 0 24 24">
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <rect x="6" y="14" width="12" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </symbol>
-            <symbol id="icon-arrow-right-dash" viewBox="0 0 24 24">
-                <path d="M11 9a1 1 0 0 0 1-1V5.061a1 1 0 0 1 1.811-.75l6.836 6.836a1.207 1.207 0 0 1 0 1.707l-6.836 6.835a1 1 0 0 1-1.811-.75V16a1 1 0 0 0-1-1H9a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M4 9v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </symbol>
-            <symbol id="icon-arrow-down" viewBox="0 0 24 24">
-                <path d="M15 11a1 1 0 0 0 1 1h2.939a1 1 0 0 1 .75 1.811l-6.835 6.836a1.207 1.207 0 0 1-1.707 0L4.31 13.81a1 1 0 0 1 .75-1.811H8a1 1 0 0 0 1-1V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </symbol>
-            <symbol id="icon-bookmark-check" viewBox="0 0 24 24">
-                <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="m9 10 2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </symbol>
-            <!-- Arrow Up/Down From Line (toggle rotation) -->
-            <symbol id="icon-arrow-up-from-line" viewBox="0 0 24 24">
-                <path d="m18 9-6-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M12 3v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M5 21h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </symbol>
-            <symbol id="icon-arrow-down-from-line" viewBox="0 0 24 24">
-                <path d="M19 3H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M12 21V7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="m6 15 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </symbol>
-        `;
 
         // Define outer arc paths for months
-        months.forEach(({ name, angle }, index) => {
-            // Calculate angular offset for 9px at the label radius
-            // Month text path sits a fixed inset from the month tick ring
-            const outerlabelRadius = lineOuterRadius - MONTH_TEXT_INSET;
-            // Convert 5px to radians based on the circle's circumference
-            const pixelToRadian = (5 * 2 * Math.PI) / (2 * Math.PI * outerlabelRadius);
-            
-            // Make the month offset very small, similar to but positive (clockwise) for Acts
-            const angleOffset = 0.01; // Half of previous value (0.02)
-            const startAngle = angle + angleOffset;  // Small offset to move label clockwise
-            const endAngle = startAngle + (Math.PI / 24); // Short arc length
-  
-            const pathId = `monthLabelPath-${index}`;
+        svg += renderMonthLabelDefs({ months, monthLabelRadius });
 
-            svg += `
-                <path id="${pathId}"
-                    d="
-                        M ${formatNumber(outerlabelRadius * Math.cos(startAngle))} ${formatNumber(outerlabelRadius * Math.sin(startAngle))}
-                        A ${formatNumber(outerlabelRadius)} ${formatNumber(outerlabelRadius)} 0 0 1 ${formatNumber(outerlabelRadius * Math.cos(endAngle))} ${formatNumber(outerlabelRadius * Math.sin(endAngle))}
-                    "
-                    fill="none"
-                />
-            `;
-        });
-
-        // Add filter for plot title background on hover (separate SVG effect)
-        svg += `
-            <filter id="plotTextBg" x="-25%" y="-25%" width="150%" height="150%">
-                <feMorphology in="SourceAlpha" operator="dilate" radius="1.8" result="DILATE"/>
-                <feFlood flood-color="#000000" result="BLACK"/>
-                <feComposite in="BLACK" in2="DILATE" operator="in" result="BG"/>
-                <feMerge>
-                    <feMergeNode in="BG"/>
-                    <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-            </filter>
-        `;
 
         // Close defs act
         svg += `</defs>`;
@@ -1328,7 +1218,7 @@ export function createTimelineSVG(
                         })();
 
                         svg += `
-                        <g class="rt-scene-group" data-item-type="${scene.itemType === 'Plot' ? 'Plot' : 'Scene'}" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(effectiveOuterR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-outer-${idx}">
+                        ${renderSceneGroup({ scene, act, ring, idx, innerR, outerR: effectiveOuterR, startAngle: sceneStartAngle, endAngle: sceneEndAngle, subplotIdxAttr })}
                             <path id="${sceneId}"
                                   d="${arcPath}" 
                                   fill="${color}" 
@@ -1468,7 +1358,7 @@ export function createTimelineSVG(
                             // (No plot labels rendered in inner rings)
             
                             svg += `
-                            <g class="rt-scene-group" data-item-type="Scene" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(sceneStartAngle)}" data-end-angle="${formatNumber(sceneEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${subplotIdxAttr}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                            ${renderSceneGroup({ scene, act, ring, idx, innerR, outerR, startAngle: sceneStartAngle, endAngle: sceneEndAngle, subplotIdxAttr })}
                                 <path id="${sceneId}"
                                       d="${arcPath}" 
                                       fill="${color}" 
@@ -1528,7 +1418,7 @@ export function createTimelineSVG(
                                 const plotArcPath = buildCellArcPath(innerR, outerR + 2, plotStartAngle, plotEndAngle);
                                 const sceneId = `scene-path-${act}-${ring}-${idx}`;
                                 svg += `
-                                <g class="rt-scene-group" data-item-type="Plot" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(plotStartAngle)}" data-end-angle="${formatNumber(plotEndAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR + 2)}" data-path="${plotNote.path ? encodeURIComponent(plotNote.path) : ''}" id="scene-group-${act}-${ring}-${idx}">
+                                ${renderPlotGroup({ plot: plotNote, act, ring, idx, innerR, outerR: outerR + 2, startAngle: plotStartAngle, endAngle: plotEndAngle })}
                                     <path id="${sceneId}"
                                           d="${plotArcPath}" 
                                           fill="#E6E6E6" 
@@ -1782,7 +1672,7 @@ export function createTimelineSVG(
         });
         const baseTotalScenes = Math.max(uniqueSceneCount, maxSceneNumber);
 
-        const currentYearLabel = new Date().getFullYear();
+        const currentYearLabel = String(new Date().getFullYear());
         const headerY = startYGrid - (cellGapY + GRID_HEADER_OFFSET_Y);
 
         // Calculate estimated total scenes: max(unique scene files, highest numeric prefix from titles)
@@ -1845,87 +1735,21 @@ export function createTimelineSVG(
             `;
         };
 
-        svg += `
-             <g class="color-key-center">
-                 <!-- Column headers (status) -->
-                 ${statusesForGrid.map((status, c) => {
-                     const label = status === 'Todo' ? 'Tdo' : status === 'Working' ? 'Wrk' : status === 'Completed' ? 'Cmt' : 'Due';
-                     const x = startXGrid + c * (cellWidth + cellGapX) + (cellWidth / 2);
-                     const y = headerY;
-                     const tip = STATUS_HEADER_TOOLTIPS[status] || status;
-                     return `
-                         <g class="status-header">
-                             <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="alphabetic" class="center-key-text status-header-letter">${label}</text>
-                             <rect x="${x - 18}" y="${y - 18}" width="36" height="24" fill="transparent" pointer-events="all">
-                                 <title>${tip}</title>
-                             </rect>
-                         </g>
-                     `;
-                 }).join('')}
-
-                 <!-- Row headers (stages) and year -->
-                 <!-- Old top-left year removed -->
-                 <!-- Year bottom-right, left-justified to last column edge -->
-                 <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}//${estimatedTotalScenes}</text>
-                 ${stagesForGrid.map((stage, r) => {
-                     const short = stage === 'Zero' ? 'Z' : stage === 'Author' ? 'A' : stage === 'House' ? 'H' : 'P';
-                     const xh = startXGrid - 12;
-                     const yh = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2 + 1);
-                     const tooltip = STAGE_HEADER_TOOLTIPS[stage] || stage;
-                     return `
-                         <g class="stage-header">
-                             <text x="${xh}" y="${yh}" text-anchor="end" dominant-baseline="middle" class="center-key-text stage-header-letter">${short}</text>
-                             <rect x="${xh - 14}" y="${yh - 14}" width="28" height="28" fill="transparent" pointer-events="all">
-                                 <title>${tooltip}</title>
-                             </rect>
-                         </g>
-                     `;
-                 }).join('')}
-
-                 <!-- Grid cells -->
-                 ${stagesForGrid.map((stage, r) => {
-                    return `${statusesForGrid.map((status, c) => {
-                        const count = gridCounts[stage][status] || 0;
-                        const x = startXGrid + c * (cellWidth + cellGapX);
-                        const y = startYGrid + r * (cellHeight + cellGapY);
-                        const completeRow = isStageCompleteForGridRow(r, gridCounts, stagesForGrid, maxStageIdxForGrid);
-                        if (completeRow) {
-                            const mostAdvancedStage = stagesForGrid[maxStageIdxForGrid];
-                            const solid = (PUBLISH_STAGE_COLORS[mostAdvancedStage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
-                            return `
-                                <g transform="translate(${x}, ${y})">
-                                    <rect x="0" y="0" width="${cellWidth}" height="${cellHeight}" fill="${solid}">
-                                        ${count > 0 ? `<title>${stage} • ${status}: ${count}</title>` : ''}
-                                    </rect>
-                                    ${status === 'Completed' && count > 0 ? `<text x="2" y="${cellHeight - 3}" text-anchor="start" dominant-baseline="alphabetic" class="grid-completed-count">${count}</text>` : ''}
-                                    <use href="#icon-bookmark-check" x="${(cellWidth - 18) / 2}" y="${(cellHeight - 18) / 2}" width="18" height="18" class="completed-icon" />
-                                </g>
-                            `;
-                        }
-                        return renderGridCell(stage, status, x, y, count, cellWidth, cellHeight);
-                    }).join('')}`;
-                }).join('')}
-
-                 <!-- Per-stage progress arrows -->
-                 ${(() => {
-                    // Use already computed maxStageIdxForGrid; if none, show nothing
-                    if (maxStageIdxForGrid === -1) return '';
-                    return stagesForGrid.map((stage, r) => {
-                        let arrowId = '';
-                        if (r === maxStageIdxForGrid) {
-                            arrowId = 'icon-arrow-right-dash';
-                        } else if (r < maxStageIdxForGrid) {
-                            arrowId = 'icon-arrow-down';
-                        } else {
-                            return '';
-                        }
-                        const ax = startXGrid + gridWidth + 4;
-                        const ay = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2);
-                        return `<use href=\"#${arrowId}\" x=\"${ax}\" y=\"${ay - 12}\" width=\"24\" height=\"24\" style=\"color: var(--text-normal)\" />`;
-                    }).join('');
-                })()}
-             </g>
-         `;
+        svg += renderCenterGrid({
+            statusesForGrid,
+            stagesForGrid,
+            gridCounts,
+            PUBLISH_STAGE_COLORS,
+            currentYearLabel,
+            estimatedTotalScenes,
+            startXGrid,
+            startYGrid,
+            cellWidth,
+            cellHeight,
+            cellGapX,
+            cellGapY,
+            headerY,
+        });
 
         // Add tick mark and label for the estimated completion date if available
         // (Moved here to draw AFTER center stats so it appears on top)
@@ -1947,21 +1771,23 @@ export function createTimelineSVG(
             const tickInnerX = tickInnerRadius * Math.cos(absoluteDatePos);
             const tickInnerY = tickInnerRadius * Math.sin(absoluteDatePos);
             
-            svg += `
-                <line 
-                    x1="${formatNumber(tickOuterX)}" 
-                    y1="${formatNumber(tickOuterY)}" 
-                    x2="${formatNumber(tickInnerX)}" 
-                    y2="${formatNumber(tickInnerY)}" 
-                    class="estimated-date-tick" 
-                />
-                <circle 
-                    cx="${formatNumber(tickInnerX)}" 
-                    cy="${formatNumber(tickInnerY)}" 
-                    r="4" 
-                    class="estimated-date-dot" 
-                />
-            `;
+            if ([tickOuterX, tickOuterY, tickInnerX, tickInnerY].every((v) => Number.isFinite(v))) {
+                svg += `
+                    <line 
+                        x1="${formatNumber(tickOuterX)}" 
+                        y1="${formatNumber(tickOuterY)}" 
+                        x2="${formatNumber(tickInnerX)}" 
+                        y2="${formatNumber(tickInnerY)}" 
+                        class="estimated-date-tick" 
+                    />
+                    <circle 
+                        cx="${formatNumber(tickInnerX)}" 
+                        cy="${formatNumber(tickInnerY)}" 
+                        r="4" 
+                        class="estimated-date-dot" 
+                    />
+                `;
+            }
 
             // Use estimateResult.date for display format (no year-count prefix)
             const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
@@ -1981,92 +1807,31 @@ export function createTimelineSVG(
             const offsetX = maxOffset * Math.cos(absoluteDatePos);
             const maxYOffset = 5;
             const offsetY = -maxYOffset * Math.sin(absoluteDatePos);
-            const labelX = formatNumber(labelRadius * Math.cos(absoluteDatePos) + offsetX);
-            const labelY = formatNumber(labelRadius * Math.sin(absoluteDatePos) + offsetY);
-
-            svg += `
-                <text
-                    x="${labelX}"
-                    y="${labelY}"
-                    text-anchor="middle"
-                    dominant-baseline="middle"
-                    class="estimation-date-label"
-                >
-                    ${dateDisplay}
-                </text>
-            `;
+            const labelXNum = labelRadius * Math.cos(absoluteDatePos) + offsetX;
+            const labelYNum = labelRadius * Math.sin(absoluteDatePos) + offsetY;
+            if (Number.isFinite(labelXNum) && Number.isFinite(labelYNum)) {
+                const labelX = formatNumber(labelXNum);
+                const labelY = formatNumber(labelYNum);
+                svg += `
+                    <text
+                        x="${labelX}"
+                        y="${labelY}"
+                        text-anchor="middle"
+                        dominant-baseline="middle"
+                        class="estimation-date-label"
+                    >
+                        ${dateDisplay}
+                    </text>
+                `;
+            }
 
             //   Replace dateDisplay above for complete stats ${dateDisplay} ${statsDisplay}
         }
 
-        // First, add the background layer with subplot labels
-        // --- START: Subplot Label Generation ---
-        // Wrap subplot labels in a background layer for proper z-index
+        // Subplot label background layer
         svg += `<g class="background-layer">`;
-        
-        // Only show subplot labels in Act 3 (top position)
-        const act = 3; // Act 3 is at the top (12 o'clock)
-        const totalRings = NUM_RINGS;
-        const subplotCount = masterSubplotOrder.length;
-        const ringsToUse = Math.min(subplotCount, totalRings);
-        
-        for (let ringOffset = 0; ringOffset < ringsToUse; ringOffset++) {
-            const ring = totalRings - ringOffset - 1; // Start from the outermost ring
-            const subplot = masterSubplotOrder[ringOffset];
-            
-            // Skip empty subplot
-            if (!subplot) continue;
-            
-            const innerR = ringStartRadii[ring];
-            const outerR = innerR + ringWidths[ring];
-            
-            // Create a unique ID for the label path
-            const labelPathId = `subplot-label-path-${ring}`;
-            const labelRadius = (innerR + outerR) / 2; // Center of the ring
-            
-            // Calculate available height for text (y-axis distance)
-            const availableHeight = ringWidths[ring];
-            
-            // Calculate dynamic font size based on available height
-            // Use 95% of available height to fill more space
-            const fontSize = Math.floor(availableHeight * 0.95);
-            
-            // Define arc to END at 270 degrees (12 o'clock) for right justification start
-            // Use 90 degrees for the arc length to span Act 3
-            const arcLength = Math.PI / 2; // 90 degrees span
-            const endAngle = -Math.PI / 2; // End at 12 o'clock position
-            const startAngle = endAngle - arcLength; // Start 90 degrees earlier (180 deg)
-            
-            // Calculate the actual length of the arc path in pixels
-            const arcPixelLength = labelRadius * arcLength; 
-            
-            // Ensure subplot text is properly escaped
-            const isOuterRing = ringOffset === 0;
-            const labelRaw = (isOuterRing && plugin.settings.outerRingAllScenes) ? 'ALL SCENES' : subplot.toUpperCase();
-            const safeSubplotText = plugin.safeSvgText(labelRaw);
-            
-            // Create the path for the label - will set CSS variable via JavaScript
-            svg += `
-                <g class="subplot-label-group" data-font-size="${fontSize}">
-                    <path id="${labelPathId}"
-                        d="M ${formatNumber(labelRadius * Math.cos(startAngle))} ${formatNumber(labelRadius * Math.sin(startAngle))}
-                        A ${formatNumber(labelRadius)} ${formatNumber(labelRadius)} 0 0 1 
-                        ${formatNumber(labelRadius * Math.cos(endAngle))} ${formatNumber(labelRadius * Math.sin(endAngle))}"
-                        class="subplot-ring-label-path"
-                    />
-                    <text class="rt-subplot-ring-label-text" data-subplot-index="${ringOffset}" data-subplot-name="${escapeXml(subplot)}">
-                        <textPath href="#${labelPathId}" startOffset="100%" text-anchor="end"
-                                textLength="${arcPixelLength}" lengthAdjust="spacingAndGlyphs">
-                            ${safeSubplotText}
-                        </textPath>
-                    </text>
-                </g>
-            `;
-        }
-        
-        // Close the background layer group
+        svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, outerRingAllScenes: !!plugin.settings.outerRingAllScenes });
         svg += `</g>`;
-        // --- END: Subplot Label Generation ---
 
         // Add number squares after background layer but before synopses
         if (plugin.settings.outerRingAllScenes) {

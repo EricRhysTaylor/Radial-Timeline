@@ -1291,6 +1291,50 @@
   border-top: 1px solid var(--background-modifier-border);
 }
 
+/* Subplot Picker Modal Styles */
+.rt-subplot-picker-info {
+  margin-bottom: 20px;
+}
+
+.rt-subplot-picker-info p {
+  margin: 0;
+  color: var(--text-normal);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rt-subplot-picker-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-normal);
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.rt-subplot-picker-select {
+  margin-bottom: 16px;
+}
+
+.rt-subplot-picker-select .dropdown {
+  width: 100%;
+  font-size: 14px;
+}
+
+.rt-subplot-picker-stats {
+  padding: 12px;
+  margin-bottom: 20px;
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+  border-left: 3px solid var(--interactive-accent);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Progress View Styles */
 .rt-beats-progress-container {
   margin: 20px 0;
