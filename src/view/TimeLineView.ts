@@ -102,7 +102,7 @@ export class RadialTimelineView extends ItemView {
     private setupSearchControls(): void {
         const clearSearchBtn = this.contentEl.querySelector('.rt-clear-search-btn');
         if (clearSearchBtn) {
-            this.registerDomEvent(clearSearchBtn, 'click', () => {
+            this.registerDomEvent(clearSearchBtn as HTMLElement, 'click', () => {
                 this.plugin.clearSearch();
             });
         }
@@ -1091,14 +1091,14 @@ This is a test scene created to help with initial Radial timeline setup.
                     const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement;
                     if (svg) {
                         let lastHoverGroup: Element | null = null;
-                        this.registerDomEvent(svg, 'pointerover', (e: PointerEvent) => {
+                        this.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
                             const g = (e.target as Element).closest('.rt-scene-group');
                             if (g && g !== lastHoverGroup) {
                                 onEnterLeave(true, g);
                                 lastHoverGroup = g;
                             }
                         });
-                        this.registerDomEvent(svg, 'pointerout', (e: PointerEvent) => {
+                        this.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
                             const g = (e.target as Element).closest('.rt-scene-group');
                             if (g && g === lastHoverGroup) {
                                 onEnterLeave(false, g);
@@ -1178,7 +1178,7 @@ This is a test scene created to help with initial Radial timeline setup.
                     return svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
                 };
 
-                view.registerDomEvent(svg, 'pointerover', (e: PointerEvent) => {
+                view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
                     // In Gossamer mode, normal scene hovers are disabled
                     if (view.interactionMode === 'gossamer') return;
                     
@@ -1210,7 +1210,7 @@ This is a test scene created to help with initial Radial timeline setup.
                     }
                 });
 
-                view.registerDomEvent(svg, 'pointerout', (e: PointerEvent) => {
+                view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
                     // In Gossamer mode, normal scene hovers are disabled
                     if (view.interactionMode === 'gossamer') return;
                     
@@ -1485,7 +1485,7 @@ This is a test scene created to help with initial Radial timeline setup.
 
                     rafId = null;
                 };
-                view.registerDomEvent(svg, 'pointermove', (e: PointerEvent) => {
+                view.registerDomEvent(svg as unknown as HTMLElement, 'pointermove', (e: PointerEvent) => {
                     if (rafId !== null) return;
                     rafId = window.requestAnimationFrame(() => onMove(e));
                 });
@@ -1543,7 +1543,7 @@ This is a test scene created to help with initial Radial timeline setup.
             const filePath = decodeURIComponent(encodedPath);
             
             // Set up click handler
-            this.registerDomEvent(path, "click", async (evt: MouseEvent) => {
+            this.registerDomEvent(path as HTMLElement, "click", async (evt: MouseEvent) => {
                 const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
                 if (!(file instanceof TFile)) return;
 
@@ -1604,7 +1604,7 @@ This is a test scene created to help with initial Radial timeline setup.
             // Cursor styling handled via CSS (.rt-scene-path)
             
             // Add mouse enter/leave handlers to highlight files in explorer and tabs
-            this.registerDomEvent(group, "mouseenter", () => {
+            this.registerDomEvent(group as HTMLElement, "mouseenter", () => {
                 // Disable scene hover in Gossamer mode (but allow plot slices)
                 const itemType = group.getAttribute('data-item-type');
                 if (this.interactionMode === 'gossamer' && itemType !== 'Plot') return;
@@ -1617,7 +1617,7 @@ This is a test scene created to help with initial Radial timeline setup.
                 }
             });
             
-            this.registerDomEvent(group, "mouseleave", () => {
+            this.registerDomEvent(group as HTMLElement, "mouseleave", () => {
                 // Disable scene hover in Gossamer mode (but allow plot slices)
                 const itemType = group.getAttribute('data-item-type');
                 if (this.interactionMode === 'gossamer' && itemType !== 'Plot') return;
@@ -1953,16 +1953,16 @@ This is a test scene created to help with initial Radial timeline setup.
         
         // Register svg-level handlers using registerDomEvent (available in View classes)
         // Event cleanup is handled automatically when the view unloads
-        view.registerDomEvent(svg, 'click', plotSliceClick);
-        view.registerDomEvent(svg, 'click', dotClick);
-        view.registerDomEvent(svg, 'click', backgroundClick);
+        view.registerDomEvent(svg as unknown as HTMLElement, 'click', plotSliceClick);
+        view.registerDomEvent(svg as unknown as HTMLElement, 'click', dotClick);
+        view.registerDomEvent(svg as unknown as HTMLElement, 'click', backgroundClick);
         
         // Register pointer event handlers
         // Event cleanup is handled automatically when the view unloads
-        view.registerDomEvent(svg, 'pointerover', plotSliceOver);
-        view.registerDomEvent(svg, 'pointerout', plotSliceOut);
-        view.registerDomEvent(svg, 'pointerover', dotOver);
-        view.registerDomEvent(svg, 'pointerout', dotOut);
+        view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', plotSliceOver);
+        view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', plotSliceOut);
+        view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', dotOver);
+        view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', dotOut);
         
         // Store handlers for manual cleanup when switching modes
         this.gossamerEventHandlers.set('pointerover::svg', plotSliceOver as EventListener);
@@ -1970,9 +1970,9 @@ This is a test scene created to help with initial Radial timeline setup.
         // Additionally, attach direct handlers to each Plot slice group to ensure reliability
         const plotGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Plot"]');
         plotGroups.forEach((el) => {
-            view.registerDomEvent(el, 'pointerenter', (ev) => plotSliceEnter(el, ev));
-            view.registerDomEvent(el, 'pointerleave', (ev) => plotSliceOut(ev as PointerEvent));
-            view.registerDomEvent(el, 'click', (ev) => plotSliceClick(ev as MouseEvent));
+            view.registerDomEvent(el as HTMLElement, 'pointerenter', (ev) => plotSliceEnter(el, ev));
+            view.registerDomEvent(el as HTMLElement, 'pointerleave', (ev) => plotSliceOut(ev as PointerEvent));
+            view.registerDomEvent(el as HTMLElement, 'click', (ev) => plotSliceClick(ev as MouseEvent));
         });
         this.gossamerEventHandlers.set('pointerover::dot::svg', dotOver as EventListener);
         this.gossamerEventHandlers.set('pointerout::dot::svg', dotOut as EventListener);

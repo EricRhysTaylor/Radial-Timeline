@@ -3,14 +3,14 @@
  */
 import type RadialTimelinePlugin from './main';
 import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, shiftGossamerHistory, extractBeatOrder } from './utils/gossamer';
-import { Notice, TFile } from 'obsidian';
+import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './view/GossamerScoreModal';
 
 // Helper to find Plot note by beat title
-function findPlotNoteByTitle(files: TFile[], beatTitle: string): TFile | null {
+function findPlotNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile | null {
   for (const file of files) {
     if (file.basename === beatTitle || file.basename === beatTitle.replace(/^\d+\s+/, '')) {
-      const cache = file.app.metadataCache.getFileCache(file);
+      const cache = app.metadataCache.getFileCache(file);
       const fm = cache?.frontmatter;
       if (fm && (fm.Class === 'Plot' || fm.class === 'Plot')) {
         return file;
@@ -31,7 +31,7 @@ async function saveGossamerScores(
   let updateCount = 0;
   
   for (const [beatTitle, newScore] of scores) {
-    const file = findPlotNoteByTitle(files, beatTitle);
+    const file = findPlotNoteByTitle(files, beatTitle, plugin.app);
     if (!file) {
       console.warn(`[Gossamer] No Plot note found for beat: ${beatTitle}`);
       continue;
@@ -208,7 +208,7 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     const selectedBeatModel = plugin.settings.plotSystem?.trim() || undefined;
     
     // Build all runs (Gossamer1-30) with min/max band
-    const allRuns = buildAllGossamerRuns(scenes, selectedBeatModel);
+    const allRuns = buildAllGossamerRuns(scenes as unknown as { itemType?: string; [key: string]: unknown }[], selectedBeatModel);
     
     if (allRuns.current.beats.length === 0) {
       const systemMsg = selectedBeatModel ? ` with Plot System: ${selectedBeatModel}` : '';
@@ -247,7 +247,7 @@ function exitGossamerMode(plugin: RadialTimelinePlugin) {
   if (!view) return;
   
   // Remove Gossamer event listeners before switching mode
-  const svg = view.containerEl.querySelector('.radial-timeline-svg') as SVGSVGElement;
+  const svg = (view as any).containerEl?.querySelector('.radial-timeline-svg') as SVGSVGElement;
   if (svg && typeof (view as any).removeGossamerEventListeners === 'function') {
     (view as any).removeGossamerEventListeners(svg);
   }

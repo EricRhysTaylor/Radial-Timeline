@@ -2323,8 +2323,9 @@ export function createTimelineSVG(
         {
             // Only render Gossamer layer if we're in Gossamer mode
             // Check if any view is in gossamer mode
-            const views = plugin.app.workspace.getLeavesOfType('radial-timeline');
-            const isGossamerMode = views.some((leaf) => {
+            // SAFE: any type used for accessing app property on PluginRendererFacade
+            const views = (plugin as any).app.workspace.getLeavesOfType('radial-timeline');
+            const isGossamerMode = views.some((leaf: { view: { interactionMode?: string } }) => {
                 const view = leaf.view as { interactionMode?: string };
                 return view?.interactionMode === 'gossamer';
             });
