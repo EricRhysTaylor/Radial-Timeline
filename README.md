@@ -126,7 +126,7 @@ The plugin supports plot structuring using yaml class: plot. These appear as nar
 
 ## Gossamer momentum view
 
-Using your plot beats system, this view grays the timeline and displays the momentum values tied to each plot beat to show how well the manuscript is building tension and excitement. Works with any plot structure - whether you use Save the Cat (15 beats), Hero's Journey, or your own custom plot system. Simply create Plot notes with `Class: Plot` and Gossamer will analyze whatever structure you've built.
+Using your plot beats system, this view grays the timeline and displays the momentum values tied to each plot beat to show how well the manuscript is building tension and excitement. Works with any plot structure - whether you use Save the Cat (15 beats), Hero's Journey, or your own custom plot system. Simply create Plot notes with Class: Plot and Gossamer will analyze whatever structure you've built.
 
 Workflow:
 - Use the "Gossamer: Generate manuscript" command and hand off to your favorite LLM to generate scores between 0 and 100 for each beat

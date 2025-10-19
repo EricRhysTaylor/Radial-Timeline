@@ -2101,3 +2101,8 @@
   font-size: 12px;
   color: var(--text-muted);
 }
+
+.rt-plot-system-selected {
+  color: var(--text-success);
+  font-weight: 500;
+}

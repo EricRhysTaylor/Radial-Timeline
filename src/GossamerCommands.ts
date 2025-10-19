@@ -237,6 +237,8 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
 function enterGossamerMode(plugin: RadialTimelinePlugin) {
   const view = getFirstView(plugin);
   if (!view) return;
+  // Remember prior interaction mode so we can restore directly without intermediate flash
+  rememberPreviousInteractionMode(view);
   setInteractionMode(view, 'gossamer');
   // Setup will now happen inside renderTimeline after DOM is ready
   plugin.refreshTimelineIfNeeded(undefined);
@@ -251,14 +253,17 @@ function exitGossamerMode(plugin: RadialTimelinePlugin) {
   if (svg && typeof (view as any).removeGossamerEventListeners === 'function') {
     (view as any).removeGossamerEventListeners(svg);
   }
-  
-  setInteractionMode(view, 'normal');
+
   restoreBaseMode(plugin);
+  // Restore prior interaction mode directly to avoid showing normal/all-scenes briefly
+  const prior = consumePreviousInteractionMode() || 'normal';
+  setInteractionMode(view, prior);
   plugin.refreshTimelineIfNeeded(undefined);
 }
 
 // Base-mode helpers
 let _previousBaseAllScenes: boolean | null = null;
+let _previousInteractionMode: 'normal' | 'mainplot' | null = null;
 
 export function setBaseModeAllScenes(plugin: RadialTimelinePlugin) {
   if (_previousBaseAllScenes === null) _previousBaseAllScenes = !!plugin.settings.outerRingAllScenes;
@@ -274,6 +279,19 @@ export function restoreBaseMode(plugin: RadialTimelinePlugin) {
     plugin.saveSettings();
     _previousBaseAllScenes = null;
   }
+}
+
+function rememberPreviousInteractionMode(view: unknown) {
+  const mode = getInteractionMode(view);
+  if (mode === 'normal' || mode === 'mainplot') {
+    _previousInteractionMode = mode;
+  }
+}
+
+function consumePreviousInteractionMode(): 'normal' | 'mainplot' | null {
+  const m = _previousInteractionMode;
+  _previousInteractionMode = null;
+  return m;
 }
 
 export function resetRotation(plugin: RadialTimelinePlugin) {
@@ -303,15 +321,15 @@ function hasKey(obj: unknown, key: string): obj is Record<string, unknown> {
   return typeof obj === 'object' && obj !== null && key in (obj as Record<string, unknown>);
 }
 
-function getInteractionMode(view: unknown): 'normal' | 'gossamer' | undefined {
+function getInteractionMode(view: unknown): 'normal' | 'mainplot' | 'gossamer' | undefined {
   if (hasKey(view, 'interactionMode')) {
     const val = (view as Record<string, unknown>).interactionMode;
-    if (val === 'normal' || val === 'gossamer') return val;
+    if (val === 'normal' || val === 'gossamer' || val === 'mainplot') return val as any;
   }
   return undefined;
 }
 
-function setInteractionMode(view: unknown, mode: 'normal' | 'gossamer'): void {
+function setInteractionMode(view: unknown, mode: 'normal' | 'mainplot' | 'gossamer'): void {
   if (hasKey(view, 'interactionMode')) {
     (view as { interactionMode: 'normal' | 'mainplot' | 'gossamer' }).interactionMode = mode;
   }

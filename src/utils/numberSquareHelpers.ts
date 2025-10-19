@@ -3,21 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-/**
- * Helper function to escape XML/HTML special character
- */
-function escapeXml(unsafe: string): string {
-    return unsafe.replace(/[<>&'"]/g, (c) => {
-        switch (c) {
-            case '<': return '&lt;';
-            case '>': return '&gt;';
-            case '&': return '&amp;';
-            case "'": return '&#39;';
-            case '"': return '&quot;';
-            default: return c;
-        }
-    });
-}
+import { escapeXml } from '../utils/svg';
 
 /**
  * Helper function to generate scene IDs for number squares

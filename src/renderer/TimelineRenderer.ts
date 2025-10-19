@@ -29,9 +29,18 @@ import { arcPath } from './layout/Paths';
 import { renderCenterGrid } from './components/Grid';
 import { renderMonthLabelDefs } from './components/Months';
 import { renderSubplotLabels } from './components/SubplotLabels';
-import { renderDefs } from './components/Defs';
+import { renderDefs, renderProgressRingGradients } from './components/Defs';
+import { renderEstimatedDateElements, renderEstimationArc } from './components/Progress';
+import { sceneArcPath, renderVoidCellPath } from './components/SceneArcs';
+import { renderPlotSlice } from './components/PlotSlices';
+import { renderActBorders } from './components/Acts';
+import { renderTargetDateTick } from './components/ProgressTicks';
+import { renderProgressRing } from './components/ProgressRing';
+import { serializeSynopsesToString } from './components/Synopses';
 import { renderSceneGroup } from './components/Scenes';
 import { renderPlotGroup } from './components/Plots';
+import { renderMonthSpokesAndInnerLabels, renderGossamerMonthSpokes } from './components/MonthSpokes';
+import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
 
@@ -648,32 +657,7 @@ export function createTimelineSVG(
         const currentYearEndAngle = currentYearStartAngle + (2 * Math.PI * yearProgress);
 
         // Define rainbow gradients for the segments
-        svg += `<defs>
-            <linearGradient id="linearColors1" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#FF0000"></stop>
-                <stop offset="100%" stop-color="#FF7F00"></stop>
-            </linearGradient>
-            <linearGradient id="linearColors2" x1="0.5" y1="0" x2="0.5" y2="1">
-                <stop offset="0%" stop-color="#FF7F00"></stop>
-                <stop offset="100%" stop-color="#FFFF00"></stop>
-            </linearGradient>
-            <linearGradient id="linearColors3" x1="1" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#FFFF00"></stop>
-                <stop offset="100%" stop-color="#00FF00"></stop>
-            </linearGradient>
-            <linearGradient id="linearColors4" x1="1" y1="1" x2="0" y2="0">
-                <stop offset="0%" stop-color="#00FF00"></stop>
-                <stop offset="100%" stop-color="#0000FF"></stop>
-            </linearGradient>
-            <linearGradient id="linearColors5" x1="0.5" y1="1" x2="0.5" y2="0">
-                <stop offset="0%" stop-color="#0000FF"></stop>
-                <stop offset="100%" stop-color="#4B0082"></stop>
-            </linearGradient>
-            <linearGradient id="linearColors6" x1="0" y1="1" x2="1" y2="0">
-                <stop offset="0%" stop-color="#4B0082"></stop>
-                <stop offset="100%" stop-color="#8F00FF"></stop>
-            </linearGradient>
-        </defs>`;
+        svg += renderProgressRingGradients();
 
         // Add the base purple circle (provides background for entire ring)
         svg += `
@@ -726,194 +710,25 @@ export function createTimelineSVG(
 
              // Note: Red circles removed - year indicators now shown in date label instead
              
-             if (yearsDiff > 0) {
-                 // For multi-year estimates, the base circle already provides the full purple background
-                 // No additional circle needed - year indicator in label shows multi-year status
-             } else {
-                 // For current year estimates, draw partial arc from January 1 to estimated date position
-                 const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
-                 const estimatedDateAngle = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
-                 
-                 let arcAngleSpan = estimatedDateAngle - startAngle;
-                 if (arcAngleSpan < 0) arcAngleSpan += 2 * Math.PI;
-                 
-                 svg += `
-                     <path
-                         d="
-                             M ${progressRadius * Math.cos(startAngle)} ${progressRadius * Math.sin(startAngle)}
-                             A ${progressRadius} ${progressRadius} 0 ${arcAngleSpan > Math.PI ? 1 : 0} 1 
-                             ${progressRadius * Math.cos(estimatedDateAngle)} ${progressRadius * Math.sin(estimatedDateAngle)}
-                         "
-                         class="progress-ring-base"
-                     />
-                 `;
-             }
+            if (yearsDiff <= 0) {
+                svg += renderEstimationArc({ estimateDate: estimatedCompletionDate, progressRadius });
+            }
 
          }
          // --- Draw Estimation Arc --- END ---
 
          
-        // BEGIN add the month spokes group (existing code)
-        svg += `<g class="month-spokes">`;
-
-        // For each month, draw the inner spoke and labels
-    
-        // Then modify the inner month labels to curve along the inner arc
-        months.forEach(({ name, angle }, monthIndex) => {
-            const x1 = formatNumber((lineInnerRadius - 5) * Math.cos(angle));
-            const y1 = formatNumber((lineInnerRadius - 5) * Math.sin(angle));
-            const x2 = formatNumber(lineOuterRadius * Math.cos(angle));
-            const y2 = formatNumber(lineOuterRadius * Math.sin(angle));
-
-            // Check if this is an Act boundary (months 0, 4, or 8)
-            const isActBoundary = [0, 4, 8].includes(monthIndex);
-            // Check if this month has passed
-            const isPastMonth = monthIndex < currentMonthIndex;
-
-            // Draw the spoke line
-            svg += `
-                <line  
-                    x1="${x1}"
-                    y1="${y1}"
-                    x2="${x2}"
-                    y2="${y2}"
-                    class="rt-month-spoke-line${isActBoundary ? ' rt-act-boundary' : ''}${isPastMonth ? ' rt-past-month' : ''}"
-                />`;
-
-            // Create curved path for inner month labels
-            const innerLabelRadius = lineInnerRadius;
-            const pixelToRadian = (5 * 2 * Math.PI) / (2 * Math.PI * innerLabelRadius);
-            const startAngle = angle + pixelToRadian;
-            const endAngle = angle + (Math.PI / 6);
-            
-            const innerPathId = `innerMonthPath-${name}`;
-            
-            svg += `
-                <path id="${innerPathId}"
-                    d="
-                        M ${formatNumber(innerLabelRadius * Math.cos(startAngle))} ${formatNumber(innerLabelRadius * Math.sin(startAngle))}
-                        A ${formatNumber(innerLabelRadius)} ${formatNumber(innerLabelRadius)} 0 0 1 ${formatNumber(innerLabelRadius * Math.cos(endAngle))} ${formatNumber(innerLabelRadius * Math.sin(endAngle))}
-                    "
-                    fill="none"
-                />
-                <text class="rt-month-label" ${isPastMonth ? 'opacity="0.5"' : ''}>
-                    <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
-                        ${months[monthIndex].shortName}
-                    </textPath>
-                </text>
-            `;
-        });
-
-        // Close the month spokes lines and text labels group
-        svg += `</g>`;
+        // Month spokes and inner labels
+        svg += renderMonthSpokesAndInnerLabels({ months, lineInnerRadius, lineOuterRadius, currentMonthIndex });
 
 
-        // Create six segments for the rainbow (Year Progress)
-        const segmentCount = 6;
-        const fullCircleAngle = 2 * Math.PI;
-        const segmentAngle = fullCircleAngle / segmentCount;
-        
-        // Calculate how many complete segments to show based on year progress
-        const completeSegments = Math.floor(yearProgress * segmentCount);
-        
-        // Calculate the partial segment angle (for the last visible segment)
-        const partialSegmentAngle = (yearProgress * segmentCount - completeSegments) * segmentAngle;
-        
-        // Draw each segment that should be visible
-        for (let i = 0; i < segmentCount; i++) {
-            // Calculate this segment's start and end angles
-            const segStart = currentYearStartAngle + (i * segmentAngle);
-            let segEnd = segStart + segmentAngle;
-            
-            // If this is beyond what should be shown based on year progress, skip it
-            if (i > completeSegments) continue;
-            
-            // If this is the last partial segment, adjust the end angle
-            if (i === completeSegments && partialSegmentAngle > 0) {
-                segEnd = segStart + partialSegmentAngle;
-            }
-            
-            // Create the arc path for this segment
-            svg += `
-                <path
-                    d="
-                        M ${progressRadius * Math.cos(segStart)} ${progressRadius * Math.sin(segStart)}
-                        A ${progressRadius} ${progressRadius} 0 ${(segEnd - segStart) > Math.PI ? 1 : 0} 1 
-                        ${progressRadius * Math.cos(segEnd)} ${progressRadius * Math.sin(segEnd)}
-                    "
-                    class="progress-ring-fill"
-                    stroke="url(#linearColors${i+1})"
-                />
-            `;
-        }
+        // Draw the year progress ring segments
+        svg += renderProgressRing({ progressRadius, yearProgress, currentYearStartAngle, segmentCount: 6 });
 
 
 
-        // --- START: Draw Target Completion Marker ---
-        let targetDateAngle = -Math.PI / 2; // Default to 12 o'clock (top)
-
-        if (plugin.settings.targetCompletionDate) {
-            try {
-                // Parse the date string, ensuring it's treated as local time
-                const targetDate = new Date(plugin.settings.targetCompletionDate + 'T00:00:00');
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Normalize today to the beginning of the day
-
-                // Only use the date if it's valid and in the future
-                if (!isNaN(targetDate.getTime()) && targetDate > today) {
-                    targetDateAngle = dateToAngle(targetDate);
-                    if (plugin.settings.debug) {
-                        plugin.log(`[Timeline Target] Using target date: ${targetDate.toISOString().slice(0,10)}, Angle: ${targetDateAngle.toFixed(2)}`);
-                    }
-                } else {
-                     if (plugin.settings.debug) {
-                        plugin.log(`[Timeline Target] Target date ${plugin.settings.targetCompletionDate} is invalid or not in the future. Using default.`);
-                     }
-                }
-            } catch (e) {
-                if (plugin.settings.debug) {
-                   plugin.log(`[Timeline Target] Error parsing target date ${plugin.settings.targetCompletionDate}. Using default. Error: ${e}`);
-                }
-                // Keep default angle if parsing fails
-            }
-        } else {
-            if (plugin.settings.debug) {
-                plugin.log(`[Timeline Target] No target date set. Using default 12 o'clock.`);
-            }
-            // Keep default angle if setting is not present
-        }
-
-        // Define radii and size (similar to estimation marker)
-        // const targetTickRadius = progressRadius; // Position relative to the progress ring - REMOVED
-        // const targetTickHalfLength = 8; // How far the tick extends in/out - REMOVED
-        const targetTickOuterRadius = progressRadius + 5; // Match red tick outer radius
-        const targetTickInnerRadius = progressRadius - 35; // Match red tick inner radius
-        const targetMarkerSize = 8; // Size of the square marker
-
-        // Draw the tick mark line
-        svg += `
-            <line
-                x1="${formatNumber(targetTickOuterRadius * Math.cos(targetDateAngle))}"
-                y1="${formatNumber(targetTickOuterRadius * Math.sin(targetDateAngle))}"
-                x2="${formatNumber((targetTickInnerRadius+3) * Math.cos(targetDateAngle))}"
-                y2="${formatNumber((targetTickInnerRadius+3) * Math.sin(targetDateAngle))}"
-                class="target-date-tick"
-            />
-        `;
-
-        // Draw the square marker centered on the INNER radius (to match red dot position)
-        const markerX = formatNumber(targetTickInnerRadius * Math.cos(targetDateAngle) - targetMarkerSize / 2);
-        const markerY = formatNumber(targetTickInnerRadius * Math.sin(targetDateAngle) - targetMarkerSize / 2);
-        svg += `
-            <rect
-                x="${markerX}"
-                y="${markerY}"
-                width="${targetMarkerSize}"
-                height="${targetMarkerSize}"
-                class="target-date-marker"
-            />
-        `;
-        // --- END: Draw Target Completion Marker ---
+        // Target completion tick/marker
+        svg += renderTargetDateTick({ plugin, progressRadius, dateToAngle });
 
         // Create master subplot order before the act loop
         const masterSubplotOrder = (() => {
@@ -1154,7 +969,7 @@ export function createTimelineSVG(
                         const color = scene.itemType === 'Plot' 
                             ? '#E6E6E6' 
                             : getFillForItem(plugin, scene, maxStageColor, PUBLISH_STAGE_COLORS, totalPlotNotes, plotIndexByKey, true, subplotColorFor, true);
-                        const arcPath = buildCellArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
+                        const arcPath = sceneArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
                         const sceneId = makeSceneId(act, ring, idx, true, true);
                         
                         // --- Create synopsis for OUTER ring item using matching ID ---
@@ -1258,8 +1073,7 @@ export function createTimelineSVG(
                     if (remainingVoidSpace > 0.001) {
                         const voidStartAngle = startAngle + totalUsedSpace;
                         const voidEndAngle = endAngle;
-                        const voidArcPath = buildCellArcPath(innerR, outerR, voidStartAngle, voidEndAngle);
-                        svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
+                        svg += renderVoidCellPath(innerR, outerR, voidStartAngle, voidEndAngle);
                     }
 
                     continue; // Done with outer ring for this act
@@ -1335,7 +1149,7 @@ export function createTimelineSVG(
             
                         
                             // Construct the arc path for the scene
-                            const arcPath = buildCellArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
+                            const arcPath = sceneArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
             
                             const sceneId = `scene-path-${act}-${ring}-${idx}`;
 
@@ -1388,7 +1202,7 @@ export function createTimelineSVG(
                         if (remainingVoidSpace > 0.001) {
                             const voidStartAngle = startAngle + totalUsedSpace;
                             const voidEndAngle = endAngle;
-                            const voidArcPath = buildCellArcPath(innerR, outerR, voidStartAngle, voidEndAngle);
+                            const voidArcPath = sceneArcPath(innerR, outerR, voidStartAngle, voidEndAngle);
                             svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
                         }
                     } else {
@@ -1414,59 +1228,30 @@ export function createTimelineSVG(
                                 const plotColor = adjustment < 0 
                                     ? plugin.darkenColor(maxStageColor, Math.abs(adjustment))
                                     : plugin.lightenColor(maxStageColor, adjustment);
-                                // Extend the plot slice outer edge by 2px so it slightly exceeds the ring
-                                const plotArcPath = buildCellArcPath(innerR, outerR + 2, plotStartAngle, plotEndAngle);
                                 const sceneId = `scene-path-${act}-${ring}-${idx}`;
-                                svg += `
-                                ${renderPlotGroup({ plot: plotNote, act, ring, idx, innerR, outerR: outerR + 2, startAngle: plotStartAngle, endAngle: plotEndAngle })}
-                                    <path id="${sceneId}"
-                                          d="${plotArcPath}" 
-                                          fill="#E6E6E6" 
-                                          class="rt-scene-path"/>
-                                    <line 
-                                        x1="${formatNumber(innerR * Math.cos(plotEndAngle))}" 
-                                        y1="${formatNumber(innerR * Math.sin(plotEndAngle))}"
-                                        x2="${formatNumber((outerR + 2) * Math.cos(plotEndAngle))}" 
-                                        y2="${formatNumber((outerR + 2) * Math.sin(plotEndAngle))}"
-                                        stroke="#000000" stroke-width="1" shape-rendering="crispEdges" />
-                                </g>`;
+                                svg += renderPlotSlice({ act, ring, idx, innerR, outerR, startAngle: plotStartAngle, endAngle: plotEndAngle, sceneId, plot: plotNote });
                                 currentAngle += plotAngularWidth;
                             });
                             if (remainingSpace > 0.001) {
-                                const voidArcPath = buildCellArcPath(innerR, outerR, currentAngle, endAngle);
-                                svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
+                                svg += renderVoidCellPath(innerR, outerR, currentAngle, endAngle);
                             }
                         } else {
-                            const voidArcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
-                                svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
+                            svg += renderVoidCellPath(innerR, outerR, startAngle, endAngle);
                             }
                         } else {
                             // All-scenes mode: just fill empty ring with a void cell
-                            const voidArcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
-                            svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
+                            svg += renderVoidCellPath(innerR, outerR, startAngle, endAngle);
                         }
                     }
                 } else {
                     // Empty subplot code
-                    const arcPath = buildCellArcPath(innerR, outerR, startAngle, endAngle);
-                    svg += `<path d="${arcPath}" class="rt-void-cell"/>`;
+                    svg += renderVoidCellPath(innerR, outerR, startAngle, endAngle);
                 }
             }
         }
 
         // After all scenes are drawn, add just the act borders (vertical lines only)
-        for (let act = 0; act < NUM_ACTS; act++) {
-            const angle = (act * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-            
-            // Draw only the vertical line (y-axis spoke) for each act boundary
-            svg += `<line 
-                x1="${formatNumber(innerRadius * Math.cos(angle))}" 
-                y1="${formatNumber(innerRadius * Math.sin(angle))}"
-                x2="${formatNumber(outerRadius * Math.cos(angle))}" 
-                y2="${formatNumber(outerRadius * Math.sin(angle))}"
-                class="act-border"
-            />`;
-        }
+        svg += renderActBorders({ NUM_ACTS, innerRadius, outerRadius });
 
         // Calculate the actual outermost outerRadius (first ring's outer edge)
         const actualOuterRadius = ringStartRadii[NUM_RINGS - 1] + ringWidths[NUM_RINGS - 1];
@@ -1754,78 +1539,7 @@ export function createTimelineSVG(
         // Add tick mark and label for the estimated completion date if available
         // (Moved here to draw AFTER center stats so it appears on top)
         if (estimateResult) {
-            const estimatedCompletionDate = estimateResult.date; // Get date again
-
-            // Use estimateResult.date for calculations
-            const estimatedMonth = estimatedCompletionDate.getMonth();
-            const estimatedDay = estimatedCompletionDate.getDate();
-            const estimatedDaysInMonth = new Date(estimatedCompletionDate.getFullYear(), estimatedMonth + 1, 0).getDate();
-            const estimatedYearPos = estimatedMonth/12 + estimatedDay/estimatedDaysInMonth/12;
-            const absoluteDatePos = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
-
-            // ... (calculate tick mark positions using absoluteDatePos) ...
-            const tickOuterRadius = progressRadius + 5;
-            const tickInnerRadius = progressRadius - 35;
-            const tickOuterX = tickOuterRadius * Math.cos(absoluteDatePos);
-            const tickOuterY = tickOuterRadius * Math.sin(absoluteDatePos);
-            const tickInnerX = tickInnerRadius * Math.cos(absoluteDatePos);
-            const tickInnerY = tickInnerRadius * Math.sin(absoluteDatePos);
-            
-            if ([tickOuterX, tickOuterY, tickInnerX, tickInnerY].every((v) => Number.isFinite(v))) {
-                svg += `
-                    <line 
-                        x1="${formatNumber(tickOuterX)}" 
-                        y1="${formatNumber(tickOuterY)}" 
-                        x2="${formatNumber(tickInnerX)}" 
-                        y2="${formatNumber(tickInnerY)}" 
-                        class="estimated-date-tick" 
-                    />
-                    <circle 
-                        cx="${formatNumber(tickInnerX)}" 
-                        cy="${formatNumber(tickInnerY)}" 
-                        r="4" 
-                        class="estimated-date-dot" 
-                    />
-                `;
-            }
-
-            // Use estimateResult.date for display format (no year-count prefix)
-            const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
-            const dateDisplay = `${dateFormatter.format(estimatedCompletionDate)}`;
-            
-            // --- Get stats string from estimateResult --- START ---
-            const total = estimateResult.total;
-            const remaining = estimateResult.remaining;
-            const rate = estimateResult.rate; // Already rounded
-            const statsDisplay = `${total}:${remaining}:${rate}`; // Compact format
-            // --- Get stats string from estimateResult --- END ---
-
-            // ... (calculate label positions using absoluteDatePos) ...
-            const labelRadius = progressRadius - 45;
-            // Fixed offset for label placement
-            const maxOffset = -18;
-            const offsetX = maxOffset * Math.cos(absoluteDatePos);
-            const maxYOffset = 5;
-            const offsetY = -maxYOffset * Math.sin(absoluteDatePos);
-            const labelXNum = labelRadius * Math.cos(absoluteDatePos) + offsetX;
-            const labelYNum = labelRadius * Math.sin(absoluteDatePos) + offsetY;
-            if (Number.isFinite(labelXNum) && Number.isFinite(labelYNum)) {
-                const labelX = formatNumber(labelXNum);
-                const labelY = formatNumber(labelYNum);
-                svg += `
-                    <text
-                        x="${labelX}"
-                        y="${labelY}"
-                        text-anchor="middle"
-                        dominant-baseline="middle"
-                        class="estimation-date-label"
-                    >
-                        ${dateDisplay}
-                    </text>
-                `;
-            }
-
-            //   Replace dateDisplay above for complete stats ${dateDisplay} ${statsDisplay}
+            svg += renderEstimatedDateElements({ estimateDate: estimateResult.date, progressRadius });
         }
 
         // Subplot label background layer
@@ -1879,210 +1593,23 @@ export function createTimelineSVG(
                 positionsDetailed.forEach((p, i) => positions.set(i, { startAngle: p.startAngle, endAngle: p.endAngle }));
 
                 // Draw squares for non-Plot scenes that have a number
-                combined.forEach((scene, idx) => {
-                    if (scene.itemType === 'Plot') return;
-                    const number = getScenePrefixNumber(scene.title);
-                    if (!number) return;
-
-                    const pos = positions.get(idx);
-                    if (!pos) return;
-                    const sceneStartAngle = pos.startAngle;
-
-                    const squareSize = getNumberSquareSize(number);
-                    const squareX = squareRadiusOuter * Math.cos(sceneStartAngle);
-                    const squareY = squareRadiusOuter * Math.sin(sceneStartAngle);
-
-                    const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
-                    const squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
-                    let textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
-
-                    // Match the sceneId format used in the outer ring scene arcs
-                    const sceneId = makeSceneId(act, ringOuter, idx, true, true);
-
-                    // Get grade for this scene from the grades map
-                    const grade = sceneGrades.get(sceneId);
-                    if (plugin.settings.enableAiBeats && grade) {
-                        textClasses += ` rt-grade-${grade}`;
-                    }
-                    svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
-                });
+                svg += renderOuterRingNumberSquares({ plugin, act, ringOuter, squareRadiusOuter, positions, combined, sceneGrades });
             }
             
             // Then, draw squares for inner subplot rings (excluding Main Plot since it's on outer ring)
             
-        scenes.forEach((scene) => {
-                if (scene.itemType === "Plot") return;
-                
-                const number = getScenePrefixNumber(scene.title);
-                if (!number) return;
-                
-                const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-                
-                // Skip Main Plot scenes since they're already on the outer ring
-                if (subplot === 'Main Plot') {
-                return;
-            }
-            
-                const subplotIndex = masterSubplotOrder.indexOf(subplot);
-                if (subplotIndex === -1) return;
-                
-                const ring = NUM_RINGS - 1 - subplotIndex;
-                if (ring < 0 || ring >= NUM_RINGS) return;
-                
-                const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-                const actIndex = sceneActNumber - 1;
-                const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
-                const isAllScenesMode = plugin.settings.outerRingAllScenes === true;
-                const filteredScenesForIndex = isAllScenesMode ? scenesInActAndSubplot.filter(s => s.itemType !== "Plot") : scenesInActAndSubplot;
-                const sceneIndex = filteredScenesForIndex.indexOf(scene);
-                if (sceneIndex === -1) return;
-                
-                const startAngle = (actIndex * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                const endAngle = ((actIndex + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                
-                const plotNotes = isAllScenesMode ? [] : scenesInActAndSubplot.filter(s => s.itemType === "Plot");
-                const sceneNotes = isAllScenesMode ? scenesInActAndSubplot.filter(s => s.itemType !== "Plot") : scenesInActAndSubplot.filter(s => s.itemType !== "Plot");
-                
-                const innerR = ringStartRadii[ring];
-                const outerR = innerR + ringWidths[ring];
-                const middleRadius = (innerR + outerR) / 2;
-                const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
-                
-                const totalAngularSpace = endAngle - startAngle;
-                const plotTotalAngularSpace = plotNotes.length * plotAngularWidth;
-                const remainingAngularSpace = totalAngularSpace - plotTotalAngularSpace;
-                const sceneAngularSize = sceneNotes.length > 0 ? remainingAngularSpace / sceneNotes.length : 0;
-                
-                let currentAngle = startAngle;
-                for (let i = 0; i < sceneIndex; i++) {
-                    const sceneAtIndex = filteredScenesForIndex[i];
-                    if (sceneAtIndex.itemType === "Plot") {
-                        currentAngle += plotAngularWidth;
-                    } else {
-                        currentAngle += sceneAngularSize;
-                    }
-                }
-                const sceneStartAngle = currentAngle;
-                
-                const textPathRadius = (innerR + outerR) / 2;
-                const squareSize = getNumberSquareSize(number);
-                const squareX = textPathRadius * Math.cos(sceneStartAngle);
-                const squareY = textPathRadius * Math.sin(sceneStartAngle);
-                
-                const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
-                const squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
-                let textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
-                
-                const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
-                
-                // Extract grade for inner ring scenes too
-                extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
-                
-                // Get grade for this scene from the grades map
-                const grade = sceneGrades.get(sceneId);
-                if (plugin.settings.enableAiBeats && grade) {
-                    textClasses += ` rt-grade-${grade}`;
-                }
-                svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
-            });
+            svg += renderInnerRingsNumberSquaresAllScenes({ plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades });
             
             svg += `</g>`;
         } else if (!plugin.settings.outerRingAllScenes) {
-            svg += `<g class="rt-number-squares">`;
-            scenes.forEach((scene) => {
-                // Skip number squares for Plot notes
-                if (scene.itemType === "Plot") {
-                    return;
-                }
-            
-            const { number } = parseSceneTitle(scene.title || '');
-            if (number) {
-                const subplot = scene.subplot || "Main Plot";
-                const subplotIndex = masterSubplotOrder.indexOf(subplot);
-                const ring = NUM_RINGS - 1 - subplotIndex;
-                
-                // Get the scenes for this act and subplot to determine correct index
-                const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-                const actIndex = sceneActNumber - 1;
-                const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
-                const filteredScenes = scenesInActAndSubplot.filter(s => s.itemType !== "Plot");
-                const sceneIndex = filteredScenes.indexOf(scene);
-                
-                const startAngle = (actIndex * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                const endAngle = ((actIndex + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                
-                // Use the same positioning logic as scene rendering (no plot notes when toggle is off)
-                const innerR = ringStartRadii[ring];
-                const outerR = innerR + ringWidths[ring];
-                const middleRadius = (innerR + outerR) / 2;
-                const totalAngularSpace = endAngle - startAngle;
-                const sceneAngularSize = filteredScenes.length > 0 ? totalAngularSpace / filteredScenes.length : 0;
-                
-                // Calculate this scene's position
-                let currentAngle = startAngle;
-                let sceneStartAngle = startAngle;
-                
-                for (let i = 0; i < sceneIndex; i++) {
-                    currentAngle += sceneAngularSize;
-                }
-                sceneStartAngle = currentAngle;
-                
-                const textPathRadius = (ringStartRadii[ring] + (ringStartRadii[ring] + ringWidths[ring])) / 2;
-                
-                // Reuse the existing square size calculation
-                const getSquareSize = getNumberSquareSize;
-
-                const squareSize = getSquareSize(number);
-                const squareX = textPathRadius * Math.cos(sceneStartAngle) + 2;
-                const squareY = textPathRadius * Math.sin(sceneStartAngle) + 2;
-          
-                // Store scene number information for square and synopsis
-                const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
-                sceneNumbersMap.set(sceneId, {
-                    number,
-                    x: squareX,
-                    y: squareY,
-                    width: squareSize.width,
-                    height: squareSize.height
-                });
-
-                // Use helper functions for consistent behavior
-                const sceneState = getSceneState(scene, plugin);
-                const squareClasses = buildSquareClasses(sceneState.isSceneOpen, sceneState.isSearchMatch, sceneState.hasEdits);
-                let textClasses = buildTextClasses(sceneState.isSceneOpen, sceneState.isSearchMatch, sceneState.hasEdits);
-
-                // Get grade from our Map for this scene
-                const grade = sceneGrades.get(sceneId);
-                if (plugin.settings.enableAiBeats && grade) {
-                    textClasses += ` rt-grade-${grade}`;
-                }
-                
-                // Use helper function for consistent DOM structure
-                svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
-
-            }
-        });
-        svg += `</g>`;
+            svg += renderNumberSquaresStandard({ plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, sceneNumbersMap });
         }
         
         // Close rotatable container
         svg += `</g>`;
         
-        // Create container for all synopses
-        const synopsesContainer = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        synopsesContainer.setAttribute("class", "synopses-container");
-
-        // Add all synopsis elements to the container
-        synopsesElements.forEach(element => {
-            synopsesContainer.appendChild(element);
-        });
-
-        // Serialize the synopses container to SVG string
-        const serializer = new XMLSerializer();
-        const synopsesHTML = serializer.serializeToString(synopsesContainer);
-
-        // Store synopsis HTML to add later (after gossamer layer)
-        const synopsisHTML = synopsesHTML;
+        // Serialize synopses to string and store HTML for later insertion
+        const synopsisHTML = serializeSynopsesToString(synopsesElements);
 
         // --- Gossamer momentum layer (Phase 1) ---
         {
@@ -2127,21 +1654,7 @@ export function createTimelineSVG(
                 const beatSlicesByName = (plugin as any)._plotBeatSlices || new Map();
 
                 // Render month/act spokes BEFORE gossamer layer so they appear on top of scenes but behind gossamer plots
-                const spokesGroup = `<g class="rt-gossamer-spokes">`;
-                let spokesHtml = '';
-                
-                // Redraw month spokes with Gossamer-specific classes for gray styling
-                // Extend from inner radius to outer edge, avoiding central core
-                for (let i = 0; i < 12; i++) {
-                    const angle = (i / 12) * 2 * Math.PI - Math.PI / 2;
-                    const x1 = formatNumber(innerRadius * Math.cos(angle)); // Start from inner radius
-                    const y1 = formatNumber(innerRadius * Math.sin(angle)); // Start from inner radius
-                    const x2 = formatNumber(actualOuterRadius * Math.cos(angle));
-                    const y2 = formatNumber(actualOuterRadius * Math.sin(angle));
-                    const isActBoundary = [0, 4, 8].includes(i);
-                    spokesHtml += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="rt-month-spoke-line rt-gossamer-grid-spoke${isActBoundary ? ' rt-act-boundary' : ''}"/>`;
-                }
-                svg += spokesGroup + spokesHtml + '</g>';
+                svg += renderGossamerMonthSpokes({ innerRadius, outerRadius: actualOuterRadius });
 
                 // Get historical runs and min/max band from plugin
                 const historicalRuns = (plugin as any)._gossamerHistoricalRuns || [];

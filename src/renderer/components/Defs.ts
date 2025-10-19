@@ -75,3 +75,34 @@ export function renderDefs(PUBLISH_STAGE_COLORS: Record<string, string>): string
 }
 
 
+export function renderProgressRingGradients(): string {
+  return `
+    <defs>
+      <linearGradient id="linearColors1" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#FF0000"></stop>
+        <stop offset="100%" stop-color="#FF7F00"></stop>
+      </linearGradient>
+      <linearGradient id="linearColors2" x1="0.5" y1="0" x2="0.5" y2="1">
+        <stop offset="0%" stop-color="#FF7F00"></stop>
+        <stop offset="100%" stop-color="#FFFF00"></stop>
+      </linearGradient>
+      <linearGradient id="linearColors3" x1="1" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#FFFF00"></stop>
+        <stop offset="100%" stop-color="#00FF00"></stop>
+      </linearGradient>
+      <linearGradient id="linearColors4" x1="1" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#00FF00"></stop>
+        <stop offset="100%" stop-color="#0000FF"></stop>
+      </linearGradient>
+      <linearGradient id="linearColors5" x1="0.5" y1="1" x2="0.5" y2="0">
+        <stop offset="0%" stop-color="#0000FF"></stop>
+        <stop offset="100%" stop-color="#4B0082"></stop>
+      </linearGradient>
+      <linearGradient id="linearColors6" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0%" stop-color="#4B0082"></stop>
+        <stop offset="100%" stop-color="#8F00FF"></stop>
+      </linearGradient>
+    </defs>`;
+}
+
+

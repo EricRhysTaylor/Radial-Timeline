@@ -5,6 +5,7 @@
  */
 
 import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, normalizePath } from "obsidian";
+import { TimelineService } from './services/TimelineService';
 import { escapeRegExp } from './utils/regex';
 import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils/colour';
 import { decodeHtmlEntities } from './utils/text';
@@ -383,8 +384,10 @@ export default class RadialTimelinePlugin extends Plugin {
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
     
-    // Debouncing for timeline refresh
-    private refreshTimeout: number | null = null;
+    // Services
+    private timelineService!: TimelineService;
+    private searchService!: import('./services/SearchService').SearchService;
+    private fileTrackingService!: import('./services/FileTrackingService').FileTrackingService;
     
     // Completion estimate stats
     latestTotalScenes: number = 0;
@@ -402,12 +405,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private beatsStatusBarItem: HTMLElement | null = null;
 
     // Helper: get all currently open timeline views
-    private getTimelineViews(): RadialTimelineView[] {
-        return this.app.workspace
-            .getLeavesOfType(TIMELINE_VIEW_TYPE)
-            .map(leaf => leaf.view as unknown)
-            .filter((v): v is RadialTimelineView => v instanceof RadialTimelineView);
-    }
+    public getTimelineViews(): RadialTimelineView[] { return this.timelineService.getTimelineViews(); }
     
     // Helper: get the first open timeline view (if any)
     private getFirstTimelineView(): RadialTimelineView | null {
@@ -513,7 +511,12 @@ export default class RadialTimelinePlugin extends Plugin {
         // Embedded font injection removed to avoid inserting <style> tags at runtime.
         // All styles should live in styles.css so Obsidian can manage load/unload.
 
-        // Initialize SynopsisManager
+        // Initialize services and managers
+        this.timelineService = new TimelineService(this.app);
+        const { SearchService } = await import('./services/SearchService');
+        const { FileTrackingService } = await import('./services/FileTrackingService');
+        this.searchService = new SearchService(this.app, this);
+        this.fileTrackingService = new FileTrackingService(this);
         this.synopsisManager = new SynopsisManager(this);
 
         // CSS variables for publish stage colors are set once on layout ready
@@ -1047,7 +1050,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
         this.app.workspace.onLayoutReady(() => {
             this.setCSSColorVariables(); // Set initial colors
-            this.updateOpenFilesTracking(); // Track initially open files
+            this.fileTrackingService.updateOpenFilesTracking(); // Track initially open files
         });
 
          // Register file open/close events (consolidated from duplicate listener above)
@@ -1076,7 +1079,7 @@ export default class RadialTimelinePlugin extends Plugin {
         }));
 
         this.registerEvent(this.app.workspace.on('layout-change', () => {
-            this.updateOpenFilesTracking();
+            this.fileTrackingService.updateOpenFilesTracking();
             this.refreshTimelineIfNeeded(null);
         }));
 
@@ -1715,26 +1718,7 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
     }
 
     // Method to refresh the timeline if the active view exists (with debouncing)
-    refreshTimelineIfNeeded(file: TAbstractFile | null | undefined) {
-        // If a specific file is provided, only refresh if it's a markdown file
-        if (file && (!(file instanceof TFile) || file.extension !== 'md')) {
-            return;
-        }
-        
-        // Clear existing timeout
-        if (this.refreshTimeout) {
-            window.clearTimeout(this.refreshTimeout);
-        }
-        
-        // Debounce the refresh with a 1-second delay
-        this.refreshTimeout = window.setTimeout(() => {
-            // Get all timeline views and refresh them
-            const timelineViews = this.getTimelineViews();
-            timelineViews.forEach(view => view.refreshTimeline());
-            
-            this.refreshTimeout = null;
-        }, 400); // 400 ms debounce
-    }
+    refreshTimelineIfNeeded(file: TAbstractFile | null | undefined) { this.timelineService.refreshTimelineIfNeeded(file, 400); }
 
 
 
@@ -1841,145 +1825,11 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
     }
 
     // Search related methods
-    private openSearchPrompt(): void {
-        const modal = new Modal(this.app);
-        modal.titleEl.setText('Search timeline');
-        
-        const contentEl = modal.contentEl;
-        contentEl.empty();
-        
-        // Create search input container
-        const searchContainer = contentEl.createDiv('search-container');
-        searchContainer.classList.add('flex-container');
-        // Add plugin-specific class for scoped styling inside modal
-        searchContainer.classList.add('radial-timeline-search');
-        
-        // Create search input
-        const searchInput = new TextComponent(searchContainer);
-        searchInput.setPlaceholder('Enter search term (min 3 letters)');
-        searchInput.inputEl.classList.add('search-input');
-        
-        // Prepopulate with current search term if one exists
-        if (this.searchActive && this.searchTerm) {
-            searchInput.setValue(this.searchTerm);
-        }
-        
-        // Create button container
-        const buttonContainer = contentEl.createDiv('rt-button-container');
-        // All styles now defined in CSS
-        
-        // Create search button
-        const searchButton = new ButtonComponent(buttonContainer)
-            .setButtonText('Search')
-            .onClick(() => {
-                const term = searchInput.getValue().trim();
-                if (term.length >= 3) {
-                    this.performSearch(term);
-                    modal.close();
-                } else {
-                    new Notice('Please enter at least 3 letters to search');
-                }
-            });
-        
-        // Create reset button
-        const resetButton = new ButtonComponent(buttonContainer)
-            .setButtonText('Reset')
-            .onClick(() => {
-                // Clear the search input
-                searchInput.setValue('');
-                // Clear the search and refresh the timeline
-                this.clearSearch();
-                // Close the modal after clearing
-                modal.close();
-            });
-        
-        // Add keyboard event listener
-        this.registerDomEvent(searchInput.inputEl, 'keydown', (e) => {
-            if (e.key === 'Enter') {
-                const term = searchInput.getValue().trim();
-                if (term.length >= 3) {
-                    this.performSearch(term);
-                    modal.close();
-                } else {
-                    new Notice('Please enter at least 3 letters to search');
-                }
-            }
-        });
-        
-        modal.open();
-    }
+    private openSearchPrompt(): void { this.searchService.openSearchPrompt(); }
     
-    public performSearch(term: string): void {
-        if (!term || term.trim().length === 0) {
-            this.clearSearch();
-            return;
-        }
-        
-        // Set search state
-        this.searchTerm = term;
-        this.searchActive = true;
-        this.searchResults.clear();
-        
-        // Simple case-insensitive search that matches whole phrases
-        const containsWholePhrase = (haystack: string | undefined, phrase: string, isDate: boolean = false): boolean => {
-            if (!haystack || !phrase || typeof haystack !== 'string') return false;
-            
-            const h = haystack.toLowerCase();
-            const p = phrase.toLowerCase();
-            
-            // Special handling for dates to ensure exact segment matching
-            // e.g., "4/1" should match "4/1/2025" but not "4/12/2025"
-            if (isDate && h.includes('/')) {
-                // For date searches, require the phrase to be followed by a word boundary or slash
-                // This prevents "4/1" from matching "4/12"
-                const datePattern = new RegExp(p.replace(/\//g, '\\/') + '(?:\\/|$)', 'i');
-                return datePattern.test(h);
-            }
-            
-            // For non-date fields, use simple contains check
-            return h.includes(p);
-        };
-        
-        // Populate searchResults with matching scene paths
-        this.getSceneData().then(scenes => {
-            scenes.forEach(scene => {
-                // Check non-date fields
-                const textFields: (string | undefined)[] = [
-                    scene.title,
-                    scene.synopsis,
-                    ...(scene.Character || []),
-                    scene.subplot,
-                    scene.location,
-                    scene.pov
-                ];
-                const textMatched = textFields.some(f => containsWholePhrase(f, term, false));
-                
-                // Check date field separately with special date matching
-                const dateField = scene.when?.toLocaleDateString();
-                const dateMatched = containsWholePhrase(dateField, term, true);
-                
-                if (textMatched || dateMatched) {
-                    if (scene.path) {
-                        this.searchResults.add(scene.path);
-                    }
-                }
-            });
-            
-            // Get all timeline views and refresh them
-            const timelineViews = this.getTimelineViews();
-            timelineViews.forEach(view => view.refreshTimeline());
-        });
-    }
+    public performSearch(term: string): void { this.searchService.performSearch(term); }
     
-    public clearSearch(): void {
-        this.searchActive = false;
-        this.searchTerm = '';
-        this.searchResults.clear();
-        
-        // Get all timeline views and refresh them
-        const timelineViews = this.getTimelineViews();
-        timelineViews.forEach(view => view.refreshTimeline());
-    }
+    public clearSearch(): void { this.searchService.clearSearch(); }
 
     // Function to set CSS variables for RGB colors
     public setCSSColorVariables() {
