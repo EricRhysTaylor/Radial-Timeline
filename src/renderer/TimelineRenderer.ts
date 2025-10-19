@@ -34,6 +34,7 @@ import { renderEstimatedDateElements, renderEstimationArc } from './components/P
 import { sceneArcPath, renderVoidCellPath } from './components/SceneArcs';
 import { renderPlotSlice } from './components/PlotSlices';
 import { renderActBorders } from './components/Acts';
+import { renderActLabels } from './components/ActLabels';
 import { renderTargetDateTick } from './components/ProgressTicks';
 import { renderProgressRing } from './components/ProgressRing';
 import { serializeSynopsesToString } from './components/Synopses';
@@ -276,8 +277,10 @@ export function adjustPlotLabelsAfterRender(container: HTMLElement, attempt: num
     }
 
     if (isHidden && attempt < MAX_ATTEMPTS) {
-        state.retryId = requestAnimationFrame(() => adjustPlotLabelsAfterRender(container, attempt + 1));
+        const rafId = requestAnimationFrame(() => adjustPlotLabelsAfterRender(container, attempt + 1));
+        state.retryId = rafId;
         plotAdjustState.set(container, state);
+        // cleanup will happen before setting a new one or when state.signature changes above
         return;
     }
 
@@ -840,29 +843,7 @@ export function createTimelineSVG(
         const lastPlotEndByAct: { [key: string]: number } = {};
         // --- Draw Act labels here so they rotate ---
         const actualOuterRadiusForActs = ringStartRadii[NUM_RINGS - 1] + ringWidths[NUM_RINGS - 1];
-        for (let act = 0; act < NUM_ACTS; act++) {
-            const angle = (act * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-            // ACT labels sit a fixed offset from the outer scene edge
-            const actLabelRadius = actualOuterRadiusForActs + ACT_LABEL_OFFSET;
-            const angleOffset = -0.085;
-            const startAngleAct = angle + angleOffset;
-            const endAngleAct = startAngleAct + (Math.PI / 12);
-            const actPathId = `actPath-${act}`;
-            svg += `
-                <path id="${actPathId}"
-                    d="
-                        M ${formatNumber(actLabelRadius * Math.cos(startAngleAct))} ${formatNumber(actLabelRadius * Math.sin(startAngleAct))}
-                        A ${formatNumber(actLabelRadius)} ${formatNumber(actLabelRadius)} 0 0 1 ${formatNumber(actLabelRadius * Math.cos(endAngleAct))} ${formatNumber(actLabelRadius * Math.sin(endAngleAct))}
-                    "
-                    fill="none"
-                />
-                <text class="rt-act-label" fill="${maxStageColor}">
-                    <textPath href="#${actPathId}" startOffset="0" text-anchor="start">
-                        ACT ${act + 1}
-                    </textPath>
-                </text>
-            `;
-        }
+        svg += renderActLabels({ NUM_ACTS, outerMostOuterRadius: actualOuterRadiusForActs, actLabelOffset: ACT_LABEL_OFFSET, maxStageColor });
 
         // Initialize plot beat angles map for Gossamer (clear any stale data from previous render)
         (plugin as any)._plotBeatAngles = new Map();

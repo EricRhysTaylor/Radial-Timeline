@@ -185,6 +185,13 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
         if (rafId !== null) return;
         rafId = window.requestAnimationFrame(() => onMove(e));
     });
+    // Since AllScenesView doesn't expose a register cleanup, rely on pointerout to cancel outstanding RAF
+    view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', () => {
+        if (rafId !== null) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+        }
+    });
 }
 
 

@@ -14,6 +14,7 @@ import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/
 import { openOrRevealFile } from '../utils/fileUtils';
 import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt } from './interactions';
 import { setupGossamerMode, setupAllScenesDelegatedHover, setupSceneInteractionsAll, setupMainPlotMode, AllScenesView } from './modes';
+import { RendererService } from '../services/RendererService';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -28,6 +29,7 @@ const HOVER_EXPAND_FACTOR = 1.1; // expansion multiplier when text doesn't fit
 export class RadialTimelineView extends ItemView {
     static readonly viewType = TIMELINE_VIEW_TYPE;
     plugin: RadialTimelinePlugin;
+    private rendererService?: RendererService;
     
     // Frontmatter values to track to reduce unnecessary SVG View refreshes
     private lastFrontmatterValues: Record<string, unknown> = {};
@@ -57,6 +59,7 @@ export class RadialTimelineView extends ItemView {
         super(leaf);
         this.plugin = plugin;
         this.openScenePaths = plugin.openScenePaths;
+        this.rendererService = (plugin as any).rendererService as RendererService;
     }
     
     private log<T>(message: string, data?: T) {
@@ -203,7 +206,10 @@ export class RadialTimelineView extends ItemView {
         
         // Update the UI if something changed
         if (hasChanged) {
-            this.refreshTimeline();
+            const container = this.containerEl.children[1] as HTMLElement;
+            // Try selective update first
+            const updated = this.rendererService?.updateOpenClasses(container, this.openScenePaths);
+            if (!updated) this.refreshTimeline();
         } else {
             this.log('No changes in open files detected');
         }

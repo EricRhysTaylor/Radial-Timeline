@@ -76,6 +76,7 @@ export class BeatsProcessingModal extends Modal {
     private totalCount: number = 0;
     private errorCount: number = 0;
     private warningCount: number = 0;
+    private pendingRafId: number | null = null;
     
     constructor(
         app: App,
@@ -98,6 +99,13 @@ export class BeatsProcessingModal extends Modal {
             this.showProgressView();
         } else {
             this.showConfirmationView();
+        }
+    }
+
+    onClose(): void {
+        if (this.pendingRafId !== null) {
+            cancelAnimationFrame(this.pendingRafId);
+            this.pendingRafId = null;
         }
     }
 
@@ -217,9 +225,10 @@ export class BeatsProcessingModal extends Modal {
         };
         
         // Initial count (defer to next frame so modal paints immediately)
-        requestAnimationFrame(() => {
+        const rafId = requestAnimationFrame(() => {
             updateCount();
         });
+        this.pendingRafId = rafId;
 
         // Update count when mode changes
         // Modal classes don't have registerDomEvent, use addEventListener

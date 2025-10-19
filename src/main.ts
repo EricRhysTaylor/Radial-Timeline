@@ -13,6 +13,7 @@ import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG, adjustPlotLabelsAfterRender } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
+import { RendererService } from './services/RendererService';
 import { openGossamerScoreEntry, toggleGossamerMode } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { BeatsProcessingModal } from './modals/BeatsProcessingModal';
@@ -388,6 +389,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private timelineService!: TimelineService;
     private searchService!: import('./services/SearchService').SearchService;
     private fileTrackingService!: import('./services/FileTrackingService').FileTrackingService;
+    private rendererService!: RendererService;
     
     // Completion estimate stats
     latestTotalScenes: number = 0;
@@ -517,6 +519,7 @@ export default class RadialTimelinePlugin extends Plugin {
         const { FileTrackingService } = await import('./services/FileTrackingService');
         this.searchService = new SearchService(this.app, this);
         this.fileTrackingService = new FileTrackingService(this);
+        this.rendererService = new RendererService(this.app);
         this.synopsisManager = new SynopsisManager(this);
 
         // CSS variables for publish stage colors are set once on layout ready

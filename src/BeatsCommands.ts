@@ -34,6 +34,9 @@ import { BeatsProcessingModal, type ProcessingMode } from './modals/BeatsProcess
 import { stripObsidianComments } from './utils/text';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { openOrRevealFileByPath } from './utils/fileUtils';
+import { buildTripletsByIndex } from './beats/TripletBuilder';
+import { updateSceneBeats } from './beats/FileUpdater';
+import { createAiRunner } from './beats/RequestRunner';
 
 // --- Interfaces --- 
 interface SceneData {
@@ -1217,17 +1220,7 @@ async function processWithModal(
     const processableContentScenes = allScenes.filter(scene => hasProcessableContent(scene.frontmatter));
     
     // Build triplets using only processable scenes for context, but only process flagged scenes
-    const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
-    for (const flaggedScene of processableScenes) {
-        // Find this scene's position in the processable content list
-        const idx = processableContentScenes.findIndex(s => s.file.path === flaggedScene.file.path);
-        
-        // Get prev/next from processable content list (scenes with Status=Working or Complete only)
-        const prev = idx > 0 ? processableContentScenes[idx - 1] : null;
-        const next = idx >= 0 && idx < processableContentScenes.length - 1 ? processableContentScenes[idx + 1] : null;
-        
-        triplets.push({ prev, current: flaggedScene, next });
-    }
+    const triplets = buildTripletsByIndex(processableContentScenes, processableScenes, (s) => s.file.path);
 
     let processedCount = 0;
     let totalToProcess = 0;
@@ -1298,7 +1291,8 @@ async function processWithModal(
             const contextPrompt = getActiveContextPrompt(plugin);
             const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
-            const aiResult = await callAiProvider(plugin, vault, userPrompt, null, 'processByManuscriptOrder', sceneNameForLog);
+            const runAi = createAiRunner(plugin, vault, callAiProvider);
+            const aiResult = await runAi(userPrompt, null, 'processByManuscriptOrder', sceneNameForLog);
 
             if (aiResult.result) {
                 const parsedBeats = parseGptResult(aiResult.result, plugin);
@@ -1312,7 +1306,7 @@ async function processWithModal(
                         // Last-scene case: no next scene, drop any 3beats content
                         parsedBeats['3beats'] = '';
                     }
-                    const updated = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
+                    const updated = await updateSceneBeats(vault, triplet.current.file, parsedBeats, plugin, aiResult.modelIdUsed);
                     if (updated) {
                         await plugin.saveSettings();
                         // Ensure progress UI is consistent when abort requested after finishing this scene
@@ -1440,18 +1434,8 @@ export async function processBySubplotOrder(
         // Filter to only scenes with processable content for triplet context
         const processableContentScenes = orderedScenes.filter(scene => hasProcessableContent(scene.frontmatter));
         
-        const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
-        for (const currentScene of orderedScenes) {
-            const beatsUpdate = currentScene.frontmatter?.beatsupdate || currentScene.frontmatter?.BeatsUpdate || currentScene.frontmatter?.['Beats Update'];
-            const isProcessable = hasProcessableContent(currentScene.frontmatter) && normalizeBooleanValue(beatsUpdate);
-            if (!isProcessable) continue;
-
-            // Find position in processable content list (not all scenes)
-            const idx = processableContentScenes.findIndex(s => s.file.path === currentScene.file.path);
-            const prevScene = idx > 0 ? processableContentScenes[idx - 1] : null;
-            const nextScene = idx >= 0 && idx < processableContentScenes.length - 1 ? processableContentScenes[idx + 1] : null;
-            triplets.push({ prev: prevScene, current: currentScene, next: nextScene });
-        }
+        const flaggedInOrder = orderedScenes.filter(s => hasProcessableContent(s.frontmatter) && normalizeBooleanValue(s.frontmatter?.beatsupdate || s.frontmatter?.BeatsUpdate || s.frontmatter?.['Beats Update']));
+        const triplets = buildTripletsByIndex(processableContentScenes, flaggedInOrder, (s) => s.file.path);
         
             for (const triplet of triplets) {
                 const currentScenePath = triplet.current.file.path;
@@ -1479,7 +1463,8 @@ export async function processBySubplotOrder(
 
                  // Use basename directly (already includes scene number)
                  const sceneNameForLog = triplet.current.file.basename;
-                 const aiResult = await callAiProvider(plugin, vault, userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog);
+                 const runAi = createAiRunner(plugin, vault, callAiProvider);
+                 const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog);
 
                  if (aiResult.result) {
                      const parsedBeats = parseGptResult(aiResult.result, plugin);
@@ -1494,7 +1479,7 @@ export async function processBySubplotOrder(
                              parsedBeats['3beats'] = '';
                          }
                          
-                         const updated = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
+                         const updated = await updateSceneBeats(vault, triplet.current.file, parsedBeats, plugin, aiResult.modelIdUsed);
                          if (updated) {
                              await plugin.saveSettings();
                          } else {
@@ -1614,7 +1599,8 @@ export async function processBySubplotName(
             const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
             // Use basename directly (already includes scene number)
             const sceneNameForLog = triplet.current.file.basename;
-            const aiResult = await callAiProvider(plugin, vault, userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog);
+        const runAi = createAiRunner(plugin, vault, callAiProvider);
+        const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog);
 
             if (aiResult.result) {
                 const parsedBeats = parseGptResult(aiResult.result, plugin);
@@ -1629,7 +1615,7 @@ export async function processBySubplotName(
                         parsedBeats['3beats'] = '';
                     }
                     
-                    const ok = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
+                    const ok = await updateSceneBeats(vault, triplet.current.file, parsedBeats, plugin, aiResult.modelIdUsed);
                     if (ok) {
                         await plugin.saveSettings();
                     } else {
