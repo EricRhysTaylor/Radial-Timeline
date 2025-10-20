@@ -12,6 +12,8 @@ export function renderCenterGrid(params: {
   cellGapX: number;
   cellGapY: number;
   headerY: number;
+  stageTooltips: Record<string, string>;
+  statusTooltips: Record<string, string>;
 }): string {
   const {
     statusesForGrid,
@@ -75,7 +77,7 @@ export function renderCenterGrid(params: {
         const label = status === 'Todo' ? 'Tdo' : status === 'Working' ? 'Wrk' : status === 'Completed' ? 'Cmt' : 'Due';
         const x = startXGrid + c * (cellWidth + cellGapX) + (cellWidth / 2);
         const y = headerY;
-        const tip = status;
+        const tip = params.statusTooltips[status] || status;
         return `
           <g class="status-header">
             <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="alphabetic" class="center-key-text status-header-letter">${label}</text>
@@ -91,11 +93,12 @@ export function renderCenterGrid(params: {
   const rows = stagesForGrid.map((stage, r) => {
     const xh = startXGrid - 12;
     const yh = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2 + 1);
+    const stageTip = params.stageTooltips[stage] || stage;
     const stageHeader = `
       <g class="stage-header">
         <text x="${xh}" y="${yh}" text-anchor="end" dominant-baseline="middle" class="center-key-text stage-header-letter">${stage === 'Zero' ? 'Z' : stage === 'Author' ? 'A' : stage === 'House' ? 'H' : 'P'}</text>
         <rect x="${xh - 14}" y="${yh - 14}" width="28" height="28" fill="transparent" pointer-events="all">
-          <title>${stage}</title>
+          <title>${stageTip}</title>
         </rect>
       </g>
     `;

@@ -47,7 +47,7 @@ import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, r
 
 // Stage header tooltips (used for grid row headers Z/A/H/P)
 const STAGE_HEADER_TOOLTIPS: Record<string, string> = {
-  Zero: 'Zero stage — The raw first draft. Unpolished ideas on the page, no edits yet.',
+  Zero: 'Zero stage — The raw first draft. Unpolished ideas on the page, no revisions yet.',
   Author: 'Author stage — The author revises and refines the draft after letting it rest.',
   House: 'House stage — Alpha and beta readers give feedback. Publisher or editor reviews the manuscript. Copy-edited and proofed.',
   Press: 'Press stage — Final version is ready for publication.'
@@ -673,7 +673,7 @@ export function createTimelineSVG(
         `;
 
          // --- Draw Estimation Arc --- START ---
-         const estimateResult = plugin.calculateCompletionEstimate(scenes);
+         const estimateResult = plugin.settings.showEstimate === false ? null : plugin.calculateCompletionEstimate(scenes);
 
          // --- TEMPORARY DEBUG OVERRIDE FOR QUADRANT TESTING --- START ---
          // Uncomment ONE of the following lines to force the estimated date for testing positioning.
@@ -1515,6 +1515,8 @@ export function createTimelineSVG(
             cellGapX,
             cellGapY,
             headerY,
+            stageTooltips: STAGE_HEADER_TOOLTIPS,
+            statusTooltips: STATUS_HEADER_TOOLTIPS,
         });
 
         // Add tick mark and label for the estimated completion date if available
@@ -1681,6 +1683,20 @@ export function createTimelineSVG(
                 <use id="rotation-arrow-down" class="arrow-icon is-hidden" href="#icon-arrow-down-from-line" x="-14.4" y="-14.4" width="26" height="26" />
                 <rect x="-18" y="-18" width="36" height="36" fill="transparent" pointer-events="all">
                     <title>Rotate timeline</title>
+                </rect>
+            </g>
+        `;
+
+        // Mode toggle button in top right (moved over and up 200px from original position)
+        const modeToggleX = formatNumber(outerRadius * 0.6 + 200); // 60% out + 200px right
+        const modeToggleY = formatNumber(-outerRadius * 0.6 - 200); // -60% + 200px up
+        const currentMode = plugin.settings.outerRingAllScenes ? 'allscenes' : 'mainplot';
+        const modeTitle = currentMode === 'allscenes' ? 'Switch to Main Plot mode' : 'Switch to All Scenes mode';
+        svg += `
+            <g id="mode-toggle" class="mode-toggle" transform="translate(${modeToggleX}, ${modeToggleY})" data-current-mode="${currentMode}">
+                <use href="#icon-mode-toggle" x="-18" y="-18" width="36" height="36" />
+                <rect x="-18" y="-18" width="36" height="36" fill="transparent" pointer-events="all">
+                    <title>${modeTitle}</title>
                 </rect>
             </g>
         `;

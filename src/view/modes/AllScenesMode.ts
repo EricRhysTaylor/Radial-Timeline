@@ -3,7 +3,7 @@ import { openOrRevealFile } from '../../utils/fileUtils';
 import { Scene } from '../../main';
 
 export interface AllScenesView {
-    interactionMode: 'normal' | 'mainplot' | 'gossamer';
+    interactionMode: 'allscenes' | 'mainplot' | 'gossamer';
     plugin: {
         app: {
             vault: { getAbstractFileByPath: (path: string) => unknown };
@@ -18,7 +18,7 @@ export interface AllScenesView {
 }
 
 export function setupSceneInteractions(view: AllScenesView, group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
-    if (view.interactionMode !== 'normal') return;
+    if (view.interactionMode !== 'allscenes') return;
 
     const path = group.querySelector('.rt-scene-path');
     if (!path) return;

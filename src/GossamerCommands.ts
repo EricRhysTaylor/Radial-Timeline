@@ -164,6 +164,13 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
   // Provide compatibility for renderer access
   (plugin as unknown as Record<string, unknown>)._gossamerLastRun = run;
 }
+// Helper for consistent log terminology ("allscenes" instead of internal "normal")
+// (Currently unused since console logs were removed)
+// function modeNameForLog(mode: 'allscenes' | 'mainplot' | 'gossamer' | undefined | null): string {
+//   if (mode === 'allscenes') return 'allscenes';
+//   return mode ?? 'unknown';
+// }
+
 
 /**
  * Open Gossamer score entry modal
@@ -237,33 +244,116 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
 function enterGossamerMode(plugin: RadialTimelinePlugin) {
   const view = getFirstView(plugin);
   if (!view) return;
-  // Remember prior interaction mode so we can restore directly without intermediate flash
-  rememberPreviousInteractionMode(view);
+  
   setInteractionMode(view, 'gossamer');
-  // Setup will now happen inside renderTimeline after DOM is ready
-  plugin.refreshTimelineIfNeeded(undefined);
+  // Prefer selective update: build layer in-place without full refresh
+  const v = view as unknown as { containerEl?: HTMLElement; interactionMode?: string } & Record<string, unknown>;
+  const svg = (v as { containerEl?: HTMLElement } | null)?.containerEl?.querySelector?.('.radial-timeline-svg') as SVGSVGElement | null;
+  let didSelective = false;
+  try {
+    const rs = (plugin.getRendererService && plugin.getRendererService()) || (plugin as any).rendererService;
+    if (rs && v) {
+      // Attach scene data to view if available for color/path mapping
+      (v as any).sceneData = plugin.lastSceneData || (v as any).sceneData;
+      (v as any).interactionMode = 'gossamer';
+      const viewArg = {
+        containerEl: (v as any).containerEl as HTMLElement,
+        plugin,
+        sceneData: (v as any).sceneData as any,
+        interactionMode: 'gossamer' as const
+      };
+      didSelective = rs.updateGossamerLayer(viewArg);
+    }
+    if (didSelective && svg) {
+      // Apply gossamer-mode styling: mute non-plot elements
+      svg.setAttribute('data-gossamer-mode', 'true');
+      const allElements = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
+      allElements.forEach(el => {
+        const group = el.closest('.rt-scene-group');
+        const itemType = group?.getAttribute('data-item-type');
+        if (itemType !== 'Plot') {
+          el.classList.add('rt-non-selected');
+        }
+      });
+      
+      // Update mode toggle button to show it will return to the original mode
+      const modeToggle = svg.querySelector('#mode-toggle') as SVGGElement | null;
+      if (modeToggle) {
+        const originalMode = _previousBaseAllScenes ? 'allscenes' : 'mainplot';
+        modeToggle.setAttribute('data-current-mode', originalMode);
+        const title = modeToggle.querySelector('title');
+        if (title) {
+          title.textContent = originalMode === 'allscenes' ? 'Switch to Main Plot mode' : 'Switch to All Scenes mode';
+        }
+      }
+      
+      // Set up gossamer handlers on existing DOM if method exposed
+      const setup = (v as any)?.setupGossamerEventListeners as ((svg: SVGSVGElement) => void) | undefined;
+      if (typeof setup === 'function') setup(svg);
+    }
+  } catch {}
+  if (!didSelective) {
+    // Fall back to full refresh if selective failed
+    plugin.refreshTimelineIfNeeded(undefined);
+  }
 }
 
 function exitGossamerMode(plugin: RadialTimelinePlugin) {
-  const view = getFirstView(plugin);
-  if (!view) return;
+  // Guard against double-execution
+  if (_isExitingGossamer) {
+    return;
+  }
   
-  // Remove Gossamer event listeners before switching mode
-  const svg = (view as any).containerEl?.querySelector('.radial-timeline-svg') as SVGSVGElement;
-  if (svg && typeof (view as any).removeGossamerEventListeners === 'function') {
-    (view as any).removeGossamerEventListeners(svg);
+  const view = getFirstView(plugin);
+  if (!view) {
+    return;
+  }
+  
+  // Set guard flag
+  _isExitingGossamer = true;
+  
+  // Get SVG element
+  const svg = (view as { containerEl?: HTMLElement } | null)?.containerEl?.querySelector('.radial-timeline-svg') as SVGSVGElement;
+  
+  // Remove all Gossamer muting classes FIRST
+  if (svg) {
+    const allElements = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title, .rt-subplot-ring-label-text');
+    allElements.forEach(el => el.classList.remove('rt-non-selected'));
+    svg.removeAttribute('data-gossamer-mode');
+  }
+  
+  // Remove Gossamer event listeners
+  if (svg && typeof (view as unknown as { removeGossamerEventListeners?: (s: SVGSVGElement) => void }).removeGossamerEventListeners === 'function') {
+    (view as unknown as { removeGossamerEventListeners: (s: SVGSVGElement) => void }).removeGossamerEventListeners(svg);
   }
 
   restoreBaseMode(plugin);
-  // Restore prior interaction mode directly to avoid showing normal/all-scenes briefly
-  const prior = consumePreviousInteractionMode() || 'normal';
-  setInteractionMode(view, prior);
-  plugin.refreshTimelineIfNeeded(undefined);
+  
+  // Always return to 'allscenes' interaction mode
+  // The renderer will handle Main Plot mode via outerRingAllScenes setting
+  // We don't use 'mainplot' interaction mode for settings-based Main Plot
+  setInteractionMode(view, 'allscenes');
+  
+  // Force an immediate full refresh when exiting Gossamer mode
+  // Use direct refreshTimeline() to avoid debounce delay
+  if (typeof (view as any).refreshTimeline === 'function') {
+    (view as any).refreshTimeline();
+  } else {
+    // Fallback to plugin refresh
+    plugin.refreshTimelineIfNeeded(null);
+  }
+  
+  // Reset guard flag after a short delay to allow the refresh to complete
+  setTimeout(() => {
+    _isExitingGossamer = false;
+  }, 100);
 }
 
 // Base-mode helpers
 let _previousBaseAllScenes: boolean | null = null;
-let _previousInteractionMode: 'normal' | 'mainplot' | null = null;
+
+// Guard to prevent double-execution of exit
+let _isExitingGossamer = false;
 
 export function setBaseModeAllScenes(plugin: RadialTimelinePlugin) {
   if (_previousBaseAllScenes === null) _previousBaseAllScenes = !!plugin.settings.outerRingAllScenes;
@@ -281,17 +371,9 @@ export function restoreBaseMode(plugin: RadialTimelinePlugin) {
   }
 }
 
-function rememberPreviousInteractionMode(view: unknown) {
-  const mode = getInteractionMode(view);
-  if (mode === 'normal' || mode === 'mainplot') {
-    _previousInteractionMode = mode;
-  }
-}
-
-function consumePreviousInteractionMode(): 'normal' | 'mainplot' | null {
-  const m = _previousInteractionMode;
-  _previousInteractionMode = null;
-  return m;
+export function resetGossamerModeState() {
+  // Reset the Gossamer mode state variables when mode is changed outside of Gossamer
+  _previousBaseAllScenes = null;
 }
 
 export function resetRotation(plugin: RadialTimelinePlugin) {
@@ -321,17 +403,17 @@ function hasKey(obj: unknown, key: string): obj is Record<string, unknown> {
   return typeof obj === 'object' && obj !== null && key in (obj as Record<string, unknown>);
 }
 
-function getInteractionMode(view: unknown): 'normal' | 'mainplot' | 'gossamer' | undefined {
+function getInteractionMode(view: unknown): 'allscenes' | 'mainplot' | 'gossamer' | undefined {
   if (hasKey(view, 'interactionMode')) {
     const val = (view as Record<string, unknown>).interactionMode;
-    if (val === 'normal' || val === 'gossamer' || val === 'mainplot') return val as any;
+    if (val === 'allscenes' || val === 'gossamer' || val === 'mainplot') return val as any;
   }
   return undefined;
 }
 
-function setInteractionMode(view: unknown, mode: 'normal' | 'mainplot' | 'gossamer'): void {
+function setInteractionMode(view: unknown, mode: 'allscenes' | 'mainplot' | 'gossamer'): void {
   if (hasKey(view, 'interactionMode')) {
-    (view as { interactionMode: 'normal' | 'mainplot' | 'gossamer' }).interactionMode = mode;
+    (view as { interactionMode: 'allscenes' | 'mainplot' | 'gossamer' }).interactionMode = mode;
   }
 }
 

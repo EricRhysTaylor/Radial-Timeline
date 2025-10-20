@@ -52,6 +52,9 @@ interface RadialTimelineSettings {
     // Feature toggles
     enableAiBeats: boolean; // Show AI beats features (colors + synopsis)
     enableZeroDraftMode?: boolean; // Intercept complete scenes in Stage Zero for Pending Edits modal
+    // Advanced
+    metadataRefreshDebounceMs?: number; // Debounce for frontmatter-changed refresh
+    showEstimate?: boolean; // Toggle estimation arc/label near progress ring
     // AI Context Templates
     aiContextTemplates?: Array<{id: string; name: string; prompt: string; isBuiltIn: boolean}>;
     activeAiContextTemplateId?: string;
@@ -167,6 +170,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     openaiModelId: 'gpt-4.1', // Default to GPT-4.1
     enableAiBeats: true,
     enableZeroDraftMode: false,
+    metadataRefreshDebounceMs: 5000,
+    showEstimate: true,
     aiContextTemplates: [
         {
             id: "commercial_genre",
@@ -390,6 +395,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private searchService!: import('./services/SearchService').SearchService;
     private fileTrackingService!: import('./services/FileTrackingService').FileTrackingService;
     private rendererService!: RendererService;
+    public lastSceneData?: Scene[];
     
     // Completion estimate stats
     latestTotalScenes: number = 0;
@@ -1094,7 +1100,21 @@ export default class RadialTimelinePlugin extends Plugin {
         // Theme change listener
         this.registerEvent(this.app.workspace.on('css-change', () => {
             this.setCSSColorVariables();
-            this.refreshTimelineIfNeeded(null);
+            // Prefer selective refresh for lightweight UI changes
+            try {
+                const views = this.getTimelineViews();
+                views.forEach(v => {
+                    const svg = (v as unknown as { containerEl?: HTMLElement })?.containerEl?.querySelector?.('.radial-timeline-svg');
+                    if (svg) {
+                        this.rendererService.updateProgressAndTicks(v as any);
+                        if ((v as any).interactionMode === 'gossamer') {
+                            this.rendererService.updateGossamerLayer(v as any);
+                        }
+                    }
+                });
+            } catch {
+                this.refreshTimelineIfNeeded(null);
+            }
         }));
 
          // Setup hover listeners
@@ -1103,6 +1123,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // Initial status bar update
         this.updateStatusBar();
     }
+    public getRendererService(): RendererService { return this.rendererService; }
     
     // Store paths of current hover interactions to avoid redundant processing
     private _currentHoverPath: string | null = null;

@@ -12,7 +12,7 @@ import { SceneNumberInfo } from '../utils/constants';
 import ZeroDraftModal from '../modals/ZeroDraftModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
 import { openOrRevealFile } from '../utils/fileUtils';
-import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt } from './interactions';
+import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt, setupModeToggleController } from './interactions';
 import { setupGossamerMode, setupAllScenesDelegatedHover, setupSceneInteractionsAll, setupMainPlotMode, AllScenesView } from './modes';
 import { RendererService } from '../services/RendererService';
 
@@ -44,7 +44,7 @@ export class RadialTimelineView extends ItemView {
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
     
-    public interactionMode: 'normal' | 'mainplot' | 'gossamer' = 'normal';
+    public interactionMode: 'allscenes' | 'mainplot' | 'gossamer' = 'allscenes';
     
     // Store event handler references for clean removal
     private normalEventHandlers: Map<string, EventListener> = new Map();
@@ -233,6 +233,8 @@ export class RadialTimelineView extends ItemView {
         this.plugin.getSceneData()
             .then(sceneData => {
                 this.sceneData = sceneData;
+                // Expose last scene data on plugin for selective services that need it
+                this.plugin.lastSceneData = sceneData;
                 
                 // Remove the loading message
                 loadingEl.remove();
@@ -253,9 +255,17 @@ export class RadialTimelineView extends ItemView {
         // Setup search controls
         this.setupSearchControls();
         
-        // Add highlight rectangles if search is active
+        // Add highlight rectangles if search is active (selective refresh)
         if (this.plugin.searchActive) {
-            window.setTimeout(() => this.addHighlightRectangles(), 100);
+            if (!this.rendererService?.updateSearchHighlights(this)) {
+                window.setTimeout(() => this.addHighlightRectangles(), 100);
+            }
+        }
+
+        // If currently in gossamer mode and SVG exists, try selective gossamer rebuild now
+        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        if (svg && this.interactionMode === 'gossamer') {
+            try { this.rendererService?.updateGossamerLayer(this as any); } catch {}
         }
     }
     
@@ -423,11 +433,11 @@ export class RadialTimelineView extends ItemView {
                 // Log only meaningful changes
                 this.log('Scene/Plot frontmatter changed for file: ' + file.path);
                 
-                // Debounce the refresh with a generous 5 seconds
+                // Debounce the refresh per settings (default 5s)
                 if (this.timelineRefreshTimeout) window.clearTimeout(this.timelineRefreshTimeout);
                 this.timelineRefreshTimeout = window.setTimeout(() => {
                     this.refreshTimeline();
-                }, 5000);
+                }, Math.max(0, Number(this.plugin.settings.metadataRefreshDebounceMs ?? 5000)));
             })
         );
         
@@ -616,9 +626,27 @@ This is a test scene created to help with initial Radial timeline setup.
                         svgElement.removeAttribute('data-gossamer-mode');
                     }
 
-                    // If Main Plot mode is active, enhance plot interactions and mute others
+                    // If Main Plot mode is active via interactionMode, enhance plot interactions and mute others
                     if (this.interactionMode === 'mainplot') {
                         setupMainPlotMode(this, svgElement as unknown as SVGSVGElement);
+                    }
+                    
+                    // If outerRingAllScenes is false, the outer ring shows only main plot scenes
+                    // We need to set up click handlers for these Plot items
+                    if (!this.plugin.settings.outerRingAllScenes && this.interactionMode !== 'gossamer') {
+                        const plotGroups = svgElement.querySelectorAll('.rt-scene-group[data-item-type="Plot"]');
+                        plotGroups.forEach(group => {
+                            const encodedPath = group.getAttribute('data-path');
+                            if (!encodedPath) return;
+                            const filePath = decodeURIComponent(encodedPath);
+                            this.registerDomEvent(group as HTMLElement, 'click', async (e: MouseEvent) => {
+                                e.stopPropagation();
+                                const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+                                if (file instanceof TFile) {
+                                    await openOrRevealFile(this.plugin.app as any, file);
+                                }
+                            });
+                        });
                     }
                 // Set CSS variables for subplot labels based on data attributes
                 const subplotLabelGroups = svgElement.querySelectorAll('.subplot-label-group[data-font-size]');
@@ -631,6 +659,9 @@ This is a test scene created to help with initial Radial timeline setup.
                 
                 // Attach rotation toggle behavior (inline SVG scripts won't run here)
                 setupRotationController(this, svgElement as unknown as SVGSVGElement);
+
+                // Attach mode toggle behavior
+                setupModeToggleController(this, svgElement as unknown as SVGSVGElement);
 
                 // Adjust plot labels after render
                 const adjustLabels = () => this.plugin.adjustPlotLabelsAfterRender(timelineContainer);
@@ -1227,12 +1258,9 @@ This is a test scene created to help with initial Radial timeline setup.
      */
     private removeGossamerEventListeners(svg: SVGSVGElement): void {
         this.gossamerEventHandlers.forEach((handler, key) => {
-            const [eventType, selector] = key.split('::');
-            if (selector === 'svg') {
-                svg.removeEventListener(eventType, handler as EventListenerOrEventListenerObject);
-            } else {
-                // For element-specific handlers, they'll be cleaned up when elements are removed
-            }
+            const [eventType] = key.split('::');
+            // All handlers recorded here were attached to the SVG root via delegation
+            svg.removeEventListener(eventType, handler as EventListenerOrEventListenerObject);
         });
         this.gossamerEventHandlers.clear();
     }

@@ -27,7 +27,8 @@ export function renderAiSection(params: {
         .setHeading();
 
     // Enable/disable AI beats features
-    const enableSetting = new Settings(containerEl)
+    // NOTE: This toggle should always be visible (not added to _aiRelatedElements)
+    new Settings(containerEl)
         .setName('Enable AI LLM features')
         .setDesc('Show command palette options and ui beat colors and hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.')
         .addToggle(toggle => toggle
@@ -38,7 +39,6 @@ export function renderAiSection(params: {
                 params.toggleAiSettingsVisibility(value);
                 plugin.refreshTimelineIfNeeded(null);
             }));
-    params.addAiRelatedElement(enableSetting.settingEl);
 
     // AI Prompt Context Template setting
     const getActiveTemplateName = (): string => {

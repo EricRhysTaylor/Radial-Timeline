@@ -227,6 +227,27 @@
   display: none;
 }
 
+/* Mode toggle button styles */
+.radial-timeline-svg #mode-toggle {
+  cursor: pointer;
+  color: var(--text-normal);
+  transition: color 0.2s ease;
+}
+.radial-timeline-svg #mode-toggle use {
+  color: inherit;
+  stroke: currentColor;
+  fill: none;
+}
+.radial-timeline-svg #mode-toggle:hover use,
+.radial-timeline-svg #mode-toggle.rt-mode-toggle-hover use {
+  color: var(--rt-max-publish-stage-color, #ffffff) !important;
+  stroke: currentColor !important;
+}
+/* Hide mode toggle in Gossamer mode */
+.radial-timeline-svg[data-gossamer-mode="true"] #mode-toggle {
+  display: none;
+}
+
 /* Gossamer momentum styling */
 .rt-gossamer-layer { pointer-events: none; }
 .rt-gossamer-line { 
@@ -2056,10 +2077,15 @@
 /* status header hover effect */
 .radial-timeline-container .status-header-letter {
   text-decoration: none;
+  transition: fill 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              font-size 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              font-weight 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .status-header:hover .status-header-letter {
-  fill: #ffffff;
+  fill: var(--rt-max-publish-stage-color, #ffffff);
   text-decoration: underline;
+  font-size: 21px;
+  font-weight: 600;
 }
 
 /* bottom-left count inside Completed grid cells */
@@ -2077,10 +2103,15 @@
 /* stage header hover effect */
 .radial-timeline-container .stage-header-letter {
   text-decoration: none;
+  transition: fill 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              font-size 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              font-weight 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .stage-header:hover .stage-header-letter {
-  fill: #ffffff;
+  fill: var(--rt-max-publish-stage-color, #ffffff);
   text-decoration: underline;
+  font-size: 21px;
+  font-weight: 600;
 }
 
 /* Ensure gossamer score uses publish stage color like Act labels */

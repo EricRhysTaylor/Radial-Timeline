@@ -12,6 +12,7 @@ export interface PluginRendererFacade {
         targetCompletionDate?: string;
         outerRingAllScenes?: boolean;
         enableAiBeats: boolean;
+        showEstimate?: boolean;
     };
     searchActive: boolean;
     searchResults: Set<string>;

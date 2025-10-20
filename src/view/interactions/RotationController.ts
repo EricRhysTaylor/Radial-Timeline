@@ -1,5 +1,5 @@
 interface RotationView {
-    interactionMode: 'normal' | 'mainplot' | 'gossamer';
+    interactionMode: 'allscenes' | 'mainplot' | 'gossamer';
     getRotationState(): boolean;
     setRotationState(rotated: boolean): void;
     applyRotationToNumberSquares(svg: SVGSVGElement, rotated: boolean): void;
@@ -32,6 +32,8 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
             '.color-key-center',
             '.estimated-date-tick',
             '.estimated-date-dot',
+            '.target-date-tick',
+            '.target-date-marker',
             '.estimation-date-label',
             '.target-date-tick',
             '.target-date-marker'
@@ -54,7 +56,7 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
 
     applyRotation();
     view.registerDomEvent(toggle as unknown as HTMLElement, 'click', () => {
-        if (view.interactionMode !== 'normal') return;
+        if (view.interactionMode !== 'allscenes') return;
         rotated = !rotated;
         view.setRotationState(rotated);
         applyRotation();

@@ -25,6 +25,7 @@ import RadialTimelinePlugin, { DEFAULT_SETTINGS } from '../main';
 import { renderColorsSection } from './sections/ColorsSection';
 import { renderTemplatesSection } from './sections/TemplatesSection';
 import { renderReadmeSection } from './sections/ReadmeSection';
+import { renderAdvancedSection } from './sections/AdvancedSection';
 import { renderAiSection } from './sections/AiSection';
 
 declare const EMBEDDED_README_CONTENT: string;
@@ -223,6 +224,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         renderColorsSection(containerEl, this.plugin);
                     
         renderReadmeSection({ app: this.app, containerEl, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
+
+        // Advanced settings at end
+        renderAdvancedSection({ app: this.app, plugin: this.plugin, containerEl });
     }
 
     hide() {

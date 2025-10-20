@@ -5,6 +5,8 @@
  */
 import type RadialTimelinePlugin from './main';
 import { decodeHtmlEntities, parseSceneTitleComponents, renderSceneTitleComponents } from './utils/text';
+import { getPublishStageStyle, splitSynopsisLines, decodeContentLines, isOverdueAndIncomplete } from './synopsis/SynopsisData';
+import { createSynopsisContainer, createTextGroup, createText } from './synopsis/SynopsisView';
 
 interface Scene {
   title?: string;
@@ -138,25 +140,12 @@ export default class SynopsisManager {
    * @returns An SVG group element containing the formatted synopsis
    */
   generateElement(scene: Scene, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number): SVGGElement {
-    // Map the publish stage to a CSS class
-    const stage = scene["Publish Stage"] || 'Zero';
-    const stageClass = `rt-title-stage-${String(stage).toLowerCase()}`;
+    const { stageClass, titleColor } = getPublishStageStyle(scene["Publish Stage"], this.plugin.settings.publishStageColors);
     
-    // Get the title color from the publish stage
-    const titleColor = this.plugin.settings.publishStageColors[stage as keyof typeof this.plugin.settings.publishStageColors] || '#808080';
-    
-    // Determine where the synopsis content ends and metadata begins
-    let synopsisEndIndex = contentLines.findIndex(line => line === '\u00A0' || line === '');
-    if (synopsisEndIndex === -1) {
-      // If no separator found, assume last two lines are metadata (subplot & character)
-      synopsisEndIndex = Math.max(0, contentLines.length - 2);
-    }
-    
-    // Get metadata items - everything after the separator
-    const metadataItems = contentLines.slice(synopsisEndIndex + 1);
+    const { synopsisEndIndex, metadataItems } = splitSynopsisLines(contentLines);
     
     // Process all content lines to decode any HTML entities
-    const decodedContentLines = contentLines.map(line => decodeHtmlEntities(line));
+    const decodedContentLines = decodeContentLines(contentLines);
     
     // Deterministic subplot color from stylesheet variables
     const getSubplotColor = (subplot: string, sceneId: string): string => {
@@ -208,13 +197,10 @@ export default class SynopsisManager {
     let metadataY = 0;
     
     // Create the main container group
-    const containerGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    containerGroup.setAttribute("class", "rt-scene-info rt-info-container");
-    containerGroup.setAttribute("data-for-scene", sceneId);
+    const containerGroup = createSynopsisContainer(sceneId);
     
     // Create the synopsis text group
-    const synopsisTextGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    synopsisTextGroup.setAttribute("class", "rt-synopsis-text");
+    const synopsisTextGroup = createTextGroup();
     containerGroup.appendChild(synopsisTextGroup);
     
     // Add the title at origin (0,0) - stage color moved to child tspans
@@ -236,47 +222,10 @@ export default class SynopsisManager {
 
     // Compute Due/Overdue state (YYYY-MM-DD expected)
     const dueString = scene.due;
-    if (dueString && typeof dueString === 'string') {
-      const parts = dueString.split('-').map(Number);
-      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-        const dueYear = parts[0];
-        const dueMonth = parts[1] - 1; // 0-based
-        const dueDay = parts[2];
-        const today = new Date();
-        const todayY = today.getFullYear();
-        const todayM = today.getMonth();
-        const todayD = today.getDate();
-
-        let isOverdue = false;
-        if (dueYear < todayY) isOverdue = true; else if (dueYear === todayY) {
-          if (dueMonth < todayM) isOverdue = true; else if (dueMonth === todayM) {
-            if (dueDay < todayD) isOverdue = true; // strictly before today
-          }
-        }
-
-        // Determine scene completion status; do not show overdue for completed/done scenes
-        let normalizedStatus = '';
-        if (scene.status) {
-          if (Array.isArray(scene.status) && scene.status.length > 0) {
-            normalizedStatus = String(scene.status[0]).trim().toLowerCase();
-          } else if (typeof scene.status === 'string') {
-            normalizedStatus = scene.status.trim().toLowerCase();
-          }
-        }
-        const isComplete = normalizedStatus === 'complete' || normalizedStatus === 'done';
-
-        // Only render when overdue per original behavior AND not complete
-        if (isOverdue && !isComplete) {
-          const dueLine = document.createElementNS("http://www.w3.org/2000/svg", "text");
-          dueLine.setAttribute("class", "rt-info-text rt-title-text-secondary rt-overdue-text");
-          dueLine.setAttribute("x", "0");
-          dueLine.setAttribute("y", String(1 * lineHeight));
-          dueLine.setAttribute("text-anchor", "start");
-          dueLine.textContent = `Overdue: ${dueString}`;
-          synopsisTextGroup.appendChild(dueLine);
-          extraLineCount += 1;
-        }
-      }
+    if (dueString && isOverdueAndIncomplete(scene)) {
+      const dueLine = createText(0, 1 * lineHeight, 'rt-info-text rt-title-text-secondary rt-overdue-text', `Overdue: ${dueString}`);
+      synopsisTextGroup.appendChild(dueLine);
+      extraLineCount += 1;
     }
 
     // Revisions (Pending Edits) line if non-empty
@@ -287,13 +236,8 @@ export default class SynopsisManager {
       const lines = this.plugin.splitIntoBalancedLines(pendingEdits, maxWidth);
       for (let i = 0; i < lines.length; i++) {
         const y = (1 + extraLineCount) * lineHeight + (i * lineHeight);
-        const lineEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        lineEl.setAttribute("class", "rt-info-text rt-title-text-secondary rt-revisions-text");
-        lineEl.setAttribute("x", "0");
-        lineEl.setAttribute("y", String(y));
-        lineEl.setAttribute("text-anchor", "start");
-        lineEl.textContent = `${i === 0 ? 'Revisions: ' : ''}${lines[i]}`;
-        synopsisTextGroup.appendChild(lineEl);
+        const text = `${i === 0 ? 'Revisions: ' : ''}${lines[i]}`;
+        synopsisTextGroup.appendChild(createText(0, y, 'rt-info-text rt-title-text-secondary rt-revisions-text', text));
       }
       extraLineCount += lines.length;
     }
