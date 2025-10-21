@@ -24,34 +24,51 @@ export function decodeHtmlEntities(text: string): string {
 
 export interface SceneTitleParts { sceneNumber: string; title: string; date: string; }
 
-export function parseSceneTitleComponents(titleText: string): SceneTitleParts {
+export function parseSceneTitleComponents(titleText: string, sceneNumber?: number | null, date?: string): SceneTitleParts {
   const result: SceneTitleParts = { sceneNumber: '', title: '', date: '' };
   if (!titleText) return result;
+  
+  // Use frontmatter data if available
+  if (sceneNumber !== null && sceneNumber !== undefined) {
+    result.sceneNumber = String(sceneNumber);
+  }
+  if (date) {
+    result.date = date;
+  }
+  
   const decodedText = decodeHtmlEntities(titleText);
   if (decodedText.includes('<tspan')) {
     result.title = decodedText;
     return result;
   }
-  const dateMatch = decodedText.match(/\s{3,}(.+?)$/);
-  if (dateMatch) {
-    result.date = dateMatch[1].trim();
-    const titlePart = decodedText.substring(0, dateMatch.index).trim();
-    const titleMatch = titlePart.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
-    if (titleMatch) {
-      result.sceneNumber = titleMatch[1];
-      result.title = titleMatch[2];
+  
+  // If we don't have frontmatter data, fall back to regex parsing
+  if (result.sceneNumber === '' || result.date === '') {
+    const dateMatch = decodedText.match(/\s{3,}(.+?)$/);
+    if (dateMatch && result.date === '') {
+      result.date = dateMatch[1].trim();
+      const titlePart = decodedText.substring(0, dateMatch.index).trim();
+      const titleMatch = titlePart.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+      if (titleMatch) {
+        if (result.sceneNumber === '') result.sceneNumber = titleMatch[1];
+        result.title = titleMatch[2];
+      } else {
+        result.title = titlePart;
+      }
     } else {
-      result.title = titlePart;
+      const titleMatch = decodedText.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+      if (titleMatch) {
+        if (result.sceneNumber === '') result.sceneNumber = titleMatch[1];
+        result.title = titleMatch[2];
+      } else {
+        result.title = decodedText;
+      }
     }
   } else {
-    const titleMatch = decodedText.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
-    if (titleMatch) {
-      result.sceneNumber = titleMatch[1];
-      result.title = titleMatch[2];
-    } else {
-      result.title = decodedText;
-    }
+    // We have frontmatter data, just clean the title
+    result.title = decodedText.replace(/^\d+(?:\.\d+)?\s+/, '').replace(/\s{3,}(.+?)$/, '').trim();
   }
+  
   return result;
 }
 
@@ -139,9 +156,17 @@ export function renderSceneTitleComponents(
   }
 }
 
-// --- Added simple numeric-title parser used by TimelineRenderer ---
-export function parseSceneTitle(title: string): { number: string; text: string } {
+// --- Scene title parser that prefers frontmatter data over regex parsing ---
+export function parseSceneTitle(title: string, sceneNumber?: number | null): { number: string; text: string } {
   if (!title) return { number: '0', text: '' };
+  
+  // Use frontmatter sceneNumber if available
+  if (sceneNumber !== null && sceneNumber !== undefined) {
+    const cleanTitle = title.replace(/^\d+(?:\.\d+)?\s+/, ''); // Remove leading number if present
+    return { number: String(sceneNumber), text: escapeXml(cleanTitle) };
+  }
+  
+  // Fallback to regex parsing for legacy data
   const match = title.match(/^(\d+(?:\.\d+)?)\s+(.+)/);
   if (match) {
     const number = match[1];
@@ -164,8 +189,15 @@ export function normalizeStatus(raw: unknown): NormalizedStatus | null {
 }
 
 // Unified helpers for scene prefix numbers and number-square sizing
-export function getScenePrefixNumber(title: string | undefined | null): string | null {
+export function getScenePrefixNumber(title: string | undefined | null, sceneNumber?: number | null): string | null {
   if (!title) return null;
+  
+  // Use frontmatter sceneNumber if available
+  if (sceneNumber !== null && sceneNumber !== undefined) {
+    return String(sceneNumber);
+  }
+  
+  // Fallback to regex parsing for legacy data
   const decoded = decodeHtmlEntities(title);
   // Titles are of the form: "12.3 Title here" or "12 Title here" (no dates)
   const m = decoded.match(/^(\d+(?:\.\d+)?)\s+.+/);

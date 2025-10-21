@@ -8,6 +8,7 @@ import { App, TFile, Vault, Notice, parseYaml, getFrontMatterInfo, stringifyYaml
 import { sanitizeSourcePath, buildInitialSceneFilename } from './utils/sceneCreation';
 import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
 import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
+import { BeatsProcessingModal } from './modals/BeatsProcessingModal';
 
 // Helper function to normalize boolean values from various formats
 function normalizeBooleanValue(value: unknown): boolean {
@@ -30,7 +31,7 @@ function normalizeBooleanValue(value: unknown): boolean {
 }
 import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
 import { buildBeatsPrompt, getBeatsJsonSchema } from './ai/prompts/beats';
-import { BeatsProcessingModal, type ProcessingMode } from './modals/BeatsProcessingModal';
+import { type ProcessingMode } from './modals/BeatsProcessingModal';
 import { stripObsidianComments } from './utils/text';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { openOrRevealFileByPath } from './utils/fileUtils';
@@ -95,6 +96,7 @@ type FMInfo = {
     position?: { start?: { offset: number }, end?: { offset: number } };
 };
 
+// Extract scene number from filename (e.g., "52 Escaping Earth.md" → 52)
 function extractSceneNumber(filename: string): number | null {
     const match = filename.match(/^(\d+(\.\d+)?)/);
     return match ? parseFloat(match[1]) : null;
@@ -212,6 +214,7 @@ async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault): Prom
 
 
 
+            // Extract scene number from filename (e.g., "52 Escaping Earth.md" → 52)
             const sceneNumber = extractSceneNumber(file.name);
             // Extract body after frontmatter block using offsets
             let body = content;
@@ -344,20 +347,24 @@ async function logApiInteractionToFile(
     responseData: unknown,
     subplotName: string | null,
     commandContext: string,
-    sceneName?: string
+    sceneName?: string,
+    tripletInfo?: { prev: string; current: string; next: string }
 ): Promise<void> {
     if (!plugin.settings.logApiInteractions) {
         return;
     }
 
     const logFolder = "AI";
-    // Local-time, file-safe timestamp for filenames
-    const localStamp = new Date().toLocaleString(undefined, {
+    // Local-time, file-safe timestamp for filenames using Intl.DateTimeFormat
+    const timestamp = new Date().toLocaleString(undefined, {
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit',
         hour12: true, timeZoneName: 'short'
-    } as Intl.DateTimeFormatOptions);
-    const timestamp = localStamp.replace(/[\\/:,]/g, '-').replace(/\s+/g, ' ').trim();
+    } as Intl.DateTimeFormatOptions)
+    .replace(/(\d{2})\/(\d{2})\/(\d{4}),?/g, '$2-$1-$3') // MM/DD/YYYY -> MM-DD-YYYY
+    .replace(/(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)\s*([A-Z]{3,})/g, 'at $1.$2.$3 $4 $5') // HH:MM:SS AM/PM TZ -> at HH.MM.SS AM/PM TZ
+    .replace(/[\s,]+/g, ' ') // Replace multiple spaces/commas with single space
+    .trim();
     
     // Get friendly model name for filename
     const friendlyModelForFilename = (() => {
@@ -508,96 +515,8 @@ async function logApiInteractionToFile(
         return modelId;
     })();
 
-    // Attempt to extract scene numbers from the user prompt for summary
-    const extractScenesSummary = (text: string | undefined): { prev?: string; current?: string; next?: string } => {
-        const result: { prev?: string; current?: string; next?: string } = {};
-        if (!text) return result;
-        
-        // Find all "Scene X:" patterns in the prompt
-        const sceneMatches = text.match(/Scene\s+([^:]+):/g);
-        if (!sceneMatches) return result;
-        
-        // Extract scene numbers and their content
-        const scenes: { num: string; content: string }[] = [];
-        for (const match of sceneMatches) {
-            const numMatch = match.match(/Scene\s+([^:]+):/);
-            if (numMatch) {
-                const sceneNum = numMatch[1].trim();
-                // Find the content after this scene header (until next scene or end)
-                const afterMatch = text.split(match)[1];
-                const nextSceneMatch = afterMatch?.match(/Scene\s+[^:]+:/);
-                const content = nextSceneMatch ? 
-                    afterMatch.substring(0, afterMatch.indexOf(nextSceneMatch[0])).trim() :
-                    afterMatch?.trim() || '';
-                scenes.push({ num: sceneNum, content });
-            }
-        }
-        
-        // NEW LOGIC: Look for section headers (1beats:, 2beats:, 3beats:) to determine structure
-        const has1beats = /\n1beats:/i.test(text);
-        const has2beats = /\n2beats:/i.test(text);
-        const has3beats = /\n3beats:/i.test(text);
-        
-        // Map scene positions based on which sections are present
-        if (has1beats && has2beats && has3beats && scenes.length === 3) {
-            // Standard triplet: prev, current, next
-            result.prev = scenes[0].num;
-            result.current = scenes[1].num;
-            result.next = scenes[2].num;
-        } else if (!has1beats && has2beats && has3beats && scenes.length === 2) {
-            // First scene case: only 2beats and 3beats
-            result.current = scenes[0].num;
-            result.next = scenes[1].num;
-        } else if (has1beats && has2beats && !has3beats && scenes.length === 2) {
-            // Last scene case: only 1beats and 2beats
-            result.prev = scenes[0].num;
-            result.current = scenes[1].num;
-        } else if (!has1beats && has2beats && !has3beats && scenes.length === 1) {
-            // Single scene case: only 2beats
-            result.current = scenes[0].num;
-        } else {
-            // Fallback: use order from prompt if pattern doesn't match expected structure
-            if (scenes.length === 1) {
-                result.current = scenes[0].num;
-            } else if (scenes.length === 2) {
-                result.prev = scenes[0].num;
-                result.current = scenes[1].num;
-            } else if (scenes.length === 3) {
-                result.prev = scenes[0].num;
-                result.current = scenes[1].num;
-                result.next = scenes[2].num;
-            }
-        }
-        
-        return result;
-    };
-    
-    // Extract scene info early for use in title
-    const scenesSummaryForTitle = (() => {
-        if (provider === 'openai' && safeRequestData?.messages && Array.isArray(safeRequestData.messages)) {
-            const userMessage = safeRequestData.messages.find((m: ApiMessage) => m.role === 'user');
-            return extractScenesSummary(userMessage?.content);
-        } else if (provider === 'anthropic' && safeRequestData) {
-            const anthropicMsg = (safeRequestData as any).messages?.[0]?.content;
-            if (typeof anthropicMsg === 'string') return extractScenesSummary(anthropicMsg);
-        } else if (provider === 'gemini') {
-            type GeminiPart = { text?: string };
-            const rd = requestData as unknown;
-            if (rd && typeof rd === 'object' && (rd as Record<string, unknown>).contents) {
-                const contents = (rd as Record<string, unknown>).contents as unknown;
-                if (Array.isArray(contents) && contents[0] && typeof contents[0] === 'object') {
-                    const first = contents[0] as Record<string, unknown>;
-                    const parts = first.parts as unknown;
-                    if (Array.isArray(parts)) {
-                        const arr = parts as GeminiPart[];
-                        const fullPrompt = arr.map(p => p?.text ?? '').join('').trim();
-                        return extractScenesSummary(fullPrompt);
-                    }
-                }
-            }
-        }
-        return { prev: undefined, current: undefined, next: undefined };
-    })();
+    // Use the triplet info passed directly from the caller (no regex parsing needed!)
+    const scenesSummaryForTitle = tripletInfo || { prev: undefined, current: undefined, next: undefined };
 
     const providerTitle = provider.charAt(0).toUpperCase() + provider.slice(1);
     
@@ -654,9 +573,8 @@ async function logApiInteractionToFile(
             }
         }
     }
-    // Build scenes summary and redacted prompt (instructions only)
-    const scenesSummary = extractScenesSummary(fullUserPrompt);
-    const scenesLine = `**Scenes:** prev=${scenesSummary.prev ?? 'N/A'}, current=${scenesSummary.current ?? 'N/A'}, next=${scenesSummary.next ?? 'N/A'}`;
+    // Build scenes summary using the triplet info passed directly (no parsing needed!)
+    const scenesLine = `**Scenes:** prev=${tripletInfo?.prev ?? 'N/A'}, current=${tripletInfo?.current ?? 'N/A'}, next=${tripletInfo?.next ?? 'N/A'}`;
     fileContent += `${scenesLine}\n`;
 
     const redactPrompt = (text: string | undefined): string => {
@@ -772,7 +690,8 @@ async function callAiProvider(
     userPrompt: string,
     subplotName: string | null,
     commandContext: string,
-    sceneName?: string
+    sceneName?: string,
+    tripletInfo?: { prev: string; current: string; next: string }
 ): Promise<AiProviderResponse> {
     const provider = plugin.settings.defaultAiProvider || 'openai';
     let apiKey: string | undefined;
@@ -896,7 +815,7 @@ async function callAiProvider(
                     modelId = oaiModel;
                     // Log and return (use OpenAI request body for correct scene extraction in logs)
                     requestBodyForLog = openAiRequestForLog;
-                    await logApiInteractionToFile(plugin, vault, 'openai', modelId, requestBodyForLog, responseDataForLog, subplotName, commandContext, sceneName);
+                    await logApiInteractionToFile(plugin, vault, 'openai', modelId, requestBodyForLog, responseDataForLog, subplotName, commandContext, sceneName, tripletInfo);
                     return { result, modelIdUsed: modelId };
                 }
             }
@@ -944,7 +863,7 @@ async function callAiProvider(
         }
 
     
-        await logApiInteractionToFile(plugin, vault, provider, modelId || 'unknown', requestBodyForLog, responseDataForLog, subplotName, commandContext, sceneName);
+        await logApiInteractionToFile(plugin, vault, provider, modelId || 'unknown', requestBodyForLog, responseDataForLog, subplotName, commandContext, sceneName, tripletInfo);
         return { result: result, modelIdUsed: modelId || 'unknown' };
 
     } catch (error: unknown) {
@@ -964,7 +883,7 @@ async function callAiProvider(
              responseDataForLog = { error: { message: errorMessage, type: (errorMessage.includes('configured')) ? 'plugin_config_error' : 'plugin_execution_error' } };
         }
 
-        await logApiInteractionToFile(plugin, vault, currentProvider, modelId || 'unknown', requestBodyForLog, responseDataForLog, subplotName, commandContext, sceneName);
+        await logApiInteractionToFile(plugin, vault, currentProvider, modelId || 'unknown', requestBodyForLog, responseDataForLog, subplotName, commandContext, sceneName, tripletInfo);
 
         new Notice(`Error: ${errorMessage}`);
 
@@ -1291,8 +1210,10 @@ async function processWithModal(
             const contextPrompt = getActiveContextPrompt(plugin);
             const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
+            // Pass triplet info directly to avoid regex parsing
+            const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
             const runAi = createAiRunner(plugin, vault, callAiProvider);
-            const aiResult = await runAi(userPrompt, null, 'processByManuscriptOrder', sceneNameForLog);
+            const aiResult = await runAi(userPrompt, null, 'processByManuscriptOrder', sceneNameForLog, tripletForLog);
 
             if (aiResult.result) {
                 const parsedBeats = parseGptResult(aiResult.result, plugin);
@@ -1510,7 +1431,441 @@ export async function processBySubplotOrder(
      }
 }
 
-// Process flagged beats for a single chosen subplot name
+// Internal processing function for subplot that works with the modal
+async function processSubplotWithModal(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    subplotName: string,
+    modal: BeatsProcessingModal
+): Promise<void> {
+    try {
+        const allScenes = await getAllSceneData(plugin, vault);
+        if (allScenes.length < 1) {
+            throw new Error("No valid scenes found in the specified source path.");
+        }
+
+        // Filter scenes to only those containing the chosen subplot
+        const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
+        
+        if (filtered.length === 0) {
+            throw new Error(`No scenes found for subplot "${subplotName}".`);
+        }
+
+        // Sort by sceneNumber (if present)
+        filtered.sort(compareScenesByOrder);
+
+        // Consider only scenes with Status: working/complete and Beats Update: Yes
+        const validScenes = filtered.filter(scene => {
+            const beatsUpdate = (scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate || scene.frontmatter?.['Beats Update']) as unknown;
+            return hasProcessableContent(scene.frontmatter)
+                && normalizeBooleanValue(beatsUpdate);
+        });
+
+        if (validScenes.length === 0) {
+            throw new Error(`No flagged scenes (Beats Update: Yes/True/1) with content found for "${subplotName}".`);
+        }
+
+        // Build triplets for flagged scenes using only processable content scenes for context
+        const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
+        
+        // Filter to only scenes with processable content (Status=Working or Complete) for context
+        const processableContentScenes = filtered.filter(scene => hasProcessableContent(scene.frontmatter));
+        
+        // Only build triplets for scenes that are flagged for processing
+        const flaggedScenes = validScenes; // Already filtered for Status: working/complete and BeatsUpdate: Yes
+        
+        for (const flaggedScene of flaggedScenes) {
+            // Find this scene's position in the processable content list
+            const idx = processableContentScenes.findIndex(s => s.file.path === flaggedScene.file.path);
+            
+            // Get prev/next from processable content list only (Status=Working or Complete)
+            const prev = idx > 0 ? processableContentScenes[idx - 1] : null;
+            const next = idx >= 0 && idx < processableContentScenes.length - 1 ? processableContentScenes[idx + 1] : null;
+            
+            triplets.push({ prev, current: flaggedScene, next });
+        }
+
+        let processedCount = 0;
+        const total = triplets.length;
+
+        // Process triplets
+        for (const triplet of triplets) {
+            // Check for abort signal
+            if (modal.isAborted()) {
+                await plugin.saveSettings();
+                throw new Error('Processing aborted by user');
+            }
+
+            // Only process if the current scene is flagged
+            const flag = (triplet.current.frontmatter?.beatsupdate || triplet.current.frontmatter?.BeatsUpdate || triplet.current.frontmatter?.['Beats Update']) as unknown;
+            if (!normalizeBooleanValue(flag)) continue;
+
+            const currentPath = triplet.current.file.path;
+            const tripletIdentifier = `subplot-${subplotName}-${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
+
+            // Update progress - use basename directly (already includes scene number)
+            const sceneName = triplet.current.file.basename;
+            modal.updateProgress(processedCount + 1, total, sceneName);
+
+            // Include neighbors if they exist in the subplot sequence, regardless of content status
+            const prevBody = triplet.prev ? triplet.prev.body : null;
+            const currentBody = triplet.current.body;
+            const nextBody = triplet.next ? triplet.next.body : null;
+            const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
+            const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
+            const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+
+            // Update triplet information in the modal to show subplot context
+            if (modal && typeof modal.setTripletInfo === 'function') {
+                modal.setTripletInfo(prevNum, currentNum, nextNum);
+                plugin.log(`Updated triplet info for subplot "${subplotName}": prev=${prevNum}, current=${currentNum}, next=${nextNum}`);
+            } else {
+                plugin.log(`Modal or setTripletInfo not available for subplot "${subplotName}"`);
+            }
+
+            const contextPrompt = getActiveContextPrompt(plugin);
+            const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+            
+            // Use basename directly (already includes scene number)
+            const sceneNameForLog = triplet.current.file.basename;
+            
+            // Pass triplet info directly to avoid regex parsing
+            const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
+            const runAi = createAiRunner(plugin, vault, callAiProvider);
+            const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog);
+
+            if (aiResult.result) {
+                const parsedBeats = parseGptResult(aiResult.result, plugin);
+                if (parsedBeats) {
+                    // Post-processing: for boundary cases, ensure only the expected sections are saved
+                    if (!triplet.prev) {
+                        // First-scene case: no previous scene, drop any 1beats content
+                        parsedBeats['1beats'] = '';
+                    }
+                    if (!triplet.next) {
+                        // Last-scene case: no next scene, drop any 3beats content
+                        parsedBeats['3beats'] = '';
+                    }
+
+                    const success = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
+                    if (success) {
+                        processedCount++;
+                        plugin.log(`Successfully updated beats for scene ${triplet.current.sceneNumber} in subplot "${subplotName}"`);
+                    } else {
+                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${currentPath}`);
+                    }
+                } else {
+                    modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${currentPath}`);
+                }
+            } else {
+                modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${currentPath}`);
+            }
+        }
+
+        await plugin.saveSettings();
+        plugin.log(`Subplot processing completed: ${processedCount}/${total} scenes processed for "${subplotName}"`);
+    } catch (error) {
+        plugin.log(`Error processing subplot "${subplotName}": ${error instanceof Error ? error.message : String(error)}`);
+        throw error;
+    }
+}
+
+// Process entire subplot (all scenes) for a single chosen subplot name with modal support
+export async function processEntireSubplotWithModal(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    subplotName: string
+): Promise<void> {
+    // If there's already an active processing modal, just reopen it
+    if (plugin.activeBeatsModal && plugin.activeBeatsModal.isProcessing) {
+        plugin.activeBeatsModal.open();
+        new Notice('Reopening active processing session...');
+        return;
+    }
+
+    // Create a function to get scene count for the entire subplot
+    const getSceneCount = async (): Promise<number> => {
+        try {
+            const allScenes = await getAllSceneData(plugin, vault);
+            const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
+            // Count all scenes with processable content (not just flagged ones)
+            const validScenes = filtered.filter(scene => hasProcessableContent(scene.frontmatter));
+            return validScenes.length;
+        } catch (error) {
+            plugin.log(`Error counting scenes for subplot "${subplotName}": ${error instanceof Error ? error.message : String(error)}`);
+            return 0;
+        }
+    };
+
+    // Create the modal with subplot-specific context
+    const modal = new BeatsProcessingModal(
+        plugin.app,
+        plugin,
+        getSceneCount,
+        async () => {
+            await processEntireSubplotWithModalInternal(plugin, vault, subplotName, modal);
+        }
+    );
+    
+    // Override the modal's onOpen to skip confirmation and start processing immediately
+    const originalOnOpen = modal.onOpen.bind(modal);
+    modal.onOpen = function() {
+        // Show the modal first
+        const { contentEl, titleEl } = this;
+        titleEl.setText(`Processing entire subplot: ${subplotName}`);
+        
+        // Show progress view immediately (skip confirmation)
+        this.showProgressView();
+        
+        // Start processing automatically
+        this.isProcessing = true;
+        this.abortController = new AbortController();
+        
+        // Notify plugin that processing has started
+        plugin.activeBeatsModal = this;
+        plugin.showBeatsStatusBar(0, 0);
+        
+        // Start the actual processing
+        (async () => {
+            try {
+                await processEntireSubplotWithModalInternal(plugin, vault, subplotName, modal);
+                
+                // Show appropriate summary
+                if (this.abortController && this.abortController.signal.aborted) {
+                    this.showCompletionSummary('Processing aborted by user or rate limit');
+                } else {
+                    this.showCompletionSummary('Processing completed successfully!');
+                }
+            } catch (error) {
+                if (!this.abortController.signal.aborted) {
+                    this.addError(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
+                    this.showCompletionSummary('Processing stopped due to error');
+                } else {
+                    this.showCompletionSummary('Processing aborted by user or rate limit');
+                }
+            } finally {
+                this.isProcessing = false;
+                this.abortController = null;
+                plugin.activeBeatsModal = null;
+                plugin.hideBeatsStatusBar();
+            }
+        })();
+    };
+    
+    modal.open();
+}
+
+// Internal processing function for entire subplot that works with the modal
+async function processEntireSubplotWithModalInternal(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    subplotName: string,
+    modal: BeatsProcessingModal
+): Promise<void> {
+    try {
+        const allScenes = await getAllSceneData(plugin, vault);
+        if (allScenes.length < 1) {
+            throw new Error("No valid scenes found in the specified source path.");
+        }
+
+        // Filter scenes to only those containing the chosen subplot
+        const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
+        
+        if (filtered.length === 0) {
+            throw new Error(`No scenes found for subplot "${subplotName}".`);
+        }
+
+        // Sort by sceneNumber (if present)
+        filtered.sort(compareScenesByOrder);
+
+        // Process ALL scenes with processable content (not just flagged ones)
+        const validScenes = filtered.filter(scene => hasProcessableContent(scene.frontmatter));
+
+        if (validScenes.length === 0) {
+            throw new Error(`No scenes with processable content found for "${subplotName}".`);
+        }
+
+        // Build triplets for ALL processable scenes
+        const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
+        
+        for (const currentScene of validScenes) {
+            const currentIndex = validScenes.indexOf(currentScene);
+            const prevScene = currentIndex > 0 ? validScenes[currentIndex - 1] : null;
+            const nextScene = currentIndex < validScenes.length - 1 ? validScenes[currentIndex + 1] : null;
+            
+            triplets.push({
+                prev: prevScene,
+                current: currentScene,
+                next: nextScene
+            });
+        }
+
+        const total = triplets.length;
+        let processedCount = 0;
+
+        // Process triplets
+        for (const triplet of triplets) {
+            // Check for abort signal
+            if (modal.isAborted()) {
+                await plugin.saveSettings();
+                throw new Error('Processing aborted by user');
+            }
+
+            const currentPath = triplet.current.file.path;
+            const tripletIdentifier = `entire-subplot-${subplotName}-${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
+
+            // Update progress - use basename directly (already includes scene number)
+            const sceneName = triplet.current.file.basename;
+            modal.updateProgress(processedCount + 1, total, sceneName);
+
+            // Include neighbors if they exist in the subplot sequence
+            const prevBody = triplet.prev ? triplet.prev.body : null;
+            const currentBody = triplet.current.body;
+            const nextBody = triplet.next ? triplet.next.body : null;
+            const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
+            const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
+            const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
+
+            // Update triplet information in the modal to show subplot context
+            if (modal && typeof modal.setTripletInfo === 'function') {
+                modal.setTripletInfo(prevNum, currentNum, nextNum);
+                plugin.log(`Updated triplet info for entire subplot "${subplotName}": prev=${prevNum}, current=${currentNum}, next=${nextNum}`);
+            } else {
+                plugin.log(`Modal or setTripletInfo not available for entire subplot "${subplotName}"`);
+            }
+
+            const contextPrompt = getActiveContextPrompt(plugin);
+            const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+
+            const sceneNameForLog = triplet.current.file.basename;
+            const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
+            const runAi = createAiRunner(plugin, vault, callAiProvider);
+            const aiResult = await runAi(userPrompt, subplotName, 'processEntireSubplot', sceneNameForLog, tripletForLog);
+
+            if (aiResult.result) {
+                const parsedBeats = parseGptResult(aiResult.result, plugin);
+                if (parsedBeats) {
+                    // Post-processing: for boundary cases, ensure only the expected sections are saved
+                    if (!triplet.prev) {
+                        // First-scene case: no previous scene, drop any 1beats content
+                        parsedBeats['1beats'] = '';
+                    }
+                    if (!triplet.next) {
+                        // Last-scene case: no next scene, drop any 3beats content
+                        parsedBeats['3beats'] = '';
+                    }
+
+                    const success = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
+                    if (success) {
+                        processedCount++;
+                        plugin.log(`Successfully updated beats for scene ${triplet.current.sceneNumber} in entire subplot "${subplotName}"`);
+                    } else {
+                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${currentPath}`);
+                    }
+                } else {
+                    modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${currentPath}`);
+                }
+            } else {
+                modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${currentPath}`);
+            }
+        }
+
+        await plugin.saveSettings();
+        plugin.log(`Entire subplot processing completed: ${processedCount}/${total} scenes processed for "${subplotName}"`);
+    } catch (error) {
+        plugin.log(`Error processing entire subplot "${subplotName}": ${error instanceof Error ? error.message : String(error)}`);
+        throw error;
+    }
+}
+
+// Process flagged beats for a single chosen subplot name with modal support
+export async function processBySubplotNameWithModal(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    subplotName: string
+): Promise<void> {
+    // If there's already an active processing modal, just reopen it
+    if (plugin.activeBeatsModal && plugin.activeBeatsModal.isProcessing) {
+        plugin.activeBeatsModal.open();
+        new Notice('Reopening active processing session...');
+        return;
+    }
+
+    // Create a function to get scene count for the subplot
+    const getSceneCount = async (): Promise<number> => {
+        try {
+            const allScenes = await getAllSceneData(plugin, vault);
+            const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
+            const validScenes = filtered.filter(scene => {
+                const beatsUpdate = (scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate || scene.frontmatter?.['Beats Update']) as unknown;
+                return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(beatsUpdate);
+            });
+            return validScenes.length;
+        } catch (error) {
+            plugin.log(`Error counting scenes for subplot "${subplotName}": ${error instanceof Error ? error.message : String(error)}`);
+            return 0;
+        }
+    };
+
+    // Create the modal with subplot-specific context
+    const modal = new BeatsProcessingModal(
+        plugin.app,
+        plugin,
+        getSceneCount,
+        async () => {
+            await processSubplotWithModal(plugin, vault, subplotName, modal);
+        }
+    );
+    
+    // Override the modal's onOpen to skip confirmation and start processing immediately
+    const originalOnOpen = modal.onOpen.bind(modal);
+    modal.onOpen = function() {
+        // Show the modal first
+        const { contentEl, titleEl } = this;
+        titleEl.setText(`Processing subplot: ${subplotName}`);
+        
+        // Show progress view immediately (skip confirmation)
+        this.showProgressView();
+        
+        // Start processing automatically
+        this.isProcessing = true;
+        this.abortController = new AbortController();
+        
+        // Notify plugin that processing has started
+        plugin.activeBeatsModal = this;
+        plugin.showBeatsStatusBar(0, 0);
+        
+        // Start the actual processing
+        (async () => {
+            try {
+                await processSubplotWithModal(plugin, vault, subplotName, modal);
+                
+                // Show appropriate summary
+                if (this.abortController && this.abortController.signal.aborted) {
+                    this.showCompletionSummary('Processing aborted by user or rate limit');
+                } else {
+                    this.showCompletionSummary('Processing completed successfully!');
+                }
+            } catch (error) {
+                if (!this.abortController.signal.aborted) {
+                    this.addError(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
+                    this.showCompletionSummary('Processing stopped due to error');
+                } else {
+                    this.showCompletionSummary('Processing aborted by user or rate limit');
+                }
+            } finally {
+                this.isProcessing = false;
+                this.abortController = null;
+                plugin.activeBeatsModal = null;
+                plugin.hideBeatsStatusBar();
+            }
+        })();
+    };
+    
+    modal.open();
+}
+
+// Process flagged beats for a single chosen subplot name (legacy function - now uses modal)
 export async function processBySubplotName(
     plugin: RadialTimelinePlugin,
     vault: Vault,

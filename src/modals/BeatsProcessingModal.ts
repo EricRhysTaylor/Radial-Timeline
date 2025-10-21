@@ -498,57 +498,65 @@ export class BeatsProcessingModal extends Modal {
             this.progressBarEl.addClass('rt-progress-complete');  // Stops infinite animation
         }
         
-        // Update status message
-        if (this.statusTextEl) {
-            this.statusTextEl.setText(statusMessage);
-        }
-        
-        // Create summary section
-        const summaryContainer = contentEl.createDiv({ cls: 'rt-beats-summary' });
-        summaryContainer.createEl('h3', { text: 'Summary', cls: 'rt-beats-summary-title' });
-        
-        const summaryStats = summaryContainer.createDiv({ cls: 'rt-beats-summary-stats' });
-        
-        // Success count
+        // Update status message with comprehensive summary
         const successCount = Math.max(0, this.processedCount - this.errorCount);
-        summaryStats.createDiv({ 
-            cls: 'rt-beats-summary-row',
-            text: `Successfully processed: ${successCount} scene${successCount !== 1 ? 's' : ''}`
-        });
+        let summaryText = `${successCount} scene${successCount !== 1 ? 's' : ''} processed successfully`;
         
-        // Error count
         if (this.errorCount > 0) {
-            summaryStats.createDiv({ 
-                cls: 'rt-beats-summary-row rt-beats-summary-error',
-                text: `Errors: ${this.errorCount}`
-            });
+            summaryText += `, ${this.errorCount} error${this.errorCount !== 1 ? 's' : ''}`;
         }
         
-        // Warning count (informational, doesn't affect success count)
         if (this.warningCount > 0) {
-            summaryStats.createDiv({ 
-                cls: 'rt-beats-summary-row rt-beats-summary-warning',
-                text: `Warnings: ${this.warningCount} (scenes skipped due to validation)`
-            });
+            summaryText += `, ${this.warningCount} skipped`;
         }
         
-        // Total attempted
-        summaryStats.createDiv({ 
-            cls: 'rt-beats-summary-row',
-            text: `Total attempted: ${this.processedCount} of ${this.totalCount}`
-        });
+        if (this.statusTextEl) {
+            this.statusTextEl.setText(summaryText);
+        }
         
-        // Add tip about resuming
+        // Create summary section (only show if there are errors/warnings or tips to display)
+        const hasIssues = this.errorCount > 0 || this.warningCount > 0;
         const remainingScenes = this.totalCount - this.processedCount;
-        if (remainingScenes > 0 || this.errorCount > 0) {
-            const tipEl = summaryContainer.createDiv({ cls: 'rt-beats-summary-tip' });
-            tipEl.createEl('strong', { text: 'Tip: ' });
-            tipEl.appendText('Run the command again in "Smart" mode to process remaining or failed scenes. Already-processed scenes will be skipped automatically.');
+        const hasResumeTip = remainingScenes > 0 || this.errorCount > 0;
+        
+        // Only create summary container if there's something to show (excluding AI logs)
+        if (hasIssues || hasResumeTip) {
+            const summaryContainer = contentEl.createDiv({ cls: 'rt-beats-summary' });
+            
+            // Show error/warning details if present
+            if (hasIssues) {
+                summaryContainer.createEl('h3', { text: 'Details', cls: 'rt-beats-summary-title' });
+                
+                const summaryStats = summaryContainer.createDiv({ cls: 'rt-beats-summary-stats' });
+                
+                // Error count
+                if (this.errorCount > 0) {
+                    summaryStats.createDiv({ 
+                        cls: 'rt-beats-summary-row rt-beats-summary-error',
+                        text: `Errors: ${this.errorCount}`
+                    });
+                }
+                
+                // Warning count (informational, doesn't affect success count)
+                if (this.warningCount > 0) {
+                    summaryStats.createDiv({ 
+                        cls: 'rt-beats-summary-row rt-beats-summary-warning',
+                        text: `Warnings: ${this.warningCount} (scenes skipped due to validation)`
+                    });
+                }
+            }
+            
+            // Add tip about resuming
+            if (hasResumeTip) {
+                const tipEl = summaryContainer.createDiv({ cls: 'rt-beats-summary-tip' });
+                tipEl.createEl('strong', { text: 'Tip: ' });
+                tipEl.appendText('Run the command again in "Smart" mode to process remaining or failed scenes. Already-processed scenes will be skipped automatically.');
+            }
         }
         
-        // Add note about AI logs if logging is enabled
+        // Add note about AI logs if logging is enabled (outside summary container to avoid nesting)
         if (this.plugin.settings.logApiInteractions) {
-            const logNoteEl = summaryContainer.createDiv({ cls: 'rt-beats-summary-tip' });
+            const logNoteEl = contentEl.createDiv({ cls: 'rt-beats-summary-tip' });
             logNoteEl.createEl('strong', { text: 'Note: ' });
             logNoteEl.appendText('Detailed AI interaction logs have been saved to the AI folder for review.');
         }

@@ -919,7 +919,7 @@ export function createTimelineSVG(
                     const plotTextRadius = outerR - PLOT_TITLE_INSET;
 
                     combined.forEach((scene, idx) => {
-                            const { number, text } = parseSceneTitle(scene.title || '');
+                            const { number, text } = parseSceneTitle(scene.title || '', scene.number);
                         const position = positions.get(idx)!;
                             const sceneStartAngle = position.startAngle;
                             const sceneEndAngle = position.endAngle;
@@ -1078,7 +1078,7 @@ export function createTimelineSVG(
 
             
                         effectiveScenes.forEach((scene, idx) => {
-                            const { number, text } = parseSceneTitle(scene.title || '');
+                            const { number, text } = parseSceneTitle(scene.title || '', scene.number);
                             const position = scenePositions.get(idx);
                             if (!position) return; // Skip if position is undefined
                             const sceneStartAngle = position.startAngle;
@@ -1430,7 +1430,7 @@ export function createTimelineSVG(
             if (scene.itemType === 'Plot') return;
             if (!scene.path || seenTitlePaths.has(scene.path)) return;
             seenTitlePaths.add(scene.path);
-            const { number } = parseSceneTitle(scene.title || '');
+            const { number } = parseSceneTitle(scene.title || '', scene.number);
             if (number && typeof number === 'string') {
                 const asNum = Number(number.replace(/\D/g, ''));
                 if (!isNaN(asNum)) maxSceneNumber = Math.max(maxSceneNumber, asNum);
@@ -1449,7 +1449,7 @@ export function createTimelineSVG(
             if (scene.itemType === 'Plot') return;
             if (!scene.path || seenForMax.has(scene.path)) return;
             seenForMax.add(scene.path);
-            const { number } = parseSceneTitle(scene.title || '');
+            const { number } = parseSceneTitle(scene.title || '', scene.number);
             if (number) {
                 const n = parseFloat(String(number));
                 if (!isNaN(n)) {

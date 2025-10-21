@@ -17,7 +17,7 @@ export function renderOuterRingNumberSquares(params: {
   let svg = '';
   combined.forEach((scene, idx) => {
     if (scene.itemType === 'Plot') return;
-    const number = getScenePrefixNumber(scene.title);
+    const number = getScenePrefixNumber(scene.title, scene.number);
     if (!number) return;
     const pos = positions.get(idx);
     if (!pos) return;
@@ -52,7 +52,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   let svg = '';
   scenes.forEach((scene) => {
     if (scene.itemType === 'Plot') return;
-    const number = getScenePrefixNumber(scene.title);
+    const number = getScenePrefixNumber(scene.title, scene.number);
     if (!number) return;
     const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
     if (subplot === 'Main Plot') return;
@@ -107,7 +107,7 @@ export function renderNumberSquaresStandard(params: {
   let svg = '<g class="rt-number-squares">';
   scenes.forEach((scene) => {
     if (scene.itemType === 'Plot') return;
-    const { number } = parseSceneTitle(scene.title || '');
+    const { number } = parseSceneTitle(scene.title || '', scene.number);
     if (!number) return;
     const subplot = scene.subplot || 'Main Plot';
     const subplotIndex = masterSubplotOrder.indexOf(subplot);

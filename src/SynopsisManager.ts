@@ -28,6 +28,7 @@ interface Scene {
   "1beats"?: string;
   "2beats"?: string;
   "3beats"?: string;
+  itemType?: "Scene" | "Plot";
 }
 
 /**
@@ -62,12 +63,32 @@ export default class SynopsisManager {
   }
   
   /**
+   * Format date from ISO format to MM-DD-YYYY for display
+   * @param isoDate ISO date string (e.g., "1985-03-31T12:00:00.000Z")
+   * @returns Formatted date string (e.g., "03-31-1985")
+   */
+  private formatDateForDisplay(isoDate: string): string {
+    try {
+      const date = new Date(isoDate);
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      const year = date.getUTCFullYear();
+      return `${month}-${day}-${year}`;
+    } catch (e) {
+      // If parsing fails, return the original date
+      return isoDate;
+    }
+  }
+
+  /**
    * Add title content to a text element safely
    * @param titleContent The title content to add
    * @param titleTextElement The text element to add to
    * @param titleColor The color for the title
+   * @param sceneNumber Optional scene number from frontmatter
+   * @param sceneDate Optional scene date from frontmatter (should be pre-formatted)
    */
-  private addTitleContent(titleContent: string, titleTextElement: SVGTextElement, titleColor: string): void {
+  private addTitleContent(titleContent: string, titleTextElement: SVGTextElement, titleColor: string, sceneNumber?: number | null, sceneDate?: string): void {
     // Removed verbose debug logging
     
     if (titleContent.includes('<tspan')) {
@@ -124,7 +145,7 @@ export default class SynopsisManager {
     } else {
       // Non-search case (uses renderSceneTitleComponents which correctly handles spaces)
       const fragment = document.createDocumentFragment();
-      const titleComponents = parseSceneTitleComponents(titleContent);
+      const titleComponents = parseSceneTitleComponents(titleContent, sceneNumber, sceneDate);
       renderSceneTitleComponents(titleComponents, fragment, undefined, titleColor);
       titleTextElement.appendChild(fragment);
       
@@ -213,7 +234,9 @@ export default class SynopsisManager {
     titleTextElement.setAttribute("text-anchor", "start");
     
     // Process title content with special handling for formatting
-    this.addTitleContent(titleContent, titleTextElement, titleColor);
+    // Format date from ISO to MM-DD-YYYY for display (skip for Plot notes)
+    const formattedDate = (scene.itemType !== 'Plot' && scene.date) ? this.formatDateForDisplay(scene.date) : undefined;
+    this.addTitleContent(titleContent, titleTextElement, titleColor, scene.number, formattedDate);
     
     synopsisTextGroup.appendChild(titleTextElement);
     
@@ -630,6 +653,8 @@ export default class SynopsisManager {
     
     // Position each text element using Pythagorean theorem relative to circle center
     let yOffset = 0;
+    let lastValidXOffset = 0; // Track the last valid x-offset for fallback positioning
+    
     textElements.forEach((textEl, index) => {
       // Calculate absolute position for this line with variable line heights
       if (index > 0) {
@@ -668,38 +693,48 @@ export default class SynopsisManager {
         
         // Calculate what the x-coordinate would be if this point were on the circle
         try {
-          const circleX = Math.sqrt(radius * radius - absoluteY * absoluteY);
-          
-          // DEBUG: Log the values we're using
-         // this.plugin.log(`Calculation for line ${index}: isTopHalf=${isTopHalf}, isRightAligned=${isRightAligned}, circleX=${circleX.toFixed(2)}, baseX=${baseX.toFixed(2)}`);
-          
-          // Calculate the x-offset for this line based on quadrant
-          if (isTopHalf) {
-            // Top half (Q3, Q4) - KEEP EXISTING BEHAVIOR
-            if (isRightAligned) {
-              // Q4 (top right) - text flows left
-              xOffset = Math.abs(circleX) - Math.abs(baseX);
-            } else {
-              // Q3 (top left) - text flows right
-              xOffset = Math.abs(baseX) - Math.abs(circleX);
-            }
+          // Check if we're outside the circle's perimeter
+          if (Math.abs(absoluteY) >= radius) {
+            // Use the last valid x-offset and continue straight down
+            xOffset = lastValidXOffset;
+            this.plugin.log(`Line ${index} outside circle perimeter (y=${absoluteY.toFixed(2)}, radius=${radius}), using last valid x-offset: ${xOffset.toFixed(2)}`);
           } else {
-            // Bottom half (Q1, Q2) - FIXED CALCULATION
-            if (isRightAligned) {
-              // Q1 (bottom right) - text flows left
-              // Match Q4 formula with adjusted sign for bottom half
-              xOffset = -(Math.abs(baseX) - Math.abs(circleX));
+            const circleX = Math.sqrt(radius * radius - absoluteY * absoluteY);
+            
+            // DEBUG: Log the values we're using
+           // this.plugin.log(`Calculation for line ${index}: isTopHalf=${isTopHalf}, isRightAligned=${isRightAligned}, circleX=${circleX.toFixed(2)}, baseX=${baseX.toFixed(2)}`);
+            
+            // Calculate the x-offset for this line based on quadrant
+            if (isTopHalf) {
+              // Top half (Q3, Q4) - KEEP EXISTING BEHAVIOR
+              if (isRightAligned) {
+                // Q4 (top right) - text flows left
+                xOffset = Math.abs(circleX) - Math.abs(baseX);
+              } else {
+                // Q3 (top left) - text flows right
+                xOffset = Math.abs(baseX) - Math.abs(circleX);
+              }
             } else {
-              // Q2 (bottom left) - text flows right
-              // Match Q3 formula that works correctly
-              xOffset = Math.abs(baseX) - Math.abs(circleX);
+              // Bottom half (Q1, Q2) - FIXED CALCULATION
+              if (isRightAligned) {
+                // Q1 (bottom right) - text flows left
+                // Match Q4 formula with adjusted sign for bottom half
+                xOffset = -(Math.abs(baseX) - Math.abs(circleX));
+              } else {
+                // Q2 (bottom left) - text flows right
+                // Match Q3 formula that works correctly
+                xOffset = Math.abs(baseX) - Math.abs(circleX);
+              }
             }
+            
+            // Update the last valid x-offset for future fallback use
+            lastValidXOffset = xOffset;
           }
           
         } catch (e) {
-          // If calculation fails (e.g. sqrt of negative), use a fixed offset
-          this.plugin.log(`Error calculating offset for line ${index}: ${e.message}`);
-          xOffset = 0;
+          // If calculation fails (e.g. sqrt of negative), use the last valid offset
+          this.plugin.log(`Error calculating offset for line ${index}: ${e.message}, using last valid x-offset: ${lastValidXOffset.toFixed(2)}`);
+          xOffset = lastValidXOffset;
         }
         
         // Apply calculated coordinates relative to the base position

@@ -20,13 +20,34 @@ import { BeatsProcessingModal } from './modals/BeatsProcessingModal';
 import { shiftGossamerHistory } from './utils/gossamer';
 import { assembleManuscript } from './utils/manuscript';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
+import { parseSceneTitle } from './utils/text';
 
 
 // Declare the variable that will be injected by the build process
 declare const EMBEDDED_README_CONTENT: string;
 
 // Import the new beats update function <<< UPDATED IMPORT
-import { processByManuscriptOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotName } from './BeatsCommands';
+import { processByManuscriptOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotNameWithModal, processEntireSubplotWithModal } from './BeatsCommands';
+
+// Helper function to normalize boolean values from various formats
+function normalizeBooleanValue(value: unknown): boolean {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+    if (typeof value === 'string') {
+        const lower = value.toLowerCase().trim();
+        // Handle empty string or just whitespace as false
+        if (lower === '' || lower === ' ') {
+            return false;
+        }
+        return lower === 'yes' || lower === 'true' || lower === '1';
+    }
+    if (typeof value === 'number') {
+        return value === 1;
+    }
+    // Handle null, undefined, or any other falsy value as false
+    return false;
+}
 
 interface RadialTimelineSettings {
     sourcePath: string;
@@ -304,39 +325,7 @@ function formatNumber(num: number): string {
     return num.toFixed(3).replace(/\.?0+$/, '');
 }
 
-function parseSceneTitle(title: string): { number: string; text: string } {
-    if (!title) {
-        return { number: "0", text: "" };
-    }
-    
-    // Extract the scene number from the beginning of the title
-    const match = title.match(/^(\d+(\.\d+)?)\s+(.+)/);
-    
-    if (match) {
-        // Get number and text parts
-        const number = match[1]; // The first capture group (number)
-        let text = match[3];     // The third capture group (text)
-        
-        // Escape XML entities in the text to make it safe for SVG
-        text = text.replace(/&/g, '&amp;')
-                  .replace(/</g, '&lt;')
-                  .replace(/>/g, '&gt;')
-                  .replace(/"/g, '&quot;')
-                  .replace(/'/g, '&apos;');
-        
-        return { number, text };
-    }
-    
-    // If no number was found, return the whole title as text
-    // Escape XML entities
-    const safeTitle = title.replace(/&/g, '&amp;')
-                         .replace(/</g, '&lt;')
-                         .replace(/>/g, '&gt;')
-                         .replace(/"/g, '&quot;')
-                         .replace(/'/g, '&apos;');
-    
-    return { number: "0", text: safeTitle };
-}
+// Remove redundant parseSceneTitle function - use the one from utils/text.ts instead
 
 // Helper function for XML escaping (moved outside class to be accessible to all)
 function escapeXml(unsafe: string): string {
@@ -649,9 +638,9 @@ export default class RadialTimelinePlugin extends Plugin {
                         hour: 'numeric',
                         minute: '2-digit',
                         hour12: true
-                    }).replace(/:/g, '-'); // Replace colon with dash for valid filename
+                    }).replace(/:/g, '.'); // Replace colon with period for valid filename
                     
-                    const manuscriptPath = `AI/Manuscript ${dateStr} ${timeStr}.md`;
+                    const manuscriptPath = `AI/Manuscript ${dateStr} ${timeStr} PTD.md`;
                     
                     try {
                         await this.app.vault.createFolder('AI');
@@ -844,42 +833,65 @@ export default class RadialTimelinePlugin extends Plugin {
         // Helper: Count processable scenes (Working or Complete status) and flagged scenes (Beats Update = True)
         const countProcessableScenes = async (subplotName?: string): Promise<{ flagged: number; processable: number; total: number }> => {
             try {
-                const allScenes = await this.getSceneData();
-                
-                // Filter by subplot if provided
-                const targetScenes = subplotName ? allScenes.filter(scene => {
-                    const subplots = scene.subplot ? 
-                        (Array.isArray(scene.subplot) ? scene.subplot : [scene.subplot]) : [];
-                    return subplots.includes(subplotName);
-                }) : allScenes;
-                
-                // Normalize boolean value (handle Yes/True/1/true)
-                const normalizeBool = (val: unknown): boolean => {
-                    if (typeof val === 'boolean') return val;
-                    if (typeof val === 'number') return val !== 0;
-                    if (typeof val === 'string') {
-                        const lower = val.toLowerCase().trim();
-                        return lower === 'yes' || lower === 'true' || lower === '1';
-                    }
-                    return false;
-                };
-                
-                // Count scenes with processable content (Working or Complete status)
-                const processableScenes = targetScenes.filter(scene => {
-                    const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
-                    return statusValue === 'Working' || statusValue === 'Complete';
-                });
-                
-                // Count scenes that are both processable AND flagged for beats processing
-                const flaggedCount = processableScenes.filter(scene => {
-                    return normalizeBool(scene["Beats Update"]);
-                }).length;
-                
-                return {
-                    flagged: flaggedCount,
-                    processable: processableScenes.length,
-                    total: targetScenes.length
-                };
+                // For subplot counting, use a more efficient approach that doesn't load all scene data
+                if (subplotName) {
+                    // Use the same efficient method as the beats processing
+                    const allScenes = await this.getSceneData();
+                    const filtered = allScenes.filter(scene => {
+                        const subplots = scene.subplot ? 
+                            (Array.isArray(scene.subplot) ? scene.subplot : [scene.subplot]) : [];
+                        return subplots.includes(subplotName);
+                    });
+                    
+                    const validScenes = filtered.filter(scene => {
+                        const beatsUpdate = scene["Beats Update"];
+                        const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
+                        return (statusValue === 'Working' || statusValue === 'Complete') && 
+                               normalizeBooleanValue(beatsUpdate);
+                    });
+                    
+                    const processableScenes = filtered.filter(scene => {
+                        const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
+                        return statusValue === 'Working' || statusValue === 'Complete';
+                    });
+                    
+                    return {
+                        flagged: validScenes.length,
+                        processable: processableScenes.length,
+                        total: filtered.length
+                    };
+                } else {
+                    // For manuscript order, use the original approach
+                    const allScenes = await this.getSceneData();
+                    
+                    // Normalize boolean value (handle Yes/True/1/true)
+                    const normalizeBool = (val: unknown): boolean => {
+                        if (typeof val === 'boolean') return val;
+                        if (typeof val === 'number') return val !== 0;
+                        if (typeof val === 'string') {
+                            const lower = val.toLowerCase().trim();
+                            return lower === 'yes' || lower === 'true' || lower === '1';
+                        }
+                        return false;
+                    };
+                    
+                    // Count scenes with processable content (Working or Complete status)
+                    const processableScenes = allScenes.filter(scene => {
+                        const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
+                        return statusValue === 'Working' || statusValue === 'Complete';
+                    });
+                    
+                    // Count scenes that are both processable AND flagged for beats processing
+                    const flaggedCount = processableScenes.filter(scene => {
+                        return normalizeBool(scene["Beats Update"]);
+                    }).length;
+                    
+                    return {
+                        flagged: flaggedCount,
+                        processable: processableScenes.length,
+                        total: allScenes.length
+                    };
+                }
             } catch (error) {
                 return { flagged: 0, processable: 0, total: 0 };
             }
@@ -930,7 +942,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // 6. Beats update (subplot)
         this.addCommand({
             id: 'update-beats-choose-subplot',
-            name: 'Beats update (subplot)',
+            name: 'Beats update (subplot order)',
             checkCallback: (checking: boolean) => {
                 if (!this.settings.enableAiBeats) return false;
                 if (checking) return true;
@@ -943,21 +955,18 @@ export default class RadialTimelinePlugin extends Plugin {
                     else hasKey = !!this.settings.openaiApiKey?.trim();
                     if (!hasKey) { new Notice(`${provider[0].toUpperCase()+provider.slice(1)} API key is not set in settings.`); return; }
 
-                    const names = await getDistinctSubplotNames(this, this.app.vault);
-                    if (names.length === 0) { new Notice('No subplots found.'); return; }
-
                     // Create a modal for subplot selection with action buttons
                     class SubplotPickerModal extends Modal {
                         plugin: RadialTimelinePlugin;
-                        choices: string[];
-                        selectedSubplot: string;
+                        choices: string[] = [];
+                        selectedSubplot: string = '';
                         statsEl: HTMLElement | null = null;
+                        dropdown: DropdownComponent | null = null;
+                        buttonRow: HTMLElement | null = null;
                         
-                        constructor(app: App, plugin: RadialTimelinePlugin, choices: string[]) {
+                        constructor(app: App, plugin: RadialTimelinePlugin) {
                             super(app);
                             this.plugin = plugin;
-                            this.choices = choices;
-                            this.selectedSubplot = choices[0]; // Default to first subplot
                         }
                         
                         async updateStats(subplotName: string): Promise<void> {
@@ -971,7 +980,7 @@ export default class RadialTimelinePlugin extends Plugin {
                             }
                         }
                         
-                        onOpen(): void {
+                        async onOpen(): Promise<void> {
                             const { contentEl, titleEl } = this;
                             titleEl.setText('Select subplot for beats processing');
                             
@@ -979,44 +988,44 @@ export default class RadialTimelinePlugin extends Plugin {
                             const modelName = getActiveModelName();
                             
                             const infoEl = contentEl.createDiv({ cls: 'rt-subplot-picker-info' });
-                            infoEl.createEl('p', { text: `Process or purge beats using ${modelName}` });
+                            infoEl.createEl('p', { text: `Process beats using ${modelName}` });
                             
                             // Dropdown for subplot selection with better spacing
                             const selectContainer = contentEl.createDiv({ cls: 'rt-subplot-picker-select' });
                             selectContainer.createEl('label', { text: 'Select subplot:', cls: 'rt-subplot-picker-label' });
-                            const dropdown = new DropdownComponent(selectContainer);
-                            
-                            this.choices.forEach((name, index) => {
-                                dropdown.addOption(name, `${index + 1}. ${name}`);
-                            });
-                            
-                            dropdown.setValue(this.selectedSubplot);
-                            dropdown.onChange(async (value) => {
-                                this.selectedSubplot = value;
-                                await this.updateStats(value);
-                            });
+                            this.dropdown = new DropdownComponent(selectContainer);
+                            this.dropdown.addOption('', 'Loading subplots...');
+                            this.dropdown.setDisabled(true);
                             
                             // Stats display
                             this.statsEl = contentEl.createDiv({ cls: 'rt-subplot-picker-stats' });
-                            this.statsEl.setText('Calculating...');
-                            
-                            // Update stats for initial selection
-                            this.updateStats(this.selectedSubplot);
+                            this.statsEl.setText('Loading...');
                             
                             // Action buttons
-                            const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
+                            this.buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
                             
-                            new ButtonComponent(buttonRow)
+                            const processButton = new ButtonComponent(this.buttonRow)
                                 .setButtonText('Process beats')
                                 .setCta()
+                                .setDisabled(true)
                                 .onClick(async () => {
                                     this.close();
-                                    await processBySubplotName(this.plugin, this.plugin.app.vault, this.selectedSubplot);
+                                    await processBySubplotNameWithModal(this.plugin, this.plugin.app.vault, this.selectedSubplot);
                                 });
                             
-                            new ButtonComponent(buttonRow)
+                            const processEntireButton = new ButtonComponent(this.buttonRow)
+                                .setButtonText('Process entire subplot')
+                                .setCta()
+                                .setDisabled(true)
+                                .onClick(async () => {
+                                    this.close();
+                                    await processEntireSubplotWithModal(this.plugin, this.plugin.app.vault, this.selectedSubplot);
+                                });
+                            
+                            const purgeButton = new ButtonComponent(this.buttonRow)
                                 .setButtonText('Purge all beats')
                                 .setWarning()
+                                .setDisabled(true)
                                 .onClick(async () => {
                                     try {
                                         const { purgeBeatsBySubplotName } = await import('./BeatsCommands');
@@ -1027,13 +1036,55 @@ export default class RadialTimelinePlugin extends Plugin {
                                     }
                                 });
                             
-                            new ButtonComponent(buttonRow)
+                            new ButtonComponent(this.buttonRow)
                                 .setButtonText('Cancel')
                                 .onClick(() => this.close());
+                            
+                            // Load subplots asynchronously after modal is shown
+                            try {
+                                const names = await getDistinctSubplotNames(this.plugin, this.plugin.app.vault);
+                                if (names.length === 0) {
+                                    new Notice('No subplots found.');
+                                    this.close();
+                                    return;
+                                }
+                                
+                                this.choices = names;
+                                this.selectedSubplot = names[0];
+                                
+                                // Update dropdown with actual subplot names
+                                if (this.dropdown) {
+                                    // Clear loading option
+                                    this.dropdown.selectEl.empty();
+                                    
+                                    // Add actual subplots
+                                    names.forEach((name, index) => {
+                                        this.dropdown?.addOption(name, `${index + 1}. ${name}`);
+                                    });
+                                    
+                                    this.dropdown.setValue(this.selectedSubplot);
+                                    this.dropdown.setDisabled(false);
+                                    this.dropdown.onChange(async (value) => {
+                                        this.selectedSubplot = value;
+                                        await this.updateStats(value);
+                                    });
+                                }
+                                
+                                // Enable buttons
+                                processButton.setDisabled(false);
+                                processEntireButton.setDisabled(false);
+                                purgeButton.setDisabled(false);
+                                
+                                // Update stats for initial selection
+                                await this.updateStats(this.selectedSubplot);
+                            } catch (error) {
+                                new Notice(`Error loading subplots: ${error instanceof Error ? error.message : String(error)}`);
+                                this.close();
+                            }
                         }
                     }
 
-                    new SubplotPickerModal(this.app, this, names).open();
+                    new SubplotPickerModal(this.app, this).open();
                 })();
                 return true;
             }
@@ -1343,6 +1394,10 @@ export default class RadialTimelinePlugin extends Plugin {
                         }
                     }
     
+                    // Extract scene number from filename (e.g., "52 Escaping Earth.md" → 52)
+                    const sceneNumberMatch = file.name.match(/^(\d+(\.\d+)?)/);
+                    const sceneNumber = sceneNumberMatch ? parseFloat(sceneNumberMatch[1]) : undefined;
+    
                     // Create a separate entry for each subplot
                     subplots.forEach(subplot => {
                         scenes.push({
@@ -1353,7 +1408,7 @@ export default class RadialTimelinePlugin extends Plugin {
                                 act: validActNumber.toString(),
                                 pov: (typeof metadata.POV === 'string' ? metadata.POV : undefined),
                                 location: (typeof metadata.Location === 'string' ? metadata.Location : undefined),
-                                number: validActNumber,
+                                number: sceneNumber,
                                 synopsis: (typeof metadata.Synopsis === 'string' ? metadata.Synopsis : undefined),
                                 when: when,
                             actNumber: validActNumber,
@@ -1446,9 +1501,9 @@ export default class RadialTimelinePlugin extends Plugin {
             const actComparison = (a.actNumber || 1) - (b.actNumber || 1);
             if (actComparison !== 0) return actComparison;
             
-            // Then by prefix number (manuscript order)
-            const aNumber = parseSceneTitle(a.title || '').number;
-            const bNumber = parseSceneTitle(b.title || '').number;
+            // Then by prefix number (manuscript order) - use frontmatter sceneNumber if available
+            const aNumber = a.number !== undefined ? String(a.number) : parseSceneTitle(a.title || '').number;
+            const bNumber = b.number !== undefined ? String(b.number) : parseSceneTitle(b.title || '').number;
             
             // Use parseFloat to handle both integer and decimal scene numbers correctly
             const aNumberValue = aNumber ? parseFloat(aNumber) : 0;
@@ -1704,23 +1759,7 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
         return false;
     }
 
-    // Add this helper function at the class level
-    private parseSceneTitle(title: string): { number: string; cleanTitle: string } {
-        // Split on first space
-        const parts = title.trim().split(/\s+(.+)/);
-        
-        // Check if first part is a valid number
-        if (parts.length > 1 && !isNaN(parseFloat(parts[0]))) {
-            return {
-                number: parts[0],
-                cleanTitle: parts[1]
-            };
-        }
-        return {
-            number: "",
-            cleanTitle: title.trim()
-        };
-    }
+    // Remove redundant parseSceneTitle method - use the one from utils/text.ts instead
 
     // Centralized debug logger: only logs in development builds
     private shouldDebugLog(): boolean {

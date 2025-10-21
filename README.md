@@ -55,7 +55,7 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 * Gossamer view toggle: toggle the Gossamer plot momentum visualization overlay
 * Gossamer enter momentum scores
 * Beats update (manuscript order): update AI beat analysis for all scenes in manuscript order
-* Beats update (subplot): update AI beat analysis for scenes in a selected subplot
+* Beats update (subplot order): update AI beat analysis for scenes in a selected subplot
 * Create template note: create a basic template file with frontmatter
 * Open: open the timeline view (or interface button in the command ribbon)
 
@@ -191,7 +191,7 @@ Book: Book 1 A New Beginning
 
 ## AI beats analysis
 
-In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Beats update (manuscript order)" or "Beats update (subplot)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point.
+In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Beats update (manuscript order)" or "Beats update (subplot order)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point.
 
 Note: you can always manually enter these fields and achieve the same effect and avoid using the LLM API. You can also use a web client and produce similar results you can paste into the yaml. It is recommended that you place a spending cap on the API account for your LLM.
 
@@ -309,7 +309,7 @@ Configuration:
 
 Commands:
 - Beats update (manuscript order): Process all scenes in manuscript order
-- Beats update (subplot): Process scenes within a selected subplot only
+- Beats update (subplot order): Process scenes within a selected subplot only
 
 Workflow:
 1. Ensure scenes have `BeatsUpdate: Yes` in frontmatter to flag for processing
