@@ -50,11 +50,29 @@ export function renderCenterGrid(params: {
       return true;
     }
     
-    // 2. OR it's the most advanced stage AND all scenes are completed (final stage completion)
+    // 2. OR it's the most advanced stage AND all scenes in this stage are completed 
+    //    AND all previous stages are also complete (final stage completion)
     if (rowIndex === maxStageIdxForGrid) {
       const completed = rc.Completed || 0;
       const incomplete = (rc.Todo || 0) + (rc.Working || 0) + (rc.Due || 0);
-      return completed > 0 && incomplete === 0;
+      const thisStageComplete = completed > 0 && incomplete === 0;
+      
+      if (!thisStageComplete) return false;
+      
+      // Check that all previous stages are also complete
+      for (let i = 0; i < rowIndex; i++) {
+        const prevStage = stages[i];
+        const prevCounts = gridCountsIn[prevStage];
+        const prevTotal = (prevCounts.Todo || 0) + (prevCounts.Working || 0) + (prevCounts.Due || 0) + (prevCounts.Completed || 0);
+        const prevIncomplete = (prevCounts.Todo || 0) + (prevCounts.Working || 0) + (prevCounts.Due || 0);
+        
+        // Previous stage must either have no scenes (surpassed) or have all completed
+        if (prevTotal > 0 && prevIncomplete > 0) {
+          return false; // Previous stage still has incomplete work
+        }
+      }
+      
+      return true;
     }
     
     return false;

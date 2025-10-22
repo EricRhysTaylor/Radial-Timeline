@@ -44,6 +44,9 @@ export class RadialTimelineView extends ItemView {
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
     
+    // Cache book title for display in tab
+    private cachedBookTitle: string | undefined = undefined;
+    
     public interactionMode: 'allscenes' | 'mainplot' | 'gossamer' = 'allscenes';
     
     // Store event handler references for clean removal
@@ -72,6 +75,11 @@ export class RadialTimelineView extends ItemView {
     }
     
     getDisplayText(): string {
+        // Use cached book title if available
+        if (this.cachedBookTitle && this.cachedBookTitle.trim()) {
+            return `Radial Timeline: ${this.cachedBookTitle.trim()}`;
+        }
+        
         return TIMELINE_VIEW_DISPLAY_TEXT;
     }
     
@@ -235,6 +243,12 @@ export class RadialTimelineView extends ItemView {
                 this.sceneData = sceneData;
                 // Expose last scene data on plugin for selective services that need it
                 this.plugin.lastSceneData = sceneData;
+                
+                // Cache book title for display (getDisplayText() will use it when called)
+                const bookTitle = sceneData.find(scene => scene.Book)?.Book;
+                if (bookTitle) {
+                    this.cachedBookTitle = bookTitle;
+                }
                 
                 // Remove the loading message
                 loadingEl.remove();
