@@ -223,7 +223,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         patreonButton.appendChild(svg);
         patreonButton.appendText('Join on Patreon');
         
-        patreonButton.addEventListener('click', (e) => {
+        // SAFE: addEventListener in PluginSettingTab - cleaned up when settings are closed
+        patreonButton.addEventListener('click', (e: MouseEvent) => {
             e.preventDefault();
             window.open('https://www.patreon.com/c/EricRhysTaylor', '_blank');
         });
