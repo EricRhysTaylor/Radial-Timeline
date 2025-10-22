@@ -57,6 +57,9 @@ export class BeatsProcessingModal extends Modal {
     private readonly plugin: RadialTimelinePlugin;
     private readonly onConfirm: (mode: ProcessingMode) => Promise<void>;
     private readonly getSceneCount: (mode: ProcessingMode) => Promise<number>;
+    private readonly resumeCommandId?: string; // Optional command ID to trigger on resume
+    private readonly subplotName?: string; // Optional subplot name for resume (subplot processing only)
+    private readonly isEntireSubplot?: boolean; // Track if this is "entire subplot" vs "flagged scenes"
     
     private selectedMode: ProcessingMode = 'flagged';
     public isProcessing: boolean = false;
@@ -82,12 +85,18 @@ export class BeatsProcessingModal extends Modal {
         app: App,
         plugin: RadialTimelinePlugin,
         getSceneCount: (mode: ProcessingMode) => Promise<number>,
-        onConfirm: (mode: ProcessingMode) => Promise<void>
+        onConfirm: (mode: ProcessingMode) => Promise<void>,
+        resumeCommandId?: string,
+        subplotName?: string,
+        isEntireSubplot?: boolean
     ) {
         super(app);
         this.plugin = plugin;
         this.getSceneCount = getSceneCount;
         this.onConfirm = onConfirm;
+        this.resumeCommandId = resumeCommandId;
+        this.subplotName = subplotName;
+        this.isEntireSubplot = isEntireSubplot;
     }
 
     onOpen(): void {
@@ -514,47 +523,46 @@ export class BeatsProcessingModal extends Modal {
             this.statusTextEl.setText(summaryText);
         }
         
-        // Create summary section (only show if there are errors/warnings or tips to display)
+        // Create summary section for error/warning details if present
         const hasIssues = this.errorCount > 0 || this.warningCount > 0;
         const remainingScenes = this.totalCount - this.processedCount;
-        const hasResumeTip = remainingScenes > 0 || this.errorCount > 0;
         
-        // Only create summary container if there's something to show (excluding AI logs)
-        if (hasIssues || hasResumeTip) {
+        // Show error/warning details if present
+        if (hasIssues) {
             const summaryContainer = contentEl.createDiv({ cls: 'rt-beats-summary' });
+            summaryContainer.createEl('h3', { text: 'Details', cls: 'rt-beats-summary-title' });
             
-            // Show error/warning details if present
-            if (hasIssues) {
-                summaryContainer.createEl('h3', { text: 'Details', cls: 'rt-beats-summary-title' });
-                
-                const summaryStats = summaryContainer.createDiv({ cls: 'rt-beats-summary-stats' });
-                
-                // Error count
-                if (this.errorCount > 0) {
-                    summaryStats.createDiv({ 
-                        cls: 'rt-beats-summary-row rt-beats-summary-error',
-                        text: `Errors: ${this.errorCount}`
-                    });
-                }
-                
-                // Warning count (informational, doesn't affect success count)
-                if (this.warningCount > 0) {
-                    summaryStats.createDiv({ 
-                        cls: 'rt-beats-summary-row rt-beats-summary-warning',
-                        text: `Warnings: ${this.warningCount} (scenes skipped due to validation)`
-                    });
-                }
+            const summaryStats = summaryContainer.createDiv({ cls: 'rt-beats-summary-stats' });
+            
+            // Error count
+            if (this.errorCount > 0) {
+                summaryStats.createDiv({ 
+                    cls: 'rt-beats-summary-row rt-beats-summary-error',
+                    text: `Errors: ${this.errorCount}`
+                });
             }
             
-            // Add tip about resuming
-            if (hasResumeTip) {
-                const tipEl = summaryContainer.createDiv({ cls: 'rt-beats-summary-tip' });
-                tipEl.createEl('strong', { text: 'Tip: ' });
-                tipEl.appendText('Run the command again in "Smart" mode to process remaining or failed scenes. Already-processed scenes will be skipped automatically.');
+            // Warning count (informational, doesn't affect success count)
+            if (this.warningCount > 0) {
+                summaryStats.createDiv({ 
+                    cls: 'rt-beats-summary-row rt-beats-summary-warning',
+                    text: `Warnings: ${this.warningCount} (scenes skipped due to validation)`
+                });
             }
         }
         
-        // Add note about AI logs if logging is enabled (outside summary container to avoid nesting)
+        // Add tip about resuming (top-level, not nested) - only if there are actually scenes remaining
+        if (remainingScenes > 0) {
+            const tipEl = contentEl.createDiv({ cls: 'rt-beats-summary-tip' });
+            tipEl.createEl('strong', { text: 'Tip: ' });
+            if (this.resumeCommandId || this.subplotName) {
+                tipEl.appendText('Click Resume to complete all scenes not updated today. Scenes already processed today will be skipped automatically.');
+            } else {
+                tipEl.appendText('Run the command again in "Unprocessed" mode to process remaining or failed scenes. Already-processed scenes will be skipped automatically.');
+            }
+        }
+        
+        // Add note about AI logs if logging is enabled (top-level, not nested)
         if (this.plugin.settings.logApiInteractions) {
             const logNoteEl = contentEl.createDiv({ cls: 'rt-beats-summary-tip' });
             logNoteEl.createEl('strong', { text: 'Note: ' });
@@ -565,18 +573,42 @@ export class BeatsProcessingModal extends Modal {
         if (this.actionButtonContainer) {
             this.actionButtonContainer.empty();
             
-            // Show Resume button if there's work remaining
-            if (remainingScenes > 0 || this.errorCount > 0) {
+            // Show Resume button only if there are actually scenes remaining (not just errors)
+            // Errors like "No flagged scenes found" are fatal, not resumable
+            if (remainingScenes > 0 && (this.resumeCommandId || this.subplotName)) {
                 new ButtonComponent(this.actionButtonContainer)
                     .setButtonText(`Resume (${remainingScenes} remaining)`)
                     .setCta()
-                    .onClick(() => {
+                    .onClick(async () => {
                         this.close();
-                        // Trigger the same command again - smart mode will skip already processed scenes
-                        window.setTimeout(() => {
-                            // @ts-ignore - accessing app commands
-                            this.app.commands.executeCommandById('radial-timeline:process-beats-manuscript-order');
-                        }, 100);
+                        
+                        // For subplot processing, call the function directly with the stored subplot name
+                        if (this.subplotName) {
+                            const subplotName = this.subplotName; // Capture in closure
+                            const isEntireSubplot = this.isEntireSubplot; // Capture in closure
+                            window.setTimeout(async () => {
+                                const { processBySubplotNameWithModal, processEntireSubplotWithModal } = await import('../BeatsCommands');
+                                // Use the appropriate function based on whether this is entire subplot or flagged
+                                if (isEntireSubplot) {
+                                    // Resume entire subplot: pass isResuming=true
+                                    await processEntireSubplotWithModal(this.plugin, this.plugin.app.vault, subplotName, true);
+                                } else {
+                                    // Flagged subplot processing: flag tracking handles resume
+                                    await processBySubplotNameWithModal(this.plugin, this.plugin.app.vault, subplotName);
+                                }
+                            }, 100);
+                        }
+                        // For manuscript processing, set resume flag and trigger the command
+                        else if (this.resumeCommandId) {
+                            // Set the resume flag in settings
+                            this.plugin.settings._isResuming = true;
+                            await this.plugin.saveSettings();
+                            
+                            window.setTimeout(() => {
+                                // @ts-ignore - accessing app commands
+                                this.app.commands.executeCommandById(this.resumeCommandId);
+                            }, 100);
+                        }
                     });
             }
             

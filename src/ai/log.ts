@@ -48,9 +48,9 @@ export async function logExchange(plugin: RadialTimelinePlugin, vault: Vault, pa
   const fileName = `${processType} — ${friendlyModelForFilename} — ${ts}.md`;
   const file = `${folder}/${fileName}`;
   
-  // Human-friendly local timestamp (e.g., "Oct 18, 2025 8:38:45 AM PDT")
+  // Human-friendly local timestamp (e.g., "01-18-2025 8:38:45 AM PDT")
   const readableTimestamp = new Date().toLocaleString(undefined, {
-    year: 'numeric', month: 'short', day: '2-digit',
+    year: 'numeric', month: '2-digit', day: '2-digit',
     hour: 'numeric', minute: '2-digit', second: '2-digit',
     hour12: true, timeZoneName: 'short'
   } as Intl.DateTimeFormatOptions);

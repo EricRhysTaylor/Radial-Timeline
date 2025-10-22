@@ -665,16 +665,21 @@ This is a test scene created to help with initial Radial timeline setup.
 
                 // Adjust plot labels after render
                 const adjustLabels = () => this.plugin.adjustPlotLabelsAfterRender(timelineContainer);
-                requestAnimationFrame(adjustLabels);
+                const rafId1 = requestAnimationFrame(adjustLabels);
                 
                 // Re-adjust when the timeline view becomes active (workspace active-leaf-change)
                 const leafChangeHandler = () => {
                     // Check if this timeline view is now the active leaf
                     if (this.app.workspace.getActiveViewOfType(RadialTimelineView) === this) {
                         // Small delay to ensure layout is settled
-                        window.setTimeout(() => requestAnimationFrame(adjustLabels), 50);
+                        const timeoutId = window.setTimeout(() => {
+                            const rafId2 = requestAnimationFrame(adjustLabels);
+                            this.register(() => cancelAnimationFrame(rafId2));
+                        }, 50);
+                        this.register(() => window.clearTimeout(timeoutId));
                     }
                 };
+                this.register(() => cancelAnimationFrame(rafId1));
                 this.registerEvent(this.app.workspace.on('active-leaf-change', leafChangeHandler));
                 
                 // Performance optimization: Use batch operations where possible

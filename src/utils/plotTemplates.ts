@@ -16,7 +16,7 @@ function generatePlotNoteContent(
     '---',
     'Class: Plot',
     `Act: ${act}`,
-    'Description:',
+    `Description: ${beatInfo.description}`,
     `Beat Model: ${plotSystem}`,
     'Gossamer1:',
     '---',

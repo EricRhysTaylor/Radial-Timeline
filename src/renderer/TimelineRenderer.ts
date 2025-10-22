@@ -1694,6 +1694,14 @@ export function createTimelineSVG(
         const modeTitle = currentMode === 'allscenes' ? 'Switch to Main Plot mode' : 'Switch to All Scenes mode';
         svg += `
             <g id="mode-toggle" class="mode-toggle" transform="translate(${modeToggleX}, ${modeToggleY})" data-current-mode="${currentMode}">
+                <!-- Mode indicator text -->
+                <text x="-20" y="2" text-anchor="end" dominant-baseline="middle" 
+                      class="mode-indicator-text mode-indicator-as ${currentMode === 'allscenes' ? 'mode-indicator-visible' : 'mode-indicator-hidden-left'}" 
+                      ${currentMode === 'allscenes' ? 'opacity="1"' : 'opacity="0"'}>[AS]</text>
+                <text x="20" y="2" text-anchor="start" dominant-baseline="middle" 
+                      class="mode-indicator-text mode-indicator-mp ${currentMode === 'mainplot' ? 'mode-indicator-visible' : 'mode-indicator-hidden-right'}" 
+                      ${currentMode === 'mainplot' ? 'opacity="1"' : 'opacity="0"'}>[MP]</text>
+                <!-- Mode toggle icon -->
                 <use href="#icon-mode-toggle" x="-18" y="-18" width="36" height="36" />
                 <rect x="-18" y="-18" width="36" height="36" fill="transparent" pointer-events="all">
                     <title>${modeTitle}</title>

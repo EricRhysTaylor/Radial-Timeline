@@ -243,6 +243,37 @@
   color: var(--rt-max-publish-stage-color, #ffffff) !important;
   stroke: currentColor !important;
 }
+
+/* Mode indicator text styles */
+.radial-timeline-svg .mode-indicator-text {
+  font-size: 18px;
+  fill: var(--text-normal, #333333);
+  font-weight: 400;
+  text-transform: uppercase;
+  transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  pointer-events: none;
+}
+
+/* Mode indicator animation states */
+.radial-timeline-svg .mode-indicator-text.mode-indicator-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.radial-timeline-svg .mode-indicator-text.mode-indicator-hidden-left {
+  opacity: 0;
+  transform: translateX(-80px);
+}
+.radial-timeline-svg .mode-indicator-text.mode-indicator-hidden-right {
+  opacity: 0;
+  transform: translateX(80px);
+}
+
+/* Mode indicator hover effects */
+.radial-timeline-svg #mode-toggle:hover .mode-indicator-text {
+  fill: var(--rt-max-publish-stage-color, #ffffff);
+}
+
 /* Hide mode toggle in Gossamer mode */
 .radial-timeline-svg[data-gossamer-mode="true"] #mode-toggle {
   display: none;
@@ -2075,17 +2106,14 @@
 }
 
 /* status header hover effect */
-.radial-timeline-container .status-header-letter {
+.status-header-letter {
+  transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
   text-decoration: none;
-  transition: fill 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-              font-size 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              font-weight 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .status-header:hover .status-header-letter {
-  fill: var(--rt-max-publish-stage-color, #ffffff);
+  transform: scale(1.05);
+  fill: #ffffff;
   text-decoration: underline;
-  font-size: 21px;
-  font-weight: 600;
 }
 
 /* bottom-left count inside Completed grid cells */
@@ -2101,17 +2129,14 @@
 }
 
 /* stage header hover effect */
-.radial-timeline-container .stage-header-letter {
+.stage-header-letter {
+  transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
   text-decoration: none;
-  transition: fill 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              font-size 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              font-weight 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .stage-header:hover .stage-header-letter {
-  fill: var(--rt-max-publish-stage-color, #ffffff);
+  transform: scale(1.07);
+  fill: #ffffff;
   text-decoration: underline;
-  font-size: 21px;
-  font-weight: 600;
 }
 
 /* Ensure gossamer score uses publish stage color like Act labels */
@@ -2136,4 +2161,76 @@
 .rt-plot-system-selected {
   color: var(--text-success);
   font-weight: 500;
+}
+
+/* ============================================
+   PATREON SUPPORT SECTION
+   ============================================ */
+
+.rt-patreon-support {
+  margin: 0 0 24px 0;
+  padding: 20px;
+  background: var(--code-background);
+  border: 2px solid var(--interactive-accent-alpha-30);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.rt-patreon-title {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-normal);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rt-patreon-description {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.rt-patreon-button-container {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.rt-patreon-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 24px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px var(--interactive-accent-alpha-30);
+  cursor: pointer;
+  gap: 6px;
+}
+.rt-patreon-icon {
+  margin-right: 6px;
+}
+
+.rt-patreon-button:hover {
+  background-color: var(--interactive-accent-hover);
+  box-shadow: 0 4px 12px var(--interactive-accent-alpha-40);
+  transform: translateY(-1px);
+  color: var(--text-on-accent);
+}
+
+.rt-patreon-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px var(--interactive-accent-alpha-30);
+}
+
+.rt-patreon-button svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
 }

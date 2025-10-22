@@ -58,7 +58,7 @@ async function copyBuildAssets() {
 			fs.mkdirSync(destDir, { recursive: true });
 		}
 		
-		// --- Copy individual files ---
+		// --- Copy individual files from src/ ---
 		for (const file of filesToCopy) {
 			const sourcePath = path.join(sourceDir, "src", file);
 			const destPath = path.join(destDir, file);

@@ -201,18 +201,18 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemTemplate> = {
       "Inciting Incident",
       "Progressive Complication 1",
       "Progressive Complication 2",
-      "Crisis (Inciting)",
-      "Climax (Act I)",
-      "Resolution (Act I)",
-      "Inciting Incident (Act II)",
+      "Crisis",
+      "Climax",
+      "Resolution",
+      "Inciting Incident",
       "Progressive Complications",
       "Midpoint Shift",
-      "Crisis (Act II)",
-      "Climax (Act II)",
-      "Resolution (Act II)",
-      "Crisis (Act III)",
-      "Climax (Act III)",
-      "Resolution (Act III)"
+      "Crisis",
+      "Climax",
+      "Resolution",
+      "Crisis",
+      "Climax",
+      "Resolution"
     ],
     beatDetails: [
       {
@@ -231,22 +231,22 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemTemplate> = {
         percentageRange: "18-23%"
       },
       {
-        name: "Crisis (Inciting)",
+        name: "Inciting Crisis",
         description: "The protagonist faces a difficult choice between two negative outcomes or two equally compelling options (a dilemma or paradox). This decision is truly difficult—there is no 'right' answer. The choice they make will determine the direction of their journey through Act Two.",
         percentageRange: "23-25%"
       },
       {
-        name: "Climax (Act I)",
+        name: "Climax",
         description: "The protagonist makes their choice from the Crisis, taking action that propels them into Act Two. This decision is irreversible and commits them to a new path. Their choice reveals character and establishes what kind of journey this will be.",
         percentageRange: "25%"
       },
       {
-        name: "Resolution (Act I)",
+        name: "Resolution",
         description: "The immediate consequences of the Act I Climax become clear. We see how the protagonist's choice affects their world and relationships. New stakes are established as they enter the middle phase of their journey with complications already mounting.",
         percentageRange: "25-30%"
       },
       {
-        name: "Inciting Incident (Act II)",
+        name: "Inciting Incident",
         description: "A new destabilizing event that raises stakes and complicates the protagonist's pursuit of their goal. Just as they're adapting to Act Two, something happens that changes the game entirely. This incident shifts the terms of engagement and increases pressure.",
         percentageRange: "30-37.5%"
       },
@@ -261,32 +261,32 @@ export const PLOT_SYSTEMS: Record<string, PlotSystemTemplate> = {
         percentageRange: "50%"
       },
       {
-        name: "Crisis (Act II)",
+        name: "Crisis",
         description: "The protagonist faces another critical choice, but this time the stakes are much higher. Having learned from their journey so far, they must make a decision that will determine whether they can achieve their goal. This is often the most difficult choice in the story.",
         percentageRange: "62.5-75%"
       },
       {
-        name: "Climax (Act II)",
+        name: "Climax",
         description: "The protagonist acts on their Act II Crisis decision, making a choice that leads directly to the story's final confrontation. This action demonstrates how they've grown and what they've learned. It sets up the conditions for Act Three's resolution.",
         percentageRange: "75%"
       },
       {
-        name: "Resolution (Act II)",
+        name: "Resolution",
         description: "The consequences of the Act II Climax play out, revealing the true scope of what the protagonist now faces. All threads converge as they head into the final act. The ultimate challenge is now clear and unavoidable.",
         percentageRange: "75-80%"
       },
       {
-        name: "Crisis (Act III)",
+        name: "Crisis",
         description: "The final and most crucial decision point. The protagonist must choose how to face the ultimate challenge, often with everything they value at stake. This choice must demonstrate the full arc of their transformation and commit them to the final confrontation.",
         percentageRange: "80-87.5%"
       },
       {
-        name: "Climax (Act III)",
+        name: "Climax",
         description: "The protagonist takes decisive action based on their final Crisis choice. This is the ultimate test where they prove whether they've truly changed and learned what they needed to learn. Success or failure here determines the story's outcome and validates or challenges the theme.",
         percentageRange: "87.5-95%"
       },
       {
-        name: "Resolution (Act III)",
+        name: "Resolution",
         description: "The aftermath and new equilibrium. All major questions are answered, relationships reach their final state, and we see the full impact of the protagonist's journey. The world has changed, the protagonist has changed, and the story's thematic statement is complete.",
         percentageRange: "95-100%"
       }

@@ -344,7 +344,7 @@ function exitGossamerMode(plugin: RadialTimelinePlugin) {
   }
   
   // Reset guard flag after a short delay to allow the refresh to complete
-  setTimeout(() => {
+  window.setTimeout(() => {
     _isExitingGossamer = false;
   }, 100);
 }

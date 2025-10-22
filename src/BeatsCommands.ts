@@ -258,25 +258,69 @@ function getActiveContextPrompt(plugin: RadialTimelinePlugin): string | undefine
 }
 
 /**
+ * Helper function to check if a scene was processed today
+ * Parses the "Beats Last Updated" timestamp and compares date (ignoring time)
+ */
+function wasProcessedToday(frontmatter: Record<string, unknown> | undefined): boolean {
+    if (!frontmatter) return false;
+    
+    const beatsLastUpdated = frontmatter['Beats Last Updated'];
+    if (!beatsLastUpdated || typeof beatsLastUpdated !== 'string') return false;
+    
+    // Parse: "Jan 21, 2025, 2:30 PM by model-name"
+    // Extract the date/time portion before " by "
+    const match = beatsLastUpdated.match(/^(.+?)\s+by\s+/);
+    if (!match) return false;
+    
+    try {
+        const timestampDate = new Date(match[1]);
+        if (isNaN(timestampDate.getTime())) return false;
+        
+        const today = new Date();
+        
+        // Compare just the date parts (ignore time)
+        return timestampDate.toDateString() === today.toDateString();
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * Options for checking if a scene has been processed
+ */
+interface ProcessedCheckOptions {
+    todayOnly?: boolean;  // If true, only consider "processed" if done today (for resume)
+}
+
+/**
  * Helper function to determine if a scene has already been processed for beats
  * A scene is considered processed if:
  * 1. It has a Beats Last Updated timestamp, OR
  * 2. It has any beats fields (1beats, 2beats, or 3beats)
+ * 
+ * When todayOnly is true (for resume logic):
+ * - Only considers a scene "processed" if it has a timestamp from today
+ * - Used to skip recently processed scenes when resuming after interruption
  */
-function hasBeenProcessedForBeats(frontmatter: Record<string, unknown> | undefined): boolean {
+function hasBeenProcessedForBeats(
+    frontmatter: Record<string, unknown> | undefined,
+    options: ProcessedCheckOptions = {}
+): boolean {
     if (!frontmatter) return false;
     
-    // Check for Beats Last Updated timestamp
-    const hasBeatsLastUpdated = !!frontmatter['Beats Last Updated'];
-    if (hasBeatsLastUpdated) return true;
+    const hasTimestamp = !!frontmatter['Beats Last Updated'];
+    const hasBeats = !!frontmatter['1beats'] || !!frontmatter['2beats'] || !!frontmatter['3beats'];
     
-    // Check for any beats fields
-    const has1beats = !!frontmatter['1beats'];
-    const has2beats = !!frontmatter['2beats'];
-    const has3beats = !!frontmatter['3beats'];
-    const hasAnyBeats = has1beats || has2beats || has3beats;
+    // No timestamp or beats = definitely unprocessed
+    if (!hasTimestamp && !hasBeats) return false;
     
-    return hasAnyBeats;
+    // If todayOnly mode (for resume), only consider processed if done today
+    if (options.todayOnly) {
+        return hasTimestamp && wasProcessedToday(frontmatter);
+    }
+    
+    // Default: has timestamp or beats = processed
+    return hasTimestamp || hasBeats;
 }
 
 // Helper function to calculate scene count for each processing mode
@@ -285,6 +329,9 @@ export async function calculateSceneCount(
     vault: Vault,
     mode: ProcessingMode
 ): Promise<number> {
+    // Check if this is a resume operation
+    const isResuming = plugin.settings._isResuming || false;
+    
     const allScenes = await getAllSceneData(plugin, vault);
     allScenes.sort(compareScenesByOrder);
     
@@ -300,21 +347,35 @@ export async function calculateSceneCount(
         return hasProcessableContent(scene.frontmatter);
     });
     
-    if (mode === 'force-all') {
-        return processableScenes.length;
-    }
-    
-    // Unprocessed mode: count scenes without beats or Beats Last Updated
-    if (mode === 'unprocessed') {
-        return processableScenes.filter(scene => {
-            // Scene is unprocessed only if it has never been processed
-            return !hasBeenProcessedForBeats(scene.frontmatter);
-        }).length;
-    }
-    
-    // For flagged mode, count flagged scenes
+    // Flagged mode: count flagged scenes (resume doesn't change this)
     if (mode === 'flagged') {
         return processableScenes.length;
+    }
+    
+    // Force-all mode
+    if (mode === 'force-all') {
+        if (isResuming) {
+            // Resume: count scenes NOT processed today
+            return processableScenes.filter(scene => 
+                !hasBeenProcessedForBeats(scene.frontmatter, { todayOnly: true })
+            ).length;
+        }
+        // Initial: count all scenes
+        return processableScenes.length;
+    }
+    
+    // Unprocessed mode
+    if (mode === 'unprocessed') {
+        if (isResuming) {
+            // Resume: count scenes NOT processed today
+            return processableScenes.filter(scene => 
+                !hasBeenProcessedForBeats(scene.frontmatter, { todayOnly: true })
+            ).length;
+        }
+        // Initial: count scenes with no timestamp/beats
+        return processableScenes.filter(scene => 
+            !hasBeenProcessedForBeats(scene.frontmatter)
+        ).length;
     }
     
     // Fallback (should not be reached)
@@ -355,14 +416,16 @@ async function logApiInteractionToFile(
     }
 
     const logFolder = "AI";
-    // Local-time, file-safe timestamp for filenames using Intl.DateTimeFormat
+    // Local-time, file-safe timestamp for filenames
+    // toLocaleString produces format like "10/21/2025, 3:28:51 PM PDT"
+    // We need to replace invalid filename characters (slashes, colons) to produce: "10-21-2025 at 3.28.51 PM PDT"
     const timestamp = new Date().toLocaleString(undefined, {
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit',
         hour12: true, timeZoneName: 'short'
     } as Intl.DateTimeFormatOptions)
-    .replace(/(\d{2})\/(\d{2})\/(\d{4}),?/g, '$2-$1-$3') // MM/DD/YYYY -> MM-DD-YYYY
-    .replace(/(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)\s*([A-Z]{3,})/g, 'at $1.$2.$3 $4 $5') // HH:MM:SS AM/PM TZ -> at HH.MM.SS AM/PM TZ
+    .replace(/\//g, '-') // Replace date slashes with dashes (10/21/2025 -> 10-21-2025)
+    .replace(/(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)\s*([A-Z]{3,})/g, 'at $1.$2.$3 $4 $5') // Replace time colons with periods (3:28:51 PM -> at 3.28.51 PM)
     .replace(/[\s,]+/g, ' ') // Replace multiple spaces/commas with single space
     .trim();
     
@@ -520,9 +583,9 @@ async function logApiInteractionToFile(
 
     const providerTitle = provider.charAt(0).toUpperCase() + provider.slice(1);
     
-    // Human-friendly local timestamp (e.g., "Oct 18, 2025 8:38:45 AM PDT")
+    // Human-friendly local timestamp (e.g., "01-18-2025 8:38:45 AM PDT")
     const readableTimestamp = new Date().toLocaleString(undefined, {
-        year: 'numeric', month: 'short', day: '2-digit',
+        year: 'numeric', month: '2-digit', day: '2-digit',
         hour: 'numeric', minute: '2-digit', second: '2-digit',
         hour12: true, timeZoneName: 'short'
     } as Intl.DateTimeFormatOptions);
@@ -1103,7 +1166,8 @@ export async function processByManuscriptOrder(
         async (mode: ProcessingMode) => {
             // This is the actual processing logic
             await processWithModal(plugin, vault, mode, modal);
-        }
+        },
+        'radial-timeline:update-beats-manuscript-order' // pass command ID for resume functionality
     );
     
     modal.open();
@@ -1116,6 +1180,15 @@ async function processWithModal(
     mode: ProcessingMode,
     modal: BeatsProcessingModal
 ): Promise<void> {
+    // Check if this is a resume operation
+    const isResuming = plugin.settings._isResuming || false;
+    
+    // Clear the flag immediately after reading
+    if (isResuming) {
+        plugin.settings._isResuming = false;
+        await plugin.saveSettings();
+    }
+    
     const allScenes = await getAllSceneData(plugin, vault);
     allScenes.sort(compareScenesByOrder);
 
@@ -1144,17 +1217,36 @@ async function processWithModal(
     let processedCount = 0;
     let totalToProcess = 0;
     
-    // Calculate total based on mode - MUST match the processing logic below
+    // Calculate total based on mode AND resume state - MUST match the processing logic below
     for (const triplet of triplets) {
         const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate ?? triplet.current.frontmatter?.['Beats Update'];
         const isFlagged = normalizeBooleanValue(beatsUpdateFlag);
         
-        if (mode === 'force-all') {
-            totalToProcess++;
-        } else if (mode === 'flagged' && isFlagged) {
-            totalToProcess++;
-        } else if (mode === 'unprocessed' && !hasBeenProcessedForBeats(triplet.current.frontmatter)) {
-            totalToProcess++;
+        if (mode === 'flagged') {
+            // Flagged mode: count flagged scenes (resume doesn't change this)
+            if (isFlagged) totalToProcess++;
+        } else if (mode === 'force-all') {
+            if (isResuming) {
+                // Resume: only count scenes NOT processed today
+                if (!hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true })) {
+                    totalToProcess++;
+                }
+            } else {
+                // Initial: count all scenes
+                totalToProcess++;
+            }
+        } else if (mode === 'unprocessed') {
+            if (isResuming) {
+                // Resume: only count scenes NOT processed today
+                if (!hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true })) {
+                    totalToProcess++;
+                }
+            } else {
+                // Initial: count scenes with no timestamp/beats
+                if (!hasBeenProcessedForBeats(triplet.current.frontmatter)) {
+                    totalToProcess++;
+                }
+            }
         }
     }
 
@@ -1170,15 +1262,29 @@ async function processWithModal(
         const tripletIdentifier = `${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
         const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate ?? triplet.current.frontmatter?.['Beats Update'];
         const isFlagged = normalizeBooleanValue(beatsUpdateFlag);
-        // Determine if we should process this scene based on mode
+        
+        // Determine if we should process this scene based on mode AND resume state
         let shouldProcess = false;
-        if (mode === 'force-all') {
-            shouldProcess = true;
-        } else if (mode === 'flagged') {
+        
+        if (mode === 'flagged') {
+            // Flagged mode: just check the flag (resume doesn't change this)
             shouldProcess = isFlagged;
+        } else if (mode === 'force-all') {
+            if (isResuming) {
+                // Resume: skip scenes processed today
+                shouldProcess = !hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true });
+            } else {
+                // Initial: process everything
+                shouldProcess = true;
+            }
         } else if (mode === 'unprocessed') {
-            // Skip scenes that have been processed (have Beats Last Updated or any beats)
-            shouldProcess = !hasBeenProcessedForBeats(triplet.current.frontmatter);
+            if (isResuming) {
+                // Resume: skip scenes processed today
+                shouldProcess = !hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true });
+            } else {
+                // Initial: skip scenes with any timestamp/beats
+                shouldProcess = !hasBeenProcessedForBeats(triplet.current.frontmatter);
+            }
         }
 
         if (!shouldProcess) {
@@ -1574,7 +1680,8 @@ async function processSubplotWithModal(
 export async function processEntireSubplotWithModal(
     plugin: RadialTimelinePlugin,
     vault: Vault,
-    subplotName: string
+    subplotName: string,
+    isResuming: boolean = false
 ): Promise<void> {
     // If there's already an active processing modal, just reopen it
     if (plugin.activeBeatsModal && plugin.activeBeatsModal.isProcessing) {
@@ -1590,7 +1697,17 @@ export async function processEntireSubplotWithModal(
             const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
             // Count all scenes with processable content (not just flagged ones)
             const validScenes = filtered.filter(scene => hasProcessableContent(scene.frontmatter));
-            return validScenes.length;
+            
+            if (isResuming) {
+                // Resume: only count scenes NOT processed today
+                const unprocessedToday = validScenes.filter(scene => 
+                    !hasBeenProcessedForBeats(scene.frontmatter, { todayOnly: true })
+                );
+                return unprocessedToday.length;
+            } else {
+                // Initial: count all scenes (entire subplot processes everything)
+                return validScenes.length;
+            }
         } catch (error) {
             plugin.log(`Error counting scenes for subplot "${subplotName}": ${error instanceof Error ? error.message : String(error)}`);
             return 0;
@@ -1603,8 +1720,11 @@ export async function processEntireSubplotWithModal(
         plugin,
         getSceneCount,
         async () => {
-            await processEntireSubplotWithModalInternal(plugin, vault, subplotName, modal);
-        }
+            await processEntireSubplotWithModalInternal(plugin, vault, subplotName, modal, isResuming);
+        },
+        undefined, // no resumeCommandId for subplot processing
+        subplotName, // pass subplot name for resume functionality
+        true // isEntireSubplot = true
     );
     
     // Override the modal's onOpen to skip confirmation and start processing immediately
@@ -1628,7 +1748,7 @@ export async function processEntireSubplotWithModal(
         // Start the actual processing
         (async () => {
             try {
-                await processEntireSubplotWithModalInternal(plugin, vault, subplotName, modal);
+                await processEntireSubplotWithModalInternal(plugin, vault, subplotName, modal, isResuming);
                 
                 // Show appropriate summary
                 if (this.abortController && this.abortController.signal.aborted) {
@@ -1660,7 +1780,8 @@ async function processEntireSubplotWithModalInternal(
     plugin: RadialTimelinePlugin,
     vault: Vault,
     subplotName: string,
-    modal: BeatsProcessingModal
+    modal: BeatsProcessingModal,
+    isResuming: boolean = false
 ): Promise<void> {
     try {
         const allScenes = await getAllSceneData(plugin, vault);
@@ -1700,7 +1821,15 @@ async function processEntireSubplotWithModalInternal(
             });
         }
 
-        const total = triplets.length;
+        // Count scenes based on resume state
+        let total: number;
+        if (isResuming) {
+            // Resume: only count scenes NOT processed today
+            total = triplets.filter(t => !hasBeenProcessedForBeats(t.current.frontmatter, { todayOnly: true })).length;
+        } else {
+            // Initial: count all scenes (entire subplot processes everything)
+            total = triplets.length;
+        }
         let processedCount = 0;
 
         // Process triplets
@@ -1713,6 +1842,16 @@ async function processEntireSubplotWithModalInternal(
 
             const currentPath = triplet.current.file.path;
             const tripletIdentifier = `entire-subplot-${subplotName}-${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
+
+            // Skip logic based on resume state
+            if (isResuming) {
+                // Resume: skip scenes processed today
+                if (hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true })) {
+                    plugin.log(`[Resume] Skipping scene processed today: ${triplet.current.file.basename}`);
+                    continue;
+                }
+            }
+            // Initial run: process all scenes (no skipping)
 
             // Update progress - use basename directly (already includes scene number)
             const sceneName = triplet.current.file.basename;
@@ -1814,7 +1953,10 @@ export async function processBySubplotNameWithModal(
         getSceneCount,
         async () => {
             await processSubplotWithModal(plugin, vault, subplotName, modal);
-        }
+        },
+        undefined, // no resumeCommandId for subplot processing
+        subplotName, // pass subplot name for resume functionality
+        false // isEntireSubplot = false (flagged scenes only)
     );
     
     // Override the modal's onOpen to skip confirmation and start processing immediately

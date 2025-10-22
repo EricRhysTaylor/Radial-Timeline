@@ -81,6 +81,9 @@ interface RadialTimelineSettings {
     activeAiContextTemplateId?: string;
     // Plot System for Gossamer
     plotSystem?: string; // Selected plot system (e.g., "Save The Cat", "Hero's Journey", "Story Grid")
+    // Resume state (internal, not exposed in UI)
+    _isResuming?: boolean; // Temporary flag to indicate resume operation
+    _resumingMode?: 'flagged' | 'unprocessed' | 'force-all'; // Mode being resumed
     // Optional: Store the fetched models list to avoid refetching?
     // availableOpenAiModels?: { id: string, description?: string }[];
 }

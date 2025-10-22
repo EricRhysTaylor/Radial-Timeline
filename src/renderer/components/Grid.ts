@@ -43,7 +43,21 @@ export function renderCenterGrid(params: {
       const total = (counts.Todo || 0) + (counts.Working || 0) + (counts.Due || 0) + (counts.Completed || 0);
       return total > 0 ? Math.max(acc, idx) : acc;
     }, -1);
-    return rowTotal === 0 && (maxStageIdxForGrid > rowIndex);
+    
+    // A row is complete if:
+    // 1. It has no scenes (surpassed by a later stage)
+    if (rowTotal === 0 && maxStageIdxForGrid > rowIndex) {
+      return true;
+    }
+    
+    // 2. OR it's the most advanced stage AND all scenes are completed (final stage completion)
+    if (rowIndex === maxStageIdxForGrid) {
+      const completed = rc.Completed || 0;
+      const incomplete = (rc.Todo || 0) + (rc.Working || 0) + (rc.Due || 0);
+      return completed > 0 && incomplete === 0;
+    }
+    
+    return false;
   };
 
   const renderGridCell = (stage: string, status: string, x: number, y: number, count: number): string => {
@@ -90,6 +104,22 @@ export function renderCenterGrid(params: {
       <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}//${estimatedTotalScenes}</text>
     `;
 
+  // Check if the entire book is complete (all scenes in the final Press stage are completed)
+  const isBookComplete = (() => {
+    const mostAdvancedStageIdx = stagesForGrid.reduce((acc, s, idx) => {
+      const counts = gridCounts[s];
+      const total = (counts.Todo || 0) + (counts.Working || 0) + (counts.Due || 0) + (counts.Completed || 0);
+      return total > 0 ? Math.max(acc, idx) : acc;
+    }, -1);
+    if (mostAdvancedStageIdx === -1) return false;
+    const finalStage = stagesForGrid[mostAdvancedStageIdx];
+    if (finalStage !== 'Press') return false;
+    const pressCounts = gridCounts['Press'];
+    const pressCompleted = pressCounts.Completed || 0;
+    const pressIncomplete = (pressCounts.Todo || 0) + (pressCounts.Working || 0) + (pressCounts.Due || 0);
+    return pressCompleted > 0 && pressIncomplete === 0;
+  })();
+
   const rows = stagesForGrid.map((stage, r) => {
     const xh = startXGrid - 12;
     const yh = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2 + 1);
@@ -115,13 +145,16 @@ export function renderCenterGrid(params: {
         }, -1);
         const mostStage = stagesForGrid[Math.max(0, mostAdvancedStageIdx)];
         const solid = (PUBLISH_STAGE_COLORS[mostStage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
+        
+        // Use smile face for ALL rows when the book is complete
+        const iconId = isBookComplete ? 'icon-smile' : 'icon-bookmark-check';
+        
         return `
           <g transform="translate(${x}, ${y})">
             <rect x="0" y="0" width="${cellWidth}" height="${cellHeight}" fill="${solid}">
               ${count > 0 ? `<title>${stage} • ${status}: ${count}</title>` : ''}
             </rect>
-            ${status === 'Completed' && count > 0 ? `<text x="2" y="${cellHeight - 3}" text-anchor="start" dominant-baseline="alphabetic" class="grid-completed-count">${count}</text>` : ''}
-            <use href="#icon-bookmark-check" x="${(cellWidth - 18) / 2}" y="${(cellHeight - 18) / 2}" width="18" height="18" class="completed-icon" />
+            <use href="#${iconId}" x="${(cellWidth - 18) / 2}" y="${(cellHeight - 18) / 2}" width="18" height="18" class="completed-icon" />
           </g>
         `;
       }

@@ -39,6 +39,26 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
             title.textContent = newMode === 'allscenes' ? 'Switch to Main Plot mode' : 'Switch to All Scenes mode';
         }
         
+        // Animate mode indicators
+        const asText = modeToggle.querySelector('.mode-indicator-as') as SVGTextElement;
+        const mpText = modeToggle.querySelector('.mode-indicator-mp') as SVGTextElement;
+        
+        if (asText && mpText) {
+            if (newMode === 'allscenes') {
+                // Switching to All Scenes: AS slides in from left, MP slides out to right
+                asText.classList.remove('mode-indicator-hidden-left');
+                asText.classList.add('mode-indicator-visible');
+                mpText.classList.remove('mode-indicator-visible');
+                mpText.classList.add('mode-indicator-hidden-right');
+            } else {
+                // Switching to Main Plot: MP slides in from right, AS slides out to left
+                mpText.classList.remove('mode-indicator-hidden-right');
+                mpText.classList.add('mode-indicator-visible');
+                asText.classList.remove('mode-indicator-visible');
+                asText.classList.add('mode-indicator-hidden-left');
+            }
+        }
+        
         // Refresh the timeline to show the new mode
         view.plugin.refreshTimelineIfNeeded(null);
     });
