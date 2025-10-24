@@ -199,8 +199,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         '#8B4513'  // 15 - Brown for Ring 16
     ],
     currentMode: 'all-scenes', // Default to All Scenes mode
-    useNewRenderingSystem: false, // Stage 3: Disabled by default (manual opt-in for testing)
-    useNewInteractionSystem: false, // Stage 4: Disabled by default (manual opt-in for testing)
+    useNewRenderingSystem: true, // Stage 6: New rendering system is now the default
+    useNewInteractionSystem: true, // Stage 6: New interaction system is now the default
     outerRingAllScenes: true, // DEPRECATED: Default to all scenes mode (kept for backward compatibility)
     logApiInteractions: true, // <<< ADDED: Default for new setting
     debug: false,
@@ -1717,6 +1717,17 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
             geminiModelId: this.settings.geminiModelId,
         });
         
+        // Stage 6: Force-enable new systems for all users (even those with old settings)
+        let systemsMigrated = false;
+        if (this.settings.useNewRenderingSystem !== true) {
+            this.settings.useNewRenderingSystem = true;
+            systemsMigrated = true;
+        }
+        if (this.settings.useNewInteractionSystem !== true) {
+            this.settings.useNewInteractionSystem = true;
+            systemsMigrated = true;
+        }
+        
         // AI Context Templates migration
         let templatesMigrated = false;
         const oldBuiltInIds = new Set(['generic-editor', 'ya-biopunk-scifi', 'adult-thriller', 'adult-romance']);
@@ -1748,7 +1759,7 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
             templatesMigrated = true;
         }
         
-        if (before !== after || templatesMigrated) {
+        if (before !== after || templatesMigrated || systemsMigrated) {
             await this.saveSettings();
         }
     }

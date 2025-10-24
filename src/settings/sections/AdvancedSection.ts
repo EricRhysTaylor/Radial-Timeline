@@ -40,47 +40,11 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 plugin.refreshTimelineIfNeeded(null);
             }));
 
-    // Experimental: New rendering system (Stage 3)
-    new Settings(containerEl)
-        .setName('🧪 Use new rendering system (Stage 3)')
-        .setDesc('EXPERIMENTAL: Enable mode-definition-based rendering. Uses new architecture for rendering decisions. Toggle and refresh timeline to test. Report any visual differences.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.useNewRenderingSystem ?? false)
-            .onChange(async (value) => {
-                plugin.settings.useNewRenderingSystem = value;
-                await plugin.saveSettings();
-                
-                // Show notice about what to test
-                if (value) {
-                    new Notice('New rendering system enabled. Testing Stage 3:\n1. Switch between All Scenes and Main Plot modes\n2. Verify rendering looks identical to before\n3. Check beats visibility\n4. Check subplot rings', 8000);
-                } else {
-                    new Notice('Switched back to legacy rendering system.');
-                }
-                
-                // Refresh timeline to apply changes
-                plugin.refreshTimelineIfNeeded(null);
-            }));
-
-    // Experimental: New interaction system (Stage 4)
-    new Settings(containerEl)
-        .setName('🧪 Use new interaction system (Stage 4)')
-        .setDesc('EXPERIMENTAL: Enable ModeInteractionController for event handling. Uses new architecture for hover/click interactions. Toggle and test interactions. Report any behavioral differences.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.useNewInteractionSystem ?? false)
-            .onChange(async (value) => {
-                plugin.settings.useNewInteractionSystem = value;
-                await plugin.saveSettings();
-                
-                // Show notice about what to test
-                if (value) {
-                    new Notice('New interaction system enabled. Testing Stage 4:\n1. Hover on scenes → tooltips\n2. Click on scenes → opens files\n3. Test in all modes (All Scenes, Main Plot, Gossamer)\n4. Verify interactions work identically', 8000);
-                } else {
-                    new Notice('Switched back to legacy interaction system.');
-                }
-                
-                // Refresh timeline to apply changes
-                plugin.refreshTimelineIfNeeded(null);
-            }));
+    // Stage 6: New systems are now the default (toggles removed)
+    // The plugin now uses:
+    // - Mode-definition-based rendering (Stage 3)
+    // - ModeInteractionController for event handling (Stage 4)
+    // Legacy code paths remain in codebase but are inactive
 }
 
 

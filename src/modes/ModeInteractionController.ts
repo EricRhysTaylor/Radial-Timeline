@@ -40,19 +40,14 @@ export class ModeInteractionController {
     /**
      * Setup interaction handlers for a mode
      * Cleans up previous mode handlers first
+     * @param mode - The mode definition to setup
+     * @param svg - The SVG element to attach handlers to
      */
-    async setupMode(mode: ModeDefinition): Promise<void> {
+    async setupMode(mode: ModeDefinition, svg: SVGSVGElement): Promise<void> {
         // Clean up previous mode handlers
         this.cleanup();
         
         this.currentMode = mode.id;
-        
-        // Get the SVG element
-        const svg = this.getSvgElement();
-        if (!svg) {
-            console.warn('[ModeInteractionController] No SVG element found');
-            return;
-        }
         
         // Setup handlers based on mode type
         switch (mode.id) {
@@ -108,16 +103,6 @@ export class ModeInteractionController {
             handler,
             removeFunction
         });
-    }
-    
-    /**
-     * Get the SVG element from the view's container
-     */
-    private getSvgElement(): SVGSVGElement | null {
-        const container = (this.view as any).containerEl as HTMLElement;
-        if (!container) return null;
-        
-        return container.querySelector('.radial-timeline-svg') as SVGSVGElement;
     }
     
     /**

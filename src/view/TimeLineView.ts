@@ -249,7 +249,10 @@ export class RadialTimelineView extends ItemView {
     private setupInteractionsForMode(svg: SVGSVGElement): void {
         if (this.plugin.settings.useNewInteractionSystem && this.interactionController) {
             // Use new ModeInteractionController system
-            this.interactionController.setupMode(this.currentMode as any);
+            // Get the mode definition from the current mode
+            const { getModeDefinition } = require('../modes/ModeRegistry');
+            const modeDef = getModeDefinition(this.currentMode as any);
+            this.interactionController.setupMode(modeDef, svg);
         } else {
             // Use legacy interaction setup
             this.setupLegacyInteractions(svg);
@@ -1444,7 +1447,10 @@ This is a test scene created to help with initial Radial timeline setup.
         // Check if using new interaction system
         if (this.plugin.settings.useNewInteractionSystem && this.interactionController) {
             // Use new ModeInteractionController system
-            this.interactionController.setupMode('gossamer' as any);
+            const { getModeDefinition } = require('../modes/ModeRegistry');
+            const { TimelineMode } = require('../modes/ModeDefinition');
+            const modeDef = getModeDefinition(TimelineMode.GOSSAMER);
+            this.interactionController.setupMode(modeDef, svg);
         } else {
             // Delegate full setup to external mode module (legacy)
             setupGossamerMode(this, svg);
