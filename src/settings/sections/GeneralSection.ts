@@ -91,18 +91,6 @@ export function renderGeneralSection(params: {
                 });
         });
 
-    // --- Timeline outer ring content ---
-    new ObsidianSetting(containerEl)
-        .setName('All scenes mode or main plot mode')
-        .setDesc('If enabled, the outer ring shows ordered scenes from all subplots with subplot colors. Plot beats slices (gray) with labels are shown in the outer ring. When off, the outer ring shows only main plot scenes with publish stage coloring throughout timeline.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.outerRingAllScenes || false)
-            .onChange(async (value) => {
-                plugin.settings.outerRingAllScenes = value;
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-            }));
-
     // --- Zero draft mode toggle ---
     new ObsidianSetting(containerEl)
         .setName('Zero draft mode')

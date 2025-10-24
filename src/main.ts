@@ -69,13 +69,8 @@ interface RadialTimelineSettings {
         Press: string;
     };
     subplotColors: string[]; // 16 subplot palette colors
-    // Mode system (new architecture)
+    // Mode system
     currentMode?: string; // Current timeline mode (TimelineMode enum value)
-    // Migration feature flags (Stage 3+)
-    useNewRenderingSystem?: boolean; // Stage 3: Use mode definitions for rendering decisions (default: false)
-    useNewInteractionSystem?: boolean; // Stage 4: Use ModeInteractionController for event handlers (default: false)
-    // Legacy mode properties (deprecated, kept for backward compatibility)
-    outerRingAllScenes?: boolean; // DEPRECATED: Use currentMode instead. If true, outer ring shows all scenes; inner rings remain subplot
     logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
     debug: boolean; // Add debug setting
     targetCompletionDate?: string; // Optional: Target date as yyyy-mm-dd string
@@ -199,9 +194,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         '#8B4513'  // 15 - Brown for Ring 16
     ],
     currentMode: 'all-scenes', // Default to All Scenes mode
-    useNewRenderingSystem: true, // Stage 6: New rendering system is now the default
-    useNewInteractionSystem: true, // Stage 6: New interaction system is now the default
-    outerRingAllScenes: true, // DEPRECATED: Default to all scenes mode (kept for backward compatibility)
     logApiInteractions: true, // <<< ADDED: Default for new setting
     debug: false,
     targetCompletionDate: undefined, // Ensure it's undefined by default
@@ -1717,17 +1709,6 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
             geminiModelId: this.settings.geminiModelId,
         });
         
-        // Stage 6: Force-enable new systems for all users (even those with old settings)
-        let systemsMigrated = false;
-        if (this.settings.useNewRenderingSystem !== true) {
-            this.settings.useNewRenderingSystem = true;
-            systemsMigrated = true;
-        }
-        if (this.settings.useNewInteractionSystem !== true) {
-            this.settings.useNewInteractionSystem = true;
-            systemsMigrated = true;
-        }
-        
         // AI Context Templates migration
         let templatesMigrated = false;
         const oldBuiltInIds = new Set(['generic-editor', 'ya-biopunk-scifi', 'adult-thriller', 'adult-romance']);
@@ -1759,7 +1740,7 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
             templatesMigrated = true;
         }
         
-        if (before !== after || templatesMigrated || systemsMigrated) {
+        if (before !== after || templatesMigrated) {
             await this.saveSettings();
         }
     }

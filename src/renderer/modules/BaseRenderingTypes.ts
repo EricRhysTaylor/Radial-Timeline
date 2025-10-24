@@ -94,9 +94,7 @@ export interface RenderingContext {
  */
 export interface PluginFacade {
     settings: {
-        outerRingAllScenes?: boolean;
         currentMode?: string;
-        useNewRenderingSystem?: boolean; // Stage 3: Enable mode-definition-based rendering
         publishStageColors: Record<string, string>;
         enableAiBeats?: boolean;
     };

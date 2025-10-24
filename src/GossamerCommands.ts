@@ -182,7 +182,7 @@ export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin): Prom
   const plotBeats = scenes.filter(s => s.itemType === 'Plot');
   
   if (plotBeats.length === 0) {
-    new Notice('No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
+    new Notice('No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" deprecated).');
     return;
   }
   
@@ -257,9 +257,7 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
     // ModeManager handles: settings persistence, lifecycle hooks, and refresh
   } else {
     // Fallback to legacy mode switching
-    setInteractionMode(view, 'gossamer');
-    
-    // Update new mode system if available
+    // Update mode system
     if (hasKey(view, 'currentMode')) {
       (view as any).currentMode = 'gossamer';
     }
@@ -306,7 +304,7 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
         // Update mode toggle button to show it will return to the original mode
         const modeToggle = svg.querySelector('#mode-toggle') as SVGGElement | null;
         if (modeToggle) {
-          const originalMode = _previousBaseAllScenes ? 'allscenes' : 'mainplot';
+          const originalMode = _previousBaseMode || 'all-scenes';
           modeToggle.setAttribute('data-current-mode', originalMode);
           const title = modeToggle.querySelector('title');
           if (title) {
@@ -347,10 +345,7 @@ async function exitGossamerMode(plugin: RadialTimelinePlugin) {
   
   if (modeManager) {
     // Use new ModeManager for mode switching
-    restoreBaseMode(plugin);
-    
-    // Determine the mode to return to based on the restored outerRingAllScenes setting
-    const restoredMode = plugin.settings.outerRingAllScenes ? 'all-scenes' : 'main-plot';
+    const restoredMode = restoreBaseMode(plugin);
     
     // Use ModeManager to switch (handles lifecycle hooks and refresh)
     await modeManager.switchMode(restoredMode as any);
@@ -379,10 +374,7 @@ async function exitGossamerMode(plugin: RadialTimelinePlugin) {
     (view as unknown as { removeGossamerEventListeners: (s: SVGSVGElement) => void }).removeGossamerEventListeners(svg);
   }
 
-  restoreBaseMode(plugin);
-  
-  // Determine the mode to return to based on the restored outerRingAllScenes setting
-  const restoredMode = plugin.settings.outerRingAllScenes ? 'all-scenes' : 'main-plot';
+  const restoredMode = restoreBaseMode(plugin);
   
   // Update new mode system if available
   if (hasKey(view, 'currentMode')) {
@@ -392,11 +384,6 @@ async function exitGossamerMode(plugin: RadialTimelinePlugin) {
   // Update settings
   plugin.settings.currentMode = restoredMode;
   plugin.saveSettings();
-  
-  // Always return to 'allscenes' interaction mode
-  // The renderer will handle Main Plot mode via outerRingAllScenes setting
-  // We don't use 'mainplot' interaction mode for settings-based Main Plot
-  setInteractionMode(view, 'allscenes');
   
   // Force an immediate full refresh when exiting Gossamer mode
   // Use direct refreshTimeline() to avoid debounce delay
@@ -414,30 +401,32 @@ async function exitGossamerMode(plugin: RadialTimelinePlugin) {
 }
 
 // Base-mode helpers
-let _previousBaseAllScenes: boolean | null = null;
+let _previousBaseMode: string | null = null;
 
 // Guard to prevent double-execution of exit
 let _isExitingGossamer = false;
 
 export function setBaseModeAllScenes(plugin: RadialTimelinePlugin) {
-  if (_previousBaseAllScenes === null) _previousBaseAllScenes = !!plugin.settings.outerRingAllScenes;
-  if (!plugin.settings.outerRingAllScenes) {
-    plugin.settings.outerRingAllScenes = true;
-    plugin.saveSettings();
+  // Save the current mode before entering Gossamer (if not already saved)
+  if (_previousBaseMode === null) {
+    _previousBaseMode = plugin.settings.currentMode || 'all-scenes';
   }
 }
 
-export function restoreBaseMode(plugin: RadialTimelinePlugin) {
-  if (_previousBaseAllScenes !== null) {
-    plugin.settings.outerRingAllScenes = _previousBaseAllScenes;
-    plugin.saveSettings();
-    _previousBaseAllScenes = null;
+export function restoreBaseMode(plugin: RadialTimelinePlugin): string {
+  // Restore the saved mode
+  if (_previousBaseMode !== null) {
+    const mode = _previousBaseMode;
+    _previousBaseMode = null;
+    return mode;
   }
+  // Default to all-scenes if no saved mode
+  return 'all-scenes';
 }
 
 export function resetGossamerModeState() {
   // Reset the Gossamer mode state variables when mode is changed outside of Gossamer
-  _previousBaseAllScenes = null;
+  _previousBaseMode = null;
 }
 
 export function resetRotation(plugin: RadialTimelinePlugin) {
@@ -475,10 +464,5 @@ function getInteractionMode(view: unknown): 'allscenes' | 'mainplot' | 'gossamer
   return undefined;
 }
 
-function setInteractionMode(view: unknown, mode: 'allscenes' | 'mainplot' | 'gossamer'): void {
-  if (hasKey(view, 'interactionMode')) {
-    (view as { interactionMode: 'allscenes' | 'mainplot' | 'gossamer' }).interactionMode = mode;
-  }
-}
 
 

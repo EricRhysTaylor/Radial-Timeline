@@ -144,7 +144,7 @@ The plugin supports beat structuring using yaml `class: beat`. These appear as n
 
 ## Gossamer momentum view
 
-Using your story beats system, this view grays the timeline and displays the momentum values tied to each story beat to show how well the manuscript is building tension and excitement. Works with any beat structure - whether you use Save the Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or your own custom beat system. Simply create Plot notes with `Class: Plot` and enter the `Gossamer1=34` values in yaml to chart the values across these beats.
+Using your story beats system, this view grays the timeline and displays the momentum values tied to each story beat to show how well the manuscript is building tension and excitement. Works with any beat structure - whether you use Save the Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or your own custom beat system. Simply create Plot notes with `Class: Beat` and enter the `Gossamer1=34` values in yaml to chart the values across these beats.
 
 Workflow using Command Palette functions:
 - Radial Timeline: Generate manuscript to prepare the text for your favorite LLM.
@@ -160,14 +160,14 @@ Features:
 - Score entry modal: Complete interface for adding or deleting scores with validation
 - Clipboard integration: Copy/paste functionality for AI-generated scores
 - Template generation: Copy Prompt Template for AI LLM
-- Plot system filtering: Works with any beat system or custom structures (only filters if you explicitly set a beat system in settings)
+- Story beats system filtering: Works with any story beats system or custom structures (only filters if you explicitly set a beat system in settings)
 - Score validation: 0-100 range validation with error highlighting (red dot for missing value, defaults to 0)
 
 <hr>
 
-### AI Beats Analysis
+### AI Triplet Scene Beats Analysis
 
-The plugin can automatically generate scene analysis using AI LLM to evaluate the pacing for individual flagged scenes as triples (in groups of 3), entire suplots or the manuscript:
+The plugin can automatically generate scene analysis using AI LLM to evaluate the pacing for individual flagged scenes as triplets (in groups of 3). May be applied for specific subplot ordering or the entire manuscript (all scenes) orderning:
 
 * Triplet Analysis: AI analyzes 3 scenes at a time (previous, current, next) from the perspective of the middle scene
 * Beat Evaluation: Each scene gets a grade and specific feedback on pacing, tension, and story progression

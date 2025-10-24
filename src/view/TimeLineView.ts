@@ -49,13 +49,10 @@ export class RadialTimelineView extends ItemView {
     // Cache book title for display in tab
     private cachedBookTitle: string | undefined = undefined;
     
-    // Mode system (new architecture)
+    // Mode system
     private _currentMode: string = 'all-scenes'; // TimelineMode enum value
-    private modeManager?: ModeManager; // Centralized mode management (Phase 3)
-    private interactionController?: ModeInteractionController; // Interaction handler management (Phase 3)
-    
-    // Legacy mode tracking (deprecated, kept for backward compatibility)
-    public interactionMode: 'allscenes' | 'mainplot' | 'gossamer' = 'allscenes';
+    private modeManager?: ModeManager; // Centralized mode management
+    private interactionController?: ModeInteractionController; // Interaction handler management
     
     // Store event handler references for clean removal
     private normalEventHandlers: Map<string, EventListener> = new Map();
@@ -67,23 +64,17 @@ export class RadialTimelineView extends ItemView {
     }
 
     /**
-     * Get the current timeline mode (new architecture)
-     * Provides migration from legacy properties if needed
+     * Get the current timeline mode
      */
     public get currentMode(): string {
         return this._currentMode;
     }
 
     /**
-     * Set the current timeline mode (new architecture)
-     * Automatically updates legacy properties for backward compatibility
+     * Set the current timeline mode
      */
     public set currentMode(mode: string) {
         this._currentMode = mode;
-        
-        // Update legacy properties for backward compatibility
-        // This ensures existing code that checks outerRingAllScenes or interactionMode still works
-        this.syncLegacyPropertiesFromMode(mode);
     }
 
     /**
@@ -102,68 +93,6 @@ export class RadialTimelineView extends ItemView {
         return this.interactionController;
     }
 
-    /**
-     * Migrate from legacy mode tracking to new currentMode
-     * Called during initialization to convert old settings
-     */
-    private migrateLegacyModeToCurrentMode(): void {
-        // Priority 1: Check if we already have currentMode set in settings
-        if (this.plugin.settings.currentMode) {
-            this._currentMode = this.plugin.settings.currentMode;
-            this.syncLegacyPropertiesFromMode(this._currentMode);
-            return;
-        }
-
-        // Priority 2: Check interactionMode (runtime state)
-        if (this.interactionMode === 'gossamer') {
-            this._currentMode = 'gossamer';
-            this.plugin.settings.currentMode = 'gossamer';
-            return;
-        }
-
-        // Priority 3: Check outerRingAllScenes setting
-        if (this.plugin.settings.outerRingAllScenes === false) {
-            this._currentMode = 'main-plot';
-            this.interactionMode = 'mainplot';
-        } else {
-            this._currentMode = 'all-scenes';
-            this.interactionMode = 'allscenes';
-        }
-
-        // Persist the migrated mode
-        this.plugin.settings.currentMode = this._currentMode;
-        this.plugin.saveSettings();
-    }
-
-    /**
-     * Update legacy properties based on currentMode
-     * This maintains backward compatibility with existing code
-     */
-    private syncLegacyPropertiesFromMode(mode: string): void {
-        switch (mode) {
-            case 'all-scenes':
-                this.plugin.settings.outerRingAllScenes = true;
-                this.interactionMode = 'allscenes';
-                break;
-            case 'main-plot':
-                this.plugin.settings.outerRingAllScenes = false;
-                this.interactionMode = 'mainplot';
-                break;
-            case 'gossamer':
-                this.plugin.settings.outerRingAllScenes = true; // Gossamer forces all-scenes rendering
-                this.interactionMode = 'gossamer';
-                break;
-            case 'chronology':
-                // Future mode: default to all-scenes behavior for now
-                this.plugin.settings.outerRingAllScenes = true;
-                this.interactionMode = 'allscenes';
-                break;
-            default:
-                // Unknown mode: default to all-scenes
-                this.plugin.settings.outerRingAllScenes = true;
-                this.interactionMode = 'allscenes';
-        }
-    }
 
     constructor(leaf: WorkspaceLeaf, plugin: RadialTimelinePlugin) {
         super(leaf);
@@ -171,15 +100,13 @@ export class RadialTimelineView extends ItemView {
         this.openScenePaths = plugin.openScenePaths;
         this.rendererService = (plugin as any).rendererService as RendererService;
         
-        // Migrate legacy mode tracking to new system
-        this.migrateLegacyModeToCurrentMode();
-        
-        // Initialize Phase 3 mode management (if available)
+        // Initialize mode management
+        this._currentMode = plugin.settings.currentMode || 'all-scenes';
         try {
             this.modeManager = createModeManager(plugin, this);
             this.interactionController = createInteractionController(this);
         } catch (e) {
-            console.warn('[RadialTimelineView] Phase 3 mode management not available:', e);
+            console.warn('[RadialTimelineView] Mode management initialization failed:', e);
         }
     }
     
@@ -247,29 +174,11 @@ export class RadialTimelineView extends ItemView {
      * Stage 4: Uses ModeInteractionController if flag is enabled, otherwise uses legacy setup
      */
     private setupInteractionsForMode(svg: SVGSVGElement): void {
-        if (this.plugin.settings.useNewInteractionSystem && this.interactionController) {
-            // Use new ModeInteractionController system
-            // Get the mode definition from the current mode
+        if (this.interactionController) {
             const { getModeDefinition } = require('../modes/ModeRegistry');
             const modeDef = getModeDefinition(this.currentMode as any);
             this.interactionController.setupMode(modeDef, svg);
-        } else {
-            // Use legacy interaction setup
-            this.setupLegacyInteractions(svg);
         }
-    }
-
-    /**
-     * Legacy interaction setup (Stage 4: will be removed in Stage 7)
-     */
-    private setupLegacyInteractions(svg: SVGSVGElement): void {
-        // Main Plot mode specific interactions
-        if (this.interactionMode === 'mainplot') {
-            setupMainPlotMode(this, svg);
-        }
-        
-        // Note: All Scenes interactions are set up in the scene group loop (processSceneGroups)
-        // Gossamer interactions are set up via setupGossamerEventListeners
     }
     
     updateOpenFilesTracking(): void {
@@ -426,7 +335,7 @@ export class RadialTimelineView extends ItemView {
 
         // If currently in gossamer mode and SVG exists, try selective gossamer rebuild now
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
-        if (svg && this.interactionMode === 'gossamer') {
+        if (svg && this.currentMode === 'gossamer') {
             try { this.rendererService?.updateGossamerLayer(this as any); } catch {}
         }
     }
@@ -772,7 +681,7 @@ This is a test scene created to help with initial Radial timeline setup.
 
                 if (svgElement) {
                     // If Gossamer mode is active, reuse hover-state styling: mute everything except Plot beats
-                    if (this.interactionMode === 'gossamer') {
+                    if (this.currentMode === 'gossamer') {
                     svgElement.setAttribute('data-gossamer-mode', 'true');
                     // Apply the same logic as scene hover: add rt-non-selected to all elements except Plot beats
                     const allElements = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
@@ -788,29 +697,8 @@ This is a test scene created to help with initial Radial timeline setup.
                         svgElement.removeAttribute('data-gossamer-mode');
                     }
 
-                    // Setup interactions based on current mode and system flag
+                    // Setup interactions based on current mode
                     this.setupInteractionsForMode(svgElement as unknown as SVGSVGElement);
-                    
-                    // Legacy beat click handlers (only in legacy mode)
-                    if (!this.plugin.settings.useNewInteractionSystem) {
-                        // If outerRingAllScenes is false, the outer ring shows only main plot scenes
-                        // We need to set up click handlers for these Beat items (story structure beats)
-                        if (!this.plugin.settings.outerRingAllScenes && this.interactionMode !== 'gossamer') {
-                            const plotGroups = svgElement.querySelectorAll('.rt-scene-group[data-item-type="Beat"]');
-                            plotGroups.forEach(group => {
-                                const encodedPath = group.getAttribute('data-path');
-                                if (!encodedPath) return;
-                                const filePath = decodeURIComponent(encodedPath);
-                                this.registerDomEvent(group as HTMLElement, 'click', async (e: MouseEvent) => {
-                                    e.stopPropagation();
-                                    const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
-                                    if (file instanceof TFile) {
-                                        await openOrRevealFile(this.plugin.app as any, file);
-                                    }
-                                });
-                            });
-                        }
-                    }
                 // Set CSS variables for subplot labels based on data attributes
                 const subplotLabelGroups = svgElement.querySelectorAll('.subplot-label-group[data-font-size]');
                 subplotLabelGroups.forEach((group) => {
@@ -897,12 +785,6 @@ This is a test scene created to help with initial Radial timeline setup.
                                 }
                             }
                         }
-                        
-                        // Set up click and hover events for path elements (only in legacy mode)
-                        // In new mode, ModeInteractionController handles all interactions
-                        if (!this.plugin.settings.useNewInteractionSystem) {
-                            setupSceneInteractionsAll(this as unknown as AllScenesView, group, svgElement, scenes);
-                        }
                     }
                     
                     // Process next chunk if there are more scene groups
@@ -982,7 +864,7 @@ This is a test scene created to help with initial Radial timeline setup.
                     all.forEach(el => el.classList.remove('rt-selected'));
 
                     // Only clear muted state when NOT in Gossamer mode
-                    if (view.interactionMode !== 'gossamer') {
+                    if (view.currentMode !== 'gossamer') {
                         all.forEach(el => el.classList.remove('rt-non-selected'));
                     }
 
@@ -1032,7 +914,7 @@ This is a test scene created to help with initial Radial timeline setup.
 
                 view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
                     // In Gossamer mode, normal scene hovers are disabled
-                    if (view.interactionMode === 'gossamer') return;
+                    if (view.currentMode === 'gossamer') return;
                     
                     const g = (e.target as Element).closest('.rt-scene-group');
                     if (!g || g === currentGroup) return;
@@ -1064,7 +946,7 @@ This is a test scene created to help with initial Radial timeline setup.
 
                 view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
                     // In Gossamer mode, normal scene hovers are disabled
-                    if (view.interactionMode === 'gossamer') return;
+                    if (view.currentMode === 'gossamer') return;
                     
                     const toEl = e.relatedTarget as Element | null;
 
@@ -1351,7 +1233,7 @@ This is a test scene created to help with initial Radial timeline setup.
             // --- end delegated hover ---
             
             // Set up Gossamer event listeners AFTER everything is rendered
-            if (this.interactionMode === 'gossamer') {
+            if (this.currentMode === 'gossamer') {
                 const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement;
                 if (svg) {
                     // Use DOUBLE requestAnimationFrame to ensure DOM is fully painted
@@ -1444,16 +1326,12 @@ This is a test scene created to help with initial Radial timeline setup.
         // Clear any existing Gossamer handlers first
         this.removeGossamerEventListeners(svg);
         
-        // Check if using new interaction system
-        if (this.plugin.settings.useNewInteractionSystem && this.interactionController) {
-            // Use new ModeInteractionController system
+        // Use ModeInteractionController system
+        if (this.interactionController) {
             const { getModeDefinition } = require('../modes/ModeRegistry');
             const { TimelineMode } = require('../modes/ModeDefinition');
             const modeDef = getModeDefinition(TimelineMode.GOSSAMER);
             this.interactionController.setupMode(modeDef, svg);
-        } else {
-            // Delegate full setup to external mode module (legacy)
-            setupGossamerMode(this, svg);
         }
     }
 }

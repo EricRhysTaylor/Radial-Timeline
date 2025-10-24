@@ -1,5 +1,5 @@
 interface RotationView {
-    interactionMode: 'allscenes' | 'mainplot' | 'gossamer';
+    currentMode: string;
     getRotationState(): boolean;
     setRotationState(rotated: boolean): void;
     applyRotationToNumberSquares(svg: SVGSVGElement, rotated: boolean): void;
@@ -71,7 +71,7 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
         
         // Check if rotation is allowed in current mode
         // Allow rotation in 'allscenes' and 'mainplot', disable in 'gossamer'
-        if (view.interactionMode === 'gossamer') {
+        if (view.currentMode === 'gossamer') {
             console.log('[Rotation] Rotation disabled in Gossamer mode');
             return;
         }
