@@ -1,9 +1,13 @@
 import { resetGossamerModeState } from '../../GossamerCommands';
+import type { ModeManager } from '../../modes/ModeManager';
 
 interface ModeToggleView {
+    currentMode?: string; // New mode system property
+    getModeManager?: () => ModeManager | undefined; // Phase 3 mode manager accessor
     plugin: {
         settings: {
-            outerRingAllScenes?: boolean;
+            currentMode?: string; // New mode system
+            outerRingAllScenes?: boolean; // Legacy property
         };
         saveSettings: () => Promise<void>;
         refreshTimelineIfNeeded: (file: unknown) => void;
@@ -19,19 +23,52 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
     view.registerDomEvent(modeToggle as unknown as HTMLElement, 'click', async (e: MouseEvent) => {
         e.stopPropagation();
         
-        const currentMode = view.plugin.settings.outerRingAllScenes ? 'allscenes' : 'mainplot';
+        // Try to use Phase 3 ModeManager if available
+        const modeManager = view.getModeManager?.();
         
-        // Toggle between All Scenes and Main Plot
-        // (Gossamer mode is activated via separate command, not this toggle)
-        view.plugin.settings.outerRingAllScenes = !view.plugin.settings.outerRingAllScenes;
-        await view.plugin.saveSettings();
+        let newMode: string; // Declare for use in UI update below
         
-        // Reset Gossamer mode state so it remembers the new mode correctly
-        resetGossamerModeState();
-        
-        // Update the data attribute and tooltip
-        const newMode = view.plugin.settings.outerRingAllScenes ? 'allscenes' : 'mainplot';
-        modeToggle.setAttribute('data-current-mode', newMode);
+        if (modeManager) {
+            // Phase 3: Use ModeManager for clean mode switching
+            await modeManager.toggleToNextMode();
+            
+            // Update UI to reflect new mode
+            const currentMode = modeManager.getCurrentMode();
+            newMode = currentMode === 'all-scenes' ? 'allscenes' : 'mainplot';
+            modeToggle.setAttribute('data-current-mode', newMode);
+            
+        } else {
+            // Fallback: Use legacy mode switching
+            let currentModeValue: string;
+            if (view.currentMode) {
+                currentModeValue = view.currentMode;
+            } else {
+                currentModeValue = view.plugin.settings.outerRingAllScenes ? 'all-scenes' : 'main-plot';
+            }
+            
+            // Toggle between All Scenes and Main Plot
+            const newModeValue = currentModeValue === 'all-scenes' ? 'main-plot' : 'all-scenes';
+            
+            // Update new mode system
+            if (view.currentMode !== undefined) {
+                view.currentMode = newModeValue;
+            }
+            
+            // Update settings (both new and legacy)
+            view.plugin.settings.currentMode = newModeValue;
+            view.plugin.settings.outerRingAllScenes = (newModeValue === 'all-scenes');
+            await view.plugin.saveSettings();
+            
+            // Reset Gossamer mode state
+            resetGossamerModeState();
+            
+            // Update the data attribute and tooltip
+            newMode = newModeValue === 'all-scenes' ? 'allscenes' : 'mainplot';
+            modeToggle.setAttribute('data-current-mode', newMode);
+            
+            // Refresh timeline
+            view.plugin.refreshTimelineIfNeeded(null);
+        }
         
         const rect = modeToggle.querySelector('rect');
         const title = modeToggle.querySelector('title');

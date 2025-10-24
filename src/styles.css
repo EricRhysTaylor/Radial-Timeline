@@ -197,10 +197,11 @@
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* Hover: emphasize plot titles with a solid black background using stroke */
-.radial-timeline-container .rt-scene-group:hover .rt-plot-title,
+/* Hover: emphasize story beat titles with a solid black background using stroke */
+.radial-timeline-container .rt-scene-group.beats:hover .rt-plot-title,
 .rt-scene-group.rt-gossamer-hover .rt-plot-title,
-.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Plot"]:hover .rt-plot-title {
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats:hover .rt-plot-title,
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"]:hover .rt-plot-title {
   filter: url(#plotTextBg); /* black background halo */
   fill: #ffffff !important;
   font-weight: 700; /* heavier for readability */
@@ -354,23 +355,25 @@
   opacity: 1 !important; /* Fully opaque for prominence */
 }
 
-/* Plot slice hover styling - path turns white on hover or Gossamer sync */
+/* Story beat slice hover styling - path turns white on hover or Gossamer sync */
 .rt-scene-group.rt-gossamer-hover .rt-scene-path,
-.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Plot"]:hover .rt-scene-path {
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats:hover .rt-scene-path,
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"]:hover .rt-scene-path {
   fill: #ffffff !important;
   opacity: 1 !important;
   stroke: white !important; /* Turn stroke white on hover */
 }
 
-/* Plot slices in Gossamer mode: fill is interactive, stroke is hidden to avoid conflicts */
-.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Plot"] .rt-scene-path {
+/* Story beat slices in Gossamer mode: fill is interactive, stroke is hidden to avoid conflicts */
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats .rt-scene-path,
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"] .rt-scene-path {
   cursor: pointer;
   stroke: none !important; /* Hide original stroke - gossamer beat outline displays the stroke visually */
   pointer-events: fill !important; /* Only fill area is interactive - prevents outline from interfering with hover detection */
 }
 
-/* Scene slices (non-Plot) in Gossamer mode: no pointer cursor */
-.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group:not([data-item-type="Plot"]) .rt-scene-path {
+/* Scene slices (non-Beat) in Gossamer mode: no pointer cursor */
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group:not(.beats):not([data-item-type="Beat"]) .rt-scene-path {
   cursor: default !important;
   pointer-events: none !important;
 }

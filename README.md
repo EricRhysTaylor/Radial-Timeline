@@ -18,11 +18,15 @@
 </p>
 <hr style="margin-bottom: 20px;">
 
-Radial Timeline™ — manuscript visualization plugin for Obsidian.
 
-A comprehensive radial timeline for long-form writing that displays scenes organized by act, subplot, and numeric order in a radial format for a comprehensive view of the project.
+The manuscript visualization plugin for Obsidian
 
-This timeline is meant to provide a contrast to a text-heavy spreadsheet layout of the story scenes comprising the manuscript. Instead, it offers a colorful, comprehensive visual snapshot of the entire story, using rings to represent subplots. Various cues and interactions are available through a search feature and hover and click functionality. This will provide another method for tracking the progress of your manuscript and make it easier to stay on schedule and focused.
+Radial Timeline™ transforms your manuscript into a living visual map. Scenes are arranged by act, subplot, and narrative order in a striking radial layout—revealing the structure, rhythm, and scope of your story at a glance.
+
+Instead of scrolling through text-heavy spreadsheets, you can explore your project as a dynamic, colorful visualization. Each ring represents a subplot; hover and click interactions surface details, relationships, and momentum between scenes.
+
+Radial Timeline™ visualizes both story time and author time — tracking how your narrative unfolds and how your manuscript progresses through drafting, revision, and publication.
+It’s a timeline for your story and your writing journey.
 
 
 <a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">
@@ -40,8 +44,8 @@ This timeline is meant to provide a contrast to a text-heavy spreadsheet layout 
 - Quick setup. Create a note pre-populated with required metadata (yaml). Duplicate that scene or use other plugins like templater and metadata menu to automate the process.
 - Shows scene details on hover: title, date, synopsis, subplot, character, overdue and revisions lines
 - Color-codes scenes by status (todo, working, overdue, complete)
-- Opens scene note or plot note on click
-- Supports any plot system (Save The Cat, Hero's Journey) via the yaml `class: plot`. Plot notes appear as fixed-width slices
+- Opens scene note or beat note on click
+- Supports any story beat system (Save The Cat, Hero's Journey) via the yaml `class: beat`. Beat notes appear as fixed-width slices
 - Estimates manuscript completion date based on remaining todo/working scenes and recent progress rate
 - Headline font used for subplot ring labels in top left quadrant
 - Rotate counterclockwise so act 2 can align under act 1 for readability
@@ -91,11 +95,11 @@ The plugin offers several settings to customize its behavior and enable ai featu
 
 * Source path: set the root folder for scene files (for example, "book 1/scenes"). leave blank to scan the entire vault.
 * Target completion date: optional target date (yyyy-mm-dd). a marker appears on the outer ring.
-* Show all scenes and beats: when on, the outer ring combines all subplot scenes and shows beat slices. when off, the outer ring shows main plot only and no beat slices are drawn.
+* Show all scenes and beats: when on, the outer ring combines all subplot scenes and shows beat slices. when off, the outer ring shows main plot only and no beat cells are drawn.
 * Zero draft mode: prevents edits to scenes marked complete and stage zero, instead providing a modal to enter any ideas that can be saved for later revision stages.
-* Plot beat system: Set plot structure system and generate plot notes.
-* Select gossamer plot system templates or create your own then generate notes in source folder.
-* Create entire set of plot system beat notes using your chosen plot system (save the cat, hero's journey or storygrid)
+* Story beat system: Set story beat system and generate beat notes.
+* Select gossamer beat system templates or create your own then generate notes in source folder.
+* Create entire set of story system beat notes using save the cat, hero's journey or storygrid.
 * AI LLM Beats Analysis
 * Publishing stage colors: customize colors for publish stage values (zero, author, house, press). each has a reset button.
 * Ring Colors: customize up to 16 rings (after which the colors repeat)
@@ -106,7 +110,7 @@ The plugin offers several settings to customize its behavior and enable ai featu
 
 * Radial Timeline: Search timeline. Keyword search across select metadata. Title, Date, Synopsis, AI Beats, Character & Subplot
 * Clear search to reset all search filters
-* Gossamer view toggle to show plot momentum visualization overlay
+* Gossamer view toggle to show beat momentum visualization overlay
 * Gossamer enter momentum scores opens modal for all-in-one momentum score entry
 * Generate manuscript to assemble clean manuscript for Gossamer AI analysis
 * AI Beats update (manuscript order) to update AI beat analysis for all scenes in manuscript order
@@ -118,9 +122,9 @@ The plugin offers several settings to customize its behavior and enable ai featu
 
 ## All scenes & main plot mode 
 
-Toggle in settings to display either all scenes mode or main plot mode. For all scenes mode, the timeline will show all scenes from all subplots ordered in the outer ring with plot beats and subplot color coding. All scenes mode provides a full picture with all of the details including plot beats.
+Toggle in settings to display either all scenes mode or main plot mode. For all scenes mode, the timeline will show all scenes from all subplots ordered in the outer ring with story beats and subplot color coding. All scenes mode provides a full picture with all of the details including story beats.
 
-Main plot mode removes the subplot beats, shows only main plot scenes in the outer ring and uses publish stage coloring rather than subplot ring coloring, emphasizing progress towards getting the book ready for publication in a simplified view.
+Main plot mode removes the story beats, shows only main plot scenes in the outer ring and uses publish stage coloring rather than subplot ring coloring, emphasizing progress towards getting the book ready for publication in a simplified view.
 
 <hr>
 
@@ -132,19 +136,19 @@ When enabled in settings zero draft mode toggle, clicking a scene where publish 
 
 <hr>
 
-## Plot system beats
+## Story beats system
 
-The plugin supports plot structuring using yaml `class: plot`. These appear as narrow slices on the outermost ring when all scenes mode is enabled. Scene number squares adjust their color to reflect the flagged/current scene grade. Hover to view beat details and click to open the plot note. Supports Save The Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or custom plot system. Beats are required for Gossamer view.
+The plugin supports beat structuring using yaml `class: beat`. These appear as narrow slices on the outermost ring when all scenes mode is enabled. Scene number squares adjust their color to reflect the flagged/current scene grade. Hover to view beat details and click to open the beat note. Supports Save The Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or custom beat system. Beats are required for Gossamer view.
 
 <hr>
 
 ## Gossamer momentum view
 
-Using your plot beats system, this view grays the timeline and displays the momentum values tied to each plot beat to show how well the manuscript is building tension and excitement. Works with any plot structure - whether you use Save the Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or your own custom plot system. Simply create Plot notes with `Class: Plot` and enter the `Gossamer1=34` values in yaml to chart the values across these beats.
+Using your story beats system, this view grays the timeline and displays the momentum values tied to each story beat to show how well the manuscript is building tension and excitement. Works with any beat structure - whether you use Save the Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or your own custom beat system. Simply create Plot notes with `Class: Plot` and enter the `Gossamer1=34` values in yaml to chart the values across these beats.
 
 Workflow using Command Palette functions:
 - Radial Timeline: Generate manuscript to prepare the text for your favorite LLM.
-- Gossamer Enter Scores to open modal that will present multiple options and a convenient way to enter scores for all plot system beats.
+- Gossamer Enter Scores to open modal that will present multiple options and a convenient way to enter scores for all beats.
 - Copy Template for AI: use this button to generate scores template for AI. 
 - Paste from clipboard inputs the score name value pairs en mass.
 - Delete all scores (with confirmation)
@@ -156,14 +160,14 @@ Features:
 - Score entry modal: Complete interface for adding or deleting scores with validation
 - Clipboard integration: Copy/paste functionality for AI-generated scores
 - Template generation: Copy Prompt Template for AI LLM
-- Plot system filtering: Works with any plot system or custom structures (only filters if you explicitly set a plot system in settings)
+- Plot system filtering: Works with any beat system or custom structures (only filters if you explicitly set a beat system in settings)
 - Score validation: 0-100 range validation with error highlighting (red dot for missing value, defaults to 0)
 
 <hr>
 
 ### AI Beats Analysis
 
-The plugin can automatically generate scene analysis using AI LLM to evaluate story beats and pacing for individual flagged scenes, entire suplots or the manuscript:
+The plugin can automatically generate scene analysis using AI LLM to evaluate the pacing for individual flagged scenes as triples (in groups of 3), entire suplots or the manuscript:
 
 * Triplet Analysis: AI analyzes 3 scenes at a time (previous, current, next) from the perspective of the middle scene
 * Beat Evaluation: Each scene gets a grade and specific feedback on pacing, tension, and story progression
@@ -190,7 +194,7 @@ Manual Alternative: You may manually enter beat fields in YAML or use web client
 
 ## Frontmatter examples and usage
 
-YAML Examples for use inside each scene or plot note. This frontmatter must be placed at the front of the note before any other text. 
+YAML Examples for use inside each scene or beat note. This frontmatter must be placed at the front of the note before any other text. 
 
 ## Scene
 
@@ -220,7 +224,7 @@ Book: Book 1 A New Beginning
 
 ```yaml
 ---
-Class: Plot
+Class: Beat  #formerly plot - backward compatible
 Act: 1
 Description: The first impression of your story. A snapshot of the protagonist's life before the journey begins. This 'before' picture sets up the world and establishes what will change by the end. Show the protagonist in their everyday life, revealing the flaw or gap that will be addressed.
 Beat Model: Save The Cat

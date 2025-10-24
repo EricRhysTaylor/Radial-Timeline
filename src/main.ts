@@ -49,6 +49,16 @@ function normalizeBooleanValue(value: unknown): boolean {
     return false;
 }
 
+/**
+ * Check if a Class field represents a story beat
+ * Accepts both "Plot" (legacy) and "Beat" (recommended), case-insensitive
+ */
+function isStoryBeat(classValue: unknown): boolean {
+    if (typeof classValue !== 'string') return false;
+    const normalized = classValue.toLowerCase().trim();
+    return normalized === 'plot' || normalized === 'beat';
+}
+
 interface RadialTimelineSettings {
     sourcePath: string;
     validFolderPaths: string[]; // <<< ADDED: Store previously validated folder paths for autocomplete
@@ -59,7 +69,13 @@ interface RadialTimelineSettings {
         Press: string;
     };
     subplotColors: string[]; // 16 subplot palette colors
-    outerRingAllScenes?: boolean; // If true, outer ring shows all scenes; inner rings remain subplot
+    // Mode system (new architecture)
+    currentMode?: string; // Current timeline mode (TimelineMode enum value)
+    // Migration feature flags (Stage 3+)
+    useNewRenderingSystem?: boolean; // Stage 3: Use mode definitions for rendering decisions (default: false)
+    useNewInteractionSystem?: boolean; // Stage 4: Use ModeInteractionController for event handlers (default: false)
+    // Legacy mode properties (deprecated, kept for backward compatibility)
+    outerRingAllScenes?: boolean; // DEPRECATED: Use currentMode instead. If true, outer ring shows all scenes; inner rings remain subplot
     logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
     debug: boolean; // Add debug setting
     targetCompletionDate?: string; // Optional: Target date as yyyy-mm-dd string
@@ -182,7 +198,10 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         '#004777', // 14
         '#8B4513'  // 15 - Brown for Ring 16
     ],
-    outerRingAllScenes: true, // Default to all scenes mode
+    currentMode: 'all-scenes', // Default to All Scenes mode
+    useNewRenderingSystem: false, // Stage 3: Disabled by default (manual opt-in for testing)
+    useNewInteractionSystem: false, // Stage 4: Disabled by default (manual opt-in for testing)
+    outerRingAllScenes: true, // DEPRECATED: Default to all scenes mode (kept for backward compatibility)
     logApiInteractions: true, // <<< ADDED: Default for new setting
     debug: false,
     targetCompletionDate: undefined, // Ensure it's undefined by default
@@ -1432,8 +1451,9 @@ export default class RadialTimelinePlugin extends Plugin {
                 }
             }
                 
-            // Store Plot notes for processing after we know all subplots
-            if (metadata && metadata.Class === "Plot") {
+            // Store story beat notes for processing after we know all subplots
+            // Supports both "Class: Plot" (legacy) and "Class: Beat" (recommended)
+            if (metadata && isStoryBeat(metadata.Class)) {
                 // Read actNumber from metadata, default to 1 if missing or empty
                 const actValue = metadata.Act;
                 const actNumber = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
@@ -2378,7 +2398,8 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
                 const cache = this.app.metadataCache.getFileCache(f);
                 const rawFm = cache?.frontmatter;
                 const fm = rawFm ? normalizeFrontmatterKeys(rawFm) : undefined;
-                if (fm && fm.Class === 'Plot') {
+                // Supports both "Class: Plot" (legacy) and "Class: Beat" (recommended)
+                if (fm && isStoryBeat(fm.Class)) {
                     // Try multiple matching strategies
                     const filename = f.basename;
                     const titleMatch = filename === beatTitle || 

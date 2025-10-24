@@ -1,0 +1,53 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ */
+
+/**
+ * Mode System Public API
+ * 
+ * Export all public types, definitions, and utilities for the mode system.
+ */
+
+// Core types
+export {
+    TimelineMode,
+    type ModeDefinition,
+    type ModeRenderingConfig,
+    type ModeInteractionConfig,
+    type ModeUIConfig,
+    type OuterRingContent,
+    type InnerRingContent,
+    type PlotBeatDisplay,
+    type SceneColoring,
+    type NumberSquareDisplay,
+    type OverlayLayer,
+    type VisualMuting,
+    type ModeHoverBehavior,
+    type ModeClickBehavior,
+    type ModeExitBehavior,
+    type ModeEventHandlers,
+    isTimelineMode,
+    legacyInteractionModeToTimelineMode,
+    timelineModeToLegacyInteractionMode,
+} from './ModeDefinition';
+
+// Mode definitions
+export { ALL_SCENES_MODE } from './definitions/AllScenesMode';
+export { MAIN_PLOT_MODE } from './definitions/MainPlotMode';
+export { GOSSAMER_MODE } from './definitions/GossamerMode';
+
+// Registry
+export {
+    getModeDefinition,
+    getAllModes,
+    getToggleableModes,
+    getNextToggleMode,
+    isModeRegistered,
+} from './ModeRegistry';
+
+// Phase 3: Mode Management
+export { ModeManager, createModeManager } from './ModeManager';
+export { ModeInteractionController, createInteractionController } from './ModeInteractionController';
+

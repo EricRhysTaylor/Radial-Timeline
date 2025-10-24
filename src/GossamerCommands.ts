@@ -5,6 +5,7 @@ import type RadialTimelinePlugin from './main';
 import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, shiftGossamerHistory, extractBeatOrder } from './utils/gossamer';
 import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
+import { TimelineMode } from './modes/ModeDefinition';
 
 // Helper to find Plot note by beat title
 function findPlotNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile | null {
@@ -176,12 +177,12 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
  * Open Gossamer score entry modal
  */
 export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin): Promise<void> {
-  // Get all Plot notes (no subplot filtering - beats are not scenes)
+  // Get all story beat notes (itemType: Plot - no subplot filtering, beats are not scenes)
   const scenes = await plugin.getSceneData();
   const plotBeats = scenes.filter(s => s.itemType === 'Plot');
   
   if (plotBeats.length === 0) {
-    new Notice('No Plot beats found. Create notes with Class: Plot.');
+    new Notice('No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
     return;
   }
   
@@ -204,10 +205,10 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     // ALWAYS rebuild run from fresh scene data (reads latest Gossamer1 scores from YAML)
     const scenes = await plugin.getSceneData();
     
-    // Check if there are any Plot notes
+    // Check if there are any story beat notes
     const plotNotes = scenes.filter(s => s.itemType === 'Plot');
     if (plotNotes.length === 0) {
-      new Notice('Cannot enter Gossamer mode: No Plot notes found. Create notes with Class: Plot.');
+      new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
       return;
     }
     
@@ -241,64 +242,91 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
   }
 }
 
-function enterGossamerMode(plugin: RadialTimelinePlugin) {
+async function enterGossamerMode(plugin: RadialTimelinePlugin) {
   const view = getFirstView(plugin);
   if (!view) return;
   
-  setInteractionMode(view, 'gossamer');
-  // Prefer selective update: build layer in-place without full refresh
-  const v = view as unknown as { containerEl?: HTMLElement; interactionMode?: string } & Record<string, unknown>;
-  const svg = (v as { containerEl?: HTMLElement } | null)?.containerEl?.querySelector?.('.radial-timeline-svg') as SVGSVGElement | null;
-  let didSelective = false;
-  try {
-    const rs = (plugin.getRendererService && plugin.getRendererService()) || (plugin as any).rendererService;
-    if (rs && v) {
-      // Attach scene data to view if available for color/path mapping
-      (v as any).sceneData = plugin.lastSceneData || (v as any).sceneData;
-      (v as any).interactionMode = 'gossamer';
-      const viewArg = {
-        containerEl: (v as any).containerEl as HTMLElement,
-        plugin,
-        sceneData: (v as any).sceneData as any,
-        interactionMode: 'gossamer' as const
-      };
-      didSelective = rs.updateGossamerLayer(viewArg);
+  // Try using ModeManager first (Stage 2 migration)
+  const modeManager = hasKey(view, 'getModeManager') && typeof (view as any).getModeManager === 'function'
+    ? (view as any).getModeManager()
+    : null;
+  
+  if (modeManager) {
+    // Use new ModeManager for mode switching
+    await modeManager.switchMode(TimelineMode.GOSSAMER);
+    // ModeManager handles: settings persistence, lifecycle hooks, and refresh
+  } else {
+    // Fallback to legacy mode switching
+    setInteractionMode(view, 'gossamer');
+    
+    // Update new mode system if available
+    if (hasKey(view, 'currentMode')) {
+      (view as any).currentMode = 'gossamer';
     }
-    if (didSelective && svg) {
-      // Apply gossamer-mode styling: mute non-plot elements
-      svg.setAttribute('data-gossamer-mode', 'true');
-      const allElements = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
-      allElements.forEach(el => {
-        const group = el.closest('.rt-scene-group');
-        const itemType = group?.getAttribute('data-item-type');
-        if (itemType !== 'Plot') {
-          el.classList.add('rt-non-selected');
-        }
-      });
-      
-      // Update mode toggle button to show it will return to the original mode
-      const modeToggle = svg.querySelector('#mode-toggle') as SVGGElement | null;
-      if (modeToggle) {
-        const originalMode = _previousBaseAllScenes ? 'allscenes' : 'mainplot';
-        modeToggle.setAttribute('data-current-mode', originalMode);
-        const title = modeToggle.querySelector('title');
-        if (title) {
-          title.textContent = originalMode === 'allscenes' ? 'Switch to Main Plot mode' : 'Switch to All Scenes mode';
-        }
+    
+    // Update settings
+    plugin.settings.currentMode = 'gossamer';
+    plugin.saveSettings();
+  }
+  
+  // Only do legacy selective update if not using ModeManager
+  // (ModeManager handles refresh through lifecycle hooks)
+  if (!modeManager) {
+    // Prefer selective update: build layer in-place without full refresh
+    const v = view as unknown as { containerEl?: HTMLElement; interactionMode?: string; currentMode?: string } & Record<string, unknown>;
+    const svg = (v as { containerEl?: HTMLElement } | null)?.containerEl?.querySelector?.('.radial-timeline-svg') as SVGSVGElement | null;
+    let didSelective = false;
+    try {
+      const rs = (plugin.getRendererService && plugin.getRendererService()) || (plugin as any).rendererService;
+      if (rs && v) {
+        // Attach scene data to view if available for color/path mapping
+        (v as any).sceneData = plugin.lastSceneData || (v as any).sceneData;
+        (v as any).interactionMode = 'gossamer';
+        const viewArg = {
+          containerEl: (v as any).containerEl as HTMLElement,
+          plugin,
+          sceneData: (v as any).sceneData as any,
+          interactionMode: 'gossamer' as const
+        };
+        didSelective = rs.updateGossamerLayer(viewArg);
       }
-      
-      // Set up gossamer handlers on existing DOM if method exposed
-      const setup = (v as any)?.setupGossamerEventListeners as ((svg: SVGSVGElement) => void) | undefined;
-      if (typeof setup === 'function') setup(svg);
+      if (didSelective && svg) {
+        // Apply gossamer-mode styling: mute non-plot elements
+        svg.setAttribute('data-gossamer-mode', 'true');
+        const allElements = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
+        allElements.forEach(el => {
+          const group = el.closest('.rt-scene-group');
+          const itemType = group?.getAttribute('data-item-type');
+          // Keep beats (story structure) unmuted, mute everything else
+          if (itemType !== 'Beat') {
+            el.classList.add('rt-non-selected');
+          }
+        });
+        
+        // Update mode toggle button to show it will return to the original mode
+        const modeToggle = svg.querySelector('#mode-toggle') as SVGGElement | null;
+        if (modeToggle) {
+          const originalMode = _previousBaseAllScenes ? 'allscenes' : 'mainplot';
+          modeToggle.setAttribute('data-current-mode', originalMode);
+          const title = modeToggle.querySelector('title');
+          if (title) {
+            title.textContent = originalMode === 'allscenes' ? 'Switch to Main Plot mode' : 'Switch to All Scenes mode';
+          }
+        }
+        
+        // Set up gossamer handlers on existing DOM if method exposed
+        const setup = (v as any)?.setupGossamerEventListeners as ((svg: SVGSVGElement) => void) | undefined;
+        if (typeof setup === 'function') setup(svg);
+      }
+    } catch {}
+    if (!didSelective) {
+      // Fall back to full refresh if selective failed
+      plugin.refreshTimelineIfNeeded(undefined);
     }
-  } catch {}
-  if (!didSelective) {
-    // Fall back to full refresh if selective failed
-    plugin.refreshTimelineIfNeeded(undefined);
   }
 }
 
-function exitGossamerMode(plugin: RadialTimelinePlugin) {
+async function exitGossamerMode(plugin: RadialTimelinePlugin) {
   // Guard against double-execution
   if (_isExitingGossamer) {
     return;
@@ -312,6 +340,30 @@ function exitGossamerMode(plugin: RadialTimelinePlugin) {
   // Set guard flag
   _isExitingGossamer = true;
   
+  // Try using ModeManager first (Stage 2 migration)
+  const modeManager = hasKey(view, 'getModeManager') && typeof (view as any).getModeManager === 'function'
+    ? (view as any).getModeManager()
+    : null;
+  
+  if (modeManager) {
+    // Use new ModeManager for mode switching
+    restoreBaseMode(plugin);
+    
+    // Determine the mode to return to based on the restored outerRingAllScenes setting
+    const restoredMode = plugin.settings.outerRingAllScenes ? 'all-scenes' : 'main-plot';
+    
+    // Use ModeManager to switch (handles lifecycle hooks and refresh)
+    await modeManager.switchMode(restoredMode as any);
+    
+    // Reset guard flag after a short delay
+    window.setTimeout(() => {
+      _isExitingGossamer = false;
+    }, 100);
+    
+    return;
+  }
+  
+  // Legacy mode exit
   // Get SVG element
   const svg = (view as { containerEl?: HTMLElement } | null)?.containerEl?.querySelector('.radial-timeline-svg') as SVGSVGElement;
   
@@ -328,6 +380,18 @@ function exitGossamerMode(plugin: RadialTimelinePlugin) {
   }
 
   restoreBaseMode(plugin);
+  
+  // Determine the mode to return to based on the restored outerRingAllScenes setting
+  const restoredMode = plugin.settings.outerRingAllScenes ? 'all-scenes' : 'main-plot';
+  
+  // Update new mode system if available
+  if (hasKey(view, 'currentMode')) {
+    (view as any).currentMode = restoredMode;
+  }
+  
+  // Update settings
+  plugin.settings.currentMode = restoredMode;
+  plugin.saveSettings();
   
   // Always return to 'allscenes' interaction mode
   // The renderer will handle Main Plot mode via outerRingAllScenes setting

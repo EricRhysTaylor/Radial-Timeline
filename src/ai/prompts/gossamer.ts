@@ -10,7 +10,7 @@ export function buildGossamerPrompt(
   contextPrompt?: string
 ): string {
   if (!beatOrder.length) {
-    throw new Error('No Plot beats found. Cannot build Gossamer prompt.');
+    throw new Error('No story beats found. Cannot build Gossamer prompt. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
   }
 
   const firstBeatName = beatOrder[0];

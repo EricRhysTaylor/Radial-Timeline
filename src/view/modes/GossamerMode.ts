@@ -15,9 +15,9 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
         return pathEl?.id || null;
     };
 
-    // 1a. Plot Slice Hover (delegated fallback): Show synopsis, sync dot+spoke
+    // 1a. Beat Slice Hover (delegated fallback): Show synopsis, sync dot+spoke
     const plotSliceOver = (e: PointerEvent) => {
-        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Plot"]');
+        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Beat"]');
         if (!g) return;
         plotSliceEnter(g as SVGGElement, e);
     };
@@ -156,8 +156,8 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
         // Remove hover from all historical dots
         svg.querySelectorAll('.rt-gossamer-dot-historical.rt-hover').forEach(hd => hd.classList.remove('rt-hover'));
         const toEl = e.relatedTarget as Element | null;
-        // If moving to a plot slice or another dot, keep highlights
-        if (toEl && (toEl.closest('.rt-scene-group[data-item-type="Plot"]') || 
+        // If moving to a beat slice or another dot, keep highlights
+        if (toEl && (toEl.closest('.rt-scene-group[data-item-type="Beat"]') || 
                     toEl.closest('.rt-gossamer-dot'))) return;
 
         svg.classList.remove('scene-hover');
@@ -189,7 +189,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
 
     // 3. Click handlers
     const plotSliceClick = async (e: MouseEvent) => {
-        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Plot"]');
+        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Beat"]');
         if (!g) return;
         
         e.stopPropagation();
@@ -224,7 +224,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     const backgroundClick = (e: MouseEvent) => {
         const target = e.target as Element;
         
-        if (target.closest('.rt-gossamer-dot') || target.closest('.rt-scene-group[data-item-type="Plot"]')) {
+        if (target.closest('.rt-gossamer-dot') || target.closest('.rt-scene-group[data-item-type="Beat"]')) {
             return;
         }
         
@@ -251,8 +251,8 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     view.registerGossamerHandler('click::dot::svg', dotClick as EventListener);
     view.registerGossamerHandler('click::bg::svg', backgroundClick as EventListener);
 
-    // Direct plot-group handlers for reliability
-    const plotGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Plot"]');
+    // Direct beat-group handlers for reliability
+    const plotGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]');
     plotGroups.forEach((el) => {
         view.registerDomEvent(el as HTMLElement, 'pointerenter', (ev) => plotSliceEnter(el, ev));
         view.registerDomEvent(el as HTMLElement, 'pointerleave', (ev) => plotSliceOut(ev as PointerEvent));

@@ -42,6 +42,7 @@ import { renderSceneGroup } from './components/Scenes';
 import { renderPlotGroup } from './components/Plots';
 import { renderMonthSpokesAndInnerLabels, renderGossamerMonthSpokes } from './components/MonthSpokes';
 import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
+import { shouldRenderStoryBeats, shouldShowSubplotRings, shouldShowAllScenesInOuterRing, shouldShowInnerRingContent, getSubplotLabelText } from './modules/ModeRenderingHelpers';
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
 
@@ -579,7 +580,7 @@ export function createTimelineSVG(
         
 
         // After radii are known, compute global stacking map (outer-ring all-scenes only)
-        if (plugin.settings.outerRingAllScenes) {
+        if (shouldShowAllScenesInOuterRing(plugin)) {
             // No global stacking computation
         }
 
@@ -869,7 +870,7 @@ export function createTimelineSVG(
 
                 // Special handling: when outer ring all-scenes mode is ON, draw each subplot's scenes
                 // in the outer ring using the same angular positions they have in their own subplot rings.
-                if (isOuterRing && plugin.settings.outerRingAllScenes) {
+                if (isOuterRing && shouldShowAllScenesInOuterRing(plugin)) {
                     // Build a single combined, manuscript-ordered list of items (unique by path for scenes
                     // and unique by title+act for Plot notes) for this act only.
                     const seenPaths = new Set<string>();
@@ -1067,9 +1068,10 @@ export function createTimelineSVG(
 
                     if (currentScenes && currentScenes.length > 0) {
                         // Separate Plot notes and Scene notes for different sizing
-                        // Suppress Plot notes for ALL rings unless outer ring + all-scenes mode
-                        const isOuterRingAllScenes = isOuterRing && plugin.settings.outerRingAllScenes === true;
-                        const isAllScenesMode = plugin.settings.outerRingAllScenes === true;
+                        // Suppress Plot notes for ALL rings unless they should be rendered
+                        const shouldShowBeats = shouldRenderStoryBeats(plugin);
+                        const isOuterRingAllScenes = isOuterRing && shouldShowAllScenesInOuterRing(plugin);
+                        const isAllScenesMode = shouldShowAllScenesInOuterRing(plugin);
                         const effectiveScenes = currentScenes.filter(scene => scene.itemType !== "Plot");
                         
                         // Compute positions for this ring using shared helper
@@ -1188,7 +1190,7 @@ export function createTimelineSVG(
                         }
                     } else {
                         // Empty subplot ring. When outer-ring-all-scenes is ON, do NOT place Plot notes here.
-                        if (!plugin.settings.outerRingAllScenes) {
+                        if (!shouldShowAllScenesInOuterRing(plugin)) {
                             // Only in non-all-scenes mode do we place Plot notes in empty rings
                         const plotNotesInSubplot = plotsBySubplot.get(subplot) || [];
                         if (plotNotesInSubplot.length > 0) {
@@ -1527,11 +1529,11 @@ export function createTimelineSVG(
 
         // Subplot label background layer
         svg += `<g class="background-layer">`;
-        svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, outerRingAllScenes: !!plugin.settings.outerRingAllScenes });
+        svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, outerRingAllScenes: shouldShowAllScenesInOuterRing(plugin) });
         svg += `</g>`;
 
         // Add number squares after background layer but before synopses
-        if (plugin.settings.outerRingAllScenes) {
+        if (shouldShowAllScenesInOuterRing(plugin)) {
             // In outer-ring-all-scenes mode, draw number squares for ALL rings
             
         svg += `<g class="rt-number-squares">`;
@@ -1584,7 +1586,7 @@ export function createTimelineSVG(
             svg += renderInnerRingsNumberSquaresAllScenes({ plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades });
             
             svg += `</g>`;
-        } else if (!plugin.settings.outerRingAllScenes) {
+        } else if (!shouldShowAllScenesInOuterRing(plugin)) {
             svg += renderNumberSquaresStandard({ plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, sceneNumbersMap });
         }
         
@@ -1690,7 +1692,7 @@ export function createTimelineSVG(
         // Mode toggle button in top right (moved over and up 200px from original position)
         const modeToggleX = formatNumber(outerRadius * 0.6 + 200); // 60% out + 200px right
         const modeToggleY = formatNumber(-outerRadius * 0.6 - 200); // -60% + 200px up
-        const currentMode = plugin.settings.outerRingAllScenes ? 'allscenes' : 'mainplot';
+        const currentMode = shouldShowAllScenesInOuterRing(plugin) ? 'allscenes' : 'mainplot';
         const modeTitle = currentMode === 'allscenes' ? 'Switch to Main Plot mode' : 'Switch to All Scenes mode';
         svg += `
             <g id="mode-toggle" class="mode-toggle" transform="translate(${modeToggleX}, ${modeToggleY})" data-current-mode="${currentMode}">

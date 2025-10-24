@@ -11,7 +11,16 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
     const toggle = svg.querySelector('#rotation-toggle') as SVGGElement | null;
     const arrowUp = svg.querySelector('#rotation-arrow-up') as SVGUseElement | null;
     const arrowDown = svg.querySelector('#rotation-arrow-down') as SVGUseElement | null;
-    if (!rotatable || !toggle || !arrowUp || !arrowDown) return;
+    
+    if (!rotatable || !toggle || !arrowUp || !arrowDown) {
+        console.warn('[Rotation] Could not find rotation elements:', {
+            rotatable: !!rotatable,
+            toggle: !!toggle,
+            arrowUp: !!arrowUp,
+            arrowDown: !!arrowDown
+        });
+        return;
+    }
 
     let rotated = view.getRotationState();
 
@@ -55,12 +64,25 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
     };
 
     applyRotation();
-    view.registerDomEvent(toggle as unknown as HTMLElement, 'click', () => {
-        if (view.interactionMode !== 'allscenes') return;
+    
+    // Register click handler on the toggle button
+    const clickHandler = (e: Event) => {
+        e.stopPropagation();
+        
+        // Check if rotation is allowed in current mode
+        // Allow rotation in 'allscenes' and 'mainplot', disable in 'gossamer'
+        if (view.interactionMode === 'gossamer') {
+            console.log('[Rotation] Rotation disabled in Gossamer mode');
+            return;
+        }
+        
+        console.log('[Rotation] Toggling rotation:', !rotated);
         rotated = !rotated;
         view.setRotationState(rotated);
         applyRotation();
-    });
+    };
+    
+    view.registerDomEvent(toggle as unknown as HTMLElement, 'click', clickHandler);
 }
 
 

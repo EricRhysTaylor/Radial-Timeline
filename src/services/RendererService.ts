@@ -135,7 +135,7 @@ export class RendererService {
         }
         // Fallback: estimate from plot groups (min inner, max outer)
         if (innerRadius === null || outerRadius === null) {
-            const plotGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Plot"]')) as SVGGElement[];
+            const plotGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]')) as SVGGElement[];
             if (plotGroups.length > 0) {
                 const inners = plotGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
                 const outers = plotGroups.map(g => Number(g.getAttribute('data-outer-r') || '0')).filter(n => Number.isFinite(n));
@@ -150,7 +150,7 @@ export class RendererService {
         // Outer ring inner radius for beat outlines
         let outerRingInnerRadius = innerRadius;
         {
-            const plotGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Plot"]')) as SVGGElement[];
+            const plotGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]')) as SVGGElement[];
             if (plotGroups.length > 0) {
                 const inners = plotGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
                 if (inners.length > 0) outerRingInnerRadius = Math.min(...inners);

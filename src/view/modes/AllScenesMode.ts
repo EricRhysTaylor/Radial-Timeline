@@ -76,11 +76,11 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
 
         view.registerDomEvent(group as HTMLElement, 'mouseenter', () => {
             const itemType = group.getAttribute('data-item-type');
-            if (view.interactionMode === 'gossamer' && itemType !== 'Plot') return;
+            if (view.interactionMode === 'gossamer' && itemType !== 'Beat') return;
         });
         view.registerDomEvent(group as HTMLElement, 'mouseleave', () => {
             const itemType = group.getAttribute('data-item-type');
-            if (view.interactionMode === 'gossamer' && itemType !== 'Plot') return;
+            if (view.interactionMode === 'gossamer' && itemType !== 'Beat') return;
         });
     }
 }
