@@ -1,12 +1,12 @@
 import type { Vault, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 
-export type ParsedBeats = { '1beats': string; '2beats': string; '3beats': string };
+export type ParsedSceneAnalysis = { 'previousSceneAnalysis': string; 'currentSceneAnalysis': string; 'nextSceneAnalysis': string };
 
-export async function updateSceneBeats(
+export async function updateSceneAnalysis(
   vault: Vault,
   file: TFile,
-  parsedBeats: ParsedBeats,
+  parsedAnalysis: ParsedSceneAnalysis,
   plugin: RadialTimelinePlugin,
   modelIdUsed: string | null
 ): Promise<boolean> {
@@ -19,9 +19,9 @@ export async function updateSceneBeats(
 
     await plugin.app.fileManager.processFrontMatter(file, (fm) => {
       const fmObj = fm as Record<string, unknown>;
-      delete fmObj['1beats'];
-      delete fmObj['2beats'];
-      delete fmObj['3beats'];
+      delete fmObj['previousSceneAnalysis'];
+      delete fmObj['currentSceneAnalysis'];
+      delete fmObj['nextSceneAnalysis'];
 
       const now = new Date();
       const timestamp = now.toLocaleString(undefined, {
@@ -32,12 +32,12 @@ export async function updateSceneBeats(
       if (Object.prototype.hasOwnProperty.call(fmObj, 'beatsupdate')) fmObj['beatsupdate'] = false;
       else fmObj['Beats Update'] = false;
 
-      const b1 = parsedBeats['1beats']?.trim();
-      const b2 = parsedBeats['2beats']?.trim();
-      const b3 = parsedBeats['3beats']?.trim();
-      if (b1) fmObj['1beats'] = toArray(b1);
-      if (b2) fmObj['2beats'] = toArray(b2);
-      if (b3) fmObj['3beats'] = toArray(b3);
+      const b1 = parsedAnalysis['previousSceneAnalysis']?.trim();
+      const b2 = parsedAnalysis['currentSceneAnalysis']?.trim();
+      const b3 = parsedAnalysis['nextSceneAnalysis']?.trim();
+      if (b1) fmObj['previousSceneAnalysis'] = toArray(b1);
+      if (b2) fmObj['currentSceneAnalysis'] = toArray(b2);
+      if (b3) fmObj['nextSceneAnalysis'] = toArray(b3);
     });
     return true;
   } catch (e) {

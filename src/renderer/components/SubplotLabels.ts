@@ -5,9 +5,8 @@ export function renderSubplotLabels(params: {
   ringStartRadii: number[];
   ringWidths: number[];
   masterSubplotOrder: string[];
-  outerRingAllScenes: boolean;
 }): string {
-  const { NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, outerRingAllScenes } = params;
+  const { NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder } = params;
   const totalRings = NUM_RINGS;
   const subplotCount = masterSubplotOrder.length;
   const ringsToUse = Math.min(subplotCount, totalRings);
@@ -29,7 +28,7 @@ export function renderSubplotLabels(params: {
     const arcPixelLength = labelRadius * arcLength;
     const d = `M ${formatNumber(labelRadius * Math.cos(startAngle))} ${formatNumber(labelRadius * Math.sin(startAngle))} A ${formatNumber(labelRadius)} ${formatNumber(labelRadius)} 0 0 1 ${formatNumber(labelRadius * Math.cos(endAngle))} ${formatNumber(labelRadius * Math.sin(endAngle))}`;
     const isOuterRing = ringOffset === 0;
-    const labelRaw = (isOuterRing && outerRingAllScenes) ? 'ALL SCENES' : subplot.toUpperCase();
+    const labelRaw = (isOuterRing) ? 'ALL SCENES' : subplot.toUpperCase();
     svg += `
       <path id="${labelPathId}" d="${d}" fill="none" />
       <g class="subplot-label-group" data-font-size="${fontSize}">

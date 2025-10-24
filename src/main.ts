@@ -16,7 +16,7 @@ import { RadialTimelineView } from './view/TimeLineView';
 import { RendererService } from './services/RendererService';
 import { openGossamerScoreEntry, toggleGossamerMode } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
-import { BeatsProcessingModal } from './modals/BeatsProcessingModal';
+import { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 import { shiftGossamerHistory } from './utils/gossamer';
 import { assembleManuscript } from './utils/manuscript';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
@@ -26,8 +26,8 @@ import { parseSceneTitle } from './utils/text';
 // Declare the variable that will be injected by the build process
 declare const EMBEDDED_README_CONTENT: string;
 
-// Import the new beats update function <<< UPDATED IMPORT
-import { processByManuscriptOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotNameWithModal, processEntireSubplotWithModal } from './BeatsCommands';
+// Import the new scene analysis function <<< UPDATED IMPORT
+import { processByManuscriptOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotNameWithModal, processEntireSubplotWithModal } from './SceneAnalysisCommands';
 
 // Helper function to normalize boolean values from various formats
 function normalizeBooleanValue(value: unknown): boolean {
@@ -82,7 +82,7 @@ interface RadialTimelineSettings {
     defaultAiProvider?: 'openai' | 'anthropic' | 'gemini'; // <<< ADDED: Default AI provider
     openaiModelId?: string; // <<< ADDED: Selected OpenAI Model ID
     // Feature toggles
-    enableAiBeats: boolean; // Show AI beats features (colors + synopsis)
+    enableAiSceneAnalysis: boolean; // Show AI scene analysis features (colors + synopsis)
     enableZeroDraftMode?: boolean; // Intercept complete scenes in Stage Zero for Pending Edits modal
     // Advanced
     metadataRefreshDebounceMs?: number; // Debounce for frontmatter-changed refresh
@@ -123,14 +123,14 @@ export interface Scene {
     due?: string; // Add due date property
     pendingEdits?: string; // Add pending edits property
     Book?: string; // Add book title property
-    "1beats"?: string; // Add 1beats property
-    "2beats"?: string; // Add 2beats property 
-    "3beats"?: string; // Add 3beats property
-    "Beats Update"?: boolean | string; // Add beats update flag
-    // Plot-specific properties  
-    itemType?: "Scene" | "Plot"; // Distinguish between Scene and Plot items
-    Description?: string; // For Plot beat descriptions
-    "Plot System"?: string; // Plot system (e.g., "Save The Cat", "Hero's Journey")
+    "previousSceneAnalysis"?: string; // Add previousSceneAnalysis property
+    "currentSceneAnalysis"?: string; // Add currentSceneAnalysis property 
+    "nextSceneAnalysis"?: string; // Add nextSceneAnalysis property
+    "Beats Update"?: boolean | string; // Scene analysis processing flag (legacy name kept for compatibility)
+    // Beat-specific properties  
+    itemType?: "Scene" | "Plot"; // Distinguish between Scene and Beat items (Plot is legacy)
+    Description?: string; // For Beat descriptions
+    "Beat Model"?: string; // Beat system (e.g., "Save The Cat", "Hero's Journey")
     // Gossamer score fields
     Gossamer1?: number; // Current Gossamer score
     Gossamer2?: number; // Gossamer score history
@@ -204,7 +204,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     geminiModelId: 'gemini-2.5-pro', // Default to Gemini 2.5 Pro
     defaultAiProvider: 'openai',
     openaiModelId: 'gpt-4.1', // Default to GPT-4.1
-    enableAiBeats: true,
+    enableAiSceneAnalysis: true,
     enableZeroDraftMode: false,
     metadataRefreshDebounceMs: 5000,
     showEstimate: true,
@@ -412,8 +412,8 @@ export default class RadialTimelinePlugin extends Plugin {
     // Add property to store the latest status counts for completion estimate
     public latestStatusCounts?: Record<string, number>;
     
-    // Track active beats processing modal and status bar item
-    public activeBeatsModal: BeatsProcessingModal | null = null;
+    // Track active scene analysis processing modal and status bar item
+    public activeBeatsModal: SceneAnalysisProcessingModal | null = null;
     private beatsStatusBarItem: HTMLElement | null = null;
 
     // Helper: get all currently open timeline views
@@ -518,6 +518,9 @@ export default class RadialTimelinePlugin extends Plugin {
 
     async onload() {
         await this.loadSettings();
+
+        // Migration: Convert old field names to new field names
+        await migrateSceneAnalysisFields(this);
 
         // Load embedded fonts (no external requests per Obsidian guidelines)
         // Embedded font injection removed to avoid inserting <style> tags at runtime.
@@ -912,18 +915,17 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         };
 
-        // 5. Beats update (manuscript order)
+        // 5. Scene Analysis (manuscript order)
         this.addCommand({
             id: 'update-beats-manuscript-order',
-            name: 'Beats update (manuscript order)',
+            name: 'Scene Analysis (manuscript order)',
             checkCallback: (checking: boolean) => {
-                if (!this.settings.enableAiBeats) return false; // hide when disabled
+                if (!this.settings.enableAiSceneAnalysis) return false; // hide when disabled
                 if (checking) return true;
                 (async () => {
                 // If there's already an active processing modal, just reopen it
                 if (this.activeBeatsModal && this.activeBeatsModal.isProcessing) {
                     this.activeBeatsModal.open();
-                    new Notice('Reopening active processing session...');
                     return;
                 }
                 
@@ -940,10 +942,7 @@ export default class RadialTimelinePlugin extends Plugin {
                     if (!hasKey) { new Notice('OpenAI API key is not set in settings.'); return; }
                 }
 
-                new Notice(`Using source path: "${this.settings.sourcePath || '(Vault Root)'}"`); // Keep Notice visible
-
                 try {
-                     new Notice('Starting manuscript order update...');
                      await processByManuscriptOrder(this, this.app.vault);
                 } catch (error) {
                     console.error("Error running manuscript order beat update:", error);
@@ -954,12 +953,12 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // 6. Beats update (subplot)
+        // 6. Scene Analysis (subplot)
         this.addCommand({
             id: 'update-beats-choose-subplot',
-            name: 'Beats update (subplot order)',
+            name: 'Scene Analysis (subplot order)',
             checkCallback: (checking: boolean) => {
-                if (!this.settings.enableAiBeats) return false;
+                if (!this.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
                 (async () => {
                     // Simple provider key check like other commands
@@ -1043,7 +1042,7 @@ export default class RadialTimelinePlugin extends Plugin {
                                 .setDisabled(true)
                                 .onClick(async () => {
                                     try {
-                                        const { purgeBeatsBySubplotName } = await import('./BeatsCommands');
+                                        const { purgeBeatsBySubplotName } = await import('./SceneAnalysisCommands');
                                         this.close();
                                         await purgeBeatsBySubplotName(this.plugin, this.plugin.app.vault, this.selectedSubplot);
                                     } catch (error) {
@@ -1173,7 +1172,7 @@ export default class RadialTimelinePlugin extends Plugin {
                     const svg = (v as unknown as { containerEl?: HTMLElement })?.containerEl?.querySelector?.('.radial-timeline-svg');
                     if (svg) {
                         this.rendererService.updateProgressAndTicks(v as any);
-                        if ((v as any).interactionMode === 'gossamer') {
+                        if ((v as any).currentMode === 'gossamer') {
                             this.rendererService.updateGossamerLayer(v as any);
                         }
                     }
@@ -1433,9 +1432,9 @@ export default class RadialTimelinePlugin extends Plugin {
                                 due: (typeof metadata.Due === 'string' ? metadata.Due : undefined),
                                 pendingEdits: (typeof metadata["Pending Edits"] === 'string' ? metadata["Pending Edits"] : undefined),
                                 Book: (typeof metadata.Book === 'string' ? metadata.Book : undefined),
-                                "1beats": typeof metadata["1beats"] === 'string' ? metadata["1beats"] : (Array.isArray(metadata["1beats"]) ? metadata["1beats"].join('\n') : (metadata["1beats"] ? String(metadata["1beats"]) : undefined)),
-                                "2beats": typeof metadata["2beats"] === 'string' ? metadata["2beats"] : (Array.isArray(metadata["2beats"]) ? metadata["2beats"].join('\n') : (metadata["2beats"] ? String(metadata["2beats"]) : undefined)), 
-                                "3beats": typeof metadata["3beats"] === 'string' ? metadata["3beats"] : (Array.isArray(metadata["3beats"]) ? metadata["3beats"].join('\n') : (metadata["3beats"] ? String(metadata["3beats"]) : undefined)),
+                                "previousSceneAnalysis": typeof metadata["previousSceneAnalysis"] === 'string' ? metadata["previousSceneAnalysis"] : (Array.isArray(metadata["previousSceneAnalysis"]) ? metadata["previousSceneAnalysis"].join('\n') : (metadata["previousSceneAnalysis"] ? String(metadata["previousSceneAnalysis"]) : undefined)),
+                                "currentSceneAnalysis": typeof metadata["currentSceneAnalysis"] === 'string' ? metadata["currentSceneAnalysis"] : (Array.isArray(metadata["currentSceneAnalysis"]) ? metadata["currentSceneAnalysis"].join('\n') : (metadata["currentSceneAnalysis"] ? String(metadata["currentSceneAnalysis"]) : undefined)), 
+                                "nextSceneAnalysis": typeof metadata["nextSceneAnalysis"] === 'string' ? metadata["nextSceneAnalysis"] : (Array.isArray(metadata["nextSceneAnalysis"]) ? metadata["nextSceneAnalysis"].join('\n') : (metadata["nextSceneAnalysis"] ? String(metadata["nextSceneAnalysis"]) : undefined)),
                                 "Beats Update": (typeof metadata["Beats Update"] === 'boolean' || typeof metadata["Beats Update"] === 'string') ? metadata["Beats Update"] as (boolean | string) : undefined,
                                 itemType: "Scene"
                             });
@@ -1462,8 +1461,8 @@ export default class RadialTimelinePlugin extends Plugin {
         }
         }
 
-        // Process Plot notes - create ONE entry per plot note (not duplicated per subplot)
-        // Plot beats are shown only in the outer ring and are not subplot-specific
+        // Process Beat notes - create ONE entry per beat note (not duplicated per subplot)
+        // Beat notes are shown only in the outer ring and are not subplot-specific
         plotsToProcess.forEach(plotInfo => {
             const gossamer1Value = typeof plotInfo.metadata.Gossamer1 === 'number' ? plotInfo.metadata.Gossamer1 : undefined;
             
@@ -1471,12 +1470,12 @@ export default class RadialTimelinePlugin extends Plugin {
                 title: plotInfo.file.basename,
                 date: "1900-01-01T12:00:00Z", // Dummy date for plots
                 path: plotInfo.file.path,
-                subplot: undefined, // Plot beats are not associated with any specific subplot
+                subplot: undefined, // Beat notes are not associated with any specific subplot
                 act: plotInfo.validActNumber.toString(),
                 actNumber: plotInfo.validActNumber,
                 itemType: "Plot",
                 Description: (plotInfo.metadata.Description as string) || '',
-                "Plot System": (plotInfo.metadata["Plot System"] as string) || undefined,
+                "Beat Model": (plotInfo.metadata["Beat Model"] as string) || undefined,
                 "Publish Stage": (plotInfo.metadata["Publish Stage"] as string) || undefined,
                 Gossamer1: gossamer1Value,
                 Gossamer2: typeof plotInfo.metadata.Gossamer2 === 'number' ? plotInfo.metadata.Gossamer2 : undefined,
@@ -2407,7 +2406,7 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
             }
             
             if (!file) {
-                console.warn(`[Gossamer] No Plot note found for beat: ${beatTitle}`);
+                console.warn(`[Gossamer] No Beat note found for beat: ${beatTitle}`);
                 continue;
             }
             
@@ -2448,3 +2447,52 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
         // Note: Do NOT detach leaves here - Obsidian handles this automatically
     }
 } // End of RadialTimelinePlugin class
+
+/**
+ * Migration function to convert old field names to new field names
+ * This ensures backward compatibility for existing data
+ */
+async function migrateSceneAnalysisFields(plugin: RadialTimelinePlugin): Promise<void> {
+    try {
+        const files = plugin.app.vault.getMarkdownFiles();
+        let migratedCount = 0;
+        
+        for (const file of files) {
+            const cache = plugin.app.metadataCache.getFileCache(file);
+            const fm = cache?.frontmatter;
+            
+            if (fm && (fm['1beats'] || fm['2beats'] || fm['3beats'])) {
+                // Check if migration is needed (old fields exist but new fields don't)
+                const needsMigration = (fm['1beats'] || fm['2beats'] || fm['3beats']) && 
+                                     !(fm['previousSceneAnalysis'] || fm['currentSceneAnalysis'] || fm['nextSceneAnalysis']);
+                
+                if (needsMigration) {
+                    await plugin.app.fileManager.processFrontMatter(file, (frontmatter) => {
+                        const fmObj = frontmatter as Record<string, unknown>;
+                        
+                        // Migrate old field names to new field names
+                        if (fmObj['1beats']) {
+                            fmObj['previousSceneAnalysis'] = fmObj['1beats'];
+                            delete fmObj['1beats'];
+                        }
+                        if (fmObj['2beats']) {
+                            fmObj['currentSceneAnalysis'] = fmObj['2beats'];
+                            delete fmObj['2beats'];
+                        }
+                        if (fmObj['3beats']) {
+                            fmObj['nextSceneAnalysis'] = fmObj['3beats'];
+                            delete fmObj['3beats'];
+                        }
+                    });
+                    migratedCount++;
+                }
+            }
+        }
+        
+        if (migratedCount > 0) {
+            console.log(`[Radial Timeline] Migrated ${migratedCount} files from old field names to new field names`);
+        }
+    } catch (error) {
+        console.error('[Radial Timeline] Error during migration:', error);
+    }
+}

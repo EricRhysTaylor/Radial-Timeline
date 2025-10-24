@@ -160,8 +160,8 @@ function renderMainPlotOuterRing(context: RenderingContext): RenderingResult {
     const mainPlotScenes = scenes.filter(s => {
         const sceneAct = s.actNumber !== undefined ? s.actNumber - 1 : 0;
         const isMainPlot = !s.subplot || s.subplot.trim() === '' || s.subplot === 'Main Plot';
-        const isNotPlotBeat = s.itemType !== 'Plot'; // Exclude plot beats entirely
-        return sceneAct === act.actIndex && isMainPlot && isNotPlotBeat;
+        const isNotBeatNote = s.itemType !== 'Plot'; // Exclude beat notes entirely
+        return sceneAct === act.actIndex && isMainPlot && isNotBeatNote;
     });
     
     // Deduplicate by path
@@ -216,7 +216,7 @@ function renderMainPlotOuterRing(context: RenderingContext): RenderingResult {
         svg,
         metadata: {
             sceneCount: uniqueScenes.length,
-            plotBeatCount: 0, // Plot beats are excluded in Main Plot mode
+            plotBeatCount: 0, // Beat notes are excluded in Main Plot mode
             hasVoidCells: voidSpace > 0.001
         }
     };

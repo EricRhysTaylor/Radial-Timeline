@@ -8,7 +8,7 @@ import { App, TFile, Vault, Notice, parseYaml, getFrontMatterInfo, stringifyYaml
 import { sanitizeSourcePath, buildInitialSceneFilename } from './utils/sceneCreation';
 import { callAnthropicApi, AnthropicApiResponse } from './api/anthropicApi';
 import { callOpenAiApi, OpenAiApiResponse } from './api/openaiApi';
-import { BeatsProcessingModal } from './modals/BeatsProcessingModal';
+import { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 
 // Helper function to normalize boolean values from various formats
 function normalizeBooleanValue(value: unknown): boolean {
@@ -30,14 +30,14 @@ function normalizeBooleanValue(value: unknown): boolean {
     return false;
 }
 import { callGeminiApi, GeminiApiResponse } from './api/geminiApi';
-import { buildBeatsPrompt, getBeatsJsonSchema } from './ai/prompts/beats';
-import { type ProcessingMode } from './modals/BeatsProcessingModal';
+import { buildSceneAnalysisPrompt, getSceneAnalysisJsonSchema } from './ai/prompts/sceneAnalysis';
+import { type ProcessingMode } from './modals/SceneAnalysisProcessingModal';
 import { stripObsidianComments } from './utils/text';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { openOrRevealFileByPath } from './utils/fileUtils';
-import { buildTripletsByIndex } from './beats/TripletBuilder';
-import { updateSceneBeats } from './beats/FileUpdater';
-import { createAiRunner } from './beats/RequestRunner';
+import { buildTripletsByIndex } from './sceneAnalysis/TripletBuilder';
+import { updateSceneAnalysis } from './sceneAnalysis/FileUpdater';
+import { createAiRunner } from './sceneAnalysis/RequestRunner';
 
 // --- Interfaces --- 
 interface SceneData {
@@ -61,17 +61,17 @@ interface BeatItem {
     comment: string;    // Editorial comment
 }
 
-interface BeatsJsonResponse {
-    '1beats'?: BeatItem[];  // Optional for first scene
-    '2beats': BeatItem[];   // Required for current scene
-    '3beats'?: BeatItem[];  // Optional for last scene
+interface SceneAnalysisJsonResponse {
+    'previousSceneAnalysis'?: BeatItem[];  // Optional for first scene
+    'currentSceneAnalysis': BeatItem[];   // Required for current scene
+    'nextSceneAnalysis'?: BeatItem[];  // Optional for last scene
 }
 
 // Internal format after parsing (for compatibility with existing code)
-interface ParsedBeats {
-    '1beats': string;
-    '2beats': string;
-    '3beats': string;
+interface ParsedSceneAnalysis {
+    'previousSceneAnalysis': string;
+    'currentSceneAnalysis': string;
+    'nextSceneAnalysis': string;
 }
 
 // <<< ADDED: Interface for the expected message structure >>>
@@ -293,10 +293,10 @@ interface ProcessedCheckOptions {
 }
 
 /**
- * Helper function to determine if a scene has already been processed for beats
+ * Helper function to determine if a scene has already been processed for AI scene analysis
  * A scene is considered processed if:
  * 1. It has a Beats Last Updated timestamp, OR
- * 2. It has any beats fields (1beats, 2beats, or 3beats)
+ * 2. It has any analysis fields (previousSceneAnalysis, currentSceneAnalysis, or nextSceneAnalysis)
  * 
  * When todayOnly is true (for resume logic):
  * - Only considers a scene "processed" if it has a timestamp from today
@@ -309,18 +309,18 @@ function hasBeenProcessedForBeats(
     if (!frontmatter) return false;
     
     const hasTimestamp = !!frontmatter['Beats Last Updated'];
-    const hasBeats = !!frontmatter['1beats'] || !!frontmatter['2beats'] || !!frontmatter['3beats'];
+    const hasAnalysis = !!frontmatter['previousSceneAnalysis'] || !!frontmatter['currentSceneAnalysis'] || !!frontmatter['nextSceneAnalysis'];
     
-    // No timestamp or beats = definitely unprocessed
-    if (!hasTimestamp && !hasBeats) return false;
+    // No timestamp or analysis = definitely unprocessed
+    if (!hasTimestamp && !hasAnalysis) return false;
     
     // If todayOnly mode (for resume), only consider processed if done today
     if (options.todayOnly) {
         return hasTimestamp && wasProcessedToday(frontmatter);
     }
     
-    // Default: has timestamp or beats = processed
-    return hasTimestamp || hasBeats;
+    // Default: has timestamp or analysis = processed
+    return hasTimestamp || hasAnalysis;
 }
 
 // Helper function to calculate scene count for each processing mode
@@ -830,8 +830,8 @@ async function callAiProvider(
                 throw new Error(apiErrorMsg);
             }
 
-            // Get JSON schema for beats
-            const jsonSchema = getBeatsJsonSchema();
+            // Get JSON schema for scene analysis
+            const jsonSchema = getSceneAnalysisJsonSchema();
 
             const safetySystem = 'Follow policy: respond with purely editorial, non-explicit analysis. Avoid sexual detail, graphic violence, or instructions for harm. Output must be valid JSON only.';
 
@@ -957,7 +957,7 @@ async function callAiProvider(
 /**
  * Parse JSON response from LLM into the format expected by updateSceneFile
  */
-function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin): ParsedBeats | null {
+function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin): ParsedSceneAnalysis | null {
     try {
         // Remove markdown code blocks if present
         let cleanedJson = jsonResult.trim();
@@ -967,18 +967,18 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
             cleanedJson = cleanedJson.replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
         }
         
-        const parsed = JSON.parse(cleanedJson) as BeatsJsonResponse;
+        const parsed = JSON.parse(cleanedJson) as SceneAnalysisJsonResponse;
         
         // Convert JSON structure to string format for compatibility with existing code
-        const formatBeatsArray = (beats: BeatItem[] | undefined, is2beats: boolean = false): string => {
-            if (!beats || beats.length === 0) return '';
+        const formatAnalysisArray = (analysis: BeatItem[] | undefined, isCurrentAnalysis: boolean = false): string => {
+            if (!analysis || analysis.length === 0) return '';
             
-            return beats.map((beat, index) => {
+            return analysis.map((beat, index) => {
                 // First line always includes scene number
                 if (index === 0) {
-                    // Special handling for first 2beats item (overall scene grade A/B/C)
+                    // Special handling for first currentSceneAnalysis item (overall scene grade A/B/C)
                     // Format: " - {scene} {grade} / {comment}" (no title)
-                    const isOverallGrade = is2beats && ['A', 'B', 'C'].includes(beat.grade);
+                    const isOverallGrade = isCurrentAnalysis && ['A', 'B', 'C'].includes(beat.grade);
                     if (isOverallGrade) {
                         return ` - ${beat.scene} ${beat.grade} / ${beat.comment}`;
                     }
@@ -998,15 +998,15 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
             }).join('\n');
         };
         
-        const result: ParsedBeats = {
-            '1beats': formatBeatsArray(parsed['1beats'], false),
-            '2beats': formatBeatsArray(parsed['2beats'], true),  // Special handling for overall grade
-            '3beats': formatBeatsArray(parsed['3beats'], false)
+        const result: ParsedSceneAnalysis = {
+            'previousSceneAnalysis': formatAnalysisArray(parsed['previousSceneAnalysis'], false),
+            'currentSceneAnalysis': formatAnalysisArray(parsed['currentSceneAnalysis'], true),  // Special handling for overall grade
+            'nextSceneAnalysis': formatAnalysisArray(parsed['nextSceneAnalysis'], false)
         };
         
-        // Require at least 2beats content
-        if (!result['2beats'].trim()) {
-            new Notice('LLM response is missing required 2beats analysis.');
+        // Require at least currentSceneAnalysis content
+        if (!result['currentSceneAnalysis'].trim()) {
+            new Notice('LLM response is missing required currentSceneAnalysis.');
             return null;
         }
         
@@ -1019,7 +1019,7 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
 }
 
 // Keep old regex parser as fallback for now
-function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): ParsedBeats | null {
+function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): ParsedSceneAnalysis | null {
     // Try JSON parsing first
     const jsonResult = parseJsonBeatsResponse(gptResult, plugin);
     if (jsonResult) {
@@ -1032,20 +1032,20 @@ function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): Parsed
         let text = (gptResult || '').replace(/\r\n?/g, '\n');
         text = text.replace(/^\s*[•–—]\s+/gm, '- ');
 
-        const normalizeHeader = (key: '1beats'|'2beats'|'3beats') => {
+        const normalizeHeader = (key: 'previousSceneAnalysis'|'currentSceneAnalysis'|'nextSceneAnalysis') => {
             const headerRegex = new RegExp(
                 `^\\s*(?:[#>*_` + "'" + `\-]{0,5}\\s*)*` + key + `\\s*:?\\s*(?:[#>*_` + "'" + `\-]{0,5})?\\s*$`,
                 'gmi'
             );
             text = text.replace(headerRegex, `${key}:`);
         };
-        normalizeHeader('1beats');
-        normalizeHeader('2beats');
-        normalizeHeader('3beats');
+        normalizeHeader('previousSceneAnalysis');
+        normalizeHeader('currentSceneAnalysis');
+        normalizeHeader('nextSceneAnalysis');
 
-        const section1Pattern = /^1beats:\s*([\s\S]*?)(?=^\s*(?:2beats:|3beats:|$))/m;
-        const section2Pattern = /^2beats:\s*([\s\S]*?)(?=^\s*(?:3beats:|$))/m;
-        const section3Pattern = /^3beats:\s*([\s\S]*)$/m;
+        const section1Pattern = /^previousSceneAnalysis:\s*([\s\S]*?)(?=^\s*(?:currentSceneAnalysis:|nextSceneAnalysis:|$))/m;
+        const section2Pattern = /^currentSceneAnalysis:\s*([\s\S]*?)(?=^\s*(?:nextSceneAnalysis:|$))/m;
+        const section3Pattern = /^nextSceneAnalysis:\s*([\s\S]*)$/m;
         
         const section1Match = text.match(section1Pattern);
         const section2Match = text.match(section2Pattern);
@@ -1072,18 +1072,18 @@ function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): Parsed
             return '';
         };
         
-        const beats: ParsedBeats = {
-            '1beats': processSection(section1Match?.[1]),
-            '2beats': processSection(section2Match?.[1]),
-            '3beats': processSection(section3Match?.[1])
+        const analysis: ParsedSceneAnalysis = {
+            'previousSceneAnalysis': processSection(section1Match?.[1]),
+            'currentSceneAnalysis': processSection(section2Match?.[1]),
+            'nextSceneAnalysis': processSection(section3Match?.[1])
         };
         
-        if (!beats['1beats'].trim() && !beats['2beats'].trim() && !beats['3beats'].trim()) {
-             new Notice('Failed to parse beats from LLM response.');
+        if (!analysis['previousSceneAnalysis'].trim() && !analysis['currentSceneAnalysis'].trim() && !analysis['nextSceneAnalysis'].trim()) {
+             new Notice('Failed to parse scene analysis from LLM response.');
              return null;
         }
         
-        return beats;
+        return analysis;
     } catch (error) {
         console.error("[parseGptResult] Error parsing beats response:", error);
         return null;
@@ -1093,7 +1093,7 @@ function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin): Parsed
 async function updateSceneFile(
     vault: Vault, 
     scene: SceneData, 
-    parsedBeats: ParsedBeats, 
+    parsedAnalysis: ParsedSceneAnalysis, 
     plugin: RadialTimelinePlugin,
     modelIdUsed: string | null
 ): Promise<boolean> {
@@ -1138,13 +1138,13 @@ async function updateSceneFile(
                 fmObj['Beats Update'] = false;
             }
 
-            const b1 = parsedBeats['1beats']?.trim();
-            const b2 = parsedBeats['2beats']?.trim();
-            const b3 = parsedBeats['3beats']?.trim();
+            const b1 = parsedAnalysis['previousSceneAnalysis']?.trim();
+            const b2 = parsedAnalysis['currentSceneAnalysis']?.trim();
+            const b3 = parsedAnalysis['nextSceneAnalysis']?.trim();
             
-            if (b1) fmObj['1beats'] = toArray(b1);
-            if (b2) fmObj['2beats'] = toArray(b2);
-            if (b3) fmObj['3beats'] = toArray(b3);
+            if (b1) fmObj['previousSceneAnalysis'] = toArray(b1);
+            if (b2) fmObj['currentSceneAnalysis'] = toArray(b2);
+            if (b3) fmObj['nextSceneAnalysis'] = toArray(b3);
         });
         return true;
     } catch (error) {
@@ -1159,7 +1159,7 @@ export async function processByManuscriptOrder(
     vault: Vault
 ): Promise<void> {
     // Create modal with scene count calculator
-    const modal = new BeatsProcessingModal(
+    const modal = new SceneAnalysisProcessingModal(
         plugin.app,
         plugin,
         (mode: ProcessingMode) => calculateSceneCount(plugin, vault, mode),
@@ -1178,7 +1178,7 @@ async function processWithModal(
     plugin: RadialTimelinePlugin,
     vault: Vault,
     mode: ProcessingMode,
-    modal: BeatsProcessingModal
+    modal: SceneAnalysisProcessingModal
 ): Promise<void> {
     // Check if this is a resume operation
     const isResuming = plugin.settings._isResuming || false;
@@ -1314,7 +1314,7 @@ async function processWithModal(
             }
 
             const contextPrompt = getActiveContextPrompt(plugin);
-            const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+            const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
             // Pass triplet info directly to avoid regex parsing
             const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
@@ -1322,18 +1322,18 @@ async function processWithModal(
             const aiResult = await runAi(userPrompt, null, 'processByManuscriptOrder', sceneNameForLog, tripletForLog);
 
             if (aiResult.result) {
-                const parsedBeats = parseGptResult(aiResult.result, plugin);
-                if (parsedBeats) {
+                const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                if (parsedAnalysis) {
                     // Post-processing: for boundary cases, ensure only the expected sections are saved
                     if (!triplet.prev) {
-                        // First-scene case: no previous scene, drop any 1beats content
-                        parsedBeats['1beats'] = '';
+                        // First-scene case: no previous scene, drop any previousSceneAnalysis content
+                        parsedAnalysis['previousSceneAnalysis'] = '';
                     }
                     if (!triplet.next) {
-                        // Last-scene case: no next scene, drop any 3beats content
-                        parsedBeats['3beats'] = '';
+                        // Last-scene case: no next scene, drop any nextSceneAnalysis content
+                        parsedAnalysis['nextSceneAnalysis'] = '';
                     }
-                    const updated = await updateSceneBeats(vault, triplet.current.file, parsedBeats, plugin, aiResult.modelIdUsed);
+                    const updated = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
                     if (updated) {
                         await plugin.saveSettings();
                         // Ensure progress UI is consistent when abort requested after finishing this scene
@@ -1486,7 +1486,7 @@ export async function processBySubplotOrder(
                  const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
                  const contextPrompt = getActiveContextPrompt(plugin);
-                 const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+                 const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
                  // Use basename directly (already includes scene number)
                  const sceneNameForLog = triplet.current.file.basename;
@@ -1494,19 +1494,19 @@ export async function processBySubplotOrder(
                  const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog);
 
                  if (aiResult.result) {
-                     const parsedBeats = parseGptResult(aiResult.result, plugin);
-                     if (parsedBeats) {
+                     const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                     if (parsedAnalysis) {
                          // Post-processing: for boundary cases, ensure only the expected sections are saved
                          if (!triplet.prev) {
                              // First-scene case: no previous scene, drop any 1beats content
-                             parsedBeats['1beats'] = '';
+                             parsedAnalysis['previousSceneAnalysis'] = '';
                          }
                          if (!triplet.next) {
                              // Last-scene case: no next scene, drop any 3beats content
-                             parsedBeats['3beats'] = '';
+                             parsedAnalysis['nextSceneAnalysis'] = '';
                          }
                          
-                         const updated = await updateSceneBeats(vault, triplet.current.file, parsedBeats, plugin, aiResult.modelIdUsed);
+                         const updated = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
                          if (updated) {
                              await plugin.saveSettings();
                          } else {
@@ -1542,7 +1542,7 @@ async function processSubplotWithModal(
     plugin: RadialTimelinePlugin,
     vault: Vault,
     subplotName: string,
-    modal: BeatsProcessingModal
+    modal: SceneAnalysisProcessingModal
 ): Promise<void> {
     try {
         const allScenes = await getAllSceneData(plugin, vault);
@@ -1630,7 +1630,7 @@ async function processSubplotWithModal(
             }
 
             const contextPrompt = getActiveContextPrompt(plugin);
-            const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+            const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
             
             // Use basename directly (already includes scene number)
             const sceneNameForLog = triplet.current.file.basename;
@@ -1641,19 +1641,19 @@ async function processSubplotWithModal(
             const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog);
 
             if (aiResult.result) {
-                const parsedBeats = parseGptResult(aiResult.result, plugin);
-                if (parsedBeats) {
+                const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                if (parsedAnalysis) {
                     // Post-processing: for boundary cases, ensure only the expected sections are saved
                     if (!triplet.prev) {
-                        // First-scene case: no previous scene, drop any 1beats content
-                        parsedBeats['1beats'] = '';
+                        // First-scene case: no previous scene, drop any previousSceneAnalysis content
+                        parsedAnalysis['previousSceneAnalysis'] = '';
                     }
                     if (!triplet.next) {
-                        // Last-scene case: no next scene, drop any 3beats content
-                        parsedBeats['3beats'] = '';
+                        // Last-scene case: no next scene, drop any nextSceneAnalysis content
+                        parsedAnalysis['nextSceneAnalysis'] = '';
                     }
 
-                    const success = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
+                    const success = await updateSceneFile(vault, triplet.current, parsedAnalysis, plugin, aiResult.modelIdUsed);
                     if (success) {
                         processedCount++;
                         plugin.log(`Successfully updated beats for scene ${triplet.current.sceneNumber} in subplot "${subplotName}"`);
@@ -1715,7 +1715,7 @@ export async function processEntireSubplotWithModal(
     };
 
     // Create the modal with subplot-specific context
-    const modal = new BeatsProcessingModal(
+    const modal = new SceneAnalysisProcessingModal(
         plugin.app,
         plugin,
         getSceneCount,
@@ -1780,7 +1780,7 @@ async function processEntireSubplotWithModalInternal(
     plugin: RadialTimelinePlugin,
     vault: Vault,
     subplotName: string,
-    modal: BeatsProcessingModal,
+    modal: SceneAnalysisProcessingModal,
     isResuming: boolean = false
 ): Promise<void> {
     try {
@@ -1874,7 +1874,7 @@ async function processEntireSubplotWithModalInternal(
             }
 
             const contextPrompt = getActiveContextPrompt(plugin);
-            const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+            const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
             const sceneNameForLog = triplet.current.file.basename;
             const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
@@ -1882,19 +1882,19 @@ async function processEntireSubplotWithModalInternal(
             const aiResult = await runAi(userPrompt, subplotName, 'processEntireSubplot', sceneNameForLog, tripletForLog);
 
             if (aiResult.result) {
-                const parsedBeats = parseGptResult(aiResult.result, plugin);
-                if (parsedBeats) {
+                const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                if (parsedAnalysis) {
                     // Post-processing: for boundary cases, ensure only the expected sections are saved
                     if (!triplet.prev) {
-                        // First-scene case: no previous scene, drop any 1beats content
-                        parsedBeats['1beats'] = '';
+                        // First-scene case: no previous scene, drop any previousSceneAnalysis content
+                        parsedAnalysis['previousSceneAnalysis'] = '';
                     }
                     if (!triplet.next) {
-                        // Last-scene case: no next scene, drop any 3beats content
-                        parsedBeats['3beats'] = '';
+                        // Last-scene case: no next scene, drop any nextSceneAnalysis content
+                        parsedAnalysis['nextSceneAnalysis'] = '';
                     }
 
-                    const success = await updateSceneFile(vault, triplet.current, parsedBeats, plugin, aiResult.modelIdUsed);
+                    const success = await updateSceneFile(vault, triplet.current, parsedAnalysis, plugin, aiResult.modelIdUsed);
                     if (success) {
                         processedCount++;
                         plugin.log(`Successfully updated beats for scene ${triplet.current.sceneNumber} in entire subplot "${subplotName}"`);
@@ -1947,7 +1947,7 @@ export async function processBySubplotNameWithModal(
     };
 
     // Create the modal with subplot-specific context
-    const modal = new BeatsProcessingModal(
+    const modal = new SceneAnalysisProcessingModal(
         plugin.app,
         plugin,
         getSceneCount,
@@ -2007,146 +2007,6 @@ export async function processBySubplotNameWithModal(
     modal.open();
 }
 
-// Process flagged beats for a single chosen subplot name (legacy function - now uses modal)
-export async function processBySubplotName(
-    plugin: RadialTimelinePlugin,
-    vault: Vault,
-    subplotName: string
-): Promise<void> {
-    const notice = new Notice(`Processing Subplot "${subplotName}": getting scene data...`, 0);
-    try {
-        const allScenes = await getAllSceneData(plugin, vault);
-        if (allScenes.length < 1) {
-            new Notice("No valid scenes found in the specified source path.");
-            notice.hide();
-            return;
-        }
-
-        // Filter scenes to only those containing the chosen subplot
-        const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
-        
-
-        if (filtered.length === 0) {
-            new Notice(`No scenes found for subplot "${subplotName}".`);
-            notice.hide();
-            return;
-        }
-
-        // Sort by sceneNumber (if present)
-        filtered.sort(compareScenesByOrder);
-
-        // Consider only scenes with Status: working/complete and Beats Update: Yes
-        const validScenes = filtered.filter(scene => {
-            const beatsUpdate = (scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate || scene.frontmatter?.['Beats Update']) as unknown;
-            return hasProcessableContent(scene.frontmatter)
-                && normalizeBooleanValue(beatsUpdate);
-        });
-
-        if (validScenes.length === 0) {
-            new Notice(`No flagged scenes (Beats Update: Yes/True/1) with content found for "${subplotName}".`);
-            notice.hide();
-            return;
-        }
-
-        notice.setMessage(`Analyzing ${validScenes.length} scenes in "${subplotName}"...`);
-
-
-        // Build triplets for flagged scenes using only processable content scenes for context
-        const triplets: { prev: SceneData | null, current: SceneData, next: SceneData | null }[] = [];
-        
-        // Filter to only scenes with processable content (Status=Working or Complete) for context
-        const processableContentScenes = filtered.filter(scene => hasProcessableContent(scene.frontmatter));
-        
-        // Only build triplets for scenes that are flagged for processing
-        const flaggedScenes = validScenes; // Already filtered for Status: working/complete and BeatsUpdate: Yes
-        
-        for (const flaggedScene of flaggedScenes) {
-            // Find this scene's position in the processable content list
-            const idx = processableContentScenes.findIndex(s => s.file.path === flaggedScene.file.path);
-            
-            // Get prev/next from processable content list only (Status=Working or Complete)
-            const prev = idx > 0 ? processableContentScenes[idx - 1] : null;
-            const next = idx >= 0 && idx < processableContentScenes.length - 1 ? processableContentScenes[idx + 1] : null;
-            
-            triplets.push({ prev, current: flaggedScene, next });
-        }
-
-        let processedCount = 0;
-        const total = triplets.length;
-
-        for (const triplet of triplets) {
-            // Only process if the current scene is flagged
-            const flag = (triplet.current.frontmatter?.beatsupdate || triplet.current.frontmatter?.BeatsUpdate || triplet.current.frontmatter?.['Beats Update']) as unknown;
-            if (!normalizeBooleanValue(flag)) continue;
-
-            const currentPath = triplet.current.file.path;
-            const key = `subplot-${subplotName}-${triplet.prev?.sceneNumber ?? 'Start'}-${triplet.current.sceneNumber}-${triplet.next?.sceneNumber ?? 'End'}`;
-
-            notice.setMessage(`Processing scene ${triplet.current.sceneNumber} (${processedCount + 1}/${total}) — "${subplotName}"...`);
-
-            // Include neighbors if they exist in the subplot sequence, regardless of content status
-            const prevBody = triplet.prev ? triplet.prev.body : null;
-            const currentBody = triplet.current.body;
-            const nextBody = triplet.next ? triplet.next.body : null;
-            const prevNum = triplet.prev ? String(triplet.prev.sceneNumber ?? 'N/A') : 'N/A';
-            const currentNum = String(triplet.current.sceneNumber ?? 'N/A');
-            const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
-
-            const contextPrompt = getActiveContextPrompt(plugin);
-            const userPrompt = buildBeatsPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
-            // Use basename directly (already includes scene number)
-            const sceneNameForLog = triplet.current.file.basename;
-        const runAi = createAiRunner(plugin, vault, callAiProvider);
-        const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog);
-
-            if (aiResult.result) {
-                const parsedBeats = parseGptResult(aiResult.result, plugin);
-                if (parsedBeats) {
-                    // Post-processing: for boundary cases, ensure only the expected sections are saved
-                    if (!triplet.prev) {
-                        // First-scene case: no previous scene, drop any 1beats content
-                        parsedBeats['1beats'] = '';
-                    }
-                    if (!triplet.next) {
-                        // Last-scene case: no next scene, drop any 3beats content
-                        parsedBeats['3beats'] = '';
-                    }
-                    
-                    const ok = await updateSceneBeats(vault, triplet.current.file, parsedBeats, plugin, aiResult.modelIdUsed);
-                    if (ok) {
-                        await plugin.saveSettings();
-                    } else {
-                        plugin.log(`[API Beats][processBySubplotName] Failed to update file for subplot ${subplotName} after getting beats for: ${currentPath}`);
-                    }
-                } else {
-                    plugin.log(`[API Beats][processBySubplotName] Failed to parse AI result for subplot ${subplotName}, scene: ${currentPath}`);
-                }
-            } else {
-                plugin.log(`[API Beats][processBySubplotName] No result from AI for subplot ${subplotName}, scene: ${currentPath}`);
-            }
-
-            processedCount++;
-            notice.setMessage(`Progress: ${processedCount}/${total} scenes processed...`);
-            await new Promise(resolve => window.setTimeout(resolve, 200));
-        }
-
-        await plugin.saveSettings();
-        notice.hide();
-        
-        let completionMessage = `Subplot "${subplotName}" complete: ${processedCount}/${total} triplets processed.`;
-        if (plugin.settings.logApiInteractions) {
-            completionMessage += ' AI interaction logs have been saved to the AI folder for review.';
-        }
-        new Notice(completionMessage, 5000);
-        
-        plugin.refreshTimelineIfNeeded(null);
-    } catch (error) {
-        console.error("[API Beats][processBySubplotName] Error during processing:", error);
-        notice.hide();
-        new Notice(`Error processing subplot "${subplotName}". Check console for details.`);
-    }
-}
-
 // Return distinct subplot names found in scene frontmatter, ordered same as timeline
 export async function getDistinctSubplotNames(
     plugin: RadialTimelinePlugin,
@@ -2183,24 +2043,24 @@ export async function getDistinctSubplotNames(
 }
 
 // <<< ADDED: Dummy data for testing >>>
-const DUMMY_API_RESPONSE = `1beats:
+const DUMMY_API_RESPONSE = `previousSceneAnalysis:
  - 33.2 Trisan Inner Turmoil - / Lacks clarity
  - Chae Ban Hesitation ? / Uncertain decision
  - Entiat Reflection ? / Needs clearer link: should explore motive
- - Chae Ban Plan + / Strengthens connection to 2beats choices
+ - Chae Ban Plan + / Strengthens connection to currentSceneAnalysis choices
  - Meeting Entiat + / Sets up tension
-2beats:
+currentSceneAnalysis:
  - 33.5 B / Scene will be stronger by making Entiat motivations clearer. Clarify: imminent threat
- - Entiat Adoption Reflections ? / Lacks tension link to events in 1beats
+ - Entiat Adoption Reflections ? / Lacks tension link to events in previousSceneAnalysis
  - Chae Ban Escape News + / Advances plot
- - Entiat Internal Conflict + / Highlights dilemma: how to handle the situation from 1beats
- - Connection to 3beats + / Sets up the coming conflict
-3beats:
+ - Entiat Internal Conflict + / Highlights dilemma: how to handle the situation from previousSceneAnalysis
+ - Connection to nextSceneAnalysis + / Sets up the coming conflict
+nextSceneAnalysis:
  - 34 Teco Routine Disruption - / Needs purpose
  - Entiat Unexpected Visit ? / Confusing motivation: clarify intention here
- - Sasha Defense and Defeat + / Builds on tension from 2beats
+ - Sasha Defense and Defeat + / Builds on tension from currentSceneAnalysis
  - Teco Escape Decision + / Strong transition
- - Final Choice + / Resolves arc started in 1beats`;
+ - Final Choice + / Resolves arc started in previousSceneAnalysis`;
 
 // <<< ADDED: Exported Test Function >>>
 export async function testYamlUpdateFormatting(
@@ -2257,13 +2117,13 @@ export async function testYamlUpdateFormatting(
             body: currentBody
         };
 
-        const parsedBeats = parseGptResult(DUMMY_API_RESPONSE, plugin);
-        if (!parsedBeats) {
+        const parsedAnalysis = parseGptResult(DUMMY_API_RESPONSE, plugin);
+        if (!parsedAnalysis) {
             new Notice('Error: Failed to parse dummy API response data.');
             return;
         }
 
-        const success = await updateSceneFile(vault, dummySceneData, parsedBeats, plugin, null);
+        const success = await updateSceneFile(vault, dummySceneData, parsedAnalysis, plugin, null);
 
         if (success) {
             new Notice(`Successfully updated YAML in ${dummyFilePath}. Please check the file formatting.`);
@@ -2396,18 +2256,18 @@ async function purgeScenesBeats(
                 const fmObj = fm as Record<string, unknown>;
                 
                 // Remove beats fields
-                const had1beats = fmObj['1beats'] !== undefined;
-                const had2beats = fmObj['2beats'] !== undefined;
-                const had3beats = fmObj['3beats'] !== undefined;
+                const hadPreviousAnalysis = fmObj['previousSceneAnalysis'] !== undefined;
+                const hadCurrentAnalysis = fmObj['currentSceneAnalysis'] !== undefined;
+                const hadNextAnalysis = fmObj['nextSceneAnalysis'] !== undefined;
                 const hadBeatsLastUpdated = fmObj['Beats Last Updated'] !== undefined;
                 
-                delete fmObj['1beats'];
-                delete fmObj['2beats'];
-                delete fmObj['3beats'];
+                delete fmObj['previousSceneAnalysis'];
+                delete fmObj['currentSceneAnalysis'];
+                delete fmObj['nextSceneAnalysis'];
                 delete fmObj['Beats Last Updated'];
                 
-                // Only count as purged if it actually had beats
-                if (had1beats || had2beats || had3beats || hadBeatsLastUpdated) {
+                // Only count as purged if it actually had analysis
+                if (hadPreviousAnalysis || hadCurrentAnalysis || hadNextAnalysis || hadBeatsLastUpdated) {
                     purgedCount++;
                 }
             });
@@ -2439,7 +2299,7 @@ export async function purgeBeatsByManuscriptOrder(
             plugin.app,
             `Purge ALL beats from ${allScenes.length} scene${allScenes.length !== 1 ? 's' : ''} in your manuscript?`,
             [
-                '1beats, 2beats, 3beats fields',
+                'previousSceneAnalysis, currentSceneAnalysis, nextSceneAnalysis fields',
                 'Beats Last Updated timestamps'
             ],
             async () => {
@@ -2487,7 +2347,7 @@ export async function purgeBeatsBySubplotName(
             plugin.app,
             `Purge beats from ${filtered.length} scene${filtered.length !== 1 ? 's' : ''} in subplot "${subplotName}"?`,
             [
-                '1beats, 2beats, 3beats fields',
+                'previousSceneAnalysis, currentSceneAnalysis, nextSceneAnalysis fields',
                 'Beats Last Updated timestamps'
             ],
             async () => {

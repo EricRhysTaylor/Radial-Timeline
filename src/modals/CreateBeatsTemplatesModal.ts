@@ -1,18 +1,18 @@
 /*
- * Create Plot Templates Modal - Confirmation dialog
+ * Create Beats Templates Modal - Confirmation dialog
  */
 import { Modal, App, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 
-export interface CreatePlotTemplatesResult {
+export interface CreateBeatsTemplatesResult {
   confirmed: boolean;
 }
 
-export class CreatePlotTemplatesModal extends Modal {
+export class CreateBeatsTemplatesModal extends Modal {
   private plugin: RadialTimelinePlugin;
   private plotSystem: string;
   private beatCount: number;
-  private resolve: ((result: CreatePlotTemplatesResult) => void) | null = null;
+  private resolve: ((result: CreateBeatsTemplatesResult) => void) | null = null;
 
   constructor(app: App, plugin: RadialTimelinePlugin, plotSystem: string, beatCount: number) {
     super(app);
@@ -106,7 +106,7 @@ Gossamer1:
       });
   }
 
-  waitForConfirmation(): Promise<CreatePlotTemplatesResult> {
+  waitForConfirmation(): Promise<CreateBeatsTemplatesResult> {
     return new Promise((resolve) => {
       this.resolve = resolve;
     });

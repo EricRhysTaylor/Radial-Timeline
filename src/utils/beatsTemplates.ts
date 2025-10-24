@@ -2,7 +2,7 @@
  * Plot Template Note Creation
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
-import { PLOT_SYSTEMS, PlotSystemTemplate, PlotBeatInfo } from './plotSystems';
+import { PLOT_SYSTEMS, PlotSystemTemplate, PlotBeatInfo } from './beatsSystems';
 
 /**
  * Generate Plot note content with frontmatter and body
@@ -14,7 +14,7 @@ function generatePlotNoteContent(
 ): string {
   const frontmatter = [
     '---',
-    'Class: Plot',
+    'Class: Beat',
     `Act: ${act}`,
     `Description: ${beatInfo.description}`,
     `Beat Model: ${plotSystem}`,

@@ -21,20 +21,20 @@ export function renderAiSection(params: {
 }): void {
     const { app, plugin, containerEl } = params;
 
-    // --- AI for Beats Analysis ---
+    // --- AI for Scene Analysis ---
     new Settings(containerEl)
-        .setName('AI LLM for scene beats triplet analysis')
+        .setName('AI LLM for scene analysis')
         .setHeading();
 
     // Enable/disable AI beats features
     // NOTE: This toggle should always be visible (not added to _aiRelatedElements)
     new Settings(containerEl)
         .setName('Enable AI LLM features')
-        .setDesc('Show command palette options and ui beat colors and hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.')
+        .setDesc('Show command palette options and UI scene analysis colors and hover synopsis. When off, these visuals are hidden, but metadata remains unchanged.')
         .addToggle(toggle => toggle
-            .setValue(plugin.settings.enableAiBeats ?? true)
+            .setValue(plugin.settings.enableAiSceneAnalysis ?? true)
             .onChange(async (value) => {
-                plugin.settings.enableAiBeats = value;
+                plugin.settings.enableAiSceneAnalysis = value;
                 await plugin.saveSettings();
                 params.toggleAiSettingsVisibility(value);
                 plugin.refreshTimelineIfNeeded(null);
@@ -233,7 +233,7 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(apiLoggingSetting.settingEl);
 
     // Set initial visibility state
-    params.toggleAiSettingsVisibility(plugin.settings.enableAiBeats ?? true);
+    params.toggleAiSettingsVisibility(plugin.settings.enableAiSceneAnalysis ?? true);
 }
 
 

@@ -48,7 +48,7 @@ export function renderGossamerLayer(
   // Get selected beat model from plugin settings (passed through run meta if needed)
   const selectedBeatModel = run?.meta?.model;
   
-  // Extract dynamic beat order from story beat notes (itemType: Plot)
+  // Extract dynamic beat order from story beat notes (itemType: Beat)
   const beatOrder = extractBeatOrder(scenes, selectedBeatModel);
   if (!beatOrder.length) {
     console.warn('[Gossamer] No story beats found in scenes. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');

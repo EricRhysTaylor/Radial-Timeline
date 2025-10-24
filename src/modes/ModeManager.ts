@@ -63,7 +63,7 @@ export class ModeManager {
             await currentModeDefinition.onExit(this.view);
         }
         
-        // Update view's current mode (this also syncs legacy properties)
+        // Update view's current mode
         this.view.currentMode = newMode;
         
         // Persist to settings

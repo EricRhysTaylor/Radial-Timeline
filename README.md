@@ -31,10 +31,10 @@ It’s a timeline for your story and your writing journey.
 
 <a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">
   <p align="center">
-    <img src="https://i.ytimg.com/vi/7noTSFaj8Eo/maxresdefault.jpg" alt="Plot your novel with radial timeline in obsidian | complete author walkthrough & setup guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+    <img src="https://i.ytimg.com/vi/7noTSFaj8Eo/maxresdefault.jpg" alt="Plan your novel with radial timeline in obsidian | complete author walkthrough & setup guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
   </p>
   <p align="center" style="font-family: 'Lato', sans-serif; font-size: 16px; margin-top: 10px;">
-    Plot your novel with radial timeline in obsidian<br>
+    Plan your novel with radial timeline in obsidian<br>
     Complete author walkthrough & setup guide
   </p>
 </a>
@@ -113,8 +113,8 @@ The plugin offers several settings to customize its behavior and enable ai featu
 * Gossamer view toggle to show beat momentum visualization overlay
 * Gossamer enter momentum scores opens modal for all-in-one momentum score entry
 * Generate manuscript to assemble clean manuscript for Gossamer AI analysis
-* AI Beats update (manuscript order) to update AI beat analysis for all scenes in manuscript order
-* AI Beats update (subplot order) to update AI beat analysis for scenes in a selected subplot
+* AI Scene Analysis (manuscript order) to update AI beat analysis for all scenes in manuscript order
+* AI Scene Analysis (subplot order) to update AI beat analysis for scenes in a selected subplot
 * Create template note to create a basic scene as defined by `class=scene` with frontmatter
 * Open timeline view (or interface button in the command ribbon)
 
@@ -180,8 +180,8 @@ Configuration:
 - API Logging: Track all AI interactions in the "AI" folder
 
 Commands:
-- Beats update (manuscript order): Process all scenes in manuscript order
-- Beats update (subplot order): Process scenes within a selected subplot only
+- Scene Analysis (manuscript order): Process all scenes in manuscript order
+- Scene Analysis (subplot order): Process scenes within a selected subplot only
 
 Workflow:
 1. Ensure scenes have Beats Update: Yes in frontmatter to flag for processing
@@ -238,7 +238,7 @@ Gossamer5: 6 #oldest scores capped at 30
 
 ## AI beats analysis
 
-In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Beats update (manuscript order)" or "Beats update (subplot order)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point.
+In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Scene Analysis (manuscript order)" or "Scene Analysis (subplot order)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point.
 
 Note: you can always manually enter these fields and achieve the same effect and avoid using the LLM API. You can also use a web client and produce similar results you can paste into the yaml. It is recommended that you place a spending cap on the API account for your LLM.
 

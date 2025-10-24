@@ -25,9 +25,9 @@ interface Scene {
   "Publish Stage"?: string;
   due?: string;
   pendingEdits?: string;
-  "1beats"?: string;
-  "2beats"?: string;
-  "3beats"?: string;
+  "previousSceneAnalysis"?: string;
+  "currentSceneAnalysis"?: string;
+  "nextSceneAnalysis"?: string;
   itemType?: "Scene" | "Plot";
 }
 
@@ -333,11 +333,11 @@ export default class SynopsisManager {
       // Call addSpacer with height 0, and store the returned start position
       let currentMetadataY = addSpacer(synopsisBottomY, 0);
 
-      // Process 1beats metadata if it exists and AI beats are enabled
-      if (this.plugin.settings.enableAiBeats && scene["1beats"]) {
+      // Process previousSceneAnalysis metadata if it exists and AI scene analysis is enabled
+      if (this.plugin.settings.enableAiSceneAnalysis && scene["previousSceneAnalysis"]) {
         const beatsY = currentMetadataY;
-        const beatsText = scene["1beats"] || '';
-        const linesAdded = this.formatBeatsText(beatsText, '1beats', synopsisTextGroup, beatsY, lineHeight, 0); // Pass '1beats'
+        const beatsText = scene["previousSceneAnalysis"] || '';
+        const linesAdded = this.formatBeatsText(beatsText, 'previousSceneAnalysis', synopsisTextGroup, beatsY, lineHeight, 0); // Pass 'previousSceneAnalysis'
         currentMetadataY = beatsY + (linesAdded * lineHeight);
         if (linesAdded > 0) {
           // Call addSpacer with height 0, update starting point for next block
@@ -345,11 +345,11 @@ export default class SynopsisManager {
         }
       }
       
-      // Process 2beats metadata if it exists and AI beats are enabled
-      if (this.plugin.settings.enableAiBeats && scene["2beats"]) {
+      // Process currentSceneAnalysis metadata if it exists and AI scene analysis is enabled
+      if (this.plugin.settings.enableAiSceneAnalysis && scene["currentSceneAnalysis"]) {
         const beatsY = currentMetadataY;
-        const beatsText = scene["2beats"] || '';
-        const linesAdded = this.formatBeatsText(beatsText, '2beats', synopsisTextGroup, beatsY, lineHeight, 0); // Pass '2beats'
+        const beatsText = scene["currentSceneAnalysis"] || '';
+        const linesAdded = this.formatBeatsText(beatsText, 'currentSceneAnalysis', synopsisTextGroup, beatsY, lineHeight, 0); // Pass 'currentSceneAnalysis'
         currentMetadataY = beatsY + (linesAdded * lineHeight);
         if (linesAdded > 0) {
            // Call addSpacer with height 0, update starting point for next block
@@ -357,11 +357,11 @@ export default class SynopsisManager {
         }
       }
       
-      // Process 3beats metadata if it exists and AI beats are enabled
-      if (this.plugin.settings.enableAiBeats && scene["3beats"]) {
+      // Process nextSceneAnalysis metadata if it exists and AI scene analysis is enabled
+      if (this.plugin.settings.enableAiSceneAnalysis && scene["nextSceneAnalysis"]) {
         const beatsY = currentMetadataY;
-        const beatsText = scene["3beats"] || '';
-        const linesAdded = this.formatBeatsText(beatsText, '3beats', synopsisTextGroup, beatsY, lineHeight, 0); // Pass '3beats'
+        const beatsText = scene["nextSceneAnalysis"] || '';
+        const linesAdded = this.formatBeatsText(beatsText, 'nextSceneAnalysis', synopsisTextGroup, beatsY, lineHeight, 0); // Pass 'nextSceneAnalysis'
         currentMetadataY = beatsY + (linesAdded * lineHeight);
         if (linesAdded > 0) {
           // Call addSpacer with height 0, update starting point for next block
@@ -887,13 +887,13 @@ export default class SynopsisManager {
   /**
    * Formats and adds beat text lines to an SVG group.
    * @param beatsText The multi-line string containing beats for one section.
-   * @param beatKey The key identifying the section ('1beats', '2beats', '3beats').
+   * @param beatKey The key identifying the section ('previousSceneAnalysis', 'currentSceneAnalysis', 'nextSceneAnalysis').
    * @param parentGroup The SVG group element to append the text elements to.
    * @param baseY The starting Y coordinate for the first line.
    * @param lineHeight The vertical distance between lines.
    * @param spacerSize Size of the spacer to add after this beats section.
    */
-  private formatBeatsText(beatsText: string, beatKey: '1beats' | '2beats' | '3beats', parentGroup: SVGElement, baseY: number, lineHeight: number, spacerSize: number = 0): number {
+  private formatBeatsText(beatsText: string, beatKey: 'previousSceneAnalysis' | 'currentSceneAnalysis' | 'nextSceneAnalysis', parentGroup: SVGElement, baseY: number, lineHeight: number, spacerSize: number = 0): number {
     // START: Restore line splitting logic
     if (!beatsText || typeof beatsText !== 'string' || beatsText === 'undefined' || beatsText === 'null') {
       return 0;
@@ -1089,8 +1089,8 @@ export default class SynopsisManager {
         }
       }
       
-      // Handle special case for 2beats grade detection (simple, content-based only)
-      if (beatKey === '2beats' && !bodyWrapMatch && !gradeWrapMatch) {
+      // Handle special case for currentSceneAnalysis grade detection (simple, content-based only)
+      if (beatKey === 'currentSceneAnalysis' && !bodyWrapMatch && !gradeWrapMatch) {
         // Check if THIS specific line has a grade pattern
         const gradeMatch = titleText.match(/^\s*-?\s*(\d+(\.\d+)?\s+[ABC])/i);
         

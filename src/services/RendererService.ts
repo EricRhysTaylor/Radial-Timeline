@@ -77,7 +77,7 @@ export class RendererService {
      * - If not in gossamer mode, removes any existing gossamer elements.
      * Returns true on success, false if SVG or required data is missing (caller may fall back to full refresh).
      */
-  updateGossamerLayer(view: { containerEl: HTMLElement; plugin: any; sceneData?: Scene[]; interactionMode?: string }): boolean { // SAFE: any type used for plugin interface compatibility with dynamic properties
+  updateGossamerLayer(view: { containerEl: HTMLElement; plugin: any; sceneData?: Scene[]; currentMode?: string }): boolean { // SAFE: any type used for plugin interface compatibility with dynamic properties
         const container = view.containerEl.children[1] as HTMLElement | undefined;
         if (!container) return false;
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
@@ -87,7 +87,7 @@ export class RendererService {
         svg.querySelectorAll('.rt-gossamer-layer, .rt-gossamer-spokes').forEach(node => node.parentNode?.removeChild(node));
 
         // If not in gossamer mode, nothing else to do
-        if (view.interactionMode !== 'gossamer') return true;
+        if (view.currentMode !== 'gossamer') return true;
 
         const pluginAny = view.plugin as any;
         const run = pluginAny._gossamerLastRun || null;

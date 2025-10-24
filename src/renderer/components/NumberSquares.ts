@@ -94,7 +94,7 @@ export function renderNumberSquaresUnified(params: {
     let textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
     
     const grade = sceneGrades.get(sceneId);
-    if (plugin.settings.enableAiBeats && grade) {
+    if (plugin.settings.enableAiSceneAnalysis && grade) {
       textClasses += ` rt-grade-${grade}`;
     }
 
@@ -179,7 +179,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
     extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
     const grade = sceneGrades.get(sceneId);
-    if (plugin.settings.enableAiBeats && grade) textClasses += ` rt-grade-${grade}`;
+    if (plugin.settings.enableAiSceneAnalysis && grade) textClasses += ` rt-grade-${grade}`;
     svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
   });
   return svg;

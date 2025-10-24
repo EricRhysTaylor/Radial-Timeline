@@ -79,7 +79,7 @@ function getLabelSignature(container: HTMLElement): string {
     return ids;
 }
 
-     // px inward from outer scene edge for plot beats titles
+     // px inward from outer scene edge for story beat titles
 const ACT_LABEL_OFFSET = 25;     // px outward from outer scene edge for ACT labels
 const MONTH_TEXT_INSET = 10;     // px inward toward center from outer perimeter (larger = closer to origin)
 const MONTH_TICK_TERMINAL = 35;   // px outward from outer scene edge for month tick lines
@@ -154,7 +154,7 @@ function buildSynopsis(
             : [])
     ];
     
-    // For Plot beats, add Gossamer1 score right after Description (before separator)
+    // For Beat notes, add Gossamer1 score right after Description (before separator)
     if (scene.itemType === 'Plot') {
         const gossamer1 = scene.Gossamer1;
         if (gossamer1 !== undefined && gossamer1 !== null) {
@@ -971,7 +971,7 @@ export function createTimelineSVG(
                                     return idx % 16; // Direct order: outermost (idx=0) = Ring 1 = subplotColors[0]
                                 }
                             );
-                            // If this is a Plot note, append Gossamer info if available (Phase 1: skip detailed UI; reserved for Phase 2)
+                            // If this is a Plot note, append Gossamer info if available
                             synopsesElements.push(synopsisElOuter);
                         } catch {}
                         let sceneClasses = 'rt-scene-path';
@@ -1529,7 +1529,7 @@ export function createTimelineSVG(
 
         // Subplot label background layer
         svg += `<g class="background-layer">`;
-        svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, outerRingAllScenes: shouldShowAllScenesInOuterRing(plugin) });
+        svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder });
         svg += `</g>`;
 
         // Add number squares after background layer but before synopses
@@ -1596,15 +1596,15 @@ export function createTimelineSVG(
         // Serialize synopses to string and store HTML for later insertion
         const synopsisHTML = serializeSynopsesToString(synopsesElements);
 
-        // --- Gossamer momentum layer (Phase 1) ---
+        // --- Gossamer momentum layer ---
         {
             // Only render Gossamer layer if we're in Gossamer mode
             // Check if any view is in gossamer mode
             // SAFE: any type used for accessing app property on PluginRendererFacade
             const views = (plugin as any).app.workspace.getLeavesOfType('radial-timeline');
-            const isGossamerMode = views.some((leaf: { view: { interactionMode?: string } }) => {
-                const view = leaf.view as { interactionMode?: string };
-                return view?.interactionMode === 'gossamer';
+            const isGossamerMode = views.some((leaf: { view: { currentMode?: string } }) => {
+                const view = leaf.view as { currentMode?: string };
+                return view?.currentMode === 'gossamer';
             });
 
             if (isGossamerMode) {
@@ -1617,7 +1617,7 @@ export function createTimelineSVG(
                 // Collect actual angles from rendered plot slices (set during outer ring rendering loop above)
                 const anglesByBeat = (plugin as any)._plotBeatAngles || new Map<string, number>();
 
-                // Map beat names to their Plot note paths to enable dot click/open
+                // Map beat names to their Beat note paths to enable dot click/open
                 const beatPathByName = new Map<string, string>();
                 scenes.forEach(s => {
                     if (s.itemType !== 'Plot' || !s.title || !s.path) return;

@@ -3,11 +3,10 @@ import type { ModeManager } from '../../modes/ModeManager';
 
 interface ModeToggleView {
     currentMode?: string; // New mode system property
-    getModeManager?: () => ModeManager | undefined; // Phase 3 mode manager accessor
+    getModeManager?: () => ModeManager | undefined; // Mode manager accessor
     plugin: {
         settings: {
             currentMode?: string; // New mode system
-            outerRingAllScenes?: boolean; // Legacy property
         };
         saveSettings: () => Promise<void>;
         refreshTimelineIfNeeded: (file: unknown) => void;
@@ -23,13 +22,13 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
     view.registerDomEvent(modeToggle as unknown as HTMLElement, 'click', async (e: MouseEvent) => {
         e.stopPropagation();
         
-        // Try to use Phase 3 ModeManager if available
+        // Try to use ModeManager if available
         const modeManager = view.getModeManager?.();
         
         let newMode: string; // Declare for use in UI update below
         
         if (modeManager) {
-            // Phase 3: Use ModeManager for clean mode switching
+            // Use ModeManager for clean mode switching
             await modeManager.toggleToNextMode();
             
             // Update UI to reflect new mode
@@ -38,12 +37,12 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
             modeToggle.setAttribute('data-current-mode', newMode);
             
         } else {
-            // Fallback: Use legacy mode switching
+            // Fallback mode switching
             let currentModeValue: string;
             if (view.currentMode) {
                 currentModeValue = view.currentMode;
             } else {
-                currentModeValue = view.plugin.settings.outerRingAllScenes ? 'all-scenes' : 'main-plot';
+                currentModeValue = 'all-scenes'; // Default to all-scenes
             }
             
             // Toggle between All Scenes and Main Plot
@@ -54,9 +53,8 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
                 view.currentMode = newModeValue;
             }
             
-            // Update settings (both new and legacy)
+            // Update settings
             view.plugin.settings.currentMode = newModeValue;
-            view.plugin.settings.outerRingAllScenes = (newModeValue === 'all-scenes');
             await view.plugin.saveSettings();
             
             // Reset Gossamer mode state

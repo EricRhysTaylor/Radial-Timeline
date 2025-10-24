@@ -3,7 +3,7 @@ import { openOrRevealFile } from '../../utils/fileUtils';
 import { Scene } from '../../main';
 
 export interface AllScenesView {
-    interactionMode: 'allscenes' | 'mainplot' | 'gossamer';
+    currentMode: string;
     plugin: {
         app: {
             vault: { getAbstractFileByPath: (path: string) => unknown };
@@ -18,7 +18,7 @@ export interface AllScenesView {
 }
 
 export function setupSceneInteractions(view: AllScenesView, group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
-    if (view.interactionMode !== 'allscenes') return;
+    if (view.currentMode !== 'all-scenes') return;
 
     const path = group.querySelector('.rt-scene-path');
     if (!path) return;
@@ -76,11 +76,11 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
 
         view.registerDomEvent(group as HTMLElement, 'mouseenter', () => {
             const itemType = group.getAttribute('data-item-type');
-            if (view.interactionMode === 'gossamer' && itemType !== 'Beat') return;
+            if (view.currentMode === 'gossamer' && itemType !== 'Beat') return;
         });
         view.registerDomEvent(group as HTMLElement, 'mouseleave', () => {
             const itemType = group.getAttribute('data-item-type');
-            if (view.interactionMode === 'gossamer' && itemType !== 'Beat') return;
+            if (view.currentMode === 'gossamer' && itemType !== 'Beat') return;
         });
     }
 }
@@ -97,7 +97,7 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     const clearSelection = () => {
         const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
         all.forEach(el => el.classList.remove('rt-selected'));
-        if (view.interactionMode !== 'gossamer') {
+        if (view.currentMode !== 'gossamer') {
             all.forEach(el => el.classList.remove('rt-non-selected'));
         }
         if (currentSynopsis) currentSynopsis.classList.remove('rt-visible');
@@ -152,7 +152,7 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     };
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
-        if (view.interactionMode === 'gossamer') return;
+        if (view.currentMode === 'gossamer') return;
         const g = (e.target as Element).closest('.rt-scene-group');
         if (!g || g === currentGroup) return;
         clearSelection();
@@ -174,7 +174,7 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
-        if (view.interactionMode === 'gossamer') return;
+        if (view.currentMode === 'gossamer') return;
         const toEl = e.relatedTarget as Element | null;
         if (currentGroup && toEl && currentGroup.contains(toEl)) return;
         svg.classList.remove('scene-hover');

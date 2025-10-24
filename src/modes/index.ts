@@ -29,8 +29,6 @@ export {
     type ModeExitBehavior,
     type ModeEventHandlers,
     isTimelineMode,
-    legacyInteractionModeToTimelineMode,
-    timelineModeToLegacyInteractionMode,
 } from './ModeDefinition';
 
 // Mode definitions
@@ -47,7 +45,7 @@ export {
     isModeRegistered,
 } from './ModeRegistry';
 
-// Phase 3: Mode Management
+// Mode Management
 export { ModeManager, createModeManager } from './ModeManager';
 export { ModeInteractionController, createInteractionController } from './ModeInteractionController';
 

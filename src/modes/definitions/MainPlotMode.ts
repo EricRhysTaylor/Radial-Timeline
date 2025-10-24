@@ -10,7 +10,7 @@ import { ModeDefinition, TimelineMode } from '../ModeDefinition';
  * Main Plot Mode Definition
  * 
  * Shows only Main Plot scenes in the outer ring with publish stage coloring.
- * Plot beats are removed entirely from the timeline.
+ * Beat notes are removed entirely from the timeline.
  * Non-plot elements are visually muted.
  */
 export const MAIN_PLOT_MODE: ModeDefinition = {

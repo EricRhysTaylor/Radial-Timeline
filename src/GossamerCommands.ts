@@ -7,13 +7,13 @@ import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { TimelineMode } from './modes/ModeDefinition';
 
-// Helper to find Plot note by beat title
-function findPlotNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile | null {
+// Helper to find Beat note by beat title (prefers Beat over Plot)
+function findBeatNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile | null {
   for (const file of files) {
     if (file.basename === beatTitle || file.basename === beatTitle.replace(/^\d+\s+/, '')) {
       const cache = app.metadataCache.getFileCache(file);
       const fm = cache?.frontmatter;
-      if (fm && (fm.Class === 'Plot' || fm.class === 'Plot')) {
+      if (fm && (fm.Class === 'Beat' || fm.class === 'Beat' || fm.Class === 'Plot' || fm.class === 'Plot')) {
         return file;
       }
     }
@@ -32,9 +32,9 @@ async function saveGossamerScores(
   let updateCount = 0;
   
   for (const [beatTitle, newScore] of scores) {
-    const file = findPlotNoteByTitle(files, beatTitle, plugin.app);
+    const file = findBeatNoteByTitle(files, beatTitle, plugin.app);
     if (!file) {
-      console.warn(`[Gossamer] No Plot note found for beat: ${beatTitle}`);
+      console.warn(`[Gossamer] No Beat note found for beat: ${beatTitle}`);
       continue;
     }
     
@@ -177,7 +177,7 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
  * Open Gossamer score entry modal
  */
 export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin): Promise<void> {
-  // Get all story beat notes (itemType: Plot - no subplot filtering, beats are not scenes)
+  // Get all story beat notes (itemType: Beat - no subplot filtering, beats are not scenes)
   const scenes = await plugin.getSceneData();
   const plotBeats = scenes.filter(s => s.itemType === 'Plot');
   
@@ -206,8 +206,8 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     const scenes = await plugin.getSceneData();
     
     // Check if there are any story beat notes
-    const plotNotes = scenes.filter(s => s.itemType === 'Plot');
-    if (plotNotes.length === 0) {
+    const beatNotes = scenes.filter(s => s.itemType === 'Plot');
+    if (beatNotes.length === 0) {
       new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
       return;
     }
@@ -220,14 +220,14 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     
     if (allRuns.current.beats.length === 0) {
       const systemMsg = selectedBeatModel ? ` with Plot System: ${selectedBeatModel}` : '';
-      new Notice(`Cannot enter Gossamer mode: No Plot notes found${systemMsg}. Create notes with Class: Plot.`);
+      new Notice(`Cannot enter Gossamer mode: No Beat notes found${systemMsg}. Create notes with Class: Beat (or Class: Plot for backward compatibility).`);
       return;
     }
     
-    // Check if ALL plot notes are missing Gossamer1 scores
-    const hasAnyScores = plotNotes.some(s => typeof s.Gossamer1 === 'number');
+    // Check if ALL beat notes are missing Gossamer1 scores
+    const hasAnyScores = beatNotes.some(s => typeof s.Gossamer1 === 'number');
     if (!hasAnyScores) {
-      new Notice('Warning: No Gossamer1 scores found in Plot notes. Defaulting all beats to 0. Add Gossamer1: <score> to your Plot note frontmatter.');
+      new Notice('Warning: No Gossamer1 scores found in Beat notes. Defaulting all beats to 0. Add Gossamer1: <score> to your Beat note frontmatter.');
     }
     
     // Store all runs on plugin (for renderer)
@@ -246,7 +246,7 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
   const view = getFirstView(plugin);
   if (!view) return;
   
-  // Try using ModeManager first (Stage 2 migration)
+  // Try using ModeManager first
   const modeManager = hasKey(view, 'getModeManager') && typeof (view as any).getModeManager === 'function'
     ? (view as any).getModeManager()
     : null;
@@ -256,7 +256,7 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
     await modeManager.switchMode(TimelineMode.GOSSAMER);
     // ModeManager handles: settings persistence, lifecycle hooks, and refresh
   } else {
-    // Fallback to legacy mode switching
+    // Fallback mode switching
     // Update mode system
     if (hasKey(view, 'currentMode')) {
       (view as any).currentMode = 'gossamer';
@@ -267,11 +267,11 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
     plugin.saveSettings();
   }
   
-  // Only do legacy selective update if not using ModeManager
+  // Only do selective update if not using ModeManager
   // (ModeManager handles refresh through lifecycle hooks)
   if (!modeManager) {
     // Prefer selective update: build layer in-place without full refresh
-    const v = view as unknown as { containerEl?: HTMLElement; interactionMode?: string; currentMode?: string } & Record<string, unknown>;
+    const v = view as unknown as { containerEl?: HTMLElement; currentMode?: string } & Record<string, unknown>;
     const svg = (v as { containerEl?: HTMLElement } | null)?.containerEl?.querySelector?.('.radial-timeline-svg') as SVGSVGElement | null;
     let didSelective = false;
     try {
@@ -279,12 +279,12 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
       if (rs && v) {
         // Attach scene data to view if available for color/path mapping
         (v as any).sceneData = plugin.lastSceneData || (v as any).sceneData;
-        (v as any).interactionMode = 'gossamer';
+        (v as any).currentMode = 'gossamer';
         const viewArg = {
           containerEl: (v as any).containerEl as HTMLElement,
           plugin,
           sceneData: (v as any).sceneData as any,
-          interactionMode: 'gossamer' as const
+          currentMode: 'gossamer' as const
         };
         didSelective = rs.updateGossamerLayer(viewArg);
       }
@@ -338,7 +338,7 @@ async function exitGossamerMode(plugin: RadialTimelinePlugin) {
   // Set guard flag
   _isExitingGossamer = true;
   
-  // Try using ModeManager first (Stage 2 migration)
+  // Try using ModeManager first
   const modeManager = hasKey(view, 'getModeManager') && typeof (view as any).getModeManager === 'function'
     ? (view as any).getModeManager()
     : null;
@@ -358,7 +358,7 @@ async function exitGossamerMode(plugin: RadialTimelinePlugin) {
     return;
   }
   
-  // Legacy mode exit
+  // Fallback mode exit
   // Get SVG element
   const svg = (view as { containerEl?: HTMLElement } | null)?.containerEl?.querySelector('.radial-timeline-svg') as SVGSVGElement;
   
@@ -457,9 +457,9 @@ function hasKey(obj: unknown, key: string): obj is Record<string, unknown> {
 }
 
 function getInteractionMode(view: unknown): 'allscenes' | 'mainplot' | 'gossamer' | undefined {
-  if (hasKey(view, 'interactionMode')) {
-    const val = (view as Record<string, unknown>).interactionMode;
-    if (val === 'allscenes' || val === 'gossamer' || val === 'mainplot') return val as any;
+  if (hasKey(view, 'currentMode')) {
+    const val = (view as Record<string, unknown>).currentMode;
+    if (val === 'all-scenes' || val === 'gossamer' || val === 'main-plot') return val as any;
   }
   return undefined;
 }

@@ -6,7 +6,7 @@ import type RadialTimelinePlugin from '../main';
 import type { Scene } from '../main';
 import { normalizeBeatName } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
-import { getPlotSystem, detectPlotSystemFromNotes } from '../utils/plotSystems';
+import { getPlotSystem, detectPlotSystemFromNotes } from '../utils/beatsSystems';
 
 interface BeatScoreEntry {
   beatTitle: string; // Full title like "1 Opening Image" or "5 Theme Stated 5%"
@@ -94,7 +94,7 @@ export class GossamerScoreModal extends Modal {
     // Show warning if count mismatch
     if (countMismatch) {
       const warningEl = contentEl.createEl('div', {
-        text: `⚠️ Expected ${expectedCount} beats for ${settingsSystem}, but found ${actualCount} Plot notes. Check your vault.`
+        text: `⚠️ Expected ${expectedCount} beats for ${settingsSystem}, but found ${actualCount} Beat notes. Check your vault.`
       });
       warningEl.addClass('rt-gossamer-warning');
     }
@@ -478,7 +478,7 @@ export class GossamerScoreModal extends Modal {
         if (f.basename === beatTitle || f.basename === beatTitle.replace(/^\d+\s+/, '')) {
           const cache = this.plugin.app.metadataCache.getFileCache(f);
           const fm = cache?.frontmatter;
-          if (fm && fm.Class === 'Plot') {
+          if (fm && (fm.Class === 'Beat' || fm.Class === 'Plot')) {
             file = f;
             break;
           }
@@ -486,7 +486,7 @@ export class GossamerScoreModal extends Modal {
       }
       
       if (!file) {
-        console.warn(`[Gossamer] No Plot note found for beat: ${beatTitle}`);
+        console.warn(`[Gossamer] No Beat note found for beat: ${beatTitle}`);
         continue;
       }
       

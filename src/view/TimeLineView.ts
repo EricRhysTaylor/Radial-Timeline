@@ -13,7 +13,6 @@ import ZeroDraftModal from '../modals/ZeroDraftModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
 import { openOrRevealFile } from '../utils/fileUtils';
 import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt, setupModeToggleController } from './interactions';
-import { setupGossamerMode, setupAllScenesDelegatedHover, setupSceneInteractionsAll, setupMainPlotMode, AllScenesView } from './modes';
 import { RendererService } from '../services/RendererService';
 import { ModeManager, createModeManager } from '../modes/ModeManager';
 import { ModeInteractionController, createInteractionController } from '../modes/ModeInteractionController';
@@ -78,7 +77,7 @@ export class RadialTimelineView extends ItemView {
     }
 
     /**
-     * Get the ModeManager instance (Phase 3)
+     * Get the ModeManager instance
      * Provides centralized mode switching with lifecycle management
      */
     public getModeManager(): ModeManager | undefined {
@@ -86,7 +85,7 @@ export class RadialTimelineView extends ItemView {
     }
 
     /**
-     * Get the InteractionController instance (Phase 3)
+     * Get the InteractionController instance
      * Manages event handler registration and cleanup
      */
     public getInteractionController(): ModeInteractionController | undefined {
@@ -170,8 +169,7 @@ export class RadialTimelineView extends ItemView {
     }
     
     /**
-     * Setup interactions based on the interaction system flag
-     * Stage 4: Uses ModeInteractionController if flag is enabled, otherwise uses legacy setup
+     * Setup interactions based on the current mode
      */
     private setupInteractionsForMode(svg: SVGSVGElement): void {
         if (this.interactionController) {
@@ -484,7 +482,7 @@ export class RadialTimelineView extends ItemView {
                 const cache = this.app.metadataCache.getFileCache(file);
                 if (!cache || !cache.frontmatter) return;
                 
-                // Check if this is a scene or plot file (Class: Scene or Class: Plot)
+                // Check if this is a scene or beat file (Class: Scene or Class: Beat/Plot)
                 const fm = cache.frontmatter;
                 const isSceneOrPlot = (fm.Class === 'Scene') || (fm.class === 'Scene') ||
                                      (fm.Class === 'Plot') || (fm.class === 'Plot');
@@ -680,10 +678,10 @@ This is a test scene created to help with initial Radial timeline setup.
             const svgElement = this.createSvgElement(svgString, timelineContainer);
 
                 if (svgElement) {
-                    // If Gossamer mode is active, reuse hover-state styling: mute everything except Plot beats
+                    // If Gossamer mode is active, reuse hover-state styling: mute everything except Beat notes
                     if (this.currentMode === 'gossamer') {
                     svgElement.setAttribute('data-gossamer-mode', 'true');
-                    // Apply the same logic as scene hover: add rt-non-selected to all elements except Plot beats
+                    // Apply the same logic as scene hover: add rt-non-selected to all elements except Beat notes
                     const allElements = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
                     allElements.forEach(el => {
                         const group = el.closest('.rt-scene-group');

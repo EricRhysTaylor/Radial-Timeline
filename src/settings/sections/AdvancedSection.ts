@@ -40,10 +40,10 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 plugin.refreshTimelineIfNeeded(null);
             }));
 
-    // Stage 6: New systems are now the default (toggles removed)
+    // New systems are now the default
     // The plugin now uses:
-    // - Mode-definition-based rendering (Stage 3)
-    // - ModeInteractionController for event handling (Stage 4)
+    // - Mode-definition-based rendering
+    // - ModeInteractionController for event handling
     // Legacy code paths remain in codebase but are inactive
 }
 

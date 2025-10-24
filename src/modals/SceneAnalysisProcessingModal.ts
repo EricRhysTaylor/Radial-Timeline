@@ -2,6 +2,9 @@
  * Radial Timeline (tm) Plugin for Obsidian
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ * 
+ * AI Scene Analysis Processing Modal
+ * This processes scenes for LLM analysis, not story beats (timeline slices)
  */
 import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
@@ -51,9 +54,9 @@ export interface ProcessingOptions {
 }
 
 /**
- * Modal for confirming and showing progress of beats processing
+ * Modal for confirming and showing progress of scene analysis processing
  */
-export class BeatsProcessingModal extends Modal {
+export class SceneAnalysisProcessingModal extends Modal {
     private readonly plugin: RadialTimelinePlugin;
     private readonly onConfirm: (mode: ProcessingMode) => Promise<void>;
     private readonly getSceneCount: (mode: ProcessingMode) => Promise<number>;
@@ -284,7 +287,7 @@ export class BeatsProcessingModal extends Modal {
             .onClick(async () => {
                 try {
                     // Dynamic import to avoid circular dependency
-                    const { purgeBeatsByManuscriptOrder } = await import('../BeatsCommands');
+                    const { purgeBeatsByManuscriptOrder } = await import('../SceneAnalysisCommands');
                     
                     // Close this modal before showing purge confirmation
                     this.close();
@@ -587,7 +590,7 @@ export class BeatsProcessingModal extends Modal {
                             const subplotName = this.subplotName; // Capture in closure
                             const isEntireSubplot = this.isEntireSubplot; // Capture in closure
                             window.setTimeout(async () => {
-                                const { processBySubplotNameWithModal, processEntireSubplotWithModal } = await import('../BeatsCommands');
+                                const { processBySubplotNameWithModal, processEntireSubplotWithModal } = await import('../SceneAnalysisCommands');
                                 // Use the appropriate function based on whether this is entire subplot or flagged
                                 if (isEntireSubplot) {
                                     // Resume entire subplot: pass isResuming=true
@@ -639,5 +642,5 @@ export class BeatsProcessingModal extends Modal {
     }
 }
 
-export default BeatsProcessingModal;
+export default SceneAnalysisProcessingModal;
 

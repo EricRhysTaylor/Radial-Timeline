@@ -10,8 +10,7 @@ export interface PluginRendererFacade {
         publishStageColors: Record<string, string>;
         debug: boolean;
         targetCompletionDate?: string;
-        outerRingAllScenes?: boolean;
-        enableAiBeats: boolean;
+        enableAiSceneAnalysis: boolean;
         showEstimate?: boolean;
     };
     searchActive: boolean;
@@ -36,7 +35,7 @@ export interface SceneState {
 }
 
 /**
- * Helper function to extract AI grades from scenes
+ * Helper function to extract AI scene analysis grades from scenes
  */
 export function extractGradeFromScene(
     scene: Scene, 
@@ -44,11 +43,11 @@ export function extractGradeFromScene(
     sceneGrades: Map<string, string>, 
     plugin: PluginRendererFacade
 ): void {
-    if (scene["2beats"]) {
+    if (scene["currentSceneAnalysis"]) {
         try {
-            const firstLine2Beats = scene["2beats"].split('\n')[0]?.trim() || '';
+            const firstLineCurrentAnalysis = scene["currentSceneAnalysis"].split('\n')[0]?.trim() || '';
             // Updated regex to match "[Number] [GradeLetter] / [Comment]" with optional YAML list marker
-            const gradeMatch = firstLine2Beats.match(/^-?\s*(?:\d+(?:\.\d+)?\s+)?([ABC])(?![A-Za-z0-9])/i);
+            const gradeMatch = firstLineCurrentAnalysis.match(/^-?\s*(?:\d+(?:\.\d+)?\s+)?([ABC])(?![A-Za-z0-9])/i);
             if (gradeMatch && gradeMatch[1]) {
                 const grade = gradeMatch[1].toUpperCase();
                 sceneGrades.set(sceneId, grade);

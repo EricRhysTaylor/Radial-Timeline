@@ -291,7 +291,7 @@
   stroke-width: var(--rt-gossamer-line-historical-width);
   opacity: var(--rt-gossamer-line-historical-opacity);
 }
-/* Phase 2: dots (10px diameter) */
+/* Gossamer dots (10px diameter) */
 .rt-gossamer-dot { 
   /* fill color set inline via publish stage color */
   r: 6px; /* 10px diameter */

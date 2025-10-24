@@ -222,36 +222,4 @@ export function isTimelineMode(value: string): value is TimelineMode {
     return Object.values(TimelineMode).includes(value as TimelineMode);
 }
 
-/**
- * Convert legacy interactionMode string to TimelineMode enum
- */
-export function legacyInteractionModeToTimelineMode(
-    interactionMode: 'allscenes' | 'mainplot' | 'gossamer'
-): TimelineMode {
-    switch (interactionMode) {
-        case 'allscenes':
-            return TimelineMode.ALL_SCENES;
-        case 'mainplot':
-            return TimelineMode.MAIN_PLOT;
-        case 'gossamer':
-            return TimelineMode.GOSSAMER;
-    }
-}
-
-/**
- * Convert TimelineMode enum to legacy interactionMode string
- */
-export function timelineModeToLegacyInteractionMode(
-    mode: TimelineMode
-): 'allscenes' | 'mainplot' | 'gossamer' {
-    switch (mode) {
-        case TimelineMode.ALL_SCENES:
-        case TimelineMode.CHRONOLOGY: // Default to allscenes for future modes
-            return 'allscenes';
-        case TimelineMode.MAIN_PLOT:
-            return 'mainplot';
-        case TimelineMode.GOSSAMER:
-            return 'gossamer';
-    }
-}
 

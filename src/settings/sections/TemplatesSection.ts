@@ -1,8 +1,8 @@
 import { App, Notice, Setting as Settings } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import { CreatePlotTemplatesModal } from '../../modals/CreatePlotTemplatesModal';
-import { getPlotSystem } from '../../utils/plotSystems';
-import { createPlotTemplateNotes } from '../../utils/plotTemplates';
+import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
+import { getPlotSystem } from '../../utils/beatsSystems';
+import { createPlotTemplateNotes } from '../../utils/beatsTemplates';
 
 export function renderTemplatesSection(params: {
     app: App;
@@ -92,7 +92,7 @@ export function renderTemplatesSection(params: {
     async function createPlotTemplates(): Promise<void> {
         const plotSystemName = plugin.settings.plotSystem || 'User';
         if (plotSystemName === 'User') {
-            new Notice('User plot system selected. Create your own Plot notes with Class: Plot. No templates will be generated.');
+            new Notice('User plot system selected. Create your own Beat notes with Class: Beat. No templates will be generated.');
             return;
         }
         const plotSystem = getPlotSystem(plotSystemName);
@@ -100,7 +100,7 @@ export function renderTemplatesSection(params: {
             new Notice(`Unknown plot system: ${plotSystemName}`);
             return;
         }
-        const modal = new CreatePlotTemplatesModal(
+        const modal = new CreateBeatsTemplatesModal(
             app,
             plugin,
             plotSystemName,
