@@ -78,7 +78,7 @@ export class GossamerScoreModal extends Modal {
 
     // Detect plot system from notes or use settings
     const detectedSystem = detectPlotSystemFromNotes(this.plotBeats);
-    const settingsSystem = this.plugin.settings.plotSystem || 'Save The Cat';
+    const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
     const plotSystemTemplate = getPlotSystem(settingsSystem);
     
     // Validate beat count
@@ -546,7 +546,7 @@ export class GossamerScoreModal extends Modal {
       
       // Warning message with proper styling
       const warningEl = content.createEl('div', {
-        text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) from ALL Plot notes. This action cannot be undone.'
+        text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) from ALL Beat notes. This action cannot be undone.'
       });
       warningEl.addClass('rt-gossamer-confirm-warning');
       
@@ -604,7 +604,7 @@ export class GossamerScoreModal extends Modal {
         }
       }
       
-      new Notice(`✓ Deleted all Gossamer scores from ${deletedCount} Plot note(s).`);
+              new Notice(`✓ Deleted all Gossamer scores from ${deletedCount} Beat note(s).`);
       this.close(); // Close the modal since all scores are cleared
       
     } catch (error) {

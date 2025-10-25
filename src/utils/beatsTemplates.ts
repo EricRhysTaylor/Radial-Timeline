@@ -1,23 +1,23 @@
 /*
- * Plot Template Note Creation
+ * Beat Template Note Creation
  */
 import { Vault, TFile, normalizePath } from 'obsidian';
 import { PLOT_SYSTEMS, PlotSystemTemplate, PlotBeatInfo } from './beatsSystems';
 
 /**
- * Generate Plot note content with frontmatter and body
+ * Generate Beat note content with frontmatter and body
  */
 function generatePlotNoteContent(
   beatInfo: PlotBeatInfo,
   act: number,
-  plotSystem: string
+  beatSystem: string
 ): string {
   const frontmatter = [
     '---',
     'Class: Beat',
     `Act: ${act}`,
     `Description: ${beatInfo.description}`,
-    `Beat Model: ${plotSystem}`,
+    `Beat Model: ${beatSystem}`,
     'Gossamer1:',
     '---',
     ''
@@ -52,17 +52,17 @@ function getBeatAct(beatIndex: number, totalBeats: number): number {
 }
 
 /**
- * Create Plot template notes for a given plot system
+ * Create Beat template notes for a given beat system
  */
-export async function createPlotTemplateNotes(
+export async function createBeatTemplateNotes(
   vault: Vault,
-  plotSystemName: string,
+  beatSystemName: string,
   sourcePath: string
 ): Promise<{ created: number; skipped: number; errors: string[] }> {
-  const plotSystem = PLOT_SYSTEMS[plotSystemName];
+  const beatSystem = PLOT_SYSTEMS[beatSystemName];
   
-  if (!plotSystem) {
-    throw new Error(`Unknown plot system: ${plotSystemName}`);
+  if (!beatSystem) {
+    throw new Error(`Unknown beat system: ${beatSystemName}`);
   }
 
   let created = 0;
@@ -84,11 +84,11 @@ export async function createPlotTemplateNotes(
     }
   }
 
-  for (let i = 0; i < plotSystem.beats.length; i++) {
-    const beatName = plotSystem.beats[i];
-    const beatInfo = plotSystem.beatDetails[i];
+  for (let i = 0; i < beatSystem.beats.length; i++) {
+    const beatName = beatSystem.beats[i];
+    const beatInfo = beatSystem.beatDetails[i];
     const beatNumber = i + 1;
-    const act = getBeatAct(i, plotSystem.beats.length);
+    const act = getBeatAct(i, beatSystem.beats.length);
     
     // Filename: "1 Opening Image.md"
     const filename = `${beatNumber} ${beatName}.md`;
@@ -103,7 +103,7 @@ export async function createPlotTemplateNotes(
     }
 
     // Generate full note content with frontmatter and body
-    const content = generatePlotNoteContent(beatInfo, act, plotSystemName);
+    const content = generatePlotNoteContent(beatInfo, act, beatSystemName);
 
     try {
       await vault.create(normalizedPath, content);

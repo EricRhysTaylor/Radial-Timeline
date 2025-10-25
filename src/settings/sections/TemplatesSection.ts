@@ -2,7 +2,7 @@ import { App, Notice, Setting as Settings } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem } from '../../utils/beatsSystems';
-import { createPlotTemplateNotes } from '../../utils/beatsTemplates';
+import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
 
 export function renderTemplatesSection(params: {
     app: App;
@@ -11,49 +11,49 @@ export function renderTemplatesSection(params: {
 }): void {
     const { app, plugin, containerEl } = params;
 
-    // Plot System setting (for Gossamer mode)
+    // Story Structure setting (for Gossamer mode)
     new Settings(containerEl)
-        .setName('Plot system and gossamer')
-        .setDesc('Select the story structure model for your manuscript. This will establish the optional plot system and can be used to create plot notes and graph scores using Gossamer view.')
+        .setName('Story beats system and gossamer')
+        .setDesc('Select the story structure model for your manuscript. This will establish the optional beats system and can be used to create beat notes and graph scores using Gossamer view.')
         .addDropdown(dropdown => {
             dropdown
-                .addOption('User', 'User (Custom plot structure)')
+                .addOption('User', 'User (Custom beat structure)')
                 .addOption('Save The Cat', 'Save The Cat (15 beats)')
                 .addOption('Hero\'s Journey', 'Hero\'s Journey (12 beats)')
                 .addOption('Story Grid', 'Story Grid (15 beats)')
-                .setValue(plugin.settings.plotSystem || 'User')
+                .setValue(plugin.settings.beatSystem || 'User')
                 .onChange(async (value) => {
-                    plugin.settings.plotSystem = value;
+                    plugin.settings.beatSystem = value;
                     await plugin.saveSettings();
-                    updatePlotSystemDescription(plotSystemInfo, value);
+                    updateStoryStructureDescription(storyStructureInfo, value);
                     updateTemplateButton(templateSetting, value);
                 });
             dropdown.selectEl.style.minWidth = '200px';
         });
 
-    // Plot system explanation
-    const plotSystemInfo = containerEl.createEl('div', { cls: 'setting-item-description' });
-    plotSystemInfo.style.marginTop = '-8px';
-    plotSystemInfo.style.marginBottom = '18px';
-    plotSystemInfo.style.paddingLeft = '0';
-    updatePlotSystemDescription(plotSystemInfo, plugin.settings.plotSystem || 'User');
+    // Story structure explanation
+    const storyStructureInfo = containerEl.createEl('div', { cls: 'setting-item-description' });
+    storyStructureInfo.style.marginTop = '-8px';
+    storyStructureInfo.style.marginBottom = '18px';
+    storyStructureInfo.style.paddingLeft = '0';
+    updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'User');
 
     // Create template notes button
     const templateSetting = new Settings(containerEl)
-        .setName('Create plot template notes')
-        .setDesc('Generate template plot notes based on the selected plot system including YAML frontmatter and body summary.')
+        .setName('Create beat template notes')
+        .setDesc('Generate template beat notes based on the selected story structure system including YAML frontmatter and body summary.')
         .addButton(button => button
             .setButtonText('Create templates')
-            .setTooltip('Creates Plot note templates in your source path')
+            .setTooltip('Creates Beat note templates in your source path')
             .onClick(async () => {
-                await createPlotTemplates();
+                await createBeatTemplates();
             }));
 
-    updateTemplateButton(templateSetting, plugin.settings.plotSystem || 'User');
+    updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'User');
 
-    function updatePlotSystemDescription(container: HTMLElement, selectedSystem: string): void {
+    function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
         const descriptions: Record<string, string> = {
-            'User': 'Custom plot structure. Uses any Plot notes you create without filtering by plot system. Perfect for custom story structures or when you don\'t follow a formal plot system.',
+            'User': 'Custom story structure. Uses any Beat notes you create without filtering by story structure. Perfect for custom story structures or when you don\'t follow a formal story structure.',
             'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement.',
             'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery.',
             'Story Grid': 'Literary fiction and complex narratives. Balances micro and macro structure with progressive complications.'
@@ -64,7 +64,7 @@ export function renderTemplatesSection(params: {
             const isSelected = system === selectedSystem;
             const lineDiv = container.createDiv();
             if (isSelected) {
-                lineDiv.classList.add('rt-plot-system-selected');
+                lineDiv.classList.add('rt-story-structure-selected');
             }
             const boldSpan = lineDiv.createEl('b');
             boldSpan.textContent = system;
@@ -75,11 +75,11 @@ export function renderTemplatesSection(params: {
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
         const isCustom = selectedSystem === 'User';
         if (isCustom) {
-            setting.setName('Create plot template notes');
-            setting.setDesc('Custom plot systems must be created manually by the author.');
+            setting.setName('Create beat template notes');
+            setting.setDesc('Custom story structures must be created manually by the author.');
         } else {
-            setting.setName(`Create plot template notes for ${selectedSystem}`);
-            setting.setDesc(`Generate ${selectedSystem} template plot notes including YAML frontmatter and body summary.`);
+            setting.setName(`Create beat template notes for ${selectedSystem}`);
+            setting.setDesc(`Generate ${selectedSystem} template beat notes including YAML frontmatter and body summary.`);
         }
         const settingEl = setting.settingEl;
         if (isCustom) {
@@ -89,44 +89,44 @@ export function renderTemplatesSection(params: {
         }
     }
 
-    async function createPlotTemplates(): Promise<void> {
-        const plotSystemName = plugin.settings.plotSystem || 'User';
-        if (plotSystemName === 'User') {
-            new Notice('User plot system selected. Create your own Beat notes with Class: Beat. No templates will be generated.');
+    async function createBeatTemplates(): Promise<void> {
+        const storyStructureName = plugin.settings.beatSystem || 'User';
+        if (storyStructureName === 'User') {
+            new Notice('User story structure selected. Create your own Beat notes with Class: Beat. No templates will be generated.');
             return;
         }
-        const plotSystem = getPlotSystem(plotSystemName);
-        if (!plotSystem) {
-            new Notice(`Unknown plot system: ${plotSystemName}`);
+        const storyStructure = getPlotSystem(storyStructureName);
+        if (!storyStructure) {
+            new Notice(`Unknown story structure: ${storyStructureName}`);
             return;
         }
         const modal = new CreateBeatsTemplatesModal(
             app,
             plugin,
-            plotSystemName,
-            plotSystem.beatCount
+            storyStructureName,
+            storyStructure.beatCount
         );
         modal.open();
         const result = await modal.waitForConfirmation();
         if (!result.confirmed) return;
         try {
             const sourcePath = plugin.settings.sourcePath || '';
-            const { created, skipped, errors } = await createPlotTemplateNotes(
+            const { created, skipped, errors } = await createBeatTemplateNotes(
                 app.vault,
-                plotSystemName,
+                storyStructureName,
                 sourcePath
             );
             if (errors.length > 0) {
                 new Notice(`Created ${created} notes. ${skipped} skipped. ${errors.length} errors. Check console.`);
-                console.error('[Plot Templates] Errors:', errors);
+                console.error('[Beat Templates] Errors:', errors);
             } else if (created === 0 && skipped > 0) {
-                new Notice(`All ${skipped} Plot notes already exist. No new notes created.`);
+                new Notice(`All ${skipped} Beat notes already exist. No new notes created.`);
             } else {
-                new Notice(`✓ Successfully created ${created} Plot template notes!`);
+                new Notice(`✓ Successfully created ${created} Beat template notes!`);
             }
         } catch (error) {
-            console.error('[Plot Templates] Failed:', error);
-            new Notice(`Failed to create Plot templates: ${error}`);
+            console.error('[Beat Templates] Failed:', error);
+            new Notice(`Failed to create Beat templates: ${error}`);
         }
     }
 }

@@ -305,7 +305,7 @@ export function detectPlotSystemFromNotes(scenes: { itemType?: string; "Beat Mod
   const beatNote = scenes.find(s => s.itemType === 'Beat' && s["Beat Model"]);
   const plotNote = scenes.find(s => s.itemType === 'Plot' && s["Beat Model"]);
   
-  // Prefer Beat notes (new templates) over Plot notes (legacy)
+  // Prefer Beat notes over Plot notes (legacy)
   const targetNote = beatNote || plotNote;
   
   if (targetNote && targetNote["Beat Model"]) {

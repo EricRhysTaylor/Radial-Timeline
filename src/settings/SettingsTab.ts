@@ -195,14 +195,27 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private renderPatreonSection(containerEl: HTMLElement): void {
         const patreonContainer = containerEl.createDiv({ cls: 'rt-patreon-support' });
         
-        const title = patreonContainer.createEl('h3', { cls: 'rt-patreon-title' });
-        title.createSpan({ text: '☕ ' });
+        // Create large background "P" logo using theme variable
+        const bgLogo = patreonContainer.createDiv({ cls: 'rt-patreon-bg-logo' });
+        const bgSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        bgSvg.setAttribute('viewBox', '0 0 1080 1080');
+        bgSvg.classList.add('rt-patreon-bg-svg');
+        
+        const bgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        bgPath.setAttribute('d', 'M1033.05,324.45c-0.19-137.9-107.59-250.92-233.6-291.7c-156.48-50.64-362.86-43.3-512.28,27.2 C106.07,145.41,49.18,332.61,47.06,519.31c-1.74,153.5,13.58,557.79,241.62,560.67c169.44,2.15,194.67-216.18,273.07-321.33 c55.78-74.81,127.6-95.94,216.01-117.82C929.71,603.22,1033.27,483.3,1033.05,324.45z');
+        bgSvg.appendChild(bgPath);
+        bgLogo.appendChild(bgSvg);
+        
+        // Content container
+        const contentContainer = patreonContainer.createDiv({ cls: 'rt-patreon-content' });
+        
+        const title = contentContainer.createEl('h3', { cls: 'rt-patreon-title' });
         title.createSpan({ text: 'Support Radial Timeline Development' });
         
-        const description = patreonContainer.createEl('p', { cls: 'rt-patreon-description' });
+        const description = contentContainer.createEl('p', { cls: 'rt-patreon-description' });
         description.appendText('Join my Patreon to show your unbridled enthusiasm for the Radial Timeline! Help guide the development of the project into the far far future by voting in polls and sharing ideas and feedback directly with the creator.');
         
-        const buttonContainer = patreonContainer.createDiv({ cls: 'rt-patreon-button-container' });
+        const buttonContainer = contentContainer.createDiv({ cls: 'rt-patreon-button-container' });
         const patreonButton = buttonContainer.createEl('a', {
             cls: 'rt-patreon-button',
             href: 'https://www.patreon.com/c/EricRhysTaylor'

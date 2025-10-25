@@ -10,8 +10,14 @@
 
 
 <p align="center">
-    <a href="https://github.com/EricRhysTaylor/radial-timeline/stargazers" target="_blank" rel="noopener"><img src="https://img.shields.io/github/stars/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e0ac00&style=for-the-badge" alt="GitHub star count"></a>
-    <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener"><img src="https://img.shields.io/github/issues/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e93147&style=for-the-badge" alt="Open issues on GitHub"></a>
+    <a href="https://github.com/EricRhysTaylor/radial-timeline/stargazers" target="_blank" rel="noopener"><img src="https://img.shields.io/github/stars/EricRhysTaylor/radial-timeline?colorA=363a4f&colorB=e0ac00&style=for-the-badge" alt="GitHub star count"></a><!-- Enhancements --><a href="https://github.com/EricRhysTaylor/radial-timeline/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement" target="_blank" rel="noopener">
+  <img src="https://img.shields.io/github/issues/EricRhysTaylor/radial-timeline/enhancement?colorA=363a4f&colorB=00bfa5&style=for-the-badge&label=enhancements" alt="Open enhancements on GitHub">
+</a><a href="https://github.com/EricRhysTaylor/radial-timeline/issues?q=is%3Aclosed+label%3Aenhancement" target="_blank" rel="noopener">
+  <img src="https://img.shields.io/github/issues-closed/EricRhysTaylor/radial-timeline/enhancement?colorA=363a4f&colorB=4a90e2&style=for-the-badge&label=closed%20enhancements" alt="Closed enhancements on GitHub">
+</a>
+<a href="https://github.com/EricRhysTaylor/radial-timeline/issues?q=is%3Aissue+is%3Aopen+label%3Abug" target="_blank" rel="noopener">
+  <img src="https://img.shields.io/github/issues/EricRhysTaylor/radial-timeline/bug?colorA=363a4f&colorB=e93147&style=for-the-badge&label=bugs" alt="Open bugs on GitHub">
+</a>
     <br/>
 	<a href="https://obsidian.md/plugins?id=radial-timeline" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&query=$.radial-timeline.downloads&label=Downloads&style=for-the-badge&colorA=363a4f&colorB=d53984" alt="Plugin Downloads"/></a>
 	<a href="https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE" target="_blank" rel="noopener"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=Non-Commercial&colorA=363a4f&colorB=b7bdf8" alt="Non-Commercial license"/></a>
@@ -45,7 +51,7 @@ It’s a timeline for your story and your writing journey.
 - Shows scene details on hover: title, date, synopsis, subplot, character, overdue and revisions lines
 - Color-codes scenes by status (todo, working, overdue, complete)
 - Opens scene note or beat note on click
-- Supports any story beat system (Save The Cat, Hero's Journey) via the yaml `class: beat`. Beat notes appear as fixed-width slices
+- Supports any story beat system (Save The Cat, Hero's Journey) via the yaml `Class: Beat`. Beat notes appear as fixed-width slices
 - Estimates manuscript completion date based on remaining todo/working scenes and recent progress rate
 - Headline font used for subplot ring labels in top left quadrant
 - Rotate counterclockwise so act 2 can align under act 1 for readability
@@ -89,7 +95,7 @@ It’s a timeline for your story and your writing journey.
   Click image to view full size in browser
 </div>  
 
-## Settings (under plugins in the Obsidian settings area)
+## Settings (Obsidian settings -> community plugins)
 
 The plugin offers several settings to customize its behavior and enable ai features:
 
@@ -113,9 +119,9 @@ The plugin offers several settings to customize its behavior and enable ai featu
 * Gossamer view toggle to show beat momentum visualization overlay
 * Gossamer enter momentum scores opens modal for all-in-one momentum score entry
 * Generate manuscript to assemble clean manuscript for Gossamer AI analysis
-* AI Scene Analysis (manuscript order) to update AI beat analysis for all scenes in manuscript order
+* AI Scene Analysis (manuscript order) to update AI beat analysis for scenes in manuscript order
 * AI Scene Analysis (subplot order) to update AI beat analysis for scenes in a selected subplot
-* Create template note to create a basic scene as defined by `class=scene` with frontmatter
+* Create template note to create a basic scene
 * Open timeline view (or interface button in the command ribbon)
 
 <hr>
@@ -138,13 +144,13 @@ When enabled in settings zero draft mode toggle, clicking a scene where publish 
 
 ## Story beats system
 
-The plugin supports beat structuring using yaml `class: beat`. These appear as narrow slices on the outermost ring when all scenes mode is enabled. Scene number squares adjust their color to reflect the flagged/current scene grade. Hover to view beat details and click to open the beat note. Supports Save The Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or custom beat system. Beats are required for Gossamer view.
+The plugin supports beat structuring using yaml `Class: Beat`. These appear as narrow slices on the outermost ring when all scenes mode is enabled. Scene number squares adjust their color to reflect the flagged/current scene grade. Hover to view beat details and click to open the beat note. Supports Save The Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or custom beat system. Beats are required for Gossamer view.
 
 <hr>
 
 ## Gossamer momentum view
 
-Using your story beats system, this view grays the timeline and displays the momentum values tied to each story beat to show how well the manuscript is building tension and excitement. Works with any beat structure - whether you use Save the Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or your own custom beat system. Simply create Plot notes with `Class: Beat` and enter the `Gossamer1=34` values in yaml to chart the values across these beats.
+Using your story beats system, this view grays the timeline and displays the momentum values tied to each story beat to show how well the manuscript is building tension and excitement. Works with any beat structure - whether you use Save the Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or your own custom beat system. Simply create Beat notes with `Class: Beat` and enter the `Gossamer1=34` values in yaml to chart the values across these beats.
 
 Workflow using Command Palette functions:
 - Radial Timeline: Generate manuscript to prepare the text for your favorite LLM.
@@ -165,13 +171,13 @@ Features:
 
 <hr>
 
-### AI Triplet Scene Beats Analysis
+## AI Triplet Scene Beats Analysis
 
 The plugin can automatically generate scene analysis using AI LLM to evaluate the pacing for individual flagged scenes as triplets (in groups of 3). May be applied for specific subplot ordering or the entire manuscript (all scenes) orderning:
 
 * Triplet Analysis: AI analyzes 3 scenes at a time (previous, current, next) from the perspective of the middle scene
 * Beat Evaluation: Each scene gets a grade and specific feedback on pacing, tension, and story progression
-* Metadata Integration: Results are stored in scene frontmatter as 1beats, 2beats, and 3beats fields
+* Metadata Integration: Results are stored in scene frontmatter as previousSceneAnalysis, currentSceneAnalysis, and nextSceneAnalysis fields
 * Manual Line Breaks: Use [br] anywhere in beat text to force line breaks in timeline hover display
 
 Configuration:
@@ -186,7 +192,7 @@ Commands:
 Workflow:
 1. Ensure scenes have Beats Update: Yes in frontmatter to flag for processing
 2. Run "Beats update" commands subplot order or all scenes order to generate triplet analysis
-3. View results via timeline number square text colors based on flagged/current scene grade where A = green, B = orange, C= red. And hover synopsis beats lines with similar color codinb based on each beating receiving a + = green, - = red or ? = black.
+3. View results via timeline number square text colors based on flagged/current scene grade where A = green, B = orange, C= red. And hover synopsis beats lines with similar color coding based on each beating receiving a + = green, - = red or ? = black.
 
 Manual Alternative: You may manually enter beat fields in YAML or use web clients to generate similar results, avoiding API use.
 
@@ -220,11 +226,11 @@ Book: Book 1 A New Beginning
 ---
 ```
 
-## Plot note using Save The Cat titled "1 opening image":
+## Beat note using Save The Cat titled "1 opening image":
 
 ```yaml
 ---
-Class: Beat  #formerly plot - backward compatible
+Class: Beat  #formerly plot - deprecated
 Act: 1
 Description: The first impression of your story. A snapshot of the protagonist's life before the journey begins. This 'before' picture sets up the world and establishes what will change by the end. Show the protagonist in their everyday life, revealing the flaw or gap that will be addressed.
 Beat Model: Save The Cat
@@ -232,25 +238,25 @@ Gossamer1: 12 #always the most recent score
 Gossamer2: 8 #each successive score will form a second line and range for historical comparison
 Gossamer3: 4 #older scores for trend analysis
 Gossamer4: 15 #even older scores
-Gossamer5: 6 #oldest scores capped at 30
+Gossamer5: 6 #oldest scores capped at Gossamer30
 ---
 ```
 
 ## AI beats analysis
 
-In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as 1beats (previous scene), 2beats (current scene, includes a grade), and 3beats (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Scene Analysis (manuscript order)" or "Scene Analysis (subplot order)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point.
+In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as previousSceneAnalysis (previous scene), currentSceneAnalysis (current scene, includes a grade), and nextSceneAnalysis (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Scene Analysis (manuscript order)" or "Scene Analysis (subplot order)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point.
 
 Note: you can always manually enter these fields and achieve the same effect and avoid using the LLM API. You can also use a web client and produce similar results you can paste into the yaml. It is recommended that you place a spending cap on the API account for your LLM.
 
 ```yaml
 ---
 # Excerpt of AI beats triplet stored in scene frontmatter. [br] forces line break (discretionary)
-1beats:
+previousSceneAnalysis:
   - 12 Inciting clue + / Raises stakes for the protagonist. Secondary suspicion grows
-2beats:
+currentSceneAnalysis:
   - 13 A / Excellent pacing in the confrontation [br] Cut repetition in second paragraph
   - Follow-up + / Ally reveals motive
-3beats:
+nextSceneAnalysis:
   - 14 Setback ? / Plan fails at the last moment New approach needed
 Beats Update: Yes
 ---
@@ -304,9 +310,9 @@ Book: Book 1 A New Beginning     # Book project label
 Support Files:     # Attachments, references, research notes
 
 # --- AI-Generated Beats (triplets) ---
-beats3:     # Generated by AI: scene 3
-beats2:     # Generated by AI: middle flagged scene
-beats1:     # Generated by AI: scene 1 
+previousSceneAnalysis:     # Generated by AI: previous scene
+currentSceneAnalysis:     # Generated by AI: current scene (includes grade)
+nextSceneAnalysis:     # Generated by AI: next scene
 Beats Update:     # Type "yes" to flag for AI Beats update
 ---
 ```

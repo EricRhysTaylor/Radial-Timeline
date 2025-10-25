@@ -22,7 +22,7 @@ function findBeatNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile
 }
 
 /**
- * Save Gossamer scores to Plot note frontmatter with history shifting
+ * Save Gossamer scores to Beat note frontmatter with history shifting
  */
 async function saveGossamerScores(
   plugin: RadialTimelinePlugin,
@@ -212,8 +212,8 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
       return;
     }
     
-    // Use plot system from settings if explicitly set (not empty)
-    const selectedBeatModel = plugin.settings.plotSystem?.trim() || undefined;
+    // Use beat system from settings if explicitly set (not empty)
+    const selectedBeatModel = plugin.settings.beatSystem?.trim() || undefined;
     
     // Build all runs (Gossamer1-30) with min/max band
     const allRuns = buildAllGossamerRuns(scenes as unknown as { itemType?: string; [key: string]: unknown }[], selectedBeatModel);

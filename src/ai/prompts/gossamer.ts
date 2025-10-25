@@ -5,7 +5,7 @@ import { extractBeatOrder } from '../../utils/gossamer';
 
 export function buildGossamerPrompt(
   manuscriptText: string,
-  plotSystem: string,
+  beatSystem: string,
   beatOrder: string[],
   contextPrompt?: string
 ): string {
@@ -23,18 +23,18 @@ export function buildGossamerPrompt(
   // Build the comprehensive analysis prompt
   const prompt = `${contextPrefix}
 
-You are analyzing a complete manuscript against the ${plotSystem} story structure model.
+You are analyzing a complete manuscript against the ${beatSystem} story structure model.
 
 MANUSCRIPT:
 ${manuscriptText}
 
-PLOT BEATS (${plotSystem}):
+STORY BEATS (${beatSystem}):
 The manuscript should align with these beats in order:
 ${beatOrder.map((beat, idx) => `${idx + 1}. ${beat}`).join('\n')}
 
 YOUR TASK:
 1. Read the entire manuscript carefully, noting the scene titles and their numeric order (e.g., "=== 44 Michi Updates Rel Newlan ===")
-2. Evaluate how well the manuscript aligns with each ${plotSystem} beat
+2. Evaluate how well the manuscript aligns with each ${beatSystem} beat
 3. Rate each beat's momentum/suspense on a 0-100 scale (0 = lowest tension, 100 = highest)
 4. Identify if any beat seems misplaced - should it occur at a different scene position?
 5. Provide concrete guidance for each beat

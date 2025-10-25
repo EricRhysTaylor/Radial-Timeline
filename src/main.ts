@@ -90,8 +90,8 @@ interface RadialTimelineSettings {
     // AI Context Templates
     aiContextTemplates?: Array<{id: string; name: string; prompt: string; isBuiltIn: boolean}>;
     activeAiContextTemplateId?: string;
-    // Plot System for Gossamer
-    plotSystem?: string; // Selected plot system (e.g., "Save The Cat", "Hero's Journey", "Story Grid")
+    // Beat System for Gossamer
+    beatSystem?: string; // Selected beat system (e.g., "Save The Cat", "Hero's Journey", "Story Grid")
     // Resume state (internal, not exposed in UI)
     _isResuming?: boolean; // Temporary flag to indicate resume operation
     _resumingMode?: 'flagged' | 'unprocessed' | 'force-all'; // Mode being resumed
@@ -247,7 +247,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         }
     ],
     activeAiContextTemplateId: 'commercial_genre',
-    plotSystem: 'Save The Cat' // Default plot system
+    beatSystem: 'Save The Cat' // Default beat system
 };
 
 // STATUS_COLORS now imported from constants
@@ -1464,6 +1464,26 @@ export default class RadialTimelinePlugin extends Plugin {
         // Process Beat notes - create ONE entry per beat note (not duplicated per subplot)
         // Beat notes are shown only in the outer ring and are not subplot-specific
         plotsToProcess.forEach(plotInfo => {
+            const beatModel = (plotInfo.metadata["Beat Model"] as string) || undefined;
+            
+            // Filter beat notes based on selected story structure system
+            const selectedSystem = this.settings.beatSystem || 'User';
+            
+            // If User/Custom is selected, only show beats that DON'T have a recognized Beat Model
+            if (selectedSystem === 'User') {
+                const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
+                if (beatModel && recognizedSystems.includes(beatModel)) {
+                    // Skip beats that belong to recognized systems when User is selected
+                    return;
+                }
+            } else {
+                // For specific systems, only show beats that match the selected system
+                if (beatModel !== selectedSystem) {
+                    // Skip beats that don't match the selected system
+                    return;
+                }
+            }
+            
             const gossamer1Value = typeof plotInfo.metadata.Gossamer1 === 'number' ? plotInfo.metadata.Gossamer1 : undefined;
             
             scenes.push({
@@ -1475,7 +1495,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 actNumber: plotInfo.validActNumber,
                 itemType: "Plot",
                 Description: (plotInfo.metadata.Description as string) || '',
-                "Beat Model": (plotInfo.metadata["Beat Model"] as string) || undefined,
+                "Beat Model": beatModel,
                 "Publish Stage": (plotInfo.metadata["Publish Stage"] as string) || undefined,
                 Gossamer1: gossamer1Value,
                 Gossamer2: typeof plotInfo.metadata.Gossamer2 === 'number' ? plotInfo.metadata.Gossamer2 : undefined,
@@ -2369,7 +2389,7 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
     }
 
     /**
-     * Save Gossamer scores to Plot notes with history shifting
+     * Save Gossamer scores to Beat notes with history shifting
      */
     async saveGossamerScores(scores: Map<string, number>): Promise<void> {
         // Get files from source path only
@@ -2382,7 +2402,7 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
         let updateCount = 0;
         
         for (const [beatTitle, newScore] of scores) {
-            // Find Plot note by title
+            // Find Beat note by title
             let file: TFile | null = null;
             
             for (const f of files) {

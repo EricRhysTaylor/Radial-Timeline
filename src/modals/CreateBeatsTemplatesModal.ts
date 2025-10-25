@@ -10,14 +10,14 @@ export interface CreateBeatsTemplatesResult {
 
 export class CreateBeatsTemplatesModal extends Modal {
   private plugin: RadialTimelinePlugin;
-  private plotSystem: string;
+  private beatSystem: string;
   private beatCount: number;
   private resolve: ((result: CreateBeatsTemplatesResult) => void) | null = null;
 
-  constructor(app: App, plugin: RadialTimelinePlugin, plotSystem: string, beatCount: number) {
+  constructor(app: App, plugin: RadialTimelinePlugin, beatSystem: string, beatCount: number) {
     super(app);
     this.plugin = plugin;
-    this.plotSystem = plotSystem;
+    this.beatSystem = beatSystem;
     this.beatCount = beatCount;
   }
 
@@ -38,7 +38,7 @@ export class CreateBeatsTemplatesModal extends Modal {
     infoContainer.style.marginBottom = '20px';
 
     infoContainer.createEl('p', { 
-      text: `This will create ${this.beatCount} Plot notes for "${this.plotSystem}" with the following structure:`
+      text: `This will create ${this.beatCount} Beat notes for "${this.beatSystem}" with the following structure:`
     });
 
     const exampleCode = infoContainer.createEl('pre');
@@ -48,10 +48,10 @@ export class CreateBeatsTemplatesModal extends Modal {
     exampleCode.style.fontSize = '12px'; // SAFE: inline style used for modal layout
     exampleCode.style.overflowX = 'auto'; // SAFE: inline style used for modal layout
     exampleCode.textContent = `---
-Class: Plot
+Class: Beat
 Act: 1
 Description: [Beat description]
-Beat Model: ${this.plotSystem}
+Beat Model: ${this.beatSystem}
 Gossamer1:
 ---`;
 
@@ -78,7 +78,7 @@ Gossamer1:
     
     const warningLabel = warningEl.createEl('strong');
     warningLabel.textContent = '⚠️ Note:';
-    warningEl.appendText(' If Plot notes with these names already exist, they will NOT be overwritten.');
+    warningEl.appendText(' If Beat notes with these names already exist, they will NOT be overwritten.');
 
     // Buttons
     const buttonContainer = contentEl.createDiv('rt-plot-templates-buttons');

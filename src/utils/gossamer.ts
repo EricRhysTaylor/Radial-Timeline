@@ -77,7 +77,7 @@ export function buildRunFromGossamerField(
     };
   }
   
-  // Filter Plot notes by Plot System only if explicitly specified and not empty
+  // Filter Beat notes by Beat Model only if explicitly specified and not empty
   let plotNotes = scenes.filter(s => s.itemType === 'Plot');
   if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotNotes.some(p => p["Plot System"])) {
     const normalizedSelected = selectedBeatModel.toLowerCase().replace(/\s+/g, '');
@@ -94,8 +94,8 @@ export function buildRunFromGossamerField(
       beats: [],
       overall: {
         summary: selectedBeatModel 
-          ? `No Plot notes found with Plot System: ${selectedBeatModel}`
-          : 'No Plot notes found. Create notes with Class: Plot.',
+          ? `No Beat notes found with Beat Model: ${selectedBeatModel}`
+          : 'No Beat notes found. Create notes with Class: Beat.',
         refinements: [],
         incompleteBeats: [],
       },
@@ -112,7 +112,7 @@ export function buildRunFromGossamerField(
     return aNum - bNum;
   });
   
-  // Build beats array directly from plot notes
+  // Build beats array directly from beat notes
   const incompleteBeats: string[] = [];
   beats = plotNotes.map((plotNote) => {
     const beatTitle = (plotNote.title || '').replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
@@ -141,7 +141,7 @@ export function buildRunFromGossamerField(
       return {
         beat: beatTitle,
         score: parsedScore,
-        notes: `Score from Plot note frontmatter (${fieldName}).`,
+        notes: `Score from Beat note frontmatter (${fieldName}).`,
         status: 'present' as const,
       };
     } else if (includeZeroScores) {
@@ -171,8 +171,8 @@ export function buildRunFromGossamerField(
     beats: beats,
     overall: {
       summary: presentCount > 0
-        ? `${fieldName} scores loaded from ${presentCount} of ${plotNotes.length} Plot notes.`
-        : `No ${fieldName} scores found in Plot notes.`,
+        ? `${fieldName} scores loaded from ${presentCount} of ${plotNotes.length} Beat notes.`
+        : `No ${fieldName} scores found in Beat notes.`,
       refinements: [],
       incompleteBeats,
     },
@@ -185,8 +185,8 @@ export function buildRunFromGossamerField(
 }
 
 /**
- * Build a run from actual Plot notes in the vault.
- * Uses whatever Plot notes the author created, filtered by Plot System.
+ * Build a run from actual Beat notes in the vault.
+ * Uses whatever Beat notes the author created, filtered by Beat Model.
  * Missing Gossamer1 scores default to 0 (red dot).
  */
 export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Plot System"?: string }[], selectedBeatModel?: string): GossamerRun {
@@ -305,7 +305,7 @@ export function extractPresentBeatScores(run: GossamerRun): { beat: string; scor
 }
 
 /**
- * Extract beat order from Plot notes.
+ * Extract beat order from Beat notes.
  * Returns array of beat names in order, with leading numbers stripped.
  * Filters by Beat Model if selectedBeatModel is provided.
  */
@@ -341,11 +341,11 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
 }
 
 /**
- * Detect the plot system being used from Plot System field in Plot notes
+ * Detect the beat system being used from Beat Model field in Beat notes
  * Returns the detected system or empty string if none found (no forced defaults)
  */
 export function detectPlotSystem(scenes: { itemType?: string; "Plot System"?: string }[]): string {
-  // Find any Plot note with Plot System field
+  // Find any Beat note with Beat Model field
   const plotNote = scenes.find(s => s.itemType === 'Plot' && s["Plot System"]);
   
   if (plotNote && plotNote["Plot System"]) {
