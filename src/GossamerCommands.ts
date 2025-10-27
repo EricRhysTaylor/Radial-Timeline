@@ -179,7 +179,8 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
 export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin): Promise<void> {
   // Get all story beat notes (itemType: Beat - no subplot filtering, beats are not scenes)
   const scenes = await plugin.getSceneData();
-  const plotBeats = scenes.filter(s => s.itemType === 'Plot');
+  // Support both 'Beat' (new standard) and 'Plot' (legacy)
+  const plotBeats = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
   if (plotBeats.length === 0) {
     new Notice('No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" deprecated).');
@@ -205,8 +206,8 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     // ALWAYS rebuild run from fresh scene data (reads latest Gossamer1 scores from YAML)
     const scenes = await plugin.getSceneData();
     
-    // Check if there are any story beat notes
-    const beatNotes = scenes.filter(s => s.itemType === 'Plot');
+    // Check if there are any story beat notes (support both 'Beat' and 'Plot')
+    const beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
     if (beatNotes.length === 0) {
       new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
       return;
@@ -219,7 +220,7 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     const allRuns = buildAllGossamerRuns(scenes as unknown as { itemType?: string; [key: string]: unknown }[], selectedBeatModel);
     
     if (allRuns.current.beats.length === 0) {
-      const systemMsg = selectedBeatModel ? ` with Plot System: ${selectedBeatModel}` : '';
+      const systemMsg = selectedBeatModel ? ` with Beat Model: ${selectedBeatModel}` : '';
       new Notice(`Cannot enter Gossamer mode: No Beat notes found${systemMsg}. Create notes with Class: Beat (or Class: Plot for backward compatibility).`);
       return;
     }

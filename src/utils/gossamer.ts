@@ -78,11 +78,12 @@ export function buildRunFromGossamerField(
   }
   
   // Filter Beat notes by Beat Model only if explicitly specified and not empty
-  let plotNotes = scenes.filter(s => s.itemType === 'Plot');
-  if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotNotes.some(p => p["Plot System"])) {
+  // Support both 'Beat' (new standard) and 'Plot' (legacy)
+  let plotNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
+  if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotNotes.some(p => p["Beat Model"])) {
     const normalizedSelected = selectedBeatModel.toLowerCase().replace(/\s+/g, '');
     plotNotes = plotNotes.filter(p => {
-      const plotSystem = p["Plot System"];
+      const plotSystem = p["Beat Model"];
       if (typeof plotSystem !== 'string') return false;
       const normalizedPlotSystem = plotSystem.toLowerCase().replace(/\s+/g, '');
       return normalizedPlotSystem === normalizedSelected;
@@ -189,7 +190,7 @@ export function buildRunFromGossamerField(
  * Uses whatever Beat notes the author created, filtered by Beat Model.
  * Missing Gossamer1 scores default to 0 (red dot).
  */
-export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Plot System"?: string }[], selectedBeatModel?: string): GossamerRun {
+export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Beat Model"?: string }[], selectedBeatModel?: string): GossamerRun {
   return buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true);
 }
 
@@ -222,7 +223,7 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
     const fieldName = `Gossamer${i}`;
     
     // Check if ANY value exists for this field
-    const hasAnyValue = scenes.some(s => s.itemType === 'Plot' && s[fieldName] !== undefined && s[fieldName] !== null);
+    const hasAnyValue = scenes.some(s => (s.itemType === 'Beat' || s.itemType === 'Plot') && s[fieldName] !== undefined && s[fieldName] !== null);
     
     if (hasAnyValue) {
       // If any value exists, default ALL missing beats to 0 (encourages complete data)
@@ -309,14 +310,15 @@ export function extractPresentBeatScores(run: GossamerRun): { beat: string; scor
  * Returns array of beat names in order, with leading numbers stripped.
  * Filters by Beat Model if selectedBeatModel is provided.
  */
-export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; title?: string; "Plot System"?: string }[], selectedBeatModel?: string): string[] {
-  let plotBeats = scenes.filter(s => s.itemType === 'Plot');
+export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; title?: string; "Beat Model"?: string }[], selectedBeatModel?: string): string[] {
+  // Support both 'Beat' (new standard) and 'Plot' (legacy)
+  let plotBeats = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
-  // Filter by Plot System only if explicitly specified and not empty
-  if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotBeats.some(p => p["Plot System"])) {
+  // Filter by Beat Model only if explicitly specified and not empty
+  if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotBeats.some(p => p["Beat Model"])) {
     const normalizedSelected = selectedBeatModel.toLowerCase().replace(/\s+/g, '');
     plotBeats = plotBeats.filter(p => {
-      const plotSystem = p["Plot System"];
+      const plotSystem = p["Beat Model"];
       if (!plotSystem) return false;
       const normalizedPlotSystem = plotSystem.toLowerCase().replace(/\s+/g, '');
       return normalizedPlotSystem === normalizedSelected;
@@ -344,12 +346,12 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
  * Detect the beat system being used from Beat Model field in Beat notes
  * Returns the detected system or empty string if none found (no forced defaults)
  */
-export function detectPlotSystem(scenes: { itemType?: string; "Plot System"?: string }[]): string {
-  // Find any Beat note with Beat Model field
-  const plotNote = scenes.find(s => s.itemType === 'Plot' && s["Plot System"]);
+export function detectPlotSystem(scenes: { itemType?: string; "Beat Model"?: string }[]): string {
+  // Find any Beat note with Beat Model field (support both 'Beat' and 'Plot')
+  const plotNote = scenes.find(s => (s.itemType === 'Beat' || s.itemType === 'Plot') && s["Beat Model"]);
   
-  if (plotNote && plotNote["Plot System"]) {
-    return plotNote["Plot System"];
+  if (plotNote && plotNote["Beat Model"]) {
+    return plotNote["Beat Model"];
   }
   
   // Return empty string if no plot system detected - let users work with their own structure

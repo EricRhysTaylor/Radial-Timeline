@@ -49,9 +49,42 @@ export const GOSSAMER_MODE: ModeDefinition = {
     
     // Lifecycle hooks
     onEnter: async (view) => {
-        // This is called when entering Gossamer mode
-        // The actual mode setup is handled in GossamerCommands.ts for now
-        // Future: migrate that logic here
+        // Import and run the Gossamer initialization
+        const { toggleGossamerMode } = await import('../../GossamerCommands');
+        // Use the plugin from the view to call toggleGossamerMode
+        // This will handle all the Gossamer setup (building runs, checking scores, etc.)
+        const plugin = view.plugin;
+        
+        // Get current scenes
+        const scenes = await plugin.getSceneData();
+        const beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
+        
+        if (beatNotes.length === 0) {
+            // No beats found, cannot enter Gossamer mode
+            // Switch back to ALL_SCENES
+            view.currentMode = TimelineMode.ALL_SCENES;
+            return;
+        }
+        
+        // Build and store Gossamer runs
+        const { buildAllGossamerRuns } = await import('../../utils/gossamer');
+        const { setBaseModeAllScenes, resetRotation } = await import('../../GossamerCommands');
+        
+        const selectedBeatModel = plugin.settings.beatSystem?.trim() || undefined;
+        const allRuns = buildAllGossamerRuns(scenes as any, selectedBeatModel);
+        
+        // Store runs on plugin
+        (plugin as any)._gossamerLastRun = allRuns.current;
+        (plugin as any)._gossamerHistoricalRuns = allRuns.historical;
+        (plugin as any)._gossamerMinMax = allRuns.minMax;
+        
+        // Setup mode
+        setBaseModeAllScenes(plugin);
+        resetRotation(plugin);
+        plugin.clearSearch();
+        
+        // Set interaction mode to gossamer
+        (view as any).interactionMode = 'gossamer';
     },
     
     onExit: async (view) => {

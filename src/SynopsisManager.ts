@@ -28,7 +28,7 @@ interface Scene {
   "previousSceneAnalysis"?: string;
   "currentSceneAnalysis"?: string;
   "nextSceneAnalysis"?: string;
-  itemType?: "Scene" | "Plot";
+  itemType?: "Scene" | "Plot" | "Beat";
 }
 
 /**

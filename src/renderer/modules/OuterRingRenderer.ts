@@ -19,6 +19,7 @@ import type {
     RenderingResult,
     ScenePosition
 } from './BaseRenderingTypes';
+import { isBeatNote } from '../../utils/sceneHelpers';
 import type { OuterRingContent } from '../../modes/ModeDefinition';
 import {
     buildCellArcPath,
@@ -70,7 +71,7 @@ function renderAllScenesOuterRing(context: RenderingContext): RenderingResult {
     const combined: Scene[] = [];
     
     actScenes.forEach(s => {
-        if (s.itemType === 'Plot') {
+        if (isBeatNote(s)) {
             const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
             if (seenPlotKeys.has(pKey)) return;
             seenPlotKeys.add(pKey);
@@ -96,7 +97,7 @@ function renderAllScenesOuterRing(context: RenderingContext): RenderingResult {
         
         // Determine color based on scene type
         let color: string;
-        if (scene.itemType === 'Plot') {
+        if (isBeatNote(scene)) {
             color = '#E6E6E6'; // Gray for plot beats
         } else {
             // Subplot color for regular scenes
@@ -105,7 +106,7 @@ function renderAllScenesOuterRing(context: RenderingContext): RenderingResult {
         }
         
         // Extend plot slices slightly beyond the outer ring
-        const effectiveOuterR = scene.itemType === 'Plot' 
+        const effectiveOuterR = isBeatNote(scene)
             ? ring.outerRadius + 2 
             : ring.outerRadius;
         
@@ -117,13 +118,13 @@ function renderAllScenesOuterRing(context: RenderingContext): RenderingResult {
         );
         
         // Build scene group with data attributes
-        const groupClass = scene.itemType === 'Plot' ? 'rt-scene-group beats' : 'rt-scene-group';
-        const itemType = scene.itemType === 'Plot' ? 'Beat' : 'Scene';
+        const groupClass = isBeatNote(scene) ? 'rt-scene-group beats' : 'rt-scene-group';
+        const itemType = isBeatNote(scene) ? 'Beat' : 'Scene';
         svg += `<g class="${groupClass}" data-path="${encodedPath}" data-item-type="${itemType}">`;
         svg += `<path id="${sceneId}" d="${arcPath}" fill="${color}" class="rt-scene-path"/>`;
         
         // Add scene title for non-beat scenes
-        if (scene.itemType !== 'Plot' && scene.title) {
+        if (!isBeatNote(scene) && scene.title) {
             // Scene title rendering would go here
             // (Keeping it simple for now - full implementation would include textPath, etc.)
         }
@@ -143,7 +144,7 @@ function renderAllScenesOuterRing(context: RenderingContext): RenderingResult {
         svg,
         metadata: {
             sceneCount: combined.length,
-            plotBeatCount: combined.filter(s => s.itemType === 'Plot').length,
+            plotBeatCount: combined.filter(s => isBeatNote(s)).length,
             hasVoidCells: voidSpace > 0.001
         }
     };

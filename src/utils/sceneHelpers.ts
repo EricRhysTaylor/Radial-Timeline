@@ -6,6 +6,13 @@
 import { Scene } from '../main';
 import { parseWhenField } from './date';
 
+/**
+ * Check if a scene is a beat note (supports both new 'Beat' and legacy 'Plot' itemType)
+ */
+export function isBeatNote(scene: Scene | { itemType?: string }): boolean {
+    return scene.itemType === 'Beat' || scene.itemType === 'Plot';
+}
+
 export interface PluginRendererFacade {
     settings: {
         publishStageColors: Record<string, string>;

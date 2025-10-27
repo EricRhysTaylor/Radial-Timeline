@@ -521,7 +521,13 @@ export class RadialTimelineView extends ItemView {
         // Clear search state when view closes to ensure fresh state on reopen
         this.plugin.clearSearch();
         
-        // Clean up any event listeners or resources
+        // Clean up keyboard event listeners
+        if ((this as any)._modeToggleCleanup) {
+            (this as any)._modeToggleCleanup();
+        }
+        if ((this as any)._chronologueShiftCleanup) {
+            (this as any)._chronologueShiftCleanup();
+        }
     }
     
     // Add the missing createSvgElement method

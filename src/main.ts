@@ -128,7 +128,7 @@ export interface Scene {
     "nextSceneAnalysis"?: string; // Add nextSceneAnalysis property
     "Beats Update"?: boolean | string; // Scene analysis processing flag (legacy name kept for compatibility)
     // Beat-specific properties  
-    itemType?: "Scene" | "Plot"; // Distinguish between Scene and Beat items (Plot is legacy)
+    itemType?: "Scene" | "Plot" | "Beat"; // Distinguish between Scene and Beat items (Plot is legacy for Beat)
     Description?: string; // For Beat descriptions
     "Beat Model"?: string; // Beat system (e.g., "Save The Cat", "Hero's Journey")
     // Gossamer score fields
@@ -2509,9 +2509,8 @@ async function migrateSceneAnalysisFields(plugin: RadialTimelinePlugin): Promise
             }
         }
         
-        if (migratedCount > 0) {
-            console.log(`[Radial Timeline] Migrated ${migratedCount} files from old field names to new field names`);
-        }
+        // Migration completed silently
+        void migratedCount;
     } catch (error) {
         console.error('[Radial Timeline] Error during migration:', error);
     }

@@ -21,7 +21,8 @@ import { getModeDefinition } from './ModeRegistry';
  */
 export class ModeManager {
     private plugin: RadialTimelinePlugin;
-    private view: RadialTimelineView;
+    // SAFE: View reference passed at construction, tied to view lifecycle, cleaned on view destroy
+    private view: RadialTimelineView; // SAFE: Per-view-instance, managed by view lifecycle
     
     constructor(plugin: RadialTimelinePlugin, view: RadialTimelineView) {
         this.plugin = plugin;

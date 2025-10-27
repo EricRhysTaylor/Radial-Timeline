@@ -48,7 +48,7 @@
 
   /* ============================================
      GOSSAMER VISUAL CONFIGURATION
-     All gossamer plot appearance settings in one place
+     All gossamer beat system appearance settings in one place
      ============================================ */
   /* Colors */
   --rt-gossamer-error-color: #ff4444;           /* Missing data / zero scores (red) */
@@ -2317,6 +2317,7 @@
 .rt-mode-option:hover .rt-document-bg {
   fill: var(--interactive-accent);
   stroke: var(--text-normal);
+  stroke-width: 2px;
 }
 
 .rt-mode-option:hover .rt-mode-acronym-text {
@@ -2326,7 +2327,7 @@
 .rt-mode-option .rt-document-bg {
   fill: var(--interactive-normal);
   stroke: var(--text-normal);
-  stroke-width: 1px;
+  stroke-width: 2px;
   transition: fill 0.2s ease;
 }
 
@@ -2343,9 +2344,20 @@
   transition: fill 0.2s ease;
 }
 
+.rt-mode-option .rt-mode-number-label {
+  pointer-events: none;
+  text-anchor: start;
+  dominant-baseline: middle;
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  fill: var(--text-normal);
+}
+
 .rt-mode-option .rt-active {
   fill: var(--interactive-accent) !important;
   stroke: var(--text-normal) !important;
+  stroke-width: 2px !important;
 }
 
 .rt-mode-option .rt-active.rt-mode-acronym-text {
@@ -2354,28 +2366,51 @@
   font-weight: 700;
 }
 
-/* Shift mode button */
+/* Shift mode button - styled like mode pages */
 .rt-shift-mode-button {
   cursor: pointer;
-  transition: all 0.2s ease;
+}
+
+.rt-shift-mode-button .rt-shift-button-bg {
+  fill: var(--interactive-normal);
+  stroke: var(--text-normal);
+  stroke-width: 2px;
+  transition: fill 0.2s ease;
+}
+
+.rt-shift-mode-button .rt-shift-button-text {
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  fill: var(--text-normal);
+  transition: fill 0.2s ease;
 }
 
 .rt-shift-mode-button:hover .rt-shift-button-bg {
-  fill: var(--interactive-accent) !important;
-  stroke: var(--interactive-accent) !important;
+  fill: var(--interactive-accent);
+  stroke: var(--text-normal);
+  stroke-width: 2px;
 }
 
 .rt-shift-mode-button:hover .rt-shift-button-text {
-  fill: var(--text-on-accent) !important;
+  fill: var(--text-on-accent);
 }
 
 .rt-shift-mode-active .rt-shift-button-bg {
-  fill: var(--alternating-color-2) !important;
-  stroke: var(--alternating-color-2) !important;
+  fill: var(--interactive-accent) !important;
+  stroke: var(--text-normal) !important;
+  stroke-width: 2px !important;
 }
 
 .rt-shift-mode-active .rt-shift-button-text {
   fill: var(--text-on-accent) !important;
+  font-size: 22px;
+  font-weight: 700;
 }
 
 /* Shift mode scene selection */
@@ -2431,4 +2466,15 @@
   font-size: 10px;
   font-weight: 600;
   fill: var(--text-error);
+}
+
+/* Story structure description styling in settings */
+.rt-story-structure-selected {
+  color: var(--text-success);
+  font-weight: 500;
+}
+
+.rt-story-structure-selected b {
+  color: var(--text-success);
+  font-weight: 500;
 }

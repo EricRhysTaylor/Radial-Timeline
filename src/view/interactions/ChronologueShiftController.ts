@@ -34,21 +34,58 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     const shiftButton = createShiftButton();
     svg.appendChild(shiftButton);
     
-    // Register shift button click handler
-    view.registerDomEvent(shiftButton as unknown as HTMLElement, 'click', (e: MouseEvent) => {
-        e.stopPropagation();
-        
-        shiftModeActive = !shiftModeActive;
-        updateShiftButtonState(shiftButton, shiftModeActive);
-        
+    // Function to activate shift mode
+    const activateShiftMode = () => {
         if (!shiftModeActive) {
-            // Exit shift mode
+            shiftModeActive = true;
+            updateShiftButtonState(shiftButton, true);
+        }
+    };
+    
+    // Function to deactivate shift mode
+    const deactivateShiftMode = () => {
+        if (shiftModeActive) {
+            shiftModeActive = false;
+            updateShiftButtonState(shiftButton, false);
             selectedScenes = [];
             elapsedTimeClickCount = 0;
             removeElapsedTimeArc(svg);
             removeSceneHighlights(svg);
         }
+    };
+    
+    // Register shift button click handler
+    view.registerDomEvent(shiftButton as unknown as HTMLElement, 'click', (e: MouseEvent) => {
+        e.stopPropagation();
+        if (shiftModeActive) {
+            deactivateShiftMode();
+        } else {
+            activateShiftMode();
+        }
     });
+    
+    // Keyboard event handlers for Shift and Caps Lock
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Shift' || e.key === 'CapsLock') {
+            activateShiftMode();
+        }
+    };
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+        if (e.key === 'Shift') {
+            deactivateShiftMode();
+        }
+    };
+    
+    // Add keyboard listeners - SAFE: Manual cleanup registered in view.onClose() via _chronologueShiftCleanup
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp); // SAFE: Manual cleanup in onClose
+    
+    // Store cleanup function on view for later removal
+    (view as any)._chronologueShiftCleanup = () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keyup', handleKeyUp);
+    };
     
     // Register scene click handlers when shift mode is active
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', (e: MouseEvent) => {
@@ -105,6 +142,13 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 }
 
 /**
+ * Create the shift button SVG path
+ */
+function createShiftButtonShape(): string {
+    return 'M0 11C0 4.92487 4.92487 0 11 0H103C119.569 0 133 13.4315 133 30V57C133 63.0751 128.075 68 122 68H11C4.92487 68 0 63.0751 0 57V11Z';
+}
+
+/**
  * Create the shift button element
  */
 function createShiftButton(): SVGGElement {
@@ -112,23 +156,38 @@ function createShiftButton(): SVGGElement {
     button.setAttribute('class', 'rt-shift-mode-button');
     button.setAttribute('id', 'shift-mode-toggle');
     
-    // Position in top-left quadrant (similar to rotation toggle)
-    const buttonX = -200; // Left side
-    const buttonY = -200; // Top side
+    // Position on left side, same y-axis as mode pages
+    const POS_Y = -750; // Same as user specified
+    const POS_X = -700; // Left side
+    const SCALE = 0.6; // Same scale as active mode page
     
-    button.innerHTML = ` // SAFE: innerHTML used for SVG element creation from trusted internal template
-        <rect x="${buttonX}" y="${buttonY}" width="100" height="100" 
-              rx="8" fill="var(--background-secondary)" 
-              stroke="var(--text-muted)" stroke-width="2"
-              class="rt-shift-button-bg"/>
-        <text x="${buttonX + 50}" y="${buttonY + 60}" 
-              text-anchor="middle" dominant-baseline="middle"
-              font-family="var(--font-text)" font-size="12" font-weight="600"
-              fill="var(--text-normal)" class="rt-shift-button-text">
-            Shift
-        </text>
-        <title>Toggle Shift Mode for elapsed time comparison</title>
-    `;
+    button.setAttribute('transform', `translate(${POS_X}, ${POS_Y}) scale(${SCALE})`);
+    
+    // Create path element
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', createShiftButtonShape());
+    path.setAttribute('class', 'rt-shift-button-bg');
+    path.setAttribute('fill', 'var(--interactive-normal)');
+    path.setAttribute('stroke', 'var(--text-normal)');
+    path.setAttribute('stroke-width', '2');
+    
+    // Create text element with up arrow
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', '66.5'); // Center of button (133/2)
+    text.setAttribute('y', '52'); // Near bottom like mode pages
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('class', 'rt-shift-button-text');
+    text.setAttribute('fill', 'var(--text-normal)');
+    text.textContent = '↑ SHIFT';
+    
+    // Create title for tooltip
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = 'Toggle Shift Mode for elapsed time comparison';
+    
+    button.appendChild(path);
+    button.appendChild(text);
+    button.appendChild(title);
     
     return button;
 }
@@ -140,14 +199,22 @@ function updateShiftButtonState(button: SVGGElement, active: boolean): void {
     const bg = button.querySelector('.rt-shift-button-bg') as SVGElement;
     const text = button.querySelector('.rt-shift-button-text') as SVGElement;
     
+    // Get current transform to preserve position
+    const currentTransform = button.getAttribute('transform') || '';
+    const baseTransform = currentTransform.replace(/scale\([^)]+\)/, '').trim();
+    
     if (active) {
-        bg.setAttribute('fill', 'var(--alternating-color-2)');
-        bg.setAttribute('stroke', 'var(--alternating-color-2)');
+        // Scale up when active (like mode pages)
+        button.setAttribute('transform', `${baseTransform} scale(0.72)`); // 0.6 * 1.2 = 0.72
+        bg.setAttribute('fill', 'var(--interactive-accent)');
+        bg.setAttribute('stroke', 'var(--text-normal)');
         text.setAttribute('fill', 'var(--text-on-accent)');
         button.classList.add('rt-shift-mode-active');
     } else {
-        bg.setAttribute('fill', 'var(--background-secondary)');
-        bg.setAttribute('stroke', 'var(--text-muted)');
+        // Normal scale when inactive
+        button.setAttribute('transform', `${baseTransform} scale(0.6)`);
+        bg.setAttribute('fill', 'var(--interactive-normal)');
+        bg.setAttribute('stroke', 'var(--text-normal)');
         text.setAttribute('fill', 'var(--text-normal)');
         button.classList.remove('rt-shift-mode-active');
     }

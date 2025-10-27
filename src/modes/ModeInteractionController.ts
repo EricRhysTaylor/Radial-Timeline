@@ -29,7 +29,8 @@ interface RegisteredHandler {
  * Mode Interaction Controller
  */
 export class ModeInteractionController {
-    private view: RadialTimelineView;
+    // SAFE: View reference passed at construction, tied to view lifecycle, cleaned on view destroy
+    private view: RadialTimelineView; // SAFE: Per-view-instance, managed by view lifecycle
     private handlers: RegisteredHandler[] = [];
     private currentMode: TimelineMode | null = null;
     

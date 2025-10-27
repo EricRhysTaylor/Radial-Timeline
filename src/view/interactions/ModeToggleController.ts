@@ -22,7 +22,7 @@ const MODE_OPTIONS = [
 
 // Positioning constants (adjustable values)
 const POS_X = 658; // Horizontal center position
-const POS_Y = -800; // Vertical position (200px from top)
+const POS_Y = -750; // Vertical position (200px from top)
 const ICON_VISUAL_WIDTH = 46; // Actual rendered width (92 * 0.5 scale)
 const ICON_VISUAL_GAP_INACTIVE = 4; // Gap between non-active icons
 const ICON_VISUAL_GAP_ACTIVE = 15; // Gap between active and non-active icons
@@ -66,7 +66,7 @@ function createModeSelectorGrid(): SVGGElement {
         path.setAttribute('class', 'rt-document-bg');
         path.setAttribute('d', createDocumentShape());
         
-        // Create text element
+        // Create text element (acronym)
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('class', 'rt-mode-acronym-text');
         text.setAttribute('x', String(ICON_WIDTH / 2));
@@ -75,8 +75,18 @@ function createModeSelectorGrid(): SVGGElement {
         text.setAttribute('dominant-baseline', 'middle');
         text.textContent = mode.acronym;
         
+        // Create number label (1, 2, 3, 4) at top left corner
+        const numberLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        numberLabel.setAttribute('class', 'rt-mode-number-label');
+        numberLabel.setAttribute('x', '12');
+        numberLabel.setAttribute('y', '20');
+        numberLabel.setAttribute('text-anchor', 'start');
+        numberLabel.setAttribute('dominant-baseline', 'middle');
+        numberLabel.textContent = String(index + 1);
+        
         optionGroup.appendChild(path);
         optionGroup.appendChild(text);
+        optionGroup.appendChild(numberLabel);
         grid.appendChild(optionGroup);
     });
     
@@ -175,6 +185,24 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
             });
         }
     });
+    
+    // Register keyboard shortcuts (1, 2, 3, 4)
+    const handleKeyPress = async (e: KeyboardEvent) => {
+        const key = parseInt(e.key);
+        if (key >= 1 && key <= 4 && key <= MODE_OPTIONS.length) {
+            e.preventDefault();
+            const modeId = MODE_OPTIONS[key - 1].id;
+            await switchToMode(view, modeId, modeSelector);
+        }
+    };
+    
+    // SAFE: Manual cleanup registered in view.onClose() via _modeToggleCleanup
+    document.addEventListener('keydown', handleKeyPress);
+    
+    // Store cleanup function
+    (view as any)._modeToggleCleanup = () => {
+        document.removeEventListener('keydown', handleKeyPress);
+    };
     
     // Register hover handlers for visual feedback
     MODE_OPTIONS.forEach(mode => {
