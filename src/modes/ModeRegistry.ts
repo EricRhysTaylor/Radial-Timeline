@@ -15,6 +15,7 @@ import { ModeDefinition, TimelineMode } from './ModeDefinition';
 import { ALL_SCENES_MODE } from './definitions/AllScenesMode';
 import { MAIN_PLOT_MODE } from './definitions/MainPlotMode';
 import { GOSSAMER_MODE } from './definitions/GossamerMode';
+import { CHRONOLOGUE_MODE } from './definitions/ChronologueMode';
 
 /**
  * Registry of all available modes
@@ -22,9 +23,8 @@ import { GOSSAMER_MODE } from './definitions/GossamerMode';
 const MODE_REGISTRY = new Map<TimelineMode, ModeDefinition>([
     [TimelineMode.ALL_SCENES, ALL_SCENES_MODE],
     [TimelineMode.MAIN_PLOT, MAIN_PLOT_MODE],
+    [TimelineMode.CHRONOLOGUE, CHRONOLOGUE_MODE],
     [TimelineMode.GOSSAMER, GOSSAMER_MODE],
-    // Future modes:
-    // [TimelineMode.CHRONOLOGY, CHRONOLOGY_MODE],
 ]);
 
 /**

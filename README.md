@@ -171,6 +171,62 @@ Features:
 
 <hr>
 
+## Chronologue Mode
+
+Chronologue Mode displays scenes in chronological story order based on their `When` field, perfect for mystery and thriller writers who need to map event sequences before rearranging them for narrative suspense.
+
+### Key Features
+
+- **Chronological Ordering**: Scenes sorted by their `When` YAML field (story chronology) rather than manuscript order
+- **Proportional Timeline Arc**: 3-pixel arc around the outer perimeter with tick marks positioned based on actual time proportions
+- **Adaptive Time Labels**: Time-period-appropriate markers (hours/days/weeks/months/years) based on story span
+- **Equal Scene Spacing**: Scenes remain equally spaced for readability while the outer arc shows proportional time gaps
+- **Shift Mode**: Toggle to compare elapsed time between two selected scenes with clickable unit cycling
+
+### When Field Format
+
+The `When` field supports ISO date formats:
+
+```yaml
+# Example 1: Simple date
+When: 2024-03-15
+
+# Example 2: Date with time (for hour-level precision)
+When: 2024-03-15T14:30:00
+
+# Example 3: More readable date+time
+When: 2024-03-15 14:30
+```
+
+**Invalid examples that won't parse:**
+- `When: March 15, 2024` (use YYYY-MM-DD)
+- `When: Day 1` (use actual date)
+- `When: Two weeks later` (calculate actual date)
+
+### Shift Mode for Time Comparison
+
+When Shift Mode is active:
+1. Click the "Shift" button (top-left) to activate
+2. Click two scenes to select them
+3. View elapsed time arc and label between selected scenes
+4. Click the elapsed time text to cycle through units (e.g., "3.4 months" → "15 weeks" → "105 days")
+5. Continue clicking scenes - always keeps the 2 most recent selections
+
+### Timeline Visualization
+
+- **Scene Rings**: Equally spaced for readability (existing behavior)
+- **Outer Arc + Tick Marks**: Proportionally spaced to show real temporal distribution
+- **Example**: Scene 20 years before main action takes ~95% of arc space, while daily events compress into ~5% with dense tick marks
+
+### Missing When Fields
+
+Scenes without a `When` field:
+- Fall back to manuscript order (prefix number, then alphanumeric)
+- Shown at the beginning with warning indicator
+- Display warning tooltip on hover
+
+<hr>
+
 ## AI Triplet Scene Beats Analysis
 
 The plugin can automatically generate scene analysis using AI LLM to evaluate the pacing for individual flagged scenes as triplets (in groups of 3). May be applied for specific subplot ordering or the entire manuscript (all scenes) orderning:

@@ -4,6 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 import { Scene } from '../main';
+import { parseWhenField } from './date';
 
 export interface PluginRendererFacade {
     settings: {
@@ -96,4 +97,62 @@ export function buildTextClasses(
     if (isSearchMatch) classes += ' rt-search-result';
     if (hasEdits) classes += ' rt-has-edits';
     return classes;
+}
+
+/**
+ * Sort scenes chronologically by their When field
+ * Scenes without When field fall back to manuscript order (prefix number, then alphanumeric)
+ */
+export function sortScenesChronologically(scenes: Scene[]): Scene[] {
+    return scenes.slice().sort((a, b) => {
+        // Parse When fields
+        const aWhen = parseWhenField(typeof a.when === 'string' ? a.when : '');
+        const bWhen = parseWhenField(typeof b.when === 'string' ? b.when : '');
+        
+        // If both have When fields, sort by date
+        if (aWhen && bWhen) {
+            const timeDiff = aWhen.getTime() - bWhen.getTime();
+            if (timeDiff !== 0) return timeDiff;
+            
+            // If same time, maintain stable sort by title
+            return (a.title || '').localeCompare(b.title || '');
+        }
+        
+        // If only one has When field, the one without goes first
+        if (aWhen && !bWhen) return 1;
+        if (!aWhen && bWhen) return -1;
+        
+        // If neither has When field, fall back to manuscript order
+        return sortByManuscriptOrder(a, b);
+    });
+}
+
+/**
+ * Sort scenes by manuscript order (prefix number, then alphanumeric)
+ */
+function sortByManuscriptOrder(a: Scene, b: Scene): number {
+    const aTitle = a.title || '';
+    const bTitle = b.title || '';
+    
+    // Extract prefix numbers
+    const aMatch = aTitle.match(/^(\d+(?:\.\d+)?)\s*/);
+    const bMatch = bTitle.match(/^(\d+(?:\.\d+)?)\s*/);
+    
+    // If both have prefix numbers, sort numerically
+    if (aMatch && bMatch) {
+        const aNum = parseFloat(aMatch[1]);
+        const bNum = parseFloat(bMatch[1]);
+        const numDiff = aNum - bNum;
+        if (numDiff !== 0) return numDiff;
+        
+        // If numbers are equal, sort by full title
+        return aTitle.localeCompare(bTitle);
+    }
+    
+    // If only one has prefix number, it comes first
+    if (aMatch && !bMatch) return -1;
+    if (!aMatch && bMatch) return 1;
+    
+    // If neither has prefix number, sort alphanumerically
+    return aTitle.localeCompare(bTitle);
 }

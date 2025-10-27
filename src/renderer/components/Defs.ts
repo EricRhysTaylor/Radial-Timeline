@@ -57,12 +57,6 @@ export function renderDefs(PUBLISH_STAGE_COLORS: Record<string, string>): string
       <path d="M12 21V7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
       <path d="m6 15 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
     </symbol>
-    <!-- Mode Toggle Icon (cycles: All Scenes → Main Plot → Gossamer) -->
-    <symbol id="icon-mode-toggle" viewBox="0 0 24 24">
-      <path d="M12 3v18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-      <path d="m16 16 4-4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-      <path d="m8 8-4 4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-    </symbol>
   `;
 
   const filters = `

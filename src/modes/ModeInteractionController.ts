@@ -63,9 +63,8 @@ export class ModeInteractionController {
                 await this.setupGossamerHandlers(svg);
                 break;
                 
-            case TimelineMode.CHRONOLOGY:
-                // Future implementation
-                await this.setupChronologyHandlers(svg);
+            case TimelineMode.CHRONOLOGUE:
+                await this.setupChronologueHandlers(svg);
                 break;
         }
     }
@@ -144,11 +143,12 @@ export class ModeInteractionController {
     }
     
     /**
-     * Setup handlers for Chronology mode (future)
+     * Setup handlers for Chronologue mode
      */
-    private async setupChronologyHandlers(svg: SVGSVGElement): Promise<void> {
-        // Future implementation
-        console.log('[ModeInteractionController] Chronology mode handlers not yet implemented');
+    private async setupChronologueHandlers(svg: SVGSVGElement): Promise<void> {
+        // Import and use existing Chronologue mode setup
+        const { setupChronologueMode } = await import('../view/modes/ChronologueMode');
+        setupChronologueMode(this.view as any, svg);
     }
     
     /**

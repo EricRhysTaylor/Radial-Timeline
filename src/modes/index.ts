@@ -34,6 +34,7 @@ export {
 // Mode definitions
 export { ALL_SCENES_MODE } from './definitions/AllScenesMode';
 export { MAIN_PLOT_MODE } from './definitions/MainPlotMode';
+export { CHRONOLOGUE_MODE } from './definitions/ChronologueMode';
 export { GOSSAMER_MODE } from './definitions/GossamerMode';
 
 // Registry

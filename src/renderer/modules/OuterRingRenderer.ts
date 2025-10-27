@@ -29,6 +29,7 @@ import {
     calculateVoidSpace,
     encodePathForSvg
 } from './RenderingUtils';
+import { sortScenesChronologically } from '../../utils/sceneHelpers';
 
 /**
  * Render the outer ring based on the specified content strategy
@@ -42,9 +43,8 @@ export function renderOuterRing(
             return renderAllScenesOuterRing(context);
         case 'main-plot-only':
             return renderMainPlotOuterRing(context);
-        case 'chronological':
-            // Future implementation
-            return { svg: '', metadata: { sceneCount: 0 } };
+        case 'chronologue':
+            return renderChronologueOuterRing(context);
         default:
             // Fallback to all-scenes
             return renderAllScenesOuterRing(context);
@@ -217,6 +217,90 @@ function renderMainPlotOuterRing(context: RenderingContext): RenderingResult {
         metadata: {
             sceneCount: uniqueScenes.length,
             plotBeatCount: 0, // Beat notes are excluded in Main Plot mode
+            hasVoidCells: voidSpace > 0.001
+        }
+    };
+}
+
+/**
+ * Render outer ring with scenes in chronological order (Chronologue mode)
+ */
+function renderChronologueOuterRing(context: RenderingContext): RenderingResult {
+    const { scenes, ring, act, plugin, masterSubplotOrder } = context;
+    let svg = '';
+    
+    // Filter scenes for this act
+    const actScenes = scenes.filter(s => {
+        const sceneAct = s.actNumber !== undefined ? s.actNumber - 1 : 0;
+        return sceneAct === act.actIndex;
+    });
+    
+    // Sort scenes chronologically by When field
+    const chronologicallySorted = sortScenesChronologically(actScenes);
+    
+    // Deduplicate scenes by path
+    const seenPaths = new Set<string>();
+    const uniqueScenes: Scene[] = [];
+    
+    chronologicallySorted.forEach(s => {
+        const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
+        if (seenPaths.has(key)) return;
+        seenPaths.add(key);
+        uniqueScenes.push(s);
+    });
+    
+    // Compute positions with equal spacing (for readability)
+    const scenePositions = computeScenePositions(uniqueScenes, act.startAngle, act.endAngle);
+    
+    // Render each scene
+    uniqueScenes.forEach((scene, idx) => {
+        const position = scenePositions.get(idx);
+        if (!position) return;
+        
+        const sceneId = makeSceneId(act.actIndex, ring.ringIndex, idx, true, true);
+        const encodedPath = scene.path ? encodePathForSvg(scene.path) : '';
+        
+        // Determine color based on subplot
+        const subplotName = scene.subplot || 'Main Plot';
+        const color = getSubplotColor(subplotName, masterSubplotOrder);
+        
+        // Add warning class for scenes without When field
+        const hasWhenField = scene.when && typeof scene.when === 'string' && (scene.when as string).trim() !== '';
+        const groupClass = hasWhenField ? 'rt-scene-group' : 'rt-scene-group rt-chronologue-warning';
+        
+        const arcPath = buildCellArcPath(
+            ring.innerRadius,
+            ring.outerRadius,
+            position.startAngle,
+            position.endAngle
+        );
+        
+        // Build scene group with data attributes
+        svg += `<g class="${groupClass}" data-path="${encodedPath}" data-item-type="Scene">`;
+        svg += `<path id="${sceneId}" d="${arcPath}" fill="${color}" class="rt-scene-path"/>`;
+        
+        // Add scene title
+        if (scene.title) {
+            // Scene title rendering would go here
+            // (Keeping it simple for now - full implementation would include textPath, etc.)
+        }
+        
+        svg += `</g>`;
+    });
+    
+    // Fill remaining space with void cells
+    const voidSpace = calculateVoidSpace(scenePositions, act.endAngle - act.startAngle);
+    if (voidSpace > 0.001) {
+        const lastPosition = scenePositions.get(uniqueScenes.length - 1);
+        const voidStartAngle = lastPosition ? lastPosition.endAngle : act.startAngle;
+        svg += renderVoidCell(ring.innerRadius, ring.outerRadius, voidStartAngle, act.endAngle);
+    }
+    
+    return {
+        svg,
+        metadata: {
+            sceneCount: uniqueScenes.length,
+            plotBeatCount: 0, // No plot beats in Chronologue mode
             hasVoidCells: voidSpace > 0.001
         }
     };

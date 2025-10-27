@@ -2253,7 +2253,7 @@
 
 .rt-patreon-button:hover {
   background-color: var(--interactive-accent-hover);
-  filter: brightness(1.15) saturate(1.3);
+  filter: brightness(0.85) saturate(4);
   box-shadow: 0 4px 16px var(--interactive-accent-alpha-50);
   transform: translateY(-2px);
   color: var(--text-on-accent);
@@ -2268,4 +2268,167 @@
   flex-shrink: 0;
   width: 16px;
   height: 16px;
+}
+
+/* Chronologue Mode Styles */
+
+/* Chronologue timeline arc */
+.rt-chronologue-timeline-arc {
+  pointer-events: none;
+}
+
+.rt-chronologue-timeline-arc path {
+  stroke: var(--text-muted);
+  stroke-width: 3;
+  opacity: 0.6;
+}
+
+.rt-chronologue-timeline-arc line {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  opacity: 0.8;
+}
+
+/* Chronologue time labels */
+.rt-chronologue-time-label {
+  font-family: var(--font-text);
+  font-size: 10px;
+  fill: var(--text-muted);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Chronologue warning for scenes without When field */
+.rt-chronologue-warning .rt-scene-path {
+  stroke: var(--text-error);
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+}
+
+/* Mode selector grid */
+.rt-mode-selector-grid {
+  pointer-events: all;
+}
+
+.rt-mode-option {
+  cursor: pointer;
+}
+
+.rt-mode-option:hover .rt-document-bg {
+  fill: var(--interactive-accent);
+  stroke: var(--text-normal);
+}
+
+.rt-mode-option:hover .rt-mode-acronym-text {
+  fill: var(--text-on-accent);
+}
+
+.rt-mode-option .rt-document-bg {
+  fill: var(--interactive-normal);
+  stroke: var(--text-normal);
+  stroke-width: 1px;
+  transition: fill 0.2s ease;
+}
+
+.rt-mode-option .rt-mode-acronym-text {
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 20px; /* Beat titles are 12px, this is slightly larger */
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  fill: var(--text-normal);
+  transition: fill 0.2s ease;
+}
+
+.rt-mode-option .rt-active {
+  fill: var(--interactive-accent) !important;
+  stroke: var(--text-normal) !important;
+}
+
+.rt-mode-option .rt-active.rt-mode-acronym-text {
+  fill: var(--text-on-accent) !important;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* Shift mode button */
+.rt-shift-mode-button {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rt-shift-mode-button:hover .rt-shift-button-bg {
+  fill: var(--interactive-accent) !important;
+  stroke: var(--interactive-accent) !important;
+}
+
+.rt-shift-mode-button:hover .rt-shift-button-text {
+  fill: var(--text-on-accent) !important;
+}
+
+.rt-shift-mode-active .rt-shift-button-bg {
+  fill: var(--alternating-color-2) !important;
+  stroke: var(--alternating-color-2) !important;
+}
+
+.rt-shift-mode-active .rt-shift-button-text {
+  fill: var(--text-on-accent) !important;
+}
+
+/* Shift mode scene selection */
+.rt-shift-selected {
+  stroke: var(--interactive-accent) !important;
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 8px var(--interactive-accent-alpha-50));
+}
+
+/* Elapsed time arc */
+.rt-elapsed-time-arc {
+  pointer-events: none;
+}
+
+.rt-elapsed-time-arc path {
+  stroke: var(--interactive-accent);
+  stroke-width: 2;
+  opacity: 0.8;
+}
+
+/* Elapsed time label */
+.rt-elapsed-time-group {
+  pointer-events: all;
+}
+
+.rt-elapsed-time-label {
+  cursor: pointer;
+  font-family: var(--font-text);
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--interactive-accent);
+  transition: all 0.2s ease;
+}
+
+.rt-elapsed-time-label:hover {
+  fill: var(--interactive-accent-hover);
+  text-shadow: 0 0 4px var(--interactive-accent-alpha-50);
+}
+
+/* When field warning tooltip */
+.rt-when-field-warning {
+  pointer-events: none;
+}
+
+.rt-when-field-warning rect {
+  fill: var(--background-primary);
+  stroke: var(--text-error);
+  stroke-width: 1;
+}
+
+.rt-when-field-warning text {
+  font-family: var(--font-text);
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--text-error);
 }

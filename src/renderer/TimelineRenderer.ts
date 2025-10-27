@@ -43,6 +43,7 @@ import { renderPlotGroup } from './components/Plots';
 import { renderMonthSpokesAndInnerLabels, renderGossamerMonthSpokes } from './components/MonthSpokes';
 import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
 import { shouldRenderStoryBeats, shouldShowSubplotRings, shouldShowAllScenesInOuterRing, shouldShowInnerRingContent, getSubplotLabelText } from './modules/ModeRenderingHelpers';
+import { renderChronologueTimelineArc } from './components/ChronologueTimeline';
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
 
@@ -1689,27 +1690,11 @@ export function createTimelineSVG(
             </g>
         `;
 
-        // Mode toggle button in top right (moved over and up 200px from original position)
-        const modeToggleX = formatNumber(outerRadius * 0.6 + 200); // 60% out + 200px right
-        const modeToggleY = formatNumber(-outerRadius * 0.6 - 200); // -60% + 200px up
-        const currentMode = shouldShowAllScenesInOuterRing(plugin) ? 'allscenes' : 'mainplot';
-        const modeTitle = currentMode === 'allscenes' ? 'Switch to Main Plot mode' : 'Switch to All Scenes mode';
-        svg += `
-            <g id="mode-toggle" class="mode-toggle" transform="translate(${modeToggleX}, ${modeToggleY})" data-current-mode="${currentMode}">
-                <!-- Mode indicator text -->
-                <text x="-20" y="2" text-anchor="end" dominant-baseline="middle" 
-                      class="mode-indicator-text mode-indicator-as ${currentMode === 'allscenes' ? 'mode-indicator-visible' : 'mode-indicator-hidden-left'}" 
-                      ${currentMode === 'allscenes' ? 'opacity="1"' : 'opacity="0"'}>[AS]</text>
-                <text x="20" y="2" text-anchor="start" dominant-baseline="middle" 
-                      class="mode-indicator-text mode-indicator-mp ${currentMode === 'mainplot' ? 'mode-indicator-visible' : 'mode-indicator-hidden-right'}" 
-                      ${currentMode === 'mainplot' ? 'opacity="1"' : 'opacity="0"'}>[MP]</text>
-                <!-- Mode toggle icon -->
-                <use href="#icon-mode-toggle" x="-18" y="-18" width="36" height="36" />
-                <rect x="-18" y="-18" width="36" height="36" fill="transparent" pointer-events="all">
-                    <title>${modeTitle}</title>
-                </rect>
-            </g>
-        `;
+        // Add Chronologue timeline arc if in Chronologue mode
+        if ((plugin as any).settings.currentMode === 'chronologue') {
+            const chronologueArc = renderChronologueTimelineArc(scenes, outerRadius);
+            svg += chronologueArc;
+        }
 
         // Add JavaScript to handle synopsis visibility
         const scriptSection = ``;

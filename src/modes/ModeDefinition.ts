@@ -27,8 +27,8 @@ export enum TimelineMode {
     /** Gossamer analysis overlay with beat tracking */
     GOSSAMER = 'gossamer',
     
-    /** Chronological story order (future mode) */
-    CHRONOLOGY = 'chronology'
+    /** Chronological story order based on When field */
+    CHRONOLOGUE = 'chronologue'
 }
 
 /**
@@ -37,14 +37,14 @@ export enum TimelineMode {
 export type OuterRingContent = 
     | 'all-scenes'         // All scenes from all subplots in manuscript order
     | 'main-plot-only'     // Only Main Plot subplot scenes
-    | 'chronological';     // Scenes ordered by story chronology (future)
+    | 'chronologue';       // Scenes ordered by story chronology based on When field
 
 /**
  * Inner ring content strategy
  */
 export type InnerRingContent = 
     | 'subplot-scenes'     // Subplot-specific scenes (default)
-    | 'chronological'      // Chronological ordering (future)
+    | 'chronologue'        // Chronological ordering based on When field
     | 'hidden';            // Don't show inner rings
 
 /**
@@ -78,7 +78,7 @@ export type OverlayLayer =
     | 'gossamer-spokes'    // Spokes connecting dots to center
     | 'gossamer-outlines'  // Beat outline highlights
     | 'confidence-band'    // Min/max confidence band
-    | 'timeline-ruler';    // Chronological timeline ruler (future)
+    | 'chronological-timeline'; // Chronological timeline arc with proportional tick marks
 
 /**
  * Visual muting targets
@@ -103,7 +103,8 @@ export type ModeHoverBehavior =
 export type ModeClickBehavior = 
     | 'open-scene-file'          // Standard: open the scene file
     | 'open-plot-file'           // Open plot beat file
-    | 'gossamer-open-file';      // Gossamer-specific file opening
+    | 'gossamer-open-file'       // Gossamer-specific file opening
+    | 'chronologue-shift-mode';  // Chronologue shift mode for elapsed time comparison
 
 /**
  * Exit behavior for modes
