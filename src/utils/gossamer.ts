@@ -2,6 +2,8 @@
  * Gossamer utilities and defaults
  */
 
+import { parseRange, isScoreInRange } from './rangeValidation';
+
 export type GossamerBeatStatus = 'present' | 'outlineOnly' | 'missing';
 
 export interface GossamerBeat {
@@ -9,6 +11,8 @@ export interface GossamerBeat {
   score?: number;
   notes?: string;
   status: GossamerBeatStatus;
+  range?: { min: number; max: number }; // Ideal range for this beat
+  isOutOfRange?: boolean; // True if score is outside ideal range
 }
 
 export interface GossamerRun {
@@ -138,12 +142,31 @@ export function buildRunFromGossamerField(
       }
     }
     
+    // Parse Range field (ideal range for this beat)
+    let range: { min: number; max: number } | undefined = undefined;
+    let isOutOfRange = false;
+    
+    const rangeValue = plotNote.Range;
+    if (typeof rangeValue === 'string') {
+      const parsed = parseRange(rangeValue);
+      if (parsed) {
+        range = parsed;
+        
+        // Check if score is outside ideal range (only for current run with actual scores)
+        if (parsedScore !== undefined && fieldName === 'Gossamer1') {
+          isOutOfRange = !isScoreInRange(parsedScore, range);
+        }
+      }
+    }
+    
     if (parsedScore !== undefined) {
       return {
         beat: beatTitle,
         score: parsedScore,
         notes: `Score from Beat note frontmatter (${fieldName}).`,
         status: 'present' as const,
+        range,
+        isOutOfRange
       };
     } else if (includeZeroScores) {
       // For current run (Gossamer1), default missing to 0 with red dot
@@ -153,6 +176,8 @@ export function buildRunFromGossamerField(
         score: 0,
         notes: `No ${fieldName} score in frontmatter - defaulting to 0.`,
         status: 'outlineOnly' as const,
+        range,
+        isOutOfRange: false // Missing scores aren't counted as out-of-range
       };
     } else {
       // For historical runs, mark as missing (will be skipped in rendering)
@@ -360,24 +385,32 @@ export function detectPlotSystem(scenes: { itemType?: string; "Beat Model"?: str
 
 /**
  * Shift Gossamer history down by one (Gossamer1 → Gossamer2, etc.)
- * Only keeps scores as simple numbers. Returns updated frontmatter.
+ * Shifts both scores and justifications. Returns updated frontmatter.
  */
 export function shiftGossamerHistory(frontmatter: Record<string, any>): Record<string, any> {
   const maxHistory = 30;
   const updated = { ...frontmatter };
   
-  // Find existing Gossamer scores
+  // Find existing Gossamer scores and justifications
   const existingScores: Record<number, number> = {};
+  const existingJustifications: Record<number, string> = {};
+  
   for (let i = 1; i <= maxHistory; i++) {
-    const key = `Gossamer${i}`;
-    if (typeof updated[key] === 'number') {
-      existingScores[i] = updated[key];
+    const scoreKey = `Gossamer${i}`;
+    const justKey = `Gossamer${i} Justification`;
+    
+    if (typeof updated[scoreKey] === 'number') {
+      existingScores[i] = updated[scoreKey];
+    }
+    if (typeof updated[justKey] === 'string') {
+      existingJustifications[i] = updated[justKey];
     }
   }
   
   // Delete all Gossamer fields (including any beyond maxHistory)
   for (let i = 1; i <= maxHistory + 10; i++) {
     delete updated[`Gossamer${i}`];
+    delete updated[`Gossamer${i} Justification`];
   }
   
   // Shift down: 1→2, 2→3, 3→4, etc.
@@ -388,7 +421,14 @@ export function shiftGossamerHistory(frontmatter: Record<string, any>): Record<s
     }
   });
   
-  // Gossamer1 will be set by the caller with the new score
+  Object.entries(existingJustifications).forEach(([oldIndex, justification]) => {
+    const newIndex = parseInt(oldIndex) + 1;
+    if (newIndex <= maxHistory) {
+      updated[`Gossamer${newIndex} Justification`] = justification;
+    }
+  });
+  
+  // Gossamer1 and Gossamer1 Justification will be set by the caller with the new values
   return updated;
 }
 

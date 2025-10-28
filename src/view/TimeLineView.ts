@@ -281,6 +281,7 @@ export class RadialTimelineView extends ItemView {
     refreshTimeline() {
         if (!this.plugin) return;
 
+        const perfStart = performance.now();
         const container = this.containerEl.children[1] as HTMLElement;
         container.empty();
         
@@ -295,6 +296,8 @@ export class RadialTimelineView extends ItemView {
         // Get the scene data using the plugin's method
         this.plugin.getSceneData()
             .then(sceneData => {
+                const dataLoadTime = performance.now() - perfStart;
+                
                 this.sceneData = sceneData;
                 // Expose last scene data on plugin for selective services that need it
                 this.plugin.lastSceneData = sceneData;
@@ -309,7 +312,16 @@ export class RadialTimelineView extends ItemView {
                 loadingEl.remove();
                 
                 // Render the timeline with the scene data
+                const renderStart = performance.now();
                 this.renderTimeline(container, this.sceneData);
+                const renderTime = performance.now() - renderStart;
+                
+                const totalTime = performance.now() - perfStart;
+                
+                // Log performance metrics if debug enabled
+                if (this.plugin.settings.debug) {
+                    console.log(`[Timeline Performance] Mode: ${this._currentMode}, Data: ${dataLoadTime.toFixed(0)}ms, Render: ${renderTime.toFixed(0)}ms, Total: ${totalTime.toFixed(0)}ms, Scenes: ${sceneData.length}`);
+                }
                 
 
             })
@@ -484,9 +496,29 @@ export class RadialTimelineView extends ItemView {
                 
                 // Check if this is a scene or beat file (Class: Scene or Class: Beat/Plot)
                 const fm = cache.frontmatter;
-                const isSceneOrPlot = (fm.Class === 'Scene') || (fm.class === 'Scene') ||
-                                     (fm.Class === 'Plot') || (fm.class === 'Plot');
-                if (!isSceneOrPlot) return;
+                const isScene = (fm.Class === 'Scene') || (fm.class === 'Scene');
+                const isBeatOrPlot = (fm.Class === 'Plot') || (fm.class === 'Plot') || (fm.Class === 'Beat') || (fm.class === 'Beat');
+                
+                if (!isScene && !isBeatOrPlot) return;
+                
+                // Performance optimization: Only refresh if the change is relevant to the current mode
+                // Gossamer mode only cares about Beat/Plot notes, other modes care about Scene notes
+                const isGossamerMode = this._currentMode === 'gossamer';
+                if (isGossamerMode && !isBeatOrPlot) {
+                    // In gossamer mode but a scene note changed - ignore it
+                    if (this.plugin.settings.debug) {
+                        console.log('[Timeline] Skipping refresh - gossamer mode ignoring scene change:', file.path);
+                    }
+                    return;
+                }
+                if (!isGossamerMode && isBeatOrPlot && !isScene) {
+                    // Not in gossamer mode and only a beat note changed (no scenes) - ignore it
+                    // Note: Some beat notes might also be scenes, so we check both
+                    if (this.plugin.settings.debug) {
+                        console.log('[Timeline] Skipping refresh - non-gossamer mode ignoring beat change:', file.path);
+                    }
+                    return;
+                }
                 
                 // Check if this is a frontmatter change
                 const fileId = file.path;
@@ -506,12 +538,30 @@ export class RadialTimelineView extends ItemView {
                 if (this.timelineRefreshTimeout) window.clearTimeout(this.timelineRefreshTimeout);
                 this.timelineRefreshTimeout = window.setTimeout(() => {
                     this.refreshTimeline();
-                }, Math.max(0, Number(this.plugin.settings.metadataRefreshDebounceMs ?? 5000)));
+                }, Math.max(0, Number(this.plugin.settings.metadataRefreshDebounceMs ?? 10000)));
             })
         );
         
         // Initial check of open files
         this.updateOpenFilesTracking();
+        
+        // If starting in Gossamer mode, initialize it before the first render
+        if (this._currentMode === 'gossamer' && this.modeManager) {
+            const { TimelineMode } = await import('../modes/ModeDefinition');
+            const { getModeDefinition } = await import('../modes/ModeRegistry');
+            const gossamerDef = getModeDefinition(TimelineMode.GOSSAMER);
+            
+            // Run the onEnter hook to build gossamer data
+            if (gossamerDef.onEnter) {
+                try {
+                    await gossamerDef.onEnter(this);
+                } catch (e) {
+                    console.error('[Gossamer] Failed to initialize on load:', e);
+                    // Fallback to all-scenes mode if initialization fails
+                    this._currentMode = 'all-scenes';
+                }
+            }
+        }
         
         // Initial timeline render
         this.refreshTimeline();

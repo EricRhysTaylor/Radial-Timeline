@@ -5,6 +5,18 @@ import { Vault, TFile, normalizePath } from 'obsidian';
 import { PLOT_SYSTEMS, PlotSystemTemplate, PlotBeatInfo } from './beatsSystems';
 
 /**
+ * Convert momentum range to Range field value
+ * Examples: "0-10" → "0-10", "60-70" → "60-70"
+ */
+function getMomentumRange(beatInfo: PlotBeatInfo): string {
+  if (beatInfo.momentumRange) {
+    return beatInfo.momentumRange;
+  }
+  // Fallback to empty if not defined
+  return '';
+}
+
+/**
  * Generate Beat note content with frontmatter and body
  */
 function generatePlotNoteContent(
@@ -12,12 +24,15 @@ function generatePlotNoteContent(
   act: number,
   beatSystem: string
 ): string {
+  const rangeValue = getMomentumRange(beatInfo);
+  
   const frontmatter = [
     '---',
     'Class: Beat',
     `Act: ${act}`,
     `Description: ${beatInfo.description}`,
     `Beat Model: ${beatSystem}`,
+    rangeValue ? `Range: ${rangeValue}` : 'Range:',
     'Gossamer1:',
     '---',
     ''

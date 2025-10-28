@@ -14,7 +14,7 @@ import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG, adjustPlotLabelsAfterRender } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
 import { RendererService } from './services/RendererService';
-import { openGossamerScoreEntry, toggleGossamerMode } from './GossamerCommands';
+import { openGossamerScoreEntry, toggleGossamerMode, runGossamerAiAnalysis } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 import { shiftGossamerHistory } from './utils/gossamer';
@@ -131,6 +131,7 @@ export interface Scene {
     itemType?: "Scene" | "Plot" | "Beat"; // Distinguish between Scene and Beat items (Plot is legacy for Beat)
     Description?: string; // For Beat descriptions
     "Beat Model"?: string; // Beat system (e.g., "Save The Cat", "Hero's Journey")
+    Range?: string; // Ideal momentum range for this beat (e.g., "0-20", "71-90")
     // Gossamer score fields
     Gossamer1?: number; // Current Gossamer score
     Gossamer2?: number; // Gossamer score history
@@ -206,7 +207,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     openaiModelId: 'gpt-4.1', // Default to GPT-4.1
     enableAiSceneAnalysis: true,
     enableZeroDraftMode: false,
-    metadataRefreshDebounceMs: 5000,
+    metadataRefreshDebounceMs: 10000,
     showEstimate: true,
     aiContextTemplates: [
         {
@@ -684,6 +685,21 @@ export default class RadialTimelinePlugin extends Plugin {
                 } catch (e) {
                     const errorMsg = (e as Error)?.message || 'Unknown error';
                     new Notice(`Failed to generate manuscript: ${errorMsg}`);
+                    console.error(e);
+                }
+            }
+        });
+
+        // 4c. Gemini AI Gossamer analysis
+        this.addCommand({
+            id: 'gossamer-ai-analysis',
+            name: 'Gossamer AI momentum analysis (Gemini)',
+            callback: async () => {
+                try {
+                    await runGossamerAiAnalysis(this);
+                } catch (e) {
+                    const errorMsg = (e as Error)?.message || 'Unknown error';
+                    new Notice(`Failed to run Gossamer AI analysis: ${errorMsg}`);
                     console.error(e);
                 }
             }
@@ -1485,6 +1501,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
             
             const gossamer1Value = typeof plotInfo.metadata.Gossamer1 === 'number' ? plotInfo.metadata.Gossamer1 : undefined;
+            const rangeValue = typeof plotInfo.metadata.Range === 'string' ? plotInfo.metadata.Range : undefined;
             
             scenes.push({
                 title: plotInfo.file.basename,
@@ -1497,6 +1514,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 Description: (plotInfo.metadata.Description as string) || '',
                 "Beat Model": beatModel,
                 "Publish Stage": (plotInfo.metadata["Publish Stage"] as string) || undefined,
+                Range: rangeValue,
                 Gossamer1: gossamer1Value,
                 Gossamer2: typeof plotInfo.metadata.Gossamer2 === 'number' ? plotInfo.metadata.Gossamer2 : undefined,
                 Gossamer3: typeof plotInfo.metadata.Gossamer3 === 'number' ? plotInfo.metadata.Gossamer3 : undefined,

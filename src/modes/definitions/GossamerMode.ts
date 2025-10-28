@@ -42,8 +42,8 @@ export const GOSSAMER_MODE: ModeDefinition = {
     },
     
     ui: {
-        tooltip: 'Exit Gossamer mode',
-        showInToggleButton: false, // Gossamer is activated via command palette, not toggle
+        tooltip: 'Switch to Gossamer mode',
+        showInToggleButton: true, // Show in mode toggle button
         order: 3
     },
     

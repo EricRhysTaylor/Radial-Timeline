@@ -13,14 +13,14 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
         .setName('Metadata refresh debounce (ms)')
         .setDesc('Delay before refreshing the timeline after YAML frontmatter changes. Increase if your vault is large and updates feel too frequent.')
         .addText(text => {
-            const current = String(plugin.settings.metadataRefreshDebounceMs ?? 5000);
-            text.setPlaceholder('e.g., 5000')
+            const current = String(plugin.settings.metadataRefreshDebounceMs ?? 10000);
+            text.setPlaceholder('e.g., 10000')
                 .setValue(current)
                 .onChange(async (value) => {
                     const n = Number(value.trim());
                     if (!Number.isFinite(n) || n < 0) {
                         new Notice('Please enter a non-negative number.');
-                        text.setValue(String(plugin.settings.metadataRefreshDebounceMs ?? 5000));
+                        text.setValue(String(plugin.settings.metadataRefreshDebounceMs ?? 10000));
                         return;
                     }
                     plugin.settings.metadataRefreshDebounceMs = n;

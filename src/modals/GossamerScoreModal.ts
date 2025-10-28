@@ -7,6 +7,7 @@ import type { Scene } from '../main';
 import { normalizeBeatName } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem, detectPlotSystemFromNotes } from '../utils/beatsSystems';
+import { validateBeatRanges } from '../utils/rangeValidation';
 
 interface BeatScoreEntry {
   beatTitle: string; // Full title like "1 Opening Image" or "5 Theme Stated 5%"
@@ -17,6 +18,7 @@ interface BeatScoreEntry {
   inputEl?: TextComponent;
   scoresToDelete: Set<number>; // Track which Gossamer fields to delete (1, 2, 3, etc.)
   scoreDisplayEl?: HTMLElement; // Reference to the scores display element
+  range?: string; // Ideal range from beat note (e.g., "0-20", "60-70")
 }
 
 export class GossamerScoreModal extends Modal {
@@ -86,6 +88,10 @@ export class GossamerScoreModal extends Modal {
     const expectedCount = plotSystemTemplate?.beatCount || 15;
     const countMismatch = actualCount !== expectedCount;
 
+    // Validate Range fields (filter by beat system but ignore title matching)
+    // NOTE: Temporarily disabled - metadata cache not refreshing Range field
+    // const rangeValidation = validateBeatRanges(this.plotBeats, settingsSystem);
+
     // Title with plot system name
     const titleText = `Gossamer momentum scores — ${settingsSystem}`;
     const titleEl = contentEl.createEl('h2', { text: titleText });
@@ -98,6 +104,21 @@ export class GossamerScoreModal extends Modal {
       });
       warningEl.addClass('rt-gossamer-warning');
     }
+
+    // Range validation warning disabled - metadata cache issue
+    // if (!rangeValidation.valid && rangeValidation.missingRangeBeats.length > 0) {
+    //   const rangeWarningEl = contentEl.createEl('div');
+    //   rangeWarningEl.addClass('rt-gossamer-warning');
+    //   
+    //   const count = rangeValidation.missingRangeBeats.length;
+    //   const beatList = rangeValidation.missingRangeBeats.slice(0, 3).join(', ');
+    //   const more = count > 3 ? `, and ${count - 3} more` : '';
+    //   
+    //   rangeWarningEl.setText(
+    //     `⚠️ ${count} beat${count > 1 ? 's' : ''} missing ideal Range (e.g., "0-20", "71-90"): ${beatList}${more}. ` +
+    //     `Add "Range: 0-20" to beat note frontmatter. Scores outside ideal range will show thicker red y-axis spokes.`
+    //   );
+    // }
 
     // Header section with border
     const headerSection = contentEl.createDiv('rt-gossamer-score-header');
@@ -118,15 +139,46 @@ export class GossamerScoreModal extends Modal {
     this.entries.forEach((entry, index) => {
       const entryDiv = scoresContainer.createDiv('rt-gossamer-score-entry');
 
-      // Beat title (full title with position prefix)
-      const beatTitleEl = entryDiv.createEl('div', { text: entry.beatTitle });
-      beatTitleEl.addClass('rt-gossamer-beat-title');
-
-      // Score row - compact layout with all scores and input on one line
-      const scoreRow = entryDiv.createDiv('rt-gossamer-score-row');
+      // First row: Beat title, range, and new score input
+      const firstRow = entryDiv.createDiv('rt-gossamer-score-row');
       
-      // Display existing scores with delete buttons
-      const existingScoresEl = scoreRow.createDiv('rt-gossamer-existing-scores-container');
+      // Left side: Beat title with range
+      const titleContainer = firstRow.createDiv('rt-gossamer-beat-title-container');
+      const beatTitleEl = titleContainer.createEl('span', { text: entry.beatTitle });
+      beatTitleEl.addClass('rt-gossamer-beat-title');
+      
+      // Add range if available
+      if (entry.range) {
+        const rangeEl = titleContainer.createEl('span', { text: ` (${entry.range})` });
+        rangeEl.addClass('rt-gossamer-beat-range');
+      }
+
+      // New score input (to the right)
+      const inputLabel = firstRow.createSpan({ text: 'New Score: ' });
+      inputLabel.addClass('rt-gossamer-input-label');
+
+      entry.inputEl = new TextComponent(firstRow);
+      entry.inputEl.inputEl.addClass('rt-gossamer-score-input');
+      entry.inputEl.setPlaceholder('0-100');
+
+      // Validate on input
+      entry.inputEl.onChange((value) => {
+        const num = parseInt(value);
+        if (!isNaN(num) && num >= 0 && num <= 100) {
+          entry.newScore = num;
+          entry.inputEl?.inputEl.removeClass('rt-input-error');
+        } else if (value.trim().length > 0) {
+          entry.inputEl?.inputEl.addClass('rt-input-error');
+          entry.newScore = undefined;
+        } else {
+          entry.inputEl?.inputEl.removeClass('rt-input-error');
+          entry.newScore = undefined;
+        }
+      });
+
+      // Second row: Existing scores with delete buttons
+      const secondRow = entryDiv.createDiv('rt-gossamer-scores-history-row');
+      const existingScoresEl = secondRow.createDiv('rt-gossamer-existing-scores-container');
       entry.scoreDisplayEl = existingScoresEl;
       
       const renderScores = () => {
@@ -193,29 +245,6 @@ export class GossamerScoreModal extends Modal {
       };
       
       renderScores();
-
-      // New score input (to the right)
-      const inputLabel = scoreRow.createSpan({ text: 'New Score: ' });
-      inputLabel.addClass('rt-gossamer-input-label');
-
-      entry.inputEl = new TextComponent(scoreRow);
-      entry.inputEl.inputEl.addClass('rt-gossamer-score-input');
-      entry.inputEl.setPlaceholder('0-100');
-
-      // Validate on input
-      entry.inputEl.onChange((value) => {
-        const num = parseInt(value);
-        if (!isNaN(num) && num >= 0 && num <= 100) {
-          entry.newScore = num;
-          entry.inputEl?.inputEl.removeClass('rt-input-error');
-        } else if (value.trim().length > 0) {
-          entry.inputEl?.inputEl.addClass('rt-input-error');
-          entry.newScore = undefined;
-        } else {
-          entry.inputEl?.inputEl.removeClass('rt-input-error');
-          entry.newScore = undefined;
-        }
-      });
     });
 
 
@@ -236,7 +265,7 @@ export class GossamerScoreModal extends Modal {
       });
 
     new ButtonComponent(buttonContainer)
-      .setButtonText('Delete all scores')
+      .setButtonText('Delete scores')
       .setWarning()
       .onClick(async () => {
         await this.deleteAllScores();
@@ -287,6 +316,11 @@ export class GossamerScoreModal extends Modal {
       };
 
       if (fm) {
+        // Get Range field directly from metadata cache
+        if (typeof fm.Range === 'string') {
+          entry.range = fm.Range;
+        }
+        
         // Get current score (handle both string and number)
         if (typeof fm.Gossamer1 === 'number') {
           entry.currentScore = fm.Gossamer1;
@@ -518,7 +552,7 @@ export class GossamerScoreModal extends Modal {
       const cache = this.plugin.app.metadataCache.getFileCache(file);
       const fm = cache?.frontmatter;
       
-      if (fm && (fm.Class === 'Plot' || fm.class === 'Plot')) {
+      if (fm && (fm.Class === 'Beat' || fm.class === 'Beat')) {
         // Check if this file has any Gossamer scores
         for (let i = 1; i <= 30; i++) {
           if (fm[`Gossamer${i}`] !== undefined) {
@@ -546,7 +580,7 @@ export class GossamerScoreModal extends Modal {
       
       // Warning message with proper styling
       const warningEl = content.createEl('div', {
-        text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) from ALL Beat notes. This action cannot be undone.'
+        text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) and their justifications from ALL Beat notes. This action cannot be undone.'
       });
       warningEl.addClass('rt-gossamer-confirm-warning');
       
@@ -580,7 +614,7 @@ export class GossamerScoreModal extends Modal {
         const cache = this.plugin.app.metadataCache.getFileCache(file);
         const fm = cache?.frontmatter;
         
-        if (fm && (fm.Class === 'Plot' || fm.class === 'Plot')) {
+        if (fm && (fm.Class === 'Beat' || fm.class === 'Beat')) {
           // Check if this file has any Gossamer scores
           let hasGossamerScores = false;
           for (let i = 1; i <= 30; i++) {
@@ -594,17 +628,21 @@ export class GossamerScoreModal extends Modal {
             await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
               const frontmatter = yaml as Record<string, any>;
               
-              // Delete all Gossamer fields (Gossamer1-30)
+              // Delete all Gossamer fields (Gossamer1-30) and their justifications
               for (let i = 1; i <= 30; i++) {
                 delete frontmatter[`Gossamer${i}`];
+                delete frontmatter[`Gossamer${i} Justification`];
               }
+              
+              // Also delete the Last Updated field
+              delete frontmatter['Gossamer Last Updated'];
             });
             deletedCount++;
           }
         }
       }
       
-              new Notice(`✓ Deleted all Gossamer scores from ${deletedCount} Beat note(s).`);
+      new Notice(`✓ Deleted all Gossamer scores and justifications from ${deletedCount} Beat note(s).`);
       this.close(); // Close the modal since all scores are cleared
       
     } catch (error) {

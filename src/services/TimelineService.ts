@@ -22,7 +22,22 @@ export class TimelineService {
         if (this.refreshTimeout) window.clearTimeout(this.refreshTimeout);
         this.refreshTimeout = window.setTimeout(() => {
             const views = this.getTimelineViews();
-            views.forEach(view => view.refreshTimeline());
+            
+            // Performance optimization: Only refresh the ACTIVE timeline view
+            // If user has multiple timeline panes open, only update the visible one
+            const activeLeaf = this.app.workspace.getActiveViewOfType(RadialTimelineView);
+            if (activeLeaf) {
+                // Only refresh the active view
+                activeLeaf.refreshTimeline();
+            } else {
+                // No active timeline view, refresh the first one found
+                // This handles cases where timeline is open but not focused
+                const firstView = views[0];
+                if (firstView) {
+                    firstView.refreshTimeline();
+                }
+            }
+            
             this.refreshTimeout = null;
         }, delayMs);
     }

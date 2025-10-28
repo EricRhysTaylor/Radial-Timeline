@@ -44,6 +44,9 @@ export function renderGossamerLayer(
   
   // Build a map of beat statuses for rendering (use exact beat names)
   const beatStatusMap = new Map(run.beats.map(b => [b.beat, b.status]));
+  
+  // Build a map of out-of-range beats (for thicker red spokes)
+  const outOfRangeBeats = new Set(run.beats.filter(b => b.isOutOfRange).map(b => b.beat));
 
   // Get selected beat model from plugin settings (passed through run meta if needed)
   const selectedBeatModel = run?.meta?.model;
@@ -111,13 +114,65 @@ export function renderGossamerLayer(
       
       // Gossamer1 dots: use max publish stage color (hover CSS will add stroke effect)
       dots.push(`<circle class="rt-gossamer-dot${isMissingData ? ' rt-gossamer-missing-data' : ''}" cx="${fmt(x)}" cy="${fmt(y)}" r="${dotRadius}" fill="${stageColor}" ${data}></circle>`);
-      // Spoke from inner to the beginning of the beat slice (or outer radius if not specified)
+      
+      // Spoke rendering with range deviation segments
       const spokeEnd = spokeEndRadius ?? outerRadius;
       const sx1 = innerRadius * Math.cos(angle);
       const sy1 = innerRadius * Math.sin(angle);
       const sx2 = spokeEnd * Math.cos(angle);
       const sy2 = spokeEnd * Math.sin(angle);
-      spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`); // Use CSS variable for spoke color instead of inline style
+      
+      // Base spoke: render thin spoke from inner to outer (rendered FIRST, behind range segments)
+      spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`);
+      
+      // Range deviation segment: thick colored segment between score and range boundary
+      // Render AFTER base spoke so it appears on top
+      const beatData = run.beats.find(b => b.beat === name);
+      if (beatData?.range && typeof score === 'number') {
+        const range = beatData.range;
+        const scoreRadius = mapScoreToRadius(score, innerRadius, outerRadius);
+        
+        // Determine if score is in-range or out-of-range
+        const isInRange = score >= range.min && score <= range.max;
+        
+        // Calculate deviation segment endpoints
+        let segmentStart: number;
+        let segmentEnd: number;
+        
+        if (isInRange) {
+          // Score is within range: show green segment from score to nearest range boundary
+          // Find closest boundary (min or max)
+          const distToMin = Math.abs(score - range.min);
+          const distToMax = Math.abs(score - range.max);
+          const targetBoundary = distToMin < distToMax ? range.min : range.max;
+          
+          segmentStart = scoreRadius;
+          segmentEnd = mapScoreToRadius(targetBoundary, innerRadius, outerRadius);
+        } else {
+          // Score is out of range: show red segment from score to violated boundary
+          if (score < range.min) {
+            // Too low: segment from score to range.min
+            segmentStart = scoreRadius;
+            segmentEnd = mapScoreToRadius(range.min, innerRadius, outerRadius);
+          } else {
+            // Too high: segment from score to range.max
+            segmentStart = scoreRadius;
+            segmentEnd = mapScoreToRadius(range.max, innerRadius, outerRadius);
+          }
+        }
+        
+        // Calculate segment coordinates
+        const segX1 = segmentStart * Math.cos(angle);
+        const segY1 = segmentStart * Math.sin(angle);
+        const segX2 = segmentEnd * Math.cos(angle);
+        const segY2 = segmentEnd * Math.sin(angle);
+        
+        // Add thick colored segment with muted colors (on top of base spoke)
+        const segmentColor = isInRange ? '#009900' : '#990000';
+        const segmentClass = isInRange ? 'rt-gossamer-range-segment rt-in-range' : 'rt-gossamer-range-segment rt-out-of-range';
+        
+        spokes.push(`<line class="${segmentClass}" data-beat="${escapeAttr(name)}" x1="${fmt(segX1)}" y1="${fmt(segY1)}" x2="${fmt(segX2)}" y2="${fmt(segY2)}" stroke="${segmentColor}" stroke-width="3"/>`);
+      }
       
       // Build beat slice outline if we have slice info
       if (beatSlicesByName) {

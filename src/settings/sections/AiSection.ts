@@ -65,7 +65,7 @@ export function renderAiSection(params: {
     // Single model picker
     const modelPickerSetting = new Settings(containerEl)
         .setName('Model')
-        .setDesc('Pick the model you prefer for writing tasks.')
+        .setDesc('Pick preferred model for advanced writing analysis.')
         .addDropdown(dropdown => {
             type ModelChoice = { id: string; label: string; provider: Provider; model: string };
             const choices: ModelChoice[] = [
@@ -146,7 +146,7 @@ export function renderAiSection(params: {
         .setDesc((() => {
             const frag = document.createDocumentFragment();
             const span = document.createElement('span');
-            span.textContent = 'Your Gemini API key for using Google’s Gemini models. ';
+            span.textContent = 'Your Gemini API key for using Google Gemini models. Required for Gossamer mode. ';
             const link = document.createElement('a');
             link.href = 'https://aistudio.google.com';
             link.textContent = 'Get key';

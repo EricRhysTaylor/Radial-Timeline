@@ -52,6 +52,7 @@ Class: Beat
 Act: 1
 Description: [Beat description]
 Beat Model: ${this.beatSystem}
+Range: [Ideal momentum range]
 Gossamer1:
 ---`;
 
@@ -67,18 +68,6 @@ Gossamer1:
     const locationLabel = locationInfo.createEl('strong');
     locationLabel.textContent = 'Location:';
     locationInfo.appendText(` ${locationText}`);
-
-    // Warning
-    const warningEl = contentEl.createDiv('rt-plot-templates-warning');
-    warningEl.style.color = 'var(--text-warning)'; // SAFE: inline style used for modal layout
-    warningEl.style.padding = '12px'; // SAFE: inline style used for modal layout
-    warningEl.style.backgroundColor = 'rgba(230, 126, 34, 0.1)'; // SAFE: inline style used for modal layout
-    warningEl.style.borderRadius = '4px'; // SAFE: inline style used for modal layout
-    warningEl.style.marginBottom = '20px'; // SAFE: inline style used for modal layout
-    
-    const warningLabel = warningEl.createEl('strong');
-    warningLabel.textContent = '⚠️ Note:';
-    warningEl.appendText(' If Beat notes with these names already exist, they will NOT be overwritten.');
 
     // Buttons
     const buttonContainer = contentEl.createDiv('rt-plot-templates-buttons');

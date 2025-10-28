@@ -5,7 +5,11 @@ import type RadialTimelinePlugin from './main';
 import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, shiftGossamerHistory, extractBeatOrder } from './utils/gossamer';
 import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
+import { GossamerProcessingModal, type ManuscriptInfo } from './modals/GossamerProcessingModal';
 import { TimelineMode } from './modes/ModeDefinition';
+import { assembleManuscript } from './utils/manuscript';
+import { buildGossamerAnalysisPrompt, getGossamerAnalysisJsonSchema, type BeatWithRange } from './ai/prompts/gossamerAnalysis';
+import { callGeminiApi } from './api/geminiApi';
 
 // Helper to find Beat note by beat title (prefers Beat over Plot)
 function findBeatNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile | null {
@@ -464,6 +468,537 @@ function getInteractionMode(view: unknown): 'allscenes' | 'mainplot' | 'gossamer
   }
   return undefined;
 }
+
+/**
+ * Run Gemini AI analysis of manuscript momentum across story beats
+ */
+export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promise<void> {
+  // Define the actual processing function
+  const processAnalysis = async (modal: GossamerProcessingModal) => {
+    try {
+      modal.setStatus('Validating configuration...');
+      
+      // Check if Gemini API key is configured
+      if (!plugin.settings.geminiApiKey || plugin.settings.geminiApiKey.trim() === '') {
+        modal.addError('Gemini API key not configured. Go to Settings → AI → Gemini API key.');
+        modal.completeProcessing(false, 'Configuration error');
+        new Notice('Gemini API key not configured. Go to Settings → AI → Gemini API key.');
+        return;
+      }
+
+      // Get beat system from settings
+      const beatSystem = plugin.settings.beatSystem || 'Save The Cat';
+      
+      modal.setStatus('Loading story beats...');
+      
+      // Get all beat notes
+      const scenes = await plugin.getSceneData();
+      const plotBeats = scenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
+      
+      if (plotBeats.length === 0) {
+        modal.addError('No story beats found. Create notes with frontmatter "Class: Beat".');
+        modal.completeProcessing(false, 'No beats found');
+        new Notice('No story beats found. Create notes with frontmatter "Class: Beat".');
+        return;
+      }
+
+      // Build beat list with ranges and previous scores/justifications
+      const beats: BeatWithRange[] = plotBeats
+      .sort((a, b) => {
+        const aMatch = (a.title || '').match(/^(\d+(?:\.\d+)?)/);
+        const bMatch = (b.title || '').match(/^(\d+(?:\.\d+)?)/);
+        const aNum = aMatch ? parseFloat(aMatch[1]) : 0;
+        const bNum = bMatch ? parseFloat(bMatch[1]) : 0;
+        return aNum - bNum;
+      })
+      .map((beat, index) => {
+        const beatData = beat as any; // SAFE: Dynamic access to Gossamer and Range fields
+        
+        // Get cache for this beat note to read Range field
+        const file = this.app.vault.getAbstractFileByPath(beat.path || '');
+        const cache = file ? this.app.metadataCache.getFileCache(file as any) : null;
+        const fm = cache?.frontmatter;
+        
+        // Read Range field directly from metadata cache
+        const rangeValue = (typeof fm?.Range === 'string' ? fm.Range : '0-100');
+        
+        return {
+          beatName: (beat.title || 'Unknown Beat').replace(/^\d+\s+/, ''),
+          beatNumber: index + 1,
+          idealRange: rangeValue,
+          previousScore: typeof beatData.Gossamer1 === 'number' ? beatData.Gossamer1 : undefined,
+          previousJustification: typeof beatData['Gossamer1 Justification'] === 'string' 
+            ? beatData['Gossamer1 Justification'] 
+            : undefined
+        };
+      });
+
+    modal.setStatus('Assembling manuscript...');
+
+    // Get all scenes
+    const allScenes = await plugin.getSceneData();
+    const uniquePaths = new Set<string>();
+    const uniqueScenes = allScenes.filter(s => {
+      if (s.itemType === 'Scene' && s.path && !uniquePaths.has(s.path)) {
+        uniquePaths.add(s.path);
+        return true;
+      }
+      return false;
+    });
+
+    const sceneFiles = uniqueScenes
+      .map(s => plugin.app.vault.getAbstractFileByPath(s.path!))
+      .filter((f): f is TFile => f instanceof TFile);
+
+    if (sceneFiles.length === 0) {
+      modal.addError('No scenes found in source path.');
+      modal.completeProcessing(false, 'No scenes found');
+      new Notice('No scenes found in source path.');
+      return;
+    }
+
+    // Assemble manuscript
+    const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault);
+
+    if (!manuscript.text || manuscript.text.trim().length === 0) {
+      modal.addError('Manuscript is empty. Check that your scene files have content.');
+      modal.completeProcessing(false, 'Empty manuscript');
+      new Notice('Manuscript is empty. Check that your scene files have content.');
+      return;
+    }
+
+    // Estimate tokens (rough: ~4 characters per token)
+    const estimatedTokens = Math.ceil(manuscript.text.length / 4);
+    
+    // Update modal with manuscript info
+    const manuscriptInfo: ManuscriptInfo = {
+      totalScenes: manuscript.totalScenes,
+      totalWords: manuscript.totalWords,
+      estimatedTokens: estimatedTokens,
+      beatCount: beats.length
+    };
+    modal.setManuscriptInfo(manuscriptInfo);
+
+    // Build prompt
+    modal.setStatus('Building analysis prompt...');
+    const prompt = buildGossamerAnalysisPrompt(manuscript.text, beats, beatSystem);
+    const schema = getGossamerAnalysisJsonSchema();
+
+    // Call Gemini API
+    modal.setStatus('Sending manuscript to Gemini API...');
+    modal.apiCallStarted();
+    
+    const result = await callGeminiApi(
+      plugin.settings.geminiApiKey,
+      plugin.settings.geminiModelId || 'gemini-2.0-flash-exp',
+      null, // No system prompt - instructions in user prompt
+      prompt,
+      8000, // Max tokens for response
+      0.7, // Temperature
+      schema
+    );
+
+    if (!result.success || !result.content) {
+      modal.apiCallError(result.error || 'Failed to get response from Gemini');
+      modal.completeProcessing(false, 'API call failed');
+      
+      // Check for rate limit
+      if (result.error?.toLowerCase().includes('rate limit')) {
+        modal.showRateLimitWarning();
+      }
+      
+      throw new Error(result.error || 'Failed to get response from Gemini');
+    }
+
+    modal.apiCallSuccess();
+    modal.setStatus('Parsing AI response...');
+
+    // Parse response
+    interface GossamerBeatAnalysis {
+      beatName: string;
+      momentumScore: number;
+      idealRange: string;
+      isWithinRange: boolean;
+      justification: string;
+    }
+
+    interface GossamerAnalysisResponse {
+      beats: GossamerBeatAnalysis[];
+      overallAssessment: {
+        summary: string;
+        strengths: string[];
+        improvements: string[];
+      };
+    }
+
+    const analysis: GossamerAnalysisResponse = JSON.parse(result.content);
+
+    // Save scores AND analysis to beat notes (similar to Scene Analysis triplets)
+    modal.setStatus('Saving momentum scores and analysis to beat notes...');
+    
+    const files = plugin.app.vault.getMarkdownFiles();
+    let updateCount = 0;
+    const unmatchedBeats: string[] = [];
+
+    // Match beats by index - Gemini returns them in the same order they were sent
+    for (let i = 0; i < analysis.beats.length; i++) {
+      const beat = analysis.beats[i];
+      const matchingBeat = plotBeats[i]; // Direct index match - no searching needed!
+
+      if (!matchingBeat) {
+        unmatchedBeats.push(beat.beatName);
+        console.warn(`[Gossamer AI] No beat note at index ${i} for: ${beat.beatName}`);
+        continue;
+      }
+
+      console.log(`[Gossamer AI] Matched "${beat.beatName}" to beat note: "${matchingBeat.title}" (${matchingBeat.path})`);
+
+      // Use the file path from the matched beat
+      const file = matchingBeat.path ? plugin.app.vault.getAbstractFileByPath(matchingBeat.path) : null;
+      if (!file || !(file instanceof TFile)) {
+        unmatchedBeats.push(beat.beatName);
+        console.warn(`[Gossamer AI] File not found for beat: ${matchingBeat.title} at ${matchingBeat.path}`);
+        continue;
+      }
+
+      console.log(`[Gossamer AI] Saving score ${beat.momentumScore} to: ${file.path}`);
+
+      // Update beat note with score and justification (history shifts automatically)
+      await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
+        const fm = yaml as Record<string, any>;
+        
+        // Shift Gossamer history down (Gossamer1 → Gossamer2, etc.)
+        // This also shifts justifications
+        const shifted = shiftGossamerHistory(fm);
+        Object.assign(fm, shifted);
+        
+        // Set new score and justification
+        fm.Gossamer1 = beat.momentumScore;
+        fm['Gossamer1 Justification'] = beat.justification;
+        
+        // Add timestamp and model info
+        const now = new Date();
+        const timestamp = now.toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+        const modelId = plugin.settings.geminiModelId || 'gemini-2.0-flash-exp';
+        fm['Gossamer Last Updated'] = `${timestamp} by ${modelId}`;
+      });
+      
+      updateCount++;
+    }
+    
+    // Log unmatched beats
+    if (unmatchedBeats.length > 0) {
+      console.warn(`[Gossamer AI] Unmatched beats (${unmatchedBeats.length}):`, unmatchedBeats);
+      modal.addError(`Could not match ${unmatchedBeats.length} beat(s): ${unmatchedBeats.join(', ')}`);
+    }
+
+    // Create analysis report (structured like Scene Analysis - summary then raw data)
+    modal.setStatus('Generating analysis report...');
+    
+    const reportTimestamp = new Date();
+    const timestamp = reportTimestamp.toLocaleString();
+    
+    const reportLines: string[] = [
+      `# Gossamer Momentum Analysis Report`,
+      ``,
+      `**Date:** ${timestamp}`,
+      `**Beat System:** ${beatSystem}`,
+      `**Model:** ${plugin.settings.geminiModelId || 'gemini-2.0-flash-exp'}`,
+      `**Manuscript:** ${manuscript.totalScenes} scenes, ${manuscript.totalWords.toLocaleString()} words`,
+      `**Beats Updated:** ${updateCount} of ${analysis.beats.length}`,
+      ``,
+      `---`,
+      ``,
+      `## Summary`,
+      ``,
+      analysis.overallAssessment.summary,
+      ``,
+      `**Strengths:**`,
+      ...analysis.overallAssessment.strengths.map(s => `- ${s}`),
+      ``,
+      `**Improvements:**`,
+      ...analysis.overallAssessment.improvements.map(i => `- ${i}`),
+      ``,
+    ];
+    
+    // Add unmatched beats warning if any
+    if (unmatchedBeats.length > 0) {
+      reportLines.push(`**⚠️ Unmatched Beats:** ${unmatchedBeats.length} beat(s) could not be matched to notes: ${unmatchedBeats.join(', ')}`);
+      reportLines.push(``);
+    }
+    
+    // Add quick scores summary table
+    reportLines.push(`**Beat Scores:**`);
+    reportLines.push(``);
+    reportLines.push(`| Beat | Score | Range | Status |`);
+    reportLines.push(`|------|-------|-------|--------|`);
+    for (const beat of analysis.beats) {
+      const status = beat.isWithinRange ? '✓' : '⚠️';
+      reportLines.push(`| ${beat.beatName} | ${beat.momentumScore} | ${beat.idealRange} | ${status} |`);
+    }
+    reportLines.push(``);
+    
+    // Add technical details section with actual JSON sent and received (for debugging)
+    reportLines.push(`---`);
+    reportLines.push(``);
+    reportLines.push(`## Debug Information`);
+    reportLines.push(``);
+    reportLines.push(`### Manuscript Scenes Sent`);
+    reportLines.push(``);
+    reportLines.push(`The following ${manuscript.totalScenes} scenes were assembled and sent to Gemini:`);
+    reportLines.push(``);
+    manuscript.scenes.forEach((scene, idx) => {
+      const wordCount = scene.wordCount || 0;
+      reportLines.push(`${idx + 1}. ${scene.title || 'Untitled Scene'} (${wordCount.toLocaleString()} words)`);
+    });
+    reportLines.push(``);
+    reportLines.push(`**Total Words:** ${manuscript.totalWords.toLocaleString()}`);
+    reportLines.push(``);
+    reportLines.push(`### Prompt Sent to Gemini`);
+    reportLines.push(``);
+    reportLines.push(`\`\`\`markdown`);
+    reportLines.push(prompt);
+    reportLines.push(`\`\`\``);
+    reportLines.push(``);
+    reportLines.push(`### JSON Response Received from Gemini`);
+    reportLines.push(``);
+    reportLines.push(`\`\`\`json`);
+    reportLines.push(result.content || ''); // Raw JSON string from API
+    reportLines.push(`\`\`\``);
+    reportLines.push(``);
+
+    // Save report to AI folder (only if logging is enabled)
+    let reportFile: TFile | undefined;
+    if (plugin.settings.logApiInteractions) {
+      const reportDate = new Date();
+      const dateStr = reportDate.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+      const timeStr = reportDate.toLocaleTimeString(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }).replace(/:/g, '.');
+
+      const reportPath = `AI/Gossamer Analysis ${dateStr} ${timeStr}.md`;
+
+      try {
+        await plugin.app.vault.createFolder('AI');
+      } catch (e) {
+        // Folder might already exist
+      }
+
+      reportFile = await plugin.app.vault.create(reportPath, reportLines.join('\n'));
+      console.log(`[Gossamer AI] Report saved to: ${reportPath}`);
+      
+      // Open the report
+      const leaf = plugin.app.workspace.getLeaf('tab');
+      await leaf.openFile(reportFile);
+    }
+
+    const logMessage = plugin.settings.logApiInteractions
+      ? `✓ Updated ${updateCount} beats with Gemini momentum scores. Report saved to AI folder (includes full manuscript).`
+      : `✓ Updated ${updateCount} beats with Gemini momentum scores. (Logging disabled - no report saved)`;
+
+    modal.completeProcessing(true, `✓ Successfully updated ${updateCount} beats with momentum scores`);
+    new Notice(logMessage);
+
+    } catch (e) {
+      const errorMsg = (e as Error)?.message || 'Unknown error';
+      modal.addError(`Processing failed: ${errorMsg}`);
+      modal.completeProcessing(false, 'Processing failed');
+      new Notice(`Failed to run Gossamer AI analysis: ${errorMsg}`);
+      console.error('[Gossamer AI]', e);
+    }
+  };
+
+  // Pre-gather manuscript info for confirmation view
+  try {
+    // Get scenes and beats to show in confirmation
+    const scenes = await plugin.getSceneData();
+    const plotBeats = scenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
+    
+    // Get all scenes for manuscript assembly preview
+    const allScenes = await plugin.getSceneData();
+    const uniquePaths = new Set<string>();
+    const uniqueScenes = allScenes.filter(s => {
+      if (s.itemType === 'Scene' && s.path && !uniquePaths.has(s.path)) {
+        uniquePaths.add(s.path);
+        return true;
+      }
+      return false;
+    });
+
+    const sceneFiles = uniqueScenes
+      .map(s => plugin.app.vault.getAbstractFileByPath(s.path!))
+      .filter((f): f is TFile => f instanceof TFile);
+
+    // Quick manuscript assembly to get stats
+    const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault);
+    const estimatedTokens = Math.ceil(manuscript.text.length / 4);
+    
+    // Check if any beats have previous justifications (for iterative refinement)
+    const beatsWithPreviousAnalysis = plotBeats.filter(beat => {
+      const beatData = beat as any;
+      return typeof beatData['Gossamer1 Justification'] === 'string' && beatData['Gossamer1 Justification'].trim().length > 0;
+    }).length;
+    
+    const manuscriptInfo: ManuscriptInfo = {
+      totalScenes: manuscript.totalScenes,
+      totalWords: manuscript.totalWords,
+      estimatedTokens: estimatedTokens,
+      beatCount: plotBeats.length,
+      hasIterativeContext: beatsWithPreviousAnalysis > 0
+    };
+
+    // Create modal with the processing callback
+    const modal = new GossamerProcessingModal(plugin.app, plugin, async () => {
+      await processAnalysis(modal);
+    });
+    
+    // Set manuscript info in confirmation view before opening
+    modal.open();
+    modal.setManuscriptInfo(manuscriptInfo);
+    
+  } catch (e) {
+    const errorMsg = (e as Error)?.message || 'Unknown error';
+    new Notice(`Failed to prepare Gossamer analysis: ${errorMsg}`);
+    console.error('[Gossamer AI Pre-check]', e);
+  }
+}
+
+/**
+ * Create detailed processing log similar to scene analysis logs
+ */
+async function createGossamerProcessingLog(
+  plugin: RadialTimelinePlugin,
+  manuscriptInfo: ManuscriptInfo,
+  beatSystem: string,
+  analysis: any, // SAFE: any type used for parsed Gemini JSON response with dynamic beat analysis structure
+  updateCount: number,
+  apiResult: any, // SAFE: any type used for Gemini API result with optional rate limit metadata
+  prompt: string,
+  beats: BeatWithRange[],
+  unmatchedBeats: string[]
+): Promise<void> {
+  const now = new Date();
+  const timestamp = now.toLocaleString();
+  
+  const logLines: string[] = [
+    `# Gossamer AI Processing Log`,
+    ``,
+    `**Timestamp:** ${timestamp}`,
+    `**Beat System:** ${beatSystem}`,
+    ``,
+    `## Manuscript Details`,
+    ``,
+    `- **Total Scenes:** ${manuscriptInfo.totalScenes}`,
+    `- **Total Words:** ${manuscriptInfo.totalWords.toLocaleString()}`,
+    `- **Estimated Tokens:** ~${manuscriptInfo.estimatedTokens.toLocaleString()}`,
+    `- **Story Beats:** ${manuscriptInfo.beatCount}`,
+    ``,
+    `## API Details`,
+    ``,
+    `- **Provider:** Gemini (Google)`,
+    `- **Model:** ${plugin.settings.geminiModelId || 'gemini-2.0-flash-exp'}`,
+    `- **Temperature:** 0.7`,
+    `- **Max Output Tokens:** 8000`,
+    ``,
+    `## Processing Results`,
+    ``,
+    `- **Status:** ${apiResult.success ? '✓ Success' : '✗ Failed'}`,
+    `- **Beats Updated:** ${updateCount}`,
+    `- **Beats Analyzed:** ${analysis.beats?.length || 0}`,
+    ``
+  ];
+  
+  // Add unmatched beats if any
+  if (unmatchedBeats.length > 0) {
+    logLines.push(`- **Unmatched Beats:** ${unmatchedBeats.length} (${unmatchedBeats.join(', ')})`);
+    logLines.push(``);
+  }
+
+  // Add rate limit info if available
+  if (apiResult.rateLimitInfo) {
+    logLines.push(`## Rate Limit Information`, ``);
+    if (apiResult.rateLimitInfo.requestsRemaining !== undefined) {
+      logLines.push(`- **Requests Remaining:** ${apiResult.rateLimitInfo.requestsRemaining}`);
+    }
+    if (apiResult.rateLimitInfo.tokensRemaining !== undefined) {
+      logLines.push(`- **Tokens Remaining:** ${apiResult.rateLimitInfo.tokensRemaining}`);
+    }
+    logLines.push(``);
+  }
+
+  // Add beat-by-beat scores
+  if (analysis.beats && analysis.beats.length > 0) {
+    logLines.push(`## Beat Scores`, ``);
+    logLines.push(`| Beat | Score | Ideal Range | Status |`);
+    logLines.push(`|------|-------|-------------|--------|`);
+    
+    for (const beat of analysis.beats) {
+      const status = beat.isWithinRange ? '✓ In range' : '⚠️ Out of range';
+      logLines.push(`| ${beat.beatName} | ${beat.momentumScore} | ${beat.idealRange} | ${status} |`);
+    }
+    logLines.push(``);
+  }
+  
+  // Add technical details with prompt and response (beat table removed - redundant with JSON)
+  logLines.push(`## Technical Details`, ``);
+  
+  logLines.push(`### Full Prompt Sent to Gemini`, ``);
+  logLines.push(`\`\`\`markdown`);
+  logLines.push(prompt);
+  logLines.push(`\`\`\``);
+  logLines.push(``);
+  
+  logLines.push(`### JSON Response from Gemini`, ``);
+  logLines.push(`\`\`\`json`);
+  logLines.push(JSON.stringify(analysis, null, 2));
+  logLines.push(`\`\`\``);
+  logLines.push(``);
+
+  // Add error details if any
+  if (!apiResult.success && apiResult.error) {
+    logLines.push(`## Errors`, ``);
+    logLines.push('```');
+    logLines.push(apiResult.error);
+    logLines.push('```');
+    logLines.push(``);
+  }
+
+  // Save log to AI folder
+  const dateStr = now.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+  const timeStr = now.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).replace(/:/g, '.');
+
+  const logPath = `AI/Gossamer Processing Log ${dateStr} ${timeStr}.md`;
+
+  try {
+    await plugin.app.vault.createFolder('AI');
+  } catch (e) {
+    // Folder might already exist
+  }
+
+  await plugin.app.vault.create(logPath, logLines.join('\n'));
+}
+
 
 
 
