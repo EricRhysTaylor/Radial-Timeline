@@ -90,6 +90,21 @@ function createModeSelectorGrid(): SVGGElement {
         grid.appendChild(optionGroup);
     });
     
+    // Add mode title text above the first icon
+    const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    titleText.setAttribute('class', 'rt-mode-title-text');
+    titleText.setAttribute('x', String(startX));
+    titleText.setAttribute('y', String(POS_Y - 30));
+    titleText.setAttribute('text-anchor', 'start');
+    titleText.setAttribute('dominant-baseline', 'baseline');
+    titleText.setAttribute('id', 'mode-title');
+    // Set initial text content to first mode
+    if (MODE_OPTIONS.length > 0) {
+        titleText.textContent = MODE_OPTIONS[0].label;
+    }
+    
+    grid.appendChild(titleText);
+    
     return grid;
 }
 
@@ -97,18 +112,26 @@ function createModeSelectorGrid(): SVGGElement {
  * Switch to the specified mode
  */
 async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: SVGGElement): Promise<void> {
+    // Update UI immediately for instant visual feedback
+    updateModeSelectorState(modeSelector, modeId);
+    
     const modeManager = view.getModeManager?.();
     
     if (modeManager) {
         await modeManager.switchMode(modeId as TimelineMode as any);
     } else {
+        // Fallback: try direct refresh first, then debounced
         view.plugin.settings.currentMode = modeId;
         await view.plugin.saveSettings();
         resetGossamerModeState();
-        view.plugin.refreshTimelineIfNeeded(null);
+        
+        // Use direct refresh if available (bypasses 400ms debounce)
+        if (typeof (view as any).refreshTimeline === 'function') {
+            (view as any).refreshTimeline();
+        } else {
+            view.plugin.refreshTimelineIfNeeded(null);
+        }
     }
-    
-    updateModeSelectorState(modeSelector, modeId);
 }
 
 /**
@@ -146,6 +169,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         
         const bg = modeElement.querySelector('.rt-document-bg') as SVGElement;
         const text = modeElement.querySelector('.rt-mode-acronym-text') as SVGElement;
+        const numberLabel = modeElement.querySelector('.rt-mode-number-label') as SVGElement;
         
         const finalX = positions[index] + offset;
         
@@ -154,13 +178,27 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             modeElement.classList.add('rt-mode-current');
             bg.classList.add('rt-active');
             text.classList.add('rt-active');
+            if (numberLabel) numberLabel.classList.add('rt-active');
         } else {
             modeElement.setAttribute('transform', `translate(${finalX}, ${POS_Y}) scale(${MIN_SCALE})`);
             modeElement.classList.remove('rt-mode-current');
             bg.classList.remove('rt-active');
             text.classList.remove('rt-active');
+            if (numberLabel) numberLabel.classList.remove('rt-active');
         }
     });
+    
+    // Update mode title text position and content
+    const titleText = modeSelector.querySelector('#mode-title') as SVGTextElement;
+    if (titleText) {
+        if (activeIndex >= 0) {
+            titleText.textContent = MODE_OPTIONS[activeIndex].label;
+        }
+        // Position the title above the first icon (index 0)
+        const firstIconX = positions[0] + offset;
+        titleText.setAttribute('x', String(firstIconX));
+        titleText.setAttribute('y', String(POS_Y - 30));
+    }
 }
 
 /**
@@ -188,6 +226,12 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
     
     // Register keyboard shortcuts (1, 2, 3, 4)
     const handleKeyPress = async (e: KeyboardEvent) => {
+        // Only handle shortcuts when the radial timeline is the active view
+        const activeView = (view as any).app?.workspace?.activeLeaf?.view;
+        if (activeView !== view) {
+            return; // Different view is active, don't intercept
+        }
+        
         const key = parseInt(e.key);
         if (key >= 1 && key <= 4 && key <= MODE_OPTIONS.length) {
             e.preventDefault();

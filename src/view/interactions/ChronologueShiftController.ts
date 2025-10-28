@@ -8,6 +8,14 @@ import { Scene } from '../../main';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
 
+// Shift button scale constants (adjustable values)
+const SHIFT_BUTTON_BASE_SCALE = 0.8; // Base/inactive scale for the shift button
+const SHIFT_BUTTON_ACTIVE_SCALE = SHIFT_BUTTON_BASE_SCALE * 1.2; // Active scale (20% larger)
+
+// Shift button positioning constants
+const SHIFT_BUTTON_POS_Y = -750; // Same y-axis as mode pages
+const SHIFT_BUTTON_POS_X = -700; // Left side position
+
 export interface ChronologueShiftView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
     plugin: {
@@ -66,12 +74,24 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     
     // Keyboard event handlers for Shift and Caps Lock
     const handleKeyDown = (e: KeyboardEvent) => {
+        // Only handle when radial timeline is active and in chronologue mode
+        const activeView = (view as any).app?.workspace?.activeLeaf?.view;
+        if (activeView !== view || view.currentMode !== 'chronologue') {
+            return;
+        }
+        
         if (e.key === 'Shift' || e.key === 'CapsLock') {
             activateShiftMode();
         }
     };
     
     const handleKeyUp = (e: KeyboardEvent) => {
+        // Only handle when radial timeline is active and in chronologue mode
+        const activeView = (view as any).app?.workspace?.activeLeaf?.view;
+        if (activeView !== view || view.currentMode !== 'chronologue') {
+            return;
+        }
+        
         if (e.key === 'Shift') {
             deactivateShiftMode();
         }
@@ -156,12 +176,7 @@ function createShiftButton(): SVGGElement {
     button.setAttribute('class', 'rt-shift-mode-button');
     button.setAttribute('id', 'shift-mode-toggle');
     
-    // Position on left side, same y-axis as mode pages
-    const POS_Y = -750; // Same as user specified
-    const POS_X = -700; // Left side
-    const SCALE = 0.6; // Same scale as active mode page
-    
-    button.setAttribute('transform', `translate(${POS_X}, ${POS_Y}) scale(${SCALE})`);
+    button.setAttribute('transform', `translate(${SHIFT_BUTTON_POS_X}, ${SHIFT_BUTTON_POS_Y}) scale(${SHIFT_BUTTON_BASE_SCALE})`);
     
     // Create path element
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -205,14 +220,14 @@ function updateShiftButtonState(button: SVGGElement, active: boolean): void {
     
     if (active) {
         // Scale up when active (like mode pages)
-        button.setAttribute('transform', `${baseTransform} scale(0.72)`); // 0.6 * 1.2 = 0.72
+        button.setAttribute('transform', `${baseTransform} scale(${SHIFT_BUTTON_ACTIVE_SCALE})`);
         bg.setAttribute('fill', 'var(--interactive-accent)');
         bg.setAttribute('stroke', 'var(--text-normal)');
         text.setAttribute('fill', 'var(--text-on-accent)');
         button.classList.add('rt-shift-mode-active');
     } else {
         // Normal scale when inactive
-        button.setAttribute('transform', `${baseTransform} scale(0.6)`);
+        button.setAttribute('transform', `${baseTransform} scale(${SHIFT_BUTTON_BASE_SCALE})`);
         bg.setAttribute('fill', 'var(--interactive-normal)');
         bg.setAttribute('stroke', 'var(--text-normal)');
         text.setAttribute('fill', 'var(--text-normal)');
