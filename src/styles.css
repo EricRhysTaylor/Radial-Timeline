@@ -193,11 +193,13 @@
   font-weight: 500;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  pointer-events: none;
+  pointer-events: all;
+  cursor: pointer;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 /* Hover: emphasize story beat titles with a solid black background using stroke */
+.radial-timeline-container .rt-plot-title:hover,
 .radial-timeline-container .rt-scene-group.beats:hover .rt-plot-title,
 .rt-scene-group.rt-gossamer-hover .rt-plot-title,
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats:hover .rt-plot-title,
@@ -337,6 +339,28 @@
   pointer-events: none; /* Spokes don't have their own hover, only respond to dot/slice hover */
   cursor: default;
 }
+
+/* Ideal range segment - colored segment showing acceptable range */
+.rt-gossamer-ideal-range {
+  stroke-width: 6px;
+  opacity: 1;
+  pointer-events: none;
+  cursor: default;
+}
+
+/* Range boundary values - numbers showing min/max range values with white stroke */
+.rt-gossamer-range-value {
+  font-size: 14px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  cursor: default;
+  font-weight: 600;
+  stroke: white;
+  stroke-width: 7px;
+  paint-order: stroke fill;
+}
+
 .rt-gossamer-range-segment {
   stroke-width: 6px; /* Thick segment for range deviation */
   pointer-events: none;
@@ -346,8 +370,16 @@
   stroke: #00AA00; /* Muted green for scores within ideal range */
   opacity: 0.8;
 }
+.rt-gossamer-range-segment.rt-above-range {
+  stroke: #CC00CC; /* Magenta for scores above range (exciting/strong start!) */
+  opacity: 0.8;
+}
+.rt-gossamer-range-segment.rt-below-range {
+  stroke: #AA0000; /* Muted red for scores below ideal range (slow/boring) */
+  opacity: 0.8;
+}
 .rt-gossamer-range-segment.rt-out-of-range {
-  stroke: #AA0000; /* Muted red for scores outside ideal range */
+  stroke: #AA0000; /* Legacy fallback - deprecated in favor of above/below specific classes */
   opacity: 0.8;
 }
 .rt-gossamer-spoke.rt-gossamer-spoke-hover {
@@ -1619,31 +1651,48 @@
   font-weight: 500;
 }
 
-.rt-gossamer-spinner-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  margin-bottom: 20px;
+/* Gossamer Progress Bar (animated like Scene Analysis) */
+.rt-gossamer-progress-container {
+  margin: 20px 0;
 }
 
-.rt-gossamer-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid var(--background-modifier-border);
-  border-top-color: var(--interactive-accent);
-  border-radius: 50%;
-  opacity: 0;
-  transition: opacity 0.3s;
+.rt-gossamer-progress-bg {
+  width: 100%;
+  height: 24px;
+  background-color: var(--background-secondary);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
 }
 
-.rt-gossamer-spinner.rt-spinner-active {
-  opacity: 1;
-  animation: rt-spin 1s linear infinite;
+.rt-gossamer-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--interactive-accent), var(--interactive-accent-hover));
+  border-radius: 12px;
+  transition: width 0.5s ease;
+  position: relative;
+  width: var(--progress-width, 0%);
 }
 
-@keyframes rt-spin {
-  to { transform: rotate(360deg); }
+.rt-gossamer-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent
+  );
+  animation: progress-shine 2s infinite;
+}
+
+/* Pause animation when processing is complete */
+.rt-gossamer-progress-bar.rt-progress-complete::after {
+  animation: none;
 }
 
 .rt-gossamer-status-text {
@@ -1675,6 +1724,147 @@
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+}
+
+/* Beat Placement Modal */
+.rt-beat-placement-modal {
+  padding: 0;
+}
+
+.rt-beat-placement-modal .rt-beats-info {
+  margin: 6px 0 20px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.rt-beat-placement-modal .rt-manuscript-section {
+  margin-bottom: 20px;
+}
+
+.rt-beat-placement-modal .rt-manuscript-section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin: 0 0 10px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.rt-beat-placement-modal .rt-manuscript-details {
+  padding: 12px;
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+  border-left: 4px solid var(--interactive-accent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.rt-beat-placement-modal .rt-api-warning {
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: rgba(255, 165, 0, 0.1);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-normal);
+  line-height: 1.5;
+}
+
+.rt-beat-placement-modal .rt-modal-buttons {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.rt-beat-placement-modal .rt-status-text {
+  padding: 10px 12px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-normal);
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.rt-beat-placement-modal .rt-api-status {
+  padding: 10px 12px;
+  background-color: var(--background-secondary);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* Beat Placement Progress Bar (animated like Scene Analysis) */
+.rt-beat-placement-modal .rt-beat-placement-progress-container {
+  margin: 20px 0;
+}
+
+.rt-beat-placement-modal .rt-beat-placement-progress-bg {
+  width: 100%;
+  height: 24px;
+  background-color: var(--background-secondary);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.rt-beat-placement-modal .rt-beat-placement-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--interactive-accent), var(--interactive-accent-hover));
+  border-radius: 12px;
+  transition: width 0.5s ease;
+  position: relative;
+  width: var(--progress-width, 0%);
+}
+
+.rt-beat-placement-modal .rt-beat-placement-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent
+  );
+  animation: progress-shine 2s infinite;
+}
+
+/* Pause animation when processing is complete */
+.rt-beat-placement-modal .rt-beat-placement-progress-bar.rt-progress-complete::after {
+  animation: none;
+}
+
+.rt-beat-placement-modal .rt-error-list {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: rgba(255, 0, 0, 0.05);
+  border: 1px solid rgba(255, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.rt-beat-placement-modal .rt-error-item {
+  font-size: 13px;
+  color: var(--text-error);
+  margin-bottom: 6px;
+}
+
+.rt-beat-placement-modal .rt-error-item:last-child {
+  margin-bottom: 0;
 }
 
 /* Gossamer Assembly Modal */

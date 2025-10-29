@@ -32,7 +32,7 @@ export class GossamerProcessingModal extends Modal {
     private manuscriptInfoEl?: HTMLElement;
     private statusTextEl?: HTMLElement;
     private apiStatusEl?: HTMLElement;
-    private progressSpinnerEl?: HTMLElement;
+    private progressBarEl?: HTMLElement;
     private errorListEl?: HTMLElement;
     private closeButtonEl?: ButtonComponent;
     
@@ -103,9 +103,12 @@ export class GossamerProcessingModal extends Modal {
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-manuscript-info' });
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
         
-        // Warning section
-        const warningEl = contentEl.createDiv({ cls: 'rt-beats-warning' });
-        warningEl.setText('⚠️ This will send your full manuscript text to Google Gemini API. Ensure you have a valid API key configured in Settings → AI → Gemini API key.');
+        // Check if API key is configured
+        if (!this.plugin.settings.geminiApiKey) {
+            // Warning section for missing API key
+            const warningEl = contentEl.createDiv({ cls: 'rt-beats-warning' });
+            warningEl.setText('⚠️ Gemini API key not configured. Please set your API key in Settings → AI → Gemini API key.');
+        }
         
         // Action buttons
         const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
@@ -113,6 +116,7 @@ export class GossamerProcessingModal extends Modal {
         new ButtonComponent(buttonRow)
             .setButtonText('Begin Analysis')
             .setCta()
+            .setDisabled(!this.plugin.settings.geminiApiKey) // Disable if no API key
             .onClick(async () => {
                 await this.startProcessing();
             });
@@ -143,9 +147,14 @@ export class GossamerProcessingModal extends Modal {
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-manuscript-info' });
         this.manuscriptInfoEl.setText('Assembling manuscript...');
         
-        // Progress spinner
-        const spinnerContainer = contentEl.createDiv({ cls: 'rt-gossamer-spinner-container' });
-        this.progressSpinnerEl = spinnerContainer.createDiv({ cls: 'rt-gossamer-spinner' });
+        // Progress bar container (using Scene Analysis pattern)
+        const progressContainer = contentEl.createDiv({ cls: 'rt-gossamer-progress-container' });
+        
+        // Progress bar background
+        const progressBg = progressContainer.createDiv({ cls: 'rt-gossamer-progress-bg' });
+        this.progressBarEl = progressBg.createDiv({ cls: 'rt-gossamer-progress-bar' });
+        // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
+        this.progressBarEl.style.setProperty('--progress-width', '0%');
         
         // Status section
         const statusSection = contentEl.createDiv({ cls: 'rt-gossamer-status-section' });
@@ -238,8 +247,11 @@ export class GossamerProcessingModal extends Modal {
             }, 1000);
         }
         
-        if (this.progressSpinnerEl) {
-            this.progressSpinnerEl.addClass('rt-spinner-active');
+        // Animate progress bar to indicate activity (pulse between 10% and 90%)
+        if (this.progressBarEl) {
+            this.progressBarEl.addClass('rt-gossamer-progress-active');
+            // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
+            this.progressBarEl.style.setProperty('--progress-width', '50%');
         }
     }
     
@@ -291,8 +303,12 @@ export class GossamerProcessingModal extends Modal {
             this.apiStatusEl.setText(`✓ Response received (${elapsed}s)`);
         }
         
-        if (this.progressSpinnerEl) {
-            this.progressSpinnerEl.removeClass('rt-spinner-active');
+        // Complete the progress bar and pause animation
+        if (this.progressBarEl) {
+            this.progressBarEl.removeClass('rt-gossamer-progress-active');
+            this.progressBarEl.addClass('rt-progress-complete');
+            // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
+            this.progressBarEl.style.setProperty('--progress-width', '100%');
         }
     }
 
@@ -311,8 +327,12 @@ export class GossamerProcessingModal extends Modal {
             this.apiStatusEl.setText(`✗ API call failed`);
         }
         
-        if (this.progressSpinnerEl) {
-            this.progressSpinnerEl.removeClass('rt-spinner-active');
+        // Reset progress bar
+        if (this.progressBarEl) {
+            this.progressBarEl.removeClass('rt-gossamer-progress-active');
+            this.progressBarEl.addClass('rt-progress-complete');
+            // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
+            this.progressBarEl.style.setProperty('--progress-width', '0%');
         }
         
         this.addError(error);
@@ -345,8 +365,14 @@ export class GossamerProcessingModal extends Modal {
             this.statusTextEl.setText(message);
         }
         
-        if (this.progressSpinnerEl) {
-            this.progressSpinnerEl.removeClass('rt-spinner-active');
+        // Complete the progress bar and pause animation
+        if (this.progressBarEl) {
+            this.progressBarEl.removeClass('rt-gossamer-progress-active');
+            this.progressBarEl.addClass('rt-progress-complete');
+            if (success) {
+                // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
+                this.progressBarEl.style.setProperty('--progress-width', '100%');
+            }
         }
         
         if (this.closeButtonEl) {

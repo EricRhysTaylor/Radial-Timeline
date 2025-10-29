@@ -902,8 +902,14 @@ export default class SynopsisManager {
     if (!beatsText) {
       return 0;
     }
+    
     let lines: string[] = [];
-    if (beatsText.trim().includes('\n')) {
+    
+    // Performance optimization: Check if already contains newlines (most common case for YAML)
+    const hasNewlines = beatsText.includes('\n');
+    
+    if (hasNewlines) {
+      // Fast path: already formatted with newlines, just split
       lines = beatsText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     } else {
       const trimmedText = beatsText.trim();

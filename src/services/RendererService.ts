@@ -173,7 +173,8 @@ export class RendererService {
             minMax,
             outerRingInnerRadius,
             publishStageColorByBeat.size ? publishStageColorByBeat : undefined,
-            beatSlicesByName
+            beatSlicesByName,
+            view.plugin.settings?.publishStageColors
         );
 
         // Convert snippets to SVG nodes using DOMParser

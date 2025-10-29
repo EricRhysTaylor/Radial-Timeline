@@ -23,13 +23,22 @@ const MODE_OPTIONS = [
 // Positioning constants (adjustable values)
 const POS_X = 658; // Horizontal center position
 const POS_Y = -750; // Vertical position (200px from top)
-const ICON_VISUAL_WIDTH = 46; // Actual rendered width (92 * 0.5 scale)
-const ICON_VISUAL_GAP_INACTIVE = 4; // Gap between non-active icons
-const ICON_VISUAL_GAP_ACTIVE = 15; // Gap between active and non-active icons
+
+// Base SVG dimensions (source viewBox size)
 const ICON_WIDTH = 92; // Base width for SVG path
 const ICON_HEIGHT = 126; // Height of icon
-const MIN_SCALE = 0.5; // Scale for inactive icons
-const ACTIVE_SCALE = 0.6; // Base scale for active icon (before CSS 1.2x)
+
+// Target visual sizes (scale UP from smaller base to preserve stroke width)
+const INACTIVE_VISUAL_WIDTH = 46; // Target size for inactive icons
+const ACTIVE_VISUAL_WIDTH = 55; // Target size for active icon (before CSS 1.2x boost)
+
+// Calculate scale factors (scaling UP from base size)
+const MIN_SCALE = INACTIVE_VISUAL_WIDTH / ICON_WIDTH; // ~0.5 - inactive icons
+const ACTIVE_SCALE = ACTIVE_VISUAL_WIDTH / ICON_WIDTH; // ~0.598 - active icon base
+
+// Visual spacing
+const ICON_VISUAL_GAP_INACTIVE = 4; // Gap between non-active icons
+const ICON_VISUAL_GAP_ACTIVE = 15; // Gap between active and non-active icons
 
 /**
  * Create SVG path for document shape with folded corner
@@ -48,9 +57,9 @@ function createModeSelectorGrid(): SVGGElement {
     grid.setAttribute('id', 'mode-selector');
     
     // Initial positioning with inactive gaps (will be adjusted in updateState)
-    const spacePerIcon = ICON_VISUAL_WIDTH + ICON_VISUAL_GAP_INACTIVE;
-    const totalWidth = MODE_OPTIONS.length * ICON_VISUAL_WIDTH + (MODE_OPTIONS.length - 1) * ICON_VISUAL_GAP_INACTIVE;
-    const startX = POS_X - totalWidth / 2 + ICON_VISUAL_WIDTH / 2;
+    const spacePerIcon = INACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_INACTIVE;
+    const totalWidth = MODE_OPTIONS.length * INACTIVE_VISUAL_WIDTH + (MODE_OPTIONS.length - 1) * ICON_VISUAL_GAP_INACTIVE;
+    const startX = POS_X - totalWidth / 2 + INACTIVE_VISUAL_WIDTH / 2;
     
     MODE_OPTIONS.forEach((mode, index) => {
         const x = startX + index * spacePerIcon;
@@ -149,18 +158,18 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         
         if (i === activeIndex) {
             // After active icon, add larger gap
-            x += ICON_VISUAL_WIDTH + ICON_VISUAL_GAP_ACTIVE;
+            x += ACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_ACTIVE;
         } else if (i + 1 === activeIndex) {
             // Before active icon, add larger gap
-            x += ICON_VISUAL_WIDTH + ICON_VISUAL_GAP_ACTIVE;
+            x += INACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_ACTIVE;
         } else {
             // Between inactive icons
-            x += ICON_VISUAL_WIDTH + ICON_VISUAL_GAP_INACTIVE;
+            x += INACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_INACTIVE;
         }
     }
     
     // Center the group
-    const totalWidth = positions[positions.length - 1] + ICON_VISUAL_WIDTH - positions[0];
+    const totalWidth = positions[positions.length - 1] + INACTIVE_VISUAL_WIDTH - positions[0];
     const offset = POS_X - (positions[0] + positions[positions.length - 1]) / 2;
     
     MODE_OPTIONS.forEach((mode, index) => {

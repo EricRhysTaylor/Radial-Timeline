@@ -3,6 +3,7 @@
  */
 import type { Scene } from '../main';
 import { GossamerRun, extractPresentBeatScores, extractBeatOrder } from '../utils/gossamer';
+import { getMostAdvancedStageColor } from '../utils/colour';
 
 export interface PolarConfig {
   innerRadius: number;
@@ -38,7 +39,8 @@ export function renderGossamerLayer(
   minBand?: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] },
   spokeEndRadius?: number,
   publishStageColorByBeat?: Map<string, string>,
-  beatSlicesByName?: Map<string, BeatSliceInfo>
+  beatSlicesByName?: Map<string, BeatSliceInfo>,
+  publishStageColors?: Record<string, string>
 ): string {
   if (!run) return '';
   
@@ -47,6 +49,13 @@ export function renderGossamerLayer(
   
   // Build a map of out-of-range beats (for thicker red spokes)
   const outOfRangeBeats = new Set(run.beats.filter(b => b.isOutOfRange).map(b => b.beat));
+
+  // Get the most advanced publish stage color (used for range lines and text)
+  // This is the same color used for act labels and other UI reflecting overall project state
+  const defaultColor = getCSSVar('--rt-gossamer-default-color', '#7a7a7a');
+  const mostAdvancedColor = publishStageColors 
+    ? getMostAdvancedStageColor(scenes, publishStageColors)
+    : (Array.from(publishStageColorByBeat?.values() || [])[0] || defaultColor);
 
   // Get selected beat model from plugin settings (passed through run meta if needed)
   const selectedBeatModel = run?.meta?.model;
@@ -87,6 +96,7 @@ export function renderGossamerLayer(
   const dots: string[] = [];
   const spokes: string[] = [];
   const beatOutlines: string[] = [];
+  const rangeSquares: string[] = []; // Range boundary squares - rendered last (on top)
 
   beatOrder.forEach(name => {
     const score = nameToScore.get(name);
@@ -125,15 +135,44 @@ export function renderGossamerLayer(
       // Base spoke: render thin spoke from inner to outer (rendered FIRST, behind range segments)
       spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`);
       
-      // Range deviation segment: thick colored segment between score and range boundary
-      // Render AFTER base spoke so it appears on top
+      // Ideal range markers: show range boundaries with tick marks and numbers
+      // Render AFTER base spoke but BEFORE deviation segments
       const beatData = run.beats.find(b => b.beat === name);
+      if (beatData?.range && typeof score === 'number') {
+        const range = beatData.range;
+        
+        // Calculate radius positions for min and max range boundaries
+        const minRadius = mapScoreToRadius(range.min, innerRadius, outerRadius);
+        const maxRadius = mapScoreToRadius(range.max, innerRadius, outerRadius);
+        
+        // Draw ideal range segment (between min and max)
+        const rangeMinX = minRadius * Math.cos(angle);
+        const rangeMinY = minRadius * Math.sin(angle);
+        const rangeMaxX = maxRadius * Math.cos(angle);
+        const rangeMaxY = maxRadius * Math.sin(angle);
+        
+        spokes.push(`<line class="rt-gossamer-ideal-range" data-beat="${escapeAttr(name)}" x1="${fmt(rangeMinX)}" y1="${fmt(rangeMinY)}" x2="${fmt(rangeMaxX)}" y2="${fmt(rangeMaxY)}" stroke="${mostAdvancedColor}"/>`);
+        
+        // Store range boundary text values for rendering last (on top of everything)
+        // Text positioned at exact range boundary points with white stroke for visibility
+        
+        // Min boundary value (centered at exact min boundary point)
+        rangeSquares.push(`<text class="rt-gossamer-range-value" x="${fmt(rangeMinX)}" y="${fmt(rangeMinY + 1)}" fill="${mostAdvancedColor}">${range.min}</text>`);
+        
+        // Max boundary value (centered at exact max boundary point)
+        rangeSquares.push(`<text class="rt-gossamer-range-value" x="${fmt(rangeMaxX)}" y="${fmt(rangeMaxY + 1)}" fill="${mostAdvancedColor}">${range.max}</text>`);
+      }
+      
+      // Range deviation segment: thick colored segment between score and range boundary
+      // Render AFTER ideal range markers so it appears on top
       if (beatData?.range && typeof score === 'number') {
         const range = beatData.range;
         const scoreRadius = mapScoreToRadius(score, innerRadius, outerRadius);
         
         // Determine if score is in-range or out-of-range
         const isInRange = score >= range.min && score <= range.max;
+        const isBelowRange = score < range.min;
+        const isAboveRange = score > range.max;
         
         // Calculate deviation segment endpoints
         let segmentStart: number;
@@ -149,8 +188,8 @@ export function renderGossamerLayer(
           segmentStart = scoreRadius;
           segmentEnd = mapScoreToRadius(targetBoundary, innerRadius, outerRadius);
         } else {
-          // Score is out of range: show red segment from score to violated boundary
-          if (score < range.min) {
+          // Score is out of range: segment from score to violated boundary
+          if (isBelowRange) {
             // Too low: segment from score to range.min
             segmentStart = scoreRadius;
             segmentEnd = mapScoreToRadius(range.min, innerRadius, outerRadius);
@@ -167,11 +206,18 @@ export function renderGossamerLayer(
         const segX2 = segmentEnd * Math.cos(angle);
         const segY2 = segmentEnd * Math.sin(angle);
         
-        // Add thick colored segment with muted colors (on top of base spoke)
-        const segmentColor = isInRange ? '#009900' : '#990000';
-        const segmentClass = isInRange ? 'rt-gossamer-range-segment rt-in-range' : 'rt-gossamer-range-segment rt-out-of-range';
+        // Color coding: green for in-range, magenta for above range (exciting!), red for below range (boring/slow)
+        // Colors defined in CSS, set class to apply appropriate styling
+        let segmentClass: string;
+        if (isInRange) {
+          segmentClass = 'rt-gossamer-range-segment rt-in-range';
+        } else if (isAboveRange) {
+          segmentClass = 'rt-gossamer-range-segment rt-above-range';
+        } else {
+          segmentClass = 'rt-gossamer-range-segment rt-below-range';
+        }
         
-        spokes.push(`<line class="${segmentClass}" data-beat="${escapeAttr(name)}" x1="${fmt(segX1)}" y1="${fmt(segY1)}" x2="${fmt(segX2)}" y2="${fmt(segY2)}" stroke="${segmentColor}" stroke-width="3"/>`);
+        spokes.push(`<line class="${segmentClass}" data-beat="${escapeAttr(name)}" x1="${fmt(segX1)}" y1="${fmt(segY1)}" x2="${fmt(segX2)}" y2="${fmt(segY2)}"/>`);
       }
       
       // Build beat slice outline if we have slice info
@@ -213,12 +259,9 @@ export function renderGossamerLayer(
       // 4. Combine: max forward + min reversed + close
       const bandPath = `${maxPath} ${minPathReversed} Z`;
       
-      // Use a light version of publish stage color with transparency
-      const defaultColor = getCSSVar('--rt-gossamer-default-color', '#7a7a7a');
+      // Use a light version of the most advanced publish stage color with transparency
       const bandOpacity = getCSSVar('--rt-gossamer-band-opacity', '0.5');
-      const stageColors = Array.from(publishStageColorByBeat?.values() || []);
-      const dominantColor = stageColors.length > 0 ? stageColors[0] : defaultColor;
-      const lightColor = lightenColor(dominantColor, 0.7); // 70% lighter
+      const lightColor = lightenColor(mostAdvancedColor, 0.7); // 70% lighter
       
       bandSvg = `<path class="rt-gossamer-band" d="${bandPath}" fill="${lightColor}" fill-opacity="${bandOpacity}"/>`;
     }
@@ -273,12 +316,14 @@ export function renderGossamerLayer(
   // 4. Spokes (behind dots but in front of plots)
   // 5. Beat outlines
   // 6. Historical dots (small, non-interactive)
-  // 7. Current dots (on top, interactive)
+  // 7. Range boundary markers (text with white stroke)
+  // 8. Current dots (on top, interactive, in front of range markers)
   const dotsSvg = dots.join('');
   const spokesSvg = spokes.join('');
   const beatOutlinesSvg = beatOutlines.join('');
+  const rangeMarkersSvg = rangeSquares.join('');
   
-  return `<g class="rt-gossamer-layer">${bandSvg}${overlaySvg}${mainPaths}${spokesSvg}${beatOutlinesSvg}${overlayDotsSvg}${dotsSvg}</g>`;
+  return `<g class="rt-gossamer-layer">${bandSvg}${overlaySvg}${mainPaths}${spokesSvg}${beatOutlinesSvg}${overlayDotsSvg}${rangeMarkersSvg}${dotsSvg}</g>`;
 }
 
 /**

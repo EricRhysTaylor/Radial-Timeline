@@ -8,9 +8,17 @@ import { Scene } from '../../main';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
 
-// Shift button scale constants (adjustable values)
-const SHIFT_BUTTON_BASE_SCALE = 0.8; // Base/inactive scale for the shift button
-const SHIFT_BUTTON_ACTIVE_SCALE = SHIFT_BUTTON_BASE_SCALE * 1.2; // Active scale (20% larger)
+// Base SVG dimensions (source viewBox size)
+const SHIFT_BUTTON_BASE_WIDTH = 133; // Base width from SVG path
+const SHIFT_BUTTON_BASE_HEIGHT = 68; // Base height from SVG path
+
+// Target visual sizes (scale UP from smaller base to preserve stroke width)
+const SHIFT_BUTTON_INACTIVE_WIDTH = 106; // Target width when inactive
+const SHIFT_BUTTON_ACTIVE_WIDTH = 128; // Target width when active (20% larger)
+
+// Calculate scale factors (scaling UP from base size)
+const SHIFT_BUTTON_BASE_SCALE = SHIFT_BUTTON_INACTIVE_WIDTH / SHIFT_BUTTON_BASE_WIDTH; // ~0.797 - inactive
+const SHIFT_BUTTON_ACTIVE_SCALE = SHIFT_BUTTON_ACTIVE_WIDTH / SHIFT_BUTTON_BASE_WIDTH; // ~0.962 - active
 
 // Shift button positioning constants
 const SHIFT_BUTTON_POS_Y = -750; // Same y-axis as mode pages

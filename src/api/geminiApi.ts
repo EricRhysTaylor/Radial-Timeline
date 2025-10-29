@@ -6,8 +6,11 @@
 import { requestUrl } from 'obsidian';
 
 interface GeminiPart { text?: string }
-interface GeminiContent { parts: GeminiPart[] }
-interface GeminiCandidate { content: GeminiContent }
+interface GeminiContent { parts?: GeminiPart[]; role?: string }
+interface GeminiCandidate { 
+  content: GeminiContent;
+  finishReason?: string;
+}
 
 interface GeminiGenerateSuccess {
   candidates?: GeminiCandidate[];
@@ -32,7 +35,8 @@ export async function callGeminiApi(
   userPrompt: string,
   maxTokens: number | null = 4000,
   temperature: number = 0.7,
-  jsonSchema?: Record<string, unknown>  // Optional JSON schema for structured output
+  jsonSchema?: Record<string, unknown>,  // Optional JSON schema for structured output
+  disableThinking: boolean = false  // Disable extended thinking mode (for 2.5-pro models)
 ): Promise<GeminiApiResponse> {
   if (!apiKey) {
     return { success: false, content: null, responseData: { error: { message: 'Gemini API key not configured.' } }, error: 'Gemini API key not configured.' };
@@ -50,6 +54,7 @@ export async function callGeminiApi(
       maxOutputTokens?: number;
       responseMimeType?: string;
       responseSchema?: Record<string, unknown>;
+      thinkingConfig?: { mode: string };
     };
     systemInstruction?: { parts: { text: string }[] };
   };
@@ -70,6 +75,10 @@ export async function callGeminiApi(
   }
   if (maxTokens !== null) {
     body.generationConfig.maxOutputTokens = maxTokens;
+  }
+  // Disable thinking mode if requested (for 2.5-pro models)
+  if (disableThinking) {
+    body.generationConfig.thinkingConfig = { mode: "NONE" };
   }
   // Enable JSON mode if schema provided
   if (jsonSchema) {
@@ -98,8 +107,51 @@ export async function callGeminiApi(
       const reason = success.promptFeedback.blockReason;
       return { success: false, content: null, responseData, error: `Gemini safety blocked: ${reason}` };
     }
-    const text = success?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
+    
+    // Check for finish reasons that indicate incomplete response
+    const candidate = success?.candidates?.[0];
+    if (candidate?.finishReason) {
+      if (candidate.finishReason === 'MAX_TOKENS') {
+        return { 
+          success: false, 
+          content: null, 
+          responseData, 
+          error: 'Response exceeded maximum token limit. The output was truncated before completion. Try reducing the manuscript size or increasing maxOutputTokens.' 
+        };
+      }
+      if (candidate.finishReason === 'SAFETY') {
+        return { 
+          success: false, 
+          content: null, 
+          responseData, 
+          error: 'Response blocked by Gemini safety filters.' 
+        };
+      }
+      if (candidate.finishReason === 'RECITATION') {
+        return { 
+          success: false, 
+          content: null, 
+          responseData, 
+          error: 'Response blocked due to recitation concerns.' 
+        };
+      }
+      // STOP is the normal finish reason, continue processing
+    }
+    
+    const text = candidate?.content?.parts?.map(p => p.text || '').join('').trim();
     if (text) return { success: true, content: text, responseData };
+    
+    // Log the actual response structure to help debug
+    console.error('[Gemini API] Invalid response structure. Response data:', JSON.stringify(responseData, null, 2));
+    console.error('[Gemini API] Candidates:', success?.candidates);
+    console.error('[Gemini API] Has candidates:', !!success?.candidates);
+    console.error('[Gemini API] Candidates length:', success?.candidates?.length);
+    if (candidate) {
+      console.error('[Gemini API] First candidate:', candidate);
+      console.error('[Gemini API] First candidate content:', candidate.content);
+      console.error('[Gemini API] Finish reason:', candidate.finishReason);
+    }
+    
     return { success: false, content: null, responseData, error: 'Invalid response structure from Gemini.' };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

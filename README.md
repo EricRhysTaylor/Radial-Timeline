@@ -106,7 +106,7 @@ The plugin offers several settings to customize its behavior and enable ai featu
 * Story beat system: Set story beat system and generate beat notes.
 * Select gossamer beat system templates or create your own then generate notes in source folder.
 * Create entire set of story system beat notes using save the cat, hero's journey or storygrid.
-* AI LLM Beats Analysis
+* AI LLM Scene Beats Analysis
 * Publishing stage colors: customize colors for publish stage values (zero, author, house, press). each has a reset button.
 * Ring Colors: customize up to 16 rings (after which the colors repeat)
 
@@ -116,7 +116,6 @@ The plugin offers several settings to customize its behavior and enable ai featu
 
 * Radial Timeline: Search timeline. Keyword search across select metadata. Title, Date, Synopsis, AI Beats, Character & Subplot
 * Clear search to reset all search filters
-* Gossamer view toggle to show beat momentum visualization overlay
 * Gossamer enter momentum scores opens modal for all-in-one momentum score entry
 * Generate manuscript to assemble clean manuscript for Gossamer AI analysis
 * AI Scene Analysis (manuscript order) to update AI beat analysis for scenes in manuscript order
@@ -229,10 +228,10 @@ Scenes without a `When` field:
 
 ## AI Triplet Scene Beats Analysis
 
-The plugin can automatically generate scene analysis using AI LLM to evaluate the pacing for individual flagged scenes as triplets (in groups of 3). May be applied for specific subplot ordering or the entire manuscript (all scenes) orderning:
+The plugin can automatically generate scene analysis using AI LLM to evaluate the pacing for individual flagged scenes as triplets (in groups of 3). May be applied for specific subplot ordering or the entire manuscript (all scenes) ordering:
 
 * Triplet Analysis: AI analyzes 3 scenes at a time (previous, current, next) from the perspective of the middle scene
-* Beat Evaluation: Each scene gets a grade and specific feedback on pacing, tension, and story progression
+* Scene Beat Evaluation: Each scene gets a grade and specific feedback on pacing, tension, and story progression
 * Metadata Integration: Results are stored in scene frontmatter as previousSceneAnalysis, currentSceneAnalysis, and nextSceneAnalysis fields
 * Manual Line Breaks: Use [br] anywhere in beat text to force line breaks in timeline hover display
 
@@ -298,15 +297,15 @@ Gossamer5: 6 #oldest scores capped at Gossamer30
 ---
 ```
 
-## AI beats analysis
+## AI scene beats analysis
 
-In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as previousSceneAnalysis (previous scene), currentSceneAnalysis (current scene, includes a grade), and nextSceneAnalysis (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Scene Analysis (manuscript order)" or "Scene Analysis (subplot order)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a beat line to force a manual line break at that point.
+In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as previousSceneAnalysis (previous scene), currentSceneAnalysis (current scene, includes a grade), and nextSceneAnalysis (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Scene Analysis (manuscript order)" or "Scene Analysis (subplot order)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a scene beat line to force a manual line break at that point.
 
 Note: you can always manually enter these fields and achieve the same effect and avoid using the LLM API. You can also use a web client and produce similar results you can paste into the yaml. It is recommended that you place a spending cap on the API account for your LLM.
 
 ```yaml
 ---
-# Excerpt of AI beats triplet stored in scene frontmatter. [br] forces line break (discretionary)
+# Excerpt of AI scene beats triplet stored in scene frontmatter. [br] forces line break (discretionary)
 previousSceneAnalysis:
   - 12 Inciting clue + / Raises stakes for the protagonist. Secondary suspicion grows
 currentSceneAnalysis:

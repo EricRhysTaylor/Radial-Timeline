@@ -3,6 +3,51 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
+
+import type { Scene } from '../main';
+import { STAGE_ORDER } from './constants';
+
+/**
+ * Gets the color for the most advanced publish stage across all scenes.
+ * 
+ * This is the single source of truth for determining the dominant project color.
+ * It's used consistently across many UI elements that should reflect the overall 
+ * project's most advanced publication state:
+ * 
+ * - Act labels (ACT 1, ACT 2, etc.)
+ * - Subplot arcing headline labels (top-left quadrant, all subplot rings)
+ * - Gossamer ideal range lines and text
+ * - Gossamer min/max band background
+ * - Gossamer dot colors
+ * - Plaid patterns for Working/Todo scenes (stroke color)
+ * - CSS custom property: --rt-max-publish-stage-color
+ * 
+ * @param scenes - Array of scenes to analyze
+ * @param publishStageColors - Map of stage names to their colors (Zero, Author, House, Press)
+ * @returns The hex color of the most advanced publish stage found, or the Zero stage color as fallback
+ */
+export function getMostAdvancedStageColor(
+  scenes: Scene[],
+  publishStageColors: Record<string, string>
+): string {
+  const stageOrder = [...STAGE_ORDER];
+  let maxStageIndex = 0; // Default to Zero index
+  
+  scenes.forEach(scene => {
+    const rawStage = scene["Publish Stage"];
+    const stage = (STAGE_ORDER as readonly string[]).includes(rawStage as string) 
+      ? (rawStage as typeof STAGE_ORDER[number]) 
+      : 'Zero';
+    const currentIndex = stageOrder.indexOf(stage);
+    if (currentIndex > maxStageIndex) {
+      maxStageIndex = currentIndex;
+    }
+  });
+  
+  const maxStageName = stageOrder[maxStageIndex];
+  return publishStageColors[maxStageName as keyof typeof publishStageColors] || publishStageColors.Zero;
+}
+
 export function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!match) return null;

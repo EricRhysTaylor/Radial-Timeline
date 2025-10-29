@@ -14,7 +14,8 @@ import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG, adjustPlotLabelsAfterRender } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
 import { RendererService } from './services/RendererService';
-import { openGossamerScoreEntry, toggleGossamerMode, runGossamerAiAnalysis } from './GossamerCommands';
+import { openGossamerScoreEntry, runGossamerAiAnalysis } from './GossamerCommands';
+import { registerBeatPlacementCommands } from './BeatPlacementCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 import { shiftGossamerHistory } from './utils/gossamer';
@@ -132,6 +133,7 @@ export interface Scene {
     Description?: string; // For Beat descriptions
     "Beat Model"?: string; // Beat system (e.g., "Save The Cat", "Hero's Journey")
     Range?: string; // Ideal momentum range for this beat (e.g., "0-20", "71-90")
+    "Suggest Placement"?: string; // AI-suggested scene number for optimal beat placement (e.g., "33.5")
     // Gossamer score fields
     Gossamer1?: number; // Current Gossamer score
     Gossamer2?: number; // Gossamer score history
@@ -572,18 +574,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // 3. Gossamer view toggle
-        this.addCommand({
-            id: 'gossamer-toggle-view',
-            name: 'Gossamer view toggle',
-            callback: () => {
-                try {
-                    toggleGossamerMode(this);
-                } catch {}
-            }
-        });
-
-        // 4. Gossamer enter momentum scores
+        // Gossamer enter momentum scores
         this.addCommand({
             id: 'gossamer-enter-scores',
             name: 'Gossamer enter momentum scores',
@@ -597,7 +588,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // 4b. Generate manuscript file
+        // Generate manuscript file
         this.addCommand({
             id: 'gossamer-generate-manuscript',
             name: 'Generate manuscript',
@@ -694,16 +685,24 @@ export default class RadialTimelinePlugin extends Plugin {
         this.addCommand({
             id: 'gossamer-ai-analysis',
             name: 'Gossamer AI momentum analysis (Gemini)',
-            callback: async () => {
-                try {
-                    await runGossamerAiAnalysis(this);
-                } catch (e) {
-                    const errorMsg = (e as Error)?.message || 'Unknown error';
-                    new Notice(`Failed to run Gossamer AI analysis: ${errorMsg}`);
-                    console.error(e);
-                }
+            checkCallback: (checking: boolean) => {
+                if (!this.settings.enableAiSceneAnalysis) return false; // hide when AI features disabled
+                if (checking) return true;
+                (async () => {
+                    try {
+                        await runGossamerAiAnalysis(this);
+                    } catch (e) {
+                        const errorMsg = (e as Error)?.message || 'Unknown error';
+                        new Notice(`Failed to run Gossamer AI analysis: ${errorMsg}`);
+                        console.error(e);
+                    }
+                })();
+                return true;
             }
         });
+
+        // Register Beat Placement Optimization commands
+        registerBeatPlacementCommands(this);
 
         // Add settings tab (only once)
         if (!this._settingsTabAdded) {
@@ -1448,9 +1447,10 @@ export default class RadialTimelinePlugin extends Plugin {
                                 due: (typeof metadata.Due === 'string' ? metadata.Due : undefined),
                                 pendingEdits: (typeof metadata["Pending Edits"] === 'string' ? metadata["Pending Edits"] : undefined),
                                 Book: (typeof metadata.Book === 'string' ? metadata.Book : undefined),
-                                "previousSceneAnalysis": typeof metadata["previousSceneAnalysis"] === 'string' ? metadata["previousSceneAnalysis"] : (Array.isArray(metadata["previousSceneAnalysis"]) ? metadata["previousSceneAnalysis"].join('\n') : (metadata["previousSceneAnalysis"] ? String(metadata["previousSceneAnalysis"]) : undefined)),
-                                "currentSceneAnalysis": typeof metadata["currentSceneAnalysis"] === 'string' ? metadata["currentSceneAnalysis"] : (Array.isArray(metadata["currentSceneAnalysis"]) ? metadata["currentSceneAnalysis"].join('\n') : (metadata["currentSceneAnalysis"] ? String(metadata["currentSceneAnalysis"]) : undefined)), 
-                                "nextSceneAnalysis": typeof metadata["nextSceneAnalysis"] === 'string' ? metadata["nextSceneAnalysis"] : (Array.isArray(metadata["nextSceneAnalysis"]) ? metadata["nextSceneAnalysis"].join('\n') : (metadata["nextSceneAnalysis"] ? String(metadata["nextSceneAnalysis"]) : undefined)),
+                                // Only process AI scene analysis fields if AI features are enabled (performance optimization)
+                                "previousSceneAnalysis": this.settings.enableAiSceneAnalysis ? (typeof metadata["previousSceneAnalysis"] === 'string' ? metadata["previousSceneAnalysis"] : (Array.isArray(metadata["previousSceneAnalysis"]) ? metadata["previousSceneAnalysis"].join('\n') : (metadata["previousSceneAnalysis"] ? String(metadata["previousSceneAnalysis"]) : undefined))) : undefined,
+                                "currentSceneAnalysis": this.settings.enableAiSceneAnalysis ? (typeof metadata["currentSceneAnalysis"] === 'string' ? metadata["currentSceneAnalysis"] : (Array.isArray(metadata["currentSceneAnalysis"]) ? metadata["currentSceneAnalysis"].join('\n') : (metadata["currentSceneAnalysis"] ? String(metadata["currentSceneAnalysis"]) : undefined))) : undefined,
+                                "nextSceneAnalysis": this.settings.enableAiSceneAnalysis ? (typeof metadata["nextSceneAnalysis"] === 'string' ? metadata["nextSceneAnalysis"] : (Array.isArray(metadata["nextSceneAnalysis"]) ? metadata["nextSceneAnalysis"].join('\n') : (metadata["nextSceneAnalysis"] ? String(metadata["nextSceneAnalysis"]) : undefined))) : undefined,
                                 "Beats Update": (typeof metadata["Beats Update"] === 'boolean' || typeof metadata["Beats Update"] === 'string') ? metadata["Beats Update"] as (boolean | string) : undefined,
                                 itemType: "Scene"
                             });
@@ -1502,6 +1502,7 @@ export default class RadialTimelinePlugin extends Plugin {
             
             const gossamer1Value = typeof plotInfo.metadata.Gossamer1 === 'number' ? plotInfo.metadata.Gossamer1 : undefined;
             const rangeValue = typeof plotInfo.metadata.Range === 'string' ? plotInfo.metadata.Range : undefined;
+            const suggestPlacementValue = typeof plotInfo.metadata["Suggest Placement"] === 'string' ? plotInfo.metadata["Suggest Placement"] : undefined;
             
             scenes.push({
                 title: plotInfo.file.basename,
@@ -1515,6 +1516,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 "Beat Model": beatModel,
                 "Publish Stage": (plotInfo.metadata["Publish Stage"] as string) || undefined,
                 Range: rangeValue,
+                "Suggest Placement": suggestPlacementValue,
                 Gossamer1: gossamer1Value,
                 Gossamer2: typeof plotInfo.metadata.Gossamer2 === 'number' ? plotInfo.metadata.Gossamer2 : undefined,
                 Gossamer3: typeof plotInfo.metadata.Gossamer3 === 'number' ? plotInfo.metadata.Gossamer3 : undefined,

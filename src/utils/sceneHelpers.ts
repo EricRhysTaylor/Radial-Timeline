@@ -44,6 +44,8 @@ export interface SceneState {
 
 /**
  * Helper function to extract AI scene analysis grades from scenes
+ * Only processes if AI features are enabled to avoid performance overhead
+ * Optimized with caching to avoid repeated string operations
  */
 export function extractGradeFromScene(
     scene: Scene, 
@@ -51,18 +53,27 @@ export function extractGradeFromScene(
     sceneGrades: Map<string, string>, 
     plugin: PluginRendererFacade
 ): void {
-    if (scene["currentSceneAnalysis"]) {
-        try {
-            const firstLineCurrentAnalysis = scene["currentSceneAnalysis"].split('\n')[0]?.trim() || '';
-            // Updated regex to match "[Number] [GradeLetter] / [Comment]" with optional YAML list marker
-            const gradeMatch = firstLineCurrentAnalysis.match(/^-?\s*(?:\d+(?:\.\d+)?\s+)?([ABC])(?![A-Za-z0-9])/i);
-            if (gradeMatch && gradeMatch[1]) {
-                const grade = gradeMatch[1].toUpperCase();
-                sceneGrades.set(sceneId, grade);
-            }
-        } catch (e) {
-            // Silently handle errors per plugin guidelines
+    // Early return if AI features disabled - avoid all string processing
+    if (!plugin.settings.enableAiSceneAnalysis) return;
+    
+    const analysisText = scene["currentSceneAnalysis"];
+    if (!analysisText) return;
+    
+    try {
+        // Optimize: only split once and get first line
+        const firstLine = typeof analysisText === 'string' 
+            ? analysisText.substring(0, analysisText.indexOf('\n') > -1 ? analysisText.indexOf('\n') : analysisText.length).trim()
+            : '';
+        
+        if (!firstLine) return;
+        
+        // Updated regex to match "[Number] [GradeLetter] / [Comment]" with optional YAML list marker
+        const gradeMatch = firstLine.match(/^-?\s*(?:\d+(?:\.\d+)?\s+)?([ABC])(?![A-Za-z0-9])/i);
+        if (gradeMatch && gradeMatch[1]) {
+            sceneGrades.set(sceneId, gradeMatch[1].toUpperCase());
         }
+    } catch (e) {
+        // Silently handle errors per plugin guidelines
     }
 }
 

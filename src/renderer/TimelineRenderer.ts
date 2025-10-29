@@ -23,6 +23,7 @@ import {
 } from '../utils/sceneHelpers';
 import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
 import { normalizeBeatName } from '../utils/gossamer';
+import { getMostAdvancedStageColor } from '../utils/colour';
 import { renderGossamerLayer } from './gossamerLayer';
 import { computeRingGeometry } from './layout/Rings';
 import { arcPath } from './layout/Paths';
@@ -460,23 +461,10 @@ export function createTimelineSVG(
         const outerRadius = size / 2 - margin;
         const maxTextWidth = 500; // Define maxTextWidth for the synopsis text
     
-        // --- Find Max Publish Stage --- START ---
-        const stageOrder = [...STAGE_ORDER];
-        let maxStageIndex = 0; // Default to Zero index
-        scenes.forEach(scene => {
-            const rawStage = scene["Publish Stage"];
-            const stage = (STAGE_ORDER as readonly string[]).includes(rawStage as string) ? (rawStage as typeof STAGE_ORDER[number]) : 'Zero';
-            const currentIndex = stageOrder.indexOf(stage);
-            if (currentIndex > maxStageIndex) {
-                maxStageIndex = currentIndex;
-            }
-        });
-        const maxStageName = stageOrder[maxStageIndex];
-        // Add check before accessing settings potentially
-        const maxStageColor =
-        plugin.settings.publishStageColors[maxStageName as keyof typeof plugin.settings.publishStageColors] || plugin.settings.publishStageColors.Zero;
- 
-        // --- Find Max Publish Stage --- END ---
+        // Get the most advanced publish stage color using standardized helper
+        // This color is used for act labels, Gossamer elements, and other UI components
+        // that should reflect the overall project's most advanced publication state
+        const maxStageColor = getMostAdvancedStageColor(scenes, plugin.settings.publishStageColors);
 
         // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
         let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
@@ -1657,7 +1645,8 @@ export function createTimelineSVG(
                     minMax, // Min/max band
                     outerRingInnerRadius,
                     publishStageColorByBeat,
-                    beatSlicesByName
+                    beatSlicesByName,
+                    plugin.settings.publishStageColors
                 );
                 if (layer) svg += layer;
             }
