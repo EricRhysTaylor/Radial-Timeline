@@ -169,13 +169,6 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
   // Provide compatibility for renderer access
   (plugin as unknown as Record<string, unknown>)._gossamerLastRun = run;
 }
-// Helper for consistent log terminology ("allscenes" instead of internal "normal")
-// (Currently unused since console logs were removed)
-// function modeNameForLog(mode: 'allscenes' | 'mainplot' | 'gossamer' | undefined | null): string {
-//   if (mode === 'allscenes') return 'allscenes';
-//   return mode ?? 'unknown';
-// }
-
 
 /**
  * Open Gossamer score entry modal

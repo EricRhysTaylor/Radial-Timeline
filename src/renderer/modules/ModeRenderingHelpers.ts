@@ -12,7 +12,10 @@
 
 import { TimelineMode } from '../../modes/ModeDefinition';
 import { getModeDefinition } from '../../modes/ModeRegistry';
-import type { PluginFacade } from './BaseRenderingTypes';
+import type { PluginRendererFacade } from '../../utils/sceneHelpers';
+
+// Type alias for compatibility
+type PluginFacade = PluginRendererFacade;
 
 /**
  * Check if story beats should be shown in the outer ring
@@ -21,7 +24,7 @@ import type { PluginFacade } from './BaseRenderingTypes';
  * @returns true if beats should be shown, false if they should be hidden/removed
  */
 export function shouldRenderStoryBeats(plugin: PluginFacade): boolean {
-    const currentMode = plugin.settings.currentMode || TimelineMode.ALL_SCENES;
+    const currentMode = (plugin.settings as any).currentMode || TimelineMode.ALL_SCENES;
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
     // Check if beats are shown in this mode
@@ -35,7 +38,7 @@ export function shouldRenderStoryBeats(plugin: PluginFacade): boolean {
  * @returns true if subplot rings should be shown, false if hidden
  */
 export function shouldShowSubplotRings(plugin: PluginFacade): boolean {
-    const currentMode = plugin.settings.currentMode || TimelineMode.ALL_SCENES;
+    const currentMode = (plugin.settings as any).currentMode || TimelineMode.ALL_SCENES;
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
     // Check if inner rings are visible (not hidden)
@@ -50,12 +53,13 @@ export function shouldShowSubplotRings(plugin: PluginFacade): boolean {
  * @returns true if all scenes shown, false if only main plot
  */
 export function shouldShowAllScenesInOuterRing(plugin: PluginFacade): boolean {
-    const currentMode = plugin.settings.currentMode || TimelineMode.ALL_SCENES;
+    const currentMode = (plugin.settings as any).currentMode || TimelineMode.ALL_SCENES;
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
     // Check outer ring content setting
-    // 'all-scenes' → true, 'main-plot-only' → false
-    return modeDef.rendering.outerRingContent === 'all-scenes';
+    // 'all-scenes' → true, 'chronologue' → true, 'main-plot-only' → false
+    return modeDef.rendering.outerRingContent === 'all-scenes' || 
+           modeDef.rendering.outerRingContent === 'chronologue';
 }
 
 /**
@@ -65,7 +69,7 @@ export function shouldShowAllScenesInOuterRing(plugin: PluginFacade): boolean {
  * @returns true if inner rings show content, false if hidden/empty
  */
 export function shouldShowInnerRingContent(plugin: PluginFacade): boolean {
-    const currentMode = plugin.settings.currentMode || TimelineMode.ALL_SCENES;
+    const currentMode = (plugin.settings as any).currentMode || TimelineMode.ALL_SCENES;
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
     // Inner rings show content unless hidden

@@ -14,14 +14,14 @@ export function renderTemplatesSection(params: {
     // Story Structure setting (for Gossamer mode)
     new Settings(containerEl)
         .setName('Story beats system and gossamer')
-        .setDesc('Select the story structure model for your manuscript. This will establish the optional beats system and can be used to create beat notes and graph scores using Gossamer view.')
+        .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer view.')
         .addDropdown(dropdown => {
             dropdown
-                .addOption('User', 'User (Custom beat structure)')
                 .addOption('Save The Cat', 'Save The Cat (15 beats)')
                 .addOption('Hero\'s Journey', 'Hero\'s Journey (12 beats)')
-                .addOption('Story Grid', 'Story Grid (15 beats)')
-                .setValue(plugin.settings.beatSystem || 'User')
+                .addOption('Story Grid', 'Story Grid (15 beats)')                    
+                .addOption('Custom', 'Custom (User defined beat structure)')
+                .setValue(plugin.settings.beatSystem || 'Custom')
                 .onChange(async (value) => {
                     plugin.settings.beatSystem = value;
                     await plugin.saveSettings();
@@ -36,7 +36,7 @@ export function renderTemplatesSection(params: {
     storyStructureInfo.style.marginTop = '-8px';
     storyStructureInfo.style.marginBottom = '18px';
     storyStructureInfo.style.paddingLeft = '0';
-    updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'User');
+    updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
 
     // Create template notes button
     const templateSetting = new Settings(containerEl)
@@ -49,14 +49,14 @@ export function renderTemplatesSection(params: {
                 await createBeatTemplates();
             }));
 
-    updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'User');
+    updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
 
     function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
         const descriptions: Record<string, string> = {
-            'User': 'Custom story structure. Uses any Beat notes you create without filtering by story structure. Perfect for custom story structures or when you don\'t follow a formal story structure.',
             'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement.',
             'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery.',
-            'Story Grid': 'Literary fiction and complex narratives. Balances micro and macro structure with progressive complications.'
+            'Story Grid': 'Literary fiction and complex narratives. Balances micro and macro structure with progressive complications.',
+            'Custom': 'Uses any story beat notes you create. Perfect for when you don\'t follow a traditional story structure.'
         };
 
         container.empty();
@@ -73,9 +73,9 @@ export function renderTemplatesSection(params: {
     }
 
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
-        const isCustom = selectedSystem === 'User';
+        const isCustom = selectedSystem === 'Custom';
         if (isCustom) {
-            setting.setName('Create beat template notes');
+            setting.setName('Create story beat template notes');
             setting.setDesc('Custom story structures must be created manually by the author.');
         } else {
             setting.setName(`Create beat template notes for ${selectedSystem}`);
@@ -90,9 +90,9 @@ export function renderTemplatesSection(params: {
     }
 
     async function createBeatTemplates(): Promise<void> {
-        const storyStructureName = plugin.settings.beatSystem || 'User';
-        if (storyStructureName === 'User') {
-            new Notice('User story structure selected. Create your own Beat notes with Class: Beat. No templates will be generated.');
+        const storyStructureName = plugin.settings.beatSystem || 'Custom';
+        if (storyStructureName === 'Custom') {
+            new Notice('Custom story structure selected. Create your own Beat notes with Class: Beat. No templates will be generated.');
             return;
         }
         const storyStructure = getPlotSystem(storyStructureName);

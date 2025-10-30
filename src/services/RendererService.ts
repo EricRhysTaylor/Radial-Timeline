@@ -99,9 +99,9 @@ export class RendererService {
             : (view.plugin.lastSceneData || []);
 
         // Angles/slices captured during main render
-        const anglesByBeat: Map<string, number> = pluginAny._plotBeatAngles || new Map<string, number>();
+        const anglesByBeat: Map<string, number> = pluginAny._beatAngles || new Map<string, number>();
         const beatSlicesByName: Map<string, { startAngle: number; endAngle: number; innerR: number; outerR: number }>
-            = pluginAny._plotBeatSlices || new Map();
+            = pluginAny._beatSlices || new Map();
 
         // Build beat → path and publish stage color maps from scenes
         const beatPathByName = new Map<string, string>();
@@ -133,12 +133,12 @@ export class RendererService {
             innerRadius = Math.hypot(x1, y1);
             outerRadius = Math.hypot(x2, y2);
         }
-        // Fallback: estimate from plot groups (min inner, max outer)
+        // Fallback: estimate from beat groups (min inner, max outer)
         if (innerRadius === null || outerRadius === null) {
-            const plotGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]')) as SVGGElement[];
-            if (plotGroups.length > 0) {
-                const inners = plotGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
-                const outers = plotGroups.map(g => Number(g.getAttribute('data-outer-r') || '0')).filter(n => Number.isFinite(n));
+            const beatGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]')) as SVGGElement[];
+            if (beatGroups.length > 0) {
+                const inners = beatGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
+                const outers = beatGroups.map(g => Number(g.getAttribute('data-outer-r') || '0')).filter(n => Number.isFinite(n));
                 if (inners.length > 0) innerRadius = Math.min(...inners);
                 if (outers.length > 0) outerRadius = Math.max(...outers);
             }
@@ -150,9 +150,9 @@ export class RendererService {
         // Outer ring inner radius for beat outlines
         let outerRingInnerRadius = innerRadius;
         {
-            const plotGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]')) as SVGGElement[];
-            if (plotGroups.length > 0) {
-                const inners = plotGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
+            const beatGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]')) as SVGGElement[];
+            if (beatGroups.length > 0) {
+                const inners = beatGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
                 if (inners.length > 0) outerRingInnerRadius = Math.min(...inners);
             }
         }

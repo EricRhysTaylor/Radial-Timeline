@@ -2155,27 +2155,37 @@ export async function createTemplateScene(
                 await vault.createFolder(folderPath);
             }
         }
-        // Harmonized initial filename with demo/new-vault behavior
-        const targetPath = buildInitialSceneFilename(folderPath, '1 Test Scene.md');
+        
+        // Find an available filename by incrementing the number
+        let sceneNumber = 1;
+        let targetPath = buildInitialSceneFilename(folderPath, `${sceneNumber} Template Scene.md`);
+        
+        // Keep incrementing until we find a filename that doesn't exist
+        while (vault.getAbstractFileByPath(targetPath)) {
+            sceneNumber++;
+            targetPath = buildInitialSceneFilename(folderPath, `${sceneNumber} Template Scene.md`);
+        }
 
         const frontmatter = {
             Class: 'Scene',
             Act: 1,
             When: isoDate,
+            Duration: '2 hours',
             Synopsis: 'Write a one-sentence summary of this scene.',
-            Subplot: ['Main Plot'],
-            Character: [],
-            Place: [],
             Status: 'Todo',
+            Subplot: ['Main Plot', 'Romance Arc'],
+            Character: ['Protagonist', 'Mentor'],
+            Place: '',
+            Due: isoDate,
             'Publish Stage': 'Zero',
-            Revision: '',
-            Due: '',
+            Revision: 0,
             'Pending Edits': '',
             Words: 0,
-            'Beats Update': 'No'
+            Book: '',
+            'Beats Update': ''
         } as Record<string, unknown>;
 
-        const body = '\nWrite your scene here. Replace Subplot/Character/Place in the frontmatter as needed.';
+        const body = '\nWrite your scene here. Fill in Character and Subplot fields as needed. Use array format for multiple items.';
         const content = `---\n${stringifyYaml(frontmatter)}---\n${body}\n`;
 
         await vault.create(targetPath, content);

@@ -60,7 +60,7 @@ export function renderDefs(PUBLISH_STAGE_COLORS: Record<string, string>): string
   `;
 
   const filters = `
-    <filter id="plotTextBg" x="-25%" y="-25%" width="150%" height="150%">
+    <filter id="beatTextBg" x="-25%" y="-25%" width="150%" height="150%">
       <feMorphology in="SourceAlpha" operator="dilate" radius="1.8" result="DILATE"/>
       <feFlood flood-color="#000000" result="BLACK"/>
       <feComposite in="BLACK" in2="DILATE" operator="in" result="BG"/>

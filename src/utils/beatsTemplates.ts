@@ -33,6 +33,7 @@ function generatePlotNoteContent(
     `Description: ${beatInfo.description}`,
     `Beat Model: ${beatSystem}`,
     rangeValue ? `Range: ${rangeValue}` : 'Range:',
+    'When:',
     'Gossamer1:',
     '---',
     ''

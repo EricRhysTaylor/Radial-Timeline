@@ -22,40 +22,27 @@
 	<a href="https://obsidian.md/plugins?id=radial-timeline" target="_blank" rel="noopener"><img src="https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json&query=$.radial-timeline.downloads&label=Downloads&style=for-the-badge&colorA=363a4f&colorB=d53984" alt="Plugin Downloads"/></a>
 	<a href="https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE" target="_blank" rel="noopener"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=Non-Commercial&colorA=363a4f&colorB=b7bdf8" alt="Non-Commercial license"/></a>
 </p>
+
 <hr style="margin-bottom: 20px;">
 
 
 The manuscript visualization plugin for Obsidian
 
-Radial Timeline™ transforms your manuscript into a living visual map. Scenes are arranged by act, subplot, and narrative order in a striking radial layout—revealing the structure, rhythm, and scope of your story at a glance.
+**Stop losing track of subplot threads across dozens of scenes.** Radial Timeline™ transforms your manuscript into a live visual map where you can see your entire story structure at a glance.
 
-Instead of scrolling through text-heavy spreadsheets, you can explore your project as a dynamic, colorful visualization. Each ring represents a subplot; hover and click interactions surface details, relationships, and momentum between scenes.
+### What It Does
 
-Radial Timeline™ visualizes both story time and author time — tracking how your narrative unfolds and how your manuscript progresses through drafting, revision, and publication.
-It’s a timeline for your story and your writing journey.
+Radial Timeline™ arranges your scenes by act, subplot, and narrative order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and story beats. Scenes highlight across subplots to show interrelationships.
 
+**Before**: Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.  
 
-<a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">
-  <p align="center">
-    <img src="https://i.ytimg.com/vi/7noTSFaj8Eo/maxresdefault.jpg" alt="Plan your novel with radial timeline in obsidian | complete author walkthrough & setup guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-  </p>
-  <p align="center" style="font-family: 'Lato', sans-serif; font-size: 16px; margin-top: 10px;">
-    Plan your novel with radial timeline in obsidian<br>
-    Complete author walkthrough & setup guide
-  </p>
-</a>
+**After**: One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.
 
-## Interface features
+Radial Timeline™ visualizes all four types of timelines: **scene time** what happens when,  **story time** the narrative chronology, **author time** your writing progress completing scenes on-time, and **publication time** manuscript progress through the revision stages to final press ready—everything you need to know as your manuscript evolves from the nucleus of an idea to the final polished novel.
 
-- Quick setup. Create a note pre-populated with required metadata (yaml). Duplicate that scene or use other plugins like templater and metadata menu to automate the process.
-- Shows scene details on hover: title, date, synopsis, subplot, character, overdue and revisions lines
-- Color-codes scenes by status (todo, working, overdue, complete)
-- Opens scene note or beat note on click
-- Supports any story beat system (Save The Cat, Hero's Journey) via the yaml `Class: Beat`. Beat notes appear as fixed-width slices
-- Estimates manuscript completion date based on remaining todo/working scenes and recent progress rate
-- Headline font used for subplot ring labels in top left quadrant
-- Rotate counterclockwise so act 2 can align under act 1 for readability
-- Gossamer view for charting narrative momentum
+<hr>
+
+## Visual Overview
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <div style="text-align: center;">
@@ -95,298 +82,225 @@ It’s a timeline for your story and your writing journey.
   Click image to view full size in browser
 </div>  
 
-## Settings (Obsidian settings -> community plugins)
+---
 
-The plugin offers several settings to customize its behavior and enable ai features:
+## Quick Start
 
-* Source path: set the root folder for scene files (for example, "book 1/scenes"). leave blank to scan the entire vault.
-* Target completion date: optional target date (yyyy-mm-dd). a marker appears on the outer ring.
-* Show all scenes and beats: when on, the outer ring combines all subplot scenes and shows beat slices. when off, the outer ring shows main plot only and no beat cells are drawn.
-* Zero draft mode: prevents edits to scenes marked complete and stage zero, instead providing a modal to enter any ideas that can be saved for later revision stages.
-* Story beat system: Set story beat system and generate beat notes.
-* Select gossamer beat system templates or create your own then generate notes in source folder.
-* Create entire set of story system beat notes using save the cat, hero's journey or storygrid.
-* AI LLM Scene Beats Analysis
-* Publishing stage colors: customize colors for publish stage values (zero, author, house, press). each has a reset button.
-* Ring Colors: customize up to 16 rings (after which the colors repeat)
+**Get your first timeline in 3 steps:**
 
-<hr>
+1. **Install the plugin**: Settings → Community plugins → Browse → "Radial Timeline"
+2. **Create your first scene**: Use command palette (`Cmd/Ctrl + P`) → "Radial Timeline: Create template note"
+3. **Open the timeline**: Click the timeline ribbon icon or use command palette → "Radial Timeline: Open timeline view"
 
-## Command palette (Command P on Mac or Control P on PC)
+That's it! Your first scene appears on the timeline. Create more scenes by:
+- Duplicating the template scene
+- Using command palette → "Create template note"
+- Using your preferred templater plugin
 
-* Radial Timeline: Search timeline. Keyword search across select metadata. Title, Date, Synopsis, AI Beats, Character & Subplot
-* Clear search to reset all search filters
-* Gossamer enter momentum scores opens modal for all-in-one momentum score entry
-* Generate manuscript to assemble clean manuscript for Gossamer AI analysis
-* AI Scene Analysis (manuscript order) to update AI beat analysis for scenes in manuscript order
-* AI Scene Analysis (subplot order) to update AI beat analysis for scenes in a selected subplot
-* Create template note to create a basic scene
-* Open timeline view (or interface button in the command ribbon)
+**Optional - Insert story beats**: Consider inserting story beats for your chosen system such as the 15-beat Save the Cat by going to Settings → Radial Timeline → Create Templates.
 
-<hr>
+**Pro tip**: Organize your vault for multiple books by creating folders for each then set your Radial Timeline™ plugin source path (Settings → Radial timeline → Source path) to a specific folder like `Book 1: The Saga Begins` to quickly organize your vault.
 
-## All scenes & main plot mode 
+<br>
+<a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">
+  <p align="center">
+    <img src="https://i.ytimg.com/vi/7noTSFaj8Eo/maxresdefault.jpg" alt="Plan your novel with radial timeline in obsidian | complete author walkthrough & setup guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  </p>
+  <p align="center" style="font-family: 'Lato', sans-serif; font-size: 16px; margin-top: 10px;">
+    Plan your novel with radial timeline in obsidian<br>
+    Complete author walkthrough & setup guide
+  </p>
+</a>
 
-Toggle in settings to display either all scenes mode or main plot mode. For all scenes mode, the timeline will show all scenes from all subplots ordered in the outer ring with story beats and subplot color coding. All scenes mode provides a full picture with all of the details including story beats.
 
-Main plot mode removes the story beats, shows only main plot scenes in the outer ring and uses publish stage coloring rather than subplot ring coloring, emphasizing progress towards getting the book ready for publication in a simplified view.
+---
 
-<hr>
+## Core Workflows
 
-## Zero draft mode
+### Planning Your Novel
 
-Zero draft mode encourages good writing hygiene so you can finish the zero draft and not get caught in a revision loop that never ends.
+- **Story Beats**: Use any story beat system (Save the Cat, Hero's Journey, Story Grid, or Custom) to lay out the story momentum scaffolding
+- **Act Structure**: Create and distribute scenes by act (1-3) to see your three-act structure take shape as scene ideas come to you
+- **Subplot Tracking**: Each ring represents a different subplot—see how plot threads interweave
+- **Beat Templates**: Generate complete story beat sets like Save the Cat using Settings → Story beat system
 
-When enabled in settings zero draft mode toggle, clicking a scene where publish stage is zero and status is complete shows a small dialog instead of opening the note. The dialog displays a large input field populated from the scene's pending edits frontmatter. You can add, amend or delete and click ok to save.
+**Command**: Create template note 
+**Settings**: Story beat system
 
-<hr>
+### Tracking Progress
 
-## Story beats system
+- **Status Colors**: Scenes color-coded by status (Todo = plaid, Working = pink, Overdue = red, Complete = publish stage or subplot color customizable in settings)
+- **Completion Estimates**: Plugin calculates target completion date based on your recent writing pace
+- **Publishing Stages**: Track manuscript through Zero → Author → House → Press
+- **Main Plot Mode**: Switch to main plot (navigation top right via page icon or keyboard number 2) for simplified view emphasizing publication progress over structure
 
-The plugin supports beat structuring using yaml `Class: Beat`. These appear as narrow slices on the outermost ring when all scenes mode is enabled. Scene number squares adjust their color to reflect the flagged/current scene grade. Hover to view beat details and click to open the beat note. Supports Save The Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or custom beat system. Beats are required for Gossamer view.
+**Modes**: All Scenes (key 1) or Main Plot (key 2) 
+**Settings**: Publishing stage colors
 
-<hr>
+### Analyzing momentum and story beats
 
-## Gossamer momentum view
+- **Gossamer Mode**: Chart narrative momentum across story beats and over time up to 30 iterations to develop a history
+- **AI Scene Analysis**: Automated triplet analysis (previous/current/next scenes) with story beat evaluation and overall grade assessment
 
-Using your story beats system, this view grays the timeline and displays the momentum values tied to each story beat to show how well the manuscript is building tension and excitement. Works with any beat structure - whether you use Save the Cat (15 beats), Hero's Journey (12 beats), Story Grid (15 beats), or your own custom beat system. Simply create Beat notes with `Class: Beat` and enter the `Gossamer1=34` values in yaml to chart the values across these beats.
+**Modes**: Gossamer mode (key 4) 
+**Command**: Gossamer enter momentum scores, AI scene analysis (manuscript order), AI scene analysis (subplot order)
+**Settings**: AI LLM for scene analysis
 
-Workflow using Command Palette functions:
-- Radial Timeline: Generate manuscript to prepare the text for your favorite LLM.
-- Gossamer Enter Scores to open modal that will present multiple options and a convenient way to enter scores for all beats.
-- Copy Template for AI: use this button to generate scores template for AI. 
-- Paste from clipboard inputs the score name value pairs en mass.
-- Delete all scores (with confirmation)
-- Save Scores
+### Finding & Navigating Scenes
 
-Features:
-- Historical tracking: Supports up to 30 historical runs (Gossamer1-30) with automatic history shifting (#1 is always the current and 30 the oldest run)
-- Min/Max band visualization: Shows range between historical scores
-- Score entry modal: Complete interface for adding or deleting scores with validation
-- Clipboard integration: Copy/paste functionality for AI-generated scores
-- Template generation: Copy Prompt Template for AI LLM
-- Story beats system filtering: Works with any story beats system or custom structures (only filters if you explicitly set a beat system in settings)
-- Score validation: 0-100 range validation with error highlighting (red dot for missing value, defaults to 0)
+- **Search Timeline**: Keyword search across title, date, synopsis, AI beats, characters, and subplots
+- **Hover Details**: See full synopsis, characters, status, beats, and revision info on hover
+- **Click to Open**: Click any scene or beat to jump directly to that note
+- **Chronologue Mode**: View scenes in story chronology (by `When` date) instead of manuscript order
 
-<hr>
+**Modes**: Chronologue mode (key 3)
+**Command**: Search timeline, Clear search
 
-## Chronologue Mode
+---
 
-Chronologue Mode displays scenes in chronological story order based on their `When` field, perfect for mystery and thriller writers who need to map event sequences before rearranging them for narrative suspense.
+## View modes via primary navigation
 
-### Key Features
+### All Scenes Mode (key 1)
+Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Provides comprehensive view with every detail.
 
-- **Chronological Ordering**: Scenes sorted by their `When` YAML field (story chronology) rather than manuscript order
-- **Proportional Timeline Arc**: 3-pixel arc around the outer perimeter with tick marks positioned based on actual time proportions
-- **Adaptive Time Labels**: Time-period-appropriate markers (hours/days/weeks/months/years) based on story span
-- **Equal Scene Spacing**: Scenes remain equally spaced for readability while the outer arc shows proportional time gaps
-- **Shift Mode**: Toggle to compare elapsed time between two selected scenes with clickable unit cycling
+### Main Plot Mode (key 2)
+Removes story beats, shows only main plot scenes on outer ring, uses publish stage coloring. Simplified view emphasizing publication readiness.
 
-### When Field Format
+### Chronologue Mode (key 3)
+Displays scenes in chronological story order based on `When` field. Perfect for mystery/thriller writers mapping event sequences while also arranging for narrative order to maximize suspense.
 
-The `When` field supports ISO date formats:
+- Proportional timeline arc showing actual time gaps
+- Shift Mode: click two scenes to compare elapsed time
+- Time-period-appropriate labels (hours/days/weeks/months/years)
 
-```yaml
-# Example 1: Simple date
-When: 2024-03-15
+### Gossamer Mode (key 4)
+Visualizes narrative momentum using beat scores. Timeline grays out; momentum values display across story beats to show tension/excitement building.
 
-# Example 2: Date with time (for hour-level precision)
-When: 2024-03-15T14:30:00
+- Works with any beat structure
+- Historical comparison (up to 30 runs)
+- Min/Max band visualization
+- Ideal Range based on `Range=0-20` yaml for each story beat creating an idealized story momentum shape
+- AI-generated or manual score entry
 
-# Example 3: More readable date+time
-When: 2024-03-15 14:30
-```
+**Command**: Generate gossamer enter momentum scores, Gossamer AI momentum analysis
 
-**Invalid examples that won't parse:**
-- `When: March 15, 2024` (use YYYY-MM-DD)
-- `When: Day 1` (use actual date)
-- `When: Two weeks later` (calculate actual date)
+### Zero Draft Mode
+Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progress to new scenes instead of endlessly revising.
 
-### Shift Mode for Time Comparison
+**Settings**: → Radial Timeline → Zero draft mode
 
-When Shift Mode is active:
-1. Click the "Shift" button (top-left) to activate
-2. Click two scenes to select them
-3. View elapsed time arc and label between selected scenes
-4. Click the elapsed time text to cycle through units (e.g., "3.4 months" → "15 weeks" → "105 days")
-5. Continue clicking scenes - always keeps the 2 most recent selections
+---
 
-### Timeline Visualization
+## Settings & Customization
 
-- **Scene Rings**: Equally spaced for readability (existing behavior)
-- **Outer Arc + Tick Marks**: Proportionally spaced to show real temporal distribution
-- **Example**: Scene 20 years before main action takes ~95% of arc space, while daily events compress into ~5% with dense tick marks
+Access via Obsidian Settings → Community Plugins → Radial Timeline
 
-### Missing When Fields
+**Getting Started:**
+- **Source path**: Root folder for scene files (e.g., `Book 1`). Leave blank to scan entire vault.
+- **Target completion date**: Optional target (YYYY-MM-DD). Marker appears on outer ring.
 
-Scenes without a `When` field:
-- Fall back to manuscript order (prefix number, then alphanumeric)
-- Shown at the beginning with warning indicator
-- Display warning tooltip on hover
+**Writing Features:**
+- **Zero draft mode**: Prevents edits to completed zero-draft scenes
+- **Story beat system and gossamer mode**: Select and generate story beat note templates (Save the Cat, Hero's Journey, Story Grid, or custom)
 
-<hr>
+**AI Features:**
+- **AI Provider**: Choose Anthropic, Gemini, or OpenAI for scene analysis
+- **Contextual Prompt**: Customize AI analysis prompts
+- **API Logging**: Track AI interactions in "AI" folder and manuscript generation with table of contents
 
-## AI Triplet Scene Beats Analysis
+**Advanced**
+- **Meta data refresh**: Set the debounce to larger number if timeline refresh is sluggish
+- **Show completion label**: hide date of completion in data grid
+- **Auto-expand clipped scene titles**: remove expanding scenes so it's easier to quickly mouse over multiple scenes in quick succession and read hover details
+- **Sort by When date**: Toggle between chronological (When date) and manuscript order (filename prefix) sorting in All Scenes and Main Plot modes. 
+  - When enabled, scenes AND beats are positioned across the full 360° circle based on their `When` field dates
+  - When disabled, uses 3 Act zones (120° each) with manuscript order (filename prefix numbers)
+  - Note: Chronologue mode always sorts by When date
 
-The plugin can automatically generate scene analysis using AI LLM to evaluate the pacing for individual flagged scenes as triplets (in groups of 3). May be applied for specific subplot ordering or the entire manuscript (all scenes) ordering:
+**Visual Customization**
+- **Publishing stage colors**: Customize colors for Zero, Author, House, Press stages (click swatch for color picker and each has reset to default button)
+- **Ring colors**: Customize up to 16 subplot ring colors (repeats after 16)
 
-* Triplet Analysis: AI analyzes 3 scenes at a time (previous, current, next) from the perspective of the middle scene
-* Scene Beat Evaluation: Each scene gets a grade and specific feedback on pacing, tension, and story progression
-* Metadata Integration: Results are stored in scene frontmatter as previousSceneAnalysis, currentSceneAnalysis, and nextSceneAnalysis fields
-* Manual Line Breaks: Use [br] anywhere in beat text to force line breaks in timeline hover display
+---
 
-Configuration:
-- AI Provider: Choose between Anthropic, Gemini, or OpenAI
-- Contextual Prompt: Customize the analysis prompt for your specific needs
-- API Logging: Track all AI interactions in the "AI" folder
+## Frontmatter Quick Reference
 
-Commands:
-- Scene Analysis (manuscript order): Process all scenes in manuscript order
-- Scene Analysis (subplot order): Process scenes within a selected subplot only
+All scene and beat notes use YAML frontmatter. Place this at the very beginning of your note before any other text.
 
-Workflow:
-1. Ensure scenes have Beats Update: Yes in frontmatter to flag for processing
-2. Run "Beats update" commands subplot order or all scenes order to generate triplet analysis
-3. View results via timeline number square text colors based on flagged/current scene grade where A = green, B = orange, C= red. And hover synopsis beats lines with similar color coding based on each beating receiving a + = green, - = red or ? = black.
-
-Manual Alternative: You may manually enter beat fields in YAML or use web clients to generate similar results, avoiding API use.
-
-<hr>
-
-## Frontmatter examples and usage
-
-YAML Examples for use inside each scene or beat note. This frontmatter must be placed at the front of the note before any other text. 
-
-## Scene
+### Minimal Scene (Required Fields)
 
 ```yaml
 ---
-Class: Scene
-Act: 1
-When: 2000-01-31    #Date when the scene takes place in the fictional calendar
-Synopsis: The protagonist discovers a mysterious artifact.
+Class: Scene              # Type: Scene or Beat
+Act: 1                    # Which act (1-3)
+When:                     # Story chronology date (YYYY-MM-DD)
+Duration:                 # How long the scene lasts (e.g., "2 hours", "3 days")
+Synopsis:                 # Brief description of what happens in this scene
+Status: Todo              # Scene status (Todo/Working/Complete)
+Subplot: Main Plot        # Single subplot (or use array format below for multiple)
+Character:                # Characters in the scene (use array format below for multiple)
+Place:                    # Location where scene takes place (use array format for multiple)
+Due:                      # Target completion date (YYYY-MM-DD)
+Publish Stage: Zero       # Revision stage (Zero/Author/House/Press)
+Revision:                 # Revision count (leave blank until stage > zero)
+Pending Edits:            # Notes for future revisions (especially for zero draft mode)
+Words:                    # Scene word count
+Book:                     # Book title (appears in timeline tab, defaults to "Book 1")
+Beats Update:             # AI-generated story beat analysis flag
+---
+```
+
+**For multiple subplots or characters, use YAML list format:**
+```yaml
 Subplot:
-  - Main Plot       #Should be only key scenes that advance the overall plot. Try not to overlap scenes across multiple suplots except where truly appropriate
-  - Plot 2         
-Character:
-  - "[[Protagonist A]]"
-  - "[[Mentor B]]"
-Status: Todo
-Publish Stage: Zero
-Revision:           #Track how many times you've rewritten the scene
-Due: 2025-01-31     #When you want to finish writing the scene
-Pending Edits:      #For when you need to jot a few revision ideas down
-Beats Update:       #Flag used to perform AI beats triplet analysis
-Book: Book 1 A New Beginning
----
-```
-
-## Beat note using Save The Cat titled "1 opening image":
-
-```yaml
----
-Class: Beat  #formerly plot - deprecated
-Act: 1
-Description: The first impression of your story. A snapshot of the protagonist's life before the journey begins. This 'before' picture sets up the world and establishes what will change by the end. Show the protagonist in their everyday life, revealing the flaw or gap that will be addressed.
-Beat Model: Save The Cat
-Gossamer1: 12 #always the most recent score
-Gossamer2: 8 #each successive score will form a second line and range for historical comparison
-Gossamer3: 4 #older scores for trend analysis
-Gossamer4: 15 #even older scores
-Gossamer5: 6 #oldest scores capped at Gossamer30
----
-```
-
-## AI scene beats analysis
-
-In settings, use your preferred AI model to generate an evaluation of 3 scenes from the perspective of the middle scene (a triplet). In the front matter, the yaml fields appear as previousSceneAnalysis (previous scene), currentSceneAnalysis (current scene, includes a grade), and nextSceneAnalysis (next scene). These are shown when hovering over a scene in the timeline. You can run the commands "Scene Analysis (manuscript order)" or "Scene Analysis (subplot order)" to populate or refresh them. To control wrapping in the timeline hover display, insert [br] anywhere within a scene beat line to force a manual line break at that point.
-
-Note: you can always manually enter these fields and achieve the same effect and avoid using the LLM API. You can also use a web client and produce similar results you can paste into the yaml. It is recommended that you place a spending cap on the API account for your LLM.
-
-```yaml
----
-# Excerpt of AI scene beats triplet stored in scene frontmatter. [br] forces line break (discretionary)
-previousSceneAnalysis:
-  - 12 Inciting clue + / Raises stakes for the protagonist. Secondary suspicion grows
-currentSceneAnalysis:
-  - 13 A / Excellent pacing in the confrontation [br] Cut repetition in second paragraph
-  - Follow-up + / Ally reveals motive
-nextSceneAnalysis:
-  - 14 Setback ? / Plan fails at the last moment New approach needed
-Beats Update: Yes
----
-```
-
-## Advanced scene example
-
-While the plugin only requires a few specific metadata fields to function, your scene notes can contain any other frontmatter you need for your personal writing process. The radial timeline plugin will safely ignore any fields it doesn't use.
-
-Here is an example of a more detailed scene note that includes both plugin-specific fields and custom fields for personal organization.
-
-```yaml
----
-# All required radial plugin fields come first, followed by story grid, optional, and AI beats.
-
-Class: Scene     # Always "scene" for this fileclass
-Act: 1     # Story act number 1-3
-When: 2000-01-31     # In-world date for the scene
-Duration: 0     # How much story time passes (minutes, hours, days)
-
-Synopsis: Explain concisely what happens in this scene.
-
-Subplot:     # Reference one or more arcs this scene belongs to. Default = Main Plot
   - Main Plot
-  - Plot 2
+  - Romance Arc
+Character:
+  - "[[Protagonist]]"
+  - "[[Mentor]]"
+Place:
+  - "[[Castle]]"
+  - "[[Forest]]"
+```
+> **Note**: Use of brackets denotes a link to a character or place file (optional). Avoid using commas within subplot, character, or place name lists, as the plugin uses comma-space (`, `) as a delimiter when processing these fields.
 
-Character:     # Character on stage; link to character notes
-  - "[[protagonist a]]"
-  - "[[mentor b]]"
+### Standard Beat
 
-Place:     # Location tags; link to class place notes
-  - "[[earth]]"
-
-Status: Todo     # Workflow status: todo / working / complete
-Publish Stage: Zero     # Zero = draft, author = ready for revision, house = reviewed and edited, press = ready for publication
-Revision:     # Leave blank until stage > zero; increment as revisions occur
-Due: 2026-01-31     # Deadline for this scene
-Pending Edits:     # Concrete revisions to address (e.g., "change venue to a moon of jupiter.")
-
-# --- Story Grid Analysis ---
-Type:     # Scene type: revelation / turning point / confrontation / decision / setup / payoff / inciting incident / deepening
-Shift:     # Polarity change: + / - (or +/- if it flips both ways)
-Questions:     # Prompt: what is the reader wondering?
-Reader Emotion:     # e.g., curious / shocked / uneasy / hopeful / betrayed / triumphant
-Internal:     # How do the character change? (e.g., from trusting → suspicious)
-
-# --- Optional Fields ---
-Total Time: 0.0     # Writing/production time spent (hours in decimal)
-Words: 0     # scene wordcount
-Book: Book 1 A New Beginning     # Book project label
-Support Files:     # Attachments, references, research notes
-
-# --- AI-Generated Beats (triplets) ---
-previousSceneAnalysis:     # Generated by AI: previous scene
-currentSceneAnalysis:     # Generated by AI: current scene (includes grade)
-nextSceneAnalysis:     # Generated by AI: next scene
-Beats Update:     # Type "yes" to flag for AI Beats update
+```yaml
+---
+Class: Beat
+Act: 1
+When:                         # Optional: Story timeline date for chronological positioning (YYYY-MM-DD HH:MM)
+Description: The first impression of your story. A snapshot before the journey begins.
+Beat Model: Save The Cat
+Range: 0-20
+Gossamer1: 12
+Gossamer1 Justification: This is why it got a 12.
 ---
 ```
 
-<hr>
+> **Tip**: Beat notes support both ordering methods:
+> - **Manuscript order** (default): Uses Act field and filename prefix numbers (e.g., `01 Opening Image.md`)
+> - **Chronological order**: Add `When` field (e.g., `When: 2026-01-15 12:00`) to position beats at specific points in the story timeline
+> - When "Sort by When date" is enabled (Settings → Advanced), beats with `When` fields will appear at their chronological positions alongside scenes
+
+**Need more fields?** See the complete [YAML Field Reference](./docs/YAML_REFERENCE.md) for:
+- Standard scene with common metadata (Revision, Book, Words, and more)
+- Advanced scenes with AI beats and Story Grid analysis
+- Beat examples with historical Gossamer tracking
+- Complete field documentation and tips
+
+---
 
 ## Installation
 
 From Obsidian
 
-1.  Open settings > community plugins.
+1.  Open settings → community plugins.
 2.  Click browse and search for "radial timeline".
 3.  Click install and then enable.
 
 Manual installation
-
-1. Install BRAT community plugin then paste in the Radial Timeline GitHub URL and click install. 
-
--OR-
 
 1.  Download the latest main.js, styles.css, and manifest.json from the <a href="https://github.com/EricRhysTaylor/radial-timeline/releases" target="_blank" rel="noopener">releases</a> page.
 2.  Extract the files to your vault's .obsidian/plugins/radial-timeline
@@ -397,11 +311,11 @@ Manual installation
 
 The radial timeline is designed for high pixel density displays (around 200 ppi or higher) for optimal visual quality. This means:
 
-- All Apple Retina displays or 2x pixel density (macbooks, imacs, etc.)
+- All Apple Retina displays or 2x pixel density (macbooks, imacs, etc.). Consider setting MacOS to `More Space` under Settings → Display
 - Windows systems with 4k displays or higher (may require adjusted scaling) will work well
-- Tablets and mobile phones all support high dpi
+- Tablets and mobile phones all operate at high dpi
 
-If you're experiencing visual quality issues on Windows, please check your display scaling settings in Windows settings > system > display > scale and layout.
+If you're experiencing visual quality issues on Windows, please check your display scaling settings in Windows settings → system → display → scale and layout.
 
 <hr>
 
@@ -416,7 +330,7 @@ The radial timeline visualization was inspired by and draws on principles from <
 - Scale transformations and data mapping
 - Dynamic color manipulation and pattern generation
 
-The visualizations are built using pure SVG and javascript, offering a lightweight solution that maintains the elegance and interactivity of d3-style visualizations while being fully compatible with Obsidian's rendering capabilities.
+The visualizations are built using pure SVG and javascript, offering a lightweight solution that maintains the elegance and interactivity of d3-style visualizations while being fully compatible with Obsidian's document object model.
 
 <hr>
 

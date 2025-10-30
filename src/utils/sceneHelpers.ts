@@ -13,6 +13,27 @@ export function isBeatNote(scene: Scene | { itemType?: string }): boolean {
     return scene.itemType === 'Beat' || scene.itemType === 'Plot';
 }
 
+/**
+ * Sort scenes based on plugin settings
+ * @param scenes - Scenes to sort
+ * @param sortByWhen - If true, sort by When date; if false, sort by manuscript order
+ * @param forceChronological - If true, always use chronological sort (for Chronologue mode)
+ */
+export function sortScenes(
+    scenes: Scene[], 
+    sortByWhen: boolean, 
+    forceChronological: boolean = false
+): Scene[] {
+    // When sorting by manuscript order, treat beats and scenes together
+    if (!forceChronological && !sortByWhen) {
+        return scenes.slice().sort(sortByManuscriptOrder);
+    }
+    
+    // When sorting chronologically (by When date):
+    // Both beats and scenes can have When dates and should be sorted together
+    return sortScenesChronologically(scenes);
+}
+
 export interface PluginRendererFacade {
     settings: {
         publishStageColors: Record<string, string>;
@@ -123,22 +144,22 @@ export function buildTextClasses(
  */
 export function sortScenesChronologically(scenes: Scene[]): Scene[] {
     return scenes.slice().sort((a, b) => {
-        // Parse When fields
-        const aWhen = parseWhenField(typeof a.when === 'string' ? a.when : '');
-        const bWhen = parseWhenField(typeof b.when === 'string' ? b.when : '');
+        // Parse When fields - handle both Date objects and strings
+        const aWhen = a.when instanceof Date ? a.when : parseWhenField(typeof a.when === 'string' ? a.when : '');
+        const bWhen = b.when instanceof Date ? b.when : parseWhenField(typeof b.when === 'string' ? b.when : '');
         
         // If both have When fields, sort by date
         if (aWhen && bWhen) {
             const timeDiff = aWhen.getTime() - bWhen.getTime();
             if (timeDiff !== 0) return timeDiff;
             
-            // If same time, maintain stable sort by title
-            return (a.title || '').localeCompare(b.title || '');
+            // If same time, fall back to manuscript order (scene number)
+            return sortByManuscriptOrder(a, b);
         }
         
-        // If only one has When field, the one without goes first
-        if (aWhen && !bWhen) return 1;
-        if (!aWhen && bWhen) return -1;
+        // If only one has When field, the one with When comes first
+        if (aWhen && !bWhen) return -1;
+        if (!aWhen && bWhen) return 1;
         
         // If neither has When field, fall back to manuscript order
         return sortByManuscriptOrder(a, b);
@@ -146,31 +167,40 @@ export function sortScenesChronologically(scenes: Scene[]): Scene[] {
 }
 
 /**
- * Sort scenes by manuscript order (prefix number, then alphanumeric)
+ * Extract a numeric position from a scene or beat note for sorting
+ * Returns the filename prefix number (e.g., "01 Scene" → 1)
+ * Returns Infinity if no prefix found (sorts to end)
  */
-function sortByManuscriptOrder(a: Scene, b: Scene): number {
-    const aTitle = a.title || '';
-    const bTitle = b.title || '';
+export function extractPosition(item: Scene): number {
+    const title = item.title || '';
     
-    // Extract prefix numbers
-    const aMatch = aTitle.match(/^(\d+(?:\.\d+)?)\s*/);
-    const bMatch = bTitle.match(/^(\d+(?:\.\d+)?)\s*/);
-    
-    // If both have prefix numbers, sort numerically
-    if (aMatch && bMatch) {
-        const aNum = parseFloat(aMatch[1]);
-        const bNum = parseFloat(bMatch[1]);
-        const numDiff = aNum - bNum;
-        if (numDiff !== 0) return numDiff;
-        
-        // If numbers are equal, sort by full title
-        return aTitle.localeCompare(bTitle);
+    // Extract prefix number
+    const prefixMatch = title.match(/^(\d+(?:\.\d+)?)\s*/);
+    if (prefixMatch) {
+        return parseFloat(prefixMatch[1]);
     }
     
-    // If only one has prefix number, it comes first
-    if (aMatch && !bMatch) return -1;
-    if (!aMatch && bMatch) return 1;
+    // No position found
+    return Infinity;
+}
+
+/**
+ * Sort scenes by manuscript order (prefix number, then alphanumeric)
+ */
+export function sortByManuscriptOrder(a: Scene, b: Scene): number {
+    // Extract positions (prefix or Range for beats)
+    const aPos = extractPosition(a);
+    const bPos = extractPosition(b);
     
-    // If neither has prefix number, sort alphanumerically
-    return aTitle.localeCompare(bTitle);
+    // Sort by position
+    if (aPos !== bPos) {
+        // If both are Infinity (no position), fall back to alphanumeric
+        if (aPos === Infinity && bPos === Infinity) {
+            return (a.title || '').localeCompare(b.title || '');
+        }
+        return aPos - bPos;
+    }
+    
+    // If positions are equal, sort by full title
+    return (a.title || '').localeCompare(b.title || '');
 }

@@ -592,79 +592,6 @@ export class RadialTimelineView extends ItemView {
         addHighlightRectanglesExt(this);
     }
     
-    async createTestSceneFile(): Promise<void> {
-        // Use shared sanitizer to keep behavior consistent with template creation
-        const { sanitizeSourcePath, buildInitialSceneFilename } = await import('../utils/sceneCreation');
-        const sourcePath = sanitizeSourcePath(this.plugin.settings.sourcePath);
-        let targetPath = sourcePath;
-        
-        if (sourcePath !== "") {
-            try {
-                // Try to create the folder if it doesn't exist
-                await this.plugin.app.vault.createFolder(sourcePath);
-            } catch (error) {
-                // If the folder already exists, we can safely ignore the error and continue.
-                const message = (error as any)?.message ?? '';
-                if (!message.includes('Folder already exists')) {
-                    console.error(`Failed to create folder: ${sourcePath}`, error);
-                    new Notice(`Failed to create folder: ${sourcePath}`);
-                    return;
-                }
-            }
-        }
-        
-        // Create the test scene file content
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        const testSceneContent = `---
-Class: Scene
-Synopsis: What happens in this scene briefly.
-Subplot:
-  - Main Plot
-  - Second Arc
-Act: 1
-When: 2000-01-31
-Character:
-  - Janet Rollins
-Place:
-  - Earth
-  - San Diego
-Words: 
-Publish Stage: Zero
-Status: Todo
-Due: 2025-12-31
-Total Time:
-Revision:
-Pending Edits: 
-Beats Update: 
-Book:
----
-
-# Test Scene
-
-This is a test scene created to help with initial Radial timeline setup.
-
-`;
-        
-        // Harmonized initial filename
-        const filename = buildInitialSceneFilename(targetPath, '1 Test Scene.md');
-        
-        try {
-            // Create the file
-            await this.plugin.app.vault.create(filename, testSceneContent);
-            new Notice(`Created test scene file: ${filename}`);
-            
-            // Refresh the timeline after a short delay to allow metadata cache to update
-            window.setTimeout(() => {
-                this.refreshTimeline();
-            }, 500);
-        } catch (error) {
-            console.error(`Failed to create test scene file: ${filename}`, error);
-            new Notice(`Failed to create test scene file: ${filename}`);
-        }
-    }
-
-    
-    
     renderTimeline(container: HTMLElement, scenes: Scene[]): void {
         // Clear existing content
         container.empty();
@@ -691,20 +618,27 @@ This is a test scene created to help with initial Radial timeline setup.
                     // Folder path set but doesn't exist yet
                     messageText = `The folder "${sourcePath}" does not exist in your vault yet.`;
                 }
-                messageText += " Would you like to create a demonstration scene note with example YAML front-matter?";
+                messageText += " Would you like to create a template scene note with example YAML frontmatter?";
             }
 
             container.createEl("div", { text: messageText });
             this.log("No scenes found. Source path:", sourcePath || "<not set>");
 
-            // Add button to create a demonstration scene file
+            // Add button to create a template scene file
             const demoButton = container.createEl("button", {
-                text: "Create demonstration scene note",
+                text: "Create template scene note",
                 cls: "rt-action-button"
             });
 
             this.registerDomEvent(demoButton, "click", async () => {
-                await this.createTestSceneFile();
+                // Use the same createTemplateScene function as the command palette
+                const { createTemplateScene } = await import('../SceneAnalysisCommands');
+                await createTemplateScene(this.plugin, this.plugin.app.vault);
+                
+                // Refresh the timeline after a short delay to allow metadata cache to update
+                window.setTimeout(() => {
+                    this.refreshTimeline();
+                }, 500);
             });
 
             return;
@@ -768,8 +702,8 @@ This is a test scene created to help with initial Radial timeline setup.
                 // Attach mode toggle behavior
                 setupModeToggleController(this, svgElement as unknown as SVGSVGElement);
 
-                // Adjust plot labels after render
-                const adjustLabels = () => this.plugin.adjustPlotLabelsAfterRender(timelineContainer);
+                // Adjust story beat labels after render
+                const adjustLabels = () => this.plugin.adjustBeatLabelsAfterRender(timelineContainer);
                 const rafId1 = requestAnimationFrame(adjustLabels);
                 
                 // Re-adjust when the timeline view becomes active (workspace active-leaf-change)
@@ -1103,6 +1037,9 @@ This is a test scene created to help with initial Radial timeline setup.
 
                 // Redistribute scenes within an act to expand hovered scene
                 const redistributeActScenes = (hoveredGroup: Element) => {
+                    // Check if auto-expand is disabled in settings
+                    if (!view.plugin.settings.enableSceneTitleAutoExpand) return;
+                    
                     storeOriginalAngles();
                     
                     const hoveredAct = hoveredGroup.getAttribute('data-act');
@@ -1188,24 +1125,24 @@ This is a test scene created to help with initial Radial timeline setup.
                     
                     const totalActSpace = actEndAngle - actStartAngle;
                     
-                    // Calculate space for plot slices (they keep their original size)
-                    let totalPlotSpace = 0;
-                    const plotElements: Element[] = [];
+                    // Calculate space for beat slices (they keep their original size)
+                    let totalBeatSpace = 0;
+                    const beatElements: Element[] = [];
                     actElements.forEach(element => {
                         if (!sceneElements.includes(element)) {
-                            // This is a plot slice
-                            plotElements.push(element);
-                            const plotStart = Number(element.getAttribute('data-start-angle')) || 0;
-                            const plotEnd = Number(element.getAttribute('data-end-angle')) || 0;
-                            totalPlotSpace += (plotEnd - plotStart);
+                            // This is a beat slice
+                            beatElements.push(element);
+                            const beatStart = Number(element.getAttribute('data-start-angle')) || 0;
+                            const beatEnd = Number(element.getAttribute('data-end-angle')) || 0;
+                            totalBeatSpace += (beatEnd - beatStart);
                         }
                     });
                     
-                    const availableSceneSpace = totalActSpace - totalPlotSpace;
+                    const availableSceneSpace = totalActSpace - totalBeatSpace;
                     const spaceForOtherScenes = availableSceneSpace - targetAngularSize;
                     const angularSizeForOtherScenes = spaceForOtherScenes / (sceneElements.length - 1);
 
-                    // Redistribute angles for all elements (scenes and plots)
+                    // Redistribute angles for all elements (scenes and beats)
                     let currentAngle = actStartAngle;
                     actElements.forEach((group: Element) => {
                         const innerR = Number(group.getAttribute('data-inner-r')) || 0;
@@ -1221,7 +1158,7 @@ This is a test scene created to help with initial Radial timeline setup.
                             newStart = currentAngle;
                             newEnd = currentAngle + angularSizeForOtherScenes;
                         } else {
-                            // Plot slice (keep original size)
+                            // Beat slice (keep original size)
                             const originalStart = Number(group.getAttribute('data-start-angle')) || 0;
                             const originalEnd = Number(group.getAttribute('data-end-angle')) || 0;
                             const originalSize = originalEnd - originalStart;

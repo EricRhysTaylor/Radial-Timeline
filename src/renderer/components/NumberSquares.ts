@@ -65,13 +65,34 @@ export function renderNumberSquaresUnified(params: {
       const subplot = scene.subplot || 'Main Plot';
       const subplotIndex = masterSubplotOrder.indexOf(subplot);
       const ring = NUM_RINGS - 1 - subplotIndex;
+      
+      // Check if using When date sorting
+      const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
+      const isChronologueMode = currentMode === 'chronologue';
+      const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+      
       const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-      const actIndex = sceneActNumber - 1;
+      // When using When date sorting, all scenes are in act 0
+      const actIndex = sortByWhen ? 0 : (sceneActNumber - 1);
+      
       const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
       const filteredScenes = scenesInActAndSubplot.filter(s => s.itemType !== 'Plot');
       const sceneIndex = filteredScenes.indexOf(scene);
-      const startAngle = (actIndex * 2 * Math.PI) / 3 - Math.PI / 2; // NUM_ACTS = 3
-      const endAngle = ((actIndex + 1) * 2 * Math.PI) / 3 - Math.PI / 2;
+      
+      // Calculate angles based on sorting method
+      let startAngle: number;
+      let endAngle: number;
+      
+      if (sortByWhen) {
+        // When date mode: Full 360° circle
+        startAngle = -Math.PI / 2;
+        endAngle = (3 * Math.PI) / 2;
+      } else {
+        // Manuscript mode: 120° wedges for each Act
+        startAngle = (actIndex * 2 * Math.PI) / 3 - Math.PI / 2; // NUM_ACTS = 3
+        endAngle = ((actIndex + 1) * 2 * Math.PI) / 3 - Math.PI / 2;
+      }
+      
       const innerR = ringStartRadii[ring];
       const outerR = innerR + ringWidths[ring];
       const totalAngularSpace = endAngle - startAngle;
@@ -142,6 +163,12 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   sceneGrades: Map<string, string>;
 }): string {
   const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades } = params;
+  
+  // Check if using When date sorting
+  const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
+  const isChronologueMode = currentMode === 'chronologue';
+  const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+  
   let svg = '';
   scenes.forEach((scene) => {
     if (scene.itemType === 'Plot') return;
@@ -153,14 +180,30 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     if (subplotIndex === -1) return;
     const ring = NUM_RINGS - 1 - subplotIndex;
     if (ring < 0 || ring >= NUM_RINGS) return;
+    
+    // When using When date sorting, all scenes are in act 0
+    // When using manuscript order, use the scene's actual act
     const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
-    const actIndex = sceneActNumber - 1;
+    const actIndex = sortByWhen ? 0 : (sceneActNumber - 1);
+    
     const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
     const filteredScenesForIndex = scenesInActAndSubplot.filter(s => s.itemType !== 'Plot');
     const sceneIndex = filteredScenesForIndex.indexOf(scene);
     if (sceneIndex === -1) return;
-    const startAngle = (actIndex * 2 * Math.PI) / 3 - Math.PI / 2; // NUM_ACTS = 3
-    const endAngle = ((actIndex + 1) * 2 * Math.PI) / 3 - Math.PI / 2;
+    
+    // Calculate angles based on sorting method
+    let startAngle: number;
+    let endAngle: number;
+    
+    if (sortByWhen) {
+      // When date mode: Full 360° circle
+      startAngle = -Math.PI / 2;
+      endAngle = (3 * Math.PI) / 2;
+    } else {
+      // Manuscript mode: 120° wedges for each Act
+      startAngle = (actIndex * 2 * Math.PI) / 3 - Math.PI / 2; // NUM_ACTS = 3
+      endAngle = ((actIndex + 1) * 2 * Math.PI) / 3 - Math.PI / 2;
+    }
     const innerR = ringStartRadii[ring];
     const outerR = innerR + ringWidths[ring];
     const middleRadius = (innerR + outerR) / 2;

@@ -4,13 +4,17 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
+import { TFile } from 'obsidian';
 import { Scene } from '../../main';
 import { setupChronologueShiftController } from '../interactions/ChronologueShiftController';
+import { openOrRevealFile } from '../../utils/fileUtils';
 
 export interface ChronologueView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
     plugin: {
-        refreshTimelineIfNeeded: (path: string | null) => void;
+        app: {
+            vault: { getAbstractFileByPath: (path: string) => unknown };
+        };
         updateSynopsisPosition: (synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string) => void;
     };
     currentMode: string;
@@ -104,15 +108,20 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
  * Setup scene click interactions for opening files
  */
 function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement): void {
-    view.registerDomEvent(svg as unknown as HTMLElement, 'click', (e: MouseEvent) => {
+    view.registerDomEvent(svg as unknown as HTMLElement, 'click', async (e: MouseEvent) => {
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
         if (!g) return;
         
-        const scenePath = g.getAttribute('data-path');
-        if (!scenePath) return;
+        e.stopPropagation();
         
-        // Open the scene file
-        view.plugin.refreshTimelineIfNeeded(scenePath);
+        const encodedPath = g.getAttribute('data-path');
+        if (!encodedPath) return;
+        
+        const filePath = decodeURIComponent(encodedPath);
+        const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
+        if (file instanceof TFile) {
+            await openOrRevealFile((view.plugin as any).app, file);
+        }
     });
 }
 

@@ -26,7 +26,7 @@ export function renderAiSection(params: {
         .setName('AI LLM for scene analysis')
         .setHeading();
 
-    // Enable/disable AI beats features
+    // Enable/disable scene beats features
     // NOTE: This toggle should always be visible (not added to _aiRelatedElements)
     new Settings(containerEl)
         .setName('Enable AI LLM features')

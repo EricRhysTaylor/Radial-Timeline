@@ -11,7 +11,7 @@ import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils
 import { decodeHtmlEntities } from './utils/text';
 import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
-import { createTimelineSVG, adjustPlotLabelsAfterRender } from './renderer/TimelineRenderer';
+import { createTimelineSVG, adjustBeatLabelsAfterRender } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
 import { RendererService } from './services/RendererService';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from './GossamerCommands';
@@ -22,6 +22,7 @@ import { shiftGossamerHistory } from './utils/gossamer';
 import { assembleManuscript } from './utils/manuscript';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { parseSceneTitle } from './utils/text';
+import { parseWhenField } from './utils/date';
 
 
 // Declare the variable that will be injected by the build process
@@ -88,6 +89,8 @@ interface RadialTimelineSettings {
     // Advanced
     metadataRefreshDebounceMs?: number; // Debounce for frontmatter-changed refresh
     showEstimate?: boolean; // Toggle estimation arc/label near progress ring
+    enableSceneTitleAutoExpand?: boolean; // Auto-expand clipped scene titles on hover
+    sortByWhenDate?: boolean; // Sort scenes by When date (true) or manuscript order (false). Chronologue mode always uses When date.
     // AI Context Templates
     aiContextTemplates?: Array<{id: string; name: string; prompt: string; isBuiltIn: boolean}>;
     activeAiContextTemplateId?: string;
@@ -211,6 +214,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     enableZeroDraftMode: false,
     metadataRefreshDebounceMs: 10000,
     showEstimate: true,
+    enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
+    sortByWhenDate: false, // Default: manuscript order (backward compatible)
     aiContextTemplates: [
         {
             id: "commercial_genre",
@@ -1483,13 +1488,13 @@ export default class RadialTimelinePlugin extends Plugin {
             const beatModel = (plotInfo.metadata["Beat Model"] as string) || undefined;
             
             // Filter beat notes based on selected story structure system
-            const selectedSystem = this.settings.beatSystem || 'User';
+            const selectedSystem = this.settings.beatSystem || 'Custom';
             
-            // If User/Custom is selected, only show beats that DON'T have a recognized Beat Model
-            if (selectedSystem === 'User') {
+            // If Custom is selected, only show beats that DON'T have a recognized Beat Model
+            if (selectedSystem === 'Custom') {
                 const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
                 if (beatModel && recognizedSystems.includes(beatModel)) {
-                    // Skip beats that belong to recognized systems when User is selected
+                    // Skip beats that belong to recognized systems when Custom is selected
                     return;
                 }
             } else {
@@ -1504,13 +1509,27 @@ export default class RadialTimelinePlugin extends Plugin {
             const rangeValue = typeof plotInfo.metadata.Range === 'string' ? plotInfo.metadata.Range : undefined;
             const suggestPlacementValue = typeof plotInfo.metadata["Suggest Placement"] === 'string' ? plotInfo.metadata["Suggest Placement"] : undefined;
             
+            // Parse When field for beats (same logic as scenes)
+            const whenStr = plotInfo.metadata.When;
+            let beatWhen: Date | undefined;
+            if (whenStr) {
+                // Handle case where When might already be a Date object (from Obsidian)
+                if (whenStr instanceof Date) {
+                    beatWhen = whenStr;
+                } else if (typeof whenStr === 'string' && whenStr.trim() !== '') {
+                    const parsed = parseWhenField(whenStr);
+                    beatWhen = parsed || undefined;
+                }
+            }
+            
             scenes.push({
                 title: plotInfo.file.basename,
-                date: "1900-01-01T12:00:00Z", // Dummy date for plots
+                date: beatWhen ? beatWhen.toISOString() : "1900-01-01T12:00:00Z", // Use When field or dummy date
                 path: plotInfo.file.path,
                 subplot: undefined, // Beat notes are not associated with any specific subplot
                 act: plotInfo.validActNumber.toString(),
                 actNumber: plotInfo.validActNumber,
+                when: beatWhen, // Add when field for chronological sorting
                 itemType: "Plot",
                 Description: (plotInfo.metadata.Description as string) || '',
                 "Beat Model": beatModel,
@@ -1551,21 +1570,9 @@ export default class RadialTimelinePlugin extends Plugin {
         });
 
         
-        // Sort by manuscript order (prefix number) rather than chronological order
-        return scenes.sort((a, b) => {
-            // First compare by act number
-            const actComparison = (a.actNumber || 1) - (b.actNumber || 1);
-            if (actComparison !== 0) return actComparison;
-            
-            // Then by prefix number (manuscript order) - use frontmatter sceneNumber if available
-            const aNumber = a.number !== undefined ? String(a.number) : parseSceneTitle(a.title || '').number;
-            const bNumber = b.number !== undefined ? String(b.number) : parseSceneTitle(b.title || '').number;
-            
-            // Use parseFloat to handle both integer and decimal scene numbers correctly
-            const aNumberValue = aNumber ? parseFloat(aNumber) : 0;
-            const bNumberValue = bNumber ? parseFloat(bNumber) : 0;
-            return aNumberValue - bNumberValue;
-        });
+        // Don't sort here - let each rendering mode handle its own sort order
+        // (All Scenes and Main Plot use manuscript order, Chronologue uses When field)
+        return scenes;
     }
 
 
@@ -1573,8 +1580,8 @@ public createTimelineSVG(scenes: Scene[]) {
   return createTimelineSVG(this, scenes);
 }
 
-public adjustPlotLabelsAfterRender(container: HTMLElement) {
-  return adjustPlotLabelsAfterRender(container);
+public adjustBeatLabelsAfterRender(container: HTMLElement) {
+  return adjustBeatLabelsAfterRender(container);
 }
 
     public darkenColor(color: string, percent: number): string {
@@ -2320,13 +2327,6 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
         const totalScenes = Object.values(currentStatusCounts).reduce((sum, count) => sum + count, 0); // Sum all counts for total
         const remainingScenes = totalScenes - completedCount; // Remaining = Total - Completed
 
-        // --- Remove older remaining calculation ---
-        // const todoCount = currentStatusCounts['Todo'] || 0;
-        // const workingCount = currentStatusCounts['Working'] || 0;
-        // const dueCount = currentStatusCounts['Due'] || 0; 
-        // const remainingScenes = todoCount + workingCount + dueCount;
-        // --- Finished Status Counts ---
-
         if (remainingScenes <= 0) {
             this.log("Completion estimate: No remaining scenes to estimate.");
             return null;
@@ -2395,7 +2395,7 @@ public adjustPlotLabelsAfterRender(container: HTMLElement) {
         }
         
         const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
-        this.beatsStatusBarItem.setText(`AI Beats: ${current}/${total} (${percentage}%)`);
+        this.beatsStatusBarItem.setText(`Scene beats: ${current}/${total} (${percentage}%)`);
     }
     
     /**

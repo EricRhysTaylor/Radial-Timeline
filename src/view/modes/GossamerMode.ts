@@ -16,14 +16,14 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     };
 
     // 1a. Beat Slice Hover (delegated fallback): Show synopsis, sync dot+spoke
-    const plotSliceOver = (e: PointerEvent) => {
+    const beatSliceOver = (e: PointerEvent) => {
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Beat"]');
         if (!g) return;
-        plotSliceEnter(g as SVGGElement, e);
+        beatSliceEnter(g as SVGGElement, e);
     };
 
-    // 1b. Plot Slice direct handlers for reliability
-    const plotSliceEnter = (g: Element, e: Event) => {
+    // 1b. Beat Slice direct handlers for reliability
+    const beatSliceEnter = (g: Element, e: Event) => {
         if (g === currentGroup) return;
 
         currentGroup = g;
@@ -63,7 +63,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
         }
     };
 
-    const plotSliceOut = (e: PointerEvent) => {
+    const beatSliceOut = (e: PointerEvent) => {
         if (!currentGroup) return;
 
         const toEl = e.relatedTarget as Element | null;
@@ -120,13 +120,13 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
             if (beatOutline) beatOutline.classList.add('rt-hover');
         }
         
-        // Find and highlight the plot slice (both have encoded paths now)
-        const plotGroup = svg.querySelector(`.rt-scene-group[data-path="${encodedPath}"]`);
-        if (plotGroup) {
-            currentGroup = plotGroup;
-            plotGroup.classList.add('rt-gossamer-hover');
+        // Find and highlight the beat slice (both have encoded paths now)
+        const beatGroup = svg.querySelector(`.rt-scene-group[data-path="${encodedPath}"]`);
+        if (beatGroup) {
+            currentGroup = beatGroup;
+            beatGroup.classList.add('rt-gossamer-hover');
             
-            const sid = getSceneIdFromGroup(plotGroup);
+            const sid = getSceneIdFromGroup(beatGroup);
             if (sid) {
                 currentSynopsis = findSynopsisForScene(sid);
                 if (currentSynopsis) {
@@ -188,7 +188,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     };
 
     // 3. Click handlers
-    const plotSliceClick = async (e: MouseEvent) => {
+    const beatSliceClick = async (e: MouseEvent) => {
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Beat"]');
         if (!g) return;
         
@@ -234,29 +234,29 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     };
 
     // Register via view (so cleanup works consistently)
-    view.registerDomEvent(svg as unknown as HTMLElement, 'click', plotSliceClick);
+    view.registerDomEvent(svg as unknown as HTMLElement, 'click', beatSliceClick);
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', dotClick);
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', backgroundClick);
-    view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', plotSliceOver);
-    view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', plotSliceOut);
+    view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', beatSliceOver);
+    view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', beatSliceOut);
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', dotOver);
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', dotOut);
 
     // Track for manual cleanup when switching modes
-    view.registerGossamerHandler('pointerover::svg', plotSliceOver as EventListener);
-    view.registerGossamerHandler('pointerout::svg', plotSliceOut as EventListener);
+    view.registerGossamerHandler('pointerover::svg', beatSliceOver as EventListener);
+    view.registerGossamerHandler('pointerout::svg', beatSliceOut as EventListener);
     view.registerGossamerHandler('pointerover::dot::svg', dotOver as EventListener);
     view.registerGossamerHandler('pointerout::dot::svg', dotOut as EventListener);
-    view.registerGossamerHandler('click::plot::svg', plotSliceClick as EventListener);
+    view.registerGossamerHandler('click::beat::svg', beatSliceClick as EventListener);
     view.registerGossamerHandler('click::dot::svg', dotClick as EventListener);
     view.registerGossamerHandler('click::bg::svg', backgroundClick as EventListener);
 
     // Direct beat-group handlers for reliability
-    const plotGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]');
-    plotGroups.forEach((el) => {
-        view.registerDomEvent(el as HTMLElement, 'pointerenter', (ev) => plotSliceEnter(el, ev));
-        view.registerDomEvent(el as HTMLElement, 'pointerleave', (ev) => plotSliceOut(ev as PointerEvent));
-        view.registerDomEvent(el as HTMLElement, 'click', (ev) => plotSliceClick(ev as MouseEvent));
+    const beatGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]');
+    beatGroups.forEach((el) => {
+        view.registerDomEvent(el as HTMLElement, 'pointerenter', (ev) => beatSliceEnter(el, ev));
+        view.registerDomEvent(el as HTMLElement, 'pointerleave', (ev) => beatSliceOut(ev as PointerEvent));
+        view.registerDomEvent(el as HTMLElement, 'click', (ev) => beatSliceClick(ev as MouseEvent));
     });
 }
 

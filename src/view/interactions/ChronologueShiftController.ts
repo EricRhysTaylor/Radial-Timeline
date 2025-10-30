@@ -26,9 +26,7 @@ const SHIFT_BUTTON_POS_X = -700; // Left side position
 
 export interface ChronologueShiftView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
-    plugin: {
-        refreshTimelineIfNeeded: (path: string | null) => void;
-    };
+    plugin: Record<string, any>;
     currentMode: string;
 }
 
@@ -117,11 +115,13 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     
     // Register scene click handlers when shift mode is active
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', (e: MouseEvent) => {
+        // Only handle scene clicks when shift mode is active
         if (!shiftModeActive) return;
         
         const sceneGroup = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
         if (!sceneGroup) return;
         
+        // Prevent default scene opening behavior when in shift mode
         e.preventDefault();
         e.stopPropagation();
         

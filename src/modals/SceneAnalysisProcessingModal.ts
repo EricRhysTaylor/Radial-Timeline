@@ -104,7 +104,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl } = this;
-        titleEl.setText('AI scene beats analysis');
+        titleEl.setText('Scene beats analysis');
         
         // If we're already processing (reopening), show progress view
         if (this.isProcessing) {
@@ -169,7 +169,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
         
         const infoEl = contentEl.createDiv({ cls: 'rt-beats-info' });
-        infoEl.setText(`Select processing mode for AI LLM scene beats analysis using ${modelName}. This will analyze based on manuscript order all scenes and update their scene beat metadata.`);
+        infoEl.setText(`Select processing mode for scene beats analysis using ${modelName}. This will analyze based on manuscript order all scenes and update their scene beat metadata.`);
 
         // Mode selection
         const modesSection = contentEl.createDiv({ cls: 'rt-beats-modes' });
@@ -383,7 +383,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     private showProgressView(): void {
         const { contentEl, titleEl } = this;
         contentEl.empty();
-        titleEl.setText('Processing AI scene beats analysis...');
+        titleEl.setText('Processing scene beats analysis...');
 
         // Progress bar container
         const progressContainer = contentEl.createDiv({ cls: 'rt-beats-progress-container' });

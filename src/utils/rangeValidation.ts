@@ -70,8 +70,8 @@ export function validateBeatRanges(
   
   // Filter by Beat Model
   if (selectedBeatSystem && selectedBeatSystem.trim() !== '') {
-    if (selectedBeatSystem === 'User') {
-      // For custom/User system: exclude beats that belong to built-in systems
+    if (selectedBeatSystem === 'Custom') {
+      // For custom/Custom system: exclude beats that belong to built-in systems
       const builtInSystems = ['save the cat', 'savethecat', "hero's journey", 'herosjourney', 'story grid', 'storygrid'];
       beatNotes = beatNotes.filter(b => {
         const beatModel = b["Beat Model"];
