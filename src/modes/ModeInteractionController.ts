@@ -149,7 +149,24 @@ export class ModeInteractionController {
     private async setupChronologueHandlers(svg: SVGSVGElement): Promise<void> {
         // Import and use existing Chronologue mode setup
         const { setupChronologueMode } = await import('../view/modes/ChronologueMode');
-        setupChronologueMode(this.view as any, svg);
+        
+        // Calculate outer radius from SVG viewBox or fallback to default
+        const viewBox = svg.getAttribute('viewBox');
+        let outerRadius = 300; // Default fallback
+        if (viewBox) {
+            const [, , width, height] = viewBox.split(' ').map(parseFloat);
+            const size = Math.min(width, height);
+            const margin = 50; // Approximate margin
+            outerRadius = size / 2 - margin;
+        }
+        
+        // Pass scenes and outer radius to chronologue mode setup
+        // Pass the actual view instance directly (don't spread - it breaks methods like registerDomEvent)
+        // Add scenes and outerRadius as properties on the view temporarily
+        const view = this.view as any;
+        view.scenes = this.view.sceneData || [];
+        view.outerRadius = outerRadius;
+        setupChronologueMode(view, svg);
     }
     
     /**

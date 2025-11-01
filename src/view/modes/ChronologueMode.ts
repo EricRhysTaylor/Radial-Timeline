@@ -6,18 +6,21 @@
 
 import { TFile } from 'obsidian';
 import { Scene } from '../../main';
-import { setupChronologueShiftController } from '../interactions/ChronologueShiftController';
+import { setupChronologueShiftController, isShiftModeActive } from '../interactions/ChronologueShiftController';
 import { openOrRevealFile } from '../../utils/fileUtils';
 
 export interface ChronologueView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
     plugin: {
-        app: {
+        refreshTimelineIfNeeded?: (path: string | null) => void;
+        app?: {
             vault: { getAbstractFileByPath: (path: string) => unknown };
         };
-        updateSynopsisPosition: (synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string) => void;
+        updateSynopsisPosition?: (synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string) => void;
+        [key: string]: any; // SAFE: any type used for plugin facade extension without tight coupling
     };
     currentMode: string;
+    [key: string]: any; // SAFE: any type used for view augmentation by Obsidian/other modules
 }
 
 /**
@@ -30,13 +33,13 @@ export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement):
         return;
     }
     
-    // Setup shift mode controller
+    // Setup shift mode controller - pass view directly like yesterday
     setupChronologueShiftController(view, svg);
     
-    // Standard scene hover interactions
+    // Standard scene hover interactions (will check shift mode internally)
     setupSceneHoverInteractions(view, svg);
     
-    // Scene click interactions (for opening files)
+    // Scene click interactions (will delegate to shift mode if active)
     setupSceneClickInteractions(view, svg);
 }
 
@@ -55,6 +58,11 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
 
     // Register hover handlers for Scene elements
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
+        // Suspend hover synopsis reveal when shift mode is active
+        if (isShiftModeActive()) {
+            return;
+        }
+        
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
         if (!g) return;
         
@@ -67,7 +75,7 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         const syn = findSynopsisForScene(sid);
         if (syn) {
             syn.classList.add('rt-visible');
-            view.plugin.updateSynopsisPosition(syn, e as unknown as MouseEvent, svg, sid);
+            view.plugin.updateSynopsisPosition?.(syn, e as unknown as MouseEvent, svg, sid);
         }
         
         // Emphasize this scene group
@@ -112,15 +120,26 @@ function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement):
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
         if (!g) return;
         
+        // When shift mode is active, delegate to shift controller
+        if (isShiftModeActive()) {
+            const handled = (view as any).handleShiftModeClick?.(e, g);
+            if (handled) {
+                return; // Shift mode handled the click
+            }
+        }
+        
+        // Normal behavior: open scene file
         e.stopPropagation();
         
         const encodedPath = g.getAttribute('data-path');
         if (!encodedPath) return;
         
         const filePath = decodeURIComponent(encodedPath);
-        const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
-        if (file instanceof TFile) {
-            await openOrRevealFile((view.plugin as any).app, file);
+        if (view.plugin.app) {
+            const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
+            if (file instanceof TFile) {
+                await openOrRevealFile((view.plugin as any).app, file);
+            }
         }
     });
 }

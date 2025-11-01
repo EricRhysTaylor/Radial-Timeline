@@ -230,6 +230,11 @@
   display: none;
 }
 
+/* Hide rotation toggle in Chronologue mode */
+.radial-timeline-svg[data-chronologue-mode="true"] #rotation-toggle {
+  display: none;
+}
+
 /* Mode toggle button styles */
 .radial-timeline-svg #mode-toggle {
   cursor: pointer;
@@ -467,6 +472,25 @@
   dominant-baseline: middle;
   font-size: 18px;
   fill: var(--text-normal);
+}
+
+/* First and last date labels (beginning/ending dates) */
+.radial-timeline-container .rt-month-label-outer.rt-date-boundary {
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+/* Beginning date uses Zero stage color */
+.radial-timeline-container .rt-month-label-outer.rt-date-first {
+  fill: var(--rt-publishStageColors-Zero);
+  font-weight: 500;
+
+}
+
+/* Ending date uses Press stage color */
+.radial-timeline-container .rt-month-label-outer.rt-date-last {
+  fill: var(--rt-publishStageColors-Press);
+  font-weight: 500;
 }
 .radial-timeline-container .rt-act-label {
   pointer-events: none;
@@ -2336,6 +2360,11 @@
     opacity: 0 !important;
 }
 
+/* Hide subplot ring labels in shift mode (top left quadrant) */
+.radial-timeline-svg[data-shift-mode="active"] .rt-subplot-ring-label-text {
+    opacity: 0 !important;
+}
+
 
 /* Progress Ring Base (thin gray track underneath) */
 .radial-timeline-container .progress-ring-base {
@@ -2613,16 +2642,14 @@
   pointer-events: none;
 }
 
-.rt-chronologue-timeline-arc path {
+.rt-chronologue-timeline-arc path:not(.rt-elapsed-arc-path):not(.rt-duration-arc):not(.rt-duration-arc-overlap):not(.rt-duration-arc-unparseable) {
   stroke: var(--text-muted);
   stroke-width: 3;
-  opacity: 0.6;
 }
 
-.rt-chronologue-timeline-arc line {
+.rt-chronologue-timeline-arc line:not(.rt-elapsed-endpoint-marker) {
   stroke: var(--text-muted);
   stroke-width: 1;
-  opacity: 0.8;
 }
 
 /* Chronologue time labels */
@@ -2650,6 +2677,7 @@
   cursor: pointer;
 }
 
+
 .rt-mode-option:hover .rt-document-bg {
   fill: var(--interactive-accent);
   stroke: var(--text-normal);
@@ -2672,9 +2700,9 @@
   text-anchor: middle;
   dominant-baseline: middle;
   font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 22px; /* Beat titles are 12px, this is slightly larger */
-  font-weight: 500;
-  letter-spacing: 0.07em;
+  font-size: 13px; /* Beat titles are 12px, this is slightly larger */
+  font-weight: normal;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   fill: var(--text-normal);
   transition: fill 0.2s ease;
@@ -2685,7 +2713,8 @@
   text-anchor: start;
   dominant-baseline: middle;
   font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 24px;
+  font-size: 15px;
+  font-weight: normal;
   fill: var(--text-normal);
 }
 
@@ -2697,14 +2726,16 @@
 
 .rt-mode-option .rt-active.rt-mode-acronym-text {
   fill: var(--text-on-accent) !important;
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 15px; 
+  font-weight: 300;
+  letter-spacing: 0.1em;
 }
 
 .rt-mode-option .rt-active.rt-mode-number-label {
   fill: var(--text-on-accent) !important;
-  font-size: 24px;
+  font-size: 15px; 
   font-weight: 300;
+
 }
 
 /* Mode title text above the first page icon */
@@ -2769,40 +2800,130 @@
 }
 
 /* Shift mode scene selection */
+/* Shift mode: All scene groups fade to low opacity by default */
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"] {
+  opacity: 0.15;
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Shift mode: All scene fills are gray */
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
+  fill: var(--interactive-normal) !important;
+}
+
+/* Shift mode: Style the number squares and text to match the grayed-out scenes */
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square {
+  fill: var(--interactive-normal) !important; /* Dark gray background */
+  stroke: none !important; /* Remove any borders */
+}
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-text {
+  fill: var(--text-on-accent) !important; /* White text for contrast */
+}
+
+/* Shift mode: Hover/selected scenes restore full opacity */
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:hover,
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:has(.rt-shift-locked) {
+  opacity: 1 !important;
+}
+
+/* Shift mode: Hover/selected scenes get accent color */
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:hover .rt-scene-path,
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-scene-path,
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path.rt-shift-locked {
+  fill: var(--interactive-accent) !important;
+  filter: brightness(1.2) !important;
+}
+
+/* Shift mode: A new class, managed by JS, to restore number squares on hover/select */
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active {
+  fill: #FFFFFF !important; /* White background */
+}
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
+  fill: #000000 !important; /* Black text */
+}
+
+/* Ensure active text wins over grade/non-selected rules */
+.radial-timeline-container .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
+  fill: #000000 !important;
+}
+
+/* Legacy: Keep for backwards compatibility */
 .rt-shift-selected {
   stroke: var(--interactive-accent) !important;
   stroke-width: 3 !important;
   filter: drop-shadow(0 0 8px var(--interactive-accent-alpha-50));
 }
 
-/* Elapsed time arc */
+/* Elapsed time arc (SHIFT mode) - uses Stage 1 Zero color */
 .rt-elapsed-time-arc {
   pointer-events: none;
 }
 
-.rt-elapsed-time-arc path {
-  stroke: var(--interactive-accent);
-  stroke-width: 2;
-  opacity: 0.8;
+.rt-elapsed-arc-path {
+  fill: none;
+  stroke: var(--rt-publishStageColors-Zero);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+.rt-elapsed-endpoint-marker {
+  fill: none;
+  stroke: var(--rt-publishStageColors-Zero);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  pointer-events: none;
 }
 
 /* Elapsed time label */
 .rt-elapsed-time-group {
-  pointer-events: all;
+  pointer-events: none;
 }
 
 .rt-elapsed-time-label {
-  cursor: pointer;
   font-family: var(--font-text);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   fill: var(--interactive-accent);
-  transition: all 0.2s ease;
+  stroke: white;
+  stroke-width: 7px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
+  text-transform: uppercase;
 }
 
-.rt-elapsed-time-label:hover {
-  fill: var(--interactive-accent-hover);
-  text-shadow: 0 0 4px var(--interactive-accent-alpha-50);
+.rt-chronologue-duration-ticks {
+  pointer-events: none;
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc {
+  stroke: var(--text-muted);
+  stroke-width: 2px;
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc-overlap {
+  stroke: #ff00ff; /* Magenta for temporal overlaps */
+  stroke-width: 2px;
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc-unparseable {
+  stroke: var(--text-error); /* Red for unparseable durations */
+  stroke-width: 2px;
+}
+
+/* Discontinuity marker text "~" - styled like elapsed time label */
+.rt-duration-overflow-text {
+  font-family: var(--font-text);
+  font-size: 17px;
+  font-weight: 700;
+  fill: var(--text-muted);
+  stroke: white;
+  stroke-width: 5px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
+  pointer-events: none;
 }
 
 /* When field warning tooltip */

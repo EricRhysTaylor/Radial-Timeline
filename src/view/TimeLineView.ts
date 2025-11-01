@@ -1117,11 +1117,20 @@ export class RadialTimelineView extends ItemView {
                     let actStartAngle = 0;
                     let actEndAngle = 2 * Math.PI;
                     
-                    // Simple approximation: if this is act 0,1,2 out of 3, divide circle
+                    // Determine if we're in Chronologue mode or 3-act mode
+                    const isChronologueMode = view.currentMode === 'chronologue';
                     const actNum = Number(hoveredAct);
-                    const NUM_ACTS = 3; // You might want to make this dynamic
-                    actStartAngle = (actNum * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
-                    actEndAngle = ((actNum + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                    
+                    if (isChronologueMode || actNum === 0) {
+                        // Chronologue mode or act 0: use full 360° circle
+                        actStartAngle = -Math.PI / 2; // Start at top (12 o'clock)
+                        actEndAngle = actStartAngle + (2 * Math.PI); // Full circle
+                    } else {
+                        // 3-act structure: divide circle into thirds
+                        const NUM_ACTS = 3;
+                        actStartAngle = (actNum * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                        actEndAngle = ((actNum + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                    }
                     
                     const totalActSpace = actEndAngle - actStartAngle;
                     

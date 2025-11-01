@@ -24,28 +24,58 @@ const MODE_OPTIONS = [
 const POS_X = 658; // Horizontal center position
 const POS_Y = -750; // Vertical position (200px from top)
 
-// Base SVG dimensions (source viewBox size)
-const ICON_WIDTH = 92; // Base width for SVG path
-const ICON_HEIGHT = 126; // Height of icon
+// Base SVG dimensions (source viewBox size - original path coordinates)
+const ICON_BASE_WIDTH = 92; // Original width for SVG path
+const ICON_BASE_HEIGHT = 126; // Original height of icon
 
-// Target visual sizes (scale UP from smaller base to preserve stroke width)
-const INACTIVE_VISUAL_WIDTH = 46; // Target size for inactive icons
-const ACTIVE_VISUAL_WIDTH = 55; // Target size for active icon (before CSS 1.2x boost)
+// Target visual sizes (native size - no scaling, prevents stroke distortion)
+const INACTIVE_VISUAL_WIDTH = 46; // Native size for inactive icons
+const ACTIVE_VISUAL_WIDTH = 55; // Native size for active icon
 
-// Calculate scale factors (scaling UP from base size)
-const MIN_SCALE = INACTIVE_VISUAL_WIDTH / ICON_WIDTH; // ~0.5 - inactive icons
-const ACTIVE_SCALE = ACTIVE_VISUAL_WIDTH / ICON_WIDTH; // ~0.598 - active icon base
+// Scale factors to convert base coordinates to target sizes
+const INACTIVE_SCALE = INACTIVE_VISUAL_WIDTH / ICON_BASE_WIDTH; // ~0.5
+const ACTIVE_SCALE = ACTIVE_VISUAL_WIDTH / ICON_BASE_WIDTH; // ~0.598
+
+// Calculated heights from scaled base height
+const INACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT * INACTIVE_SCALE; // ~63
+const ACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT * ACTIVE_SCALE; // ~75.4
 
 // Visual spacing
 const ICON_VISUAL_GAP_INACTIVE = 4; // Gap between non-active icons
 const ICON_VISUAL_GAP_ACTIVE = 15; // Gap between active and non-active icons
 
 /**
- * Create SVG path for document shape with folded corner
- * Based on provided SVG with viewBox 0 0 92 126
+ * Scale SVG path coordinates to target size
+ * @param pathData Original path string
+ * @param scale Scale factor to apply
+ * @returns Scaled path string
  */
-function createDocumentShape(): string {
-    return 'M0.0740741 108.5C0.0740711 118 3.35321 126 18.8532 126H74.3532C85.9532 126 91.0013 112.5 91.0741 105C91.2407 87.8333 91.0741 55.2111 91.0741 48C91.0741 43 87.8224 33.4634 74.3532 17.5C60.8532 1.5 49.8532 0 46.0741 0H17.0741C4.85322 0 0.12237 9 0.0740749 17.5C-0.0925918 46.8333 0.0740765 100.49 0.0740741 108.5Z';
+function scalePath(pathData: string, scale: number): string {
+    // Parse and scale all numeric values in the path
+    return pathData.replace(/([-\d.]+)/g, (match) => {
+        const num = parseFloat(match);
+        return isNaN(num) ? match : String(num * scale);
+    });
+}
+
+/**
+ * Original SVG path for document shape with folded corner
+ * Based on viewBox 0 0 92 126
+ */
+const ORIGINAL_DOCUMENT_PATH = 'M0.0740741 108.5C0.0740711 118 3.35321 126 18.8532 126H74.3532C85.9532 126 91.0013 112.5 91.0741 105C91.2407 87.8333 91.0741 55.2111 91.0741 48C91.0741 43 87.8224 33.4634 74.3532 17.5C60.8532 1.5 49.8532 0 46.0741 0H17.0741C4.85322 0 0.12237 9 0.0740749 17.5C-0.0925918 46.8333 0.0740765 100.49 0.0740741 108.5Z';
+
+/**
+ * Create SVG path for document shape scaled to inactive size (46px width)
+ */
+function createInactiveDocumentShape(): string {
+    return scalePath(ORIGINAL_DOCUMENT_PATH, INACTIVE_SCALE);
+}
+
+/**
+ * Create SVG path for document shape scaled to active size (55px width)
+ */
+function createActiveDocumentShape(): string {
+    return scalePath(ORIGINAL_DOCUMENT_PATH, ACTIVE_SCALE);
 }
 
 /**
@@ -64,38 +94,43 @@ function createModeSelectorGrid(): SVGGElement {
     MODE_OPTIONS.forEach((mode, index) => {
         const x = startX + index * spacePerIcon;
         
-        // Create mode option group
+        // Create outer group for positioning (translate only)
         const optionGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         optionGroup.setAttribute('class', 'rt-mode-option');
         optionGroup.setAttribute('data-mode', mode.id);
-        optionGroup.setAttribute('transform', `translate(${x}, ${POS_Y}) scale(${MIN_SCALE})`);
+        optionGroup.setAttribute('transform', `translate(${x}, ${POS_Y})`);
         
-        // Create path element
+        // Create inner group for hover scaling (CSS transform will apply here)
+        const innerGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        innerGroup.setAttribute('class', 'rt-mode-option-content');
+        
+        // Create path element - scaled to inactive size (native)
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('class', 'rt-document-bg');
-        path.setAttribute('d', createDocumentShape());
+        path.setAttribute('d', createInactiveDocumentShape());
         
-        // Create text element (acronym)
+        // Create text element (acronym) - coordinates scaled to inactive size
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('class', 'rt-mode-acronym-text');
-        text.setAttribute('x', String(ICON_WIDTH / 2));
-        text.setAttribute('y', String(ICON_HEIGHT - 16));
+        text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * INACTIVE_SCALE));
+        text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * INACTIVE_SCALE));
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('dominant-baseline', 'middle');
         text.textContent = mode.acronym;
         
-        // Create number label (1, 2, 3, 4) at top left corner
+        // Create number label (1, 2, 3, 4) at top left corner - coordinates scaled
         const numberLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         numberLabel.setAttribute('class', 'rt-mode-number-label');
-        numberLabel.setAttribute('x', '12');
-        numberLabel.setAttribute('y', '20');
+        numberLabel.setAttribute('x', String(12 * INACTIVE_SCALE));
+        numberLabel.setAttribute('y', String(20 * INACTIVE_SCALE));
         numberLabel.setAttribute('text-anchor', 'start');
         numberLabel.setAttribute('dominant-baseline', 'middle');
         numberLabel.textContent = String(index + 1);
         
-        optionGroup.appendChild(path);
-        optionGroup.appendChild(text);
-        optionGroup.appendChild(numberLabel);
+        innerGroup.appendChild(path);
+        innerGroup.appendChild(text);
+        innerGroup.appendChild(numberLabel);
+        optionGroup.appendChild(innerGroup);
         grid.appendChild(optionGroup);
     });
     
@@ -183,17 +218,41 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         const finalX = positions[index] + offset;
         
         if (mode.id === currentMode) {
-            modeElement.setAttribute('transform', `translate(${finalX}, ${POS_Y}) scale(${ACTIVE_SCALE})`);
+            // Active mode - no scale transform, use native active size path
+            modeElement.setAttribute('transform', `translate(${finalX}, ${POS_Y})`);
             modeElement.classList.add('rt-mode-current');
             bg.classList.add('rt-active');
             text.classList.add('rt-active');
             if (numberLabel) numberLabel.classList.add('rt-active');
+            
+            // Update path to active size (native)
+            bg.setAttribute('d', createActiveDocumentShape());
+            
+            // Update text positions to active size
+            text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * ACTIVE_SCALE));
+            text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * ACTIVE_SCALE));
+            if (numberLabel) {
+                numberLabel.setAttribute('x', String(12 * ACTIVE_SCALE));
+                numberLabel.setAttribute('y', String(20 * ACTIVE_SCALE));
+            }
         } else {
-            modeElement.setAttribute('transform', `translate(${finalX}, ${POS_Y}) scale(${MIN_SCALE})`);
+            // Inactive mode - no scale transform, use native inactive size path
+            modeElement.setAttribute('transform', `translate(${finalX}, ${POS_Y})`);
             modeElement.classList.remove('rt-mode-current');
             bg.classList.remove('rt-active');
             text.classList.remove('rt-active');
             if (numberLabel) numberLabel.classList.remove('rt-active');
+            
+            // Update path to inactive size (native)
+            bg.setAttribute('d', createInactiveDocumentShape());
+            
+            // Update text positions to inactive size
+            text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * INACTIVE_SCALE));
+            text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * INACTIVE_SCALE));
+            if (numberLabel) {
+                numberLabel.setAttribute('x', String(12 * INACTIVE_SCALE));
+                numberLabel.setAttribute('y', String(20 * INACTIVE_SCALE));
+            }
         }
     });
     
@@ -240,6 +299,14 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
         if (activeView !== view) {
             return; // Different view is active, don't intercept
         }
+        // If focus is inside an input/textarea/select or a contenteditable element, don't intercept
+        const activeEl = document.activeElement as HTMLElement | null;
+        if (activeEl) {
+            const tag = activeEl.tagName.toUpperCase();
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || activeEl.isContentEditable) {
+                return; // Let the input handle the keystroke
+            }
+        }
         
         const key = parseInt(e.key);
         if (key >= 1 && key <= 4 && key <= MODE_OPTIONS.length) {
@@ -257,7 +324,7 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
         document.removeEventListener('keydown', handleKeyPress);
     };
     
-    // Register hover handlers for visual feedback
+    // Register hover handlers for visual feedback (color changes only, no scaling)
     MODE_OPTIONS.forEach(mode => {
         const modeElement = modeSelector.querySelector(`[data-mode="${mode.id}"]`);
         if (modeElement) {

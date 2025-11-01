@@ -44,6 +44,7 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>): Record<st
     'pendingedits': 'Pending Edits',
     'revision': 'Revision',
     'pov': 'POV',
+    'duration': 'Duration',
     'type': 'Type',
     'shift': 'Shift',
     'questions': 'Questions',
@@ -104,4 +105,3 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>): Record<st
   
   return normalized;
 }
-

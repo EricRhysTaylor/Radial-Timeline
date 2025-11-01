@@ -62,15 +62,49 @@ export function estimateTokens(wordCount: number): number {
 }
 
 /**
+ * Generate a table of contents for the manuscript
+ * @param scenes - Array of scene content
+ * @param totalWords - Total word count
+ * @param useObsidianLinks - If true, use [[#Scene Title]] format for clickable links in Obsidian
+ */
+function generateTableOfContents(scenes: SceneContent[], totalWords: number, useObsidianLinks = false): string {
+  const tocLines: string[] = [
+    '# TABLE OF CONTENTS',
+    '',
+    `Total Scenes: ${scenes.length} | Total Words: ${totalWords.toLocaleString()}`,
+    '',
+    '---',
+    ''
+  ];
+
+  scenes.forEach((scene, index) => {
+    const sceneNum = index + 1;
+    if (useObsidianLinks) {
+      // Obsidian internal link format - clickable in reading mode
+      tocLines.push(`${sceneNum}. [[#${scene.title}]] (${scene.wordCount.toLocaleString()} words)`);
+    } else {
+      // Plain text format - better for AI processing
+      tocLines.push(`${sceneNum}. ${scene.title} (${scene.wordCount.toLocaleString()} words)`);
+    }
+  });
+
+  tocLines.push('', '---', '', '');
+
+  return tocLines.join('\n');
+}
+
+/**
  * Assemble full manuscript from scene files
  * @param sceneFiles - Array of TFile objects in manuscript order
  * @param vault - Obsidian vault instance
  * @param progressCallback - Optional callback for progress updates
+ * @param useObsidianLinks - If true, TOC uses [[#Scene Title]] clickable links (default: false for AI processing)
  */
 export async function assembleManuscript(
   sceneFiles: TFile[],
   vault: Vault,
-  progressCallback?: (sceneIndex: number, sceneTitle: string, totalScenes: number) => void
+  progressCallback?: (sceneIndex: number, sceneTitle: string, totalScenes: number) => void,
+  useObsidianLinks = false
 ): Promise<AssembledManuscript> {
   const scenes: SceneContent[] = [];
   const textParts: string[] = [];
@@ -102,8 +136,12 @@ export async function assembleManuscript(
     }
   }
 
+  // Generate TOC and prepend to manuscript
+  const toc = generateTableOfContents(scenes, totalWords, useObsidianLinks);
+  const manuscriptText = toc + textParts.join('');
+
   return {
-    text: textParts.join(''),
+    text: manuscriptText,
     totalWords,
     totalScenes: sceneFiles.length,
     scenes

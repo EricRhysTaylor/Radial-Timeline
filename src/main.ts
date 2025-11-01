@@ -126,6 +126,7 @@ export interface Scene {
     "Publish Stage"?: string; // Add publish stage property
     due?: string; // Add due date property
     pendingEdits?: string; // Add pending edits property
+    Duration?: string; // Scene duration (e.g., "2 hours", "3 days")
     Book?: string; // Add book title property
     "previousSceneAnalysis"?: string; // Add previousSceneAnalysis property
     "currentSceneAnalysis"?: string; // Add currentSceneAnalysis property 
@@ -623,24 +624,13 @@ export default class RadialTimelinePlugin extends Plugin {
                         return;
                     }
                     
-                    // Assemble manuscript
-                    const manuscript = await assembleManuscript(sceneFiles, this.app.vault);
+                    // Assemble manuscript with Obsidian-style clickable links
+                    const manuscript = await assembleManuscript(sceneFiles, this.app.vault, undefined, true);
                     
                     if (!manuscript.text || manuscript.text.trim().length === 0) {
                         new Notice('Manuscript is empty. Check that your scene files have content.');
                         return;
                     }
-                    
-                    // Build table of contents with Obsidian-style internal links
-                    let tableOfContents = '# Table of Contents\n\n';
-                    manuscript.scenes.forEach((scene, index) => {
-                        // Use Obsidian internal link format: [[#Heading Name]]
-                        tableOfContents += `${index + 1}. [[#${scene.title}]]\n`;
-                    });
-                    tableOfContents += '\n---\n\n';
-                    
-                    // Combine TOC with manuscript text
-                    const fullManuscript = tableOfContents + manuscript.text;
                     
                     // Save to AI folder - use friendly local timestamp
                     const now = new Date();
@@ -671,7 +661,7 @@ export default class RadialTimelinePlugin extends Plugin {
                     }
                     
                     // Create the file
-                    const createdFile = await this.app.vault.create(manuscriptPath, fullManuscript);
+                    const createdFile = await this.app.vault.create(manuscriptPath, manuscript.text);
                     
                     // Open the file in a new tab
                     const leaf = this.app.workspace.getLeaf('tab');
@@ -1391,17 +1381,21 @@ export default class RadialTimelinePlugin extends Plugin {
                 const metadata = rawMetadata ? normalizeFrontmatterKeys(rawMetadata) : undefined;
                 
                 if (metadata && metadata.Class === "Scene") {
-                // Fix for date shift issue - ensure dates are interpreted as UTC
+                // Parse the When field using the centralized parser (single source of truth)
                 const whenStr = metadata.When;
                 
-                // Clean up malformed timestamps before parsing
-                const cleanWhenStr = typeof whenStr === 'string' ? whenStr.replace(/T0(\d+):/, 'T$1:') : whenStr;
+                let when: Date | undefined;
+                if (typeof whenStr === 'string') {
+                    const parsed = parseWhenField(whenStr);
+                    if (parsed) {
+                        when = parsed;
+                    }
+                } else if (whenStr instanceof Date) {
+                    // Already a Date object
+                    when = whenStr;
+                }
                 
-                // Directly parse the date in a way that preserves the specified date regardless of timezone
-                // Use a specific time (noon UTC) to avoid any date boundary issues
-                const when = new Date(`${cleanWhenStr}T12:00:00Z`);
-                
-                if (!isNaN(when.getTime())) {
+                if (when && !isNaN(when.getTime())) {
                     // Split subplots if provided, otherwise default to "Main Plot"
                     const subplots = metadata.Subplot
                         ? Array.isArray(metadata.Subplot) 
@@ -1434,24 +1428,26 @@ export default class RadialTimelinePlugin extends Plugin {
     
                     // Create a separate entry for each subplot
                     subplots.forEach(subplot => {
-                        scenes.push({
-                            title: (typeof metadata.Title === 'string' ? metadata.Title : file.basename),
-                                date: when.toISOString(),
-                                path: file.path,
-                            subplot: subplot,
-                                act: validActNumber.toString(),
-                                pov: (typeof metadata.POV === 'string' ? metadata.POV : undefined),
-                                location: (typeof metadata.Location === 'string' ? metadata.Location : undefined),
-                                number: sceneNumber,
-                                synopsis: (typeof metadata.Synopsis === 'string' ? metadata.Synopsis : undefined),
-                                when: when,
-                            actNumber: validActNumber,
-                                Character: characterList,
-                                status: (typeof metadata.Status === 'string' || Array.isArray(metadata.Status) ? metadata.Status as string | string[] : undefined),
-                                "Publish Stage": (typeof metadata["Publish Stage"] === 'string' ? metadata["Publish Stage"] : undefined),
-                                due: (typeof metadata.Due === 'string' ? metadata.Due : undefined),
-                                pendingEdits: (typeof metadata["Pending Edits"] === 'string' ? metadata["Pending Edits"] : undefined),
-                                Book: (typeof metadata.Book === 'string' ? metadata.Book : undefined),
+                        if (when) { // Guard clause for type safety
+                            scenes.push({
+                                title: (typeof metadata.Title === 'string' ? metadata.Title : file.basename),
+                                    date: when.toISOString(),
+                                    path: file.path,
+                                subplot: subplot,
+                                    act: validActNumber.toString(),
+                                    pov: (typeof metadata.POV === 'string' ? metadata.POV : undefined),
+                                    location: (typeof metadata.Location === 'string' ? metadata.Location : undefined),
+                                    number: sceneNumber,
+                                    synopsis: (typeof metadata.Synopsis === 'string' ? metadata.Synopsis : undefined),
+                                    when: when,
+                                actNumber: validActNumber,
+                                    Character: characterList,
+                                    status: (typeof metadata.Status === 'string' || Array.isArray(metadata.Status) ? metadata.Status as string | string[] : undefined),
+                                    "Publish Stage": (typeof metadata["Publish Stage"] === 'string' ? metadata["Publish Stage"] : undefined),
+                                    due: (typeof metadata.Due === 'string' ? metadata.Due : undefined),
+                                    pendingEdits: (typeof metadata["Pending Edits"] === 'string' ? metadata["Pending Edits"] : undefined),
+                                    Book: (typeof metadata.Book === 'string' ? metadata.Book : undefined),
+                                    Duration: (typeof metadata.Duration === 'string' ? metadata.Duration : undefined),
                                 // Only process AI scene analysis fields if AI features are enabled (performance optimization)
                                 "previousSceneAnalysis": this.settings.enableAiSceneAnalysis ? (typeof metadata["previousSceneAnalysis"] === 'string' ? metadata["previousSceneAnalysis"] : (Array.isArray(metadata["previousSceneAnalysis"]) ? metadata["previousSceneAnalysis"].join('\n') : (metadata["previousSceneAnalysis"] ? String(metadata["previousSceneAnalysis"]) : undefined))) : undefined,
                                 "currentSceneAnalysis": this.settings.enableAiSceneAnalysis ? (typeof metadata["currentSceneAnalysis"] === 'string' ? metadata["currentSceneAnalysis"] : (Array.isArray(metadata["currentSceneAnalysis"]) ? metadata["currentSceneAnalysis"].join('\n') : (metadata["currentSceneAnalysis"] ? String(metadata["currentSceneAnalysis"]) : undefined))) : undefined,
@@ -1459,6 +1455,7 @@ export default class RadialTimelinePlugin extends Plugin {
                                 "Beats Update": (typeof metadata["Beats Update"] === 'boolean' || typeof metadata["Beats Update"] === 'string') ? metadata["Beats Update"] as (boolean | string) : undefined,
                                 itemType: "Scene"
                             });
+                        }
                     });
                 }
             }
@@ -1569,6 +1566,13 @@ export default class RadialTimelinePlugin extends Plugin {
             });
         });
 
+        
+        // Filter out story beats if current mode doesn't support them
+        const currentMode = this.settings.currentMode || 'all-scenes';
+        if (currentMode === 'chronologue' || currentMode === 'main-plot') {
+            // Remove Plot/Beat items from the data in modes that don't show beats
+            return scenes.filter(s => s.itemType !== 'Plot');
+        }
         
         // Don't sort here - let each rendering mode handle its own sort order
         // (All Scenes and Main Plot use manuscript order, Chronologue uses When field)

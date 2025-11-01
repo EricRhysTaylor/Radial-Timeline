@@ -12,7 +12,7 @@
 import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, PLOT_PIXEL_WIDTH, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
 import type { Scene } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';
-import { dateToAngle, isOverdueDateString } from '../utils/date';
+import { dateToAngle, isOverdueDateString, generateChronologicalTicks, type ChronologicalTickInfo } from '../utils/date';
 import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
 import { 
     extractGradeFromScene, 
@@ -46,7 +46,8 @@ import { renderPlotGroup } from './components/Plots';
 import { renderMonthSpokesAndInnerLabels, renderGossamerMonthSpokes } from './components/MonthSpokes';
 import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
 import { shouldRenderStoryBeats, shouldShowSubplotRings, shouldShowAllScenesInOuterRing, shouldShowInnerRingContent, getSubplotLabelText } from './modules/ModeRenderingHelpers';
-import { renderChronologueTimelineArc } from './components/ChronologueTimeline';
+import { renderChronologueTimelineArc, renderChronologicalBackboneArc } from './components/ChronologueTimeline';
+
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
 
@@ -149,8 +150,20 @@ function buildSynopsis(
     orderedSubplots: string[],
     subplotIndexResolver?: (name: string) => number
 ): SVGGElement {
+    // Format date consistently - extract just the date portion to avoid timezone shifts
+    let dateStr = '';
+    if (scene.when) {
+        if (scene.when instanceof Date) {
+            // Extract year, month, day without timezone conversion
+            const year = scene.when.getFullYear();
+            const month = String(scene.when.getMonth() + 1).padStart(2, '0');
+            const day = String(scene.when.getDate()).padStart(2, '0');
+            dateStr = `${month}/${day}/${year}`;
+        }
+    }
+    
     const contentLines = [
-        `${scene.title}   ${scene.when?.toLocaleDateString() || ''}`,
+        `${scene.title}   ${dateStr}`,
         ...(scene.itemType === 'Plot' && scene.Description
             ? plugin.splitIntoBalancedLines(scene.Description, maxTextWidth)
             : scene.synopsis
@@ -514,7 +527,9 @@ export function createTimelineSVG(
         // Ring colors are now handled by CSS variables and dynamic color logic
     
         // Precompute plot note indexes and grouping to avoid repeated scans
-        const allScenesPlotNotes = scenes.filter(s => s.itemType === 'Plot');
+        // Filter out beats if they shouldn't be rendered (e.g., in Chronologue mode)
+        const shouldShowBeats = shouldRenderStoryBeats(plugin);
+        const allScenesPlotNotes = shouldShowBeats ? scenes.filter(s => s.itemType === 'Plot') : [];
         const totalPlotNotes = allScenesPlotNotes.length;
         const plotIndexByKey = new Map<string, number>();
         allScenesPlotNotes.forEach((p, i) => plotIndexByKey.set(`${String(p.title || '')}::${String(p.actNumber ?? '')}`, i));
@@ -587,13 +602,109 @@ export function createTimelineSVG(
                     scenesByActAndSubplot[act][subplot] = sortScenes(scenesByActAndSubplot[act][subplot], false, false);
                 });
             }
-        }        // Define the months and their angles
-        const months = Array.from({ length: 12 }, (_, i) => {
+        }        
+        
+        // Define the months and their angles (or chronological ticks in Chronologue mode)
+        // INNER months always use standard calendar (for year progress ring)
+        // OUTER labels use chronological ticks in Chronologue mode
+        const standardMonths = Array.from({ length: 12 }, (_, i) => {
             const angle = (i / 12) * 2 * Math.PI - Math.PI / 2; // Adjust so January is at the top
             const name = new Date(2000, i).toLocaleString('en-US', { month: 'long' });
             const shortName = new Date(2000, i).toLocaleString('en-US', { month: 'short' }).slice(0, 3);
             return { name, shortName, angle };
         });
+        
+        // Inner months are ALWAYS standard calendar months (for year progress)
+        const months = standardMonths;
+        
+        // Outer labels can be different in Chronologue mode
+        let outerLabels: { name: string; shortName: string; angle: number; isMajor?: boolean; isFirst?: boolean; isLast?: boolean }[];
+        
+        if (isChronologueMode) {
+            // In Chronologue mode, we need to align ticks to actual scene positions
+            // Build the EXACT same scene list that's used for outer ring rendering
+            const startAngle = -Math.PI / 2; // Top of circle
+            const endAngle = (3 * Math.PI) / 2; // Full circle
+            
+            // Build combined array exactly like outer ring does (act 0 for chronologue mode)
+            const seenPaths = new Set<string>();
+            const combined: Scene[] = [];
+            
+            scenes.forEach(s => {
+                // In chronologue mode, include all scenes (ignore Act)
+                if (s.itemType === 'Plot') {
+                    // Plot items are included in combined but filtered later for tick generation
+                    const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
+                    if (!seenPaths.has(pKey)) {
+                        seenPaths.add(pKey);
+                        combined.push(s);
+                    }
+                } else {
+                    // Scenes: deduplicate by path or title+when
+                    const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
+                    if (!seenPaths.has(key)) {
+                        seenPaths.add(key);
+                        combined.push(s);
+                    }
+                }
+            });
+            
+            // Sort the combined array exactly like outer ring rendering does
+            const sortByWhen = true; // Chronologue mode always sorts by When
+            const forceChronological = true; // Chronologue mode forces chronological
+            const sortedCombined = sortScenes(combined, sortByWhen, forceChronological);
+            
+            // Filter to scenes only (no plot beats) for tick generation
+            const sortedScenes = sortedCombined.filter(s => s.itemType !== 'Plot');
+            
+            if (plugin.settings.debug) {
+                plugin.log(`[Tick Generation] Combined scenes: ${combined.length}, Scenes only: ${sortedScenes.length}`);
+                plugin.log(`[Tick Generation] First scene: ${sortedScenes[0]?.title || 'none'}, Last scene: ${sortedScenes[sortedScenes.length - 1]?.title || 'none'}`);
+            }
+            
+            // Compute equal-spaced positions for scenes (matching what computePositions will do)
+            // Pass both start angles and angular size to align ticks to scene beginnings
+            const sceneStartAngles: number[] = [];
+            let sceneAngularSize = 0;
+            if (sortedScenes.length > 0) {
+                const totalAngularSpace = endAngle - startAngle;
+                sceneAngularSize = totalAngularSpace / sortedScenes.length;
+                
+                if (plugin.settings.debug) {
+                    plugin.log(`[Tick Generation] Scene count: ${sortedScenes.length}, Angular size per scene: ${sceneAngularSize} rad`);
+                }
+                
+                sortedScenes.forEach((_, idx) => {
+                    // Start angle of each scene (beginning of its angular slice)
+                    const sceneStartAngle = startAngle + (idx * sceneAngularSize);
+                    sceneStartAngles.push(sceneStartAngle);
+                });
+            }
+            
+            // Generate chronological ticks aligned to scene starts
+            const chronoTicks = generateChronologicalTicks(sortedScenes, sceneStartAngles, sceneAngularSize, plugin.settings.debug ? plugin : undefined);
+            
+            if (plugin.settings.debug) {
+                plugin.log(`[Tick Generation] Generated ${chronoTicks.length} ticks, ${chronoTicks.filter(t => t.isMajor).length} major`);
+                chronoTicks.forEach((tick, i) => {
+                    if (tick.isMajor) {
+                        plugin.log(`[Tick Generation] Tick ${i}: angle=${tick.angle.toFixed(4)}, label="${tick.shortName}", major=${tick.isMajor}`);
+                    }
+                });
+            }
+            
+            outerLabels = chronoTicks.map(tick => ({
+                name: tick.name,
+                shortName: tick.shortName,
+                angle: tick.angle,
+                isMajor: tick.isMajor,
+                isFirst: tick.isFirst,
+                isLast: tick.isLast
+            }));
+        } else {
+            // Use standard calendar months for outer labels too
+            outerLabels = standardMonths;
+        }
     
         // Compute ring widths and radii via helper
         const N = NUM_RINGS;
@@ -608,7 +719,7 @@ export function createTimelineSVG(
         const { ringWidths, ringStartRadii, lineInnerRadius, lineOuterRadius, monthLabelRadius } = ringGeo;
     
         // **Include the `<style>` code here**
-        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg" preserveAspectRatio="xMidYMid meet">`;
+        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg" ${isChronologueMode ? 'data-chronologue-mode="true"' : ''} preserveAspectRatio="xMidYMid meet">`;
         
 
         // After radii are known, compute global stacking map (outer-ring all-scenes only)
@@ -626,8 +737,8 @@ export function createTimelineSVG(
         svg += renderDefs(PUBLISH_STAGE_COLORS);
         
 
-        // Define outer arc paths for months
-        svg += renderMonthLabelDefs({ months, monthLabelRadius });
+        // Define outer arc paths for months (use outerLabels which may be chronological ticks)
+        svg += renderMonthLabelDefs({ months: outerLabels, monthLabelRadius });
 
 
         // Close defs act
@@ -661,17 +772,39 @@ export function createTimelineSVG(
         // Get current month index (0-11)
         const currentMonthIndex = new Date().getMonth();
 
+        // Store boundary labels (first/last) to render on top later in chronologue mode
+        let boundaryLabelsHtml = '';
+
         //outer months Labels
-        months.forEach(({ name }, index) => {
+        outerLabels.forEach(({ shortName, isFirst, isLast }, index) => {
             const pathId = `monthLabelPath-${index}`;
-            const isPastMonth = index < currentMonthIndex;
-            svg += `
-                <text class="rt-month-label-outer" ${isPastMonth ? 'opacity="0.5"' : ''}>
+            
+            // Only apply past month dimming in non-chronologue modes
+            // In chronologue mode, all labels should be bright (not based on calendar months)
+            const isPastMonth = !isChronologueMode && index < currentMonthIndex;
+            
+            // Special formatting for first and last labels (beginning/ending dates)
+            let labelClass = 'rt-month-label-outer';
+            if (isFirst) {
+                labelClass = 'rt-month-label-outer rt-date-boundary rt-date-first';
+            } else if (isLast) {
+                labelClass = 'rt-month-label-outer rt-date-boundary rt-date-last';
+            }
+            
+            const labelHtml = `
+                <text class="${labelClass}" ${isPastMonth ? 'opacity="0.5"' : ''}>
                     <textPath href="#${pathId}" startOffset="0" text-anchor="start">
-                        ${name}
+                        ${shortName}
                     </textPath>
                 </text>
             `;
+            
+            // In chronologue mode, save boundary labels to render on top later
+            if (isChronologueMode && (isFirst || isLast)) {
+                boundaryLabelsHtml += labelHtml;
+            } else {
+                svg += labelHtml;
+            }
         });
 
         // --- Draw Act labels early (below story beat labels) into rotatable group later ---
@@ -754,8 +887,55 @@ export function createTimelineSVG(
          // --- Draw Estimation Arc --- END ---
 
          
-        // Month spokes and inner labels
-        svg += renderMonthSpokesAndInnerLabels({ months, lineInnerRadius, lineOuterRadius, currentMonthIndex });
+        // Month spokes and inner labels (always calendar months)
+        // In Chronologue mode, don't render the calendar month spokes to outer radius
+        if (!isChronologueMode) {
+            svg += renderMonthSpokesAndInnerLabels({ months, lineInnerRadius, lineOuterRadius, currentMonthIndex });
+        } else {
+            // In Chronologue mode, only render inner labels and short spokes (not extending to outer ring)
+            const chronologueInnerRadius = lineInnerRadius - 5;
+            const chronologueOuterRadius = lineInnerRadius + 30; // Short spokes for inner calendar reference
+            svg += renderMonthSpokesAndInnerLabels({ months, lineInnerRadius, lineOuterRadius: chronologueOuterRadius, currentMonthIndex });
+        }
+
+        // Add outer chronological tick marks in Chronologue mode
+        if (isChronologueMode && outerLabels.length > 0) {
+            svg += '<g class="rt-chronological-outer-ticks">';
+            outerLabels.forEach(({ angle, isMajor, shortName }) => {
+                // Ticks should align with the label radius for perfect alignment
+                const tickStart = monthLabelRadius - 13; // Start just inside labels (3px closer to origin)
+                
+                // Act-style boundary markers for major ticks (first/last scenes)
+                // Subtle minor marks for intermediate scenes
+                if (isMajor) {
+                    // MAJOR TICK: Act-style boundary line (extends outward with solid line)
+                    const tickEnd = monthLabelRadius + 11; // Extend to top of SVG boundingbox. Beyond this will clip
+                    const x1 = formatNumber(tickStart * Math.cos(angle));
+                    const y1 = formatNumber(tickStart * Math.sin(angle));
+                    const x2 = formatNumber(tickEnd * Math.cos(angle));
+                    const y2 = formatNumber(tickEnd * Math.sin(angle));
+                    
+                    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
+                        stroke="var(--text-muted)" 
+                        stroke-width="2" 
+                        opacity="0.8"/>`;
+                } else if (shortName === '') {
+                    // MINOR TICK: Small dotted mark (no label)
+                    const tickEnd = monthLabelRadius + 5; // Short extension
+                    const x1 = formatNumber(tickStart * Math.cos(angle));
+                    const y1 = formatNumber(tickStart * Math.sin(angle));
+                    const x2 = formatNumber(tickEnd * Math.cos(angle));
+                    const y2 = formatNumber(tickEnd * Math.sin(angle));
+                    
+                    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
+                        stroke="var(--text-muted)" 
+                        stroke-width="1.5" 
+                        stroke-dasharray="1,2" 
+                        opacity="0.5"/>`;
+                }
+            });
+            svg += '</g>';
+        }
 
 
         // Draw the year progress ring segments
@@ -897,6 +1077,9 @@ export function createTimelineSVG(
 
         // Initialize beat angles map for Gossamer (clear any stale data from previous render)
         (plugin as any)._beatAngles = new Map();
+        
+        // Store manuscript-order scene positions for Level 4 duration arcs (keyed by scene path or title)
+        let manuscriptOrderPositions: Map<string, { startAngle: number; endAngle: number }> | undefined;
 
         // Determine how many acts to render based on sorting method
         // When date sorting: Use full 360° circle (only "act 0")
@@ -996,6 +1179,20 @@ export function createTimelineSVG(
 
                     // Compute angular positions for all combined items
                     const positions = computePositions(innerR, outerR, startAngle, endAngle, sortedCombined);
+                    
+                    // Store positions for Level 4 duration arcs (chronologue mode only)
+                    // Create a map keyed by scene identifier (path or title) for lookup
+                    if (isChronologueMode) {
+                        manuscriptOrderPositions = new Map();
+                        sortedCombined.forEach((scene, idx) => {
+                            const position = positions.get(idx);
+                            if (position) {
+                                // Use path as primary key, fallback to title for scenes without paths
+                                const key = scene.path || `title:${scene.title || ''}`;
+                                manuscriptOrderPositions!.set(key, position);
+                            }
+                        });
+                    }
 
                     // Stacking removed
 
@@ -1830,10 +2027,29 @@ export function createTimelineSVG(
             </g>
         `;
 
-        // Add Chronologue timeline arc if in Chronologue mode
-        if ((plugin as any).settings.currentMode === 'chronologue') {
-            const chronologueArc = renderChronologueTimelineArc(scenes, outerRadius);
-            svg += chronologueArc;
+        // Add Chronologue mode arcs
+        if (isChronologueMode) {
+            const chronologueTimelineArc = renderChronologueTimelineArc(
+                scenes, 
+                outerRadius, 
+                3, // arc width
+                manuscriptOrderPositions
+            );
+            if (chronologueTimelineArc) {
+                svg += chronologueTimelineArc;
+            }
+            // Arc 1: Chronological backbone with discontinuity symbols
+            svg += renderChronologicalBackboneArc(scenes, outerRadius, 3, manuscriptOrderPositions);
+            // Arc 3: Shift mode elapsed time (conditionally rendered when shift mode active)
+            // Note: This would need shift mode state to be passed in - placeholder for future enhancement
+            // if (shiftModeActive && selectedScenes.length === 2) {
+            //     svg += renderElapsedTimeArc(selectedScenes[0], selectedScenes[1], outerRadius);
+            // }
+            
+            // Render boundary date labels on top of chronologue arcs
+            if (boundaryLabelsHtml) {
+                svg += boundaryLabelsHtml;
+            }
         }
 
         // Add JavaScript to handle synopsis visibility
