@@ -359,6 +359,63 @@ export function isOverdueDateString(dueString?: string, today: Date = new Date()
   return dueDay < todayD; // strictly before today
 }
 
+const MS_PER_SECOND = 1000;
+const MS_PER_MINUTE = 60 * MS_PER_SECOND;
+const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+const MS_PER_DAY = 24 * MS_PER_HOUR;
+const MS_PER_WEEK = 7 * MS_PER_DAY;
+const MS_PER_MONTH = 30.44 * MS_PER_DAY; // Average month
+const MS_PER_YEAR = 365.25 * MS_PER_DAY; // Average year
+
+interface DurationUnitDefinition {
+    key: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years';
+    aliases: string[];
+    multiplier: number;
+    singular: string;
+    plural: string;
+}
+
+const DURATION_UNIT_DEFINITIONS: DurationUnitDefinition[] = [
+    { key: 'seconds', aliases: ['s', 'sec', 'secs', 'second', 'seconds'], multiplier: MS_PER_SECOND, singular: 'second', plural: 'seconds' },
+    { key: 'minutes', aliases: ['m', 'min', 'mins', 'minute', 'minutes'], multiplier: MS_PER_MINUTE, singular: 'minute', plural: 'minutes' },
+    { key: 'hours', aliases: ['h', 'hr', 'hrs', 'hour', 'hours'], multiplier: MS_PER_HOUR, singular: 'hour', plural: 'hours' },
+    { key: 'days', aliases: ['d', 'day', 'days'], multiplier: MS_PER_DAY, singular: 'day', plural: 'days' },
+    { key: 'weeks', aliases: ['w', 'wk', 'wks', 'week', 'weeks'], multiplier: MS_PER_WEEK, singular: 'week', plural: 'weeks' },
+    { key: 'months', aliases: ['mo', 'mon', 'mos', 'month', 'months'], multiplier: MS_PER_MONTH, singular: 'month', plural: 'months' },
+    { key: 'years', aliases: ['y', 'yr', 'yrs', 'year', 'years'], multiplier: MS_PER_YEAR, singular: 'year', plural: 'years' },
+];
+
+const DURATION_UNIT_ALIAS_MAP: Map<string, DurationUnitDefinition> = new Map();
+DURATION_UNIT_DEFINITIONS.forEach(def => {
+    def.aliases.forEach(alias => DURATION_UNIT_ALIAS_MAP.set(alias, def));
+});
+
+function formatDurationValue(value: number): string {
+    if (Number.isNaN(value)) return '';
+    if (Number.isInteger(value)) return value.toString();
+    return value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+interface InternalDurationMatch {
+    value: number;
+    valueText: string;
+    unit: DurationUnitDefinition;
+}
+
+function matchDurationDetail(duration: string | undefined): InternalDurationMatch | null {
+    if (!duration || typeof duration !== 'string') return null;
+    const trimmed = duration.trim().toLowerCase();
+    if (!trimmed) return null;
+    const match = trimmed.match(/^([\d.]+)\s*([a-z]+)$/);
+    if (!match) return null;
+    const numeric = parseFloat(match[1]);
+    if (!Number.isFinite(numeric) || numeric < 0) return null;
+    const unitAlias = match[2];
+    const unitDef = DURATION_UNIT_ALIAS_MAP.get(unitAlias);
+    if (!unitDef) return null;
+    return { value: numeric, valueText: match[1], unit: unitDef };
+}
+
 /**
  * Parse a Duration field into milliseconds
  * Supports flexible formats:
@@ -376,82 +433,59 @@ export function parseDuration(duration: string | undefined): number | null {
     const trimmed = duration.trim().toLowerCase();
     if (trimmed === '' || trimmed === '0') return 0;
     
-    // Match number (int or float) + optional space + unit
-    const match = trimmed.match(/^([\d.]+)\s*([a-z]+)$/);
+    const match = matchDurationDetail(duration);
     if (!match) return null;
-    
-    const value = parseFloat(match[1]);
-    if (isNaN(value) || value < 0) return null;
-    
-    const unit = match[2];
-    
-    // Convert to milliseconds
-    const MS_PER_SECOND = 1000;
-    const MS_PER_MINUTE = 60 * MS_PER_SECOND;
-    const MS_PER_HOUR = 60 * MS_PER_MINUTE;
-    const MS_PER_DAY = 24 * MS_PER_HOUR;
-    const MS_PER_WEEK = 7 * MS_PER_DAY;
-    const MS_PER_MONTH = 30.44 * MS_PER_DAY; // Average month
-    const MS_PER_YEAR = 365.25 * MS_PER_DAY; // Average year
-    
-    switch (unit) {
-        // Seconds
-        case 's':
-        case 'sec':
-        case 'secs':
-        case 'second':
-        case 'seconds':
-            return value * MS_PER_SECOND;
-            
-        // Minutes
-        case 'm':
-        case 'min':
-        case 'mins':
-        case 'minute':
-        case 'minutes':
-            return value * MS_PER_MINUTE;
-            
-        // Hours
-        case 'h':
-        case 'hr':
-        case 'hrs':
-        case 'hour':
-        case 'hours':
-            return value * MS_PER_HOUR;
-            
-        // Days
-        case 'd':
-        case 'day':
-        case 'days':
-            return value * MS_PER_DAY;
-            
-        // Weeks
-        case 'w':
-        case 'wk':
-        case 'wks':
-        case 'week':
-        case 'weeks':
-            return value * MS_PER_WEEK;
-            
-        // Months
-        case 'mo':
-        case 'mon':
-        case 'mos':
-        case 'month':
-        case 'months':
-            return value * MS_PER_MONTH;
-            
-        // Years
-        case 'y':
-        case 'yr':
-        case 'yrs':
-        case 'year':
-        case 'years':
-            return value * MS_PER_YEAR;
-            
-        default:
-            return null;
-    }
+    if (match.value === 0) return 0;
+    return match.value * match.unit.multiplier;
+}
+
+export type DurationUnitKey = DurationUnitDefinition['key'];
+
+export interface ParsedDurationDetail {
+    value: number;
+    valueText: string;
+    unitKey: DurationUnitKey;
+    unitSingular: string;
+    unitPlural: string;
+    ms: number;
+}
+
+export function parseDurationDetail(duration: string | undefined): ParsedDurationDetail | null {
+    const match = matchDurationDetail(duration);
+    if (!match) return null;
+    if (match.value <= 0) return null;
+    return {
+        value: match.value,
+        valueText: formatDurationValue(match.value),
+        unitKey: match.unit.key,
+        unitSingular: match.unit.singular,
+        unitPlural: match.unit.plural,
+        ms: match.value * match.unit.multiplier,
+    };
+}
+
+export function durationSelectionToMs(selection: string | undefined): number | null {
+    if (!selection || selection === 'auto') return null;
+    const [valuePart, unitKey] = selection.split('|');
+    if (!valuePart || !unitKey) return null;
+    const value = parseFloat(valuePart);
+    if (!Number.isFinite(value) || value <= 0) return null;
+    const unitDef = DURATION_UNIT_DEFINITIONS.find(def => def.key === unitKey);
+    if (!unitDef) return null;
+    return value * unitDef.multiplier;
+}
+
+export function formatDurationSelectionLabel(selection: string | undefined): string | null {
+    if (!selection || selection === 'auto') return null;
+    const [valuePart, unitKey] = selection.split('|');
+    if (!valuePart || !unitKey) return null;
+    const value = parseFloat(valuePart);
+    if (!Number.isFinite(value) || value <= 0) return null;
+    const unitDef = DURATION_UNIT_DEFINITIONS.find(def => def.key === unitKey);
+    if (!unitDef) return null;
+    const formattedValue = formatDurationValue(value);
+    const unitLabel = value === 1 ? unitDef.singular : unitDef.plural;
+    return `${formattedValue} ${unitLabel}`;
 }
 
 /**

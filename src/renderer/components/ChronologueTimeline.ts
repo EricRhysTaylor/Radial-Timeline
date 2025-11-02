@@ -23,7 +23,8 @@ export function renderChronologueTimelineArc(
     scenes: Scene[],
     outerRadius: number,
     arcWidth: number = 3,
-    scenePositions?: Map<string, { startAngle: number; endAngle: number }>
+    scenePositions?: Map<string, { startAngle: number; endAngle: number }>,
+    durationCapMs?: number | null
 ): string {
     // Parse all When fields and filter out invalid dates (deduplicate by path/title+time)
     const seenKeys = new Set<string>();
@@ -68,8 +69,8 @@ export function renderChronologueTimelineArc(
             sceneEntries,
             arcRadius,
             timeSpanTotalMs: timeSpan.totalMs,
-            earliestMs: earliestDate.getTime(),
-            scenePositions
+            scenePositions,
+            durationCapMs
         });
         if (durationSegments) {
             svg += durationSegments;
@@ -86,12 +87,12 @@ interface DurationTickArcParams {
     sceneEntries: Array<{ scene: Scene; date: Date; sourceIndex: number }>;
     arcRadius: number;
     timeSpanTotalMs: number;
-    earliestMs: number;
     scenePositions: Map<string, { startAngle: number; endAngle: number }>;
+    durationCapMs?: number | null;
 }
 
 function renderDurationTickArcs(params: DurationTickArcParams): string | null {
-    const { sceneEntries, arcRadius, timeSpanTotalMs, earliestMs, scenePositions } = params;
+    const { sceneEntries, arcRadius, timeSpanTotalMs, scenePositions, durationCapMs } = params;
     if (sceneEntries.length === 0 || timeSpanTotalMs <= 0) {
         return null;
     }
@@ -130,21 +131,15 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         return null;
     }
 
-    // Calculate threshold using 75th percentile instead of median for better outlier detection
-    // This prevents common longer scenes from being marked as overflow
-    const sortedDurations = [...validDurationValues].sort((a, b) => a - b);
-    const medianDurationMs = validDurationValues.length > 0 ? calculateMedian(validDurationValues) : 0;
-    const percentile75Index = Math.floor(sortedDurations.length * 0.75);
-    const percentile75Ms = sortedDurations.length > 0 ? sortedDurations[percentile75Index] : medianDurationMs;
-    
-    // Use 75th percentile × 3 as threshold (catches real outliers, not common long scenes)
-    const NORMALIZATION_MULTIPLIER = 3;
-    const threshold = percentile75Ms > 0 ? percentile75Ms * NORMALIZATION_MULTIPLIER : Infinity;
-    
-    // The longest scene (absolute max) will fill 100% of the gap
-    const maxValidDurationMs = validDurationValues.length > 0 
-        ? Math.max(...validDurationValues) 
-        : 1;
+    const observedMaxDurationMs = validDurationValues.length > 0
+        ? Math.max(...validDurationValues)
+        : 0;
+    const scaleCapMs = typeof durationCapMs === 'number' && durationCapMs > 0
+        ? durationCapMs
+        : observedMaxDurationMs;
+    const scaleMs = scaleCapMs > 0
+        ? scaleCapMs
+        : (observedMaxDurationMs > 0 ? observedMaxDurationMs : 1);
 
     // Detect overlaps (when scene.when + duration > nextScene.when)
     const overlapIndices = detectSceneOverlaps(sortedEntries.map(entry => ({
@@ -180,7 +175,7 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         let spanAngle: number;
         let isUnparseable = false;
         let isOngoing = false;
-        const isOverlap = overlapIndices.has(idx);
+        let isOverlap = overlapIndices.has(idx);
 
         // Determine arc span based on duration type
         if (durationMs === null || durationMs === 0) {
@@ -189,14 +184,15 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
                 // "ongoing" fills the entire scene arc with standard color
                 spanAngle = availableAngle;
                 isOngoing = true;
+                isOverlap = true;
             } else {
                 // No duration field OR unparseable durations (e.g., "TBD", "unknown") - show red stub
                 spanAngle = availableAngle * STUB_FILL_RATIO;
                 isUnparseable = true;
             }
         } else {
-            // Valid duration - proportional to maxValidDurationMs (longest scene fills 100%)
-            const ratio = maxValidDurationMs > 0 ? durationMs / maxValidDurationMs : 0;
+            // Valid duration - proportional to selected cap (longest scene fills 100% if no cap)
+            const ratio = scaleMs > 0 ? Math.min(durationMs / scaleMs, 1) : 1;
             spanAngle = availableAngle * ratio;
         }
 
@@ -210,10 +206,12 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         let arcClass = 'rt-duration-arc';
         if (isUnparseable) {
             arcClass += ' rt-duration-arc-unparseable'; // Red stub for unparseable
-        } else if (isOverlap) {
-            arcClass += ' rt-duration-arc-overlap'; // Yellow dotted for overlaps
-        } else if (isOngoing) {
-            arcClass += ' rt-duration-arc-ongoing'; // Standard color for "ongoing"
+        }
+        if (isOverlap) {
+            arcClass += ' rt-duration-arc-overlap'; // Yellow dotted for overlaps and ongoing
+        }
+        if (isOngoing) {
+            arcClass += ' rt-duration-arc-ongoing'; // Additional tag for ongoing durations
         }
 
         const x1 = formatNumber(arcRadius * Math.cos(arcStart));

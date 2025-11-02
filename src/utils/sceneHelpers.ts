@@ -41,6 +41,7 @@ export interface PluginRendererFacade {
         targetCompletionDate?: string;
         enableAiSceneAnalysis: boolean;
         showEstimate?: boolean;
+        chronologueDurationCapSelection?: string;
     };
     searchActive: boolean;
     searchResults: Set<string>;

@@ -12,7 +12,7 @@
 import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, PLOT_PIXEL_WIDTH, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
 import type { Scene } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';
-import { dateToAngle, isOverdueDateString, generateChronologicalTicks, type ChronologicalTickInfo } from '../utils/date';
+import { dateToAngle, isOverdueDateString, generateChronologicalTicks, durationSelectionToMs, type ChronologicalTickInfo } from '../utils/date';
 import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
 import { 
     extractGradeFromScene, 
@@ -2008,11 +2008,13 @@ export function createTimelineSVG(
 
         // Add Chronologue mode arcs
         if (isChronologueMode) {
+            const durationCapMs = durationSelectionToMs(plugin.settings.chronologueDurationCapSelection);
             const chronologueTimelineArc = renderChronologueTimelineArc(
                 scenes, 
                 outerRadius, 
                 3, // arc width
-                manuscriptOrderPositions
+                manuscriptOrderPositions,
+                durationCapMs
             );
             if (chronologueTimelineArc) {
                 svg += chronologueTimelineArc;

@@ -91,6 +91,7 @@ interface RadialTimelineSettings {
     showEstimate?: boolean; // Toggle estimation arc/label near progress ring
     enableSceneTitleAutoExpand?: boolean; // Auto-expand clipped scene titles on hover
     sortByWhenDate?: boolean; // Sort scenes by When date (true) or manuscript order (false). Chronologue mode always uses When date.
+    chronologueDurationCapSelection?: string; // Value|unit key used for duration arc cap (or 'auto')
     // AI Context Templates
     aiContextTemplates?: Array<{id: string; name: string; prompt: string; isBuiltIn: boolean}>;
     activeAiContextTemplateId?: string;
@@ -217,6 +218,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     showEstimate: true,
     enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
     sortByWhenDate: false, // Default: manuscript order (backward compatible)
+    chronologueDurationCapSelection: 'auto',
     aiContextTemplates: [
         {
             id: "commercial_genre",

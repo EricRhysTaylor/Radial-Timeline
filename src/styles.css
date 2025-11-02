@@ -2869,7 +2869,7 @@
   stroke-width: 3px;
 }
 
-.rt-chronologue-duration-ticks .rt-duration-arc-ongoing {
+.rt-chronologue-duration-ticks .rt-duration-arc-ongoing:not(.rt-duration-arc-overlap) {
   stroke: var(--text-muted); /* Standard color for "ongoing" durations */
   stroke-width: 3px;
 }
