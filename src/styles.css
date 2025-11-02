@@ -27,7 +27,6 @@
   
   /* Search and UI Colors */
   --rt-color-search: #ffe374;   /* Yellow for search highlighting */
-  --rt-color-debug: #ff3300;    /* Red for debug text */
   /* Search highlight tuning */
   --rt-search-stroke-width: 0.2em;      /* default stroke thickness for search outline */
   --rt-search-stroke-opacity: 0.7;      /* default stroke opacity for search outline */
@@ -142,8 +141,6 @@
   position: absolute;
   pointer-events: none;
 }
-
-/* Debug: visualize the SVG viewport box */
 
 .radial-timeline-container .rt-scene-path {
   cursor: pointer;
@@ -444,15 +441,12 @@
 .radial-timeline-container .rt-scene-info {
   opacity: 0;
   pointer-events: none !important;
-  z-index: 10000;
   vector-effect: non-scaling-stroke;
 }
 .radial-timeline-container .rt-scene-info text {
   stroke: white;
-  stroke-width: 3px;
+  stroke-width: 4px;
   paint-order: stroke;
-  padding: 0 !important;
-  margin: 0 !important;
   pointer-events: none !important;
 }
 
@@ -476,7 +470,7 @@
   font-size: 11px;
   text-transform: uppercase;
   stroke: #000000;
-  stroke-width: 4px;
+  stroke-width: 3px;
   paint-order: stroke;
 }
 
@@ -649,7 +643,7 @@
 .rt-search-term {
   fill: inherit;
   stroke: var(--rt-color-search);
-  stroke-width: var(--rt-search-stroke-width, 0.2em);
+  stroke-width: var(--rt-search-stroke-width, 1px);
   stroke-opacity: var(--rt-search-stroke-opacity, 0.3);
   paint-order: stroke;
 }
@@ -658,17 +652,11 @@
 .rt-info-text.rt-metadata-text tspan[data-item-type=subplot],
 .rt-info-text.rt-metadata-text tspan[data-item-type=character] {
   fill: var(--rt-dynamic-color, var(--text-normal)) !important;
-  stroke: white;
-  stroke-width: 0.07em;
-  paint-order: stroke;
 }
 
 /* POV marker styling - superscript after first character name */
 .rt-info-text.rt-metadata-text tspan.rt-pov-marker {
   fill: var(--rt-dynamic-color, var(--text-muted)) !important; /* Use character color, fallback to muted */
-  stroke: white;
-  stroke-width: 2px;
-  paint-order: stroke;
   font-size: 12px !important; /* Smaller than default 18px metadata text */
   font-weight: 500;
   text-transform: lowercase;
@@ -691,22 +679,6 @@
   justify-content: flex-end;
 }
 
-.radial-timeline-container .rt-scene-info.rt-synopsis-q1 text,
-.radial-timeline-container .rt-scene-info.rt-synopsis-q4 text {
-  text-anchor: end !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-.radial-timeline-container .rt-scene-info.rt-synopsis-q1 text.rt-title-metadata-block,
-.radial-timeline-container .rt-scene-info.rt-synopsis-q4 text.rt-title-metadata-block {
-  text-anchor: start !important;
-}
-.radial-timeline-container .rt-scene-info.rt-synopsis-q2 text,
-.radial-timeline-container .rt-scene-info.rt-synopsis-q3 text {
-  text-anchor: start !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
 .radial-timeline-container .rt-scene-info.rt-visible {
   opacity: 1 !important;
   pointer-events: all !important;
@@ -717,43 +689,52 @@
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main {
   font-size: 36px;
   font-weight: 700;
-  margin-bottom: 8px;
   /* No parent fill; child tspans own their colors via custom properties */
 }
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-metadata-block {
+/* Date/Time and Duration mini-block (Column 2 of title row) */
+/* This styles the separate text element containing date/time and duration */
+/* Positioned to the right of the main scene title */
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-date-time {
   font-size: 14px;
   font-weight: 400;
+  font-style: normal !important;
 }
 /* Title tspans use publish stage color like Act labels */
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=title] {
   fill: var(--rt-max-publish-stage-color, var(--text-normal)) !important;
-  stroke: white;
-  stroke-width: 0.07em;
-  paint-order: stroke;
 }
 
-/* Date and Duration tspans - same styling, small gray superscript */
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=date],
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-date-text,
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=duration],
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-duration-text {
-  fill: var(--rt-dynamic-color, #888888) !important;
-  stroke: white;
-  stroke-width: 0.05em;
-  paint-order: stroke;
-  font-size: 16px !important; /* Small superscript size like POV marker */
+/* Date and Duration tspans - small gray text */
+.radial-timeline-container .rt-title-date-time tspan {
+  fill: #888888 !important;
+  font-size: 16px !important;
   font-weight: 400;
 }
+
+/* Date tspan - explicitly normal (not italic) */
+.radial-timeline-container .rt-title-date-time tspan[data-item-type=date],
+.radial-timeline-container .rt-title-date-time .rt-date-text {
+  font-style: normal !important;
+}
+
+/* Duration tspan - italic only */
+.radial-timeline-container .rt-title-date-time tspan[data-item-type=duration],
+.radial-timeline-container .rt-title-date-time .rt-duration-text {
+  font-style: italic !important;
+}
+
+/*Beats text styling*/
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-secondary {
   font-size: 18px;
   fill: #666666;
   text-transform: uppercase;
   font-weight: normal;
 }
+
+/* Subplot and character text styling - randomized colors in JS file for characters. Subplots follow subplot settings color defined styles*/
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-metadata-text {
   font-size: 18px;
   font-weight: normal;
-  text-transform: none;
 }
 
 /* Overdue text styling */
@@ -1114,25 +1095,6 @@
   margin: 0 !important;    /* remove default margins */
   justify-content: space-between;
 }
-.rt-debug-info-container {
-  pointer-events: none;
-}
-.debug-info-background {
-  fill: rgba(255, 255, 255, 0.8);
-  rx: 5px;
-  ry: 5px;
-  stroke: #333333;
-  stroke-width: 1px;
-}
-.debug-info-text {
-  font-size: 20px;
-  fill: #ff3300;
-  font-weight: bold;
-  stroke: white;
-  stroke-width: 0.5px;
-  paint-order: stroke;
-  pointer-events: none;
-}
 
 .synopsis-spacer {
   line-height: 1.5em;
@@ -1147,15 +1109,6 @@
   fill: var(--text-normal, #333333);
   font-weight: 400;
   text-transform: uppercase;
-}
-
-/* Debug container visibility */
-.debug-container {
-    display: none;
-}
-
-.debug-container.visible {
-    display: block;
 }
 
 /* Search container styles (scoped to plugin container) */
@@ -2307,12 +2260,6 @@
 /* Info container styles */
 .rt-info-container {
     cursor: pointer;
-}
-
-/* Synopsis text styles */
-.radial-timeline-container .rt-synopsis-text {
-    font-size: 14px;
-    line-height: 1.5;
 }
 
 /* Beat text styles */

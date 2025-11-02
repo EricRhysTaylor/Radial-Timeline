@@ -105,7 +105,7 @@ export class RadialTimelineView extends ItemView {
             this.modeManager = createModeManager(plugin, this);
             this.interactionController = createInteractionController(this);
         } catch (e) {
-            console.warn('[RadialTimelineView] Mode management initialization failed:', e);
+            // Mode management initialization failed
         }
     }
     
@@ -318,11 +318,6 @@ export class RadialTimelineView extends ItemView {
                 
                 const totalTime = performance.now() - perfStart;
                 
-                // Log performance metrics if debug enabled
-                if (this.plugin.settings.debug) {
-                    console.log(`[Timeline Performance] Mode: ${this._currentMode}, Data: ${dataLoadTime.toFixed(0)}ms, Render: ${renderTime.toFixed(0)}ms, Total: ${totalTime.toFixed(0)}ms, Scenes: ${sceneData.length}`);
-                }
-                
 
             })
             .catch(error => {
@@ -506,17 +501,11 @@ export class RadialTimelineView extends ItemView {
                 const isGossamerMode = this._currentMode === 'gossamer';
                 if (isGossamerMode && !isBeatOrPlot) {
                     // In gossamer mode but a scene note changed - ignore it
-                    if (this.plugin.settings.debug) {
-                        console.log('[Timeline] Skipping refresh - gossamer mode ignoring scene change:', file.path);
-                    }
                     return;
                 }
                 if (!isGossamerMode && isBeatOrPlot && !isScene) {
                     // Not in gossamer mode and only a beat note changed (no scenes) - ignore it
                     // Note: Some beat notes might also be scenes, so we check both
-                    if (this.plugin.settings.debug) {
-                        console.log('[Timeline] Skipping refresh - non-gossamer mode ignoring beat change:', file.path);
-                    }
                     return;
                 }
                 

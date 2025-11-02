@@ -141,16 +141,12 @@ export async function callGeminiApi(
     const text = candidate?.content?.parts?.map(p => p.text || '').join('').trim();
     if (text) return { success: true, content: text, responseData };
     
-    // Log the actual response structure to help debug
-    console.error('[Gemini API] Invalid response structure. Response data:', JSON.stringify(responseData, null, 2));
-    console.error('[Gemini API] Candidates:', success?.candidates);
-    console.error('[Gemini API] Has candidates:', !!success?.candidates);
-    console.error('[Gemini API] Candidates length:', success?.candidates?.length);
-    if (candidate) {
-      console.error('[Gemini API] First candidate:', candidate);
-      console.error('[Gemini API] First candidate content:', candidate.content);
-      console.error('[Gemini API] Finish reason:', candidate.finishReason);
-    }
+    // Invalid response structure - log minimal debug info
+    console.error('[Gemini API] Invalid response structure:', {
+      hasCandidates: !!success?.candidates,
+      candidatesLength: success?.candidates?.length || 0,
+      finishReason: candidate?.finishReason
+    });
     
     return { success: false, content: null, responseData, error: 'Invalid response structure from Gemini.' };
   } catch (e) {

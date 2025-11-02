@@ -25,12 +25,6 @@ export function renderChronologueTimelineArc(
     arcWidth: number = 3,
     scenePositions?: Map<string, { startAngle: number; endAngle: number }>
 ): string {
-    console.log('[Chronologue] renderChronologueTimelineArc start', {
-        sceneCount: scenes.length,
-        outerRadius,
-        arcWidth,
-        callStack: new Error().stack?.split('\n').slice(1, 4).join('\n')
-    });
     // Parse all When fields and filter out invalid dates (deduplicate by path/title+time)
     const seenKeys = new Set<string>();
     const sceneEntries: Array<{ scene: Scene; date: Date; sourceIndex: number }> = [];
@@ -53,7 +47,6 @@ export function renderChronologueTimelineArc(
     const validDates = sceneEntries.map(entry => entry.date);
 
     if (validDates.length === 0) {
-        console.log('[Chronologue] renderChronologueTimelineArc abort - no valid dates');
         return ''; // No valid dates to render
     }
     
@@ -99,15 +92,7 @@ interface DurationTickArcParams {
 
 function renderDurationTickArcs(params: DurationTickArcParams): string | null {
     const { sceneEntries, arcRadius, timeSpanTotalMs, earliestMs, scenePositions } = params;
-    console.log('[Chronologue] renderDurationTickArcs start', {
-        sceneEntriesCount: sceneEntries.length,
-        arcRadius,
-        timeSpanTotalMs,
-        earliestMs,
-        hasScenePositions: !!scenePositions
-    });
     if (sceneEntries.length === 0 || timeSpanTotalMs <= 0) {
-        console.log('[Chronologue] renderDurationTickArcs abort - no entries or zero timespan');
         return null;
     }
     
@@ -142,7 +127,6 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
     });
 
     if (validDurationValues.length === 0 && !parsedDurations.some(d => d.durationMs === null || d.durationMs === 0)) {
-        console.log('[Chronologue] renderDurationTickArcs abort - no valid, unparseable, or empty durations');
         return null;
     }
 
@@ -162,39 +146,11 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         ? Math.max(...validDurationValues) 
         : 1;
 
-    console.log('[Chronologue] renderDurationTickArcs normalization', {
-        validDurationCount: validDurationValues.length,
-        totalSceneEntries: sortedEntries.length,
-        scenesWithoutDuration: sortedEntries.length - validDurationValues.length,
-        medianDurationMs,
-        medianDurationHours: medianDurationMs / (1000 * 60 * 60),
-        percentile75Ms,
-        percentile75Hours: percentile75Ms / (1000 * 60 * 60),
-        threshold,
-        thresholdHours: threshold / (1000 * 60 * 60),
-        maxValidDurationMs,
-        maxValidDurationHours: maxValidDurationMs / (1000 * 60 * 60),
-        scenesOverThreshold: validDurationValues.filter(d => d > threshold).length
-    });
-
     // Detect overlaps (when scene.when + duration > nextScene.when)
     const overlapIndices = detectSceneOverlaps(sortedEntries.map(entry => ({
         when: entry.date,
         Duration: entry.scene.Duration
     } as { when: Date; Duration?: string })));
-
-    console.log('[Chronologue] Overlap detection', {
-        totalScenes: sortedEntries.length,
-        overlapCount: overlapIndices.size,
-        overlapIndices: Array.from(overlapIndices),
-        sceneDetails: sortedEntries.map((entry, idx) => ({
-            idx,
-            title: entry.scene.title,
-            when: entry.date.toISOString(),
-            duration: entry.scene.Duration,
-            isOverlap: overlapIndices.has(idx)
-        }))
-    });
 
     const durationPaths: string[] = [];
 
@@ -210,7 +166,6 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         const sceneKey = entry.scene.path || `title:${entry.scene.title || ''}`;
         const manuscriptPosition = scenePositions.get(sceneKey);
         if (!manuscriptPosition) {
-            console.warn(`[Chronologue] No position found for scene key "${sceneKey}", title: ${entry.scene.title}`);
             return;
         }
 
@@ -272,21 +227,8 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
     });
     
     if (durationPaths.length === 0) {
-        console.log('[Chronologue] No duration arcs rendered', {
-            sceneCount: sortedEntries.length,
-            timeSpanTotalMs,
-            hadParsedDuration: sortedEntries.some(entry => {
-                const parsed = parseDuration(entry.scene.Duration);
-                return parsed !== null && parsed > 0;
-            })
-        });
         return null;
     }
-    
-    console.log('[Chronologue] Duration arcs rendered - SUMMARY', {
-        totalDurationPaths: durationPaths.length,
-        firstFewPaths: durationPaths.slice(0, 3).map(p => p.substring(0, 100))
-    });
     
     return `<g class="rt-chronologue-duration-ticks">
         ${durationPaths.join('')}
@@ -366,13 +308,6 @@ export function renderChronologicalBackboneArc(
     discontinuityThreshold: number = 3,
     scenePositions?: Map<string, { startAngle: number; endAngle: number }>
 ): string {
-    console.log('[Chronologue] renderChronologicalBackboneArc - Analyzing scenes');
-    scenes.forEach((s, idx) => {
-        const sceneKey = s.path || `title:${s.title || ''}`;
-        const hasPosition = scenePositions?.has(sceneKey);
-        console.log(`  Scene ${idx}: "${s.title}" itemType=${s.itemType} when=${s.when} hasPosition=${hasPosition} key=${sceneKey}`);
-    });
-    
     // Parse dates and filter valid ones (only Scene items, not Beat items)
     const validScenes: { scene: Scene; date: Date }[] = [];
     scenes.forEach(scene => {
@@ -389,11 +324,6 @@ export function renderChronologicalBackboneArc(
         if (whenDate) {
             validScenes.push({ scene, date: whenDate });
         }
-    });
-    
-    console.log('[Chronologue] Valid scenes parsed', {
-        validSceneCount: validScenes.length,
-        willReturn: validScenes.length === 0 || !scenePositions
     });
     
     if (validScenes.length === 0 || !scenePositions) return '';
@@ -418,19 +348,6 @@ export function renderChronologicalBackboneArc(
     // Detect discontinuities (large time gaps between consecutive chronological scenes)
     const discontinuityIndices = detectDiscontinuities(uniqueScenesSorted, discontinuityThreshold);
     
-    console.log('[Chronologue] Discontinuity detection', {
-        originalSceneCount: scenes.length,
-        uniqueSceneCount: uniqueScenesSorted.length,
-        discontinuityCount: discontinuityIndices.length,
-        discontinuityIndices,
-        threshold: discontinuityThreshold,
-        scenesWithGaps: discontinuityIndices.map(idx => ({
-            idx,
-            title: uniqueScenesSorted[idx]?.title,
-            when: uniqueScenesSorted[idx]?.when
-        }))
-    });
-    
     if (discontinuityIndices.length === 0) return '';
     
     // Place discontinuity markers at the exact middle of the outer scene ring (radially)
@@ -447,15 +364,6 @@ export function renderChronologicalBackboneArc(
         // Get manuscript-order position for this scene
         const sceneKey = currScene.path || `title:${currScene.title || ''}`;
         const manuscriptPosition = scenePositions.get(sceneKey);
-        
-        console.log('[Chronologue] Rendering discontinuity marker', {
-            sceneIndex,
-            title: currScene.title,
-            sceneKey,
-            foundPosition: !!manuscriptPosition,
-            startAngle: manuscriptPosition?.startAngle,
-            endAngle: manuscriptPosition?.endAngle
-        });
         
         if (!manuscriptPosition) return;
         

@@ -66,7 +66,7 @@ export default class SynopsisManager {
   /**
    * Format date from When field to friendly format for display
    * @param when Date object from scene.when
-   * @returns Formatted date string (e.g., "Aug 1, 1812 at 8am") or empty string if invalid
+   * @returns Formatted date string (e.g., "Aug 1, 1812 @ 8AM" or "Apr 6, 1812 @ Noon" or "Apr 6, 1812 @ Midnight")
    */
   private formatDateForDisplay(when: Date | undefined): string {
     if (!when || !(when instanceof Date)) return '';
@@ -82,17 +82,24 @@ export default class SynopsisManager {
       // Build date part: "Aug 1, 1812"
       let dateStr = `${month} ${day}, ${year}`;
       
-      // Add time if not midnight (00:00)
-      if (hours !== 0 || minutes !== 0) {
+      // Handle special cases: exactly midnight or exactly noon
+      if (hours === 0 && minutes === 0) {
+        // Exactly midnight (12 AM)
+        dateStr += ` @ Midnight`;
+      } else if (hours === 12 && minutes === 0) {
+        // Exactly noon (12 PM)
+        dateStr += ` @ Noon`;
+      } else {
+        // Regular time formatting
         const period = hours >= 12 ? 'PM' : 'AM';
         const displayHours = hours % 12 === 0 ? 12 : hours % 12;
         
         if (minutes === 0) {
           // No minutes, just "8AM"
-          dateStr += ` at ${displayHours}${period}`;
+          dateStr += ` @ ${displayHours}${period}`;
         } else {
           // Include minutes "8:30AM"
-          dateStr += ` at ${displayHours}:${String(minutes).padStart(2, '0')}${period}`;
+          dateStr += ` @ ${displayHours}:${String(minutes).padStart(2, '0')}${period}`;
         }
       }
       
@@ -182,10 +189,11 @@ export default class SynopsisManager {
       titleTextElement.appendChild(mainTspan);
       
       
-      // Create separate metadata element for date/duration (Column 2 of table)
+      // Create separate date/time and duration element (Column 2 of title row)
+      // This is the mini-block positioned to the right of the main scene title
       if (titleParts.date || titleParts.duration) {
         const metadataElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        metadataElement.setAttribute("class", "rt-info-text rt-title-text-main rt-title-metadata-block");
+        metadataElement.setAttribute("class", "rt-info-text rt-title-text-main rt-title-date-time");
         metadataElement.setAttribute("x", "0");
         metadataElement.setAttribute("y", "0"); // Same baseline as title, layout handled later
         metadataElement.setAttribute("text-anchor", "start");
@@ -198,8 +206,7 @@ export default class SynopsisManager {
           dateTspan.setAttribute('class', 'rt-date-text');
           dateTspan.setAttribute('data-item-type', 'date');
           dateTspan.setAttribute('data-column-role', 'date');
-          dateTspan.setAttribute('dy', '-14px'); // Lift slightly so smaller text sits with title cap height
-          dateTspan.style.setProperty('--rt-dynamic-color', '#888888');
+          dateTspan.setAttribute('dy', '-16px'); // Lift slightly so smaller text sits with title cap height
           dateTspan.textContent = titleParts.date;
           metadataElement.appendChild(dateTspan);
         }
@@ -211,8 +218,7 @@ export default class SynopsisManager {
           durationTspan.setAttribute('data-item-type', 'duration');
           durationTspan.setAttribute('data-column-role', 'duration');
           durationTspan.setAttribute('x', '0'); // Will be positioned in layout step
-          durationTspan.setAttribute('dy', titleParts.date ? '15px' : '0'); // New line only if date exists
-          durationTspan.style.setProperty('--rt-dynamic-color', '#888888');
+          durationTspan.setAttribute('dy', titleParts.date ? '16px' : '0'); // New line only if date exists
           durationTspan.textContent = titleParts.duration;
           metadataElement.appendChild(durationTspan);
         }
@@ -305,7 +311,6 @@ export default class SynopsisManager {
     titleTextElement.setAttribute("class", `rt-info-text rt-title-text-main`);
     titleTextElement.setAttribute("x", "0");
     titleTextElement.setAttribute("y", "0");
-    titleTextElement.setAttribute("text-anchor", "start");
     
     // Process title content with special handling for formatting
     // Format date from When field for display (skip for Plot notes)
@@ -360,7 +365,6 @@ export default class SynopsisManager {
         synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-main rt-gossamer-score-line");
         synopsisLineElement.setAttribute("x", "0");
         synopsisLineElement.setAttribute("y", String(lineY));
-        synopsisLineElement.setAttribute("text-anchor", "start");
         
         // Extract the content between the tags from the original line (before decoding)
         const gossamerContent = contentLines[i].replace(/<gossamer>/g, '').replace(/<\/gossamer>/g, '');
@@ -377,7 +381,6 @@ export default class SynopsisManager {
         synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-secondary");
         synopsisLineElement.setAttribute("x", "0");
         synopsisLineElement.setAttribute("y", String(lineY));
-        synopsisLineElement.setAttribute("text-anchor", "start");
         
         if (lineContent.includes('<tspan')) {
           this.processContentWithTspans(lineContent, synopsisLineElement);
@@ -466,7 +469,6 @@ export default class SynopsisManager {
             subplotTextElement.setAttribute("x", "0");
             // Use the calculated subplotStartY
             subplotTextElement.setAttribute("y", String(subplotStartY)); 
-            subplotTextElement.setAttribute("text-anchor", "start");
             
             // Format each subplot with its own color
             subplots.forEach((subplot: string, j: number) => { 
@@ -500,7 +502,6 @@ export default class SynopsisManager {
           characterTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
           characterTextElement.setAttribute("x", "0");
           characterTextElement.setAttribute("y", String(characterY));
-          characterTextElement.setAttribute("text-anchor", "start");
           
           // Format each character with its own color
           characterList.forEach((character: string, j: number) => {
@@ -591,7 +592,8 @@ export default class SynopsisManager {
       const margin = 30;
       const outerRadius = size / 2 - margin;
       const synopsisRadiusMargin = 14;
-      const adjustedRadius = outerRadius - synopsisRadiusMargin; // Reduce radius to keep synopsis inside arc
+      const textInset = 12; // Breathing room between perimeter and text (applies to all quadrants)
+      const adjustedRadius = outerRadius - synopsisRadiusMargin - textInset; // Reduce radius for synopsis positioning
       
       
       // Reset styles and classes
@@ -769,11 +771,6 @@ export default class SynopsisManager {
       }
     });
     
-    // Desired constant radial inset for the first line only (in pixels)
-    const desiredFirstRowRadialInset = 12;
-    // Compute horizontal projection of the radial inset based on the current angle
-    const firstRowInsetX = this.computeFirstLineInsetX(baseX, baseY, radius, desiredFirstRowRadialInset);
-
     // Position each row using Pythagorean theorem relative to circle center
     let yOffset = 0;
     let lastValidAnchorX = 0; // Track the last valid anchor position for fallback positioning
@@ -837,18 +834,9 @@ export default class SynopsisManager {
         primaryWidth,
         metadataWidth,
         gap,
-        isRightAligned,
-        rowIndex === 0,
-        rowIndex === 0 ? firstRowInsetX : 0
+        isRightAligned
       );
     });
-  }
-
-  private computeFirstLineInsetX(baseX: number, baseY: number, radius: number, desiredRadialInset: number): number {
-    const safeRadius = Math.max(1, radius);
-    const cosPhi = Math.abs(baseX) / safeRadius; // projection factor onto x-axis
-    const insetX = desiredRadialInset * Math.max(0, Math.min(1, cosPhi));
-    return insetX;
   }
 
   private measureRowLayout(rowElements: SVGTextElement[], defaultGap: number): { primaryWidth: number; metadataWidth: number; gap: number } {
@@ -882,21 +870,17 @@ export default class SynopsisManager {
     primaryWidth: number,
     metadataWidth: number,
     gap: number,
-    isRightAligned: boolean,
-    isFirstRow: boolean,
-    firstLineInsetX: number
+    isRightAligned: boolean
   ): void {
     if (rowElements.length === 0) {
       return;
     }
     
     const hasMetadata = rowElements.length > 1;
-    const firstLineInset = isFirstRow ? Math.max(0, firstLineInsetX) : 0;
-    const effectiveAnchorX = isRightAligned ? anchorX - firstLineInset : anchorX + firstLineInset;
     const edgePadding = 6;
 
     if (isRightAligned) {
-      const metadataRightEdge = effectiveAnchorX - edgePadding;
+      const metadataRightEdge = anchorX - edgePadding;
       const metadataLeftEdge = hasMetadata ? metadataRightEdge - metadataWidth : metadataRightEdge;
       const titleRightEdge = hasMetadata ? metadataLeftEdge - gap : metadataRightEdge;
       
@@ -912,7 +896,7 @@ export default class SynopsisManager {
         }
       });
     } else {
-      const rowLeftEdge = effectiveAnchorX + edgePadding;
+      const rowLeftEdge = anchorX + edgePadding;
       const metadataLeftEdge = hasMetadata ? rowLeftEdge + primaryWidth + gap : rowLeftEdge;
       
       rowElements.forEach((textEl, index) => {

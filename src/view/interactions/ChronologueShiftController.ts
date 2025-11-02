@@ -623,18 +623,7 @@ function showElapsedTime(
     const date1 = parseSceneDate(scene1);
     const date2 = parseSceneDate(scene2);
 
-    console.log('[Shift Mode] showElapsedTime:', {
-        scene1Path: scene1.path,
-        scene2Path: scene2.path,
-        clickCount,
-        geometry1,
-        geometry2,
-        date1: date1?.toISOString(),
-        date2: date2?.toISOString()
-    });
-
     if (!date1 || !date2) {
-        console.warn('[Shift Mode] Missing valid dates, cannot draw arc');
         return;
     }
 
@@ -721,8 +710,6 @@ function showElapsedTime(
         }
         return;
     }
-
-    console.warn('[Shift Mode] Missing geometry, falling back to time-based arc');
 
     // SAFE: renderElapsedTimeArc returns plugin-generated SVG path markup only (no user input)
     const fallbackArc = renderElapsedTimeArc(scene1, scene2, defaultOuterRadius);

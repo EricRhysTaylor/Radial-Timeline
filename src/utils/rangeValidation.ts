@@ -65,9 +65,6 @@ export function validateBeatRanges(
   // Filter to beat notes only (support both 'Beat' and 'Plot' for legacy)
   let beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
-  console.log('[Range Validation] Total beat notes found:', beatNotes.length);
-  console.log('[Range Validation] Selected beat system:', selectedBeatSystem);
-  
   // Filter by Beat Model
   if (selectedBeatSystem && selectedBeatSystem.trim() !== '') {
     if (selectedBeatSystem === 'Custom') {
@@ -82,25 +79,18 @@ export function validateBeatRanges(
     } else {
       // For specific system (e.g., "Save The Cat"): only include beats matching that system
       const normalizedSelected = selectedBeatSystem.toLowerCase().replace(/\s+/g, '').replace(/'/g, '');
-      console.log('[Range Validation] Normalized selected system:', normalizedSelected);
       
       beatNotes = beatNotes.filter(b => {
         const beatModel = b["Beat Model"];
         if (!beatModel) {
-          console.log('[Range Validation] Beat has no Beat Model:', b.title);
           return false;
         }
         const normalizedModel = beatModel.toLowerCase().replace(/\s+/g, '').replace(/'/g, '');
         const matches = normalizedModel === normalizedSelected;
-        if (!matches) {
-          console.log('[Range Validation] Beat Model mismatch:', b.title, '- Model:', beatModel, '- Normalized:', normalizedModel);
-        }
         return matches;
       });
     }
   }
-  
-  console.log('[Range Validation] Beats after filtering:', beatNotes.length);
   
   if (beatNotes.length === 0) {
     return {
@@ -114,21 +104,13 @@ export function validateBeatRanges(
   const missingRangeBeats: string[] = [];
   
   for (const beat of beatNotes) {
-    // Log all properties to see what's available
-    if (missingRangeBeats.length === 0) {
-      console.log('[Range Validation] Sample beat properties:', Object.keys(beat));
-    }
-    
     const range = parseRange(beat.Range);
     if (!range) {
-      console.log('[Range Validation] Missing/invalid Range for:', beat.title, '- Range value:', beat.Range, '- All keys:', Object.keys(beat));
       // Strip leading number from title for cleaner display
       const beatName = (beat.title || 'Unknown Beat').replace(/^\d+\s+/, '');
       missingRangeBeats.push(beatName);
     }
   }
-  
-  console.log('[Range Validation] Beats missing valid Range:', missingRangeBeats.length);
   
   return {
     valid: missingRangeBeats.length === 0,

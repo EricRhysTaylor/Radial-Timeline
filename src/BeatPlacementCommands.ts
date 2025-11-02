@@ -78,19 +78,9 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
         };
       });
 
-      // Get scene files for manuscript assembly
-      const sceneFiles: TFile[] = [];
-      const uniquePaths = new Set<string>();
-      
-      allScenes.forEach(scene => {
-        if (scene.itemType === 'Scene' && scene.path && !uniquePaths.has(scene.path)) {
-          uniquePaths.add(scene.path);
-          const file = plugin.app.vault.getAbstractFileByPath(scene.path);
-          if (file instanceof TFile) {
-            sceneFiles.push(file);
-          }
-        }
-      });
+      // Get sorted scene files (single source of truth)
+      const { getSortedSceneFiles } = await import('./utils/manuscript');
+      const { files: sceneFiles } = await getSortedSceneFiles(plugin);
 
       // Assemble manuscript
       modal.setStatus('Assembling manuscript text...');
@@ -149,76 +139,51 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
       let analysis: BeatPlacementResponse;
       try {
         if (!result.content) {
-          console.error('[Beat Placement] Gemini result has no content:', result);
           throw new Error('No content in Gemini response');
         }
-        console.log('[Beat Placement] Parsing JSON response, length:', result.content.length);
         analysis = JSON.parse(result.content);
-        console.log('[Beat Placement] JSON parsed successfully');
       } catch (parseError) {
-        console.error('[Beat Placement] JSON parse error:', parseError);
-        console.error('[Beat Placement] Raw response (first 500 chars):', result.content?.substring(0, 500));
         throw new Error(`Failed to parse Gemini response as JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
       }
 
       // Validate response structure
-      console.log('[Beat Placement] Validating response structure...');
-      console.log('[Beat Placement] Analysis type:', typeof analysis);
-      console.log('[Beat Placement] Analysis keys:', Object.keys(analysis || {}));
-      
       if (!analysis || typeof analysis !== 'object') {
-        console.error('[Beat Placement] Invalid response - not an object. Type:', typeof analysis);
         throw new Error('Invalid response structure from Gemini: Response is not an object');
       }
 
       if (!Array.isArray(analysis.beats)) {
-        console.error('[Beat Placement] Invalid response - beats is not an array. Type:', typeof (analysis as any).beats);
-        console.error('[Beat Placement] Full analysis object:', JSON.stringify(analysis, null, 2));
         throw new Error('Invalid response structure from Gemini: Missing or invalid "beats" array');
       }
 
-      console.log('[Beat Placement] Found', analysis.beats.length, 'beats in response');
-
       if (typeof analysis.overallSummary !== 'string') {
-        console.warn('[Beat Placement] overallSummary is not a string, using default. Type:', typeof analysis.overallSummary);
         // Don't fail completely, just set a default
         analysis.overallSummary = 'No summary provided.';
       }
 
       // Validate each beat has required fields
-      console.log('[Beat Placement] Validating individual beats...');
       for (let i = 0; i < analysis.beats.length; i++) {
         const beat = analysis.beats[i];
-        console.log(`[Beat Placement] Validating beat ${i}:`, beat?.beatName || 'unnamed');
         
         if (!beat || typeof beat !== 'object') {
-          console.error(`[Beat Placement] Beat ${i} is not an object:`, beat);
           throw new Error(`Invalid response structure from Gemini: Beat at index ${i} is not an object`);
         }
         if (typeof beat.beatName !== 'string') {
-          console.error(`[Beat Placement] Beat ${i} missing beatName. Beat:`, beat);
           throw new Error(`Invalid response structure from Gemini: Beat at index ${i} missing "beatName"`);
         }
         if (typeof beat.currentLocation !== 'string') {
-          console.error(`[Beat Placement] Beat ${i} (${beat.beatName}) missing currentLocation. Beat:`, beat);
           throw new Error(`Invalid response structure from Gemini: Beat at index ${i} missing "currentLocation"`);
         }
         if (typeof beat.suggestedLocation !== 'string') {
-          console.error(`[Beat Placement] Beat ${i} (${beat.beatName}) missing suggestedLocation. Beat:`, beat);
           throw new Error(`Invalid response structure from Gemini: Beat at index ${i} missing "suggestedLocation"`);
         }
         if (typeof beat.reasoning !== 'string') {
-          console.error(`[Beat Placement] Beat ${i} (${beat.beatName}) missing reasoning. Beat:`, beat);
           throw new Error(`Invalid response structure from Gemini: Beat at index ${i} missing "reasoning"`);
         }
         if (typeof beat.actConstraint !== 'number') {
-          console.error(`[Beat Placement] Beat ${i} (${beat.beatName}) missing/invalid actConstraint. Type:`, typeof beat.actConstraint, 'Value:', beat.actConstraint);
           throw new Error(`Invalid response structure from Gemini: Beat at index ${i} missing or invalid "actConstraint"`);
         }
       }
       
-      console.log('[Beat Placement] All validations passed successfully');
-
       // Save placement suggestions to beat notes
       modal.setStatus('Saving placement suggestions to beat notes...');
       
@@ -233,20 +198,14 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
 
         if (!matchingBeat) {
           unmatchedBeats.push(beat.beatName);
-          console.warn(`[Beat Placement] No beat note at index ${i} for: ${beat.beatName}`);
           continue;
         }
-
-        console.log(`[Beat Placement] Matched "${beat.beatName}" to beat note: "${matchingBeat.title}" (${matchingBeat.path})`);
 
         const file = matchingBeat.path ? plugin.app.vault.getAbstractFileByPath(matchingBeat.path) : null;
         if (!file || !(file instanceof TFile)) {
           unmatchedBeats.push(beat.beatName);
-          console.warn(`[Beat Placement] File not found for beat: ${matchingBeat.title} at ${matchingBeat.path}`);
           continue;
         }
-
-        console.log(`[Beat Placement] Saving suggestion to: ${file.path}`);
 
         // Update beat note with placement suggestion
         await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
@@ -277,13 +236,12 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
         });
         
         updateCount++;
-      }
-      
-      // Log unmatched beats
-      if (unmatchedBeats.length > 0) {
-        console.warn(`[Beat Placement] Unmatched beats (${unmatchedBeats.length}):`, unmatchedBeats);
-        modal.addError(`Could not match ${unmatchedBeats.length} beat(s): ${unmatchedBeats.join(', ')}`);
-      }
+    }
+    
+    // Log unmatched beats
+    if (unmatchedBeats.length > 0) {
+      modal.addError(`Could not match ${unmatchedBeats.length} beat(s): ${unmatchedBeats.join(', ')}`);
+    }
 
       // Create analysis report
       modal.setStatus('Generating placement report...');
@@ -366,12 +324,11 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
           await plugin.app.vault.createFolder('AI');
         } catch (e) {
           // Folder might already exist
-        }
+      }
 
-        reportFile = await plugin.app.vault.create(reportPath, reportLines.join('\n'));
-        console.log(`[Beat Placement] Report saved to: ${reportPath}`);
-        
-        // Open the report
+      reportFile = await plugin.app.vault.create(reportPath, reportLines.join('\n'));
+      
+      // Open the report
         const leaf = plugin.app.workspace.getLeaf('tab');
         await leaf.openFile(reportFile);
       }
@@ -478,13 +435,10 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
           }
           
           await plugin.app.vault.create(errorReportPath, errorReportLines.join('\n'));
-          console.log(`[Beat Placement] Error report saved to: ${errorReportPath}`);
           new Notice(`Error report saved to: ${errorReportPath}`);
         } catch (reportError) {
           console.error('[Beat Placement] Failed to save error report:', reportError);
         }
-      } else {
-        console.log('[Beat Placement] Error logging disabled. Enable "Log API Interactions" in settings to save error reports.');
       }
     }
   };
@@ -494,20 +448,9 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
     const allScenes = await plugin.getSceneData();
     const plotBeats = allScenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
     
-    // Count unique scene files
-    const uniquePaths = new Set<string>();
-    const uniqueScenes = allScenes.filter(s => {
-      if (s.itemType === 'Scene' && s.path && !uniquePaths.has(s.path)) {
-        uniquePaths.add(s.path);
-        return true;
-      }
-      return false;
-    });
-    
-    // Get actual manuscript word count
-    const sceneFiles = uniqueScenes
-      .map(s => plugin.app.vault.getAbstractFileByPath(s.path!))
-      .filter((f): f is TFile => f instanceof TFile);
+    // Get sorted scene files (single source of truth)
+    const { getSortedSceneFiles } = await import('./utils/manuscript');
+    const { files: sceneFiles } = await getSortedSceneFiles(plugin);
 
     // Quick manuscript assembly to get actual stats
     const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault);

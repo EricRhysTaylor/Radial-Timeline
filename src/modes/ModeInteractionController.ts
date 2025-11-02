@@ -79,7 +79,7 @@ export class ModeInteractionController {
             try {
                 handler.removeFunction();
             } catch (e) {
-                console.warn('[ModeInteractionController] Error removing handler:', e);
+                // Error removing handler
             }
         });
         

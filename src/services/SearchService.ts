@@ -60,6 +60,36 @@ export class SearchService {
             return h.includes(p);
         };
 
+        // Helper to format date for display matching what's shown in the synopsis
+        const formatDateForDisplay = (when: Date | undefined): string => {
+            if (!when || !(when instanceof Date)) return '';
+            try {
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const month = months[when.getMonth()];
+                const day = when.getDate();
+                const year = when.getFullYear();
+                const hours = when.getHours();
+                const minutes = when.getMinutes();
+                let dateStr = `${month} ${day}, ${year}`;
+                if (hours === 0 && minutes === 0) {
+                    dateStr += ` @ Midnight`;
+                } else if (hours === 12 && minutes === 0) {
+                    dateStr += ` @ Noon`;
+                } else {
+                    const period = hours >= 12 ? 'PM' : 'AM';
+                    const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+                    if (minutes === 0) {
+                        dateStr += ` @ ${displayHours}${period}`;
+                    } else {
+                        dateStr += ` @ ${displayHours}:${String(minutes).padStart(2, '0')}${period}`;
+                    }
+                }
+                return dateStr;
+            } catch (e) {
+                return '';
+            }
+        };
+
         this.plugin.getSceneData().then(scenes => {
             scenes.forEach(scene => {
                 const textFields: (string | undefined)[] = [
@@ -68,11 +98,15 @@ export class SearchService {
                     ...(scene.Character || []),
                     scene.subplot,
                     scene.location,
-                    scene.pov
+                    scene.pov,
+                    scene.Duration
                 ];
                 const textMatched = textFields.some(f => containsWholePhrase(f, term, false));
-                const dateField = scene.when?.toLocaleDateString();
-                const dateMatched = containsWholePhrase(dateField, term, true);
+                // Check both the numeric date format and the display format
+                const dateFieldNumeric = scene.when?.toLocaleDateString();
+                const dateFieldDisplay = formatDateForDisplay(scene.when);
+                const dateMatched = containsWholePhrase(dateFieldNumeric, term, true) || 
+                                   containsWholePhrase(dateFieldDisplay, term, false);
                 if (textMatched || dateMatched) { if (scene.path) this.plugin.searchResults.add(scene.path); }
             });
             const timelineViews = this.plugin.getTimelineViews();

@@ -184,10 +184,11 @@ The story act this scene or beat belongs to.
 
 The in-world date when the scene OR beat takes place in your fictional timeline.
 
-Supported formats:
-- `2024-03-15` (simple date)
-- `2024-03-15T14:30:00` (date with time)
-- `2024-03-15 14:30` (readable date+time)
+Supported formats (month and day can be single or double digit):
+- `2024-03-15` or `2024-3-15` (simple date)
+- `2024-03-15T14:30:00` or `2024-3-15T14:30:00` (date with time)
+- `2024-03-15 14:30` or `2024-3-15 14:30` (readable date+time)
+- `1812-9-17` (historical dates work too)
 
 **Invalid examples:**
 - `March 15, 2024` ❌

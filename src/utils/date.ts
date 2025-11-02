@@ -45,12 +45,19 @@ export interface TimeLabelInfo {
  * SINGLE SOURCE OF TRUTH for date parsing
  * Always interprets dates as LOCAL TIME (not UTC) to avoid timezone shifts
  * 
- * Supported formats:
- * - YYYY-MM-DD (date only, time defaults to 12:00:00 noon local)
- * - YYYY-MM-DD HH:MM (date + time in local timezone)
- * - YYYY-MM-DD HH:MM:SS (date + time with seconds in local timezone)
- * - YYYY-MM-DDTHH:MM:SS (ISO 8601 format with T separator)
- * - YYYY-MM-DDTHH:MM (ISO 8601 format with T separator, no seconds)
+ * Supported formats (month and day can be single or double digit):
+ * - YYYY-MM-DD or YYYY-M-D (date only, time defaults to 12:00:00 noon local)
+ * - YYYY-MM-DD HH:MM or YYYY-M-D H:MM (date + time in local timezone)
+ * - YYYY-MM-DD HH:MM:SS or YYYY-M-D H:MM:SS (date + time with seconds in local timezone)
+ * - YYYY-MM-DDTHH:MM:SS or YYYY-M-DTHH:MM:SS (ISO 8601 format with T separator)
+ * - YYYY-MM-DDTHH:MM or YYYY-M-DTHH:MM (ISO 8601 format with T separator, no seconds)
+ * - YYYY-MM-DD h:mm am/pm or YYYY-M-D h:mm am/pm (12-hour clock with AM/PM)
+ * 
+ * Examples:
+ * - 1812-9-17 → September 17, 1812 at noon
+ * - 1812-09-17 → September 17, 1812 at noon
+ * - 2024-3-5 14:30 → March 5, 2024 at 2:30 PM
+ * - 2024-03-05T14:30:00 → March 5, 2024 at 2:30 PM
  * 
  * @param when - Date string from scene metadata
  * @returns Date object in local time, or null if invalid
@@ -60,9 +67,9 @@ export function parseWhenField(when: string): Date | null {
     
     const trimmed = when.trim();
     
-    // Try ISO date format: YYYY-MM-DD
+    // Try ISO date format: YYYY-MM-DD or YYYY-M-D (flexible month/day digits)
     // Parse as local time by extracting components
-    const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+    const dateOnlyMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed);
     if (dateOnlyMatch) {
         const year = parseInt(dateOnlyMatch[1], 10);
         const month = parseInt(dateOnlyMatch[2], 10) - 1; // JS months are 0-indexed
@@ -71,8 +78,8 @@ export function parseWhenField(when: string): Date | null {
         return isNaN(date.getTime()) ? null : date;
     }
     
-    // Try ISO 8601 format with T separator and seconds: YYYY-MM-DDTHH:MM:SS
-    const iso8601SecondsMatch = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(trimmed);
+    // Try ISO 8601 format with T separator and seconds: YYYY-MM-DDTHH:MM:SS (flexible month/day digits)
+    const iso8601SecondsMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})T(\d{1,2}):(\d{1,2}):(\d{1,2})$/.exec(trimmed);
     if (iso8601SecondsMatch) {
         const year = parseInt(iso8601SecondsMatch[1], 10);
         const month = parseInt(iso8601SecondsMatch[2], 10) - 1;
@@ -84,8 +91,8 @@ export function parseWhenField(when: string): Date | null {
         return isNaN(date.getTime()) ? null : date;
     }
     
-    // Try ISO 8601 format with T separator, no seconds: YYYY-MM-DDTHH:MM
-    const iso8601Match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(trimmed);
+    // Try ISO 8601 format with T separator, no seconds: YYYY-MM-DDTHH:MM (flexible month/day digits)
+    const iso8601Match = /^(\d{4})-(\d{1,2})-(\d{1,2})T(\d{1,2}):(\d{1,2})$/.exec(trimmed);
     if (iso8601Match) {
         const year = parseInt(iso8601Match[1], 10);
         const month = parseInt(iso8601Match[2], 10) - 1;
@@ -96,8 +103,8 @@ export function parseWhenField(when: string): Date | null {
         return isNaN(date.getTime()) ? null : date;
     }
     
-    // Try date + time with seconds and space separator: YYYY-MM-DD HH:MM:SS
-    const dateTimeSecondsMatch = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(trimmed);
+    // Try date + time with seconds and space separator: YYYY-MM-DD HH:MM:SS (flexible month/day digits)
+    const dateTimeSecondsMatch = /^(\d{4})-(\d{1,2})-(\d{1,2}) (\d{1,2}):(\d{1,2}):(\d{1,2})$/.exec(trimmed);
     if (dateTimeSecondsMatch) {
         const year = parseInt(dateTimeSecondsMatch[1], 10);
         const month = parseInt(dateTimeSecondsMatch[2], 10) - 1;
@@ -109,14 +116,34 @@ export function parseWhenField(when: string): Date | null {
         return isNaN(date.getTime()) ? null : date;
     }
     
-    // Try date + time with space separator: YYYY-MM-DD HH:MM
-    const dateTimeMatch = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/.exec(trimmed);
+    // Try date + time with space separator: YYYY-MM-DD HH:MM (flexible month/day digits)
+    const dateTimeMatch = /^(\d{4})-(\d{1,2})-(\d{1,2}) (\d{1,2}):(\d{1,2})$/.exec(trimmed);
     if (dateTimeMatch) {
         const year = parseInt(dateTimeMatch[1], 10);
         const month = parseInt(dateTimeMatch[2], 10) - 1;
         const day = parseInt(dateTimeMatch[3], 10);
         const hour = parseInt(dateTimeMatch[4], 10);
         const minute = parseInt(dateTimeMatch[5], 10);
+        const date = new Date(year, month, day, hour, minute, 0, 0); // Local time
+        return isNaN(date.getTime()) ? null : date;
+    }
+
+    // Try date + 12-hour time with am/pm: YYYY-MM-DD h:mm am/pm (flexible month/day digits)
+    const ampmMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i.exec(trimmed);
+    if (ampmMatch) {
+        const year = parseInt(ampmMatch[1], 10);
+        const month = parseInt(ampmMatch[2], 10) - 1;
+        const day = parseInt(ampmMatch[3], 10);
+        let hour = parseInt(ampmMatch[4], 10);
+        const minute = ampmMatch[5] ? parseInt(ampmMatch[5], 10) : 0;
+        const ampm = ampmMatch[6].toLowerCase();
+
+        if (ampm === 'pm' && hour < 12) {
+            hour += 12;
+        } else if (ampm === 'am' && hour === 12) { // Midnight case
+            hour = 0;
+        }
+
         const date = new Date(year, month, day, hour, minute, 0, 0); // Local time
         return isNaN(date.getTime()) ? null : date;
     }
@@ -458,14 +485,6 @@ export function detectDiscontinuities(scenes: { when?: Date }[], threshold: numb
     const sortedGaps = [...gaps].sort((a, b) => a - b);
     const medianGap = sortedGaps[Math.floor(sortedGaps.length / 2)];
     
-    console.log('[detectDiscontinuities] Gap analysis', {
-        gapCount: gaps.length,
-        medianGapDays: medianGap / (1000 * 60 * 60 * 24),
-        thresholdMultiplier: threshold,
-        thresholdGapDays: (medianGap * threshold) / (1000 * 60 * 60 * 24),
-        allGapsDays: gaps.map(g => g / (1000 * 60 * 60 * 24))
-    });
-    
     if (medianGap === 0) return []; // All scenes at same time
     
     // Absolute threshold: a gap greater than 30 days is always considered a discontinuity
@@ -581,10 +600,10 @@ export function generateChronologicalTicks(
     // Special case: Only one scene - just show that date at the top
     if (validScenes.length === 1) {
         const singleDate = validScenes[0].date;
-        // Use UTC methods to avoid timezone issues when displaying date-only strings
-        const month = singleDate.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-        const day = singleDate.getUTCDate();
-        const year = singleDate.getUTCFullYear();
+        // Use local time methods to ensure consistency with parsing
+        const month = singleDate.toLocaleString('en-US', { month: 'short' });
+        const day = singleDate.getDate();
+        const year = singleDate.getFullYear();
         const dateLabel = `${month} ${day}, ${year}`;
         
         return [{
@@ -677,11 +696,10 @@ export function generateChronologicalTicks(
         
         if (i === 0) {
             // First scene: full date label with two lines (year, then month/day)
-            // Use UTC methods to avoid timezone issues when displaying date-only strings
-            // Date strings like "1812-12-15" parse as UTC midnight, so use UTC methods
-            const month = scene.date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-            const day = scene.date.getUTCDate();
-            const year = scene.date.getUTCFullYear();
+            // Use local time methods to match parsing context
+            const month = scene.date.toLocaleString('en-US', { month: 'short' });
+            const day = scene.date.getDate();
+            const year = scene.date.getFullYear();
             const label = `${year}\n${month} ${day}`;
             ticks.push({
                 angle: sceneStartAngle,
@@ -700,10 +718,10 @@ export function generateChronologicalTicks(
                 // Normalize to [-π, π] range for display
                 if (tickAngle > Math.PI) tickAngle -= 2 * Math.PI;
             }
-            // Use UTC methods to avoid timezone issues when displaying date-only strings
-            const month = scene.date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-            const day = scene.date.getUTCDate();
-            const year = scene.date.getUTCFullYear();
+            // Use local time methods to match parsing context
+            const month = scene.date.toLocaleString('en-US', { month: 'short' });
+            const day = scene.date.getDate();
+            const year = scene.date.getFullYear();
             const label = `${year}\n${month} ${day}`;
             ticks.push({
                 angle: tickAngle,
@@ -714,9 +732,9 @@ export function generateChronologicalTicks(
             });
         } else if (promoteSet.has(i)) {
             // Promoted scenes: abbreviated date label
-            // Use UTC methods to avoid timezone issues when displaying date-only strings
-            const month = scene.date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-            const day = scene.date.getUTCDate();
+            // Use local time methods to match parsing context
+            const month = scene.date.toLocaleString('en-US', { month: 'short' });
+            const day = scene.date.getDate();
             ticks.push({
                 angle: sceneStartAngle,
                 name: `${month} ${day}`,

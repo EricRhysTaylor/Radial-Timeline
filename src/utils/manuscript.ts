@@ -1,7 +1,8 @@
 /*
  * Manuscript Assembly Utilities
  */
-import type { TFile, Vault } from 'obsidian';
+import { TFile, Vault } from 'obsidian';
+import type RadialTimelinePlugin from '../main';
 
 export interface SceneContent {
   title: string;
@@ -14,6 +15,7 @@ export interface AssembledManuscript {
   totalWords: number;
   totalScenes: number;
   scenes: SceneContent[];
+  sortOrder?: string;
 }
 
 /**
@@ -62,20 +64,78 @@ export function estimateTokens(wordCount: number): number {
 }
 
 /**
+ * Get sorted scene files ready for manuscript assembly
+ * This is the single source of truth for preparing scenes for manuscript generation
+ * Uses the same sorting logic as the timeline view
+ * @param plugin - The RadialTimelinePlugin instance
+ * @returns Object with array of TFile objects and sort order description
+ */
+export async function getSortedSceneFiles(plugin: RadialTimelinePlugin): Promise<{ files: TFile[], sortOrder: string }> {
+  // Get all scenes
+  const allScenes = await plugin.getSceneData();
+  
+  // Deduplicate by path
+  const uniquePaths = new Set<string>();
+  const uniqueScenes = allScenes.filter(s => {
+    if (s.itemType === 'Scene' && s.path && !uniquePaths.has(s.path)) {
+      uniquePaths.add(s.path);
+      return true;
+    }
+    return false;
+  });
+  
+  // Sort scenes using the same logic as the timeline view
+  // Check current mode and sorting settings
+  const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
+  const isChronologueMode = currentMode === 'chronologue';
+  const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+  const forceChronological = isChronologueMode;
+  
+  // Import and use the same sortScenes function that the timeline uses
+  const { sortScenes } = await import('./sceneHelpers');
+  const sortedScenes = sortScenes(uniqueScenes, sortByWhen, forceChronological);
+  
+  // Convert to TFile objects
+  const sceneFiles = sortedScenes
+    .map(s => plugin.app.vault.getAbstractFileByPath(s.path!))
+    .filter((f): f is TFile => f instanceof TFile);
+  
+  // Determine sort order description
+  let sortOrder: string;
+  if (isChronologueMode) {
+    sortOrder = 'Chronological (by When date/time)';
+  } else {
+    sortOrder = 'Narrative (by scene title/number)';
+  }
+  
+  return { files: sceneFiles, sortOrder };
+}
+
+
+/**
  * Generate a table of contents for the manuscript
  * @param scenes - Array of scene content
  * @param totalWords - Total word count
  * @param useObsidianLinks - If true, use [[#Scene Title]] format for clickable links in Obsidian
+ * @param sortOrder - Description of the sort order used
  */
-function generateTableOfContents(scenes: SceneContent[], totalWords: number, useObsidianLinks = false): string {
+function generateTableOfContents(scenes: SceneContent[], totalWords: number, useObsidianLinks = false, sortOrder?: string): string {
   const tocLines: string[] = [
     '# TABLE OF CONTENTS',
     '',
     `Total Scenes: ${scenes.length} | Total Words: ${totalWords.toLocaleString()}`,
-    '',
-    '---',
     ''
   ];
+
+  // Add sort order note if provided
+  if (sortOrder) {
+    tocLines.push(`**Sort Order:** ${sortOrder}`);
+    tocLines.push('');
+    tocLines.push('_Note: Narrative mode sorts scenes by scene title/number (for all scenes, main plot, and Gossamer modes). Chronologue mode sorts scenes chronologically by When date/time. These may produce the same order depending on your scene title structure._');
+    tocLines.push('');
+  }
+
+  tocLines.push('---', '');
 
   scenes.forEach((scene, index) => {
     const sceneNum = index + 1;
@@ -99,12 +159,14 @@ function generateTableOfContents(scenes: SceneContent[], totalWords: number, use
  * @param vault - Obsidian vault instance
  * @param progressCallback - Optional callback for progress updates
  * @param useObsidianLinks - If true, TOC uses [[#Scene Title]] clickable links (default: false for AI processing)
+ * @param sortOrder - Optional description of the sort order used
  */
 export async function assembleManuscript(
   sceneFiles: TFile[],
   vault: Vault,
   progressCallback?: (sceneIndex: number, sceneTitle: string, totalScenes: number) => void,
-  useObsidianLinks = false
+  useObsidianLinks = false,
+  sortOrder?: string
 ): Promise<AssembledManuscript> {
   const scenes: SceneContent[] = [];
   const textParts: string[] = [];
@@ -137,14 +199,15 @@ export async function assembleManuscript(
   }
 
   // Generate TOC and prepend to manuscript
-  const toc = generateTableOfContents(scenes, totalWords, useObsidianLinks);
+  const toc = generateTableOfContents(scenes, totalWords, useObsidianLinks, sortOrder);
   const manuscriptText = toc + textParts.join('');
 
   return {
     text: manuscriptText,
     totalWords,
     totalScenes: sceneFiles.length,
-    scenes
+    scenes,
+    sortOrder
   };
 }
 

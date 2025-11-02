@@ -86,7 +86,7 @@ function getLabelSignature(container: HTMLElement): string {
 
      // px inward from outer scene edge for story beat titles
 const ACT_LABEL_OFFSET = 25;     // px outward from outer scene edge for ACT labels
-const MONTH_TEXT_INSET = 10;     // px inward toward center from outer perimeter (larger = closer to origin)
+const MONTH_TEXT_INSET = 13;     // px inward toward center from outer perimeter (larger = closer to origin)
 const MONTH_TICK_TERMINAL = 35;   // px outward from outer scene edge for month tick lines
 const SCENE_TITLE_INSET = 22; // fixed pixels inward from the scene's outer boundary for title path
 

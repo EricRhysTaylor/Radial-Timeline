@@ -520,7 +520,6 @@ export class GossamerScoreModal extends Modal {
       }
       
       if (!file) {
-        console.warn(`[Gossamer] No Beat note found for beat: ${beatTitle}`);
         continue;
       }
       

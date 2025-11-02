@@ -38,7 +38,6 @@ async function saveGossamerScores(
   for (const [beatTitle, newScore] of scores) {
     const file = findBeatNoteByTitle(files, beatTitle, plugin.app);
     if (!file) {
-      console.warn(`[Gossamer] No Beat note found for beat: ${beatTitle}`);
       continue;
     }
     
@@ -528,20 +527,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
     modal.setStatus('Assembling manuscript...');
 
-    // Get all scenes
-    const allScenes = await plugin.getSceneData();
-    const uniquePaths = new Set<string>();
-    const uniqueScenes = allScenes.filter(s => {
-      if (s.itemType === 'Scene' && s.path && !uniquePaths.has(s.path)) {
-        uniquePaths.add(s.path);
-        return true;
-      }
-      return false;
-    });
-
-    const sceneFiles = uniqueScenes
-      .map(s => plugin.app.vault.getAbstractFileByPath(s.path!))
-      .filter((f): f is TFile => f instanceof TFile);
+    // Get sorted scene files (single source of truth)
+    const { getSortedSceneFiles } = await import('./utils/manuscript');
+    const { files: sceneFiles, sortOrder } = await getSortedSceneFiles(plugin);
 
     if (sceneFiles.length === 0) {
       modal.addError('No scenes found in source path.');
@@ -551,7 +539,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     }
 
     // Assemble manuscript
-    const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault);
+    const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault, undefined, false, sortOrder);
 
     if (!manuscript.text || manuscript.text.trim().length === 0) {
       modal.addError('Manuscript is empty. Check that your scene files have content.');
@@ -640,21 +628,15 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 
       if (!matchingBeat) {
         unmatchedBeats.push(beat.beatName);
-        console.warn(`[Gossamer AI] No beat note at index ${i} for: ${beat.beatName}`);
         continue;
       }
-
-      console.log(`[Gossamer AI] Matched "${beat.beatName}" to beat note: "${matchingBeat.title}" (${matchingBeat.path})`);
 
       // Use the file path from the matched beat
       const file = matchingBeat.path ? plugin.app.vault.getAbstractFileByPath(matchingBeat.path) : null;
       if (!file || !(file instanceof TFile)) {
         unmatchedBeats.push(beat.beatName);
-        console.warn(`[Gossamer AI] File not found for beat: ${matchingBeat.title} at ${matchingBeat.path}`);
         continue;
       }
-
-      console.log(`[Gossamer AI] Saving score ${beat.momentumScore} to: ${file.path}`);
 
       // Update beat note with score and justification (history shifts automatically)
       await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
@@ -688,7 +670,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     
     // Log unmatched beats
     if (unmatchedBeats.length > 0) {
-      console.warn(`[Gossamer AI] Unmatched beats (${unmatchedBeats.length}):`, unmatchedBeats);
       modal.addError(`Could not match ${unmatchedBeats.length} beat(s): ${unmatchedBeats.join(', ')}`);
     }
 
@@ -791,7 +772,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       }
 
       reportFile = await plugin.app.vault.create(reportPath, reportLines.join('\n'));
-      console.log(`[Gossamer AI] Report saved to: ${reportPath}`);
       
       // Open the report
       const leaf = plugin.app.workspace.getLeaf('tab');
@@ -820,20 +800,9 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     const scenes = await plugin.getSceneData();
     const plotBeats = scenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
     
-    // Get all scenes for manuscript assembly preview
-    const allScenes = await plugin.getSceneData();
-    const uniquePaths = new Set<string>();
-    const uniqueScenes = allScenes.filter(s => {
-      if (s.itemType === 'Scene' && s.path && !uniquePaths.has(s.path)) {
-        uniquePaths.add(s.path);
-        return true;
-      }
-      return false;
-    });
-
-    const sceneFiles = uniqueScenes
-      .map(s => plugin.app.vault.getAbstractFileByPath(s.path!))
-      .filter((f): f is TFile => f instanceof TFile);
+    // Get sorted scene files (single source of truth)
+    const { getSortedSceneFiles } = await import('./utils/manuscript');
+    const { files: sceneFiles } = await getSortedSceneFiles(plugin);
 
     // Quick manuscript assembly to get stats
     const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault);

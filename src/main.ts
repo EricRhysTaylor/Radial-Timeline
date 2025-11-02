@@ -526,10 +526,6 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     async onload() {
-        console.log('========================================');
-        console.log('RADIAL TIMELINE PLUGIN LOADING - TEST LOG');
-        console.log('========================================');
-        
         await this.loadSettings();
 
         // Migration: Convert old field names to new field names
@@ -606,22 +602,9 @@ export default class RadialTimelinePlugin extends Plugin {
                 try {
                     new Notice('Assembling manuscript...');
                     
-                    // Get all scenes
-                    const scenes = await this.getSceneData();
-                    
-                    // Deduplicate by path
-                    const uniquePaths = new Set<string>();
-                    const uniqueScenes = scenes.filter(s => {
-                        if (s.itemType === 'Scene' && s.path && !uniquePaths.has(s.path)) {
-                            uniquePaths.add(s.path);
-                            return true;
-                        }
-                        return false;
-                    });
-                    
-                    const sceneFiles = uniqueScenes
-                        .map(s => this.app.vault.getAbstractFileByPath(s.path!))
-                        .filter((f): f is TFile => f instanceof TFile);
+                    // Get sorted scene files (single source of truth)
+                    const { getSortedSceneFiles } = await import('./utils/manuscript');
+                    const { files: sceneFiles, sortOrder } = await getSortedSceneFiles(this);
                     
                     if (sceneFiles.length === 0) {
                         new Notice('No scenes found in source path.');
@@ -629,7 +612,7 @@ export default class RadialTimelinePlugin extends Plugin {
                     }
                     
                     // Assemble manuscript with Obsidian-style clickable links
-                    const manuscript = await assembleManuscript(sceneFiles, this.app.vault, undefined, true);
+                    const manuscript = await assembleManuscript(sceneFiles, this.app.vault, undefined, true, sortOrder);
                     
                     if (!manuscript.text || manuscript.text.trim().length === 0) {
                         new Notice('Manuscript is empty. Check that your scene files have content.');
@@ -2454,7 +2437,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
             }
             
             if (!file) {
-                console.warn(`[Gossamer] No Beat note found for beat: ${beatTitle}`);
                 continue;
             }
             

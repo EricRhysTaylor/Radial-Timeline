@@ -13,12 +13,7 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
     const arrowDown = svg.querySelector('#rotation-arrow-down') as SVGUseElement | null;
     
     if (!rotatable || !toggle || !arrowUp || !arrowDown) {
-        console.warn('[Rotation] Could not find rotation elements:', {
-            rotatable: !!rotatable,
-            toggle: !!toggle,
-            arrowUp: !!arrowUp,
-            arrowDown: !!arrowDown
-        });
+        // Rotation elements not found - this is expected if the timeline hasn't rendered yet
         return;
     }
 
