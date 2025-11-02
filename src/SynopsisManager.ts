@@ -590,7 +590,8 @@ export default class SynopsisManager {
       const size = 1600; // SVG size
       const margin = 30;
       const outerRadius = size / 2 - margin;
-      const adjustedRadius = outerRadius - 20; // Reduce radius by 20px to move synopsis closer to center
+      const synopsisRadiusMargin = 14;
+      const adjustedRadius = outerRadius - synopsisRadiusMargin; // Reduce radius to keep synopsis inside arc
       
       
       // Reset styles and classes
@@ -627,7 +628,7 @@ export default class SynopsisManager {
       synopsis.setAttribute('pointer-events', 'all');
       
       // Position text elements to follow the arc
-      this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf);
+      this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf, adjustedRadius);
       
     } catch (e) {
       // Silent error handling
@@ -716,7 +717,7 @@ export default class SynopsisManager {
   /**
    * Position text elements along an arc
    */
-  private positionTextElements(synopsis: Element, isRightAligned: boolean, isTopHalf: boolean): void {
+  private positionTextElements(synopsis: Element, isRightAligned: boolean, isTopHalf: boolean, radius: number): void {
     // Find all text elements
     const textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
     if (textElements.length === 0) return;
@@ -743,7 +744,6 @@ export default class SynopsisManager {
     const titleLineHeight = 32; // Increased spacing for title/date line
     const synopsisLineHeight = 22; // Reduced spacing for synopsis text
     const scorePreGap = 46; // Manual gap before the Gossamer score line; adjust as needed
-    const radius = 750; // Reduced from 770 by 20px to match the adjustedRadius in updatePosition
     const metadataSpacing = 14; // Default horizontal gap between title and metadata block
     
     // Calculate starting y-position from synopsis position
@@ -825,7 +825,16 @@ export default class SynopsisManager {
       const roundedAnchorX = Math.round(anchorX);
       const rowY = rowIndex === 0 ? 0 : yOffset;
       
-      this.positionRowColumns(rowElements, roundedAnchorX, rowY, primaryWidth, metadataWidth, gap, isRightAligned);
+      this.positionRowColumns(
+        rowElements,
+        roundedAnchorX,
+        rowY,
+        primaryWidth,
+        metadataWidth,
+        gap,
+        isRightAligned,
+        rowIndex === 0
+      );
     });
   }
 
@@ -853,15 +862,27 @@ export default class SynopsisManager {
     return { primaryWidth, metadataWidth, gap };
   }
 
-  private positionRowColumns(rowElements: SVGTextElement[], anchorX: number, yPosition: number, primaryWidth: number, metadataWidth: number, gap: number, isRightAligned: boolean): void {
+  private positionRowColumns(
+    rowElements: SVGTextElement[],
+    anchorX: number,
+    yPosition: number,
+    primaryWidth: number,
+    metadataWidth: number,
+    gap: number,
+    isRightAligned: boolean,
+    isFirstRow: boolean
+  ): void {
     if (rowElements.length === 0) {
       return;
     }
     
     const hasMetadata = rowElements.length > 1;
+    const firstLineInset = isFirstRow ? 6 : 0;
+    const effectiveAnchorX = isRightAligned ? anchorX - firstLineInset : anchorX + firstLineInset;
+    const edgePadding = 6;
 
     if (isRightAligned) {
-      const metadataRightEdge = anchorX;
+      const metadataRightEdge = effectiveAnchorX - edgePadding;
       const metadataLeftEdge = hasMetadata ? metadataRightEdge - metadataWidth : metadataRightEdge;
       const titleRightEdge = hasMetadata ? metadataLeftEdge - gap : metadataRightEdge;
       
@@ -877,7 +898,7 @@ export default class SynopsisManager {
         }
       });
     } else {
-      const rowLeftEdge = anchorX;
+      const rowLeftEdge = effectiveAnchorX + edgePadding;
       const metadataLeftEdge = hasMetadata ? rowLeftEdge + primaryWidth + gap : rowLeftEdge;
       
       rowElements.forEach((textEl, index) => {
