@@ -29,7 +29,12 @@ const ELAPSED_ARC_OFFSET = 6; // Offset from the outer sceneradius to position t
 const ELAPSED_TICK_LENGTH = 7; // Length of the tick marks (6-8px as specified)
 
 export interface ChronologueShiftView {
-    registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
+    registerDomEvent: (
+        el: HTMLElement | Window | Document,
+        event: string,
+        handler: (ev: Event) => void,
+        options?: boolean | AddEventListenerOptions
+    ) => void;
     plugin: {
         refreshTimelineIfNeeded?: (path: string | null) => void;
         [key: string]: any; // SAFE: any type used for facade extension by downstream plugins
@@ -260,7 +265,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     // Setup shift mode hover handlers - MUST run before other handlers
     const setupShiftModeHover = () => {
         // Use capture phase to run before other handlers
-        svg.addEventListener('pointerover', (e: PointerEvent) => {
+        view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
             if (!shiftModeActive) return;
             
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
@@ -299,10 +304,10 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 const sid = g.querySelector('.rt-scene-path')?.id || null;
                 setNumberSquareActiveBySceneId(svg, sid, true);
             }
-        }, true); // Use capture phase
+        }, { capture: true }); // Use capture phase
         
         // Use capture phase for pointerout too
-        svg.addEventListener('pointerout', (e: PointerEvent) => {
+        view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
             if (!shiftModeActive) return;
             
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
@@ -328,13 +333,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 const sid = g.querySelector('.rt-scene-path')?.id || null;
                 setNumberSquareActiveBySceneId(svg, sid, false);
             }
-        }, true); // Use capture phase
-        
-        // Store cleanup
-        (view as any)._shiftModeHoverCleanup = () => {
-            // Note: We can't easily remove these without tracking the exact handlers
-            // They'll be cleaned up when the view is closed
-        };
+        }, { capture: true }); // Use capture phase
     };
     
     setupShiftModeHover();

@@ -52,7 +52,7 @@
   --rt-gossamer-historical-color: #c0c0c0;      /* Historical runs (Gossamer2-5, light gray) */
   
   /* Dot Sizes */
-  --rt-gossamer-dot-current: 4px;               /* Current run (Gossamer1) dot radius */
+  --rt-gossamer-dot-current: 6px;               /* Current run (Gossamer1) dot radius */
   --rt-gossamer-dot-historical: 5px;            /* Historical runs (Gossamer2-5) dot radius */
   
   /* Strokes & Lines */
@@ -86,10 +86,10 @@
 
 /* Stage-specific fill should be applied to the bold title tspans, not the parent text.
    This mirrors subplot/character behavior and prevents inheritance issues for the date tspan. */
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-scene-title-bold.rt-title-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)) !important; }
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-scene-title-bold.rt-title-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important; }
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-scene-title-bold.rt-title-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)) !important; }
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-scene-title-bold.rt-title-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)) !important; }
+.rt-scene-title-bold.rt-title-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)) !important; }
+.rt-scene-title-bold.rt-title-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important; }
+.rt-scene-title-bold.rt-title-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)) !important; }
+.rt-scene-title-bold.rt-title-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)) !important; }
 
 /* styles.css */
 .radial-timeline-container {
@@ -292,17 +292,15 @@
   stroke-width: var(--rt-gossamer-line-historical-width);
   opacity: var(--rt-gossamer-line-historical-opacity);
 }
-/* Gossamer dots (10px diameter) */
+/* Gossamer dots (12px diameter) */
 .rt-gossamer-dot { 
-  /* fill color set inline via publish stage color */
-  r: 6px; /* 10px diameter */
+  /* fill color and r (radius) set inline via publish stage color */
   pointer-events: all; 
   cursor: pointer; 
   stroke: none;
 }
 .rt-gossamer-dot.rt-gossamer-missing-data {
   /* Red dot for beats with missing Gossamer1 scores (defaulted to 0) */
-  r: 6px;
   fill: #ff4444 !important;
   opacity: 0.8;
 }
@@ -438,12 +436,12 @@
 .radial-timeline-container .rt-scene-title.rt-faded {
   opacity: 0.2;
 }
-.radial-timeline-container .rt-scene-info {
+.rt-scene-info {
   opacity: 0;
   pointer-events: none !important;
   vector-effect: non-scaling-stroke;
 }
-.radial-timeline-container .rt-scene-info text {
+.rt-scene-info text {
   stroke: white;
   stroke-width: 4px;
   paint-order: stroke;
@@ -575,36 +573,36 @@
   overflow-x: auto;
 }
 
-.radial-timeline-container .rt-subplot-text {
+.rt-subplot-text {
   font-size: 16px;
   fill: var(--text-muted, #555555);
   font-weight: normal;
   
 }
-.radial-timeline-container .scene-hover .rt-subplot-text,
-.radial-timeline-container .rt-scene-group:hover .rt-subplot-text { 
+.scene-hover .rt-subplot-text,
+.rt-scene-group:hover .rt-subplot-text { 
   fill: #ffffff; 
 }
 
-.radial-timeline-container .rt-number-square{
+.rt-number-square{
   pointer-events: none;
   fill: #FFFFFF;
 }
 
-.radial-timeline-container .rt-number-text {
+.rt-number-text {
   fill: #000000;
   pointer-events: none;
 }
 /* AI grade text colors - scoped to plugin (no !important so non-selected can override) */
-.radial-timeline-container .rt-number-text.rt-grade-A { fill: #00ff48; }
-.radial-timeline-container .rt-number-text.rt-grade-B { fill: #ffbb00; }
-.radial-timeline-container .rt-number-text.rt-grade-C { fill: #ff0000; }
+.rt-number-text.rt-grade-A { fill: #00ff48; }
+.rt-number-text.rt-grade-B { fill: #ffbb00; }
+.rt-number-text.rt-grade-C { fill: #ff0000; }
 /* Preserve grade colors when scene is open (higher specificity overrides white fill below) */
-.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-grade-A { fill: #00ff48; }
-.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-grade-B { fill: #ffbb00; }
-.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-grade-C { fill: #ff0000; }
-.radial-timeline-container .rt-number-square.rt-faded,
-.radial-timeline-container .rt-number-text.rt-faded {
+.rt-number-text.rt-scene-is-open.rt-grade-A { fill: #00ff48; }
+.rt-number-text.rt-scene-is-open.rt-grade-B { fill: #ffbb00; }
+.rt-number-text.rt-scene-is-open.rt-grade-C { fill: #ff0000; }
+.rt-number-square.rt-faded,
+.rt-number-text.rt-faded {
   opacity: 1;
 }
 .radial-timeline-container .rt-scene-title.rt-selected {
@@ -613,31 +611,31 @@
   paint-order: stroke;
 }
 /* Scene is open: non-selected state */
-.radial-timeline-container .rt-number-square.rt-scene-is-open.rt-non-selected {
+.rt-number-square.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
   stroke: none;
   stroke-width: 0;
 }
-.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-non-selected {
+.rt-number-text.rt-scene-is-open.rt-non-selected {
   fill: #FFFFFF !important;
   opacity: 1;
 }
-.radial-timeline-container .rt-number-square.rt-selected {
+.rt-number-square.rt-selected {
   transform: scale(1.2);
   z-index: 10;
   stroke-width: 3px;
   stroke: var(--scene-color, #705DCF);
 }
 
-.radial-timeline-container .rt-number-square.rt-non-selected {
+.rt-number-square.rt-non-selected {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
 }
-.radial-timeline-container .rt-number-text.rt-selected {
+.rt-number-text.rt-selected {
   font-weight: bold;
 }
-.radial-timeline-container .rt-number-text.rt-non-selected {
+.rt-number-text.rt-non-selected {
   fill: #FFFFFF;
 }
 .rt-search-term {
@@ -679,52 +677,53 @@
   justify-content: flex-end;
 }
 
-.radial-timeline-container .rt-scene-info.rt-visible {
+.rt-scene-info.rt-visible {
   opacity: 1 !important;
   pointer-events: all !important;
   visibility: visible !important;
   display: block !important;
 }
 /*Synopsis Title*/
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main {
+.rt-title-text-main {
   font-size: 36px;
   font-weight: 700;
+  --title-color: var(--text-normal);
   /* No parent fill; child tspans own their colors via custom properties */
 }
 /* Date/Time and Duration mini-block (Column 2 of title row) */
 /* This styles the separate text element containing date/time and duration */
 /* Positioned to the right of the main scene title */
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-date-time {
+.rt-title-date-time {
   font-size: 14px;
   font-weight: 400;
   font-style: normal !important;
 }
 /* Title tspans use publish stage color like Act labels */
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=title] {
+.rt-title-text-main tspan[data-item-type=title] {
   fill: var(--rt-max-publish-stage-color, var(--text-normal)) !important;
 }
 
 /* Date and Duration tspans - small gray text */
-.radial-timeline-container .rt-title-date-time tspan {
+.rt-title-date-time tspan {
   fill: #888888 !important;
   font-size: 16px !important;
   font-weight: 400;
 }
 
 /* Date tspan - explicitly normal (not italic) */
-.radial-timeline-container .rt-title-date-time tspan[data-item-type=date],
-.radial-timeline-container .rt-title-date-time .rt-date-text {
+.rt-title-date-time tspan[data-item-type=date],
+.rt-title-date-time .rt-date-text {
   font-style: normal !important;
 }
 
 /* Duration tspan - italic only */
-.radial-timeline-container .rt-title-date-time tspan[data-item-type=duration],
-.radial-timeline-container .rt-title-date-time .rt-duration-text {
+.rt-title-date-time tspan[data-item-type=duration],
+.rt-title-date-time .rt-duration-text {
   font-style: italic !important;
 }
 
 /*Beats text styling*/
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-secondary {
+.rt-title-text-secondary {
   font-size: 18px;
   fill: #666666;
   text-transform: uppercase;
@@ -732,18 +731,18 @@
 }
 
 /* Subplot and character text styling - randomized colors in JS file for characters. Subplots follow subplot settings color defined styles*/
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-metadata-text {
+.rt-metadata-text {
   font-size: 18px;
   font-weight: normal;
 }
 
 /* Overdue text styling */
-.radial-timeline-container .rt-scene-info text.rt-overdue-text {
+.rt-overdue-text {
   fill: var(--rt-color-due) !important;
 }
 
 /* Revisions/Pending edits text styling */
-.radial-timeline-container .rt-scene-info text.rt-revisions-text {
+.rt-revisions-text {
   fill: #C0C0C0 !important;
 }
 
@@ -755,7 +754,7 @@
   fill: var(--interactive-accent, #705DCF);
   stroke: none;
 }
-.radial-timeline-container .rt-number-text.rt-scene-is-open {
+.rt-number-text.rt-scene-is-open {
   font-weight: normal;
   fill: #FFFFFF; /* white for default case; grade colors override via higher specificity */
 }
@@ -769,11 +768,11 @@
   font-weight: bold;
 }
 /* Preserve grade colors when scene is open and selected */
-.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A { fill: #00ff48; }
-.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B { fill: #ffbb00; }
-.radial-timeline-container .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C { fill: #ff0000; }
-.radial-timeline-container .rt-number-square.rt-search-result { fill: var(--rt-color-search) !important; }
-.radial-timeline-container .rt-number-text.rt-search-result.rt-non-selected {
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A { fill: #00ff48; }
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B { fill: #ffbb00; }
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C { fill: #ff0000; }
+.rt-number-square.rt-search-result { fill: var(--rt-color-search) !important; }
+.rt-number-text.rt-search-result.rt-non-selected {
   fill: #FFFFFF !important;
 }
 .rt-number-text.rt-scene-is-open.rt-search-result.rt-non-selected {
@@ -782,48 +781,48 @@
 .rt-number-text.rt-scene-is-open.rt-search-result {
   fill: #000000 !important;
 }
-.radial-timeline-container .rt-number-square.rt-search-result.rt-non-selected {
+.rt-number-square.rt-search-result.rt-non-selected {
   fill: #EFEFEF !important;
   stroke: #EFEFEF;
   stroke-width: 2px;
 }
-.radial-timeline-container .rt-number-square.rt-search-result.rt-selected {
+.rt-number-square.rt-search-result.rt-selected {
   fill: var(--rt-color-search);
   stroke: #ff9500;
   stroke-width: 2px;
 }
-.radial-timeline-container .rt-number-square.rt-has-edits {
+.rt-number-square.rt-has-edits {
   fill: #C0C0C0; /* Light gray for pending edits */
 }
 
-.radial-timeline-container .rt-number-square.rt-has-edits.rt-search-result { fill: var(--rt-color-search) !important; }
-.radial-timeline-container .rt-number-square.rt-has-edits.rt-scene-is-open { fill: var(--interactive-accent, #705DCF); }
-.radial-timeline-container .rt-number-square.rt-has-edits.rt-non-selected {
+.rt-number-square.rt-has-edits.rt-search-result { fill: var(--rt-color-search) !important; }
+.rt-number-square.rt-has-edits.rt-scene-is-open { fill: var(--interactive-accent, #705DCF); }
+.rt-number-square.rt-has-edits.rt-non-selected {
   fill: #EFEFEF !important;
 }
-.radial-timeline-container .rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
+.rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
 }
 /* Preserve grade colors for pending edits (higher specificity) */
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-grade-A { fill: #00ff48; }
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-grade-B { fill: #ffbb00; }
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-grade-C { fill: #ff0000; }
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-selected,
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-search-result.rt-selected { 
+.rt-number-text.rt-has-edits.rt-grade-A { fill: #00ff48; }
+.rt-number-text.rt-has-edits.rt-grade-B { fill: #ffbb00; }
+.rt-number-text.rt-has-edits.rt-grade-C { fill: #ff0000; }
+.rt-number-text.rt-has-edits.rt-selected,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected { 
   font-weight: bold; 
 }
 /* Preserve grade colors for pending edits selected state */
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A { fill: #00ff48; }
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B { fill: #ffbb00; }
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
-.radial-timeline-container .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C { fill: #ff0000; }
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A { fill: #00ff48; }
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B { fill: #ffbb00; }
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C { fill: #ff0000; }
 
 /* AI grade colors turn white when non-selected (covers all states: default, open, pending edits) */
-.radial-timeline-container .rt-number-text.rt-non-selected.rt-grade-A,
-.radial-timeline-container .rt-number-text.rt-non-selected.rt-grade-B,
-.radial-timeline-container .rt-number-text.rt-non-selected.rt-grade-C { fill: #FFFFFF !important; }
+.rt-number-text.rt-non-selected.rt-grade-A,
+.rt-number-text.rt-non-selected.rt-grade-B,
+.rt-number-text.rt-non-selected.rt-grade-C { fill: #FFFFFF !important; }
 .rt-clear-search-btn {
   cursor: pointer;
 }
@@ -2248,15 +2247,6 @@
     flex: 2;
 }
 
-/* Title text styles */
-.rt-title-text-main {
-    --title-color: var(--text-normal);
-}
-
-/* Date text styling is handled by the more specific rule at line 499 
-   (.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-date-text)
-   Removed duplicate rule here to avoid conflicts */
-
 /* Info container styles */
 .rt-info-container {
     cursor: pointer;
@@ -2473,7 +2463,7 @@
 }
 
 /* Ensure gossamer score uses publish stage color like Act labels */
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-gossamer-score-line tspan[data-item-type=title] {
+.rt-gossamer-score-line [data-item-type=title] {
   fill: var(--rt-max-publish-stage-color, var(--text-normal)) !important;
   stroke: white;
   stroke-width: 0.07em;

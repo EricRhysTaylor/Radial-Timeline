@@ -268,13 +268,13 @@ export class BeatPlacementModal extends Modal {
             this.apiStatusEl.show();
         }
         
-        // Update timer every second - registerInterval ensures automatic cleanup on modal close
-        this.timerInterval = (this as any).registerInterval(window.setInterval(() => {
+        // SAFE: Modal doesn't have registerInterval; manually cleaned up in onClose()
+        this.timerInterval = window.setInterval(() => {
             if (this.apiCallStartTime && this.apiStatusEl) {
                 const elapsed = Math.floor((Date.now() - this.apiCallStartTime) / 1000);
                 this.apiStatusEl.setText(`API call in progress: ${elapsed}s`);
             }
-        }, 1000));
+        }, 1000);
     }
 
     private stopApiTimer(): void {

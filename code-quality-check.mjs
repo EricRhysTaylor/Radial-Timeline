@@ -52,6 +52,7 @@ const ALLOWED_ANY_CONTEXTS = [
   'log(message: string, data?: any)',
   'console.log',
   'console.error',
+  'obsidian-augment.ts', // Type augmentation file matches Obsidian's official API
 ];
 
 // CSS class naming pattern - must start with rt- or radial-timeline-
@@ -99,14 +100,14 @@ function isAllowedClassName(className) {
 }
 
 // Check if a line with a match should be ignored because it's in the allowlist
-function isInAllowlist(line, pattern) {
+function isInAllowlist(line, pattern, filePath = '') {
   if (ALLOWLIST.some(allowedPattern => line.includes(allowedPattern))) {
     return true;
   }
   
   // Special handling for 'any' type in allowed contexts
   if (pattern === ANY_TYPE_PATTERN.pattern) {
-    return ALLOWED_ANY_CONTEXTS.some(context => line.includes(context));
+    return ALLOWED_ANY_CONTEXTS.some(context => line.includes(context) || filePath.includes(context));
   }
   
   return false;
@@ -126,7 +127,7 @@ function processFile(filePath) {
     lines.forEach((line, lineNumber) => {
       // Check Obsidian guidelines patterns
       PATTERNS.forEach(({ pattern, message }) => {
-        if (pattern.test(line) && !isInAllowlist(line, pattern)) {
+        if (pattern.test(line) && !isInAllowlist(line, pattern, filePath)) {
           hasViolations = true;
           violations.push({
             line: lineNumber + 1,
@@ -139,7 +140,7 @@ function processFile(filePath) {
       // Check TypeScript 'any' types for TS files
       if (isTypeScript) {
         const { pattern, message } = ANY_TYPE_PATTERN;
-        if (pattern.test(line) && !isInAllowlist(line, pattern)) {
+        if (pattern.test(line) && !isInAllowlist(line, pattern, filePath)) {
           hasViolations = true;
           violations.push({
             line: lineNumber + 1,
@@ -150,7 +151,7 @@ function processFile(filePath) {
       }
       
       // Check CSS class naming for TypeScript files (not CSS files)
-      if (isTypeScript && !isInAllowlist(line, CSS_CLASS_PATTERN.pattern)) {
+      if (isTypeScript && !isInAllowlist(line, CSS_CLASS_PATTERN.pattern, filePath)) {
         const { pattern, message } = CSS_CLASS_PATTERN;
         let match;
         // Reset lastIndex for global regex

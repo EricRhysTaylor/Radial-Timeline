@@ -241,10 +241,10 @@ export class GossamerProcessingModal extends Modal {
             this.apiStatusEl.empty();
             this.updateTimer();
             
-            // Start timer that updates every second - registerInterval ensures automatic cleanup on modal close
-            this.timerInterval = (this as any).registerInterval(window.setInterval(() => {
+            // SAFE: Modal doesn't have registerInterval; manually cleaned up in onClose()
+            this.timerInterval = window.setInterval(() => {
                 this.updateTimer();
-            }, 1000));
+            }, 1000);
         }
         
         // Animate progress bar to indicate activity (pulse between 10% and 90%)

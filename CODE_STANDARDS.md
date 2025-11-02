@@ -277,7 +277,7 @@ this.app.workspace.updateOptions();
 
 > **Obsidian Component Lifecycle First, AbortController Second**
 > 
-> Use Obsidian's native lifecycle APIs (`registerDomEvent`, `registerEvent`, `registerInterval`) for automatic cleanup. Only use `AbortController` for fetch requests, observers, and workers that Obsidian doesn't manage.
+> Use Obsidian's native lifecycle APIs (`registerDomEvent`, `registerEvent`, `registerInterval`) for automatic cleanup in Plugin and View classes. **Note: Modal classes don't have these methods** - use manual cleanup in `onClose()` instead. Only use `AbortController` for fetch requests, observers, and workers that Obsidian doesn't manage.
 
 #### ✅ DOM Event Listeners
 
@@ -317,12 +317,40 @@ this.registerEvent(this.app.vault.on('delete', (file) => { ... }));
 
 #### ✅ Timers & Intervals
 
+**In Plugin and View classes (Component-based):**
 ```typescript
-// ✅ CORRECT - Automatically cleaned up
+// ✅ CORRECT - Automatically cleaned up (Plugin/View classes)
 this.registerInterval(window.setInterval(() => { ... }, 1000));
 
 // ❌ WRONG - Memory leak
 setInterval(() => { ... }, 1000);
+```
+
+**In Modal classes (Modal doesn't have registerInterval):**
+```typescript
+// ✅ CORRECT - Manual cleanup in onClose()
+class MyModal extends Modal {
+  private intervalId?: number;
+  
+  startTimer() {
+    // SAFE: Modal doesn't have registerInterval; manually cleaned up in onClose()
+    this.intervalId = window.setInterval(() => { ... }, 1000);
+  }
+  
+  onClose() {
+    if (this.intervalId) {
+      window.clearInterval(this.intervalId);
+      this.intervalId = undefined;
+    }
+  }
+}
+
+// ❌ WRONG - Memory leak (no cleanup)
+class MyModal extends Modal {
+  onOpen() {
+    setInterval(() => { ... }, 1000); // Never cleared!
+  }
+}
 ```
 
 #### ✅ Animation Frames
@@ -437,13 +465,28 @@ export default class MyPlugin extends Plugin {
 
 ### Resource Cleanup
 
-> **TL;DR:** Use `register*` methods for automatic cleanup. Only add to `onunload()` what Obsidian doesn't know about.
+> **TL;DR:** Use `register*` methods for automatic cleanup in Plugin/View classes. Modals need manual cleanup in `onClose()`. Only add to `onunload()` what Obsidian doesn't know about.
 
-✅ **Automatic cleanup (preferred):**
+✅ **Automatic cleanup (preferred for Plugin/View classes):**
 - Use `this.registerDomEvent()` for DOM listeners
 - Use `this.registerEvent()` for workspace events
 - Use `this.registerInterval()` for timers
 - Use `this.register(() => cleanup())` for observers/RAF
+
+✅ **Manual cleanup (for Modal classes):**
+```typescript
+class MyModal extends Modal {
+  private intervalId?: number;
+  
+  onClose() {
+    // Clear intervals
+    if (this.intervalId) {
+      window.clearInterval(this.intervalId);
+      this.intervalId = undefined;
+    }
+  }
+}
+```
 
 ✅ **Manual cleanup in `onunload()` (if needed):**
 ```typescript
@@ -465,9 +508,9 @@ onunload() {
 **Why:** Detaching leaves in `onunload()` causes issues during plugin reload. Obsidian automatically handles leaf cleanup. ([Source](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines#Don't+detach+leaves+in+%60onunload%60))
 
 **Memory Leak Prevention Checklist:**
-- [ ] All `addEventListener` → `registerDomEvent`
-- [ ] All workspace events → `registerEvent`
-- [ ] All timers → `registerInterval`
+- [ ] All `addEventListener` → `registerDomEvent` (Plugin/View classes)
+- [ ] All workspace events → `registerEvent` (Plugin/View classes)
+- [ ] All timers → `registerInterval` (Plugin/View) or manual cleanup in `onClose()` (Modal)
 - [ ] All observers have `this.register(() => observer.disconnect())`
 - [ ] All RAF have cleanup or `// SAFE:` comment
 - [ ] Old DOM nodes removed before re-render

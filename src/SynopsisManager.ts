@@ -313,9 +313,13 @@ export default class SynopsisManager {
     titleTextElement.setAttribute("y", "0");
     
     // Process title content with special handling for formatting
-    // Format date from When field for display (skip for Plot notes)
-    const formattedDate = (scene.itemType !== 'Plot' && scene.when) ? this.formatDateForDisplay(scene.when) : undefined;
-    const duration = (scene.itemType !== 'Plot' && scene.Duration) ? scene.Duration : undefined;
+    // Format date from When field for display
+    // For Beats (Plot items), only show date if NOT in Gossamer mode
+    const currentMode = (this.plugin.settings as any).currentMode || 'all-scenes';
+    const isGossamerMode = currentMode === 'gossamer';
+    const shouldShowDate = scene.when && !(scene.itemType === 'Plot' && isGossamerMode);
+    const formattedDate = shouldShowDate ? this.formatDateForDisplay(scene.when) : undefined;
+    const duration = scene.Duration ? scene.Duration : undefined;
     const metadataElement = this.addTitleContent(titleContent, titleTextElement, titleColor, scene.number, formattedDate, duration);
     
     synopsisTextGroup.appendChild(titleTextElement);
