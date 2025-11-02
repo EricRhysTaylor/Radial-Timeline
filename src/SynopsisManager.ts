@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 import type RadialTimelinePlugin from './main';
-import { decodeHtmlEntities, parseSceneTitleComponents, renderSceneTitleComponents } from './utils/text';
+import { decodeHtmlEntities, parseSceneTitleComponents } from './utils/text';
 import { getPublishStageStyle, splitSynopsisLines, decodeContentLines, isOverdueAndIncomplete } from './synopsis/SynopsisData';
 import { createSynopsisContainer, createTextGroup, createText } from './synopsis/SynopsisView';
 
@@ -25,6 +25,7 @@ interface Scene {
   "Publish Stage"?: string;
   due?: string;
   pendingEdits?: string;
+  Duration?: string;
   "previousSceneAnalysis"?: string;
   "currentSceneAnalysis"?: string;
   "nextSceneAnalysis"?: string;
@@ -63,20 +64,41 @@ export default class SynopsisManager {
   }
   
   /**
-   * Format date from ISO format to MM-DD-YYYY for display
-   * @param isoDate ISO date string (e.g., "1985-03-31T12:00:00.000Z")
-   * @returns Formatted date string (e.g., "03-31-1985")
+   * Format date from When field to friendly format for display
+   * @param when Date object from scene.when
+   * @returns Formatted date string (e.g., "Aug 1, 1812 at 8am") or empty string if invalid
    */
-  private formatDateForDisplay(isoDate: string): string {
+  private formatDateForDisplay(when: Date | undefined): string {
+    if (!when || !(when instanceof Date)) return '';
+    
     try {
-      const date = new Date(isoDate);
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(date.getUTCDate()).padStart(2, '0');
-      const year = date.getUTCFullYear();
-      return `${month}-${day}-${year}`;
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = months[when.getMonth()];
+      const day = when.getDate();
+      const year = when.getFullYear();
+      const hours = when.getHours();
+      const minutes = when.getMinutes();
+      
+      // Build date part: "Aug 1, 1812"
+      let dateStr = `${month} ${day}, ${year}`;
+      
+      // Add time if not midnight (00:00)
+      if (hours !== 0 || minutes !== 0) {
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+        
+        if (minutes === 0) {
+          // No minutes, just "8AM"
+          dateStr += ` at ${displayHours}${period}`;
+        } else {
+          // Include minutes "8:30AM"
+          dateStr += ` at ${displayHours}:${String(minutes).padStart(2, '0')}${period}`;
+        }
+      }
+      
+      return dateStr;
     } catch (e) {
-      // If parsing fails, return the original date
-      return isoDate;
+      return '';
     }
   }
 
@@ -87,42 +109,37 @@ export default class SynopsisManager {
    * @param titleColor The color for the title
    * @param sceneNumber Optional scene number from frontmatter
    * @param sceneDate Optional scene date from frontmatter (should be pre-formatted)
+   * @param sceneDuration Optional scene duration from frontmatter
    */
-  private addTitleContent(titleContent: string, titleTextElement: SVGTextElement, titleColor: string, sceneNumber?: number | null, sceneDate?: string): void {
-    // Removed verbose debug logging
-    
+  /**
+   * Add title content to the title text element
+   * Returns a metadata text element if date/duration exist, otherwise null
+   */
+  private addTitleContent(titleContent: string, titleTextElement: SVGTextElement, titleColor: string, sceneNumber?: number | null, sceneDate?: string, sceneDuration?: string): SVGTextElement | null {
     if (titleContent.includes('<tspan')) {
+      
       // For pre-formatted HTML with tspans, parse safely
       const parser = new DOMParser();
-      // Wrap in SVG text element for potentially better parsing of SVG tspans/text nodes
       const doc = parser.parseFromString(`<svg><text>${titleContent}</text></svg>`, 'image/svg+xml');
       const textNode = doc.querySelector('text');
 
       if (!textNode) {
-        // Fallback: If parsing fails, add raw content (less safe, but preserves something)
-        this.plugin.log("Failed to parse title content with tspans, adding raw:", titleContent);
         const fallbackTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
         fallbackTspan.setAttribute("fill", titleColor);
-        // Avoid setting textContent directly with potentially complex HTML
-        // Instead, append the raw string as a text node for basic display
-        fallbackTspan.appendChild(document.createTextNode(titleContent)); 
+        fallbackTspan.appendChild(document.createTextNode(titleContent));
         titleTextElement.appendChild(fallbackTspan);
-        return;
+        return null;
       }
 
-      // Iterate through all child nodes (tspans and text nodes)
       Array.from(textNode.childNodes).forEach(node => {
         if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === 'tspan') {
-          // Handle tspan element
           const tspan = node as Element;
           const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
           
-          // Copy attributes
           Array.from(tspan.attributes).forEach(attr => {
             svgTspan.setAttribute(attr.name, attr.value);
           });
           
-          // Copy inline styles (critical for CSS custom properties like --rt-date-color)
           if (tspan instanceof HTMLElement || tspan instanceof SVGElement) {
             const style = (tspan as HTMLElement).getAttribute('style');
             if (style) {
@@ -134,26 +151,85 @@ export default class SynopsisManager {
           titleTextElement.appendChild(svgTspan);
           
         } else if (node.nodeType === Node.TEXT_NODE) {
-          // Handle text node (e.g., spaces)
-          if (node.textContent) { // Check if textContent is not null or empty
+          if (node.textContent) {
             titleTextElement.appendChild(document.createTextNode(node.textContent));
           }
         }
-        // Ignore other node types (like comments)
       });
+      
+      return null; // Pre-formatted content doesn't have separate metadata
 
     } else {
-      // Non-search case (uses renderSceneTitleComponents which correctly handles spaces)
-      const fragment = document.createDocumentFragment();
-      const titleComponents = parseSceneTitleComponents(titleContent, sceneNumber, sceneDate);
-      renderSceneTitleComponents(titleComponents, fragment, undefined, titleColor);
-      titleTextElement.appendChild(fragment);
+      // Non-search case: render title with date and duration
+      const titleParts = parseSceneTitleComponents(titleContent, sceneNumber, sceneDate, sceneDuration);
       
-      // Debug: Check what was actually added to the parent
-      const addedTspans = titleTextElement.querySelectorAll('tspan[data-item-type="title"]');
-      addedTspans.forEach((tspan, i) => {
-      });
+      // Add scene number if it exists
+      if (titleParts.sceneNumber) {
+        const numTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        numTspan.classList.add('rt-scene-title-bold');
+        numTspan.setAttribute("data-item-type", "title");
+        numTspan.style.setProperty('--rt-dynamic-color', titleColor);
+        numTspan.textContent = `${titleParts.sceneNumber} `;
+        titleTextElement.appendChild(numTspan);
+      }
+      
+      // Add main title
+      const mainTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+      mainTspan.classList.add('rt-scene-title-bold');
+      mainTspan.setAttribute("data-item-type", "title");
+      mainTspan.style.setProperty('--rt-dynamic-color', titleColor);
+      mainTspan.textContent = titleParts.title;
+      titleTextElement.appendChild(mainTspan);
+      
+      
+      // Create separate metadata element for date/duration (Column 2 of table)
+      if (titleParts.date || titleParts.duration) {
+        const metadataElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        metadataElement.setAttribute("class", "rt-info-text rt-title-text-main rt-title-metadata-block");
+        metadataElement.setAttribute("x", "0");
+        metadataElement.setAttribute("y", "0"); // Same baseline as title, layout handled later
+        metadataElement.setAttribute("text-anchor", "start");
+        metadataElement.setAttribute("data-metadata-block", "true");
+        metadataElement.setAttribute("data-column-gap", "8px"); // default gap in px
+        
+        // Row 1: Date/time (at baseline, same as title)
+        if (titleParts.date) {
+          const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+          dateTspan.setAttribute('class', 'rt-date-text');
+          dateTspan.setAttribute('data-item-type', 'date');
+          dateTspan.setAttribute('data-column-role', 'date');
+          dateTspan.setAttribute('dy', '-14px'); // Lift slightly so smaller text sits with title cap height
+          dateTspan.style.setProperty('--rt-dynamic-color', '#888888');
+          dateTspan.textContent = titleParts.date;
+          metadataElement.appendChild(dateTspan);
+        }
+        
+        // Row 2: Duration (on new line, aligned with date start)
+        if (titleParts.duration) {
+          const durationTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+          durationTspan.setAttribute('class', 'rt-duration-text');
+          durationTspan.setAttribute('data-item-type', 'duration');
+          durationTspan.setAttribute('data-column-role', 'duration');
+          durationTspan.setAttribute('x', '0'); // Will be positioned in layout step
+          durationTspan.setAttribute('dy', titleParts.date ? '15px' : '0'); // New line only if date exists
+          durationTspan.style.setProperty('--rt-dynamic-color', '#888888');
+          durationTspan.textContent = titleParts.duration;
+          metadataElement.appendChild(durationTspan);
+        }
+        
+        return metadataElement;
+      }
     }
+    
+    return null; // No metadata to add
+  }
+
+  /**
+   * Create a metadata text element with date and duration (two-row layout)
+   * DEPRECATED - No longer used
+   */
+  private createMetadataElement(sceneDate?: string, sceneDuration?: string): SVGTextElement | null {
+    return null;
   }
   
   /**
@@ -215,7 +291,6 @@ export default class SynopsisManager {
     
     // Set the line height
     const lineHeight = 24;
-    let metadataY = 0;
     
     // Create the main container group
     const containerGroup = createSynopsisContainer(sceneId);
@@ -227,19 +302,24 @@ export default class SynopsisManager {
     // Add the title at origin (0,0) - stage color moved to child tspans
     const titleContent = decodedContentLines[0];
     const titleTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    // Do NOT apply the stage class on the parent text; it forces fill !important on children
     titleTextElement.setAttribute("class", `rt-info-text rt-title-text-main`);
     titleTextElement.setAttribute("x", "0");
     titleTextElement.setAttribute("y", "0");
     titleTextElement.setAttribute("text-anchor", "start");
     
     // Process title content with special handling for formatting
-    // Format date from ISO to MM-DD-YYYY for display (skip for Plot notes)
-    const formattedDate = (scene.itemType !== 'Plot' && scene.date) ? this.formatDateForDisplay(scene.date) : undefined;
-    this.addTitleContent(titleContent, titleTextElement, titleColor, scene.number, formattedDate);
+    // Format date from When field for display (skip for Plot notes)
+    const formattedDate = (scene.itemType !== 'Plot' && scene.when) ? this.formatDateForDisplay(scene.when) : undefined;
+    const duration = (scene.itemType !== 'Plot' && scene.Duration) ? scene.Duration : undefined;
+    const metadataElement = this.addTitleContent(titleContent, titleTextElement, titleColor, scene.number, formattedDate, duration);
     
     synopsisTextGroup.appendChild(titleTextElement);
     
+    // Append metadata element; positioning handled during layout pass
+    if (metadataElement) {
+      synopsisTextGroup.appendChild(metadataElement);
+    }
+
     // Insert special extra lines right after the title (Due/Revisions), then the regular synopsis lines
     let extraLineCount = 0;
 
@@ -378,7 +458,7 @@ export default class SynopsisManager {
       const decodedMetadataItems = metadataItems.map(item => decodeHtmlEntities(item));
       
       if (decodedMetadataItems.length > 0 && decodedMetadataItems[0] && decodedMetadataItems[0].trim().length > 0) {
-        const subplots = decodedMetadataItems[0].split(', ').filter(s => s.trim().length > 0);
+        const subplots = decodedMetadataItems[0].split(', ').filter((s: string) => s.trim().length > 0);
         
           if (subplots.length > 0) {
             const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -389,7 +469,7 @@ export default class SynopsisManager {
             subplotTextElement.setAttribute("text-anchor", "start");
             
             // Format each subplot with its own color
-            subplots.forEach((subplot, j) => { 
+            subplots.forEach((subplot: string, j: number) => { 
               const color = getSubplotColor(subplot.trim(), sceneId);
               const subplotText = subplot.trim();
               const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
@@ -413,7 +493,7 @@ export default class SynopsisManager {
       if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim().length > 0) {
          // Calculate character Y based on subplot position plus standard line height
         const characterY = subplotStartY + lineHeight; 
-        const characterList = decodedMetadataItems[1].split(', ').filter(c => c.trim().length > 0);
+        const characterList = decodedMetadataItems[1].split(', ').filter((c: string) => c.trim().length > 0);
         
         if (characterList.length > 0) {
           const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -423,19 +503,46 @@ export default class SynopsisManager {
           characterTextElement.setAttribute("text-anchor", "start");
           
           // Format each character with its own color
-          characterList.forEach((character, j) => {
-            const color = getCharacterColor(character.trim()); // Restore random color
-            const characterText = character.trim();
+          characterList.forEach((character: string, j: number) => {
+            const trimmedChar = character.trim();
+            
+            // Check if this character has a >pov< marker
+            const hasPovMarker = trimmedChar.includes('>pov<');
+            const characterText = hasPovMarker ? trimmedChar.replace(' >pov<', '') : trimmedChar;
+            
+            const color = getCharacterColor(characterText); // Restore random color
             const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
             tspan.setAttribute("data-item-type", "character");
             tspan.style.setProperty('--rt-dynamic-color', color);
             tspan.textContent = characterText;
             characterTextElement.appendChild(tspan);
+            
+            // If this character has a >pov< marker, add it as a superscript
+            if (hasPovMarker) {
+              const povTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+              povTspan.setAttribute("class", "rt-pov-marker");
+              povTspan.setAttribute("dy", "-8px"); // Raise it up like an exponent (fixed px units)
+              povTspan.style.setProperty('--rt-dynamic-color', color); // Use same color as character
+              povTspan.textContent = "pov";
+              characterTextElement.appendChild(povTspan);
+            }
+            
+            // Add comma after this character (if not the last one)
             if (j < characterList.length - 1) {
               const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
               comma.setAttribute("fill", "var(--text-muted)");
+              // If we just added a pov marker, reset the baseline with the comma
+              if (hasPovMarker) {
+                comma.setAttribute("dy", "8px"); // Return to baseline (fixed px units)
+              }
               comma.textContent = ", ";
               characterTextElement.appendChild(comma);
+            } else if (hasPovMarker) {
+              // If this is the last character and has pov marker, add empty tspan to reset baseline
+              const resetTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+              resetTspan.setAttribute("dy", "8px"); // Return to baseline (fixed px units)
+              resetTspan.textContent = "";
+              characterTextElement.appendChild(resetTspan);
             }
           });
           
@@ -461,7 +568,6 @@ export default class SynopsisManager {
    */
   updatePosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
     if (!synopsis || !svg) {
-      this.plugin.log("updatePosition: missing synopsis or svg element", {synopsis, svg});
       return;
     }
     
@@ -472,7 +578,6 @@ export default class SynopsisManager {
       pt.y = event.clientY;
       const ctm = svg.getScreenCTM();
       if (!ctm) {
-        this.plugin.log("updatePosition: No SVG CTM available");
         return;
       }
       
@@ -525,10 +630,10 @@ export default class SynopsisManager {
       this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf);
       
     } catch (e) {
-      this.plugin.log("Error in updatePosition:", e);
+      // Silent error handling
     }
   }
-  
+
   /**
    * Determine which quadrant a point is in
    * SVG coordinate system: (0,0) is at center
@@ -613,19 +718,21 @@ export default class SynopsisManager {
    */
   private positionTextElements(synopsis: Element, isRightAligned: boolean, isTopHalf: boolean): void {
     // Find all text elements
-    const textElements = Array.from(synopsis.querySelectorAll('text'));
+    const textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
     if (textElements.length === 0) return;
     
-    // Set text anchor alignment based on quadrant
     const textAnchor = isRightAligned ? 'end' : 'start';
     textElements.forEach(textEl => {
-      textEl.setAttribute('text-anchor', textAnchor);
+      if (textEl.getAttribute('data-metadata-block') === 'true') {
+        textEl.setAttribute('text-anchor', 'start');
+      } else {
+        textEl.setAttribute('text-anchor', textAnchor);
+      }
     });
     
     // Get the synopsis text group
     const synopsisTextGroup = synopsis.querySelector('.rt-synopsis-text');
     if (!synopsisTextGroup) {
-      this.plugin.log("Error: Could not find synopsis text group");
       return;
     }
     
@@ -637,32 +744,44 @@ export default class SynopsisManager {
     const synopsisLineHeight = 22; // Reduced spacing for synopsis text
     const scorePreGap = 46; // Manual gap before the Gossamer score line; adjust as needed
     const radius = 750; // Reduced from 770 by 20px to match the adjustedRadius in updatePosition
+    const metadataSpacing = 14; // Default horizontal gap between title and metadata block
     
     // Calculate starting y-position from synopsis position
     const synopsisTransform = (synopsis as SVGElement).getAttribute('transform') || '';
     const translateMatch = synopsisTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
     
     if (!translateMatch || translateMatch.length < 3) {
-      this.plugin.log("Error: Could not parse synopsis transform", synopsisTransform);
       return;
     }
     
     const baseX = parseFloat(translateMatch[1]);
     const baseY = parseFloat(translateMatch[2]);
     
+    // Separate text elements into rows (vertically stacked lines)
+    const textRows: SVGTextElement[][] = [];
     
-    // Position each text element using Pythagorean theorem relative to circle center
+    // Build rows, grouping metadata blocks with their preceding title rows
+    textElements.forEach((textEl) => {
+      if (textEl.getAttribute('data-metadata-block') === 'true' && textRows.length > 0) {
+        textRows[textRows.length - 1].push(textEl);
+      } else {
+        textRows.push([textEl]);
+      }
+    });
+    
+    // Position each row using Pythagorean theorem relative to circle center
     let yOffset = 0;
-    let lastValidXOffset = 0; // Track the last valid x-offset for fallback positioning
+    let lastValidAnchorX = 0; // Track the last valid anchor position for fallback positioning
     
-    textElements.forEach((textEl, index) => {
-      // Calculate absolute position for this line with variable line heights
-      if (index > 0) {
-        const isGossamerLine = textEl.classList.contains('rt-gossamer-score-line');
-        const prevEl = textElements[index - 1];
+    textRows.forEach((rowElements, rowIndex) => {
+      // Calculate absolute position for this row with variable line heights
+      if (rowIndex > 0) {
+        const currentEl = rowElements[0];
+        const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const prevEl = textRows[rowIndex - 1][0];
         const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
 
-        if (index === 1) {
+        if (rowIndex === 1) {
           // Always use title spacing right after the title line
           yOffset += titleLineHeight;
         } else if (isGossamerLine && isPrevLineSynopsis) {
@@ -676,73 +795,139 @@ export default class SynopsisManager {
       
       const absoluteY = baseY + yOffset;
       
-      // First line (index 0) should be positioned at the circle's edge
-      if (index === 0) {
-        textEl.setAttribute('x', '0');
-        textEl.setAttribute('y', '0');
-        
-      } else {
-        // For subsequent lines, calculate x-position using Pythagorean theorem
-        // This makes text follow the circle's arc
-        // For a point on a circle: x² + y² = r²
-        let xOffset = 0;
-        
-        // Calculate distance for debugging
-        //const distanceFromCenter = Math.sqrt(baseX * baseX + absoluteY * absoluteY);
-        //this.plugin.log(`Line ${index} distance check: distanceFromCenter=${distanceFromCenter.toFixed(2)}, radius=${radius}`);
-        
-        // Calculate what the x-coordinate would be if this point were on the circle
+      // Determine anchor position along the circle for this row
+      let anchorX = 0;
+      if (rowIndex > 0) {
         try {
-          // Check if we're outside the circle's perimeter
           if (Math.abs(absoluteY) >= radius) {
-            // Use the last valid x-offset and continue straight down
-            xOffset = lastValidXOffset;
-            this.plugin.log(`Line ${index} outside circle perimeter (y=${absoluteY.toFixed(2)}, radius=${radius}), using last valid x-offset: ${xOffset.toFixed(2)}`);
+            anchorX = lastValidAnchorX;
           } else {
             const circleX = Math.sqrt(radius * radius - absoluteY * absoluteY);
             
-            // DEBUG: Log the values we're using
-           // this.plugin.log(`Calculation for line ${index}: isTopHalf=${isTopHalf}, isRightAligned=${isRightAligned}, circleX=${circleX.toFixed(2)}, baseX=${baseX.toFixed(2)}`);
-            
-            // Calculate the x-offset for this line based on quadrant
             if (isTopHalf) {
-              // Top half (Q3, Q4) - KEEP EXISTING BEHAVIOR
-              if (isRightAligned) {
-                // Q4 (top right) - text flows left
-                xOffset = Math.abs(circleX) - Math.abs(baseX);
-              } else {
-                // Q3 (top left) - text flows right
-                xOffset = Math.abs(baseX) - Math.abs(circleX);
-              }
+              anchorX = isRightAligned
+                ? Math.abs(circleX) - Math.abs(baseX)
+                : Math.abs(baseX) - Math.abs(circleX);
             } else {
-              // Bottom half (Q1, Q2) - FIXED CALCULATION
-              if (isRightAligned) {
-                // Q1 (bottom right) - text flows left
-                // Match Q4 formula with adjusted sign for bottom half
-                xOffset = -(Math.abs(baseX) - Math.abs(circleX));
-              } else {
-                // Q2 (bottom left) - text flows right
-                // Match Q3 formula that works correctly
-                xOffset = Math.abs(baseX) - Math.abs(circleX);
-              }
+              anchorX = isRightAligned
+                ? -(Math.abs(baseX) - Math.abs(circleX))
+                : Math.abs(baseX) - Math.abs(circleX);
             }
             
-            // Update the last valid x-offset for future fallback use
-            lastValidXOffset = xOffset;
+            lastValidAnchorX = anchorX;
           }
-          
         } catch (e) {
-          // If calculation fails (e.g. sqrt of negative), use the last valid offset
-          this.plugin.log(`Error calculating offset for line ${index}: ${e.message}, using last valid x-offset: ${lastValidXOffset.toFixed(2)}`);
-          xOffset = lastValidXOffset;
+          anchorX = lastValidAnchorX;
         }
-        
-        // Apply calculated coordinates relative to the base position
-        textEl.setAttribute('x', String(Math.round(xOffset)));
-        textEl.setAttribute('y', String(yOffset));
       }
       
+      const { primaryWidth, metadataWidth, gap } = this.measureRowLayout(rowElements, metadataSpacing);
+      const roundedAnchorX = Math.round(anchorX);
+      const rowY = rowIndex === 0 ? 0 : yOffset;
+      
+      this.positionRowColumns(rowElements, roundedAnchorX, rowY, primaryWidth, metadataWidth, gap, isRightAligned);
     });
+  }
+
+  private measureRowLayout(rowElements: SVGTextElement[], defaultGap: number): { primaryWidth: number; metadataWidth: number; gap: number } {
+    if (rowElements.length === 0) {
+      return { primaryWidth: 0, metadataWidth: 0, gap: defaultGap };
+    }
+    
+    const primaryWidth = this.measureTextWidth(rowElements[0]);
+    let metadataWidth = 0;
+    let gap = defaultGap;
+    
+    if (rowElements.length > 1) {
+      const metadataEl = rowElements[1];
+      metadataWidth = this.measureTextWidth(metadataEl);
+      const gapAttr = metadataEl.getAttribute('data-column-gap');
+      if (gapAttr) {
+        const parsedGap = parseFloat(gapAttr);
+        if (!Number.isNaN(parsedGap)) {
+          gap = parsedGap;
+        }
+      }
+    }
+    
+    return { primaryWidth, metadataWidth, gap };
+  }
+
+  private positionRowColumns(rowElements: SVGTextElement[], anchorX: number, yPosition: number, primaryWidth: number, metadataWidth: number, gap: number, isRightAligned: boolean): void {
+    if (rowElements.length === 0) {
+      return;
+    }
+    
+    const hasMetadata = rowElements.length > 1;
+
+    if (isRightAligned) {
+      const metadataRightEdge = anchorX;
+      const metadataLeftEdge = hasMetadata ? metadataRightEdge - metadataWidth : metadataRightEdge;
+      const titleRightEdge = hasMetadata ? metadataLeftEdge - gap : metadataRightEdge;
+      
+      rowElements.forEach((textEl, index) => {
+        if (index === 0) {
+          textEl.setAttribute('x', String(titleRightEdge));
+          textEl.setAttribute('y', String(yPosition));
+        } else {
+          textEl.setAttribute('x', String(metadataLeftEdge));
+          textEl.setAttribute('y', String(yPosition));
+          textEl.setAttribute('text-anchor', 'start');
+          this.alignMetadataTspans(textEl, metadataLeftEdge);
+        }
+      });
+    } else {
+      const rowLeftEdge = anchorX;
+      const metadataLeftEdge = hasMetadata ? rowLeftEdge + primaryWidth + gap : rowLeftEdge;
+      
+      rowElements.forEach((textEl, index) => {
+        if (index === 0) {
+          textEl.setAttribute('x', String(rowLeftEdge));
+          textEl.setAttribute('y', String(yPosition));
+        } else {
+          textEl.setAttribute('x', String(metadataLeftEdge));
+          textEl.setAttribute('y', String(yPosition));
+          this.alignMetadataTspans(textEl, metadataLeftEdge);
+        }
+      });
+    }
+  }
+
+  private alignMetadataTspans(metadataText: SVGTextElement, columnX: number): void {
+    const tspans = Array.from(metadataText.querySelectorAll('tspan')) as SVGTSpanElement[];
+    tspans.forEach(tspan => {
+      const role = tspan.getAttribute('data-column-role');
+      if (role === 'date' || role === 'duration') {
+        tspan.setAttribute('x', String(columnX));
+      }
+    });
+  }
+
+  private measureTextWidth(element: SVGTextElement): number {
+    try {
+      const box = element.getBBox();
+      if (box && Number.isFinite(box.width)) {
+        return Math.max(0, box.width);
+      }
+    } catch {
+      // getBBox may throw if element not rendered yet
+    }
+    
+    try {
+      const length = element.getComputedTextLength();
+      if (Number.isFinite(length)) {
+        return Math.max(0, length);
+      }
+    } catch {
+      // Ignore failures; return 0 below
+    }
+    
+    const rawText = element.textContent;
+    if (rawText && rawText.length > 0) {
+      return rawText.length * 8; // Rough fallback estimate per character
+    }
+    
+    return 0;
   }
 
   /**

@@ -39,9 +39,6 @@
   --rt-color-plaid-stroke-opacity: 1;
     /* Current Stage Color stroke for working pattern set in SVG patterns*/
     /* Current Stage Color stroke for todo pattern set in SVG patterns*/
-  
-  /* Estimation Colors */
-  --rt-color-estimation: #ff0000; /* Red not using this right now. defs at bottom of file*/
 
   /* Settings UI sizing */
   --rt-settings-select-width: 240px; /* consistent width for dropdowns */
@@ -476,8 +473,11 @@
 
 /* First and last date labels (beginning/ending dates) */
 .radial-timeline-container .rt-month-label-outer.rt-date-boundary {
-  font-size: 14px;
+  font-size: 11px;
   text-transform: uppercase;
+  stroke: #000000;
+  stroke-width: 4px;
+  paint-order: stroke;
 }
 
 /* Beginning date uses Zero stage color */
@@ -663,6 +663,17 @@
   paint-order: stroke;
 }
 
+/* POV marker styling - superscript after first character name */
+.rt-info-text.rt-metadata-text tspan.rt-pov-marker {
+  fill: var(--rt-dynamic-color, var(--text-muted)) !important; /* Use character color, fallback to muted */
+  stroke: white;
+  stroke-width: 2px;
+  paint-order: stroke;
+  font-size: 12px !important; /* Smaller than default 18px metadata text */
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
 /* Command palette search modal styling */
 .radial-timeline-container .search-container.flex-container {
   display: flex;
@@ -686,6 +697,10 @@
   padding: 0 !important;
   margin: 0 !important;
 }
+.radial-timeline-container .rt-scene-info.rt-synopsis-q1 text.rt-title-metadata-block,
+.radial-timeline-container .rt-scene-info.rt-synopsis-q4 text.rt-title-metadata-block {
+  text-anchor: start !important;
+}
 .radial-timeline-container .rt-scene-info.rt-synopsis-q2 text,
 .radial-timeline-container .rt-scene-info.rt-synopsis-q3 text {
   text-anchor: start !important;
@@ -698,16 +713,16 @@
   visibility: visible !important;
   display: block !important;
 }
-.radial-timeline-container .rt-synopsis-title {
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
+/*Synopsis Title*/
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main {
-  font-size: 24px;
+  font-size: 36px;
   font-weight: 700;
   margin-bottom: 8px;
   /* No parent fill; child tspans own their colors via custom properties */
+}
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main.rt-title-metadata-block {
+  font-size: 14px;
+  font-weight: 400;
 }
 /* Title tspans use publish stage color like Act labels */
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=title] {
@@ -717,14 +732,17 @@
   paint-order: stroke;
 }
 
-/* Date tspans use EXACT same pattern as characters */
+/* Date and Duration tspans - same styling, small gray superscript */
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=date],
-.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-date-text {
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-date-text,
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan[data-item-type=duration],
+.radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-main tspan.rt-duration-text {
   fill: var(--rt-dynamic-color, #888888) !important;
   stroke: white;
-  stroke-width: 0.07em;
+  stroke-width: 0.05em;
   paint-order: stroke;
-  font-size: 20px !important; /* Reduced by 2pt from default 24px */
+  font-size: 16px !important; /* Small superscript size like POV marker */
+  font-weight: 400;
 }
 .radial-timeline-container .rt-scene-info text.rt-info-text.rt-title-text-secondary {
   font-size: 18px;
@@ -2654,7 +2672,6 @@
 
 /* Chronologue time labels */
 .rt-chronologue-time-label {
-  font-family: var(--font-text);
   font-size: 10px;
   fill: var(--text-muted);
   opacity: 0.7;
@@ -2817,7 +2834,8 @@
   stroke: none !important; /* Remove any borders */
 }
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-text {
-  fill: var(--text-on-accent) !important; /* White text for contrast */
+  fill: var(--text-muted) !important; /* Dark muted text to match dark theme */
+  opacity: 0.5; /* Dim the text to match the faded scenes */
 }
 
 /* Shift mode: Hover/selected scenes restore full opacity */
@@ -2841,11 +2859,13 @@
 }
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
   fill: #000000 !important; /* Black text */
+  opacity: 1 !important; /* Full opacity when active */
 }
 
 /* Ensure active text wins over grade/non-selected rules */
 .radial-timeline-container .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
   fill: #000000 !important;
+  opacity: 1 !important; /* Full opacity when active */
 }
 
 /* Legacy: Keep for backwards compatibility */
@@ -2881,9 +2901,8 @@
 }
 
 .rt-elapsed-time-label {
-  font-family: var(--font-text);
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 700;
   fill: var(--interactive-accent);
   stroke: white;
   stroke-width: 7px;
@@ -2899,31 +2918,46 @@
 
 .rt-chronologue-duration-ticks .rt-duration-arc {
   stroke: var(--text-muted);
-  stroke-width: 2px;
+  stroke-width: 1.5px;
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-overlap {
-  stroke: #ff00ff; /* Magenta for temporal overlaps */
-  stroke-width: 2px;
+  stroke: #ff9900; /* Yellow for temporal overlaps */
+  stroke-width: 1.5px;
+  stroke-dasharray: 4, 1; /* Dotted pattern: 4px dash, 2px gap */
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-unparseable {
-  stroke: var(--text-error); /* Red for unparseable durations */
-  stroke-width: 2px;
+  stroke: #ff0000; /* Red for unparseable/missing durations (using --rt-color-due red) */
+  stroke-width: 1.5px;
 }
 
-/* Discontinuity marker text "~" - styled like elapsed time label */
-.rt-duration-overflow-text {
-  font-family: var(--font-text);
-  font-size: 17px;
-  font-weight: 700;
+.rt-chronologue-duration-ticks .rt-duration-arc-ongoing {
+  stroke: var(--text-muted); /* Standard color for "ongoing" durations */
+  stroke-width: 1.5px;
+}
+
+/* Discontinuity marker text "∞" - infinity symbol marks large time jumps between scenes in chronologue mode */
+.rt-discontinuity-marker {
+  font-size: 20px;
+  font-weight: 500;
   fill: var(--text-muted);
-  stroke: white;
-  stroke-width: 5px;
+  stroke: rgb(0, 0, 0);
+  stroke-width: 6px;
   stroke-linejoin: round;
   stroke-linecap: round;
   paint-order: stroke fill;
   pointer-events: none;
+  /* Hide discontinuity markers by default (only show in shift mode) */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, fill 0.2s ease; /* Add transition to base state for both directions */
+}
+
+/* Show discontinuity markers when shift mode is active */
+svg[data-shift-mode="active"] .rt-discontinuity-marker {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* When field warning tooltip */
@@ -2938,7 +2972,7 @@
 }
 
 .rt-when-field-warning text {
-  font-family: var(--font-text);
+  
   font-size: 10px;
   font-weight: 600;
   fill: var(--text-error);

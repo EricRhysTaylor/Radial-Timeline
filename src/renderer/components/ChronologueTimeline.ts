@@ -141,8 +141,8 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         }
     });
 
-    if (validDurationValues.length === 0 && !parsedDurations.some(d => d.durationMs === null)) {
-        console.log('[Chronologue] renderDurationTickArcs abort - no valid or unparseable durations');
+    if (validDurationValues.length === 0 && !parsedDurations.some(d => d.durationMs === null || d.durationMs === 0)) {
+        console.log('[Chronologue] renderDurationTickArcs abort - no valid, unparseable, or empty durations');
         return null;
     }
 
@@ -200,17 +200,12 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
 
     const TWO_PI = Math.PI * 2;
     const EDGE_MARGIN_RAD = Math.PI / 360; // 0.5 degree margin from tick mark
-    const STUB_FILL_RATIO = 0.15; // Red stub fills 15% of gap
+    const STUB_FILL_RATIO = 0.20; // Red stub fills 20% of scene arc
 
     sortedEntries.forEach((entry, idx) => {
         const durationInfo = parsedDurations[idx];
         const durationMs = durationInfo.durationMs;
         
-        // Skip scenes with no duration field at all
-        if (durationMs === 0) {
-            return; // No bar shown
-        }
-
         // Get manuscript-order position for this scene using path or title as key
         const sceneKey = entry.scene.path || `title:${entry.scene.title || ''}`;
         const manuscriptPosition = scenePositions.get(sceneKey);
@@ -229,13 +224,21 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
 
         let spanAngle: number;
         let isUnparseable = false;
+        let isOngoing = false;
         const isOverlap = overlapIndices.has(idx);
 
         // Determine arc span based on duration type
-        if (durationMs === null) {
-            // Unparseable duration (e.g., "ongoing") - show red stub
-            spanAngle = availableAngle * STUB_FILL_RATIO;
-            isUnparseable = true;
+        if (durationMs === null || durationMs === 0) {
+            // Check if it's specifically "ongoing" (case-insensitive)
+            if (durationInfo.rawDuration && durationInfo.rawDuration.toLowerCase().trim() === 'ongoing') {
+                // "ongoing" fills the entire scene arc with standard color
+                spanAngle = availableAngle;
+                isOngoing = true;
+            } else {
+                // No duration field OR unparseable durations (e.g., "TBD", "unknown") - show red stub
+                spanAngle = availableAngle * STUB_FILL_RATIO;
+                isUnparseable = true;
+            }
         } else {
             // Valid duration - proportional to maxValidDurationMs (longest scene fills 100%)
             const ratio = maxValidDurationMs > 0 ? durationMs / maxValidDurationMs : 0;
@@ -251,9 +254,11 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         // Determine arc class and styling
         let arcClass = 'rt-duration-arc';
         if (isUnparseable) {
-            arcClass += ' rt-duration-arc-unparseable'; // Red stub
+            arcClass += ' rt-duration-arc-unparseable'; // Red stub for unparseable
         } else if (isOverlap) {
-            arcClass += ' rt-duration-arc-overlap'; // Magenta for overlaps
+            arcClass += ' rt-duration-arc-overlap'; // Yellow dotted for overlaps
+        } else if (isOngoing) {
+            arcClass += ' rt-duration-arc-ongoing'; // Standard color for "ongoing"
         }
 
         const x1 = formatNumber(arcRadius * Math.cos(arcStart));
@@ -345,17 +350,19 @@ export function renderElapsedTimeArc(
 
 /**
  * Arc 1: Chronological Timeline Backbone
- * Renders discontinuity symbols "~" at large time gaps between consecutive scenes
+ * Renders discontinuity symbols "∞" at large time gaps between consecutive scenes
  * 
  * @param scenes - Scenes with When dates (sorted chronologically)
- * @param outerRadius - Outer radius of scene ring
+ * @param outerRingInnerRadius - Inner radius of the outer scene ring
+ * @param outerRingOuterRadius - Outer radius of the outer scene ring
  * @param discontinuityThreshold - Gap multiplier for discontinuity detection (default 3x median)
  * @param scenePositions - Map of scene angular positions (manuscript order, keyed by scene path/title)
  * @returns SVG string
  */
 export function renderChronologicalBackboneArc(
     scenes: Scene[],
-    outerRadius: number,
+    outerRingInnerRadius: number,
+    outerRingOuterRadius: number,
     discontinuityThreshold: number = 3,
     scenePositions?: Map<string, { startAngle: number; endAngle: number }>
 ): string {
@@ -426,11 +433,12 @@ export function renderChronologicalBackboneArc(
     
     if (discontinuityIndices.length === 0) return '';
     
-    const arcRadius = outerRadius + 13; // Same radius as duration arcs
+    // Place discontinuity markers at the exact middle of the outer scene ring (radially)
+    const markerRadius = (outerRingInnerRadius + outerRingOuterRadius) / 2;
     
     let svg = `<g class="rt-chronologue-backbone-discontinuities">`;
     
-    // Add discontinuity "~" symbols at detected gaps
+    // Add discontinuity "∞" symbols at detected gaps
     discontinuityIndices.forEach(sceneIndex => {
         if (sceneIndex >= uniqueScenesSorted.length) return;
         
@@ -451,14 +459,14 @@ export function renderChronologicalBackboneArc(
         
         if (!manuscriptPosition) return;
         
-        // Position the "~" at the MIDDLE of the scene arc
+        // Position the "∞" at the MIDDLE of the scene arc (both angularly and radially)
         const midAngle = (manuscriptPosition.startAngle + manuscriptPosition.endAngle) / 2;
         
-        const x = formatNumber(arcRadius * Math.cos(midAngle));
-        const y = formatNumber(arcRadius * Math.sin(midAngle));
+        const x = formatNumber(markerRadius * Math.cos(midAngle));
+        const y = formatNumber(markerRadius * Math.sin(midAngle));
         
-        // Discontinuity symbol "~" centered in the middle of the scene arc
-        svg += `<text x="${x}" y="${y}" class="rt-duration-overflow-text" text-anchor="middle" dominant-baseline="middle">~</text>`;
+        // Discontinuity symbol "∞" centered in the middle of the scene arc
+        svg += `<text x="${x}" y="${y}" class="rt-discontinuity-marker" text-anchor="middle" dominant-baseline="middle">∞</text>`;
     });
     
     svg += `</g>`;

@@ -95,7 +95,7 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     let rafId: number | null = null;
 
     const clearSelection = () => {
-        const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
+        const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title, .rt-discontinuity-marker');
         all.forEach(el => el.classList.remove('rt-selected'));
         if (view.currentMode !== 'gossamer') {
             all.forEach(el => el.classList.remove('rt-non-selected'));
@@ -129,7 +129,7 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
                 }
             });
         }
-        const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
+        const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title, .rt-discontinuity-marker');
         all.forEach(el => {
             if (!el.classList.contains('rt-selected') && !related.has(el)) el.classList.add('rt-non-selected');
         });

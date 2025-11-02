@@ -115,7 +115,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             shiftModeActive = true;
             globalShiftModeActive = true;
             updateShiftButtonState(shiftButton, true);
-            // Mark SVG to indicate shift mode is active
+            // Mark SVG to indicate shift mode is active (also shows discontinuity markers via CSS)
             svg.setAttribute('data-shift-mode', 'active');
             // Make all scenes non-select (gray) - CSS handles this automatically
             applyShiftModeToAllScenes(svg);
@@ -136,7 +136,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             removeElapsedTimeArc(svg);
             removeSceneHighlights(svg);
             removeShiftModeFromAllScenes(svg);
-            // Remove shift mode marker
+            // Remove shift mode marker (also hides discontinuity markers via CSS)
             svg.removeAttribute('data-shift-mode');
         }
     };

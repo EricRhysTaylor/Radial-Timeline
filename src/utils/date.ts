@@ -46,9 +46,11 @@ export interface TimeLabelInfo {
  * Always interprets dates as LOCAL TIME (not UTC) to avoid timezone shifts
  * 
  * Supported formats:
- * - YYYY-MM-DD (date only, time defaults to 00:00:00 local)
+ * - YYYY-MM-DD (date only, time defaults to 12:00:00 noon local)
  * - YYYY-MM-DD HH:MM (date + time in local timezone)
  * - YYYY-MM-DD HH:MM:SS (date + time with seconds in local timezone)
+ * - YYYY-MM-DDTHH:MM:SS (ISO 8601 format with T separator)
+ * - YYYY-MM-DDTHH:MM (ISO 8601 format with T separator, no seconds)
  * 
  * @param when - Date string from scene metadata
  * @returns Date object in local time, or null if invalid
@@ -65,11 +67,36 @@ export function parseWhenField(when: string): Date | null {
         const year = parseInt(dateOnlyMatch[1], 10);
         const month = parseInt(dateOnlyMatch[2], 10) - 1; // JS months are 0-indexed
         const day = parseInt(dateOnlyMatch[3], 10);
-        const date = new Date(year, month, day, 0, 0, 0, 0); // Local time at midnight
+        const date = new Date(year, month, day, 12, 0, 0, 0); // Local time at noon (12:00 PM)
         return isNaN(date.getTime()) ? null : date;
     }
     
-    // Try date + time with seconds: YYYY-MM-DD HH:MM:SS
+    // Try ISO 8601 format with T separator and seconds: YYYY-MM-DDTHH:MM:SS
+    const iso8601SecondsMatch = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(trimmed);
+    if (iso8601SecondsMatch) {
+        const year = parseInt(iso8601SecondsMatch[1], 10);
+        const month = parseInt(iso8601SecondsMatch[2], 10) - 1;
+        const day = parseInt(iso8601SecondsMatch[3], 10);
+        const hour = parseInt(iso8601SecondsMatch[4], 10);
+        const minute = parseInt(iso8601SecondsMatch[5], 10);
+        const second = parseInt(iso8601SecondsMatch[6], 10);
+        const date = new Date(year, month, day, hour, minute, second, 0); // Local time
+        return isNaN(date.getTime()) ? null : date;
+    }
+    
+    // Try ISO 8601 format with T separator, no seconds: YYYY-MM-DDTHH:MM
+    const iso8601Match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(trimmed);
+    if (iso8601Match) {
+        const year = parseInt(iso8601Match[1], 10);
+        const month = parseInt(iso8601Match[2], 10) - 1;
+        const day = parseInt(iso8601Match[3], 10);
+        const hour = parseInt(iso8601Match[4], 10);
+        const minute = parseInt(iso8601Match[5], 10);
+        const date = new Date(year, month, day, hour, minute, 0, 0); // Local time
+        return isNaN(date.getTime()) ? null : date;
+    }
+    
+    // Try date + time with seconds and space separator: YYYY-MM-DD HH:MM:SS
     const dateTimeSecondsMatch = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(trimmed);
     if (dateTimeSecondsMatch) {
         const year = parseInt(dateTimeSecondsMatch[1], 10);
@@ -82,7 +109,7 @@ export function parseWhenField(when: string): Date | null {
         return isNaN(date.getTime()) ? null : date;
     }
     
-    // Try date + time format: YYYY-MM-DD HH:MM
+    // Try date + time with space separator: YYYY-MM-DD HH:MM
     const dateTimeMatch = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/.exec(trimmed);
     if (dateTimeMatch) {
         const year = parseInt(dateTimeMatch[1], 10);
@@ -649,13 +676,13 @@ export function generateChronologicalTicks(
         const sceneStartAngle = getSceneStartAngle(scene.sortedIndex);
         
         if (i === 0) {
-            // First scene: full date label
+            // First scene: full date label with two lines (year, then month/day)
             // Use UTC methods to avoid timezone issues when displaying date-only strings
             // Date strings like "1812-12-15" parse as UTC midnight, so use UTC methods
             const month = scene.date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
             const day = scene.date.getUTCDate();
             const year = scene.date.getUTCFullYear();
-            const label = `${month} ${day}, ${year}`;
+            const label = `${year}\n${month} ${day}`;
             ticks.push({
                 angle: sceneStartAngle,
                 name: label,
@@ -664,7 +691,7 @@ export function generateChronologicalTicks(
                 isFirst: true
             });
         } else if (i === numScenes - 1) {
-            // Last scene: full date label, but adjust if it would overlap with first
+            // Last scene: full date label with two lines (year, then month/day), but adjust if it would overlap with first
             let tickAngle = sceneStartAngle;
             if (wouldOverlap && sceneAngularSize !== undefined) {
                 // Offset last scene tick slightly to avoid overlap
@@ -677,7 +704,7 @@ export function generateChronologicalTicks(
             const month = scene.date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
             const day = scene.date.getUTCDate();
             const year = scene.date.getUTCFullYear();
-            const label = `${month} ${day}, ${year}`;
+            const label = `${year}\n${month} ${day}`;
             ticks.push({
                 angle: tickAngle,
                 name: label,

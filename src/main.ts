@@ -526,6 +526,10 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     async onload() {
+        console.log('========================================');
+        console.log('RADIAL TIMELINE PLUGIN LOADING - TEST LOG');
+        console.log('========================================');
+        
         await this.loadSettings();
 
         // Migration: Convert old field names to new field names

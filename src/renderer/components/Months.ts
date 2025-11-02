@@ -11,13 +11,8 @@ export function renderMonthLabelDefs(params: {
     const endAngle = startAngle + (Math.PI / 24);
     const pathId = `monthLabelPath-${index}`;
     
-    // Adjust radius for first and last labels
-    let radius = monthLabelRadius;
-    if (isFirst) {
-      radius = monthLabelRadius + 4; // Start date higher by 4px Max or clipping to of SVG box
-    } else if (isLast) {
-      radius = monthLabelRadius - 8; // End date lower by 8px
-    }
+    // Use same radius for first and last labels (no offset)
+    let radius = monthLabelRadius+5; // move up to top
     
     return `
       <path id="${pathId}" d="${arcPath(radius, startAngle, endAngle)}" fill="none" />

@@ -82,6 +82,14 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         const pathEl = g.querySelector('.rt-scene-path');
         if (pathEl) pathEl.classList.add('rt-selected');
         
+        // Apply non-selected state to all other elements
+        const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
+        all.forEach(el => {
+            if (!el.classList.contains('rt-selected')) {
+                el.classList.add('rt-non-selected');
+            }
+        });
+        
         // Show warning for scenes without When field
         if (g.classList.contains('rt-chronologue-warning')) {
             showWhenFieldWarning(svg, g, e as unknown as MouseEvent);
@@ -106,6 +114,10 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         // Remove emphasis
         const pathEl = g.querySelector('.rt-scene-path');
         if (pathEl) pathEl.classList.remove('rt-selected');
+        
+        // Clear non-selected state from all elements
+        const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
+        all.forEach(el => el.classList.remove('rt-non-selected'));
         
         // Hide warning
         hideWhenFieldWarning(svg);

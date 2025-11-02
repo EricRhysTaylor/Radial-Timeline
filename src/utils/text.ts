@@ -22,10 +22,10 @@ export function decodeHtmlEntities(text: string): string {
   }
 }
 
-export interface SceneTitleParts { sceneNumber: string; title: string; date: string; }
+export interface SceneTitleParts { sceneNumber: string; title: string; date: string; duration: string; }
 
-export function parseSceneTitleComponents(titleText: string, sceneNumber?: number | null, date?: string): SceneTitleParts {
-  const result: SceneTitleParts = { sceneNumber: '', title: '', date: '' };
+export function parseSceneTitleComponents(titleText: string, sceneNumber?: number | null, date?: string, duration?: string): SceneTitleParts {
+  const result: SceneTitleParts = { sceneNumber: '', title: '', date: '', duration: '' };
   if (!titleText) return result;
   
   // Use frontmatter data if available
@@ -34,6 +34,9 @@ export function parseSceneTitleComponents(titleText: string, sceneNumber?: numbe
   }
   if (date) {
     result.date = date;
+  }
+  if (duration) {
+    result.duration = duration;
   }
   
   const decodedText = decodeHtmlEntities(titleText);
@@ -73,12 +76,119 @@ export function parseSceneTitleComponents(titleText: string, sceneNumber?: numbe
 }
 
 /**
- * Build SVG tspans for a scene title, optionally highlighting a search term.
+ * Renders just the main title part of the scene title.
+ * @param title - The title text.
+ * @param searchTerm - The search term for highlighting.
+ * @returns A DocumentFragment containing the title tspan.
+ */
+export function renderSceneTitleFragment(
+  title: string,
+  searchTerm: string
+): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+  const main = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+  main.setAttribute('class', 'rt-scene-title-bold');
+  main.setAttribute('data-item-type', 'title');
+
+  if (searchTerm && title) {
+    const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(title))) {
+      if (m.index > last) main.appendChild(document.createTextNode(title.slice(last, m.index)));
+      const hl = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      hl.setAttribute('class', 'rt-search-term');
+      // No fill attribute; inherit from parent via --rt-dynamic-color
+      hl.textContent = m[0];
+      main.appendChild(hl);
+      last = m.index + m[0].length;
+    }
+    if (last < title.length) main.appendChild(document.createTextNode(title.slice(last)));
+  } else {
+    main.textContent = title;
+  }
+
+  fragment.appendChild(main);
+  return fragment;
+}
+
+/**
+ * Renders the metadata part (date, duration) of the scene title.
+ * This part will be in its own <text> element.
+ * @param date - The formatted date string.
+ * @param duration - The formatted duration string.
+ * @param searchTerm - The search term for highlighting.
+ * @returns A DocumentFragment containing the metadata tspans.
+ */
+export function renderSceneMetadataFragment(
+  date: string | undefined,
+  duration: string | undefined,
+  searchTerm: string
+): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+
+  if (date) {
+    const dateT = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+    dateT.setAttribute('class', 'rt-date-text');
+    dateT.setAttribute('data-item-type', 'date');
+    dateT.setAttribute('dy', '-8px');
+    (dateT as SVGTSpanElement).style.setProperty('--rt-dynamic-color', '#888888');
+    (dateT as SVGTSpanElement).style.setProperty('font-size', '14px');
+
+    if (searchTerm) {
+      const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
+      let last = 0;
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(date))) {
+        if (m.index > last) dateT.appendChild(document.createTextNode(date.slice(last, m.index)));
+        const hl = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        hl.setAttribute('class', 'rt-search-term');
+        // Don't set fill attribute - will inherit from parent's CSS custom property
+        hl.textContent = m[0];
+        dateT.appendChild(hl);
+        last = m.index + m[0].length;
+      }
+      if (last < date.length) dateT.appendChild(document.createTextNode(date.slice(last)));
+    } else {
+      dateT.textContent = date;
+    }
+    fragment.appendChild(dateT);
+
+    if (duration) {
+      const durationT = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      durationT.setAttribute('class', 'rt-duration-text');
+      durationT.setAttribute('data-item-type', 'duration');
+      durationT.setAttribute('x', '0'); // x=0 is correct now, relative to new <text> element
+      durationT.setAttribute('dy', '16px');
+      (durationT as SVGTSpanElement).style.setProperty('--rt-dynamic-color', '#888888');
+      (durationT as SVGTSpanElement).style.setProperty('font-size', '14px');
+      durationT.textContent = duration;
+      fragment.appendChild(durationT);
+
+      const resetAfterDuration = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      resetAfterDuration.setAttribute('x', '0');
+      resetAfterDuration.setAttribute('dy', '8px');
+      resetAfterDuration.textContent = '';
+      fragment.appendChild(resetAfterDuration);
+    } else {
+      const resetAfterDate = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      resetAfterDate.setAttribute('dy', '8px');
+      resetAfterDate.textContent = '';
+      fragment.appendChild(resetAfterDate);
+    }
+  }
+
+  return fragment;
+}
+
+
+/**
+ * @deprecated Use renderSceneTitleFragment and renderSceneMetadataFragment instead.
+ * This function is kept for reference during refactoring and will be removed.
  */
 export function renderSceneTitleComponents(
   title: SceneTitleParts,
-  fragment: DocumentFragment,
-  searchTerm?: string,
+  searchTerm: string,
   titleColor?: string
 ): void {
   // Don't use a container tspan - add elements directly to fragment as siblings
@@ -91,68 +201,14 @@ export function renderSceneTitleComponents(
       (num as SVGTSpanElement).style.setProperty('--rt-dynamic-color', titleColor);
     }
     num.textContent = `${title.sceneNumber} `;
-    fragment.appendChild(num);
+    // The fragment is now handled by renderSceneTitleFragment
   }
-  const main = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-  main.classList.add('rt-scene-title-bold');
-  main.setAttribute("data-item-type", "title");
-  if (titleColor) {
-    (main as SVGTSpanElement).style.setProperty('--rt-dynamic-color', titleColor);
-  }
-  fragment.appendChild(main);
-  if (searchTerm && title.title) {
-    const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
-    let last = 0;
-    let m: RegExpExecArray | null;
-    while ((m = regex.exec(title.title))) {
-      if (m.index > last) main.appendChild(document.createTextNode(title.title.slice(last, m.index)));
-      const hl = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-      hl.setAttribute('class', 'rt-search-term');
-      // No fill attribute; inherit from parent via --rt-title-color
-      hl.textContent = m[0];
-      main.appendChild(hl);
-      last = m.index + m[0].length;
-    }
-    if (last < title.title.length) main.appendChild(document.createTextNode(title.title.slice(last)));
-  } else {
-    main.textContent = title.title;
-  }
+  // The fragment is now handled by renderSceneTitleFragment
   if (title.date) {
     // Add spacing before date
     const spacer = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
     spacer.textContent = '    ';
-    fragment.appendChild(spacer);
-    
-    // Create date tspan with EXACT same pattern as characters
-    const dateT = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-    dateT.setAttribute('class', 'rt-date-text');
-    dateT.setAttribute('data-item-type', 'date');
-    dateT.setAttribute('dy', '-4px'); // Shift baseline up slightly
-    
-    // Use EXACT same pattern as characters: --rt-dynamic-color
-    (dateT as SVGTSpanElement).style.setProperty('--rt-dynamic-color', '#888888');
-    (dateT as SVGTSpanElement).style.setProperty('font-size', '22px'); // Inline style to ensure it applies
-    
-    // Apply search highlighting to date if searchTerm provided
-    if (searchTerm && title.date) {
-      const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
-      let last = 0;
-      let m: RegExpExecArray | null;
-      while ((m = regex.exec(title.date))) {
-        if (m.index > last) dateT.appendChild(document.createTextNode(title.date.slice(last, m.index)));
-        const hl = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-        hl.setAttribute('class', 'rt-search-term');
-        // Don't set fill attribute - will inherit from parent's CSS custom property
-        hl.textContent = m[0];
-        dateT.appendChild(hl);
-        last = m.index + m[0].length;
-      }
-      if (last < title.date.length) dateT.appendChild(document.createTextNode(title.date.slice(last)));
-    } else {
-      dateT.textContent = title.date;
-    }
-    
-    fragment.appendChild(dateT);
+    // The fragment is now handled by renderSceneMetadataFragment
   }
 }
 
@@ -170,11 +226,13 @@ export function parseSceneTitle(title: string, sceneNumber?: number | null): { n
   const match = title.match(/^(\d+(?:\.\d+)?)\s+(.+)/);
   if (match) {
     const number = match[1];
-    const rawText = match[2];
-    return { number, text: escapeXml(rawText) };
+    const text = match[2];
+    return { number, text: escapeXml(text) };
   }
-  return { number: '0', text: escapeXml(title) };
-} 
+  
+  // If no number is found, use the whole title
+  return { number: '', text: escapeXml(title) };
+}
 
 export type NormalizedStatus = 'Todo' | 'Working' | 'Due' | 'Completed';
 

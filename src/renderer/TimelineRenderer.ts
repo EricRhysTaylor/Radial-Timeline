@@ -151,19 +151,8 @@ function buildSynopsis(
     subplotIndexResolver?: (name: string) => number
 ): SVGGElement {
     // Format date consistently - extract just the date portion to avoid timezone shifts
-    let dateStr = '';
-    if (scene.when) {
-        if (scene.when instanceof Date) {
-            // Extract year, month, day without timezone conversion
-            const year = scene.when.getFullYear();
-            const month = String(scene.when.getMonth() + 1).padStart(2, '0');
-            const day = String(scene.when.getDate()).padStart(2, '0');
-            dateStr = `${month}/${day}/${year}`;
-        }
-    }
-    
     const contentLines = [
-        `${scene.title}   ${dateStr}`,
+        scene.title || '',
         ...(scene.itemType === 'Plot' && scene.Description
             ? plugin.splitIntoBalancedLines(scene.Description, maxTextWidth)
             : scene.synopsis
@@ -791,10 +780,19 @@ export function createTimelineSVG(
                 labelClass = 'rt-month-label-outer rt-date-boundary rt-date-last';
             }
             
+            // For boundary labels with two lines, split on newline and create tspans
+            let labelContent = shortName;
+            if ((isFirst || isLast) && shortName.includes('\n')) {
+                const lines = shortName.split('\n');
+                labelContent = lines.map((line, i) => 
+                    `<tspan x="0" dy="${i === 0 ? 0 : '0.9em'}">${line}</tspan>`
+                ).join('');
+            }
+            
             const labelHtml = `
                 <text class="${labelClass}" ${isPastMonth ? 'opacity="0.5"' : ''}>
                     <textPath href="#${pathId}" startOffset="0" text-anchor="start">
-                        ${shortName}
+                        ${labelContent}
                     </textPath>
                 </text>
             `;
@@ -1125,15 +1123,12 @@ export function createTimelineSVG(
                     const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
                     const forceChronological = isChronologueMode;
                     
-                    console.log('[Timeline] ALL SCENES OUTER RING - Act', act, 'mode:', currentMode, 'sortByWhen:', sortByWhen);
-                    
                     // Build a single combined, manuscript-ordered list of items (unique by path for scenes
                     // and unique by title+act for Plot notes) for this act only.
                     const seenPaths = new Set<string>();
                     const seenPlotKeys = new Set<string>();
                     const combined: Scene[] = [];
 
-                    console.log('[Timeline] Input scenes.length:', scenes.length);
                     scenes.forEach(s => {
                         // When using When date sorting, include all scenes (ignore Act)
                         // When using manuscript order, filter by Act
@@ -1160,22 +1155,8 @@ export function createTimelineSVG(
                         }
                     });
                     
-                    console.log('[Timeline] Combined array (BEFORE any sort) - length:', combined.length);
-                    combined.forEach((s, i) => {
-                        const pos = extractPosition(s);
-                        const when = (s as any).when;
-                        console.log(`  [${i}] title:"${s.title}" pos:${pos} when:${when} type:${s.itemType || 'Scene'}`);
-                    });
-                    
                     // Sort the combined array - Chronologue mode forces chronological
                     const sortedCombined = sortScenes(combined, sortByWhen, forceChronological);
-                    
-                    console.log('[Timeline] Combined array (AFTER sort) - length:', sortedCombined.length);
-                    sortedCombined.forEach((s, i) => {
-                        const pos = extractPosition(s);
-                        const when = (s as any).when;
-                        console.log(`  [${i}] title:"${s.title}" pos:${pos} when:${when} type:${s.itemType || 'Scene'}`);
-                    });
 
                     // Compute angular positions for all combined items
                     const positions = computePositions(innerR, outerR, startAngle, endAngle, sortedCombined);
@@ -1378,8 +1359,6 @@ export function createTimelineSVG(
                             const pos = extractPosition(s);
                             return `[${i}]pos:${pos}`;
                         }).join(', ');
-                        
-                        console.log(`[Timeline] INNER SUBPLOT RING - Act ${act} Ring ${ring} Subplot "${subplot}" mode:${currentMode} | BEFORE: ${beforeList} | AFTER: ${afterList}`);
                         
                         // Separate Plot notes and Scene notes for different sizing
                         // Suppress Plot notes for ALL rings unless they should be rendered
@@ -2039,7 +2018,11 @@ export function createTimelineSVG(
                 svg += chronologueTimelineArc;
             }
             // Arc 1: Chronological backbone with discontinuity symbols
-            svg += renderChronologicalBackboneArc(scenes, outerRadius, 3, manuscriptOrderPositions);
+            // Calculate outer ring radii for precise discontinuity marker placement
+            const outerRingIndex = NUM_RINGS - 1;
+            const outerRingInnerR = ringStartRadii[outerRingIndex];
+            const outerRingOuterR = outerRingInnerR + ringWidths[outerRingIndex];
+            svg += renderChronologicalBackboneArc(scenes, outerRingInnerR, outerRingOuterR, 3, manuscriptOrderPositions);
             // Arc 3: Shift mode elapsed time (conditionally rendered when shift mode active)
             // Note: This would need shift mode state to be passed in - placeholder for future enhancement
             // if (shiftModeActive && selectedScenes.length === 2) {
