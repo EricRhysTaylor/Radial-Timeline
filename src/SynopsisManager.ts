@@ -877,7 +877,7 @@ export default class SynopsisManager {
     }
     
     const hasMetadata = rowElements.length > 1;
-    const firstLineInset = isFirstRow ? 6 : 0;
+    const firstLineInset = isFirstRow ? 10 : 0;
     const effectiveAnchorX = isRightAligned ? anchorX - firstLineInset : anchorX + firstLineInset;
     const edgePadding = 6;
 
