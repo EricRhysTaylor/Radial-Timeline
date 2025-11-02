@@ -2865,23 +2865,23 @@
 
 .rt-chronologue-duration-ticks .rt-duration-arc {
   stroke: var(--text-muted);
-  stroke-width: 1.5px;
+  stroke-width: 3px;
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-overlap {
   stroke: #ff9900; /* Yellow for temporal overlaps */
-  stroke-width: 1.5px;
+  stroke-width: 3px;
   stroke-dasharray: 4, 1; /* Dotted pattern: 4px dash, 2px gap */
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-unparseable {
   stroke: #ff0000; /* Red for unparseable/missing durations (using --rt-color-due red) */
-  stroke-width: 1.5px;
+  stroke-width: 3px;
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-ongoing {
   stroke: var(--text-muted); /* Standard color for "ongoing" durations */
-  stroke-width: 1.5px;
+  stroke-width: 3px;
 }
 
 /* Discontinuity marker text "∞" - infinity symbol marks large time jumps between scenes in chronologue mode */
