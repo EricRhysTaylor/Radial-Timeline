@@ -877,7 +877,7 @@ export default class SynopsisManager {
     }
     
     const hasMetadata = rowElements.length > 1;
-    const firstLineInset = isFirstRow ? 12 : 0; // Inset the first line of the synopsis title text by 12px to avoid overlapping the synopsis title for large font sizes
+    const firstLineInset = isFirstRow ? 14 : 0; // Inset the first line of the synopsis title text by 12px to avoid overlapping the synopsis title for large font sizes
     const effectiveAnchorX = isRightAligned ? anchorX - firstLineInset : anchorX + firstLineInset;
     const edgePadding = 6;
 
