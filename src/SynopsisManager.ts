@@ -769,6 +769,11 @@ export default class SynopsisManager {
       }
     });
     
+    // Desired constant radial inset for the first line only (in pixels)
+    const desiredFirstRowRadialInset = 12;
+    // Compute horizontal projection of the radial inset based on the current angle
+    const firstRowInsetX = this.computeFirstLineInsetX(baseX, baseY, radius, desiredFirstRowRadialInset);
+
     // Position each row using Pythagorean theorem relative to circle center
     let yOffset = 0;
     let lastValidAnchorX = 0; // Track the last valid anchor position for fallback positioning
@@ -833,9 +838,17 @@ export default class SynopsisManager {
         metadataWidth,
         gap,
         isRightAligned,
-        rowIndex === 0
+        rowIndex === 0,
+        rowIndex === 0 ? firstRowInsetX : 0
       );
     });
+  }
+
+  private computeFirstLineInsetX(baseX: number, baseY: number, radius: number, desiredRadialInset: number): number {
+    const safeRadius = Math.max(1, radius);
+    const cosPhi = Math.abs(baseX) / safeRadius; // projection factor onto x-axis
+    const insetX = desiredRadialInset * Math.max(0, Math.min(1, cosPhi));
+    return insetX;
   }
 
   private measureRowLayout(rowElements: SVGTextElement[], defaultGap: number): { primaryWidth: number; metadataWidth: number; gap: number } {
@@ -870,14 +883,15 @@ export default class SynopsisManager {
     metadataWidth: number,
     gap: number,
     isRightAligned: boolean,
-    isFirstRow: boolean
+    isFirstRow: boolean,
+    firstLineInsetX: number
   ): void {
     if (rowElements.length === 0) {
       return;
     }
     
     const hasMetadata = rowElements.length > 1;
-    const firstLineInset = isFirstRow ? 14 : 0; // Inset the first line of the synopsis title text by 12px to avoid overlapping the synopsis title for large font sizes
+    const firstLineInset = isFirstRow ? Math.max(0, firstLineInsetX) : 0;
     const effectiveAnchorX = isRightAligned ? anchorX - firstLineInset : anchorX + firstLineInset;
     const edgePadding = 6;
 
