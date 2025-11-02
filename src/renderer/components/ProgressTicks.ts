@@ -11,15 +11,10 @@ export function renderTargetDateTick(params: { plugin: PluginRendererFacade; pro
             today.setHours(0, 0, 0, 0);
             if (!isNaN(targetDate.getTime()) && targetDate > today) {
                 targetDateAngle = dateToAngle(targetDate);
-                if (plugin.settings.debug) plugin.log(`[Timeline Target] Using target date: ${targetDate.toISOString().slice(0,10)}, Angle: ${targetDateAngle.toFixed(2)}`);
-            } else {
-                if (plugin.settings.debug) plugin.log(`[Timeline Target] Target date ${plugin.settings.targetCompletionDate} is invalid or not in the future. Using default.`);
             }
         } catch (e) {
-            if (plugin.settings.debug) plugin.log(`[Timeline Target] Error parsing target date ${plugin.settings.targetCompletionDate}. Using default. Error: ${e}`);
+            // Error parsing target date - use default 12 o'clock
         }
-    } else {
-        if (plugin.settings.debug) plugin.log(`[Timeline Target] No target date set. Using default 12 o'clock.`);
     }
 
     const targetTickOuterRadius = progressRadius + 5;

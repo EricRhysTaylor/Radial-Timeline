@@ -102,6 +102,16 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 await plugin.saveSettings();
             }));
 
+    new Settings(containerEl)
+        .setName('Enable hover debug logging')
+        .setDesc('Log detailed hover geometry diagnostics to the developer console. Useful for debugging hover/expansion issues; leave off during normal use.')
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.enableHoverDebugLogging ?? false)
+            .onChange(async (value) => {
+                plugin.settings.enableHoverDebugLogging = value;
+                await plugin.saveSettings();
+            }));
+
     // Sorting: Sort by When date vs manuscript order
     const sortSetting = new Settings(containerEl)
         .setName('Scene ordering')
@@ -129,9 +139,11 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
         }
     }
 
+    const baseDurationDesc = 'Scenes at or above the selected duration fill the entire scene duration segment and all other durations below this are proportionally scaled. Chronologue marks timeline gaps as discontinuous (∞) when the gap between scenes exceeds three times the median interval.';
+
     const durationSetting = new Settings(containerEl)
         .setName('Chronologue duration arc cap')
-        .setDesc('Scenes at or above the selected duration fill the entire chronologue arc segment.');
+        .setDesc(baseDurationDesc);
 
     const savedCapSelection = plugin.settings.chronologueDurationCapSelection ?? 'auto';
     let durationDropdown: DropdownComponent | undefined;
@@ -152,7 +164,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
             const dropdown = durationDropdown;
             if (!dropdown) return;
             if (options.length === 0) {
-                durationSetting.setDesc('Scenes at or above the selected duration fill the entire chronologue arc segment. No scene durations detected yet.');
+                durationSetting.setDesc(`${baseDurationDesc} No scene durations detected yet.`);
             } else {
                 options.forEach(opt => {
                     if (!dropdown.selectEl.querySelector(`option[value="${opt.key}"]`)) {
@@ -172,7 +184,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
         })
         .catch(() => {
             if (!durationDropdown) return;
-            durationSetting.setDesc('Scenes at or above the selected duration fill the entire chronologue arc segment. Unable to load duration data.');
+            durationSetting.setDesc(`${baseDurationDesc} Unable to load duration data.`);
         });
 
     // New systems are now the default

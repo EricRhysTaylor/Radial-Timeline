@@ -90,6 +90,7 @@ interface RadialTimelineSettings {
     metadataRefreshDebounceMs?: number; // Debounce for frontmatter-changed refresh
     showEstimate?: boolean; // Toggle estimation arc/label near progress ring
     enableSceneTitleAutoExpand?: boolean; // Auto-expand clipped scene titles on hover
+    enableHoverDebugLogging?: boolean; // Emit verbose hover redistribution logs to console
     sortByWhenDate?: boolean; // Sort scenes by When date (true) or manuscript order (false). Chronologue mode always uses When date.
     chronologueDurationCapSelection?: string; // Value|unit key used for duration arc cap (or 'auto')
     // AI Context Templates
@@ -217,6 +218,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     metadataRefreshDebounceMs: 10000,
     showEstimate: true,
     enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
+    enableHoverDebugLogging: false,
     sortByWhenDate: false, // Default: manuscript order (backward compatible)
     chronologueDurationCapSelection: 'auto',
     aiContextTemplates: [

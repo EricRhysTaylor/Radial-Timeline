@@ -646,11 +646,6 @@ export function createTimelineSVG(
             // Filter to scenes only (no plot beats) for tick generation
             const sortedScenes = sortedCombined.filter(s => s.itemType !== 'Plot');
             
-            if (plugin.settings.debug) {
-                plugin.log(`[Tick Generation] Combined scenes: ${combined.length}, Scenes only: ${sortedScenes.length}`);
-                plugin.log(`[Tick Generation] First scene: ${sortedScenes[0]?.title || 'none'}, Last scene: ${sortedScenes[sortedScenes.length - 1]?.title || 'none'}`);
-            }
-            
             // Compute equal-spaced positions for scenes (matching what computePositions will do)
             // Pass both start angles and angular size to align ticks to scene beginnings
             const sceneStartAngles: number[] = [];
@@ -658,10 +653,6 @@ export function createTimelineSVG(
             if (sortedScenes.length > 0) {
                 const totalAngularSpace = endAngle - startAngle;
                 sceneAngularSize = totalAngularSpace / sortedScenes.length;
-                
-                if (plugin.settings.debug) {
-                    plugin.log(`[Tick Generation] Scene count: ${sortedScenes.length}, Angular size per scene: ${sceneAngularSize} rad`);
-                }
                 
                 sortedScenes.forEach((_, idx) => {
                     // Start angle of each scene (beginning of its angular slice)
@@ -671,16 +662,7 @@ export function createTimelineSVG(
             }
             
             // Generate chronological ticks aligned to scene starts
-            const chronoTicks = generateChronologicalTicks(sortedScenes, sceneStartAngles, sceneAngularSize, plugin.settings.debug ? plugin : undefined);
-            
-            if (plugin.settings.debug) {
-                plugin.log(`[Tick Generation] Generated ${chronoTicks.length} ticks, ${chronoTicks.filter(t => t.isMajor).length} major`);
-                chronoTicks.forEach((tick, i) => {
-                    if (tick.isMajor) {
-                        plugin.log(`[Tick Generation] Tick ${i}: angle=${tick.angle.toFixed(4)}, label="${tick.shortName}", major=${tick.isMajor}`);
-                    }
-                });
-            }
+            const chronoTicks = generateChronologicalTicks(sortedScenes, sceneStartAngles, sceneAngularSize);
             
             outerLabels = chronoTicks.map(tick => ({
                 name: tick.name,
@@ -862,10 +844,6 @@ export function createTimelineSVG(
              const estimatedCompletionDate = estimateResult.date;
 
              const startAngle = -Math.PI/2; // 12 o'clock position
-
-             if (plugin.settings.debug) {
-                 plugin.log(`[Timeline Estimate] Calculating arc for date: ${estimatedCompletionDate.toISOString().split('T')[0]}`);
-             }
              
              const estimatedYear = estimatedCompletionDate.getFullYear();
              const estimatedMonth = estimatedCompletionDate.getMonth();
@@ -1117,11 +1095,7 @@ export function createTimelineSVG(
                 // Special handling: when outer ring all-scenes mode is ON, draw each subplot's scenes
                 // in the outer ring using the same angular positions they have in their own subplot rings.
                 if (isOuterRing && shouldShowAllScenesInOuterRing(plugin)) {
-                    // Chronologue mode always uses chronological sorting
-                    const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
-                    const isChronologueMode = currentMode === 'chronologue';
-                    const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
-                    const forceChronological = isChronologueMode;
+                    // Use the outer scope sortByWhen and forceChronological variables (already set at line 540-541)
                     
                     // Build a single combined, manuscript-ordered list of items (unique by path for scenes
                     // and unique by title+act for Plot notes) for this act only.
@@ -1618,11 +1592,7 @@ export function createTimelineSVG(
                         acc[statusKey] = (acc[statusKey] || 0) + 1;
                     }
                 } else {
-                    // Handle invalid date format
-                    if (plugin.settings.debug) {
-                        plugin.log(`WARN: Invalid date format in status count: ${originalDueString}`);
-                    }
-                    // Count scenes with invalid due dates by status
+                    // Handle invalid date format - count scenes with invalid due dates by status
                     let statusKey = "Todo"; 
                     if (scene.status) {
                         if (Array.isArray(scene.status) && scene.status.length > 0) {

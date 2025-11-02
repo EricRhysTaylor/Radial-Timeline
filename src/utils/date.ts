@@ -615,8 +615,7 @@ export interface ChronologicalTickInfo {
 export function generateChronologicalTicks(
     scenes: { when?: Date }[], 
     sceneStartAngles?: number[],
-    sceneAngularSize?: number,
-    debugLogger?: { log: (msg: string) => void }
+    sceneAngularSize?: number
 ): ChronologicalTickInfo[] {
     // Filter scenes with valid dates, preserving chronological order
     const validScenes: Array<{ date: Date; sortedIndex: number }> = [];
@@ -699,10 +698,6 @@ export function generateChronologicalTicks(
         numMajorTicks = bestMajorCount;
     }
 
-    if (debugLogger) {
-        debugLogger.log(`[Tick Generation] numScenes=${numScenes}, step=${step}, expected major ticks=${numMajorTicks}`);
-    }
-
     // Build promote set using sorted indices (chronological order)
     const promoteSet = new Set<number>();
     promoteSet.add(0); // Always promote first scene
@@ -713,10 +708,6 @@ export function generateChronologicalTicks(
         promoteSet.add(i);
     }
     
-    if (debugLogger) {
-        debugLogger.log(`[Tick Generation] Promoting ${promoteSet.size} scenes to major: [${Array.from(promoteSet).sort((a,b) => a-b).join(', ')}]`);
-    }
-
     // Check if first and last would overlap (they're at the same or very close angles)
     // This happens when timeline wraps around a full circle
     const angleDiff = Math.abs(lastAngle - firstAngle);

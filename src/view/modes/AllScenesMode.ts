@@ -169,7 +169,8 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
         }
         const sceneTitle = g.querySelector('.rt-scene-title');
         if (sceneTitle) {
-            // Angular redistribution handled in original file; kept there for now.
+            // Trigger scene title auto-expansion if enabled
+            // TODO: Move redistributeActScenes logic from TimeLineView.ts here
         }
     });
 
