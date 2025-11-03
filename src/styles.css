@@ -2870,7 +2870,7 @@
 .rt-chronologue-duration-ticks .rt-duration-arc-overlap {
   stroke: #ff9900; /* Yellow for temporal overlaps */
   stroke-width: 3px;
-  stroke-dasharray: 4, 1; /* Dotted pattern: 4px dash, 2px gap */
+  /*stroke-dasharray: 4, 1; /* Dotted pattern: 4px dash, 1px gap */
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-unparseable {
