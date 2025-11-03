@@ -736,17 +736,10 @@ export class RadialTimelineView extends ItemView {
                 const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
                 if (!svg) return;
 
-                const logHover = (...args: unknown[]) => {
-                    console.log('[RadialTimeline][hover]', ...args);
-                };
-
                 let currentGroup: Element | null = null;
                 let currentSynopsis: Element | null = null;
                 let currentSceneId: string | null = null;
                 let rafId: number | null = null;
-                let isRedistributing = false; // Guard flag to prevent runaway redistribution loops
-                let lastRedistributedScenePath: string | null = null; // Track last redistributed scene by path
-                let resetTimeoutId: number | null = null; // Timeout for delayed reset
 
                 const clearSelection = () => {
                     // Always clear active selection styles
@@ -803,24 +796,11 @@ export class RadialTimelineView extends ItemView {
                 };
 
                 view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
-                    // In Gossamer mode, normal scene hovers are disabled
-                    if (view.currentMode === 'gossamer') return;
-                    
-                    // Prevent processing during active redistribution to avoid runaway loops
-                    if (isRedistributing) return;
+                    // In Gossamer and Chronologue modes, mode-specific handlers manage scene hovers
+                    if (view.currentMode === 'gossamer' || view.currentMode === 'chronologue') return;
 
                     const g = (e.target as Element).closest('.rt-scene-group');
                     if (!g || g === currentGroup) return;
-                    
-                    const startAngle = Number(g.getAttribute('data-start-angle')) || 0;
-                    const endAngle = Number(g.getAttribute('data-end-angle')) || 0;
-                    logHover('pointerover', {
-                        groupId: g.id,
-                        act: g.getAttribute('data-act'),
-                        ring: g.getAttribute('data-ring'),
-                        startAngle,
-                        endAngle
-                    });
 
                     clearSelection();
                     const sid = getSceneIdFromGroup(g);
@@ -841,29 +821,27 @@ export class RadialTimelineView extends ItemView {
                     }
                     
                     // Trigger scene title auto-expansion for scenes with titles
-                    // TEMPORARILY DISABLED due to bugs causing infinite loops and incorrect sizing
-                    // const sceneTitle = g.querySelector('.rt-scene-title');
-                    // if (sceneTitle) {
-                    //     redistributeActScenes(g);
-                    // }
+                    const sceneTitle = g.querySelector('.rt-scene-title');
+                    if (sceneTitle) {
+                        redistributeActScenes(g);
+                    }
                 });
 
                 view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
-                    // In Gossamer mode, normal scene hovers are disabled
-                    if (view.currentMode === 'gossamer') return;
+                    // In Gossamer and Chronologue modes, mode-specific handlers manage scene hovers
+                    if (view.currentMode === 'gossamer' || view.currentMode === 'chronologue') return;
                     
                     const toEl = e.relatedTarget as Element | null;
-                    const isStayingWithinScene = (): boolean => {
-                        if (!currentGroup || !currentSceneId || !toEl) return false;
-                        if (currentGroup.contains(toEl)) return true;
-                        // Allow transitions to number squares/text linked to the current scene
-                        if (toEl.closest(`.rt-number-square[data-scene-id="${currentSceneId}"]`)) return true;
-                        if (toEl.closest(`.rt-number-text[data-scene-id="${currentSceneId}"]`)) return true;
-                        if (toEl.closest(`.rt-scene-info[data-for-scene="${currentSceneId}"]`)) return true;
-                        return false;
-                    };
 
-                    if (isStayingWithinScene()) return;
+                    // Check if we're moving within the current group or to related elements
+                    if (currentGroup && toEl) {
+                        if (currentGroup.contains(toEl)) return;
+                        if (currentSceneId) {
+                            if (toEl.closest(`.rt-number-square[data-scene-id="${currentSceneId}"]`)) return;
+                            if (toEl.closest(`.rt-number-text[data-scene-id="${currentSceneId}"]`)) return;
+                            if (toEl.closest(`.rt-scene-info[data-for-scene="${currentSceneId}"]`)) return;
+                        }
+                    }
                     
                     // Reset expansion if we had a scene expanded
                     if (currentGroup) {
@@ -871,10 +849,6 @@ export class RadialTimelineView extends ItemView {
                         if (sceneTitle) {
                             resetAngularRedistribution();
                         }
-                        logHover('pointerout:reset', {
-                            groupId: currentGroup.id,
-                            toElement: toEl ? (toEl as Element).id || toEl.tagName : null
-                        });
                     }
                     
                     // Remove scene-hover class from SVG
@@ -911,11 +885,6 @@ export class RadialTimelineView extends ItemView {
                         const start = Number(group.getAttribute('data-start-angle')) || 0;
                         const end = Number(group.getAttribute('data-end-angle')) || 0;
                         originalAngles.set(group.id, { start, end });
-                        logHover('storeOriginalAngles', {
-                            groupId: group.id,
-                            start,
-                            end
-                        });
                         
                         // Store original number square transforms
                         const scenePathEl = group.querySelector('.rt-scene-path') as SVGPathElement;
@@ -933,34 +902,15 @@ export class RadialTimelineView extends ItemView {
 
                 // Reset all scenes to original angles
                 const resetAngularRedistribution = () => {
-                    // Cancel any pending reset
-                    if (resetTimeoutId !== null) {
-                        clearTimeout(resetTimeoutId);
-                        resetTimeoutId = null;
-                    }
-                    
-                    // Delay the actual reset to avoid clearing during geometry-change cascades
-                    resetTimeoutId = window.setTimeout(() => {
-                        // Clear redistribution flags when resetting
-                        isRedistributing = false;
-                        lastRedistributedScenePath = null;
-                        
-                        originalAngles.forEach((angles, groupId) => {
+                    originalAngles.forEach((angles, groupId) => {
                         const group = svg.getElementById(groupId);
                         if (!group) return;
                         const innerR = Number(group.getAttribute('data-inner-r')) || 0;
                         const outerR = Number(group.getAttribute('data-outer-r')) || 0;
-                        logHover('resetAngularRedistribution', {
-                            groupId,
-                            start: angles.start,
-                            end: angles.end
-                        });
                         const path = group.querySelector('.rt-scene-path') as SVGPathElement;
                         if (path) {
                             path.setAttribute('d', buildCellArcPath(innerR, outerR, angles.start, angles.end));
                         }
-                        group.setAttribute('data-start-angle', String(angles.start));
-                        group.setAttribute('data-end-angle', String(angles.end));
                         // Also reset text path if present
                         const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
                         if (textPath) {
@@ -985,8 +935,6 @@ export class RadialTimelineView extends ItemView {
                             }
                         }
                     });
-                    resetTimeoutId = null;
-                    }, 100); // 100ms delay to allow geometry changes to settle
                 };
 
                 // Redistribute scenes within an act to expand hovered scene
@@ -994,84 +942,45 @@ export class RadialTimelineView extends ItemView {
                     // Check if auto-expand is disabled in settings
                     if (!view.plugin.settings.enableSceneTitleAutoExpand) return;
                     
-                    // Get the scene path to identify this scene across all rings
-                    const hoveredScenePath = hoveredGroup.getAttribute('data-path');
-                    
-                    // DEBUG: Log every call to see what's happening
-                    logHover('redistributeActScenes:entry', { 
-                        hoveredScenePath,
-                        lastRedistributedScenePath,
-                        isRedistributing,
-                        pathsMatch: hoveredScenePath === lastRedistributedScenePath
-                    });
-                    
-                    // Prevent redistribution if already processing or if this is the same scene we just redistributed
-                    if (isRedistributing || (hoveredScenePath && lastRedistributedScenePath === hoveredScenePath)) {
-                        logHover('redistributeActScenes:blocked', { 
-                            isRedistributing, 
-                            samePath: hoveredScenePath === lastRedistributedScenePath,
-                            path: hoveredScenePath
-                        });
-                        return;
-                    }
-                    
-                    // Set guard flag to prevent cascading redistributions
-                    isRedistributing = true;
-                    lastRedistributedScenePath = hoveredScenePath;
-                    
                     storeOriginalAngles();
                     
                     const hoveredAct = hoveredGroup.getAttribute('data-act');
                     const hoveredRing = hoveredGroup.getAttribute('data-ring');
                     if (!hoveredAct || !hoveredRing) {
-                        isRedistributing = false;
-                        lastRedistributedScenePath = null;
                         return;
                     }
 
                         // Find all elements in the same act and ring (scenes AND plot slices)
-                        const actMetadata: Array<{ group: Element; startAngle: number; endAngle: number; isScene: boolean }> = [];
+                        const actElements: Element[] = [];
+                        const sceneElements: Element[] = []; // Track which ones are scenes for text measurement
                         svg.querySelectorAll('.rt-scene-group').forEach((group: Element) => {
-                            if (group.getAttribute('data-act') === hoveredAct &&
+                            if (group.getAttribute('data-act') === hoveredAct && 
                                 group.getAttribute('data-ring') === hoveredRing) {
                                 const path = group.querySelector('.rt-scene-path');
-                                if (!path) return;
-                                const startAngle = Number(group.getAttribute('data-start-angle')) || 0;
-                                const endAngle = Number(group.getAttribute('data-end-angle')) || 0;
-                                const isScene = Boolean(group.querySelector('.rt-scene-title'));
-                                actMetadata.push({ group, startAngle, endAngle, isScene });
+                                if (path) {
+                                    actElements.push(group);
+                                    // Track which ones are scenes (have titles) vs plot slices
+                                    const sceneTitle = group.querySelector('.rt-scene-title');
+                                    if (sceneTitle) {
+                                        sceneElements.push(group);
+                                    }
+                                }
                             }
                         });
 
-                    if (actMetadata.length <= 1) {
-                        isRedistributing = false;
-                        lastRedistributedScenePath = null;
+                    if (actElements.length <= 1) {
                         return; // Need at least 2 elements to redistribute
                     }
 
-                    const hoveredMeta = actMetadata.find(meta => meta.group === hoveredGroup);
-                    if (!hoveredMeta || !hoveredMeta.isScene) {
-                        isRedistributing = false;
-                        lastRedistributedScenePath = null;
+                    // Only check text measurement if the hovered element is a scene (not a plot slice)
+                    if (!sceneElements.includes(hoveredGroup)) {
                         return; // Don't expand plot slices
                     }
-
-                    const sortedActElements = [...actMetadata].sort((a, b) => a.startAngle - b.startAngle);
-                    const sortedSceneElements = sortedActElements.filter(meta => meta.isScene);
                     const hoveredStart = Number(hoveredGroup.getAttribute('data-start-angle')) || 0;
                     const hoveredEnd = Number(hoveredGroup.getAttribute('data-end-angle')) || 0;
                     const hoveredInnerR = Number(hoveredGroup.getAttribute('data-inner-r')) || 0;
                     const hoveredOuterR = Number(hoveredGroup.getAttribute('data-outer-r')) || 0;
                     const hoveredMidR = (hoveredInnerR + hoveredOuterR) / 2;
-                    logHover('redistributeActScenes:start', {
-                        hoveredGroupId: hoveredGroup.id,
-                        totalElements: sortedActElements.length,
-                        totalScenes: sortedSceneElements.length,
-                        hoveredAct,
-                        hoveredRing,
-                        hoveredStart,
-                        hoveredEnd
-                    });
 
                     // Measure if the hovered scene's title text fits in its current space
                     const currentArcPx = (hoveredEnd - hoveredStart) * hoveredMidR;
@@ -1079,15 +988,11 @@ export class RadialTimelineView extends ItemView {
                     // Get the scene title element and measure its text width
                     const hoveredSceneTitle = hoveredGroup.querySelector('.rt-scene-title');
                     if (!hoveredSceneTitle) {
-                        isRedistributing = false;
-                        lastRedistributedScenePath = null;
                         return; // No title to measure
                     }
 
                     const titleText = hoveredSceneTitle.textContent || '';
                     if (!titleText.trim()) {
-                        isRedistributing = false;
-                        lastRedistributedScenePath = null;
                         return; // No text to measure
                     }
 
@@ -1115,60 +1020,45 @@ export class RadialTimelineView extends ItemView {
                     const requiredArcPx = requiredTextWidth + PADDING_PX + TEXTPATH_START_OFFSET_PX + angularNudgePx;
                     
                     if (currentArcPx >= requiredArcPx) {
-                        isRedistributing = false;
-                        lastRedistributedScenePath = null;
                         return; // Text already fits, no need to expand
                     }
 
                     // Calculate target expanded size based on text width
                     const targetArcPx = requiredArcPx * HOVER_EXPAND_FACTOR;
-                    let targetAngularSize = targetArcPx / hoveredMidR;
+                    const targetAngularSize = targetArcPx / hoveredMidR;
 
                     // Get total angular space for this act/ring by finding act boundaries
                     let actStartAngle = 0;
                     let actEndAngle = 2 * Math.PI;
                     
-                    // Determine if we're in Chronologue mode or 3-act mode
-                    const isChronologueMode = view.currentMode === 'chronologue';
+                    // Simple approximation: if this is act 0,1,2 out of 3, divide circle
                     const actNum = Number(hoveredAct);
-                    
-                    if (isChronologueMode || actNum === 0) {
-                        // Chronologue mode or act 0: use full 360° circle
-                        actStartAngle = -Math.PI / 2; // Start at top (12 o'clock)
-                        actEndAngle = actStartAngle + (2 * Math.PI); // Full circle
-                    } else {
-                        // 3-act structure: divide circle into thirds
-                        const NUM_ACTS = 3;
-                        actStartAngle = (actNum * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
-                        actEndAngle = ((actNum + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
-                    }
+                    const NUM_ACTS = 3;
+                    actStartAngle = (actNum * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                    actEndAngle = ((actNum + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
                     
                     const totalActSpace = actEndAngle - actStartAngle;
                     
                     // Calculate space for beat slices (they keep their original size)
                     let totalBeatSpace = 0;
-                    sortedActElements.forEach(meta => {
-                        if (!meta.isScene) {
-                            totalBeatSpace += (meta.endAngle - meta.startAngle);
+                    const beatElements: Element[] = [];
+                    actElements.forEach(element => {
+                        if (!sceneElements.includes(element)) {
+                            // This is a beat slice
+                            beatElements.push(element);
+                            const beatStart = Number(element.getAttribute('data-start-angle')) || 0;
+                            const beatEnd = Number(element.getAttribute('data-end-angle')) || 0;
+                            totalBeatSpace += (beatEnd - beatStart);
                         }
                     });
                     
                     const availableSceneSpace = totalActSpace - totalBeatSpace;
-                    const otherSceneCount = sortedSceneElements.length - 1;
                     const spaceForOtherScenes = availableSceneSpace - targetAngularSize;
-                    const angularSizeForOtherScenes = otherSceneCount > 0 ? spaceForOtherScenes / otherSceneCount : 0;
-                    logHover('redistributeActScenes:metrics', {
-                        availableSceneSpace,
-                        targetAngularSize,
-                        otherSceneCount,
-                        angularSizeForOtherScenes,
-                        totalBeatSpace
-                    });
+                    const angularSizeForOtherScenes = spaceForOtherScenes / (sceneElements.length - 1);
 
                     // Redistribute angles for all elements (scenes and beats)
                     let currentAngle = actStartAngle;
-                    sortedActElements.forEach(meta => {
-                        const { group, isScene, startAngle, endAngle } = meta;
+                    actElements.forEach((group: Element) => {
                         const innerR = Number(group.getAttribute('data-inner-r')) || 0;
                         const outerR = Number(group.getAttribute('data-outer-r')) || 0;
                         
@@ -1177,13 +1067,15 @@ export class RadialTimelineView extends ItemView {
                             // Expanded scene
                             newStart = currentAngle;
                             newEnd = currentAngle + targetAngularSize;
-                        } else if (isScene) {
+                        } else if (sceneElements.includes(group)) {
                             // Other scenes (compressed)
                             newStart = currentAngle;
                             newEnd = currentAngle + angularSizeForOtherScenes;
                         } else {
                             // Beat slice (keep original size)
-                            const originalSize = endAngle - startAngle;
+                            const originalStart = Number(group.getAttribute('data-start-angle')) || 0;
+                            const originalEnd = Number(group.getAttribute('data-end-angle')) || 0;
+                            const originalSize = originalEnd - originalStart;
                             newStart = currentAngle;
                             newEnd = currentAngle + originalSize;
                         }
@@ -1193,19 +1085,6 @@ export class RadialTimelineView extends ItemView {
                         if (path) {
                             path.setAttribute('d', buildCellArcPath(innerR, outerR, newStart, newEnd));
                         }
-
-                        // Keep data attributes aligned with adjusted geometry
-                        group.setAttribute('data-start-angle', String(newStart));
-                        group.setAttribute('data-end-angle', String(newEnd));
-                        logHover('redistributeActScenes:update', {
-                            groupId: group.id,
-                            isScene,
-                            isHovered: group === hoveredGroup,
-                            previousStart: startAngle,
-                            previousEnd: endAngle,
-                            newStart,
-                            newEnd
-                        });
 
                         // Update text path if present
                         const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
@@ -1235,9 +1114,6 @@ export class RadialTimelineView extends ItemView {
 
                         currentAngle = newEnd;
                     });
-                    
-                    // Don't clear isRedistributing here - it stays true until pointerout
-                    // This prevents cascading redistributions when geometry changes cause hover over different scenes
                 };
 
                 const onMove = (e: PointerEvent) => {
