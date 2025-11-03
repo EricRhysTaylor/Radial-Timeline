@@ -101,7 +101,7 @@ const CHRONOLOGUE_DATE_RADIUS = 792;  // Where chronologue boundary dates are po
 
 
 const SUBPLOT_OUTER_RADIUS_MAINPLOT = 780;     // Where subplot rings end (Main Plot mode - more room since beats hidden)
-const SUBPLOT_OUTER_RADIUS_STANDARD = 767;     // Where subplot rings end (All Scenes mode and Gossamer mode)
+const SUBPLOT_OUTER_RADIUS_STANDARD = 766;     // Where subplot rings end (All Scenes mode and Gossamer mode)
 const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;  // Where subplot rings end (Chronologue mode - smaller for time details)
 const INNER_RADIUS = 200;                      // Where subplot rings start from center
 
