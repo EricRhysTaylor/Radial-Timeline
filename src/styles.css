@@ -463,6 +463,12 @@
   fill: var(--text-normal);
 }
 
+/* Hide outer ring month labels in all modes except Chronologue */
+/* Outer ring months are only relevant in Chronologue mode where scenes are chronologically ordered */
+.radial-timeline-svg:not([data-mode="chronologue"]) .rt-month-label-outer {
+  opacity: 0;
+}
+
 /* First and last date labels (beginning/ending dates) */
 .radial-timeline-container .rt-month-label-outer.rt-date-boundary {
   font-size: 11px;

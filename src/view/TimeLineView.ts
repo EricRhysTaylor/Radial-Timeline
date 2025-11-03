@@ -563,6 +563,9 @@ export class RadialTimelineView extends ItemView {
             const svgElement = this.createSvgElement(svgString, timelineContainer);
 
                 if (svgElement) {
+                    // Set data-mode attribute for CSS targeting
+                    svgElement.setAttribute('data-mode', this.currentMode);
+                    
                     // If Gossamer mode is active, reuse hover-state styling: mute everything except Beat notes
                     if (this.currentMode === 'gossamer') {
                     svgElement.setAttribute('data-gossamer-mode', 'true');
@@ -796,8 +799,8 @@ export class RadialTimelineView extends ItemView {
                 };
 
                 view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
-                    // In Gossamer and Chronologue modes, mode-specific handlers manage scene hovers
-                    if (view.currentMode === 'gossamer' || view.currentMode === 'chronologue') return;
+                    // In Gossamer mode, normal scene hovers are disabled
+                    if (view.currentMode === 'gossamer') return;
 
                     const g = (e.target as Element).closest('.rt-scene-group');
                     if (!g || g === currentGroup) return;
@@ -828,8 +831,8 @@ export class RadialTimelineView extends ItemView {
                 });
 
                 view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
-                    // In Gossamer and Chronologue modes, mode-specific handlers manage scene hovers
-                    if (view.currentMode === 'gossamer' || view.currentMode === 'chronologue') return;
+                    // In Gossamer mode, normal scene hovers are disabled
+                    if (view.currentMode === 'gossamer') return;
                     
                     const toEl = e.relatedTarget as Element | null;
 
@@ -1031,11 +1034,18 @@ export class RadialTimelineView extends ItemView {
                     let actStartAngle = 0;
                     let actEndAngle = 2 * Math.PI;
                     
-                    // Simple approximation: if this is act 0,1,2 out of 3, divide circle
                     const actNum = Number(hoveredAct);
-                    const NUM_ACTS = 3;
-                    actStartAngle = (actNum * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
-                    actEndAngle = ((actNum + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                    
+                    if (actNum === 0) {
+                        // Chronologue mode (act 0): use full 360° circle
+                        actStartAngle = -Math.PI / 2; // Start at top (12 o'clock)
+                        actEndAngle = actStartAngle + (2 * Math.PI); // Full circle
+                    } else {
+                        // 3-act structure: divide circle into thirds
+                        const NUM_ACTS = 3;
+                        actStartAngle = (actNum * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                        actEndAngle = ((actNum + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2;
+                    }
                     
                     const totalActSpace = actEndAngle - actStartAngle;
                     

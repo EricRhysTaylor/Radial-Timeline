@@ -59,87 +59,8 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
         .setName('Advanced')
         .setHeading();
 
-    // Performance: Debounce timeline refresh on metadata changes
-    new Settings(containerEl)
-        .setName('Metadata refresh debounce (ms)')
-        .setDesc('Delay before refreshing the timeline after YAML frontmatter changes. Increase if your vault is large and updates feel too frequent.')
-        .addText(text => {
-            const current = String(plugin.settings.metadataRefreshDebounceMs ?? 10000);
-            text.setPlaceholder('e.g., 10000')
-                .setValue(current)
-                .onChange(async (value) => {
-                    const n = Number(value.trim());
-                    if (!Number.isFinite(n) || n < 0) {
-                        new Notice('Please enter a non-negative number.');
-                        text.setValue(String(plugin.settings.metadataRefreshDebounceMs ?? 10000));
-                        return;
-                    }
-                    plugin.settings.metadataRefreshDebounceMs = n;
-                    await plugin.saveSettings();
-                });
-        });
-
-    // Visual: Enable estimated date arc/label
-    new Settings(containerEl)
-        .setName('Show estimated completion date')
-        .setDesc('Toggle the estimation date label near the progress ring.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.showEstimate ?? true)
-            .onChange(async (value) => {
-                plugin.settings.showEstimate = value;
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-            }));
-
-    // Interaction: Auto-expand clipped scene titles on hover
-    new Settings(containerEl)
-        .setName('Auto-expand clipped scene titles')
-        .setDesc('When hovering over a scene, automatically expand it if the title text is clipped. Disable this if you prefer to quickly slide through scenes and read titles from the synopsis instead.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.enableSceneTitleAutoExpand ?? true)
-            .onChange(async (value) => {
-                plugin.settings.enableSceneTitleAutoExpand = value;
-                await plugin.saveSettings();
-            }));
-
-    new Settings(containerEl)
-        .setName('Enable hover debug logging')
-        .setDesc('Log detailed hover geometry diagnostics to the developer console. Useful for debugging hover/expansion issues; leave off during normal use.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.enableHoverDebugLogging ?? false)
-            .onChange(async (value) => {
-                plugin.settings.enableHoverDebugLogging = value;
-                await plugin.saveSettings();
-            }));
-
-    // Sorting: Sort by When date vs manuscript order
-    const sortSetting = new Settings(containerEl)
-        .setName('Scene ordering')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.sortByWhenDate ?? false)
-            .onChange(async (value) => {
-                plugin.settings.sortByWhenDate = value;
-                await plugin.saveSettings();
-                
-                // Update the description dynamically
-                updateSortDescription(sortSetting, value);
-                
-                plugin.refreshTimelineIfNeeded(null);
-            }));
-    
-    // Set initial description
-    updateSortDescription(sortSetting, plugin.settings.sortByWhenDate ?? false);
-    
-    // Helper function to update description based on toggle state
-    function updateSortDescription(setting: Settings, sortByWhen: boolean) {
-        if (sortByWhen) {
-            setting.setDesc('Current: Chronological by When date (YYYY-MM-DD). Scenes sorted by their When field within each Act zone. Requires When field in YAML frontmatter. Applies to All Scenes and Main Plot modes. (Chronologue mode always uses chronological sorting regardless of this setting.)');
-        } else {
-            setting.setDesc('Current: Manuscript order by filename prefix. Scenes sorted by numeric filename prefix (e.g., "01 Scene.md") within each Act zone. Requires numbered prefixes for proper ordering. Applies to All Scenes and Main Plot modes. (Chronologue mode always uses chronological sorting regardless of this setting.)');
-        }
-    }
-
-    const baseDurationDesc = 'Scenes at or above the selected duration fill the entire scene duration segment and all other durations below this are proportionally scaled. Chronologue marks timeline gaps as discontinuous (∞) when the gap between scenes exceeds three times the median interval.';
+    // 1. Chronologue duration arc cap (FIRST)
+    const baseDurationDesc = 'In chronologue mode, scenes with duractions at or above the selected value fill the entire scene arc segment. All other durations below this are proportionally scaled. Recommended if you have a lot of scenes with very short arcs. Note: chronologue marks significant timeline gaps as discontinuous (∞) when the gap between scenes exceeds three times the median interval.';
 
     const durationSetting = new Settings(containerEl)
         .setName('Chronologue duration arc cap')
@@ -186,6 +107,64 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
             if (!durationDropdown) return;
             durationSetting.setDesc(`${baseDurationDesc} Unable to load duration data.`);
         });
+
+    // 2. Auto-expand clipped scene titles (SECOND)
+    new Settings(containerEl)
+        .setName('Auto-expand clipped scene titles')
+        .setDesc('When hovering over a scene, automatically expand it if the title text is clipped. Disable this if you prefer to quickly slide through scenes and read titles from the synopsis instead.')
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.enableSceneTitleAutoExpand ?? true)
+            .onChange(async (value) => {
+                plugin.settings.enableSceneTitleAutoExpand = value;
+                await plugin.saveSettings();
+            }));
+
+    // 3. Show estimated completion date (THIRD)
+    new Settings(containerEl)
+        .setName('Show estimated completion date')
+        .setDesc('Toggle the estimation date label near the progress ring.')
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.showEstimate ?? true)
+            .onChange(async (value) => {
+                plugin.settings.showEstimate = value;
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            }));
+
+    // 4. Metadata refresh debounce (SECOND TO LAST)
+    new Settings(containerEl)
+        .setName('Metadata refresh debounce (ms)')
+        .setDesc('Delay before refreshing the timeline after YAML frontmatter changes. Increase if your vault is large and updates feel too frequent.')
+        .addText(text => {
+            const current = String(plugin.settings.metadataRefreshDebounceMs ?? 10000);
+            text.setPlaceholder('e.g., 10000')
+                .setValue(current)
+                .onChange(async (value) => {
+                    const n = Number(value.trim());
+                    if (!Number.isFinite(n) || n < 0) {
+                        new Notice('Please enter a non-negative number.');
+                        text.setValue(String(plugin.settings.metadataRefreshDebounceMs ?? 10000));
+                        return;
+                    }
+                    plugin.settings.metadataRefreshDebounceMs = n;
+                    await plugin.saveSettings();
+                });
+        });
+
+    // 5. Scene ordering by When date (LAST - DISABLED/GRAYED OUT)
+    const sortSetting = new Settings(containerEl)
+        .setName('Scene ordering based on When date')
+        .setDesc('Coming soon: Sort scenes chronologically by When date instead of manuscript order. This feature is currently in development and will be available in a future update.')
+        .addToggle(toggle => toggle
+            .setValue(false)
+            .setDisabled(true) // Make toggle inoperative
+            .onChange(async () => {
+                // No-op - disabled
+            }));
+    
+    // Gray out the disabled setting
+    sortSetting.settingEl.style.opacity = '0.5';
+    sortSetting.settingEl.style.cursor = 'not-allowed';
 
     // New systems are now the default
     // The plugin now uses:
