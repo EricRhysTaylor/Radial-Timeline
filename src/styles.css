@@ -471,7 +471,7 @@
 
 /* First and last date labels (beginning/ending dates) */
 .radial-timeline-container .rt-month-label-outer.rt-date-boundary {
-  font-size: 11px;
+  font-size: 14px;
   text-transform: uppercase;
   stroke: #000000;
   stroke-width: 3px;
@@ -2605,7 +2605,7 @@
 
 .rt-chronologue-timeline-arc path:not(.rt-elapsed-arc-path):not(.rt-duration-arc):not(.rt-duration-arc-overlap):not(.rt-duration-arc-unparseable) {
   stroke: var(--text-muted);
-  stroke-width: 3;
+  stroke-width: 4;
 }
 
 .rt-chronologue-timeline-arc line:not(.rt-elapsed-endpoint-marker) {

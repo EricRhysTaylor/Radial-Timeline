@@ -60,7 +60,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
         .setHeading();
 
     // 1. Chronologue duration arc cap (FIRST)
-    const baseDurationDesc = 'In chronologue mode, scenes with duractions at or above the selected value fill the entire scene arc segment. All other durations below this are proportionally scaled. Recommended if you have a lot of scenes with very short arcs. Note: chronologue marks significant timeline gaps as discontinuous (∞) when the gap between scenes exceeds three times the median interval.';
+    const baseDurationDesc = 'Scenes with durations at or above the selected value fill the entire segment. All other durations below this are proportionally scaled.';
 
     const durationSetting = new Settings(containerEl)
         .setName('Chronologue duration arc cap')
@@ -78,6 +78,10 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
             await plugin.saveSettings();
             plugin.refreshTimelineIfNeeded(null);
         });
+        // Set fixed width for dropdown (override CSS with important)
+        dropdown.selectEl.style.setProperty('width', '160px', 'important');
+        dropdown.selectEl.style.setProperty('min-width', '160px', 'important');
+        dropdown.selectEl.style.setProperty('max-width', '160px', 'important');
     });
 
     collectDurationCapOptions(plugin)

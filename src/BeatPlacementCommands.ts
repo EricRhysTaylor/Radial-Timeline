@@ -268,7 +268,14 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
         `|------|---------|-----------|-----|-----------|`,
       ];
       
-      for (const beat of analysis.beats) {
+      // Sort beats by current location (scene number) for chronological order
+      const sortedBeats = [...analysis.beats].sort((a, b) => {
+        const aNum = parseFloat(a.currentLocation) || 0;
+        const bNum = parseFloat(b.currentLocation) || 0;
+        return aNum - bNum;
+      });
+      
+      for (const beat of sortedBeats) {
         const suggestion = beat.suggestedLocation.trim() !== '' ? beat.suggestedLocation : '✓ Optimal';
         reportLines.push(`| ${beat.beatName} | ${beat.currentLocation} | ${suggestion} | ${beat.actConstraint} | ${beat.reasoning} |`);
       }

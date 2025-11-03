@@ -1,8 +1,3 @@
-/*
- * Radial Timeline (tm) Plugin for Obsidian
- * Copyright (c) 2025 Eric Rhys Taylor
- * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
- */
 /**
  * Radial Timeline Plugin for Obsidian — Renderer
  * Copyright (c) 2025 Eric Rhys Taylor
@@ -70,9 +65,6 @@ const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
 
 // --- Small helpers to centralize ring logic ---
 
-// Offsets are based solely on the outer scene ring's outer radius
-const BEAT_TITLE_INSET = -3;
-
 // --- Story beat label post-adjust state (prevents duplicate/clobber passes) ---
 type BeatLabelAdjustState = { retryId?: number; signature?: string; success?: boolean; lastAbortSignature?: string };
 const beatLabelAdjustState = new WeakMap<HTMLElement, BeatLabelAdjustState>();
@@ -84,11 +76,38 @@ function getLabelSignature(container: HTMLElement): string {
     return ids;
 }
 
-     // px inward from outer scene edge for story beat titles
+
+// RADIAL TIMELINE GEOMETRY CONSTANTS
+// Visual hierarchy from center outward:
+// ├─ Center (0px)
+// ├─ INNER_RADIUS (200px) ──────────── Where subplot rings start
+// ├─ SUBPLOT_OUTER_RADIUS (700px) ──── Where subplot rings end
+// ├─ [GAP for spacing and labels]
+// ├─ MONTH_TICK_START (750px) ───────── Inner edge of month tick marks
+// ├─ MONTH_LABEL_RADIUS (763px) ────── Where month text sits
+// ├─ CHRONOLOGUE_DATE_RADIUS (768px) ─ Where chronologue boundary dates sit
+// ├─ MONTH_TICK_END (785px) ─────────── Outer edge of month tick marks  
+// └─ SVG edge at 800px (SVG_SIZE/2)
+
+const SVG_SIZE = 1600;           // Total SVG canvas (800px radius)
+
+const MONTH_TICK_END = 800;      // Outer edge of month tick marks
+const MONTH_TICK_START = 764;    // Inner edge of month tick marks
+const MONTH_LABEL_RADIUS = 774;  // Where month labels are positioned
+const CHRONOLOGUE_DATE_RADIUS = 792;  // Where chronologue boundary dates are positioned
+
+
+const SUBPLOT_OUTER_RADIUS = 750;// Where subplot rings end (controls ring thickness)
+const INNER_RADIUS = 200;        // Where subplot rings start from center
+
+
+const MAX_TEXT_WIDTH = 500;      // Maximum text width for synopsis text
+
+//LABELS
 const ACT_LABEL_OFFSET = 25;     // px outward from outer scene edge for ACT labels
 const MONTH_TEXT_INSET = 13;     // px inward toward center from outer perimeter (larger = closer to origin)
-const MONTH_TICK_TERMINAL = 35;   // px outward from outer scene edge for month tick lines
-const SCENE_TITLE_INSET = 22; // fixed pixels inward from the scene's outer boundary for title path
+const MONTH_TICK_TERMINAL = 35;  // px outward from outer scene edge for month tick lines
+const SCENE_TITLE_INSET = 22;    // fixed pixels inward from the scene's outer boundary for title path
 
 // --- Tuning constants for story beat label rendering ---
 const BEAT_FONT_PX = 9; // keep in sync with .rt-storybeat-title in CSS
@@ -98,6 +117,9 @@ const ESTIMATE_FUDGE_RENDER = 1.35; // generous length when rendering
 const PADDING_RENDER_PX = 24; // extra pixels for render
 const ANGULAR_GAP_PX = 16; // gap used when checking overlaps
 const TEXTPATH_START_NUDGE_RAD = 0.02; // small start nudge for text paths
+
+// Offsets are based solely on the outer scene ring's outer radius
+const BEAT_TITLE_INSET = -3;
 
 // --- Small helpers ---
 function stripNumericPrefix(title: string | undefined): string {
@@ -464,11 +486,14 @@ export function createTimelineSVG(
 ): { svgString: string; maxStageColor: string } {
     
         const sceneCount = scenes.length;
-        const size = 1600;
-        const margin = 37; //KEY VALUE reduce timeline radius to make more room for ring text at top. Offset from the SVG edge to the First Plot Ring
-        const innerRadius = 200; // the first ring is 200px from the center
-        const outerRadius = size / 2 - margin;
-        const maxTextWidth = 500; // Define maxTextWidth for the synopsis text
+        const size = SVG_SIZE;
+        const innerRadius = INNER_RADIUS;
+        const subplotOuterRadius = SUBPLOT_OUTER_RADIUS;
+        const monthLabelRadius = MONTH_LABEL_RADIUS;
+        const chronologueDateRadius = CHRONOLOGUE_DATE_RADIUS;
+        const monthTickStart = MONTH_TICK_START;
+        const monthTickEnd = MONTH_TICK_END;
+        const maxTextWidth = MAX_TEXT_WIDTH;
     
         // Get the most advanced publish stage color using standardized helper
         // This color is used for act labels, Gossamer elements, and other UI components
@@ -682,12 +707,13 @@ export function createTimelineSVG(
         const ringGeo = computeRingGeometry({
             size,
             innerRadius,
-            outerRadius,
+            subplotOuterRadius,     // Controls subplot ring size
+            outerRadius: monthLabelRadius,  // Use month label position for outer boundary
             numRings: N,
-            monthTickTerminal: MONTH_TICK_TERMINAL,
-            monthTextInset: MONTH_TEXT_INSET,
+            monthTickTerminal: 0,   // Not used anymore - we set ticks explicitly
+            monthTextInset: 0,      // Not used anymore - we set labels explicitly
         });
-        const { ringWidths, ringStartRadii, lineInnerRadius, lineOuterRadius, monthLabelRadius } = ringGeo;
+        const { ringWidths, ringStartRadii, lineInnerRadius } = ringGeo;
     
         // **Include the `<style>` code here**
         svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg" ${isChronologueMode ? 'data-chronologue-mode="true"' : ''} preserveAspectRatio="xMidYMid meet">`;
@@ -709,7 +735,7 @@ export function createTimelineSVG(
         
 
         // Define outer arc paths for months (use outerLabels which may be chronological ticks)
-        svg += renderMonthLabelDefs({ months: outerLabels, monthLabelRadius });
+        svg += renderMonthLabelDefs({ months: outerLabels, monthLabelRadius, chronologueDateRadius });
 
 
         // Close defs act
@@ -866,7 +892,7 @@ export function createTimelineSVG(
         // Month spokes and inner labels (always calendar months)
         // In Chronologue mode, don't render the calendar month spokes to outer radius
         if (!isChronologueMode) {
-            svg += renderMonthSpokesAndInnerLabels({ months, lineInnerRadius, lineOuterRadius, currentMonthIndex });
+            svg += renderMonthSpokesAndInnerLabels({ months, lineInnerRadius, lineOuterRadius: monthTickEnd, currentMonthIndex });
         } else {
             // In Chronologue mode, only render inner labels and short spokes (not extending to outer ring)
             const chronologueInnerRadius = lineInnerRadius - 5;
@@ -879,13 +905,13 @@ export function createTimelineSVG(
             svg += '<g class="rt-chronological-outer-ticks">';
             outerLabels.forEach(({ angle, isMajor, shortName }) => {
                 // Ticks should align with the label radius for perfect alignment
-                const tickStart = monthLabelRadius - 13; // Start just inside labels (3px closer to origin)
+                const tickStart = monthTickStart; // Use explicit constant
                 
                 // Act-style boundary markers for major ticks (first/last scenes)
                 // Subtle minor marks for intermediate scenes
                 if (isMajor) {
                     // MAJOR TICK: Act-style boundary line (extends outward with solid line)
-                    const tickEnd = monthLabelRadius + 11; // Extend to top of SVG boundingbox. Beyond this will clip
+                    const tickEnd = monthTickEnd; // Use explicit constant
                     const x1 = formatNumber(tickStart * Math.cos(angle));
                     const y1 = formatNumber(tickStart * Math.sin(angle));
                     const x2 = formatNumber(tickEnd * Math.cos(angle));
@@ -897,7 +923,7 @@ export function createTimelineSVG(
                         opacity="0.8"/>`;
                 } else if (shortName === '') {
                     // MINOR TICK: Small dotted mark (no label)
-                    const tickEnd = monthLabelRadius + 5; // Short extension
+                    const tickEnd = (monthTickStart + monthTickEnd) / 2; // Midpoint for minor ticks
                     const x1 = formatNumber(tickStart * Math.cos(angle));
                     const y1 = formatNumber(tickStart * Math.sin(angle));
                     const x2 = formatNumber(tickEnd * Math.cos(angle));
@@ -1501,7 +1527,7 @@ export function createTimelineSVG(
         }
 
         // After all scenes are drawn, add just the act borders (vertical lines only)
-        svg += renderActBorders({ NUM_ACTS, innerRadius, outerRadius });
+        svg += renderActBorders({ NUM_ACTS, innerRadius, outerRadius: subplotOuterRadius });
 
         // Calculate the actual outermost outerRadius (first ring's outer edge)
         const actualOuterRadius = ringStartRadii[NUM_RINGS - 1] + ringWidths[NUM_RINGS - 1];
@@ -1981,7 +2007,7 @@ export function createTimelineSVG(
             const durationCapMs = durationSelectionToMs(plugin.settings.chronologueDurationCapSelection);
             const chronologueTimelineArc = renderChronologueTimelineArc(
                 scenes, 
-                outerRadius, 
+                subplotOuterRadius,  // Use subplot outer radius for arcs
                 3, // arc width
                 manuscriptOrderPositions,
                 durationCapMs
