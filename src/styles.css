@@ -495,7 +495,7 @@
   text-anchor: middle;
   dominant-baseline: middle;
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 700;
   /* fill: var(--text-normal); */ /* Color is now set dynamically in SVG */
 }
 .radial-timeline-container .rt-month-spoke-line {
@@ -503,6 +503,9 @@
   stroke-width: 1px;
   stroke-dasharray: 2, 2;
   opacity: 1;
+}
+.radial-timeline-container .rt-month-spoke-line.rt-month-spoke-intermediate {
+  opacity: 0.45;
 }
 .radial-timeline-container .rt-month-spoke-line.rt-act-boundary {
   stroke: var(--text-normal);

@@ -1,12 +1,24 @@
 import { formatNumber } from '../../utils/svg';
 
+const normalizeAngle = (angle: number): number => {
+  const twoPi = Math.PI * 2;
+  let normalized = angle % twoPi;
+  if (normalized > Math.PI) {
+    normalized -= twoPi;
+  } else if (normalized <= -Math.PI) {
+    normalized += twoPi;
+  }
+  return normalized;
+};
+
 export function renderMonthSpokesAndInnerLabels(params: {
   months: { name: string; shortName: string; angle: number }[];
   lineInnerRadius: number;
   lineOuterRadius: number;
   currentMonthIndex: number;
+  includeIntermediateSpokes?: boolean;
 }): string {
-  const { months, lineInnerRadius, lineOuterRadius, currentMonthIndex } = params;
+  const { months, lineInnerRadius, lineOuterRadius, currentMonthIndex, includeIntermediateSpokes = false } = params;
   let svg = '<g class="month-spokes">';
   months.forEach(({ name, angle }, monthIndex) => {
     const x1 = formatNumber((lineInnerRadius - 5) * Math.cos(angle));
@@ -47,6 +59,31 @@ export function renderMonthSpokesAndInnerLabels(params: {
       </text>
     `;
   });
+
+  if (includeIntermediateSpokes && months.length > 0) {
+    const multiplier = 3;
+    const majorStep = (2 * Math.PI) / months.length;
+
+    for (let monthIndex = 0; monthIndex < months.length; monthIndex++) {
+      for (let step = 1; step < multiplier; step++) {
+        const rawAngle = months[monthIndex].angle + (majorStep * step) / multiplier;
+        const angle = normalizeAngle(rawAngle);
+        const x1 = formatNumber((lineInnerRadius - 5) * Math.cos(angle));
+        const y1 = formatNumber((lineInnerRadius - 5) * Math.sin(angle));
+        const x2 = formatNumber(lineOuterRadius * Math.cos(angle));
+        const y2 = formatNumber(lineOuterRadius * Math.sin(angle));
+
+        svg += `
+      <line
+        x1="${x1}"
+        y1="${y1}"
+        x2="${x2}"
+        y2="${y2}"
+        class="rt-month-spoke-line rt-month-spoke-intermediate"
+      />`;
+      }
+    }
+  }
   svg += '</g>';
   return svg;
 }
@@ -68,5 +105,4 @@ export function renderGossamerMonthSpokes(params: {
   }
   return `<g class="rt-gossamer-spokes">${spokesHtml}</g>`;
 }
-
 

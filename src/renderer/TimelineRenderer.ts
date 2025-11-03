@@ -81,7 +81,10 @@ function getLabelSignature(container: HTMLElement): string {
 // Visual hierarchy from center outward:
 // ├─ Center (0px)
 // ├─ INNER_RADIUS (200px) ──────────── Where subplot rings start
-// ├─ SUBPLOT_OUTER_RADIUS (700px) ──── Where subplot rings end
+// ├─ SUBPLOT_OUTER_RADIUS (750/767px) ─ Where subplot rings end (varies by mode)
+//    - STANDARD: 767px (All Scenes/Gossamer modes)
+//    - MAINPLOT:  767px (Main Plot - more room since beats hidden)
+//    - CHRONOLOGUE: 750px (Chronologue - smaller for time details)
 // ├─ [GAP for spacing and labels]
 // ├─ MONTH_TICK_START (750px) ───────── Inner edge of month tick marks
 // ├─ MONTH_LABEL_RADIUS (763px) ────── Where month text sits
@@ -91,20 +94,22 @@ function getLabelSignature(container: HTMLElement): string {
 
 const SVG_SIZE = 1600;           // Total SVG canvas (800px radius)
 
-const MONTH_TICK_END = 800;      // Outer edge of month tick marks
-const MONTH_TICK_START = 764;    // Inner edge of month tick marks
+const MONTH_TICK_END = 800;      // Outer edge of month tick marks (Chronologue mode)
+const MONTH_TICK_START = 764;    // Inner edge of month tick marks (Chronologue mode)
 const MONTH_LABEL_RADIUS = 774;  // Where month labels are positioned
 const CHRONOLOGUE_DATE_RADIUS = 792;  // Where chronologue boundary dates are positioned
 
 
-const SUBPLOT_OUTER_RADIUS = 750;// Where subplot rings end (controls ring thickness)
-const INNER_RADIUS = 200;        // Where subplot rings start from center
+const SUBPLOT_OUTER_RADIUS_MAINPLOT = 780;     // Where subplot rings end (Main Plot mode - more room since beats hidden)
+const SUBPLOT_OUTER_RADIUS_STANDARD = 767;     // Where subplot rings end (All Scenes mode and Gossamer mode)
+const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;  // Where subplot rings end (Chronologue mode - smaller for time details)
+const INNER_RADIUS = 200;                      // Where subplot rings start from center
 
 
 const MAX_TEXT_WIDTH = 500;      // Maximum text width for synopsis text
 
 //LABELS
-const ACT_LABEL_OFFSET = 25;     // px outward from outer scene edge for ACT labels
+const ACT_LABEL_RADIUS = 790;     // px outward from outer scene edge for ACT labels
 const MONTH_TEXT_INSET = 13;     // px inward toward center from outer perimeter (larger = closer to origin)
 const MONTH_TICK_TERMINAL = 35;  // px outward from outer scene edge for month tick lines
 const SCENE_TITLE_INSET = 22;    // fixed pixels inward from the scene's outer boundary for title path
@@ -488,7 +493,6 @@ export function createTimelineSVG(
         const sceneCount = scenes.length;
         const size = SVG_SIZE;
         const innerRadius = INNER_RADIUS;
-        const subplotOuterRadius = SUBPLOT_OUTER_RADIUS;
         const monthLabelRadius = MONTH_LABEL_RADIUS;
         const chronologueDateRadius = CHRONOLOGUE_DATE_RADIUS;
         const monthTickStart = MONTH_TICK_START;
@@ -562,8 +566,19 @@ export function createTimelineSVG(
         // Chronologue mode always uses chronological sorting (by When date)
         const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
         const isChronologueMode = currentMode === 'chronologue';
+        const isMainPlotMode = currentMode === 'main-plot';
         const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
         const forceChronological = isChronologueMode;
+        
+        // Use appropriate subplot outer radius based on mode
+        // - Chronologue mode: smaller radius to make room for time details
+        // - Main Plot mode: larger radius since scene beats are hidden
+        // - Standard modes: default radius
+        const subplotOuterRadius = isChronologueMode 
+            ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
+            : isMainPlotMode 
+            ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
+            : SUBPLOT_OUTER_RADIUS_STANDARD;
         
         // Group scenes differently based on sorting method:
         // - When sorting by When date: Group only by Subplot (full 360° circle)
@@ -892,12 +907,24 @@ export function createTimelineSVG(
         // Month spokes and inner labels (always calendar months)
         // In Chronologue mode, don't render the calendar month spokes to outer radius
         if (!isChronologueMode) {
-            svg += renderMonthSpokesAndInnerLabels({ months, lineInnerRadius, lineOuterRadius: monthTickEnd, currentMonthIndex });
+            svg += renderMonthSpokesAndInnerLabels({
+                months,
+                lineInnerRadius,
+                lineOuterRadius: monthTickEnd,
+                currentMonthIndex,
+                includeIntermediateSpokes: true
+            });
         } else {
             // In Chronologue mode, only render inner labels and short spokes (not extending to outer ring)
             const chronologueInnerRadius = lineInnerRadius - 5;
             const chronologueOuterRadius = lineInnerRadius + 30; // Short spokes for inner calendar reference
-            svg += renderMonthSpokesAndInnerLabels({ months, lineInnerRadius, lineOuterRadius: chronologueOuterRadius, currentMonthIndex });
+            svg += renderMonthSpokesAndInnerLabels({
+                months,
+                lineInnerRadius,
+                lineOuterRadius: chronologueOuterRadius,
+                currentMonthIndex,
+                includeIntermediateSpokes: false
+            });
         }
 
         // Add outer chronological tick marks in Chronologue mode
@@ -1072,9 +1099,8 @@ export function createTimelineSVG(
         
         // Only show Act labels when using manuscript order (not When date sorting)
         if (!sortByWhen) {
-            // --- Draw Act labels here so they rotate ---
-            const actualOuterRadiusForActs = ringStartRadii[NUM_RINGS - 1] + ringWidths[NUM_RINGS - 1];
-            svg += renderActLabels({ NUM_ACTS, outerMostOuterRadius: actualOuterRadiusForActs, actLabelOffset: ACT_LABEL_OFFSET, maxStageColor });
+            // --- Draw Act labels at fixed radius ---
+            svg += renderActLabels({ NUM_ACTS, outerMostOuterRadius: ACT_LABEL_RADIUS, actLabelOffset: 0, maxStageColor });
         }
 
         // Initialize beat angles map for Gossamer (clear any stale data from previous render)
