@@ -650,7 +650,7 @@ export default class SynopsisManager {
       synopsis.setAttribute('pointer-events', 'all');
       
       // Position text elements to follow the arc
-      this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf, adjustedRadius);
+      this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf, adjustedRadius, sceneId);
       
     } catch (e) {
       // Silent error handling
@@ -739,7 +739,17 @@ export default class SynopsisManager {
   /**
    * Position text elements along an arc
    */
-  private positionTextElements(synopsis: Element, isRightAligned: boolean, isTopHalf: boolean, radius: number): void {
+  private static readonly TOP_HALF_BASE_INSET = 18;
+  private static readonly TOP_HALF_MIN_INSET = 10;
+  private static readonly TOP_HALF_MAX_INSET = 48;
+
+  private positionTextElements(
+    synopsis: Element,
+    isRightAligned: boolean,
+    isTopHalf: boolean,
+    radius: number,
+    sceneId: string
+  ): void {
     // Find all text elements
     const textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
     if (textElements.length === 0) return;
@@ -781,6 +791,14 @@ export default class SynopsisManager {
     
     // Separate text elements into rows (vertically stacked lines)
     const textRows: SVGTextElement[][] = [];
+    const diagnostics: {
+      rowIndex: number;
+      absX: number;
+      absY: number;
+      distance: number;
+      delta: number;
+    }[] = [];
+    const shouldLogDiagnostics = synopsis.classList.contains('rt-visible');
     
     // Build rows, grouping metadata blocks with their preceding title rows
     textElements.forEach((textEl) => {
@@ -796,6 +814,8 @@ export default class SynopsisManager {
     let lastValidAnchorX = 0; // Track the last valid anchor position for fallback positioning
     
     textRows.forEach((rowElements, rowIndex) => {
+      const primaryEl = rowElements[0] ?? null;
+
       // Calculate absolute position for this row with variable line heights
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
@@ -815,32 +835,28 @@ export default class SynopsisManager {
         }
       }
       
-      const absoluteY = baseY + yOffset;
+      const anchorY = baseY + yOffset;
       
       // Determine anchor position along the circle for this row
-      let anchorX = 0;
-      if (rowIndex > 0) {
-        try {
-          if (Math.abs(absoluteY) >= radius) {
-            anchorX = lastValidAnchorX;
-          } else {
-            const circleX = Math.sqrt(radius * radius - absoluteY * absoluteY);
-            
-            // Calculate relative anchor position consistently for all quadrants
-            // anchorX represents the offset from baseX to the circle edge
-            if (isRightAligned) {
-              // Right-aligned text: move inward from the right side of circle
-              anchorX = circleX - Math.abs(baseX);
-            } else {
-              // Left-aligned text: move inward from the left side of circle
-              anchorX = Math.abs(baseX) - circleX;
-            }
-            
-            lastValidAnchorX = anchorX;
+      let anchorX = lastValidAnchorX;
+      try {
+        if (Math.abs(anchorY) < radius) {
+          const circleX = Math.sqrt(radius * radius - anchorY * anchorY);
+          const direction = isRightAligned ? 1 : -1;
+          let anchorAbsoluteX = circleX * direction;
+
+          if (isTopHalf) {
+            const inset = this.computeTopHalfInset(primaryEl, rowIndex);
+            const magnitude = Math.max(0, Math.abs(anchorAbsoluteX) - inset);
+            anchorAbsoluteX = magnitude * direction;
           }
-        } catch (e) {
-          anchorX = lastValidAnchorX;
+
+          anchorX = anchorAbsoluteX - baseX;
+
+          lastValidAnchorX = anchorX;
         }
+      } catch {
+        anchorX = lastValidAnchorX;
       }
       
       const { primaryWidth, metadataWidth, gap } = this.measureRowLayout(rowElements, metadataSpacing);
@@ -856,7 +872,88 @@ export default class SynopsisManager {
         gap,
         isRightAligned
       );
+
+      if (shouldLogDiagnostics) {
+        const relXAttr = primaryEl?.getAttribute('x');
+        const relYAttr = primaryEl?.getAttribute('y');
+        if (relXAttr && relYAttr) {
+          const relX = Number.parseFloat(relXAttr);
+          const relY = Number.parseFloat(relYAttr);
+          if (Number.isFinite(relX) && Number.isFinite(relY)) {
+            const absX = baseX + relX;
+            const absY = baseY + relY;
+            const distanceFromCenter = Math.sqrt(absX * absX + absY * absY);
+            diagnostics.push({
+              rowIndex,
+              absX,
+              absY,
+              distance: distanceFromCenter,
+              delta: distanceFromCenter - radius,
+            });
+          }
+        }
+      }
     });
+
+    if (shouldLogDiagnostics && diagnostics.length > 0) {
+      const quadrantLabel = isTopHalf
+        ? (isRightAligned ? 'Q4' : 'Q3')
+        : (isRightAligned ? 'Q1' : 'Q2');
+      console.groupCollapsed(
+        `[SynopsisPosition] scene=${sceneId} quadrant=${quadrantLabel}`
+      );
+      console.table(
+        diagnostics.map(({ rowIndex, absX, absY, distance, delta }) => ({
+          rowIndex,
+          absX: Math.round(absX * 100) / 100,
+          absY: Math.round(absY * 100) / 100,
+          radius,
+          distance: Math.round(distance * 100) / 100,
+          delta: Math.round(delta * 100) / 100,
+        }))
+      );
+      console.groupEnd();
+    }
+  }
+
+  private computeTopHalfInset(textElement: SVGTextElement | null, rowIndex: number): number {
+    if (!textElement) {
+      return SynopsisManager.TOP_HALF_BASE_INSET;
+    }
+
+    let referenceSize = Number.NaN;
+
+    try {
+      const style = window.getComputedStyle(textElement);
+      if (style?.fontSize) {
+        referenceSize = parseFloat(style.fontSize);
+      }
+    } catch {
+      referenceSize = Number.NaN;
+    }
+
+    if (!Number.isFinite(referenceSize) || referenceSize <= 0) {
+      try {
+        const box = textElement.getBBox();
+        if (box && Number.isFinite(box.height)) {
+          referenceSize = box.height;
+        }
+      } catch {
+        referenceSize = Number.NaN;
+      }
+    }
+
+    if (!Number.isFinite(referenceSize) || referenceSize <= 0) {
+      return SynopsisManager.TOP_HALF_BASE_INSET;
+    }
+
+    const ratio = rowIndex === 0 ? 0.9 : 0.6;
+    const scaled = referenceSize * ratio;
+    const clamped = Math.max(
+      SynopsisManager.TOP_HALF_MIN_INSET,
+      Math.min(SynopsisManager.TOP_HALF_MAX_INSET, scaled)
+    );
+    return clamped;
   }
 
   private measureRowLayout(rowElements: SVGTextElement[], defaultGap: number): { primaryWidth: number; metadataWidth: number; gap: number } {
