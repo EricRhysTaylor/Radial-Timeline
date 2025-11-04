@@ -2841,6 +2841,12 @@
   pointer-events: none;
 }
 
+/* Hide chronological ticks that overlap with elapsed endpoint markers */
+.rt-chronological-tick.rt-tick-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Elapsed time label */
 .rt-elapsed-time-group {
   pointer-events: none;

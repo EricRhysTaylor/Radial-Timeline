@@ -594,6 +594,7 @@ export interface ChronologicalTickInfo {
     isMajor?: boolean;  // Optional: true for solid lines, false/undefined for dotted
     isFirst?: boolean;  // Optional: true for first scene label (beginning date)
     isLast?: boolean;   // Optional: true for last scene label (ending date)
+    sceneIndex?: number; // Optional: sorted scene index for matching with elapsed markers
 }
 
 /**
@@ -731,7 +732,8 @@ export function generateChronologicalTicks(
                 name: label,
                 shortName: label,
                 isMajor: true,
-                isFirst: true
+                isFirst: true,
+                sceneIndex: scene.sortedIndex
             });
         } else if (i === numScenes - 1) {
             // Last scene: full date label with two lines (year, then month/day), but adjust if it would overlap with first
@@ -753,7 +755,8 @@ export function generateChronologicalTicks(
                 name: label,
                 shortName: label,
                 isMajor: true,
-                isLast: true
+                isLast: true,
+                sceneIndex: scene.sortedIndex
             });
         } else if (promoteSet.has(i)) {
             // Promoted scenes: abbreviated date label
@@ -764,7 +767,8 @@ export function generateChronologicalTicks(
                 angle: sceneStartAngle,
                 name: `${month} ${day}`,
                 shortName: `${month} ${day}`,
-                isMajor: true
+                isMajor: true,
+                sceneIndex: scene.sortedIndex
             });
         } else {
             // Minor scenes: tick mark without label
@@ -772,7 +776,8 @@ export function generateChronologicalTicks(
                 angle: sceneStartAngle,
                 name: '',
                 shortName: '',
-                isMajor: false
+                isMajor: false,
+                sceneIndex: scene.sortedIndex
             });
         }
     }

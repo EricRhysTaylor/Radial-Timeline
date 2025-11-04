@@ -100,9 +100,12 @@ const MONTH_LABEL_RADIUS = 774;  // Where month labels are positioned
 const CHRONOLOGUE_DATE_RADIUS = 792;  // Where chronologue boundary dates are positioned
 
 
-const SUBPLOT_OUTER_RADIUS_MAINPLOT = 780;     // Where subplot rings end (Main Plot mode - more room since beats hidden)
-const SUBPLOT_OUTER_RADIUS_STANDARD = 766;     // Where subplot rings end (All Scenes mode and Gossamer mode)
-const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;  // Where subplot rings end (Chronologue mode - smaller for time details)
+// Exported constants for use in other modules
+export const SUBPLOT_OUTER_RADIUS_MAINPLOT = 780;     // Where subplot rings end (Main Plot mode - more room since beats hidden)
+export const SUBPLOT_OUTER_RADIUS_STANDARD = 766;     // Where subplot rings end (All Scenes mode and Gossamer mode)
+export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;  // Where subplot rings end (Chronologue mode - smaller for time details)
+export const SYNOPSIS_INSET = 0;                      // px inward from subplot outer radius for synopsis text positioning
+
 const INNER_RADIUS = 200;                      // Where subplot rings start from center
 
 
@@ -513,18 +516,6 @@ export function createTimelineSVG(
         // Hidden config group consumed by the stylesheet (e.g. to tint buttons, etc.)
         svg += `<g id="timeline-config-data" data-max-stage-color="${maxStageColor}"></g>`;
 
-        // (Debug overlay and search banner removed)
-        
-        // Center the origin in the middle of the SVG
-        svg += `<g transform="translate(${size / 2}, ${size / 2})">`;
-        
-        // Create defs for patterns and gradients (opened later after SVG root)
-
-        // (Debug overlay and search banner removed)
-        
-        // Center the origin in the middle of the SVG
-        svg += `<g transform="translate(${size / 2}, ${size / 2})">`;
-        
         // Create defs for patterns and gradients
         svg += `<defs>`;
 
@@ -647,7 +638,7 @@ export function createTimelineSVG(
         const months = standardMonths;
         
         // Outer labels can be different in Chronologue mode
-        let outerLabels: { name: string; shortName: string; angle: number; isMajor?: boolean; isFirst?: boolean; isLast?: boolean }[];
+        let outerLabels: { name: string; shortName: string; angle: number; isMajor?: boolean; isFirst?: boolean; isLast?: boolean; sceneIndex?: number }[];
         
         if (isChronologueMode) {
             // In Chronologue mode, we need to align ticks to actual scene positions
@@ -710,7 +701,8 @@ export function createTimelineSVG(
                 angle: tick.angle,
                 isMajor: tick.isMajor,
                 isFirst: tick.isFirst,
-                isLast: tick.isLast
+                isLast: tick.isLast,
+                sceneIndex: tick.sceneIndex
             }));
         } else {
             // Use standard calendar months for outer labels too
@@ -930,9 +922,12 @@ export function createTimelineSVG(
         // Add outer chronological tick marks in Chronologue mode
         if (isChronologueMode && outerLabels.length > 0) {
             svg += '<g class="rt-chronological-outer-ticks">';
-            outerLabels.forEach(({ angle, isMajor, shortName }) => {
+            outerLabels.forEach(({ angle, isMajor, shortName, isFirst, isLast, sceneIndex }) => {
                 // Ticks should align with the label radius for perfect alignment
                 const tickStart = monthTickStart; // Use explicit constant
+                
+                // Build data attributes for tick identification
+                const dataAttrs = sceneIndex !== undefined ? ` data-scene-index="${sceneIndex}"` : '';
                 
                 // Act-style boundary markers for major ticks (first/last scenes)
                 // Subtle minor marks for intermediate scenes
@@ -945,6 +940,7 @@ export function createTimelineSVG(
                     const y2 = formatNumber(tickEnd * Math.sin(angle));
                     
                     svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
+                        class="rt-chronological-tick rt-chronological-tick-major"${dataAttrs}
                         stroke="var(--text-muted)" 
                         stroke-width="2" 
                         opacity="0.8"/>`;
@@ -957,6 +953,7 @@ export function createTimelineSVG(
                     const y2 = formatNumber(tickEnd * Math.sin(angle));
                     
                     svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
+                        class="rt-chronological-tick rt-chronological-tick-minor"${dataAttrs}
                         stroke="var(--text-muted)" 
                         stroke-width="1.5" 
                         stroke-dasharray="1,2" 

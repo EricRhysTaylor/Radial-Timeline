@@ -684,6 +684,9 @@ function showElapsedTime(
 
         addEndpointMarker(startAngle);
         addEndpointMarker(endAngle);
+        
+        // Hide chronological ticks that overlap with the endpoint markers
+        hideOverlappingTicks(svg, startAngle, endAngle);
 
         const midpointNormalized = normalizedStart + sweep / 2;
         const midpointAngle = normalizeAngle(midpointNormalized);
@@ -777,4 +780,59 @@ function removeElapsedTimeArc(svg: SVGSVGElement): void {
     
     if (existingArc) existingArc.remove();
     if (existingGroup) existingGroup.remove();
+    
+    // Restore any hidden chronological ticks
+    restoreHiddenTicks(svg);
+}
+
+/**
+ * Hide chronological ticks that overlap with elapsed endpoint markers
+ * Uses angle-based matching to identify which ticks to hide
+ */
+function hideOverlappingTicks(svg: SVGSVGElement, angle1: number, angle2: number): void {
+    const ANGLE_TOLERANCE = 0.01; // Radians (~0.6 degrees)
+    
+    const ticks = Array.from(svg.querySelectorAll<SVGLineElement>('.rt-chronological-tick'));
+    
+    ticks.forEach(tick => {
+        // Get the tick's position from its x1, y1 coordinates (start point)
+        const x1Str = tick.getAttribute('x1');
+        const y1Str = tick.getAttribute('y1');
+        
+        if (!x1Str || !y1Str) return;
+        
+        const x1 = parseFloat(x1Str);
+        const y1 = parseFloat(y1Str);
+        
+        // Calculate angle from coordinates
+        const tickAngle = Math.atan2(y1, x1);
+        
+        // Normalize angles to [-π, π] range for comparison
+        const normalizeAngle = (angle: number): number => {
+            let normalized = angle;
+            while (normalized > Math.PI) normalized -= 2 * Math.PI;
+            while (normalized < -Math.PI) normalized += 2 * Math.PI;
+            return normalized;
+        };
+        
+        const normalizedTickAngle = normalizeAngle(tickAngle);
+        const normalizedAngle1 = normalizeAngle(angle1);
+        const normalizedAngle2 = normalizeAngle(angle2);
+        
+        // Check if tick angle matches either of the endpoint angles
+        const matchesAngle1 = Math.abs(normalizedTickAngle - normalizedAngle1) < ANGLE_TOLERANCE;
+        const matchesAngle2 = Math.abs(normalizedTickAngle - normalizedAngle2) < ANGLE_TOLERANCE;
+        
+        if (matchesAngle1 || matchesAngle2) {
+            tick.classList.add('rt-tick-hidden');
+        }
+    });
+}
+
+/**
+ * Restore all hidden chronological ticks
+ */
+function restoreHiddenTicks(svg: SVGSVGElement): void {
+    const hiddenTicks = Array.from(svg.querySelectorAll<SVGLineElement>('.rt-tick-hidden'));
+    hiddenTicks.forEach(tick => tick.classList.remove('rt-tick-hidden'));
 }

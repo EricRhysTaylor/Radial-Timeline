@@ -7,6 +7,12 @@ import type RadialTimelinePlugin from './main';
 import { decodeHtmlEntities, parseSceneTitleComponents } from './utils/text';
 import { getPublishStageStyle, splitSynopsisLines, decodeContentLines, isOverdueAndIncomplete } from './synopsis/SynopsisData';
 import { createSynopsisContainer, createTextGroup, createText } from './synopsis/SynopsisView';
+import { 
+  SUBPLOT_OUTER_RADIUS_MAINPLOT, 
+  SUBPLOT_OUTER_RADIUS_STANDARD, 
+  SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
+  SYNOPSIS_INSET
+} from './renderer/TimelineRenderer';
 
 interface Scene {
   title?: string;
@@ -591,13 +597,23 @@ export default class SynopsisManager {
       // Determine which quadrant the mouse is in
       const quadrant = this.getQuadrant(svgP.x, svgP.y);
       
-      // Calculate positioning parameters
+      // Calculate positioning parameters based on current mode
       const size = 1600; // SVG size
       const margin = 30;
-      const outerRadius = size / 2 - margin;
-      const synopsisRadiusMargin = 14;
-      const textInset = 12; // Breathing room between perimeter and text (applies to all quadrants)
-      const adjustedRadius = outerRadius - synopsisRadiusMargin - textInset; // Reduce radius for synopsis positioning
+      
+      // Get current mode to determine appropriate subplot outer radius
+      const currentMode = (this.plugin.settings as any).currentMode || 'all-scenes';
+      const isChronologueMode = currentMode === 'chronologue';
+      const isMainPlotMode = currentMode === 'main-plot';
+      
+      // Use imported constants from TimelineRenderer for consistent sizing
+      const subplotOuterRadius = isChronologueMode 
+          ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
+          : isMainPlotMode 
+          ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
+          : SUBPLOT_OUTER_RADIUS_STANDARD;
+      
+      const adjustedRadius = subplotOuterRadius - SYNOPSIS_INSET; // Position synopsis text inward from mode-specific radius
       
       
       // Reset styles and classes
@@ -810,14 +826,14 @@ export default class SynopsisManager {
           } else {
             const circleX = Math.sqrt(radius * radius - absoluteY * absoluteY);
             
-            if (isTopHalf) {
-              anchorX = isRightAligned
-                ? Math.abs(circleX) - Math.abs(baseX)
-                : Math.abs(baseX) - Math.abs(circleX);
+            // Calculate relative anchor position consistently for all quadrants
+            // anchorX represents the offset from baseX to the circle edge
+            if (isRightAligned) {
+              // Right-aligned text: move inward from the right side of circle
+              anchorX = circleX - Math.abs(baseX);
             } else {
-              anchorX = isRightAligned
-                ? -(Math.abs(baseX) - Math.abs(circleX))
-                : Math.abs(baseX) - Math.abs(circleX);
+              // Left-aligned text: move inward from the left side of circle
+              anchorX = Math.abs(baseX) - circleX;
             }
             
             lastValidAnchorX = anchorX;
@@ -881,10 +897,9 @@ export default class SynopsisManager {
     }
     
     const hasMetadata = rowElements.length > 1;
-    const edgePadding = 6;
 
     if (isRightAligned) {
-      const metadataRightEdge = anchorX - edgePadding;
+      const metadataRightEdge = anchorX - SYNOPSIS_INSET;
       const metadataLeftEdge = hasMetadata ? metadataRightEdge - metadataWidth : metadataRightEdge;
       const titleRightEdge = hasMetadata ? metadataLeftEdge - gap : metadataRightEdge;
       
@@ -900,7 +915,7 @@ export default class SynopsisManager {
         }
       });
     } else {
-      const rowLeftEdge = anchorX + edgePadding;
+      const rowLeftEdge = anchorX + SYNOPSIS_INSET;
       const metadataLeftEdge = hasMetadata ? rowLeftEdge + primaryWidth + gap : rowLeftEdge;
       
       rowElements.forEach((textEl, index) => {
