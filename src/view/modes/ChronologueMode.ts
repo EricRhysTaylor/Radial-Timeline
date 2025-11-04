@@ -47,13 +47,135 @@ export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement):
  * Setup scene hover interactions for synopsis display
  */
 function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement): void {
-    const findSynopsisForScene = (sceneId: string): Element | null => {
-        return svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
-    };
+    const sceneIdCache = new WeakMap<Element, string>();
 
     const getSceneIdFromGroup = (group: Element): string | null => {
-        const pathEl = group.querySelector('.rt-scene-path') as SVGPathElement | null;
-        return pathEl?.id || null;
+        const cached = sceneIdCache.get(group);
+        if (cached) return cached;
+
+        const pathEl = group.querySelector<SVGPathElement>('.rt-scene-path');
+        const sceneId = pathEl?.id ?? null;
+        if (sceneId) {
+            sceneIdCache.set(group, sceneId);
+        }
+        return sceneId;
+    };
+
+    const synopsisBySceneId = new Map<string, Element>();
+    svg.querySelectorAll<SVGElement>('.rt-scene-info[data-for-scene]').forEach(synopsis => {
+        const sceneId = synopsis.getAttribute('data-for-scene');
+        if (sceneId) {
+            synopsisBySceneId.set(sceneId, synopsis);
+        }
+    });
+
+    const numberSquareBySceneId = new Map<string, SVGElement>();
+    svg.querySelectorAll<SVGElement>('.rt-number-square[data-scene-id]').forEach(square => {
+        const sceneId = square.getAttribute('data-scene-id');
+        if (sceneId) {
+            numberSquareBySceneId.set(sceneId, square);
+        }
+    });
+
+    const numberTextBySceneId = new Map<string, SVGElement>();
+    svg.querySelectorAll<SVGElement>('.rt-number-text[data-scene-id]').forEach(text => {
+        const sceneId = text.getAttribute('data-scene-id');
+        if (sceneId) {
+            numberTextBySceneId.set(sceneId, text);
+        }
+    });
+
+    interface SceneElementRefs {
+        path: SVGPathElement | null;
+        numberSquare: SVGElement | null;
+        numberText: SVGElement | null;
+        title: SVGTextElement | null;
+    }
+
+    const sceneElementRefs = new Map<string, SceneElementRefs>();
+    svg.querySelectorAll<SVGGElement>('.rt-scene-group[data-item-type="Scene"]').forEach(group => {
+        const sceneId = getSceneIdFromGroup(group);
+        if (!sceneId) return;
+
+        const pathEl = group.querySelector<SVGPathElement>('.rt-scene-path');
+        const titleEl = group.querySelector<SVGTextElement>('.rt-scene-title');
+
+        sceneElementRefs.set(sceneId, {
+            path: pathEl,
+            numberSquare: numberSquareBySceneId.get(sceneId) ?? null,
+            numberText: numberTextBySceneId.get(sceneId) ?? null,
+            title: titleEl ?? null,
+        });
+    });
+
+    const fadeTargets: SVGElement[] = [];
+    const seen = new Set<SVGElement>();
+    svg.querySelectorAll<SVGElement>('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title').forEach(el => {
+        if (!seen.has(el)) {
+            fadeTargets.push(el);
+            seen.add(el);
+        }
+    });
+
+    let currentHoveredSceneId: string | null = null;
+    let globalFadeApplied = false;
+
+    const applyGlobalFade = () => {
+        if (globalFadeApplied) return;
+        fadeTargets.forEach(el => el.classList.add('rt-non-selected'));
+        globalFadeApplied = true;
+    };
+
+    const clearGlobalFade = () => {
+        if (!globalFadeApplied) return;
+        fadeTargets.forEach(el => el.classList.remove('rt-non-selected'));
+        globalFadeApplied = false;
+    };
+
+    const highlightScene = (sceneId: string): void => {
+        const refs = sceneElementRefs.get(sceneId);
+        if (!refs) return;
+
+        if (refs.path) {
+            refs.path.classList.add('rt-selected');
+            refs.path.classList.remove('rt-non-selected');
+        }
+        if (refs.numberSquare) {
+            refs.numberSquare.classList.remove('rt-non-selected');
+        }
+        if (refs.numberText) {
+            refs.numberText.classList.remove('rt-non-selected');
+        }
+        if (refs.title) {
+            refs.title.classList.remove('rt-non-selected');
+        }
+    };
+
+    const unhighlightScene = (sceneId: string, keepFaded: boolean): void => {
+        const refs = sceneElementRefs.get(sceneId);
+        if (!refs) return;
+
+        if (refs.path) {
+            refs.path.classList.remove('rt-selected');
+            if (keepFaded) {
+                refs.path.classList.add('rt-non-selected');
+            } else {
+                refs.path.classList.remove('rt-non-selected');
+            }
+        }
+
+        const toggleFade = (el: SVGElement | null) => {
+            if (!el) return;
+            if (keepFaded) {
+                el.classList.add('rt-non-selected');
+            } else {
+                el.classList.remove('rt-non-selected');
+            }
+        };
+
+        toggleFade(refs.numberSquare);
+        toggleFade(refs.numberText);
+        toggleFade(refs.title);
     };
 
     // Register hover handlers for Scene elements
@@ -66,33 +188,51 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
         if (!g) return;
         
-        const sid = getSceneIdFromGroup(g);
+        const sid = sceneIdCache.get(g) ?? getSceneIdFromGroup(g);
         if (!sid) return;
-        
+
+        if (currentHoveredSceneId === sid) {
+            const syn = synopsisBySceneId.get(sid);
+            if (syn) {
+                syn.classList.add('rt-visible');
+                view.plugin.updateSynopsisPosition?.(syn, e as unknown as MouseEvent, svg, sid);
+            }
+            if (g.classList.contains('rt-chronologue-warning')) {
+                showWhenFieldWarning(svg, g, e as unknown as MouseEvent);
+            } else {
+                hideWhenFieldWarning(svg);
+            }
+            return;
+        }
+
+        const previousSceneId = currentHoveredSceneId;
+        applyGlobalFade();
+        currentHoveredSceneId = sid;
+
+        if (previousSceneId) {
+            const previousSynopsis = synopsisBySceneId.get(previousSceneId);
+            if (previousSynopsis) {
+                previousSynopsis.classList.remove('rt-visible');
+            }
+            unhighlightScene(previousSceneId, true);
+        }
+
         // Add scene-hover class to hide subplot labels during hover
         svg.classList.add('scene-hover');
         
-        const syn = findSynopsisForScene(sid);
+        const syn = synopsisBySceneId.get(sid);
         if (syn) {
             syn.classList.add('rt-visible');
             view.plugin.updateSynopsisPosition?.(syn, e as unknown as MouseEvent, svg, sid);
         }
         
-        // Emphasize this scene group
-        const pathEl = g.querySelector('.rt-scene-path');
-        if (pathEl) pathEl.classList.add('rt-selected');
-        
-        // Apply non-selected state to all other elements
-        const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
-        all.forEach(el => {
-            if (!el.classList.contains('rt-selected')) {
-                el.classList.add('rt-non-selected');
-            }
-        });
+        highlightScene(sid);
         
         // Show warning for scenes without When field
         if (g.classList.contains('rt-chronologue-warning')) {
             showWhenFieldWarning(svg, g, e as unknown as MouseEvent);
+        } else {
+            hideWhenFieldWarning(svg);
         }
     });
 
@@ -100,26 +240,29 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
         if (!g) return;
         
-        const sid = getSceneIdFromGroup(g);
+        const sid = sceneIdCache.get(g) ?? getSceneIdFromGroup(g);
         if (!sid) return;
-        
-        // Remove scene-hover class
-        svg.classList.remove('scene-hover');
-        
-        const syn = findSynopsisForScene(sid);
+
+        const related = e.relatedTarget as Element | null;
+
+        // If moving to another scene, allow the other handler to take over without clearing shared state
+        if (related?.closest('.rt-scene-group[data-item-type="Scene"]')) {
+            return;
+        }
+
+        const syn = synopsisBySceneId.get(sid);
         if (syn) {
             syn.classList.remove('rt-visible');
         }
-        
-        // Remove emphasis
-        const pathEl = g.querySelector('.rt-scene-path');
-        if (pathEl) pathEl.classList.remove('rt-selected');
-        
-        // Clear non-selected state from all elements
-        const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
-        all.forEach(el => el.classList.remove('rt-non-selected'));
-        
-        // Hide warning
+
+        if (currentHoveredSceneId) {
+            unhighlightScene(currentHoveredSceneId, false);
+            currentHoveredSceneId = null;
+        }
+
+        // Remove scene-hover class and restore default styling
+        svg.classList.remove('scene-hover');
+        clearGlobalFade();
         hideWhenFieldWarning(svg);
     });
 }

@@ -490,6 +490,16 @@
   fill: var(--rt-publishStageColors-Press);
   font-weight: 500;
 }
+
+/* Beginning tick uses Zero stage color to match the date label */
+.radial-timeline-container .rt-chronological-tick.rt-date-first {
+  stroke: var(--rt-publishStageColors-Zero) !important;
+}
+
+/* Ending tick uses Press stage color to match the date label */
+.radial-timeline-container .rt-chronological-tick.rt-date-last {
+  stroke: var(--rt-publishStageColors-Press) !important;
+}
 .radial-timeline-container .rt-act-label {
   pointer-events: none;
   text-anchor: middle;

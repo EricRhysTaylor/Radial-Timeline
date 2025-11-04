@@ -156,16 +156,20 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
     });
     
-    // Track previous Caps Lock state to detect toggle
-    let previousCapsLockState = false;
-    // Initialize by checking current state
-    try {
-        // Create a test event to check initial state
-        const initEvent = new KeyboardEvent('keydown', { key: 'CapsLock' });
-        previousCapsLockState = initEvent.getModifierState('CapsLock');
-    } catch {
-        previousCapsLockState = false;
-    }
+    let capsLockState = false;
+    let pendingCapsLockSync = false;
+
+    const syncShiftModeToCapsLock = (isActive: boolean) => {
+        if (capsLockState === isActive) {
+            return;
+        }
+        capsLockState = isActive;
+        if (isActive) {
+            if (!shiftModeActive) activateShiftMode();
+        } else {
+            if (shiftModeActive) deactivateShiftMode();
+        }
+    };
     
     // Keyboard event handlers for Shift and Caps Lock
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -186,17 +190,17 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         if (e.key === 'Shift') {
             activateShiftMode();
         } else if (e.key === 'CapsLock') {
-            // Read the current CapsLock state directly from the event
-            const currentCapsLockState = e.getModifierState('CapsLock');
+            if (e.repeat) {
+                return;
+            }
 
-            // Update stored state to match actual keyboard state
-            previousCapsLockState = currentCapsLockState;
-
-            // Ensure shift mode exactly reflects the CapsLock state
-            if (currentCapsLockState) {
-                if (!shiftModeActive) activateShiftMode();
+            const reportedState = e.getModifierState('CapsLock');
+            if (reportedState !== capsLockState) {
+                syncShiftModeToCapsLock(reportedState);
+                pendingCapsLockSync = false;
             } else {
-                if (shiftModeActive) deactivateShiftMode();
+                // macOS reports the *previous* Caps Lock state on keydown; wait for keyup to sync
+                pendingCapsLockSync = true;
             }
         }
     };
@@ -218,8 +222,13 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         
         if (e.key === 'Shift') {
             deactivateShiftMode();
+        } else if (e.key === 'CapsLock') {
+            const reportedState = e.getModifierState('CapsLock');
+            if (pendingCapsLockSync || reportedState !== capsLockState) {
+                pendingCapsLockSync = false;
+                syncShiftModeToCapsLock(reportedState);
+            }
         }
-        // Note: Caps Lock doesn't fire keyup reliably, so we handle it in keydown
     };
     
     // Add keyboard listeners - SAFE: Manual cleanup registered in view.onClose() via _chronologueShiftCleanup

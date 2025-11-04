@@ -939,8 +939,11 @@ export function createTimelineSVG(
                     const x2 = formatNumber(tickEnd * Math.cos(angle));
                     const y2 = formatNumber(tickEnd * Math.sin(angle));
                     
+                    // Add boundary classes for first/last ticks to match label colors
+                    const boundaryClass = isFirst ? ' rt-date-first' : (isLast ? ' rt-date-last' : '');
+                    
                     svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
-                        class="rt-chronological-tick rt-chronological-tick-major"${dataAttrs}
+                        class="rt-chronological-tick rt-chronological-tick-major${boundaryClass}"${dataAttrs}
                         stroke="var(--text-muted)" 
                         stroke-width="2" 
                         opacity="0.8"/>`;
