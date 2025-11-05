@@ -7,7 +7,7 @@ import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
 import { TimelineMode } from './modes/ModeDefinition';
-import { assembleManuscript } from './utils/manuscript';
+import { assembleManuscript, type AssembledManuscript, type SceneContent } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { callGeminiApi } from './api/geminiApi';
 
@@ -885,7 +885,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
  */
 async function createFailureDiagnosticReport(
   plugin: RadialTimelinePlugin,
-  manuscript: ManuscriptInfo,
+  manuscript: AssembledManuscript,
   beats: UnifiedBeatInfo[],
   beatSystem: string,
   prompt: string,
@@ -919,7 +919,7 @@ async function createFailureDiagnosticReport(
     ``,
   ];
   
-  manuscript.scenes.forEach((scene, idx) => {
+  manuscript.scenes.forEach((scene: SceneContent, idx: number) => {
     const wordCount = scene.wordCount || 0;
     reportLines.push(`${idx + 1}. ${scene.title || 'Untitled Scene'} (${wordCount.toLocaleString()} words)`);
   });
