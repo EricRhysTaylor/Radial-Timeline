@@ -40,11 +40,11 @@ export function renderTemplatesSection(params: {
 
     // Create template notes button
     const templateSetting = new Settings(containerEl)
-        .setName('Create beat template notes')
+        .setName('Create story beat template notes')
         .setDesc('Generate template beat notes based on the selected story structure system including YAML frontmatter and body summary.')
         .addButton(button => button
             .setButtonText('Create templates')
-            .setTooltip('Creates Beat note templates in your source path')
+            .setTooltip('Creates story beat note templates in your source path')
             .onClick(async () => {
                 await createBeatTemplates();
             }));
@@ -78,7 +78,7 @@ export function renderTemplatesSection(params: {
             setting.setName('Create story beat template notes');
             setting.setDesc('Custom story structures must be created manually by the author.');
         } else {
-            setting.setName(`Create beat template notes for ${selectedSystem}`);
+            setting.setName(`Create story beat template notes for ${selectedSystem}`);
             setting.setDesc(`Generate ${selectedSystem} template beat notes including YAML frontmatter and body summary.`);
         }
         const settingEl = setting.settingEl;
@@ -126,7 +126,7 @@ export function renderTemplatesSection(params: {
             }
         } catch (error) {
             console.error('[Beat Templates] Failed:', error);
-            new Notice(`Failed to create Beat templates: ${error}`);
+            new Notice(`Failed to create story beat templates: ${error}`);
         }
     }
 }

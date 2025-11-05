@@ -38,7 +38,7 @@ Radial Timeline™ arranges your scenes by act, subplot, and narrative order in 
 
 **After**: One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.
 
-Radial Timeline™ visualizes all four types of timelines: **scene time** what happens when,  **story time** the narrative chronology, **author time** your writing progress completing scenes on-time, and **publication time** manuscript progress through the revision stages to final press ready—everything you need to know as your manuscript evolves from the nucleus of an idea to the final polished novel.
+Radial Timeline™ captures and visualizes all 4 critical timelines simultaneously: **Chronological time** (when events happen in your story's world), **Narrative time** (the sequence you reveal events to readers), **Author time** (your real-world writing progress toward completion), and **Publishing time** (manuscript revision stages from Zero draft through Press-ready)—everything you need to know as your manuscript evolves from the nucleus of an idea to the final polished novel.
 
 <hr>
 
@@ -47,13 +47,13 @@ Radial Timeline™ visualizes all four types of timelines: **scene time** what h
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <div style="text-align: center;">
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" alt="All Scenes Timeline" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" alt="All Scenes Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">All Scenes Timeline</div>
   </div>
   <div style="text-align: center;">
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" alt="Timeline Hover Synopsis" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" alt="Timeline Hover Synopsis" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline Hover Synopsis</div>
   </div>
@@ -66,13 +66,13 @@ Radial Timeline™ visualizes all four types of timelines: **scene time** what h
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot3.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot3.jpeg" alt="Main Plot Mode" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot3.jpeg" alt="Main Plot Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Main Plot Mode</div>
   </div>
   <div style="text-align: center;">
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" alt="Gossamer View" style="width: 350px; max-width: 100%; border-radius: 8px;" />
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot4.jpeg" alt="Gossamer View" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer View</div>
   </div>
@@ -95,7 +95,7 @@ Radial Timeline™ visualizes all four types of timelines: **scene time** what h
 That's it! Your first scene appears on the timeline. Create more scenes by:
 - Duplicating the template scene
 - Using command palette → "Create template note"
-- Using your preferred templater plugin
+- Use Obsidian's core templates plugin
 
 **Optional - Insert story beats**: Consider inserting story beats for your chosen system such as the 15-beat Save the Cat by going to Settings → Radial Timeline → Create Templates.
 
@@ -124,7 +124,7 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 - **Subplot Tracking**: Each ring represents a different subplot—see how plot threads interweave
 - **Beat Templates**: Generate complete story beat sets like Save the Cat using Settings → Story beat system
 
-**Command**: Create template note 
+**Command**: Create template note<br>
 **Settings**: Story beat system
 
 ### Tracking Progress
@@ -132,49 +132,82 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 - **Status Colors**: Scenes color-coded by status (Todo = plaid, Working = pink, Overdue = red, Complete = publish stage or subplot color customizable in settings)
 - **Completion Estimates**: Plugin calculates target completion date based on your recent writing pace
 - **Publishing Stages**: Track manuscript through Zero → Author → House → Press
-- **Main Plot Mode**: Switch to main plot (navigation top right via page icon or keyboard number 2) for simplified view emphasizing publication progress over structure
+- **Main Plot Mode**: Switch to main plot (navigation top right via page icon or keyboard **2**) for simplified view emphasizing publication progress over structure
 
-**Modes**: All Scenes (key 1) or Main Plot (key 2) 
+**Modes**: All Scenes (key **1**) or Main Plot (key **2**) 
 **Settings**: Publishing stage colors
 
-### Analyzing momentum and story beats
+### Constructing Your Story Timeline with Chronologue Mode
+
+Chronologue mode is essential for constructing and visualizing the chronological backbone of your story—particularly valuable for non-linear narratives, mysteries, thrillers, or any story where **when events happen** differs from **when you reveal them**.
+
+**Core workflow:**
+
+1. **Add chronological metadata**: As you create scenes, fill in the `When` field (YYYY-MM-DD HH:MM) and `Duration` field (e.g., "2 hours", "3 days", "1 week")
+2. **Switch to Chronologue mode** (keyboard **3** or top-right navigation): Scenes rearrange to show story-world event order across the full 360° circle
+3. **Activate Shift mode** (keyboard **Shift** or click shift button or use caps lock): See the bones of your story's temporal structure for all scenes and subplots 
+4. **Analyze time gaps**: Discontinuities (large time jumps) appear with ∞ symbol—identify gaps that might need bridging scenes
+5. **Compare elapsed time**: In shift mode, click two scenes to see the elapsed story-time between them with the duration arc. Keep clicking more scenes as needed.
+
+**Why this matters**: Most writers organize scenes in manuscript/narrative order, but Chronologue mode lets you construct and verify the underlying chronological scaffolding without the constraints of acts or title ordering. You can spot:
+- Pacing issues (too much/too little story time between events)
+- Flashback positioning opportunities
+- Timeline consistency problems
+- Missing transition scenes
+
+**Modes**: Chronologue mode (key **3**), Shift mode (key **Shift**)<br>
+**Settings**: Chronologue duration arc cap (Advanced section)
+
+### Analyzing Narrative Momentum with Gossamer Mode
 
 - **Gossamer Mode**: Chart narrative momentum across story beats and over time up to 30 iterations to develop a history
-- **AI Scene Analysis**: Automated triplet analysis (previous/current/next scenes) with story beat evaluation and overall grade assessment
+- **AI Momentum Scoring**: Gemini will take your manuscript and score the story beats. As you revise the story, rerun the evaluation to have the LLM compare to your last score and give you a new one.
 
-**Modes**: Gossamer mode (key 4) 
-**Command**: Gossamer enter momentum scores, AI scene analysis (manuscript order), AI scene analysis (subplot order)
+**Modes**: Gossamer mode (key **4**) 
+**Command**: Gossamer enter momentum scores, Gossamer AI Momentum Score (Gemini)
+**Settings**: Story beats system and gossamer
+
+### AI Scene Analysis
+
+- **Scene-by-scene evaluation**: AI analyzes individual scenes in triplets (previous/current/next) to provide story beat assessment and grade evaluation
+- **Multiple ordering options**: Run analysis in manuscript order (All Scenes mode) or by subplot order to get different perspectives on narrative scene flow
+
+**Modes**: All Scenes mode (key **1**), Main Plot mode (key **2**)
+**Command**: AI scene analysis (manuscript order), AI scene analysis (subplot order)
 **Settings**: AI LLM for scene analysis
 
 ### Finding & Navigating Scenes
 
-- **Search Timeline**: Keyword search across title, date, synopsis, AI beats, characters, and subplots
+- **Search Timeline**: Keyword search across title, date, time, duration, synopsis, AI beats, characters, and subplots
 - **Hover Details**: See full synopsis, characters, status, beats, and revision info on hover
 - **Click to Open**: Click any scene or beat to jump directly to that note
-- **Chronologue Mode**: View scenes in story chronology (by `When` date) instead of manuscript order
 
-**Modes**: Chronologue mode (key 3)
 **Command**: Search timeline, Clear search
 
 ---
 
 ## View modes via primary navigation
 
-### All Scenes Mode (key 1)
-Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Provides comprehensive view with every detail.
+### All Scenes Mode (keyboard **1**)
+Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order) and **Author time** (completion progress).
 
-### Main Plot Mode (key 2)
-Removes story beats, shows only main plot scenes on outer ring, uses publish stage coloring. Simplified view emphasizing publication readiness.
+### Main Plot Mode (keyboard **2**)
+Removes story beats, shows only main plot scenes on outer ring, uses publish stage coloring. Structured around the **3-act model** with scenes distributed across three acts (120° per act). Simplified view emphasizing **Publishing time** (revision stages) and completion readiness. Perfect for tracking manuscript progress through Zero → Author → House → Press stages.
 
-### Chronologue Mode (key 3)
-Displays scenes in chronological story order based on `When` field. Perfect for mystery/thriller writers mapping event sequences while also arranging for narrative order to maximize suspense.
+### Chronologue Mode (keyboard **3**)
+Displays scenes in chronological story order based on `When` field. **Removes the 3-act structure** entirely—scenes are positioned across the full 360° circle based solely on when they occur in your story's timeline. Perfect for mystery/thriller writers or anyone mapping **Chronological time** (event sequences in story-world) while also arranging for narrative order to maximize suspense.
 
-- Proportional timeline arc showing actual time gaps
-- Shift Mode: click two scenes to compare elapsed time
-- Time-period-appropriate labels (hours/days/weeks/months/years)
+- **Shift Mode** (keyboard **Shift** or click button): X-ray/wireframe/skeleton view revealing the chronological backbone
+  - Click shift button, then select two scenes to see elapsed time comparison
+  - Color-coded elapsed time arc: Start tick (Zero stage purple) → End tick (Press stage green)  
+  - **Discontinuities marked with ∞ symbol**: Large time jumps between scenes are automatically detected and displayed in shift mode, revealing gaps in your chronological coverage
+- **Smart duration labels**: Time-period-appropriate formatting (hours/days/weeks/months/years)
+- **Dynamic duration arc cap**: Chronologue mode proportionally scales scene durations up to a selected maximum (Settings → Advanced)
 
-### Gossamer Mode (key 4)
-Visualizes narrative momentum using beat scores. Timeline grays out; momentum values display across story beats to show tension/excitement building.
+**Tip**: Use shift mode's x-ray view to analyze your story's temporal structure and identify chronological discontinuities that may need bridging scenes.
+
+### Gossamer Mode (keyboard **4**)
+Visualizes narrative momentum using story beat scores. Timeline grays out; momentum values display across story beats to show tension/excitement building.
 
 - Works with any beat structure
 - Historical comparison (up to 30 runs)
@@ -209,13 +242,11 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 - **API Logging**: Track AI interactions in "AI" folder and manuscript generation with table of contents
 
 **Advanced**
-- **Meta data refresh**: Set the debounce to larger number if timeline refresh is sluggish
-- **Show completion label**: hide date of completion in data grid
-- **Auto-expand clipped scene titles**: remove expanding scenes so it's easier to quickly mouse over multiple scenes in quick succession and read hover details
-- **Sort by When date**: Toggle between chronological (When date) and manuscript order (filename prefix) sorting in All Scenes and Main Plot modes. 
-  - When enabled, scenes AND beats are positioned across the full 360° circle based on their `When` field dates
-  - When disabled, uses 3 Act zones (120° each) with manuscript order (filename prefix numbers)
-  - Note: Chronologue mode always sorts by When date
+- **Chronologue duration arc cap**: Select maximum duration to display on scene duration arcs, or use "auto" for intelligent selection based on your story's longest scene. Scenes at or above this value fill the entire segment; shorter durations scale proportionally.
+- **Auto-expand clipped scene titles**: Disable to prevent scene title expansion on hover, making it easier to quickly slide over multiple scenes and read titles from the synopsis instead.
+- **Show estimated completion date**: Toggle visibility of the completion date estimate label near the progress ring.
+- **Metadata refresh debounce (ms)**: Delay before refreshing timeline after YAML frontmatter changes. Increase (default 10000ms) if your vault is large and updates feel too frequent.
+- **Scene ordering based on When date**: *Coming soon* — Sort scenes chronologically by When date instead of manuscript order. This feature is currently in development and will be available in a future update.
 
 **Visual Customization**
 - **Publishing stage colors**: Customize colors for Zero, Author, House, Press stages (click swatch for color picker and each has reset to default button)
@@ -263,6 +294,8 @@ Place:
   - "[[Forest]]"
 ```
 > **Note**: Use of brackets denotes a link to a character or place file (optional). Avoid using commas within subplot, character, or place name lists, as the plugin uses comma-space (`, `) as a delimiter when processing these fields.
+
+> **POV Convention**: The first character listed in the `Character` field is considered the point-of-view (POV) character for the scene.
 
 ### Standard Beat
 

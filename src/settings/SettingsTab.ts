@@ -27,6 +27,7 @@ import { renderTemplatesSection } from './sections/TemplatesSection';
 import { renderReadmeSection } from './sections/ReadmeSection';
 import { renderAdvancedSection } from './sections/AdvancedSection';
 import { renderAiSection } from './sections/AiSection';
+import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
 
 declare const EMBEDDED_README_CONTENT: string;
 
@@ -279,7 +280,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Debug mode setting removed: console logging only in development builds
 
         renderColorsSection(containerEl, this.plugin);
-                    
+        
+        renderReleaseNotesSection({ plugin: this.plugin, containerEl });
+        
         renderReadmeSection({ app: this.app, containerEl, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
     }
 

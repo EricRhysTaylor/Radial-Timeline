@@ -102,6 +102,13 @@ export function addHighlightRectangles(view: SearchView): void {
         highlightTspan(tspan, originalText);
     });
 
+    // Duration tspans
+    view.contentEl.querySelectorAll('tspan[data-item-type="duration"]').forEach((tspan) => {
+        const originalText = tspan.textContent || '';
+        if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
+        highlightTspan(tspan, originalText);
+    });
+
     // Synopsis text elements (only those without tspan children)
     view.contentEl.querySelectorAll('svg .rt-synopsis-text text').forEach((textEl) => {
         if (textEl.querySelector('tspan')) return;

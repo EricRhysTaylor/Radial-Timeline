@@ -791,14 +791,6 @@ export default class SynopsisManager {
     
     // Separate text elements into rows (vertically stacked lines)
     const textRows: SVGTextElement[][] = [];
-    const diagnostics: {
-      rowIndex: number;
-      absX: number;
-      absY: number;
-      distance: number;
-      delta: number;
-    }[] = [];
-    const shouldLogDiagnostics = synopsis.classList.contains('rt-visible');
     
     // Build rows, grouping metadata blocks with their preceding title rows
     textElements.forEach((textEl) => {
@@ -873,47 +865,7 @@ export default class SynopsisManager {
         isRightAligned
       );
 
-      if (shouldLogDiagnostics) {
-        const relXAttr = primaryEl?.getAttribute('x');
-        const relYAttr = primaryEl?.getAttribute('y');
-        if (relXAttr && relYAttr) {
-          const relX = Number.parseFloat(relXAttr);
-          const relY = Number.parseFloat(relYAttr);
-          if (Number.isFinite(relX) && Number.isFinite(relY)) {
-            const absX = baseX + relX;
-            const absY = baseY + relY;
-            const distanceFromCenter = Math.sqrt(absX * absX + absY * absY);
-            diagnostics.push({
-              rowIndex,
-              absX,
-              absY,
-              distance: distanceFromCenter,
-              delta: distanceFromCenter - radius,
-            });
-          }
-        }
-      }
     });
-
-    if (shouldLogDiagnostics && diagnostics.length > 0) {
-      const quadrantLabel = isTopHalf
-        ? (isRightAligned ? 'Q4' : 'Q3')
-        : (isRightAligned ? 'Q1' : 'Q2');
-      console.groupCollapsed(
-        `[SynopsisPosition] scene=${sceneId} quadrant=${quadrantLabel}`
-      );
-      console.table(
-        diagnostics.map(({ rowIndex, absX, absY, distance, delta }) => ({
-          rowIndex,
-          absX: Math.round(absX * 100) / 100,
-          absY: Math.round(absY * 100) / 100,
-          radius,
-          distance: Math.round(distance * 100) / 100,
-          delta: Math.round(delta * 100) / 100,
-        }))
-      );
-      console.groupEnd();
-    }
   }
 
   private computeTopHalfInset(textElement: SVGTextElement | null, rowIndex: number): number {

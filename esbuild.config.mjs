@@ -26,6 +26,18 @@ try {
 }
 // --- Read README content --- END ---
 
+// --- Read release notes content (mirrors GitHub release body) ---
+const releaseNotesPath = path.resolve('release/github-release.json');
+let releaseNotesContent = '';
+try {
+	releaseNotesContent = fs.readFileSync(releaseNotesPath, 'utf-8');
+} catch (err) {
+	console.error('Failed to read release/github-release.json for embedding:', err);
+	releaseNotesContent = JSON.stringify({
+		body: 'Release notes are unavailable. Visit the GitHub release page for full details.'
+	});
+}
+
 // Define source and destination paths
 const sourceDir = ".";
 let destDirs = [];
@@ -140,6 +152,7 @@ const context = await esbuild.context({
 	outdir: destDirs[0],
 	define: {
 		'EMBEDDED_README_CONTENT': JSON.stringify(readmeContent),
+		'EMBEDDED_RELEASE_NOTES': JSON.stringify(releaseNotesContent),
 		'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development')
 	}
 });

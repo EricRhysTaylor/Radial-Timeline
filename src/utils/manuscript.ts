@@ -131,7 +131,7 @@ function generateTableOfContents(scenes: SceneContent[], totalWords: number, use
   if (sortOrder) {
     tocLines.push(`**Sort Order:** ${sortOrder}`);
     tocLines.push('');
-    tocLines.push('_Note: Narrative mode sorts scenes by scene title/number (for all scenes, main plot, and Gossamer modes). Chronologue mode sorts scenes chronologically by When date/time. These may produce the same order depending on your scene title structure._');
+    tocLines.push('Note: Narrative mode sorts scenes by scene title/number (for all scenes, main plot, and Gossamer modes). Chronologue mode sorts scenes chronologically by When date/time. These may produce the same order depending on your scene title structure.');
     tocLines.push('');
   }
 

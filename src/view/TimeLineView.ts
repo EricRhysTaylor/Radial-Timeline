@@ -351,6 +351,8 @@ export class RadialTimelineView extends ItemView {
     
     async onOpen(): Promise<void> {
         this.log('Opening timeline view');
+
+        await this.plugin.maybeShowReleaseNotesModal();
         
         // Register event to track file opens
         this.registerEvent(

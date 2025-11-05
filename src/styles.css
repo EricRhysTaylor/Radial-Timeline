@@ -1153,6 +1153,145 @@
     display: none !important;
 }
 
+.rt-settings-release-notes {
+    margin-top: 24px;
+}
+
+.rt-settings-release-summary {
+    margin-bottom: 10px;
+    font-size: 0.95em;
+    color: var(--text-normal);
+}
+
+.rt-settings-release-notes-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.rt-settings-release-notes-header span {
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+.rt-settings-release-notes-preview {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 12px;
+    max-height: 260px;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+
+.rt-settings-release-notes-details {
+    margin-top: 16px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 12px;
+    background-color: var(--background-secondary);
+}
+
+.rt-settings-release-notes-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 12px 16px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.rt-settings-release-notes-details summary::after {
+    content: '';
+    border-style: solid;
+    border-width: 4px 0 4px 6px;
+    border-color: transparent transparent transparent var(--text-faint);
+    margin-left: auto;
+    transition: transform 0.16s ease;
+}
+
+.rt-settings-release-notes-details[open] summary {
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin-bottom: 4px;
+}
+
+.rt-settings-release-notes-details[open] summary::after {
+    transform: rotate(90deg);
+    border-color: transparent transparent transparent var(--text-muted);
+}
+
+.rt-settings-release-notes-details summary::marker {
+    color: var(--text-faint);
+}
+
+.rt-settings-release-notes-details-body {
+    padding: 8px 16px 16px;
+}
+
+.rt-settings-release-notes-details-body .rt-settings-release-notes-preview {
+    margin-top: 12px;
+    padding: 16px;
+}
+
+.rt-release-notes-modal-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+.rt-release-notes-modal-meta a {
+    text-decoration: none;
+}
+
+.rt-release-notes-modal.modal {
+    width: min(90vw, 1200px);
+}
+
+.rt-release-notes-modal-body {
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.rt-release-notes-details {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 12px;
+}
+
+.rt-release-notes-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.rt-release-notes-details-summary {
+    cursor: pointer;
+}
+
+.rt-release-notes-summary {
+    margin-bottom: 10px;
+    font-size: 0.95em;
+    color: var(--text-normal);
+}
+
+.rt-release-notes-modal-footer {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.rt-release-notes-modal-footer button {
+    padding: 6px 14px;
+}
+
 /* Dynamic subplot/character colors are set inline in TypeScript - no static CSS needed */
 
 /* Dynamic color elements */

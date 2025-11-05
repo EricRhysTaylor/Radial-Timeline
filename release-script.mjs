@@ -52,6 +52,86 @@ function updateManifestAndVersions(targetVersion) {
     }
 }
 
+const EMBEDDED_RELEASE_NOTES_PATH = 'release/github-release.json';
+
+function parseSemver(version) {
+    if (!version) return null;
+    const match = version.trim().match(/^(\d+)\.(\d+)\.(\d+)$/);
+    if (!match) return null;
+    return {
+        major: Number.parseInt(match[1], 10),
+        minor: Number.parseInt(match[2], 10),
+        patch: Number.parseInt(match[3], 10)
+    };
+}
+
+function fetchReleaseInfo(tag) {
+    if (!tag) return null;
+    try {
+        const json = execSync(`gh release view ${tag} --json name,body,publishedAt,htmlUrl,url`, { encoding: 'utf8' });
+        const data = JSON.parse(json);
+        if (!data) return null;
+        return {
+            version: tag,
+            title: data.name || `Radial Timeline ${tag}`,
+            body: data.body || '',
+            url: data.htmlUrl || data.url || `https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/${tag}`,
+            publishedAt: data.publishedAt || new Date().toISOString()
+        };
+    } catch (error) {
+        console.warn(`⚠️  Unable to fetch release ${tag}: ${error.message}`);
+        return null;
+    }
+}
+
+function readExistingReleaseBundle() {
+    try {
+        const raw = readFileSync(EMBEDDED_RELEASE_NOTES_PATH, 'utf8');
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+function updateEmbeddedReleaseNotes(version, body, title) {
+    const semver = parseSemver(version);
+    const nowIso = new Date().toISOString();
+    const currentEntry = {
+        version,
+        title: title || `Radial Timeline ${version}`,
+        body: body || '',
+        url: `https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/${version}`,
+        publishedAt: nowIso
+    };
+
+    let featuredEntry = currentEntry;
+
+    if (semver && (semver.minor !== 0 || semver.patch !== 0)) {
+        const majorTag = `${semver.major}.0.0`;
+        const fetched = fetchReleaseInfo(majorTag);
+        if (fetched) {
+            featuredEntry = fetched;
+        } else {
+            const existing = readExistingReleaseBundle();
+            if (existing && existing.featured) {
+                featuredEntry = existing.featured;
+            }
+        }
+    }
+
+    const bundle = {
+        featured: featuredEntry,
+        current: currentEntry
+    };
+
+    try {
+        writeFileSync(EMBEDDED_RELEASE_NOTES_PATH, JSON.stringify(bundle, null, 2));
+        console.log(`✅ Embedded release notes updated for ${version}`);
+    } catch (err) {
+        console.error(`⚠️  Failed to update embedded release notes: ${err.message}`);
+    }
+}
+
 function getLastReleaseTag() {
     try {
         // First try to get the latest GitHub release (what's actually published)
@@ -308,6 +388,8 @@ Choose (1/2): `);
             console.log(`ℹ️  Version unchanged, syncing manifest/versions only`);
             updateManifestAndVersions(newVersion);
         }
+
+        updateEmbeddedReleaseNotes(newVersion, releaseNotes, `Radial Timeline ${newVersion}`);
 
         // Run build process
         runCommand("npm run build", "Building plugin");

@@ -18,15 +18,18 @@ import { openGossamerScoreEntry, runGossamerAiAnalysis } from './GossamerCommand
 import { registerBeatPlacementCommands } from './BeatPlacementCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
+import { ReleaseNotesModal } from './modals/ReleaseNotesModal';
 import { shiftGossamerHistory } from './utils/gossamer';
 import { assembleManuscript } from './utils/manuscript';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { parseSceneTitle } from './utils/text';
 import { parseWhenField } from './utils/date';
+import { parseReleaseVersion } from './utils/releases';
 
 
 // Declare the variable that will be injected by the build process
 declare const EMBEDDED_README_CONTENT: string;
+declare const EMBEDDED_RELEASE_NOTES: string;
 
 // Import the new scene analysis function <<< UPDATED IMPORT
 import { processByManuscriptOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotNameWithModal, processEntireSubplotWithModal } from './SceneAnalysisCommands';
@@ -101,6 +104,9 @@ interface RadialTimelineSettings {
     // Resume state (internal, not exposed in UI)
     _isResuming?: boolean; // Temporary flag to indicate resume operation
     _resumingMode?: 'flagged' | 'unprocessed' | 'force-all'; // Mode being resumed
+    lastSeenReleaseNotesVersion?: string; // Track release modal consumption
+    cachedReleaseNotes?: EmbeddedReleaseNotesBundle | null;
+    releaseNotesLastFetched?: string;
     // Optional: Store the fetched models list to avoid refetching?
     // availableOpenAiModels?: { id: string, description?: string }[];
 }
@@ -260,10 +266,26 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         }
     ],
     activeAiContextTemplateId: 'commercial_genre',
-    beatSystem: 'Save The Cat' // Default beat system
+    beatSystem: 'Save The Cat', // Default beat system
+    lastSeenReleaseNotesVersion: '',
+    cachedReleaseNotes: null,
+    releaseNotesLastFetched: undefined
 };
 
 // STATUS_COLORS now imported from constants
+
+export interface EmbeddedReleaseNotesEntry {
+    version: string;
+    title: string;
+    body: string;
+    url?: string;
+    publishedAt?: string;
+}
+
+export interface EmbeddedReleaseNotesBundle {
+    featured?: EmbeddedReleaseNotesEntry | null;
+    current?: EmbeddedReleaseNotesEntry | null;
+}
 
 const NUM_ACTS = 3;
 
@@ -425,6 +447,10 @@ export default class RadialTimelinePlugin extends Plugin {
     // Add property to store the latest status counts for completion estimate
     public latestStatusCounts?: Record<string, number>;
     
+    private releaseNotesBundle: EmbeddedReleaseNotesBundle | null = null;
+    private releaseModalShownThisSession = false;
+    private releaseNotesFetchPromise: Promise<boolean> | null = null;
+    
     // Track active scene analysis processing modal and status bar item
     public activeBeatsModal: SceneAnalysisProcessingModal | null = null;
     private beatsStatusBarItem: HTMLElement | null = null;
@@ -529,8 +555,179 @@ export default class RadialTimelinePlugin extends Plugin {
         return resultNodes;
     }
 
+    private loadEmbeddedReleaseNotes(): EmbeddedReleaseNotesBundle | null {
+        try {
+            const raw = typeof EMBEDDED_RELEASE_NOTES !== 'undefined' ? EMBEDDED_RELEASE_NOTES : '';
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!parsed) return null;
+            if (parsed.featured || parsed.current) {
+                return {
+                    featured: parsed.featured ?? null,
+                    current: parsed.current ?? null,
+                };
+            }
+            if (parsed.version || parsed.body) {
+                const version = (parsed.version || parsed.tag || parsed.name || '').toString().trim();
+                const body = (parsed.body ?? '').toString();
+                if (!version || !body) return null;
+                const entry: EmbeddedReleaseNotesEntry = {
+                    version,
+                    title: (parsed.name || version).toString(),
+                    body,
+                    url: typeof parsed.html_url === 'string' ? parsed.html_url : (typeof parsed.url === 'string' ? parsed.url : undefined),
+                    publishedAt: typeof parsed.publishedAt === 'string' ? parsed.publishedAt : (typeof parsed.published_at === 'string' ? parsed.published_at : undefined),
+                };
+                return { featured: entry, current: entry };
+            }
+            return null;
+        } catch (error) {
+            console.error('Failed to parse embedded release notes:', error);
+            return null;
+        }
+    }
+
+    public getReleaseNotesBundle(): EmbeddedReleaseNotesBundle | null {
+        return this.releaseNotesBundle;
+    }
+
+    public async markReleaseNotesSeen(version: string): Promise<void> {
+        if (!version) return;
+        if (this.settings.lastSeenReleaseNotesVersion === version) return;
+        this.settings.lastSeenReleaseNotesVersion = version;
+        await this.saveSettings();
+    }
+
+    public async maybeShowReleaseNotesModal(): Promise<void> {
+        const bundle = this.releaseNotesBundle;
+        if (!bundle) return;
+        if (this.releaseModalShownThisSession) return;
+        const currentVersion = bundle.current?.version ?? bundle.featured?.version;
+        if (!currentVersion) return;
+        const seenVersion = this.settings.lastSeenReleaseNotesVersion ?? '';
+        if (currentVersion === seenVersion) return;
+        this.openReleaseNotesModal();
+    }
+
+    public openReleaseNotesModal(force: boolean = false): void {
+        const bundle = this.releaseNotesBundle;
+        if (!bundle) return;
+        const featured = bundle.featured ?? bundle.current;
+        if (!featured) return;
+        const current = bundle.current && bundle.current.version !== featured.version ? bundle.current : null;
+        if (this.releaseModalShownThisSession && !force) return;
+        this.releaseModalShownThisSession = true;
+        const modal = new ReleaseNotesModal(this.app, this, featured, current);
+        modal.open();
+    }
+
+    public async ensureReleaseNotesFresh(force: boolean): Promise<boolean> {
+        if (!force && this.releaseNotesFetchPromise) {
+            return this.releaseNotesFetchPromise;
+        }
+        const task = this.performReleaseNotesFetch(force).finally(() => {
+            this.releaseNotesFetchPromise = null;
+        });
+        this.releaseNotesFetchPromise = task;
+        return task;
+    }
+
+    private async performReleaseNotesFetch(force: boolean): Promise<boolean> {
+        const now = Date.now();
+        if (!force && this.settings.releaseNotesLastFetched) {
+            const last = Date.parse(this.settings.releaseNotesLastFetched);
+            if (!Number.isNaN(last) && now - last < 24 * 60 * 60 * 1000) {
+                return false; // Fresh enough
+            }
+        }
+
+        try {
+            const bundle = await this.downloadReleaseNotesBundle();
+            if (!bundle) {
+                return false;
+            }
+            this.settings.cachedReleaseNotes = bundle;
+            this.settings.releaseNotesLastFetched = new Date(now).toISOString();
+            await this.saveSettings();
+            this.releaseNotesBundle = bundle;
+            return true;
+        } catch (error) {
+            console.error('Failed to refresh release notes from GitHub:', error);
+            return false;
+        }
+    }
+
+    private async downloadReleaseNotesBundle(): Promise<EmbeddedReleaseNotesBundle | null> {
+        const latest = await this.fetchGitHubRelease('latest');
+        if (!latest) {
+            return null;
+        }
+
+        const semver = parseReleaseVersion(latest.version);
+        let featured: EmbeddedReleaseNotesEntry | null = latest;
+
+        if (semver && (semver.minor !== 0 || semver.patch !== 0)) {
+            const majorTag = `${semver.major}.0.0`;
+            const major = await this.fetchGitHubRelease(majorTag);
+            if (major) {
+                featured = major;
+            }
+        }
+
+        return {
+            featured,
+            current: latest,
+        };
+    }
+
+    private async fetchGitHubRelease(tagOrLatest: 'latest' | string): Promise<EmbeddedReleaseNotesEntry | null> {
+        const base = 'https://api.github.com/repos/EricRhysTaylor/Radial-Timeline';
+        const url = tagOrLatest === 'latest'
+            ? `${base}/releases/latest`
+            : `${base}/releases/tags/${encodeURIComponent(tagOrLatest)}`;
+
+        try {
+            const response = await requestUrl({
+                url,
+                headers: {
+                    'Accept': 'application/vnd.github+json',
+                    'User-Agent': 'RadialTimelinePlugin'
+                }
+            });
+
+            if (response.status >= 400) {
+                return null;
+            }
+
+            const data = JSON.parse(response.text ?? '{}');
+            const rawVersion = (data.tag_name || data.name || '').toString().trim();
+            const version = rawVersion.replace(/^v/i, '');
+            const body = (data.body ?? '').toString();
+            if (!version) {
+                return null;
+            }
+
+            return {
+                version,
+                title: (data.name || version).toString(),
+                body: body.length > 0 ? body : 'No release notes were provided for this version.',
+                url: typeof data.html_url === 'string' ? data.html_url : (typeof data.url === 'string' ? data.url : undefined),
+                publishedAt: typeof data.published_at === 'string' ? data.published_at : undefined,
+            };
+        } catch (error) {
+            console.warn(`Unable to fetch release info for ${tagOrLatest}:`, error);
+            return null;
+        }
+    }
+
     async onload() {
         await this.loadSettings();
+        this.releaseNotesBundle = this.loadEmbeddedReleaseNotes();
+        if (this.settings.cachedReleaseNotes) {
+            this.releaseNotesBundle = this.settings.cachedReleaseNotes;
+        }
+        this.releaseModalShownThisSession = false;
+        void this.ensureReleaseNotesFresh(false);
 
         // Migration: Convert old field names to new field names
         await migrateSceneAnalysisFields(this);
@@ -1715,6 +1912,18 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         if (!this.settings.geminiModelId) this.settings.geminiModelId = DEFAULT_SETTINGS.geminiModelId;
         if (!this.settings.defaultAiProvider || !['openai', 'anthropic', 'gemini'].includes(this.settings.defaultAiProvider)) {
             this.settings.defaultAiProvider = DEFAULT_SETTINGS.defaultAiProvider;
+        }
+        if (typeof this.settings.lastSeenReleaseNotesVersion !== 'string') {
+            this.settings.lastSeenReleaseNotesVersion = DEFAULT_SETTINGS.lastSeenReleaseNotesVersion;
+        }
+        if (this.settings.cachedReleaseNotes === undefined) {
+            this.settings.cachedReleaseNotes = DEFAULT_SETTINGS.cachedReleaseNotes;
+        }
+        if (this.settings.releaseNotesLastFetched !== undefined) {
+            const parsed = Date.parse(this.settings.releaseNotesLastFetched);
+            if (Number.isNaN(parsed)) {
+                this.settings.releaseNotesLastFetched = undefined;
+            }
         }
 
         // One-time (idempotent) migration of legacy model IDs to canonical ones

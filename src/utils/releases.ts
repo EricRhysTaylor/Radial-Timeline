@@ -1,0 +1,45 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ */
+
+export const DEFAULT_RELEASES_URL = 'https://github.com/EricRhysTaylor/Radial-Timeline/releases';
+
+export interface ReleaseVersionInfo {
+    major: number;
+    minor: number | null;
+    patch: number | null;
+    majorLabel: string;
+    fullLabel: string;
+}
+
+export function parseReleaseVersion(version: string | undefined | null): ReleaseVersionInfo | null {
+    if (!version) return null;
+    const normalized = version.trim().replace(/^v/i, '');
+    const match = normalized.match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
+    if (!match) return null;
+    const major = Number.parseInt(match[1]!, 10);
+    const minor = match[2] !== undefined ? Number.parseInt(match[2], 10) : null;
+    const patch = match[3] !== undefined ? Number.parseInt(match[3], 10) : null;
+    const majorLabel = minor !== null ? `${major}.${minor}` : `${major}`;
+    const fullLabel = patch !== null ? `${majorLabel}.${patch}` : majorLabel;
+    return { major, minor, patch, majorLabel, fullLabel };
+}
+
+export function extractReleaseSummary(markdownBody: string | undefined | null): string | null {
+    if (!markdownBody) return null;
+    const lines = markdownBody
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+    for (let line of lines) {
+        if (line.startsWith('#')) continue; // Skip headings
+        // Skip markdown link-only lines to prefer descriptive text
+        if (/^\[.+?\]\(.+?\)$/.test(line)) continue;
+        line = line.replace(/^[-*+]\s+/, '');
+        return line;
+    }
+    return null;
+}
