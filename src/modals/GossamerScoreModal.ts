@@ -78,29 +78,61 @@ export class GossamerScoreModal extends Modal {
     
     contentEl.addClass('rt-gossamer-score-modal');
 
-    // Detect plot system from notes or use settings
-    const detectedSystem = detectPlotSystemFromNotes(this.plotBeats);
+    // Use settings as source of truth for beat system
     const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
+    
+    // Filter beats based on settings (same logic as main.ts getSceneData)
+    // Need to read Beat Model from metadata cache since it's not on Scene object
+    const filteredBeats = this.plotBeats.filter(beat => {
+      if (!beat.path) return false;
+      
+      const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
+      if (!file) return false;
+      
+      const cache = this.plugin.app.metadataCache.getFileCache(file as any);
+      const fm = cache?.frontmatter;
+      const beatModel = fm?.["Beat Model"] as string | undefined;
+      
+      if (settingsSystem === 'Custom') {
+        // For Custom, only show beats WITHOUT recognized Beat Models
+        const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
+        return !beatModel || !recognizedSystems.includes(beatModel);
+      } else {
+        // For specific systems, only show beats that match the selected system
+        return beatModel === settingsSystem;
+      }
+    });
+    
+    // Use filtered beats for entry building
+    this.plotBeats = filteredBeats;
+    
     const plotSystemTemplate = getPlotSystem(settingsSystem);
     
     // Validate beat count
-    const actualCount = this.plotBeats.length;
+    const actualCount = filteredBeats.length;
     const expectedCount = plotSystemTemplate?.beatCount || 15;
     const countMismatch = actualCount !== expectedCount;
 
     // Validate Range fields (filter by beat system but ignore title matching)
     // NOTE: Temporarily disabled - metadata cache not refreshing Range field
-    // const rangeValidation = validateBeatRanges(this.plotBeats, settingsSystem);
+    // const rangeValidation = validateBeatRanges(filteredBeats, settingsSystem);
 
     // Title with plot system name
     const titleText = `Gossamer momentum scores — ${settingsSystem}`;
     const titleEl = contentEl.createEl('h2', { text: titleText });
     titleEl.addClass('rt-gossamer-score-title');
 
-    // Show warning if count mismatch
-    if (countMismatch) {
+    // Show warning if no beats match
+    if (actualCount === 0) {
+      const noBeatsWarning = contentEl.createEl('div', {
+        text: settingsSystem === 'Custom' 
+          ? `⚠️ No custom story beats found. Create notes with "Class: Beat" without "Beat Model" field, or change beat system in Settings.`
+          : `⚠️ No story beats found with "Beat Model: ${settingsSystem}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.`
+      });
+      noBeatsWarning.addClass('rt-gossamer-warning');
+    } else if (countMismatch) {
       const warningEl = contentEl.createEl('div', {
-        text: `⚠️ Expected ${expectedCount} beats for ${settingsSystem}, but found ${actualCount} Beat notes. Check your vault.`
+        text: `⚠️ Expected ${expectedCount} beats for ${settingsSystem}, but found ${actualCount} story beats with matching Beat Model. Check your vault.`
       });
       warningEl.addClass('rt-gossamer-warning');
     }

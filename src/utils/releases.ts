@@ -43,3 +43,18 @@ export function extractReleaseSummary(markdownBody: string | undefined | null): 
     }
     return null;
 }
+
+export function compareReleaseVersionsDesc(aVersion: string, bVersion: string): number {
+    const a = parseReleaseVersion(aVersion);
+    const b = parseReleaseVersion(bVersion);
+    if (!a && !b) return 0;
+    if (!a) return 1;
+    if (!b) return -1;
+    if (a.major !== b.major) return b.major - a.major;
+    const aMinor = a.minor ?? 0;
+    const bMinor = b.minor ?? 0;
+    if (aMinor !== bMinor) return bMinor - aMinor;
+    const aPatch = a.patch ?? 0;
+    const bPatch = b.patch ?? 0;
+    return bPatch - aPatch;
+}

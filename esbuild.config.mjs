@@ -27,12 +27,12 @@ try {
 // --- Read README content --- END ---
 
 // --- Read release notes content (mirrors GitHub release body) ---
-const releaseNotesPath = path.resolve('release/github-release.json');
+const releaseNotesPath = path.resolve('src/data/releaseNotesBundle.json');
 let releaseNotesContent = '';
 try {
 	releaseNotesContent = fs.readFileSync(releaseNotesPath, 'utf-8');
 } catch (err) {
-	console.error('Failed to read release/github-release.json for embedding:', err);
+	console.error('Failed to read src/data/releaseNotesBundle.json for embedding:', err);
 	releaseNotesContent = JSON.stringify({
 		body: 'Release notes are unavailable. Visit the GitHub release page for full details.'
 	});

@@ -82,6 +82,30 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     
     const sceneGeometry = new Map<string, SceneGeometryInfo>(); // Map scene path (encoded) to outer ring geometry
     
+    // Cache synopsis elements for fast lookup (avoiding querySelectorAll on every hover)
+    const allSynopsisElements: Element[] = Array.from(svg.querySelectorAll('.rt-scene-info'));
+    const synopsisBySceneId = new Map<string, Element>();
+    allSynopsisElements.forEach(synopsis => {
+        const sceneId = synopsis.getAttribute('data-for-scene');
+        if (sceneId) {
+            synopsisBySceneId.set(sceneId, synopsis);
+        }
+    });
+    
+    // Cache scene ID lookups for fast access
+    const sceneIdCache = new WeakMap<Element, string>();
+    const getSceneIdFromGroup = (group: Element): string | null => {
+        const cached = sceneIdCache.get(group);
+        if (cached) return cached;
+        
+        const pathEl = group.querySelector<SVGPathElement>('.rt-scene-path');
+        const sceneId = pathEl?.id ?? null;
+        if (sceneId) {
+            sceneIdCache.set(group, sceneId);
+        }
+        return sceneId;
+    };
+    
     // Extract scene start angles from SVG data attributes
     // Each scene group has data-start-angle attribute set during rendering
     const sceneGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]'));
@@ -124,8 +148,12 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             svg.setAttribute('data-shift-mode', 'active');
             // Make all scenes non-select (gray) - CSS handles this automatically
             applyShiftModeToAllScenes(svg);
-            // Hide all synopsis elements in shift mode
-            hideAllSynopsis(svg);
+            // Hide all synopsis elements in shift mode using cached array
+            allSynopsisElements.forEach(syn => {
+                if (syn.classList.contains('rt-visible')) {
+                    syn.classList.remove('rt-visible');
+                }
+            });
         }
     };
     
@@ -280,24 +308,12 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
             if (!g) return;
             
-            // Stop event propagation to prevent other handlers from showing synopsis
+            // Stop event propagation to prevent other handlers from running
+            // (no need to process synopsis - it's completely disabled in shift mode)
             e.stopPropagation();
             
             const scenePathEncoded = g.getAttribute('data-path');
             if (!scenePathEncoded) return;
-            
-            // Hide synopsis immediately
-            const sid = g.querySelector('.rt-scene-path')?.id;
-            if (sid) {
-                const syn = svg.querySelector(`.rt-scene-info[data-for-scene="${sid}"]`);
-                if (syn) {
-                    syn.classList.remove('rt-visible');
-                }
-            }
-            
-            // Also hide all synopsis to be safe
-            const allSynopsis = svg.querySelectorAll('.rt-scene-info');
-            allSynopsis.forEach(syn => syn.classList.remove('rt-visible'));
             
             // Check if this scene is locked
             const isLocked = selectedScenes.some(s => {
@@ -309,8 +325,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 // Only show hover state if not locked
                 hoveredScenePath = scenePathEncoded;
                 g.classList.add('rt-shift-hover');
-                // Activate matching number square
-                const sid = g.querySelector('.rt-scene-path')?.id || null;
+                // Activate matching number square using cached scene ID
+                const sid = getSceneIdFromGroup(g);
                 setNumberSquareActiveBySceneId(svg, sid, true);
             }
         }, { capture: true }); // Use capture phase
@@ -338,8 +354,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 // Remove hover state only if not locked
                 hoveredScenePath = null;
                 g.classList.remove('rt-shift-hover');
-                // Deactivate matching number square
-                const sid = g.querySelector('.rt-scene-path')?.id || null;
+                // Deactivate matching number square using cached scene ID
+                const sid = getSceneIdFromGroup(g);
                 setNumberSquareActiveBySceneId(svg, sid, false);
             }
         }, { capture: true }); // Use capture phase
@@ -480,16 +496,6 @@ function updateShiftButtonState(button: SVGGElement, active: boolean): void {
         button.setAttribute('transform', `${baseTransform} scale(${SHIFT_BUTTON_BASE_SCALE})`);
         button.classList.remove('rt-shift-mode-active');
     }
-}
-
-/**
- * Hide all synopsis elements
- */
-function hideAllSynopsis(svg: SVGSVGElement): void {
-    const allSynopsis = svg.querySelectorAll('.rt-scene-info');
-    allSynopsis.forEach(syn => {
-        syn.classList.remove('rt-visible');
-    });
 }
 
 /**

@@ -146,7 +146,7 @@ export function renderAiSection(params: {
         .setDesc((() => {
             const frag = document.createDocumentFragment();
             const span = document.createElement('span');
-            span.textContent = 'Your Gemini API key for using Google Gemini models. Required for Gossamer mode. ';
+            span.textContent = 'Your Gemini API key for using Google Gemini models. ';
             const link = document.createElement('a');
             link.href = 'https://aistudio.google.com';
             link.textContent = 'Get key';

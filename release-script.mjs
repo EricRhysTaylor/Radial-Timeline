@@ -52,7 +52,7 @@ function updateManifestAndVersions(targetVersion) {
     }
 }
 
-const EMBEDDED_RELEASE_NOTES_PATH = 'release/github-release.json';
+const EMBEDDED_RELEASE_NOTES_PATH = 'src/data/releaseNotesBundle.json';
 
 function parseSemver(version) {
     if (!version) return null;
@@ -63,6 +63,17 @@ function parseSemver(version) {
         minor: Number.parseInt(match[2], 10),
         patch: Number.parseInt(match[3], 10)
     };
+}
+
+function compareSemverDesc(a, b) {
+    const parsedA = parseSemver(a);
+    const parsedB = parseSemver(b);
+    if (!parsedA && !parsedB) return 0;
+    if (!parsedA) return 1;
+    if (!parsedB) return -1;
+    if (parsedA.major !== parsedB.major) return parsedB.major - parsedA.major;
+    if (parsedA.minor !== parsedB.minor) return parsedB.minor - parsedA.minor;
+    return parsedB.patch - parsedA.patch;
 }
 
 function fetchReleaseInfo(tag) {
@@ -84,6 +95,43 @@ function fetchReleaseInfo(tag) {
     }
 }
 
+function fetchMajorPatchReleases(major, skipVersion) {
+    try {
+        const json = execSync(`gh api repos/EricRhysTaylor/Radial-Timeline/releases?per_page=100`, { encoding: 'utf8' });
+        const releases = JSON.parse(json);
+        if (!Array.isArray(releases)) return [];
+
+        const patches = [];
+        const seen = new Set();
+
+        for (const rel of releases) {
+            const rawTag = (rel.tag_name || rel.name || '').toString().trim();
+            if (!rawTag) continue;
+            const version = rawTag.replace(/^v/i, '');
+            if (!version || version === skipVersion) continue;
+            if (seen.has(version)) continue;
+            const semver = parseSemver(version);
+            if (!semver) continue;
+            if (semver.major !== major) continue;
+            if (semver.minor === 0 && semver.patch === 0) continue;
+            seen.add(version);
+            patches.push({
+                version,
+                title: rel.name || `Radial Timeline ${version}`,
+                body: rel.body || '',
+                url: rel.html_url || rel.url || `https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/${version}`,
+                publishedAt: rel.published_at || rel.publishedAt || new Date().toISOString()
+            });
+        }
+
+        patches.sort((a, b) => compareSemverDesc(a.version, b.version));
+        return patches;
+    } catch (error) {
+        console.warn(`⚠️  Unable to fetch patch releases: ${error.message}`);
+        return [];
+    }
+}
+
 function readExistingReleaseBundle() {
     try {
         const raw = readFileSync(EMBEDDED_RELEASE_NOTES_PATH, 'utf8');
@@ -93,40 +141,48 @@ function readExistingReleaseBundle() {
     }
 }
 
-function updateEmbeddedReleaseNotes(version, body, title) {
+function updateEmbeddedReleaseNotesFromGitHub(version) {
+    console.log(`\n🔄 Fetching published release notes from GitHub for ${version}...`);
+    
     const semver = parseSemver(version);
-    const nowIso = new Date().toISOString();
-    const currentEntry = {
-        version,
-        title: title || `Radial Timeline ${version}`,
-        body: body || '',
-        url: `https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/${version}`,
-        publishedAt: nowIso
-    };
+    if (!semver) {
+        console.error(`❌ Invalid version format: ${version}`);
+        return;
+    }
 
-    let featuredEntry = currentEntry;
+    // Fetch the latest published release (should be the one we just created)
+    const latest = fetchReleaseInfo(version);
+    if (!latest) {
+        console.error(`⚠️  Could not fetch release ${version} from GitHub. Release notes bundle not updated.`);
+        return;
+    }
 
-    if (semver && (semver.minor !== 0 || semver.patch !== 0)) {
-        const majorTag = `${semver.major}.0.0`;
-        const fetched = fetchReleaseInfo(majorTag);
-        if (fetched) {
-            featuredEntry = fetched;
+    // Fetch the major release (e.g., 3.0.0)
+    const majorTag = `${semver.major}.0.0`;
+    let major = fetchReleaseInfo(majorTag);
+    
+    // If major release doesn't exist, use the existing one from bundle or fall back to latest
+    if (!major) {
+        const existing = readExistingReleaseBundle();
+        if (existing && existing.major) {
+            major = existing.major;
         } else {
-            const existing = readExistingReleaseBundle();
-            if (existing && existing.featured) {
-                featuredEntry = existing.featured;
-            }
+            major = latest;
         }
     }
 
+    // Fetch all patch releases in this major version (excluding the major release itself)
+    const patches = fetchMajorPatchReleases(semver.major, majorTag);
+
     const bundle = {
-        featured: featuredEntry,
-        current: currentEntry
+        major,
+        latest,
+        patches: patches.length > 0 ? patches : undefined
     };
 
     try {
         writeFileSync(EMBEDDED_RELEASE_NOTES_PATH, JSON.stringify(bundle, null, 2));
-        console.log(`✅ Embedded release notes updated for ${version}`);
+        console.log(`✅ Embedded release notes updated from published GitHub release ${version}`);
     } catch (err) {
         console.error(`⚠️  Failed to update embedded release notes: ${err.message}`);
     }
@@ -389,9 +445,7 @@ Choose (1/2): `);
             updateManifestAndVersions(newVersion);
         }
 
-        updateEmbeddedReleaseNotes(newVersion, releaseNotes, `Radial Timeline ${newVersion}`);
-
-        // Run build process
+        // Run build process (without release notes first)
         runCommand("npm run build", "Building plugin");
         // Inject embedded fonts into release CSS (base64 in @font-face, no runtime <style> tags)
         injectEmbeddedFontsIntoReleaseCss();
@@ -453,6 +507,8 @@ Choose (1/2): `);
 			console.log(`📝 Draft release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
             console.log(`\n🌐 Opening draft release in browser for editing...`);
             console.log(`💡 Remember to publish the release when you're done editing!`);
+            console.log(`💡 After publishing, run: npm run sync-release-notes && npm run build`);
+            console.log(`   Then upload the updated main.js to the release`);
             
             try {
                 // Open in browser via GitHub CLI (edit doesn't support --web; view does)
@@ -470,6 +526,9 @@ Choose (1/2): `);
         } else {
             console.log(`\n🎉 Release ${newVersion} published successfully!`);
 			console.log(`📦 GitHub release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
+            console.log(`\n💡 To update release notes in plugin, run:`);
+            console.log(`   npm run sync-release-notes && npm run build`);
+            console.log(`   Then upload the updated main.js to the release`);
         }
 
     } catch (error) {

@@ -30,7 +30,7 @@ The manuscript visualization plugin for Obsidian
 
 **Stop losing track of subplot threads across dozens of scenes.** Radial Timeline™ transforms your manuscript into a live visual map where you can see your entire story structure at a glance.
 
-### What It Does
+## What It Does
 
 Radial Timeline™ arranges your scenes by act, subplot, and narrative order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and story beats. Scenes highlight across subplots to show interrelationships.
 
@@ -38,7 +38,12 @@ Radial Timeline™ arranges your scenes by act, subplot, and narrative order in 
 
 **After**: One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.
 
-Radial Timeline™ captures and visualizes all 4 critical timelines simultaneously: **Chronological time** (when events happen in your story's world), **Narrative time** (the sequence you reveal events to readers), **Author time** (your real-world writing progress toward completion), and **Publishing time** (manuscript revision stages from Zero draft through Press-ready)—everything you need to know as your manuscript evolves from the nucleus of an idea to the final polished novel.
+Radial Timeline™ captures and visualizes all 4 critical timelines simultaneously:
+
+**Narrative time** (the sequence you reveal events to readers).
+**Chronological time** (when events happen in your story's world).
+**Author time** (your real-world writing progress toward completion).
+**Publishing time** (manuscript revision stages from Zero draft through Press-ready)—everything you need to know as your manuscript evolves from the nucleus of an idea to the final polished novel.
 
 <hr>
 
@@ -117,7 +122,7 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 
 ## Core Workflows
 
-### Planning Your Novel
+## Planning Your Novel
 
 - **Story Beats**: Use any story beat system (Save the Cat, Hero's Journey, Story Grid, or Custom) to lay out the story momentum scaffolding
 - **Act Structure**: Create and distribute scenes by act (1-3) to see your three-act structure take shape as scene ideas come to you
@@ -127,17 +132,17 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 **Command**: Create template note<br>
 **Settings**: Story beat system
 
-### Tracking Progress
+## Tracking Progress
 
 - **Status Colors**: Scenes color-coded by status (Todo = plaid, Working = pink, Overdue = red, Complete = publish stage or subplot color customizable in settings)
 - **Completion Estimates**: Plugin calculates target completion date based on your recent writing pace
 - **Publishing Stages**: Track manuscript through Zero → Author → House → Press
-- **Main Plot Mode**: Switch to main plot (navigation top right via page icon or keyboard **2**) for simplified view emphasizing publication progress over structure
+- **Main Plot Mode**: Switch to main plot (navigation top right via page icon or keyboard 2) for simplified view emphasizing publication progress over structure
 
-**Modes**: All Scenes (key **1**) or Main Plot (key **2**) 
+**Modes**: All Scenes (key 1) or Main Plot (key 2)<br>
 **Settings**: Publishing stage colors
 
-### Constructing Your Story Timeline with Chronologue Mode
+## Constructing Your Story Timeline with Chronologue Mode
 
 Chronologue mode is essential for constructing and visualizing the chronological backbone of your story—particularly valuable for non-linear narratives, mysteries, thrillers, or any story where **when events happen** differs from **when you reveal them**.
 
@@ -146,10 +151,10 @@ Chronologue mode is essential for constructing and visualizing the chronological
 1. **Add chronological metadata**: As you create scenes, fill in the `When` field (YYYY-MM-DD HH:MM) and `Duration` field (e.g., "2 hours", "3 days", "1 week")
 2. **Switch to Chronologue mode** (keyboard **3** or top-right navigation): Scenes rearrange to show story-world event order across the full 360° circle
 3. **Activate Shift mode** (keyboard **Shift** or click shift button or use caps lock): See the bones of your story's temporal structure for all scenes and subplots 
-4. **Analyze time gaps**: Discontinuities (large time jumps) appear with ∞ symbol—identify gaps that might need bridging scenes
-5. **Compare elapsed time**: In shift mode, click two scenes to see the elapsed story-time between them with the duration arc. Keep clicking more scenes as needed.
+4. **Compare elapsed time**: In shift mode, click two scenes to see the elapsed story-time between them with the duration arc. Keep clicking more scenes as needed.
+5. **Analyze time gaps**: Also in shift mode, discontinuities (large time jumps) appear with ∞ symbol—identify gaps that might need bridging scenes.
 
-**Why this matters**: Most writers organize scenes in manuscript/narrative order, but Chronologue mode lets you construct and verify the underlying chronological scaffolding without the constraints of acts or title ordering. You can spot:
+**Why this matters**: Some authors choose to organize scenes in manuscript/narrative order, but Chronologue mode lets you construct and verify the underlying chronological scaffolding without the constraints of the 3 acts or title ordering. You can spot:
 - Pacing issues (too much/too little story time between events)
 - Flashback positioning opportunities
 - Timeline consistency problems
@@ -158,25 +163,25 @@ Chronologue mode is essential for constructing and visualizing the chronological
 **Modes**: Chronologue mode (key **3**), Shift mode (key **Shift**)<br>
 **Settings**: Chronologue duration arc cap (Advanced section)
 
-### Analyzing Narrative Momentum with Gossamer Mode
+## Analyzing Narrative Momentum with Gossamer Mode
 
-- **Gossamer Mode**: Chart narrative momentum across story beats and over time up to 30 iterations to develop a history
-- **AI Momentum Scoring**: Gemini will take your manuscript and score the story beats. As you revise the story, rerun the evaluation to have the LLM compare to your last score and give you a new one.
+- **Gossamer Mode**: Chart narrative momentum across story beats and over time with manual score entry
+- **Historical tracking**: Compare momentum scores across up to 30 iterations to track how your story evolves
 
 **Modes**: Gossamer mode (key **4**) 
-**Command**: Gossamer enter momentum scores, Gossamer AI Momentum Score (Gemini)
-**Settings**: Story beats system and gossamer
+**Command**: Gossamer enter momentum scores
+**Settings**: Story beats system
 
-### AI Scene Analysis
+## AI Scene Analysis
 
 - **Scene-by-scene evaluation**: AI analyzes individual scenes in triplets (previous/current/next) to provide story beat assessment and grade evaluation
 - **Multiple ordering options**: Run analysis in manuscript order (All Scenes mode) or by subplot order to get different perspectives on narrative scene flow
 
-**Modes**: All Scenes mode (key **1**), Main Plot mode (key **2**)
-**Command**: AI scene analysis (manuscript order), AI scene analysis (subplot order)
+**Modes**: All Scenes mode (key 1), Main Plot mode (key 2)<br>
+**Command**: AI scene analysis (manuscript order), AI scene analysis (subplot order)<br>
 **Settings**: AI LLM for scene analysis
 
-### Finding & Navigating Scenes
+## Finding & Navigating Scenes
 
 - **Search Timeline**: Keyword search across title, date, time, duration, synopsis, AI beats, characters, and subplots
 - **Hover Details**: See full synopsis, characters, status, beats, and revision info on hover
@@ -188,36 +193,36 @@ Chronologue mode is essential for constructing and visualizing the chronological
 
 ## View modes via primary navigation
 
-### All Scenes Mode (keyboard **1**)
+## All Scenes Mode (keyboard 1)
 Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order) and **Author time** (completion progress).
 
-### Main Plot Mode (keyboard **2**)
+## Main Plot Mode (keyboard 2)
 Removes story beats, shows only main plot scenes on outer ring, uses publish stage coloring. Structured around the **3-act model** with scenes distributed across three acts (120° per act). Simplified view emphasizing **Publishing time** (revision stages) and completion readiness. Perfect for tracking manuscript progress through Zero → Author → House → Press stages.
 
-### Chronologue Mode (keyboard **3**)
+## Chronologue Mode (keyboard 3)
 Displays scenes in chronological story order based on `When` field. **Removes the 3-act structure** entirely—scenes are positioned across the full 360° circle based solely on when they occur in your story's timeline. Perfect for mystery/thriller writers or anyone mapping **Chronological time** (event sequences in story-world) while also arranging for narrative order to maximize suspense.
 
-- **Shift Mode** (keyboard **Shift** or click button): X-ray/wireframe/skeleton view revealing the chronological backbone
+- **Shift Mode** (keyboard **Shift**, **caps lock** or click button): wireframe view revealing the chronological backbone
   - Click shift button, then select two scenes to see elapsed time comparison
   - Color-coded elapsed time arc: Start tick (Zero stage purple) → End tick (Press stage green)  
   - **Discontinuities marked with ∞ symbol**: Large time jumps between scenes are automatically detected and displayed in shift mode, revealing gaps in your chronological coverage
 - **Smart duration labels**: Time-period-appropriate formatting (hours/days/weeks/months/years)
 - **Dynamic duration arc cap**: Chronologue mode proportionally scales scene durations up to a selected maximum (Settings → Advanced)
 
-**Tip**: Use shift mode's x-ray view to analyze your story's temporal structure and identify chronological discontinuities that may need bridging scenes.
+**Tip**: Use shift mode's decluttered wireframe view to analyze your story's temporal structure and identify chronological discontinuities that may need bridging scenes.
 
-### Gossamer Mode (keyboard **4**)
+## Gossamer Mode (keyboard 4)
 Visualizes narrative momentum using story beat scores. Timeline grays out; momentum values display across story beats to show tension/excitement building.
 
 - Works with any beat structure
 - Historical comparison (up to 30 runs)
 - Min/Max band visualization
 - Ideal Range based on `Range=0-20` yaml for each story beat creating an idealized story momentum shape
-- AI-generated or manual score entry
+- Manual score entry to track momentum changes over time
 
-**Command**: Generate gossamer enter momentum scores, Gossamer AI momentum analysis
+**Command**: Gossamer enter momentum scores
 
-### Zero Draft Mode
+## Zero Draft Mode
 Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progress to new scenes instead of endlessly revising.
 
 **Settings**: → Radial Timeline → Zero draft mode
@@ -234,7 +239,7 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 
 **Writing Features:**
 - **Zero draft mode**: Prevents edits to completed zero-draft scenes
-- **Story beat system and gossamer mode**: Select and generate story beat note templates (Save the Cat, Hero's Journey, Story Grid, or custom)
+- **Story beat system**: Select and generate story beat note templates (Save the Cat, Hero's Journey, Story Grid, or custom)
 
 **AI Features:**
 - **AI Provider**: Choose Anthropic, Gemini, or OpenAI for scene analysis
@@ -258,7 +263,7 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 
 All scene and beat notes use YAML frontmatter. Place this at the very beginning of your note before any other text.
 
-### Minimal Scene (Required Fields)
+## Minimal Scene (Required Fields)
 
 ```yaml
 ---
@@ -297,7 +302,7 @@ Place:
 
 > **POV Convention**: The first character listed in the `Character` field is considered the point-of-view (POV) character for the scene.
 
-### Standard Beat
+## Standard Beat
 
 ```yaml
 ---
@@ -308,7 +313,7 @@ Description: The first impression of your story. A snapshot before the journey b
 Beat Model: Save The Cat
 Range: 0-20
 Gossamer1: 12
-Gossamer1 Justification: This is why it got a 12.
+Gossamer1 Justification: 
 ---
 ```
 

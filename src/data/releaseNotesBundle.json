@@ -1,0 +1,53 @@
+{
+  "major": {
+    "version": "4.0.0",
+    "title": "4.0.0",
+    "body": "## Major Release 4.0: Chronologue Mode & Timeline Intelligence\r\n\r\n### Chronologue Mode\r\n\r\nVisualize your story in true chronological order with the new **Chronologue Mode**. See elapsed time between scenes as arcs around your timeline, revealing the true rhythm and pacing of your narrative. Perfect for understanding story flow and identifying pacing issues at a glance.\r\n\r\n- Elapsed time arcs show duration between scenes\r\n- Smart tick management prevents visual clutter\r\n- Keyboard shortcuts (1-4) for instant mode switching\r\n- Dedicated Shift button for temporal navigation\r\n- Dynamic scene ordering based on story time\r\n\r\n### Intelligent Date-Time Ordering\r\n\r\nScenes and plots now automatically organize based on when events actually occur in your narrative, not manuscript order. Ideal for complex narratives with flashbacks, parallel timelines, or non-linear storytelling.\r\n\r\n### Advanced Mode Control System\r\n\r\n- Four dedicated view modes: Main Plot, All Scenes, Gossamer, and Chronologue\r\n- Page title display shows current mode\r\n- Lightning-fast mode switching\r\n- Smooth rendering even with hundreds of scenes\r\n\r\n### Enhanced Synopsis Display\r\n\r\n- Professional date/time formatting\r\n- Duration tracking on separate line\r\n- Improved text positioning for all quadrants\r\n- Context-aware text scaling\r\n\r\n---\r\n\r\n*Full backward compatibility maintained with all existing projects.*",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.0",
+    "publishedAt": "2025-11-05T00:00:00Z"
+  },
+  "latest": {
+    "version": "3.1.1",
+    "title": "3.1.1",
+    "body": "## What's Changed\r\n\r\n- Fixed Publish Stage Matrix bug\r\n- Added Book Title to Radial Timeline Tab",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/3.1.1",
+    "publishedAt": "2025-10-22T20:23:14Z"
+  },
+  "patches": [
+    {
+      "version": "3.1.1",
+      "title": "3.1.1",
+      "body": "## What's Changed\r\n\r\n- Fixed Publish Stage Matrix bug\r\n- Added Book Title to Radial Timeline Tab",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/3.1.1",
+      "publishedAt": "2025-10-22T20:23:14Z"
+    },
+    {
+      "version": "3.1.0",
+      "title": "3.1.0",
+      "body": "## What's Changed\r\n\r\n### 🚀 **Major Features**\r\n\r\n- **Enhanced AI Beats Analysis**\r\n  - Refactored from regex to JSON-based processing for improved reliability\r\n  - Fixed boundary condition bugs (scene 1 evaluation)\r\n  - Improved modal interactions and error handling\r\n\r\n- **Gossamer Mode**\r\n  - New way to view narrative momentum. Using scores to plot a line around the timeline, anchored to every plot beat\r\n\r\n### 🔧 **Technical Improvements**\r\n\r\n- **Architecture Refactoring**\r\n  - Split larger files into smaller maintainable files\r\n  - Major reduction in regex usage for better maintainability\r\n  - Improved TypeScript compliance and error handling\r\n  - Better memory management and cleanup patterns\r\n\r\n### 🐛 **Bug Fixes**\r\n\r\n- Fixed Gossamer mode exit to Main Plot mode\r\n- Resolved AI Beats analysis bugs in manuscript processing\r\n- Fixed delete score button styling issues\r\n- Improved publish stage color application to Gossamer elements\r\n- Enhanced modal interaction stability\r\n\r\n### 🎨 **UI/UX Enhancements**\r\n\r\n- Adjusted INFO Grid for final book completion tracking\r\n- Improved scene status handling and transitions\r\n- Better modal styling and user interactions\r\n- Enhanced settings defaults for new users\r\n\r\n- **Code Quality & Compliance**\r\n  - Added comprehensive compliance analysis system\r\n  - Refined linter rules with intelligent pattern recognition\r\n  - **Eliminated 100% of false positives** (was 83% false positive rate)\r\n  - Enhanced build process with better error reporting\r\n\r\n*All improvements maintain full backward compatibility with existing projects.*",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/3.1.0",
+      "publishedAt": "2025-10-22T19:53:42Z"
+    },
+    {
+      "version": "3.0.3",
+      "title": "3.0.3",
+      "body": "## What's Changed\r\n\r\n-Fine-tuned the Settings Plot System Template creator text description based on the dropdown context\r\n-Made the Update plot beats (manuscript) Modal clickable based on entire zone rather than just radio button",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/3.0.3",
+      "publishedAt": "2025-10-16T23:58:11Z"
+    },
+    {
+      "version": "3.0.2",
+      "title": "3.0.2",
+      "body": "## What's Changed\r\n\r\n- Fixed delete score button styles. \r\n- Publish Stage colors applying to Gossamer elements. \r\n- Bugs in AI beats analysis (manuscript). \r\n- Fixed AI Beats boundary condition if evaluating scene 1\r\n- Bugs!!!",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/3.0.2",
+      "publishedAt": "2025-10-16T23:33:15Z"
+    },
+    {
+      "version": "3.0.1",
+      "title": "3.0.1",
+      "body": "## What's Changed\r\n\r\n-Fixed various bugs with the settings AI Templates\r\n-Added more AI Genre Templates\r\n-Fixed AI section hide settings feature\r\n-Updated All Scenes or Main Plot Mode to refresh when changing the toggle\r\n-Fixed scene tab opening duplicates instead of selecting the current tab\r\n",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/3.0.1",
+      "publishedAt": "2025-10-15T21:19:28Z"
+    }
+  ]
+}

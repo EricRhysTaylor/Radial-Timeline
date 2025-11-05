@@ -5,10 +5,10 @@ import type RadialTimelinePlugin from './main';
 import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, shiftGossamerHistory, extractBeatOrder } from './utils/gossamer';
 import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
-import { GossamerProcessingModal, type ManuscriptInfo } from './modals/GossamerProcessingModal';
+import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
 import { TimelineMode } from './modes/ModeDefinition';
 import { assembleManuscript } from './utils/manuscript';
-import { buildGossamerAnalysisPrompt, getGossamerAnalysisJsonSchema, type BeatWithRange } from './ai/prompts/gossamerAnalysis';
+import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { callGeminiApi } from './api/geminiApi';
 
 // Helper to find Beat note by beat title (prefers Beat over Plot)
@@ -173,8 +173,8 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
  * Open Gossamer score entry modal
  */
 export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin): Promise<void> {
-  // Get all story beat notes (itemType: Beat - no subplot filtering, beats are not scenes)
-  const scenes = await plugin.getSceneData();
+  // Get all story beat notes, unfiltered by system, so the modal can provide helpful warnings
+  const scenes = await plugin.getSceneData({ filterBeatsBySystem: false });
   // Support both 'Beat' (new standard) and 'Plot' (legacy)
   const plotBeats = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
@@ -217,14 +217,14 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
     
     if (allRuns.current.beats.length === 0) {
       const systemMsg = selectedBeatModel ? ` with Beat Model: ${selectedBeatModel}` : '';
-      new Notice(`Cannot enter Gossamer mode: No Beat notes found${systemMsg}. Create notes with Class: Beat (or Class: Plot for backward compatibility).`);
+      new Notice(`Cannot enter Gossamer mode: No story beat notes found${systemMsg}. Create notes with Class: Beat (or Class: Plot for backward compatibility).`);
       return;
     }
     
     // Check if ALL beat notes are missing Gossamer1 scores
-    const hasAnyScores = beatNotes.some(s => typeof s.Gossamer1 === 'number');
+      const hasAnyScores = beatNotes.some(s => typeof s.Gossamer1 === 'number');
     if (!hasAnyScores) {
-      new Notice('Warning: No Gossamer1 scores found in Beat notes. Defaulting all beats to 0. Add Gossamer1: <score> to your Beat note frontmatter.');
+      new Notice('Warning: No Gossamer1 scores found in story beat notes. Defaulting all beats to 0. Add Gossamer1: <score> to your beat note frontmatter.');
     }
     
     // Store all runs on plugin (for renderer)
@@ -465,8 +465,37 @@ function getInteractionMode(view: unknown): 'allscenes' | 'mainplot' | 'gossamer
  * Run Gemini AI analysis of manuscript momentum across story beats
  */
 export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promise<void> {
+  // Get beat system from settings (used by both pre-check and processing)
+  const settingsBeatSystem = plugin.settings.beatSystem || 'Save The Cat';
+  
+  // If Custom is selected, try to get the custom name from the first beat note's Beat Model field
+  let beatSystemDisplayName = settingsBeatSystem;
+  if (settingsBeatSystem === 'Custom') {
+    // Get beat notes to check for custom name
+    const scenes = await plugin.getSceneData({ filterBeatsBySystem: false });
+    const allBeats = scenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
+    
+    // Find first beat without a recognized system
+    const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
+    for (const beat of allBeats) {
+      if (!beat.path) continue;
+      const file = plugin.app.vault.getAbstractFileByPath(beat.path);
+      if (!file) continue;
+      const cache = plugin.app.metadataCache.getFileCache(file as any);
+      const beatModel = cache?.frontmatter?.["Beat Model"] as string | undefined;
+      
+      // If we find a custom beat model (not one of the recognized systems)
+      if (beatModel && !recognizedSystems.includes(beatModel)) {
+        beatSystemDisplayName = beatModel;
+        break;
+      }
+    }
+  }
+  
+  const beatSystem = settingsBeatSystem; // Use settings value for filtering logic
+  
   // Define the actual processing function
-  const processAnalysis = async (modal: GossamerProcessingModal) => {
+  const processAnalysis = async (options: AnalysisOptions, modal: GossamerProcessingModal) => {
     try {
       modal.setStatus('Validating configuration...');
       
@@ -477,9 +506,6 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         new Notice('Gemini API key not configured. Go to Settings → AI → Gemini API key.');
         return;
       }
-
-      // Get beat system from settings
-      const beatSystem = plugin.settings.beatSystem || 'Save The Cat';
       
       modal.setStatus('Loading story beats...');
       
@@ -494,8 +520,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         return;
       }
 
-      // Build beat list with ranges and previous scores/justifications
-      const beats: BeatWithRange[] = plotBeats
+      // Build unified beat info list with all necessary data
+      const beats: UnifiedBeatInfo[] = plotBeats
       .sort((a, b) => {
         const aMatch = (a.title || '').match(/^(\d+(?:\.\d+)?)/);
         const bMatch = (b.title || '').match(/^(\d+(?:\.\d+)?)/);
@@ -507,15 +533,15 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         const beatData = beat as any; // SAFE: Dynamic access to Gossamer and Range fields
         
         // Get cache for this beat note to read Range field
-        const file = this.app.vault.getAbstractFileByPath(beat.path || '');
-        const cache = file ? this.app.metadataCache.getFileCache(file as any) : null;
+        const file = plugin.app.vault.getAbstractFileByPath(beat.path || '');
+        const cache = file ? plugin.app.metadataCache.getFileCache(file as any) : null;
         const fm = cache?.frontmatter;
         
         // Read Range field directly from metadata cache
         const rangeValue = (typeof fm?.Range === 'string' ? fm.Range : '0-100');
         
         return {
-          beatName: (beat.title || 'Unknown Beat').replace(/^\d+\s+/, ''),
+          beatName: (beat.title || 'Unknown Beat').replace(/^\d+(?:\.\d+)?\s+/, ''),
           beatNumber: index + 1,
           idealRange: rangeValue,
           previousScore: typeof beatData.Gossamer1 === 'number' ? beatData.Gossamer1 : undefined,
@@ -525,7 +551,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         };
       });
 
-    modal.setStatus('Assembling manuscript...');
+    modal.setStatus('Assembling manuscript with table of contents...');
 
     // Get sorted scene files (single source of truth)
     const { getSortedSceneFiles } = await import('./utils/manuscript');
@@ -538,8 +564,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       return;
     }
 
-    // Assemble manuscript
-    const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault, undefined, false, sortOrder);
+    // Assemble manuscript with table of contents
+    const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault, undefined, true, sortOrder); // includeTableOfContents = true
 
     if (!manuscript.text || manuscript.text.trim().length === 0) {
       modal.addError('Manuscript is empty. Check that your scene files have content.');
@@ -556,17 +582,19 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       totalScenes: manuscript.totalScenes,
       totalWords: manuscript.totalWords,
       estimatedTokens: estimatedTokens,
-      beatCount: beats.length
+      beatCount: beats.length,
+      beatSystem: beatSystemDisplayName, // Use display name (may include custom name)
+      hasIterativeContext: beats.some(b => b.previousScore !== undefined)
     };
     modal.setManuscriptInfo(manuscriptInfo);
 
     // Build prompt
     modal.setStatus('Building analysis prompt...');
-    const prompt = buildGossamerAnalysisPrompt(manuscript.text, beats, beatSystem);
-    const schema = getGossamerAnalysisJsonSchema();
+    const prompt = buildUnifiedBeatAnalysisPrompt(manuscript.text, beats, beatSystem);
+    const schema = getUnifiedBeatAnalysisJsonSchema();
 
     // Call Gemini API
-    modal.setStatus('Sending manuscript to Gemini API...');
+    modal.setStatus('Sending manuscript to Gemini API for momentum analysis...');
     modal.apiCallStarted();
     
     const result = await callGeminiApi(
@@ -574,7 +602,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       plugin.settings.geminiModelId || 'gemini-2.0-flash-exp',
       null, // No system prompt - instructions in user prompt
       prompt,
-      8000, // Max tokens for response
+      4000, // Default max tokens for response
       0.7, // Temperature
       schema
     );
@@ -588,6 +616,18 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         modal.showRateLimitWarning();
       }
       
+      // Create diagnostic report even on failure if logging is enabled
+      if (plugin.settings.logApiInteractions) {
+        await createFailureDiagnosticReport(
+          plugin,
+          manuscript,
+          beats,
+          beatSystem,
+          prompt,
+          result.error || 'Unknown error'
+        );
+      }
+      
       throw new Error(result.error || 'Failed to get response from Gemini');
     }
 
@@ -595,7 +635,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     modal.setStatus('Parsing AI response...');
 
     // Parse response
-    interface GossamerBeatAnalysis {
+    interface UnifiedBeatAnalysis {
       beatName: string;
       momentumScore: number;
       idealRange: string;
@@ -603,8 +643,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       justification: string;
     }
 
-    interface GossamerAnalysisResponse {
-      beats: GossamerBeatAnalysis[];
+    interface UnifiedAnalysisResponse {
+      beats: UnifiedBeatAnalysis[];
       overallAssessment: {
         summary: string;
         strengths: string[];
@@ -612,10 +652,10 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       };
     }
 
-    const analysis: GossamerAnalysisResponse = JSON.parse(result.content);
+    const analysis: UnifiedAnalysisResponse = JSON.parse(result.content);
 
-    // Save scores AND analysis to beat notes (similar to Scene Analysis triplets)
-    modal.setStatus('Saving momentum scores and analysis to beat notes...');
+    // Save results to beat notes
+    modal.setStatus('Updating beat notes...');
     
     const files = plugin.app.vault.getMarkdownFiles();
     let updateCount = 0;
@@ -638,18 +678,17 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         continue;
       }
 
-      // Update beat note with score and justification (history shifts automatically)
+      // Update beat note with scores
       await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
         const fm = yaml as Record<string, any>;
         
         // Shift Gossamer history down (Gossamer1 → Gossamer2, etc.)
-        // This also shifts justifications
         const shifted = shiftGossamerHistory(fm);
         Object.assign(fm, shifted);
         
         // Set new score and justification
         fm.Gossamer1 = beat.momentumScore;
-        fm['Gossamer1 Justification'] = beat.justification;
+        fm['Gossamer1 Justification'] = beat.justification || '';
         
         // Add timestamp and model info
         const now = new Date();
@@ -708,7 +747,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       reportLines.push(``);
     }
     
-    // Add quick scores summary table
+    // Add beat scores table
     reportLines.push(`**Beat Scores:**`);
     reportLines.push(``);
     reportLines.push(`| Beat | Score | Range | Status |`);
@@ -726,7 +765,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     reportLines.push(``);
     reportLines.push(`### Manuscript Scenes Sent`);
     reportLines.push(``);
-    reportLines.push(`The following ${manuscript.totalScenes} scenes were assembled and sent to Gemini:`);
+    reportLines.push(`The following ${manuscript.totalScenes} scenes were assembled and sent to Gemini (with table of contents):`);
     reportLines.push(``);
     manuscript.scenes.forEach((scene, idx) => {
       const wordCount = scene.wordCount || 0;
@@ -778,11 +817,13 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       await leaf.openFile(reportFile);
     }
 
+    const successMessage = `✓ Updated ${updateCount} beats with momentum scores`;
+    
     const logMessage = plugin.settings.logApiInteractions
-      ? `✓ Updated ${updateCount} beats with Gemini momentum scores. Report saved to AI folder (includes full manuscript).`
-      : `✓ Updated ${updateCount} beats with Gemini momentum scores. (Logging disabled - no report saved)`;
+      ? `${successMessage}. Report saved to AI folder (includes full manuscript).`
+      : `${successMessage}. (Logging disabled - no report saved)`;
 
-    modal.completeProcessing(true, `✓ Successfully updated ${updateCount} beats with momentum scores`);
+    modal.completeProcessing(true, successMessage);
     new Notice(logMessage);
 
     } catch (e) {
@@ -819,12 +860,13 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       totalWords: manuscript.totalWords,
       estimatedTokens: estimatedTokens,
       beatCount: plotBeats.length,
+      beatSystem: beatSystemDisplayName, // Use display name (may include custom name)
       hasIterativeContext: beatsWithPreviousAnalysis > 0
     };
 
     // Create modal with the processing callback
-    const modal = new GossamerProcessingModal(plugin.app, plugin, async () => {
-      await processAnalysis(modal);
+    const modal = new GossamerProcessingModal(plugin.app, plugin, async (options: AnalysisOptions) => {
+      await processAnalysis(options, modal);
     });
     
     // Set manuscript info in confirmation view before opening
@@ -839,6 +881,88 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
 }
 
 /**
+ * Create diagnostic report when API call fails
+ */
+async function createFailureDiagnosticReport(
+  plugin: RadialTimelinePlugin,
+  manuscript: ManuscriptInfo,
+  beats: UnifiedBeatInfo[],
+  beatSystem: string,
+  prompt: string,
+  errorMessage: string
+): Promise<void> {
+  const reportTimestamp = new Date();
+  const timestamp = reportTimestamp.toLocaleString();
+  
+  const reportLines: string[] = [
+    `# Gossamer AI Analysis - FAILED`,
+    ``,
+    `**Date:** ${timestamp}`,
+    `**Beat System:** ${beatSystem}`,
+    `**Model:** ${plugin.settings.geminiModelId || 'gemini-2.0-flash-exp'}`,
+    `**Error:** ${errorMessage}`,
+    ``,
+    `---`,
+    ``,
+    `## Error Details`,
+    ``,
+    errorMessage,
+    ``,
+    `## Manuscript Sent`,
+    ``,
+    `**Scenes:** ${manuscript.totalScenes}`,
+    `**Words:** ${manuscript.totalWords.toLocaleString()}`,
+    `**Estimated Input Tokens:** ~${Math.ceil(manuscript.text.length / 4).toLocaleString()}`,
+    `**Story Beats:** ${beats.length}`,
+    ``,
+    `### Scene List`,
+    ``,
+  ];
+  
+  manuscript.scenes.forEach((scene, idx) => {
+    const wordCount = scene.wordCount || 0;
+    reportLines.push(`${idx + 1}. ${scene.title || 'Untitled Scene'} (${wordCount.toLocaleString()} words)`);
+  });
+  
+  reportLines.push(``);
+  reportLines.push(`### Prompt Sent to Gemini`);
+  reportLines.push(``);
+  reportLines.push(`\`\`\`markdown`);
+  reportLines.push(prompt);
+  reportLines.push(`\`\`\``);
+  reportLines.push(``);
+  
+  // Save failure report
+  const reportDate = new Date();
+  const dateStr = reportDate.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+  const timeStr = reportDate.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).replace(/:/g, '.');
+
+  const reportPath = `AI/Gossamer Analysis FAILED ${dateStr} ${timeStr}.md`;
+
+  try {
+    await plugin.app.vault.createFolder('AI');
+  } catch (e) {
+    // Folder might already exist
+  }
+
+  const reportFile = await plugin.app.vault.create(reportPath, reportLines.join('\n'));
+  
+  // Open the failure report
+  const leaf = plugin.app.workspace.getLeaf('tab');
+  await leaf.openFile(reportFile);
+  
+  new Notice(`⚠️ Analysis failed. Diagnostic report saved to AI folder.`);
+}
+
+/**
  * Create detailed processing log similar to scene analysis logs
  */
 async function createGossamerProcessingLog(
@@ -849,7 +973,7 @@ async function createGossamerProcessingLog(
   updateCount: number,
   apiResult: any, // SAFE: any type used for Gemini API result with optional rate limit metadata
   prompt: string,
-  beats: BeatWithRange[],
+  beats: UnifiedBeatInfo[],
   unmatchedBeats: string[]
 ): Promise<void> {
   const now = new Date();

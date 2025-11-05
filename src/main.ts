@@ -15,7 +15,6 @@ import { createTimelineSVG, adjustBeatLabelsAfterRender } from './renderer/Timel
 import { RadialTimelineView } from './view/TimeLineView';
 import { RendererService } from './services/RendererService';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from './GossamerCommands';
-import { registerBeatPlacementCommands } from './BeatPlacementCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 import { ReleaseNotesModal } from './modals/ReleaseNotesModal';
@@ -24,7 +23,7 @@ import { assembleManuscript } from './utils/manuscript';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { parseSceneTitle } from './utils/text';
 import { parseWhenField } from './utils/date';
-import { parseReleaseVersion } from './utils/releases';
+import { compareReleaseVersionsDesc, parseReleaseVersion } from './utils/releases';
 
 
 // Declare the variable that will be injected by the build process
@@ -283,8 +282,9 @@ export interface EmbeddedReleaseNotesEntry {
 }
 
 export interface EmbeddedReleaseNotesBundle {
-    featured?: EmbeddedReleaseNotesEntry | null;
-    current?: EmbeddedReleaseNotesEntry | null;
+    major?: EmbeddedReleaseNotesEntry | null;
+    latest?: EmbeddedReleaseNotesEntry | null;
+    patches?: EmbeddedReleaseNotesEntry[];
 }
 
 const NUM_ACTS = 3;
@@ -413,6 +413,10 @@ function createSvgArcPath(startAngle: number, endAngle: number, radius: number, 
 
 // Note: Search highlighting is now handled entirely by addHighlightRectangles() in TimeLineView.ts
 // after the SVG is rendered. This simplifies the code and ensures a single source of truth.
+
+export interface GetSceneDataOptions {
+    filterBeatsBySystem?: boolean;
+}
 
 export default class RadialTimelinePlugin extends Plugin {
     settings: RadialTimelineSettings;
@@ -555,31 +559,93 @@ export default class RadialTimelinePlugin extends Plugin {
         return resultNodes;
     }
 
+    private normalizeReleaseEntry(value: unknown): EmbeddedReleaseNotesEntry | null {
+        if (!value || typeof value !== 'object') return null;
+        const raw = value as Record<string, unknown>;
+        const rawVersion =
+            typeof raw.version === 'string' ? raw.version :
+            typeof raw.tag === 'string' ? raw.tag :
+            typeof raw.tag_name === 'string' ? raw.tag_name as string :
+            typeof raw.name === 'string' ? raw.name as string :
+            '';
+        const version = rawVersion.toString().trim().replace(/^v/i, '');
+        if (!version) return null;
+        const title =
+            typeof raw.title === 'string' && raw.title.trim().length > 0
+                ? raw.title
+                : (typeof raw.name === 'string' && raw.name.trim().length > 0
+                    ? raw.name
+                    : `Radial Timeline ${version}`);
+        const body = typeof raw.body === 'string' ? raw.body : '';
+        const entry: EmbeddedReleaseNotesEntry = {
+            version,
+            title,
+            body: body.length > 0 ? body : 'No release notes were provided for this version.',
+        };
+        const url =
+            typeof raw.html_url === 'string' ? raw.html_url :
+            typeof raw.htmlUrl === 'string' ? raw.htmlUrl as string :
+            typeof raw.url === 'string' ? raw.url :
+            undefined;
+        if (url) {
+            entry.url = url;
+        }
+        const published =
+            typeof raw.publishedAt === 'string' ? raw.publishedAt :
+            typeof raw.published_at === 'string' ? raw.published_at as string :
+            undefined;
+        if (published) {
+            entry.publishedAt = published;
+        }
+        return entry;
+    }
+
     private loadEmbeddedReleaseNotes(): EmbeddedReleaseNotesBundle | null {
         try {
             const raw = typeof EMBEDDED_RELEASE_NOTES !== 'undefined' ? EMBEDDED_RELEASE_NOTES : '';
             if (!raw) return null;
             const parsed = JSON.parse(raw);
             if (!parsed) return null;
-            if (parsed.featured || parsed.current) {
+            
+            // New format: major, latest, patches
+            if (parsed.major || parsed.latest || parsed.patches) {
+                const major = this.normalizeReleaseEntry(parsed.major) ?? null;
+                const latest = this.normalizeReleaseEntry(parsed.latest) ?? null;
+                const patches = Array.isArray(parsed.patches)
+                    ? (parsed.patches as unknown[])
+                        .map((entry: unknown) => this.normalizeReleaseEntry(entry))
+                        .filter((entry): entry is EmbeddedReleaseNotesEntry => entry !== null)
+                    : undefined;
                 return {
-                    featured: parsed.featured ?? null,
-                    current: parsed.current ?? null,
+                    major,
+                    latest,
+                    patches,
                 };
             }
+            
+            // Legacy format: featured, current (for backward compatibility)
+            if (parsed.featured || parsed.current) {
+                const major = this.normalizeReleaseEntry(parsed.featured) ?? null;
+                const latest = this.normalizeReleaseEntry(parsed.current) ?? null;
+                const patches = Array.isArray(parsed.patches)
+                    ? (parsed.patches as unknown[])
+                        .map((entry: unknown) => this.normalizeReleaseEntry(entry))
+                        .filter((entry): entry is EmbeddedReleaseNotesEntry => entry !== null)
+                    : undefined;
+                return {
+                    major,
+                    latest,
+                    patches,
+                };
+            }
+            
+            // Single entry format (fallback)
             if (parsed.version || parsed.body) {
-                const version = (parsed.version || parsed.tag || parsed.name || '').toString().trim();
-                const body = (parsed.body ?? '').toString();
-                if (!version || !body) return null;
-                const entry: EmbeddedReleaseNotesEntry = {
-                    version,
-                    title: (parsed.name || version).toString(),
-                    body,
-                    url: typeof parsed.html_url === 'string' ? parsed.html_url : (typeof parsed.url === 'string' ? parsed.url : undefined),
-                    publishedAt: typeof parsed.publishedAt === 'string' ? parsed.publishedAt : (typeof parsed.published_at === 'string' ? parsed.published_at : undefined),
-                };
-                return { featured: entry, current: entry };
+                const entry = this.normalizeReleaseEntry(parsed);
+                if (!entry) return null;
+                return { major: entry, latest: entry };
             }
+            
             return null;
         } catch (error) {
             console.error('Failed to parse embedded release notes:', error);
@@ -602,23 +668,109 @@ export default class RadialTimelinePlugin extends Plugin {
         const bundle = this.releaseNotesBundle;
         if (!bundle) return;
         if (this.releaseModalShownThisSession) return;
-        const currentVersion = bundle.current?.version ?? bundle.featured?.version;
-        if (!currentVersion) return;
+        
+        // Check against the latest version
+        const latestVersion = bundle.latest?.version ?? bundle.major?.version;
+        if (!latestVersion) return;
+        
         const seenVersion = this.settings.lastSeenReleaseNotesVersion ?? '';
-        if (currentVersion === seenVersion) return;
+        if (latestVersion === seenVersion) return;
+        
+        // Only show modal automatically for major releases (x.0.0)
+        const versionInfo = parseReleaseVersion(latestVersion);
+        if (!versionInfo) return;
+        if (versionInfo.minor !== 0 || versionInfo.patch !== 0) {
+            // For patch releases, don't auto-show modal, but mark as seen
+            this.settings.lastSeenReleaseNotesVersion = latestVersion;
+            await this.saveSettings();
+            return;
+        }
+        
         this.openReleaseNotesModal();
     }
 
     public openReleaseNotesModal(force: boolean = false): void {
         const bundle = this.releaseNotesBundle;
         if (!bundle) return;
-        const featured = bundle.featured ?? bundle.current;
-        if (!featured) return;
-        const current = bundle.current && bundle.current.version !== featured.version ? bundle.current : null;
+        
+        // Featured release is the major release (e.g., 3.0.0)
+        const major = bundle.major ?? bundle.latest;
+        if (!major) return;
+        
+        const patches = this.collectReleasePatches(bundle, major);
         if (this.releaseModalShownThisSession && !force) return;
+        
         this.releaseModalShownThisSession = true;
-        const modal = new ReleaseNotesModal(this.app, this, featured, current);
+        const modal = new ReleaseNotesModal(this.app, this, major, patches);
         modal.open();
+    }
+
+    private collectReleasePatches(bundle: EmbeddedReleaseNotesBundle, major: EmbeddedReleaseNotesEntry): EmbeddedReleaseNotesEntry[] {
+        const seen = new Set<string>([major.version]);
+        const patches: EmbeddedReleaseNotesEntry[] = [];
+        const add = (entry: EmbeddedReleaseNotesEntry | null | undefined) => {
+            if (!entry) return;
+            if (seen.has(entry.version)) return;
+            seen.add(entry.version);
+            patches.push(entry);
+        };
+
+        // Add all patches from the bundle
+        const patchSource: EmbeddedReleaseNotesEntry[] = Array.isArray(bundle.patches) ? bundle.patches : [];
+        for (const entry of patchSource) {
+            add(entry);
+        }
+
+        // Add latest if it's different from major
+        add(bundle.latest);
+        
+        patches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
+        return patches;
+    }
+
+    private mergeReleaseBundles(primary: EmbeddedReleaseNotesBundle | null, fallback: EmbeddedReleaseNotesBundle | null): EmbeddedReleaseNotesBundle | null {
+        if (!primary && !fallback) return null;
+        if (!primary) return fallback;
+        if (!fallback) return primary;
+
+        const merged: EmbeddedReleaseNotesBundle = {
+            major: primary.major ?? fallback.major ?? null,
+            latest: primary.latest ?? fallback.latest ?? null,
+        };
+
+        const patches: EmbeddedReleaseNotesEntry[] = [];
+        const seen = new Set<string>();
+        const add = (entry: EmbeddedReleaseNotesEntry | null | undefined) => {
+            if (!entry) return;
+            if (seen.has(entry.version)) return;
+            seen.add(entry.version);
+            patches.push(entry);
+        };
+
+        const sources: Array<EmbeddedReleaseNotesEntry[] | undefined> = [
+            primary.patches,
+            fallback.patches,
+        ];
+
+        for (const source of sources) {
+            if (!Array.isArray(source)) continue;
+            for (const entry of source) {
+                add(entry);
+            }
+        }
+
+        // Add latest entries if not already included
+        add(primary.latest);
+        add(fallback.latest);
+        add(primary.major);
+        add(fallback.major);
+
+        if (patches.length > 0) {
+            patches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
+            merged.patches = patches;
+        }
+
+        return merged;
     }
 
     public async ensureReleaseNotesFresh(force: boolean): Promise<boolean> {
@@ -646,10 +798,12 @@ export default class RadialTimelinePlugin extends Plugin {
             if (!bundle) {
                 return false;
             }
-            this.settings.cachedReleaseNotes = bundle;
+            const embedded = this.loadEmbeddedReleaseNotes();
+            const merged = this.mergeReleaseBundles(bundle, embedded);
+            this.settings.cachedReleaseNotes = merged;
             this.settings.releaseNotesLastFetched = new Date(now).toISOString();
             await this.saveSettings();
-            this.releaseNotesBundle = bundle;
+            this.releaseNotesBundle = merged;
             return true;
         } catch (error) {
             console.error('Failed to refresh release notes from GitHub:', error);
@@ -664,19 +818,34 @@ export default class RadialTimelinePlugin extends Plugin {
         }
 
         const semver = parseReleaseVersion(latest.version);
-        let featured: EmbeddedReleaseNotesEntry | null = latest;
+        let major: EmbeddedReleaseNotesEntry | null = latest;
+        let patches: EmbeddedReleaseNotesEntry[] | undefined;
 
-        if (semver && (semver.minor !== 0 || semver.patch !== 0)) {
-            const majorTag = `${semver.major}.0.0`;
-            const major = await this.fetchGitHubRelease(majorTag);
-            if (major) {
-                featured = major;
+        if (semver) {
+            if (semver.minor !== 0 || semver.patch !== 0) {
+                const majorTag = `${semver.major}.0.0`;
+                const majorRelease = await this.fetchGitHubRelease(majorTag);
+                if (majorRelease) {
+                    major = majorRelease;
+                }
+            }
+            const fetchedPatches = await this.fetchGitHubPatchReleases(semver.major);
+            if (fetchedPatches.length > 0) {
+                const seen = new Set<string>([major?.version ?? '']);
+                patches = [];
+                for (const entry of fetchedPatches) {
+                    if (!entry) continue;
+                    if (seen.has(entry.version)) continue;
+                    seen.add(entry.version);
+                    patches.push(entry);
+                }
             }
         }
 
         return {
-            featured,
-            current: latest,
+            major,
+            latest,
+            patches,
         };
     }
 
@@ -700,32 +869,59 @@ export default class RadialTimelinePlugin extends Plugin {
             }
 
             const data = JSON.parse(response.text ?? '{}');
-            const rawVersion = (data.tag_name || data.name || '').toString().trim();
-            const version = rawVersion.replace(/^v/i, '');
-            const body = (data.body ?? '').toString();
-            if (!version) {
-                return null;
-            }
-
-            return {
-                version,
-                title: (data.name || version).toString(),
-                body: body.length > 0 ? body : 'No release notes were provided for this version.',
-                url: typeof data.html_url === 'string' ? data.html_url : (typeof data.url === 'string' ? data.url : undefined),
-                publishedAt: typeof data.published_at === 'string' ? data.published_at : undefined,
-            };
+            return this.normalizeReleaseEntry(data);
         } catch (error) {
             console.warn(`Unable to fetch release info for ${tagOrLatest}:`, error);
             return null;
         }
     }
 
+    private async fetchGitHubPatchReleases(major: number): Promise<EmbeddedReleaseNotesEntry[]> {
+        const base = 'https://api.github.com/repos/EricRhysTaylor/Radial-Timeline';
+        try {
+            const response = await requestUrl({
+                url: `${base}/releases?per_page=100`,
+                headers: {
+                    'Accept': 'application/vnd.github+json',
+                    'User-Agent': 'RadialTimelinePlugin'
+                }
+            });
+
+            if (response.status >= 400) {
+                return [];
+            }
+
+            const payload = JSON.parse(response.text ?? '[]');
+            if (!Array.isArray(payload)) return [];
+
+            const patches: EmbeddedReleaseNotesEntry[] = [];
+            const seen = new Set<string>();
+
+            for (const raw of payload) {
+                const entry = this.normalizeReleaseEntry(raw);
+                if (!entry) continue;
+                if (seen.has(entry.version)) continue;
+                seen.add(entry.version);
+                const info = parseReleaseVersion(entry.version);
+                if (!info) continue;
+                if (info.major !== major) continue;
+                if (info.minor === 0 && info.patch === 0) continue;
+                patches.push(entry);
+            }
+
+            patches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
+            return patches;
+        } catch (error) {
+            console.warn(`Unable to fetch release list for major ${major}:`, error);
+            return [];
+        }
+    }
+
     async onload() {
         await this.loadSettings();
-        this.releaseNotesBundle = this.loadEmbeddedReleaseNotes();
-        if (this.settings.cachedReleaseNotes) {
-            this.releaseNotesBundle = this.settings.cachedReleaseNotes;
-        }
+        const embeddedBundle = this.loadEmbeddedReleaseNotes();
+        const cachedBundle = this.settings.cachedReleaseNotes ?? null;
+        this.releaseNotesBundle = this.mergeReleaseBundles(cachedBundle, embeddedBundle);
         this.releaseModalShownThisSession = false;
         void this.ensureReleaseNotesFresh(false);
 
@@ -781,7 +977,7 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // Gossamer enter momentum scores
+        // Gossamer enter momentum scores (manual entry)
         this.addCommand({
             id: 'gossamer-enter-scores',
             name: 'Gossamer enter momentum scores',
@@ -864,28 +1060,31 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
 
-        // 4c. Gemini AI Gossamer analysis
-        this.addCommand({
-            id: 'gossamer-ai-analysis',
-            name: 'Gossamer AI momentum analysis (Gemini)',
-            checkCallback: (checking: boolean) => {
-                if (!this.settings.enableAiSceneAnalysis) return false; // hide when AI features disabled
-                if (checking) return true;
-                (async () => {
-                    try {
-                        await runGossamerAiAnalysis(this);
-                    } catch (e) {
-                        const errorMsg = (e as Error)?.message || 'Unknown error';
-                        new Notice(`Failed to run Gossamer AI analysis: ${errorMsg}`);
-                        console.error(e);
-                    }
-                })();
-                return true;
-            }
-        });
-
-        // Register Beat Placement Optimization commands
-        registerBeatPlacementCommands(this);
+        // ===================================================================
+        // GOSSAMER AI ANALYSIS - DORMANT
+        // The AI analysis feature is temporarily disabled while under development.
+        // Manual score entry remains available. To re-enable AI analysis, uncomment below.
+        // ===================================================================
+        
+        // 4c. Gemini AI Gossamer analysis (DORMANT)
+        // this.addCommand({
+        //     id: 'gossamer-ai-analysis',
+        //     name: 'Gossamer AI momentum analysis (Gemini)',
+        //     checkCallback: (checking: boolean) => {
+        //         if (!this.settings.enableAiSceneAnalysis) return false; // hide when AI features disabled
+        //         if (checking) return true;
+        //         (async () => {
+        //             try {
+        //                 await runGossamerAiAnalysis(this);
+        //             } catch (e) {
+        //                 const errorMsg = (e as Error)?.message || 'Unknown error';
+        //                 new Notice(`Failed to run Gossamer AI analysis: ${errorMsg}`);
+        //                 console.error(e);
+        //             }
+        //         })();
+        //         return true;
+        //     }
+        // });
 
         // Add settings tab (only once)
         if (!this._settingsTabAdded) {
@@ -1550,9 +1749,11 @@ export default class RadialTimelinePlugin extends Plugin {
     // Method to generate timeline (legacy HTML method - will be removed later)
 
     // Public method to get scene data
-    async getSceneData(): Promise<Scene[]> {
+    async getSceneData(options?: GetSceneDataOptions): Promise<Scene[]> {
+        const filterBeats = options?.filterBeatsBySystem ?? true;
+
         // Find markdown files in vault that match the filters
-        const files = this.app.vault.getMarkdownFiles().filter(file => {
+        const files = this.app.vault.getMarkdownFiles().filter((file: TFile) => {
             // If sourcePath is empty, include all files, otherwise only include files in the sourcePath
             if (this.settings.sourcePath) {
                 return file.path.startsWith(this.settings.sourcePath);
@@ -1672,21 +1873,23 @@ export default class RadialTimelinePlugin extends Plugin {
         plotsToProcess.forEach(plotInfo => {
             const beatModel = (plotInfo.metadata["Beat Model"] as string) || undefined;
             
-            // Filter beat notes based on selected story structure system
-            const selectedSystem = this.settings.beatSystem || 'Custom';
-            
-            // If Custom is selected, only show beats that DON'T have a recognized Beat Model
-            if (selectedSystem === 'Custom') {
-                const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
-                if (beatModel && recognizedSystems.includes(beatModel)) {
-                    // Skip beats that belong to recognized systems when Custom is selected
-                    return;
-                }
-            } else {
-                // For specific systems, only show beats that match the selected system
-                if (beatModel !== selectedSystem) {
-                    // Skip beats that don't match the selected system
-                    return;
+            if (filterBeats) {
+                // Filter beat notes based on selected story structure system
+                const selectedSystem = this.settings.beatSystem || 'Custom';
+                
+                // If Custom is selected, only show beats that DON'T have a recognized Beat Model
+                if (selectedSystem === 'Custom') {
+                    const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
+                    if (beatModel && recognizedSystems.includes(beatModel)) {
+                        // Skip beats that belong to recognized systems when Custom is selected
+                        return;
+                    }
+                } else {
+                    // For specific systems, only show beats that match the selected system
+                    if (beatModel !== selectedSystem) {
+                        // Skip beats that don't match the selected system
+                        return;
+                    }
                 }
             }
             

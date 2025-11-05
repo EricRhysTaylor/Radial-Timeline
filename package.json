@@ -16,7 +16,8 @@
 		"backup": "node check-css-duplicates.mjs && npm run build && BACKUP_NOTE=\"${npm_config_note:-$npm_config_message}\" node backup.mjs",
 		"standards": "node scripts/compliance-check.mjs && node code-quality-check.mjs src/main.ts && node check-css-duplicates.mjs",
 		"scripts": "node show-scripts.mjs",
-		"sync-yaml": "node scripts/sync-yaml-to-wiki.mjs"
+		"sync-yaml": "node scripts/sync-yaml-to-wiki.mjs",
+		"sync-release-notes": "node sync-release-notes.mjs"
 	},
 	"keywords": [
 		"obsidian",

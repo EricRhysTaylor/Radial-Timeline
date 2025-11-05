@@ -14,7 +14,12 @@ export interface ManuscriptInfo {
     totalWords: number;
     estimatedTokens: number;
     beatCount: number;
+    beatSystem: string; // Beat system name (e.g., "Save The Cat", "Custom")
     hasIterativeContext?: boolean; // True if any beats have previous justifications for comparison
+}
+
+export interface AnalysisOptions {
+    requestScores: boolean;
 }
 
 /**
@@ -22,9 +27,12 @@ export interface ManuscriptInfo {
  */
 export class GossamerProcessingModal extends Modal {
     private readonly plugin: RadialTimelinePlugin;
-    private readonly onConfirm: () => Promise<void>;
+    private readonly onConfirm: (options: AnalysisOptions) => Promise<void>;
     
     public isProcessing: boolean = false;
+    public analysisOptions: AnalysisOptions = {
+        requestScores: true
+    };
     
     // UI elements
     private confirmationView?: HTMLElement;
@@ -45,7 +53,7 @@ export class GossamerProcessingModal extends Modal {
     constructor(
         app: App,
         plugin: RadialTimelinePlugin,
-        onConfirm: () => Promise<void>
+        onConfirm: (options: AnalysisOptions) => Promise<void>
     ) {
         super(app);
         this.plugin = plugin;
@@ -95,7 +103,15 @@ export class GossamerProcessingModal extends Modal {
         
         // Info section
         const infoEl = contentEl.createDiv({ cls: 'rt-beats-info' });
-        infoEl.setText('This will analyze your entire manuscript using Gemini AI to evaluate narrative momentum at each story beat.');
+        
+        // Beat system info (will be updated when manuscript info is set)
+        const beatSystemEl = infoEl.createDiv({ cls: 'rt-gossamer-beat-system-info' });
+        beatSystemEl.setText('Gathering manuscript details...');
+        
+        infoEl.createDiv({ 
+            cls: 'rt-gossamer-description',
+            text: 'This will analyze your entire manuscript using Gemini AI to evaluate narrative momentum at each story beat.'
+        });
         
         // Manuscript info section (will be populated by caller)
         const infoSection = contentEl.createDiv({ cls: 'rt-gossamer-info-section' });
@@ -131,7 +147,7 @@ export class GossamerProcessingModal extends Modal {
         this.showProcessingView();
         
         try {
-            await this.onConfirm();
+            await this.onConfirm(this.analysisOptions);
         } catch (error) {
             console.error('[Gossamer AI] Processing error:', error);
         }
@@ -192,6 +208,11 @@ export class GossamerProcessingModal extends Modal {
             
             stats.createDiv({ 
                 cls: 'rt-gossamer-stat-row',
+                text: `Beat System: ${info.beatSystem}`
+            });
+            
+            stats.createDiv({ 
+                cls: 'rt-gossamer-stat-row',
                 text: `Scenes: ${info.totalScenes.toLocaleString()}`
             });
             
@@ -214,9 +235,15 @@ export class GossamerProcessingModal extends Modal {
             if (info.hasIterativeContext) {
                 stats.createDiv({ 
                     cls: 'rt-gossamer-stat-row rt-gossamer-iterative-note',
-                    text: `📊 Iterative refinement: Previous analysis will be sent for comparison`
+                    text: `Iterative refinement: Previous analysis will be sent for comparison`
                 });
             }
+        }
+        
+        // Update the beat system info in confirmation view if it exists
+        const beatSystemInfoEl = this.confirmationView?.querySelector('.rt-gossamer-beat-system-info');
+        if (beatSystemInfoEl) {
+            beatSystemInfoEl.setText(`Beat System: ${info.beatSystem}`);
         }
     }
 

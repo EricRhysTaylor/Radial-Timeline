@@ -7,18 +7,18 @@
 import { App, MarkdownRenderer, Modal } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { EmbeddedReleaseNotesEntry } from '../main';
-import { DEFAULT_RELEASES_URL, extractReleaseSummary, parseReleaseVersion } from '../utils/releases';
+import { DEFAULT_RELEASES_URL, parseReleaseVersion } from '../utils/releases';
 
 export class ReleaseNotesModal extends Modal {
-    private readonly featured: EmbeddedReleaseNotesEntry;
-    private readonly patch: EmbeddedReleaseNotesEntry | null;
+    private readonly major: EmbeddedReleaseNotesEntry;
+    private readonly patches: EmbeddedReleaseNotesEntry[];
     private readonly plugin: RadialTimelinePlugin;
 
-    constructor(app: App, plugin: RadialTimelinePlugin, featured: EmbeddedReleaseNotesEntry, patch: EmbeddedReleaseNotesEntry | null) {
+    constructor(app: App, plugin: RadialTimelinePlugin, major: EmbeddedReleaseNotesEntry, patches: EmbeddedReleaseNotesEntry[]) {
         super(app);
         this.plugin = plugin;
-        this.featured = featured;
-        this.patch = patch;
+        this.major = major;
+        this.patches = patches;
     }
 
     onOpen(): void {
@@ -26,14 +26,14 @@ export class ReleaseNotesModal extends Modal {
         this.modalEl.addClass('rt-release-notes-modal');
         contentEl.empty();
 
-        const versionInfo = parseReleaseVersion(this.featured.version);
-        const modalHeading = versionInfo ? `Radial Timeline ${versionInfo.majorLabel}` : (this.featured.title || 'What\'s New');
+        const versionInfo = parseReleaseVersion(this.major.version);
+        const modalHeading = versionInfo ? `Radial Timeline ${versionInfo.majorLabel}` : (this.major.title || 'What\'s New');
         titleEl.setText(modalHeading);
 
         const metaEl = contentEl.createDiv({ cls: 'rt-release-notes-modal-meta' });
-        if (this.featured.publishedAt) {
+        if (this.major.publishedAt) {
             try {
-                const date = new Date(this.featured.publishedAt);
+                const date = new Date(this.major.publishedAt);
                 if (!Number.isNaN(date.getTime())) {
                     metaEl.createSpan({ text: date.toLocaleDateString() });
                 }
@@ -41,30 +41,25 @@ export class ReleaseNotesModal extends Modal {
                 // Ignore malformed dates
             }
         }
-        const releaseUrl = this.featured.url ?? DEFAULT_RELEASES_URL;
+        const releaseUrl = this.major.url ?? DEFAULT_RELEASES_URL;
         const link = metaEl.createEl('a', { text: 'View on GitHub', href: releaseUrl });
         link.setAttr('target', '_blank');
 
-        const summary = extractReleaseSummary(this.featured.body);
-        if (summary) {
-            contentEl.createDiv({ cls: 'rt-release-notes-summary' }).setText(summary);
-        }
-
         const bodyHost = contentEl.createDiv();
-        const featuredBody = bodyHost.createDiv({ cls: 'rt-release-notes-modal-body markdown-preview-view' });
-        MarkdownRenderer.renderMarkdown(this.featured.body, featuredBody, '', this.plugin).catch(() => {
-            featuredBody.empty();
-            featuredBody.createEl('p', { text: 'Unable to render release notes. Please view them on GitHub instead.' });
+        const majorBody = bodyHost.createDiv({ cls: 'rt-release-notes-modal-body markdown-preview-view' });
+        MarkdownRenderer.renderMarkdown(this.major.body, majorBody, '', this.plugin).catch(() => {
+            majorBody.empty();
+            majorBody.createEl('p', { text: 'Unable to render release notes. Please view them on GitHub instead.' });
         });
 
-        if (this.patch) {
-            const patchInfo = parseReleaseVersion(this.patch.version);
+        for (const patch of this.patches) {
+            const patchInfo = parseReleaseVersion(patch.version);
             const details = bodyHost.createEl('details', { cls: 'rt-release-notes-details' });
-            const label = patchInfo ? `Patch ${patchInfo.fullLabel}` : (this.patch.title || this.patch.version);
+            const label = patchInfo ? `Patch ${patchInfo.fullLabel}` : (patch.title || patch.version);
             const summaryEl = details.createEl('summary', { text: label });
             summaryEl.classList.add('rt-release-notes-details-summary');
             const patchBody = details.createDiv({ cls: 'rt-release-notes-modal-body markdown-preview-view' });
-            MarkdownRenderer.renderMarkdown(this.patch.body, patchBody, '', this.plugin).catch(() => {
+            MarkdownRenderer.renderMarkdown(patch.body, patchBody, '', this.plugin).catch(() => {
                 patchBody.empty();
                 patchBody.createEl('p', { text: 'Unable to render release notes. Please view them on GitHub instead.' });
             });
@@ -77,7 +72,7 @@ export class ReleaseNotesModal extends Modal {
 
     onClose(): void {
         this.contentEl.empty();
-        const versionToMark = this.patch?.version ?? this.featured.version;
+        const versionToMark = this.patches[0]?.version ?? this.major.version;
         void this.plugin.markReleaseNotesSeen(versionToMark);
     }
 }

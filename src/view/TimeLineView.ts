@@ -13,6 +13,7 @@ import ZeroDraftModal from '../modals/ZeroDraftModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
 import { openOrRevealFile } from '../utils/fileUtils';
 import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt, setupModeToggleController } from './interactions';
+import { isShiftModeActive } from './interactions/ChronologueShiftController';
 import { RendererService } from '../services/RendererService';
 import { ModeManager, createModeManager } from '../modes/ModeManager';
 import { ModeInteractionController, createInteractionController } from '../modes/ModeInteractionController';
@@ -1129,12 +1130,21 @@ export class RadialTimelineView extends ItemView {
                 };
 
                 const onMove = (e: PointerEvent) => {
-                    // Update synopsis position when visible
-                    if (currentSynopsis && currentSceneId) {
-                        view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, currentSceneId);
+                    rafId = null;
+
+                    if (!currentSynopsis || !currentSceneId) {
+                        return;
                     }
 
-                    rafId = null;
+                    if (!currentSynopsis.classList.contains('rt-visible')) {
+                        return;
+                    }
+
+                    if (view.currentMode === 'chronologue' && isShiftModeActive()) {
+                        return;
+                    }
+
+                    view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, currentSceneId);
                 };
                 view.registerDomEvent(svg as unknown as HTMLElement, 'pointermove', (e: PointerEvent) => {
                     if (rafId !== null) return;
