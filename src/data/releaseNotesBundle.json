@@ -7,10 +7,19 @@
     "publishedAt": "2025-11-05T20:39:14Z"
   },
   "latest": {
-    "version": "4.0.0",
-    "title": "4.0.0",
-    "body": "## Major Release 4.0: Chronologue Mode & Timeline Intelligence\r\n\r\n### Chronologue Mode\r\n\r\nVisualize your story in true chronological order with the new **Chronologue Mode**. See the timeline of your story around the enlarged outer perimeter. All scenes and subplots now respect your date and time-based chronology. Perfect for understanding story flow and identifying pacing issues and temporal impossibilities.\r\n\r\n- Start date and end date at the top of timeline using zero stage color and press stage color\r\n- Duration time arcs show duration of each scene relative to other scenes\r\n- Intelligent time unit labeling reveals the timespan of the manuscript\r\n- Dedicated shift button for checking elapsed time between scene & discontinuities\r\n\r\n### Intelligent Date-Time Ordering\r\n\r\nScenes and plots now automatically organize based on when events actually occur in your narrative, not manuscript order. Ideal for complex narratives with flashbacks, parallel timelines, or non-linear storytelling.\r\n\r\n### Advanced Mode Control System\r\n\r\n- Four dedicated view modes: Main Plot, All Scenes, Chronologue and Gossamer\r\n- Keyboard shortcuts and current mode title\r\n\r\n### Enhanced Synopsis Display\r\n\r\n- Expanded synopsis details with larger scene title and searchable date and time\r\n- Duration tracking on a separate line below date and time\r\n- Improved text positioning for all quadrants\r\n\r\n### View Optimizations\r\n- Timeline radius adjusts to view mode so no space is wasted\r\n- Various advanced settings for customization of modes\r\n---\r\n",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.0",
-    "publishedAt": "2025-11-05T20:39:14Z"
-  }
+    "version": "4.0.1",
+    "title": "4.0.1",
+    "body": "## What's Changed\r\n\r\n- Bug in Chronologue mode, whereby hovering in all scenes, the ring will fail to activate the same scene in subplots.\r\n- Readme Updates",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.1",
+    "publishedAt": "2025-11-06T22:57:22Z"
+  },
+  "patches": [
+    {
+      "version": "4.0.1",
+      "title": "4.0.1",
+      "body": "## What's Changed\r\n\r\n- Bug in Chronologue mode, whereby hovering in all scenes, the ring will fail to activate the same scene in subplots.\r\n- Readme Updates",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.1",
+      "publishedAt": "2025-11-06T22:57:22Z"
+    }
+  ]
 }
