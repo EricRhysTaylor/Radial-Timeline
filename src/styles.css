@@ -2460,18 +2460,18 @@
   pointer-events: none;
 }
 
-.rt-subplot-ring-label-text {
-    fill: var(--rt-max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
-    opacity: .3; /* Corrected opacity back to 30% */
-    font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
-    font-weight: 400; /* Regular weight */
-    font-synthesis: none; /* Prevent faux bold/italic synthesis for single-weight font */
-    letter-spacing: -0.02em; /* tighter tracking */
-    font-size: var(--rt-subplot-font-size);
-    dominant-baseline: central; /* Try central for potentially better vertical centering */
-    text-transform: uppercase;
-    pointer-events: none; /* Ignore mouse events */
-}
+  .rt-subplot-ring-label-text {
+      fill: var(--rt-max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
+      opacity: .3; /* Corrected opacity back to 30% */
+      font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
+      font-weight: 400; /* Regular weight */
+      font-synthesis: none; /* Prevent faux bold/italic synthesis for single-weight font */
+      letter-spacing: -0.02em; /* tighter tracking */
+      font-size: var(--rt-subplot-font-size);
+      dominant-baseline: central; /* Try central for potentially better vertical centering */
+      text-transform: uppercase;
+      pointer-events: none; /* Ignore mouse events */
+  }
 
 /* Use .non-selected class for faded state (consistent with other elements) */
 .rt-subplot-ring-label-text.rt-non-selected {

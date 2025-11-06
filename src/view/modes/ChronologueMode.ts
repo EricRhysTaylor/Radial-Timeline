@@ -136,6 +136,7 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         const refs = sceneElementRefs.get(sceneId);
         if (!refs) return;
 
+        // Highlight the primary scene
         if (refs.path) {
             refs.path.classList.add('rt-selected');
             refs.path.classList.remove('rt-non-selected');
@@ -149,12 +150,41 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         if (refs.title) {
             refs.title.classList.remove('rt-non-selected');
         }
+
+        // Find and highlight all matching scenes in other rings by data-path
+        const primaryGroup = refs.path?.closest('.rt-scene-group[data-item-type="Scene"]');
+        const currentPathAttr = primaryGroup?.getAttribute('data-path');
+        if (currentPathAttr) {
+            const matches = svg.querySelectorAll(`.rt-scene-group[data-item-type="Scene"][data-path="${currentPathAttr}"]`);
+            matches.forEach(mg => {
+                const matchSceneId = getSceneIdFromGroup(mg);
+                if (!matchSceneId || matchSceneId === sceneId) return;
+                
+                const matchRefs = sceneElementRefs.get(matchSceneId);
+                if (!matchRefs) return;
+                
+                if (matchRefs.path) {
+                    matchRefs.path.classList.add('rt-selected');
+                    matchRefs.path.classList.remove('rt-non-selected');
+                }
+                if (matchRefs.numberSquare) {
+                    matchRefs.numberSquare.classList.remove('rt-non-selected');
+                }
+                if (matchRefs.numberText) {
+                    matchRefs.numberText.classList.remove('rt-non-selected');
+                }
+                if (matchRefs.title) {
+                    matchRefs.title.classList.remove('rt-non-selected');
+                }
+            });
+        }
     };
 
     const unhighlightScene = (sceneId: string, keepFaded: boolean): void => {
         const refs = sceneElementRefs.get(sceneId);
         if (!refs) return;
 
+        // Unhighlight the primary scene
         if (refs.path) {
             refs.path.classList.remove('rt-selected');
             if (keepFaded) {
@@ -176,6 +206,33 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         toggleFade(refs.numberSquare);
         toggleFade(refs.numberText);
         toggleFade(refs.title);
+
+        // Find and unhighlight all matching scenes in other rings by data-path
+        const primaryGroup = refs.path?.closest('.rt-scene-group[data-item-type="Scene"]');
+        const currentPathAttr = primaryGroup?.getAttribute('data-path');
+        if (currentPathAttr) {
+            const matches = svg.querySelectorAll(`.rt-scene-group[data-item-type="Scene"][data-path="${currentPathAttr}"]`);
+            matches.forEach(mg => {
+                const matchSceneId = getSceneIdFromGroup(mg);
+                if (!matchSceneId || matchSceneId === sceneId) return;
+                
+                const matchRefs = sceneElementRefs.get(matchSceneId);
+                if (!matchRefs) return;
+                
+                if (matchRefs.path) {
+                    matchRefs.path.classList.remove('rt-selected');
+                    if (keepFaded) {
+                        matchRefs.path.classList.add('rt-non-selected');
+                    } else {
+                        matchRefs.path.classList.remove('rt-non-selected');
+                    }
+                }
+                
+                toggleFade(matchRefs.numberSquare);
+                toggleFade(matchRefs.numberText);
+                toggleFade(matchRefs.title);
+            });
+        }
     };
 
     // Register hover handlers for Scene elements
