@@ -2462,7 +2462,7 @@
 
 .rt-subplot-ring-label-text {
     fill: var(--rt-max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
-    opacity: .2; /* Corrected opacity back to 30% */
+    opacity: .3; /* Corrected opacity back to 30% */
     font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
     font-weight: 400; /* Regular weight */
     font-synthesis: none; /* Prevent faux bold/italic synthesis for single-weight font */
