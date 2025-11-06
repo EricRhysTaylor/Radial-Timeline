@@ -32,18 +32,18 @@ The manuscript visualization plugin for Obsidian
 
 ## What It Does
 
-Radial Timeline™ arranges your scenes by act, subplot, and narrative order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and story beats. Scenes highlight across subplots to show interrelationships.
+Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and story beats. Scenes highlight across subplots to show interrelationships. Multiple view modes dissect your novel like an X-ray.
 
 **Before**: Scrolling through line after line of spreadsheet tables and files, losing sight of how your B-plot interweaves with the main storyline.  
 
 **After**: One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.
 
-Radial Timeline™ captures and visualizes all 4 critical timelines simultaneously:
+Radial Timeline™ captures and visualizes all 4 critical timelines, revealing everything you need to know as your manuscript evolves from the nucleus of an idea to the final polished novel.
 
-**Narrative time** (the sequence you reveal events to readers).
-**Chronological time** (when events happen in your story's world).
-**Author time** (your real-world writing progress toward completion).
-**Publishing time** (manuscript revision stages from Zero draft through Press-ready)—everything you need to know as your manuscript evolves from the nucleus of an idea to the final polished novel.
+**Narrative time**: the sequence you reveal events to readers.<br>
+**Chronological time**: when events happen in your story's world.<br>
+**Author time**: your real-world writing progress toward completion.<br>
+**Publishing time**: manuscript revision stages from Zero draft through Press-ready.
 
 <hr>
 
