@@ -83,6 +83,16 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing e
   </div>
 </div>
 
+<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
+  <div style="text-align: center;">
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot5.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot5.jpeg" alt="Chronologue Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    </a>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode</div>
+  </div>
+  <div style="text-align: center;"></div>
+</div>
+
 <div style="text-align: center; font-size: 0.8em; margin-top: 10px; color: #888;">
   Click image to view full size in browser
 </div>  
@@ -191,7 +201,7 @@ Chronologue mode is essential for constructing and visualizing the chronological
 
 ---
 <div style="text-align: center; margin: 20px 0;">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot-navigation.png" alt="Navigating in Radial Timeline" style="width: 200; max-width: 100%;" />
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot-navigation.png" alt="Navigating in Radial Timeline" style="width: 235; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Navigating in Radial Timeline</div>
 </div>
 

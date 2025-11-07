@@ -7,6 +7,7 @@
 import { Scene } from '../../main';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
+import { ELAPSED_ARC_RADIUS, ELAPSED_TICK_LENGTH } from '../../renderer/TimelineRenderer';
 
 // Base SVG dimensions (source viewBox size)
 const SHIFT_BUTTON_BASE_WIDTH = 133; // Base width from SVG path
@@ -25,8 +26,6 @@ const SHIFT_BUTTON_POS_Y = -750; // Same y-axis as mode pages
 const SHIFT_BUTTON_POS_X = -700; // Left side position
 
 const ELAPSED_ARC_STROKE_WIDTH = 3;
-const ELAPSED_ARC_OFFSET = 6; // Offset from the outer sceneradius to position the elapsed time arc between the main arc and the tick marks
-const ELAPSED_TICK_LENGTH = 7; // Length of the tick marks (6-8px as specified)
 
 export interface ChronologueShiftView {
     registerDomEvent: (
@@ -665,7 +664,7 @@ function showElapsedTime(
             geometry2.outerRadius ?? defaultOuterRadius,
             defaultOuterRadius
         );
-        const arcRadius = baseOuterRadius + ELAPSED_ARC_OFFSET; 
+        const arcRadius = ELAPSED_ARC_RADIUS; // Use absolute radius directly 
 
         const x1 = arcRadius * Math.cos(startAngle);
         const y1 = arcRadius * Math.sin(startAngle);

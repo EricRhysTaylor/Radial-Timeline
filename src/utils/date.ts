@@ -796,13 +796,21 @@ export function generateChronologicalTicks(
     const generateLabel = (sceneDate: Date, sceneIndex: number, isFirst: boolean, isLast: boolean): { name: string; shortName: string } => {
         // Helper to format time in 12-hour format with AM/PM
         const formatTime12Hour = (date: Date): string => {
-            let hour = date.getHours();
+            const hour = date.getHours();
             const minute = date.getMinutes();
+            
+            // Special cases for noon and midnight (elegant, matches synopsis treatment)
+            if (hour === 12 && minute === 0) {
+                return 'noon';
+            } else if (hour === 0 && minute === 0) {
+                return 'midnight';
+            }
+            
+            // Regular time formatting
             const ampm = hour >= 12 ? 'pm' : 'am';
-            hour = hour % 12;
-            hour = hour ? hour : 12; // Convert 0 to 12
+            const displayHour = hour % 12 || 12; // Convert 0 to 12
             const minuteStr = minute.toString().padStart(2, '0');
-            return `${hour}:${minuteStr}${ampm}`;
+            return `${displayHour}:${minuteStr}${ampm}`;
         };
         
         const month = sceneDate.toLocaleString('en-US', { month: 'short' });

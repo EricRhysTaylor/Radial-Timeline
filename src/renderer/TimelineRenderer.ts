@@ -77,36 +77,31 @@ function getLabelSignature(container: HTMLElement): string {
 }
 
 
-// RADIAL TIMELINE GEOMETRY CONSTANTS
+// RADIAL TIMELINE GEOMETRY CONSTANTS - CONTROL PANEL TUNING VALUES
 // Visual hierarchy from center outward:
-// ├─ Center (0px)
-// ├─ INNER_RADIUS (200px) ──────────── Where subplot rings start
-// ├─ SUBPLOT_OUTER_RADIUS (750/767px) ─ Where subplot rings end (varies by mode)
-//    - STANDARD: 767px (All Scenes/Gossamer modes)
-//    - MAINPLOT:  767px (Main Plot - more room since beats hidden)
-//    - CHRONOLOGUE: 750px (Chronologue - smaller for time details)
-// ├─ [GAP for spacing and labels]
-// ├─ MONTH_TICK_START (750px) ───────── Inner edge of month tick marks
-// ├─ MONTH_LABEL_RADIUS (763px) ────── Where month text sits
-// ├─ CHRONOLOGUE_DATE_RADIUS (768px) ─ Where chronologue boundary dates sit
-// ├─ MONTH_TICK_END (785px) ─────────── Outer edge of month tick marks  
-// └─ SVG edge at 800px (SVG_SIZE/2)
 
 const SVG_SIZE = 1600;           // Total SVG canvas (800px radius)
 
-const MONTH_TICK_END = 800;      // Outer edge of month tick marks (Chronologue mode)
+//CHRONOLOGUE MODE GEOMETRY CONSTANTS
+const MONTH_TICK_END = 799;      // Outer edge of month tick marks (Chronologue mode)
 const MONTH_TICK_START = 764;    // Inner edge of month tick marks (Chronologue mode)
-const MONTH_LABEL_RADIUS = 774;  // Where month labels are positioned
-const CHRONOLOGUE_DATE_RADIUS = 792;  // Where chronologue boundary dates are positioned
+const MONTH_LABEL_RADIUS = 790;  // Where month labels are positioned
+const CHRONOLOGUE_DATE_RADIUS = 792;  // Where chronologue boundary start and end dates are positioned
+const CHRONOLOGUE_DURATION_ARC_RADIUS = 758;  // Absolute radius for chronologue duration arcs (750 + 8px offset)
+export const ELAPSED_ARC_RADIUS = 766;  // Absolute radius for elapsed time arc (SHIFT mode) - based on standard outer radius
+export const ELAPSED_TICK_LENGTH = 14;  // px length of elapsed time arc endpoint markers
 
 
-// Exported constants for use in other modules
-export const SUBPLOT_OUTER_RADIUS_MAINPLOT = 780;     // Where subplot rings end (Main Plot mode - more room since beats hidden)
+// SUBPLOT RINGS - MAIN PLOT - ALL SCENES - GOSSAMER MODE GEOMETRY CONSTANTS
+export const SUBPLOT_OUTER_RADIUS_MAINPLOT = 778;     // Where subplot rings end (Main Plot mode - more room since beats hidden)
 export const SUBPLOT_OUTER_RADIUS_STANDARD = 766;     // Where subplot rings end (All Scenes mode and Gossamer mode)
 export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;  // Where subplot rings end (Chronologue mode - smaller for time details)
+const INNER_RADIUS = 200;                      // Where subplot rings start from center
+
+
+// SYNOPSIS TEXT GEOMETRY CONSTANTS
 export const SYNOPSIS_INSET = 0;                      // px inward from subplot outer radius for synopsis text positioning
 
-const INNER_RADIUS = 200;                      // Where subplot rings start from center
 
 
 const MAX_TEXT_WIDTH = 500;      // Maximum text width for synopsis text
@@ -949,10 +944,7 @@ export function createTimelineSVG(
                     const boundaryClass = isFirst ? ' rt-date-first' : (isLast ? ' rt-date-last' : '');
                     
                     svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
-                        class="rt-chronological-tick rt-chronological-tick-major${boundaryClass}"${dataAttrs}
-                        stroke="var(--text-muted)" 
-                        stroke-width="2" 
-                        opacity="0.8"/>`;
+                        class="rt-chronological-tick rt-chronological-tick-major${boundaryClass}"${dataAttrs}/>`;
                 } else if (shortName === '') {
                     // MINOR TICK: Small dotted mark (no label)
                     const tickEnd = (monthTickStart + monthTickEnd) / 2; // Midpoint for minor ticks
@@ -962,11 +954,7 @@ export function createTimelineSVG(
                     const y2 = formatNumber(tickEnd * Math.sin(angle));
                     
                     svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
-                        class="rt-chronological-tick rt-chronological-tick-minor"${dataAttrs}
-                        stroke="var(--text-muted)" 
-                        stroke-width="1.5" 
-                        stroke-dasharray="1,2" 
-                        opacity="0.5"/>`;
+                        class="rt-chronological-tick rt-chronological-tick-minor"${dataAttrs}/>`;
                 }
             });
             svg += '</g>';
@@ -2040,9 +2028,9 @@ export function createTimelineSVG(
             const chronologueTimelineArc = renderChronologueTimelineArc(
                 scenes, 
                 subplotOuterRadius,  // Use subplot outer radius for arcs
-                3, // arc width
                 manuscriptOrderPositions,
-                durationCapMs
+                durationCapMs,
+                CHRONOLOGUE_DURATION_ARC_RADIUS  // Pass the absolute radius constant
             );
             if (chronologueTimelineArc) {
                 svg += chronologueTimelineArc;

@@ -9,7 +9,11 @@ export function renderMonthLabelDefs(params: {
   return months.map(({ angle, isFirst, isLast }, index) => {
     const angleOffset = 0.01;
     const startAngle = angle + angleOffset;
-    const endAngle = startAngle + (Math.PI / 24);
+    
+    // Longer arc for chronologue boundary labels (can span multiple lines)
+    // Standard arc for regular month labels
+    const arcLength = (isFirst || isLast) ? (Math.PI / 12) : (Math.PI / 24);
+    const endAngle = startAngle + arcLength;
     const pathId = `monthLabelPath-${index}`;
     
     // Use chronologue radius for first/last labels, regular radius for month labels

@@ -16,15 +16,14 @@ import { parseWhenField, calculateTimeSpan, parseDuration, detectDiscontinuities
  * 
  * @param scenes - Array of scenes sorted in manuscript order
  * @param outerRadius - Outer radius of the scene ring
- * @param arcWidth - Width of the arc stroke
  * @param scenePositions - Optional map of scene angular positions (manuscript order, keyed by scene path/title)
  */
 export function renderChronologueTimelineArc(
     scenes: Scene[],
     outerRadius: number,
-    arcWidth: number = 3,
     scenePositions?: Map<string, { startAngle: number; endAngle: number }>,
-    durationCapMs?: number | null
+    durationCapMs?: number | null,
+    arcRadius: number = 758  // Absolute radius for duration arcs
 ): string {
     // Parse all When fields and filter out invalid dates (deduplicate by path/title+time)
     const seenKeys = new Set<string>();
@@ -60,7 +59,7 @@ export function renderChronologueTimelineArc(
     let svg = '';
     
     // Render the chronologue timeline elements
-    const arcRadius = outerRadius + 13; // Position outside the scene ring (3px further out)
+    // Use the passed arcRadius directly (no longer calculating as offset)
     svg += `<g class="rt-chronologue-timeline-arc">`;
     
     // Level 4 - Scene Duration Arcs (manuscript-order positions) - RENDER FIRST (behind ticks)

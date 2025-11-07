@@ -491,6 +491,20 @@
   font-weight: 500;
 }
 
+/* Chronological tick marks (Chronologue mode) */
+.radial-timeline-container .rt-chronological-tick-major {
+  stroke: var(--text-muted);
+  stroke-width: 2;
+  opacity: 1;
+}
+
+.radial-timeline-container .rt-chronological-tick-minor {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2, 2;
+  opacity: 1;
+}
+
 /* Beginning tick uses Zero stage color to match the date label */
 .radial-timeline-container .rt-chronological-tick.rt-date-first {
   stroke: var(--rt-publishStageColors-Zero) !important;
@@ -515,7 +529,7 @@
   opacity: 1;
 }
 .radial-timeline-container .rt-month-spoke-line.rt-month-spoke-intermediate {
-  opacity: 0.45;
+  opacity: 1;
 }
 .radial-timeline-container .rt-month-spoke-line.rt-act-boundary {
   stroke: var(--text-normal);
@@ -2768,11 +2782,6 @@
   pointer-events: none;
 }
 
-.rt-chronologue-timeline-arc path:not(.rt-elapsed-arc-path):not(.rt-duration-arc):not(.rt-duration-arc-overlap):not(.rt-duration-arc-unparseable) {
-  stroke: var(--text-muted);
-  stroke-width: 4;
-}
-
 .rt-chronologue-timeline-arc line:not(.rt-elapsed-endpoint-marker) {
   stroke: var(--text-muted);
   stroke-width: 1;
@@ -3032,23 +3041,23 @@
 
 .rt-chronologue-duration-ticks .rt-duration-arc {
   stroke: var(--text-muted);
-  stroke-width: 3px;
+  stroke-width: 6px;
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-overlap {
   stroke: #ff9900; /* Yellow for temporal overlaps */
-  stroke-width: 3px;
+  stroke-width: 6px;
   /*stroke-dasharray: 4, 1; /* Dotted pattern: 4px dash, 1px gap */
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-unparseable {
   stroke: #ff0000; /* Red for unparseable/missing durations (using --rt-color-due red) */
-  stroke-width: 3px;
+  stroke-width: 6px;
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-ongoing:not(.rt-duration-arc-overlap) {
   stroke: var(--text-muted); /* Standard color for "ongoing" durations */
-  stroke-width: 3px;
+  stroke-width: 6px;
 }
 
 /* Discontinuity marker text "∞" - infinity symbol marks large time jumps between scenes in chronologue mode */
