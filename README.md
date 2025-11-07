@@ -206,14 +206,15 @@ Displays scenes in chronological story order based on `When` field. **Removes th
   - Click shift button, then select two scenes to see elapsed time comparison
   - Color-coded elapsed time arc: Start tick (Zero stage purple) → End tick (Press stage green)  
   - **Discontinuities marked with ∞ symbol**: Large time jumps between scenes are automatically detected and displayed in shift mode, revealing gaps in your chronological coverage
-  <div style="text-align: center;">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot_discontinuity.png" alt="Discontinuity infinity symbols in Chronologue Mode" style="width: 200; max-width: 100%;" />
+  <div style="text-align: center; margin: 20px 0;">
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot_discontinuity.png" alt="Discontinuity infinity symbols in Chronologue Mode" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Discontinuity infinity symbols in Chronologue Mode</div>
 </div>
 - **Smart duration labels**: Time-period-appropriate formatting (hours/days/weeks/months/years)
 - **Dynamic duration arc cap**: Chronologue mode proportionally scales scene durations up to a selected maximum (Settings → Advanced)
-<div style="text-align: center;">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot_duration.png" alt="Duration Marks in Chronologue Mode" style="width: 200; max-width: 100%;" />
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot_duration.png" alt="Duration Marks in Chronologue Mode" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Duration Marks in Chronologue Mode</div>
 </div>
 **Tip**: Use shift mode's decluttered wireframe view to analyze your story's temporal structure and identify chronological discontinuities that may need bridging scenes.
