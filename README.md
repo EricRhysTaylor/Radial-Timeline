@@ -51,14 +51,14 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing e
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot1.jpeg" alt="All Scenes Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot1.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot1.jpeg" alt="All Scenes Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">All Scenes Timeline</div>
   </div>
   <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/RadialTimeline_Screenshot2.jpeg" alt="Timeline Hover Synopsis" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" alt="Timeline Hover Synopsis" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline Hover Synopsis</div>
   </div>
