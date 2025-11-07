@@ -190,6 +190,10 @@ Chronologue mode is essential for constructing and visualizing the chronological
 **Command**: Search timeline, Clear search
 
 ---
+<div style="text-align: center; margin: 20px 0;">
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot_navigation.png" alt="Navigating in Radial Timeline" style="width: 380; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Navigating in Radial Timeline</div>
+</div>
 
 ## View modes via primary navigation
 
