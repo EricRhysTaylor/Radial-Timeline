@@ -85,12 +85,17 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing e
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot5.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot5.jpeg" alt="Chronologue Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot6.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot6.jpeg" alt="Chronologue Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode</div>
   </div>
-  <div style="text-align: center;"></div>
+  <div style="text-align: center;">
+     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot5.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot5.jpeg" alt="Chronologue Mode - SHIFT" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    </a>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode - SHIFT</div>
+  </div>
 </div>
 
 <div style="text-align: center; font-size: 0.8em; margin-top: 10px; color: #888;">
