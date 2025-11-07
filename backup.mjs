@@ -39,6 +39,12 @@ try {
   const dateStr = `${iso.getFullYear()}-${pad(iso.getMonth()+1)}-${pad(iso.getDate())} ${pad(iso.getHours())}:${pad(iso.getMinutes())}`;
 
   const files = run('git diff --cached --name-only').split('\n').filter(Boolean);
+  if (files.length) {
+    const previewLimit = 20;
+    const preview = files.slice(0, previewLimit).join(', ');
+    const extraCount = files.length > previewLimit ? `, … (+${files.length - previewLimit} more)` : '';
+    console.log(`[backup] Staged files (${files.length}): ${preview}${extraCount}`);
+  }
   // Determine user note from (in order): direct CLI args, BACKUP_NOTE env, npm_config_argv trailing args
   let npmArgvNote = '';
   const npmArgvRaw = process.env.npm_config_argv || '';
@@ -63,6 +69,14 @@ try {
     const del = shortstat.match(/(\d+) deletions?\(-\)/);
     insertions = ins ? Number(ins[1]) : 0;
     deletions  = del ? Number(del[1]) : 0;
+  }
+
+  if (insertions || deletions) {
+    console.log(`[backup] Diff summary: +${insertions}/-${deletions}`);
+  } else if (!files.length) {
+    console.log('[backup] Diff summary: no tracked changes (unexpected)');
+  } else {
+    console.log('[backup] Diff summary: no line-level changes detected');
   }
 
   // Summarize changed areas by top-level folder (or 'root')
