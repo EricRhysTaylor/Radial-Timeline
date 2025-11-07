@@ -7,7 +7,7 @@
 import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, PLOT_PIXEL_WIDTH, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
 import type { Scene } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';
-import { dateToAngle, isOverdueDateString, generateChronologicalTicks, durationSelectionToMs, type ChronologicalTickInfo } from '../utils/date';
+import { dateToAngle, isOverdueDateString, generateChronologicalTicks, calculateTimeSpan, durationSelectionToMs, type ChronologicalTickInfo } from '../utils/date';
 import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
 import { 
     extractGradeFromScene, 
@@ -677,6 +677,12 @@ export function createTimelineSVG(
             // Filter to scenes only (no plot beats) for tick generation
             const sortedScenes = sortedCombined.filter(s => s.itemType !== 'Plot');
             
+            // Calculate time span for intelligent labeling
+            const validDates = sortedScenes
+                .map(s => s.when)
+                .filter((when): when is Date => when instanceof Date && !isNaN(when.getTime()));
+            const timeSpan = validDates.length > 0 ? calculateTimeSpan(validDates) : undefined;
+            
             // Compute equal-spaced positions for scenes (matching what computePositions will do)
             // Pass both start angles and angular size to align ticks to scene beginnings
             const sceneStartAngles: number[] = [];
@@ -692,8 +698,8 @@ export function createTimelineSVG(
                 });
             }
             
-            // Generate chronological ticks aligned to scene starts
-            const chronoTicks = generateChronologicalTicks(sortedScenes, sceneStartAngles, sceneAngularSize);
+            // Generate chronological ticks aligned to scene starts with intelligent labels
+            const chronoTicks = generateChronologicalTicks(sortedScenes, sceneStartAngles, sceneAngularSize, timeSpan);
             
             outerLabels = chronoTicks.map(tick => ({
                 name: tick.name,

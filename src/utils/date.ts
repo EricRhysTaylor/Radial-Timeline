@@ -10,6 +10,8 @@
 export interface TimeSpanInfo {
     /** Total time span in milliseconds */
     totalMs: number;
+    /** Time span in minutes */
+    minutes: number;
     /** Time span in hours */
     hours: number;
     /** Time span in days */
@@ -21,7 +23,7 @@ export interface TimeSpanInfo {
     /** Time span in years */
     years: number;
     /** Recommended time unit for labels */
-    recommendedUnit: 'hours' | 'days' | 'weeks' | 'months' | 'years';
+    recommendedUnit: 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years';
 }
 
 /**
@@ -158,6 +160,7 @@ export function calculateTimeSpan(dates: Date[]): TimeSpanInfo {
     if (dates.length === 0) {
         return {
             totalMs: 0,
+            minutes: 0,
             hours: 0,
             days: 0,
             weeks: 0,
@@ -172,7 +175,8 @@ export function calculateTimeSpan(dates: Date[]): TimeSpanInfo {
     const latest = sortedDates[sortedDates.length - 1];
     const totalMs = latest.getTime() - earliest.getTime();
     
-    const hours = totalMs / (1000 * 60 * 60);
+    const minutes = totalMs / (1000 * 60);
+    const hours = minutes / 60;
     const days = hours / 24;
     const weeks = days / 7;
     const months = days / 30.44; // Average days per month
@@ -180,20 +184,29 @@ export function calculateTimeSpan(dates: Date[]): TimeSpanInfo {
     
     // Determine recommended unit based on span
     let recommendedUnit: TimeSpanInfo['recommendedUnit'];
-    if (hours < 24) {
+    if (hours < 6) {
+        // Less than 6 hours - use minutes (good for heists, action sequences, etc.)
+        recommendedUnit = 'minutes';
+    } else if (hours < 48) {
+        // 6-48 hours - use hours
         recommendedUnit = 'hours';
-    } else if (days < 7) {
+    } else if (days < 14) {
+        // 2-14 days - use days
         recommendedUnit = 'days';
-    } else if (weeks < 8) {
+    } else if (weeks < 12) {
+        // 2-12 weeks - use weeks
         recommendedUnit = 'weeks';
     } else if (months < 24) {
+        // 2-24 months - use months
         recommendedUnit = 'months';
     } else {
+        // 24+ months - use years
         recommendedUnit = 'years';
     }
     
     return {
         totalMs,
+        minutes,
         hours,
         days,
         weeks,
@@ -210,6 +223,21 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
     const labels: TimeLabelInfo[] = [];
     
     switch (span.recommendedUnit) {
+        case 'minutes':
+            // Generate minute labels (max 90 labels for up to 90 minutes)
+            const maxMinutes = Math.min(90, Math.ceil(span.minutes));
+            const minuteStep = maxMinutes > 30 ? 5 : (maxMinutes > 15 ? 2 : 1); // 1min, 2min, or 5min intervals
+            for (let i = 0; i <= maxMinutes; i += minuteStep) {
+                const timeMs = earliestDate.getTime() + (i * 60 * 1000);
+                const angle = mapTimeToAngle(timeMs, earliestDate.getTime(), earliestDate.getTime() + span.totalMs);
+                labels.push({
+                    text: `${i}m`,
+                    angle,
+                    timeMs
+                });
+            }
+            break;
+            
         case 'hours':
             // Generate hourly labels (max 24 labels)
             const maxHours = Math.min(24, Math.ceil(span.hours));
@@ -616,7 +644,8 @@ export interface ChronologicalTickInfo {
 export function generateChronologicalTicks(
     scenes: { when?: Date }[], 
     sceneStartAngles?: number[],
-    sceneAngularSize?: number
+    sceneAngularSize?: number,
+    timeSpan?: TimeSpanInfo
 ): ChronologicalTickInfo[] {
     // Filter scenes with valid dates, preserving chronological order
     const validScenes: Array<{ date: Date; sortedIndex: number }> = [];
@@ -630,6 +659,11 @@ export function generateChronologicalTicks(
         // No valid dates - return empty
         return [];
     }
+    
+    // Calculate time span if not provided (for intelligent labeling)
+    const validDates = validScenes.map(s => s.date);
+    const span = timeSpan || calculateTimeSpan(validDates);
+    const earliestDate = validDates[0]; // Already chronologically sorted
     
     // Special case: Only one scene - just show that date at the top
     if (validScenes.length === 1) {
@@ -715,28 +749,99 @@ export function generateChronologicalTicks(
     const normalizedDiff = Math.min(angleDiff, Math.abs(angleDiff - 2 * Math.PI));
     const wouldOverlap = normalizedDiff < 0.01 || normalizedDiff > (2 * Math.PI - 0.01);
 
+    // Calculate gaps between consecutive scenes for per-scene label adaptation
+    const sceneGaps: number[] = []; // Gap in milliseconds before each scene
+    for (let i = 0; i < validScenes.length; i++) {
+        if (i === 0) {
+            sceneGaps.push(0); // First scene has no gap
+        } else {
+            const gapMs = validScenes[i].date.getTime() - validScenes[i - 1].date.getTime();
+            sceneGaps.push(gapMs);
+        }
+    }
+
+    // Helper function to generate intelligent labels based on gap size
+    const generateLabel = (sceneDate: Date, sceneIndex: number, isFirst: boolean, isLast: boolean): { name: string; shortName: string } => {
+        // Helper to format time in 12-hour format with AM/PM
+        const formatTime12Hour = (date: Date): string => {
+            let hour = date.getHours();
+            const minute = date.getMinutes();
+            const ampm = hour >= 12 ? 'pm' : 'am';
+            hour = hour % 12;
+            hour = hour ? hour : 12; // Convert 0 to 12
+            const minuteStr = minute.toString().padStart(2, '0');
+            return `${hour}:${minuteStr}${ampm}`;
+        };
+        
+        const month = sceneDate.toLocaleString('en-US', { month: 'short' });
+        const day = sceneDate.getDate();
+        const year = sceneDate.getFullYear();
+        const timeStr = formatTime12Hour(sceneDate);
+        
+        // Analyze gap before this scene to determine label type
+        const gapMs = sceneGaps[sceneIndex];
+        const gapHours = gapMs / (1000 * 60 * 60);
+        const gapDays = gapHours / 24;
+        
+        // First scene: Always anchor with full context
+        if (isFirst) {
+            // Check if overall timeline is short (time-based) or long (date-based)
+            const totalSpanHours = span.hours;
+            if (totalSpanHours < 48) {
+                // Short timeline: show date + time
+                return { name: `${month} ${day}\n${timeStr}`, shortName: `${month} ${day}\n${timeStr}` };
+            } else {
+                // Long timeline: show year + date
+                return { name: `${year}\n${month} ${day}`, shortName: `${year}\n${month} ${day}` };
+            }
+        }
+        
+        // Last scene: Show when it happens (not elapsed time)
+        if (isLast) {
+            const totalSpanHours = span.hours;
+            if (totalSpanHours < 6) {
+                // Very short timeline: show time only
+                return { name: timeStr, shortName: timeStr };
+            } else if (totalSpanHours < 48) {
+                // Short timeline: show date + time
+                return { name: `${month} ${day}\n${timeStr}`, shortName: `${month} ${day}\n${timeStr}` };
+            } else {
+                // Long timeline: show date
+                return { name: `${month} ${day}`, shortName: `${month} ${day}` };
+            }
+        }
+        
+        // Intermediate scenes: Adaptive labels based on gap before this scene
+        if (gapHours < 6) {
+            // Gap < 6 hours: Show TIME only
+            return { name: timeStr, shortName: timeStr };
+        } else if (gapHours < 48) {
+            // Gap 6-48 hours: Show DATE + TIME
+            return { name: `${month} ${day}\n${timeStr}`, shortName: `${month} ${day}\n${timeStr}` };
+        } else {
+            // Gap > 48 hours: Show DATE only
+            return { name: `${month} ${day}`, shortName: `${month} ${day}` };
+        }
+    };
+
     // Generate ticks aligned to scene starts (not centers)
     for (let i = 0; i < numScenes; i++) {
         const scene = validScenes[i];
         const sceneStartAngle = getSceneStartAngle(scene.sortedIndex);
         
         if (i === 0) {
-            // First scene: full date label with two lines (year, then month/day)
-            // Use local time methods to match parsing context
-            const month = scene.date.toLocaleString('en-US', { month: 'short' });
-            const day = scene.date.getDate();
-            const year = scene.date.getFullYear();
-            const label = `${year}\n${month} ${day}`;
+            // First scene: intelligent label with context
+            const labels = generateLabel(scene.date, i, true, false);
             ticks.push({
                 angle: sceneStartAngle,
-                name: label,
-                shortName: label,
+                name: labels.name,
+                shortName: labels.shortName,
                 isMajor: true,
                 isFirst: true,
                 sceneIndex: scene.sortedIndex
             });
         } else if (i === numScenes - 1) {
-            // Last scene: full date label with two lines (year, then month/day), but adjust if it would overlap with first
+            // Last scene: intelligent label with context
             let tickAngle = sceneStartAngle;
             if (wouldOverlap && sceneAngularSize !== undefined) {
                 // Offset last scene tick slightly to avoid overlap
@@ -745,28 +850,22 @@ export function generateChronologicalTicks(
                 // Normalize to [-π, π] range for display
                 if (tickAngle > Math.PI) tickAngle -= 2 * Math.PI;
             }
-            // Use local time methods to match parsing context
-            const month = scene.date.toLocaleString('en-US', { month: 'short' });
-            const day = scene.date.getDate();
-            const year = scene.date.getFullYear();
-            const label = `${year}\n${month} ${day}`;
+            const labels = generateLabel(scene.date, i, false, true);
             ticks.push({
                 angle: tickAngle,
-                name: label,
-                shortName: label,
+                name: labels.name,
+                shortName: labels.shortName,
                 isMajor: true,
                 isLast: true,
                 sceneIndex: scene.sortedIndex
             });
         } else if (promoteSet.has(i)) {
-            // Promoted scenes: abbreviated date label
-            // Use local time methods to match parsing context
-            const month = scene.date.toLocaleString('en-US', { month: 'short' });
-            const day = scene.date.getDate();
+            // Promoted scenes: intelligent abbreviated label
+            const labels = generateLabel(scene.date, i, false, false);
             ticks.push({
                 angle: sceneStartAngle,
-                name: `${month} ${day}`,
-                shortName: `${month} ${day}`,
+                name: labels.name,
+                shortName: labels.shortName,
                 isMajor: true,
                 sceneIndex: scene.sortedIndex
             });
