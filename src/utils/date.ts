@@ -825,9 +825,26 @@ export function generateChronologicalTicks(
     };
 
     // Generate ticks aligned to scene starts (not centers)
+    let lastLabeledSceneDate: Date | null = null; // Track the last scene that got a label
+    
     for (let i = 0; i < numScenes; i++) {
         const scene = validScenes[i];
         const sceneStartAngle = getSceneStartAngle(scene.sortedIndex);
+        
+        // Calculate gap from the last LABELED scene, not just the previous scene
+        let gapFromLastLabel = 0;
+        if (lastLabeledSceneDate !== null) {
+            gapFromLastLabel = scene.date.getTime() - lastLabeledSceneDate.getTime();
+        }
+        
+        // Store the gap in sceneGaps for generateLabel to use
+        if (i === 0) {
+            sceneGaps[i] = 0; // First scene has no gap
+        } else if (lastLabeledSceneDate === null) {
+            sceneGaps[i] = 0; // No previous label yet
+        } else {
+            sceneGaps[i] = gapFromLastLabel; // Gap from last labeled scene
+        }
         
         if (i === 0) {
             // First scene: intelligent label with context
@@ -840,6 +857,7 @@ export function generateChronologicalTicks(
                 isFirst: true,
                 sceneIndex: scene.sortedIndex
             });
+            lastLabeledSceneDate = scene.date; // Update last labeled scene
         } else if (i === numScenes - 1) {
             // Last scene: intelligent label with context
             let tickAngle = sceneStartAngle;
@@ -859,6 +877,7 @@ export function generateChronologicalTicks(
                 isLast: true,
                 sceneIndex: scene.sortedIndex
             });
+            lastLabeledSceneDate = scene.date; // Update last labeled scene
         } else if (promoteSet.has(i)) {
             // Promoted scenes: intelligent abbreviated label
             const labels = generateLabel(scene.date, i, false, false);
@@ -869,8 +888,9 @@ export function generateChronologicalTicks(
                 isMajor: true,
                 sceneIndex: scene.sortedIndex
             });
+            lastLabeledSceneDate = scene.date; // Update last labeled scene
         } else {
-            // Minor scenes: tick mark without label
+            // Minor scenes: tick mark without label (don't update lastLabeledSceneDate)
             ticks.push({
                 angle: sceneStartAngle,
                 name: '',
