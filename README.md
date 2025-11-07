@@ -218,8 +218,8 @@ Displays scenes in chronological story order based on `When` field. **Removes th
 - **Dynamic duration arc cap**: Chronologue mode proportionally scales scene durations up to a selected maximum (Settings → Advanced)
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot-duration.png" alt="Duration Marks in Chronologue Mode" style="width: 380; max-width: 100%;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Duration Marks in Chronologue Mode</div>
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot-duration.png" alt="Duration Marks in Chronologue Mode (red, orange and normal)" style="width: 380; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Duration Marks in Chronologue Mode (red, orange and normal)</div>
 </div>
 **Tip**: Use shift mode's decluttered wireframe view to analyze your story's temporal structure and identify chronological discontinuities that may need bridging scenes.
 

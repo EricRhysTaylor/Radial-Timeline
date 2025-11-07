@@ -322,40 +322,72 @@ function mapTimeToAngle(timeMs: number, startMs: number, endMs: number): number 
 
 /**
  * Format elapsed time with click-to-cycle units
+ * Intelligently drops down to smaller units to avoid fractional numbers
  */
 export function formatElapsedTime(ms: number, clickCount: number = 0): string {
-    const hours = ms / (1000 * 60 * 60);
+    const minutes = ms / (1000 * 60);
+    const hours = minutes / 60;
     const days = hours / 24;
     const weeks = days / 7;
     const months = days / 30.44;
     const years = days / 365.25;
     
+    // Helper to format with appropriate unit, dropping down for better readability
+    const formatWithBestUnit = (value: number, mainUnit: string, nextUnit?: string, nextValue?: number): string => {
+        // If we have a fractional value less than 1, drop down to next unit if available
+        if (value < 1 && nextUnit && nextValue !== undefined) {
+            const rounded = Math.round(nextValue);
+            return `${rounded} ${nextUnit}`;
+        }
+        
+        // If we have a decimal value, check if dropping down gives a whole number
+        if (value < 10 && value % 1 !== 0 && nextUnit && nextValue !== undefined) {
+            const rounded = Math.round(nextValue);
+            // If the next unit gives a clean whole number, use it
+            if (rounded > 0 && Math.abs(nextValue - rounded) < 0.1) {
+                return `${rounded} ${nextUnit}`;
+            }
+        }
+        
+        // Round to 1 decimal place, but show whole numbers without decimal
+        const rounded = Math.round(value * 10) / 10;
+        if (rounded % 1 === 0) {
+            return `${Math.round(rounded)} ${mainUnit}`;
+        }
+        return `${rounded.toFixed(1)} ${mainUnit}`;
+    };
+    
     // Cycle through units based on click count
     const unitIndex = clickCount % 5;
     
     switch (unitIndex) {
-        case 0: // Default - auto-select best unit
+        case 0: // Default - auto-select best unit with intelligent drop-down
             if (hours < 24) {
-                return `${hours.toFixed(1)} hours`;
+                // For times under 24 hours, consider minutes
+                return formatWithBestUnit(hours, 'hour', 'min', minutes);
             } else if (days < 7) {
-                return `${days.toFixed(1)} days`;
+                // For times under 7 days, consider hours
+                return formatWithBestUnit(days, 'day', 'hour', hours);
             } else if (weeks < 8) {
-                return `${weeks.toFixed(1)} weeks`;
+                // For times under 8 weeks, consider days
+                return formatWithBestUnit(weeks, 'week', 'day', days);
             } else if (months < 24) {
-                return `${months.toFixed(1)} months`;
+                // For times under 24 months, consider weeks
+                return formatWithBestUnit(months, 'month', 'week', weeks);
             } else {
-                return `${years.toFixed(1)} years`;
+                // For long spans, consider months
+                return formatWithBestUnit(years, 'year', 'month', months);
             }
-        case 1: // Hours
-            return `${hours.toFixed(1)} hours`;
-        case 2: // Days
-            return `${days.toFixed(1)} days`;
-        case 3: // Weeks
-            return `${weeks.toFixed(1)} weeks`;
-        case 4: // Months
-            return `${months.toFixed(1)} months`;
+        case 1: // Hours (can drop to minutes)
+            return formatWithBestUnit(hours, 'hour', 'min', minutes);
+        case 2: // Days (can drop to hours)
+            return formatWithBestUnit(days, 'day', 'hour', hours);
+        case 3: // Weeks (can drop to days)
+            return formatWithBestUnit(weeks, 'week', 'day', days);
+        case 4: // Months (can drop to weeks)
+            return formatWithBestUnit(months, 'month', 'week', weeks);
         default:
-            return `${years.toFixed(1)} years`;
+            return formatWithBestUnit(years, 'year', 'month', months);
     }
 }
 
@@ -796,18 +828,15 @@ export function generateChronologicalTicks(
             }
         }
         
-        // Last scene: Show when it happens (not elapsed time)
+        // Last scene: Match the format of the first scene for consistency
         if (isLast) {
             const totalSpanHours = span.hours;
-            if (totalSpanHours < 6) {
-                // Very short timeline: show time only
-                return { name: timeStr, shortName: timeStr };
-            } else if (totalSpanHours < 48) {
-                // Short timeline: show date + time
+            if (totalSpanHours < 48) {
+                // Short timeline: show date + time (matching first scene)
                 return { name: `${month} ${day}\n${timeStr}`, shortName: `${month} ${day}\n${timeStr}` };
             } else {
-                // Long timeline: show date
-                return { name: `${month} ${day}`, shortName: `${month} ${day}` };
+                // Long timeline: show year + date (matching first scene)
+                return { name: `${year}\n${month} ${day}`, shortName: `${year}\n${month} ${day}` };
             }
         }
         
