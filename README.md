@@ -244,10 +244,9 @@ Displays scenes in chronological story order based on `When` field. **Removes th
 Visualizes narrative momentum using story beat scores. Timeline grays out; momentum values display across story beats to show tension/excitement building.
 
 - Works with any beat structure
-- Historical comparison (up to 30 runs)
-- Min/Max band visualization
-- Ideal Range based on `Range=0-20` yaml for each story beat creating an idealized story momentum shape
-- Manual score entry to track momentum changes over time
+- Historical comparison (up to 30 runs) creates a shaded envelope across min/max scores.
+- Ideal Range based on `Range=0-20` yaml for each story beat creating an idealized story momentum shape.
+- Manual score entry to track momentum changes over time with suggested LLM prompt.
 
 **Command**: Gossamer enter momentum scores
 
@@ -284,8 +283,7 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 - **Chronologue duration arc cap**: Select maximum duration to display on scene duration arcs, or use "auto" for intelligent selection based on your story's longest scene. Scenes at or above this value fill the entire segment; shorter durations scale proportionally.
 - **Auto-expand clipped scene titles**: Disable to prevent scene title expansion on hover, making it easier to quickly slide over multiple scenes and read titles from the synopsis instead.
 - **Show estimated completion date**: Toggle visibility of the completion date estimate label near the progress ring.
-- **Metadata refresh debounce (ms)**: Delay before refreshing timeline after YAML frontmatter changes. Increase (default 10000ms) if your vault is large and updates feel too frequent.
-- **Scene ordering based on When date**: *Coming soon* — Sort scenes chronologically by When date instead of manuscript order. This feature is currently in development and will be available in a future update.
+- **Metadata refresh debounce (ms)**: Delay before refreshing timeline after YAML frontmatter changes. Increase (default 5000ms) if your vault is large and updates feel too frequent.
 
 **Visual Customization**
 - **Publishing stage colors**: Customize colors for Zero, Author, House, Press stages (click swatch for color picker and each has reset to default button)
@@ -340,7 +338,7 @@ Place:
 
 ```yaml
 ---
-Class: Beat                   # Deprecated: Plot
+Class: Beat                   # Formerly Plot, Deprecated
 Act: 1
 When:                         # Optional: Story timeline date for chronological positioning (YYYY-MM-DD HH:MM)
 Description: The first impression of your story. A snapshot before the journey begins.
