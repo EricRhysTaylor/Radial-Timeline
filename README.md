@@ -251,6 +251,11 @@ Visualizes narrative momentum using story beat scores. Timeline grays out; momen
 
 **Command**: Gossamer enter momentum scores
 
+<div style="text-align: center; margin: 20px 0;">
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot-gossamer.png" alt="Gossamer Range & Three Scores" style="width: 400; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer Range & Three Scores</div>
+</div>
+
 ## Zero Draft Mode
 Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progress to new scenes instead of endlessly revising.
 
@@ -327,7 +332,7 @@ Place:
   - "[[Castle]]"
   - "[[Forest]]"
 ```
-> **Note**: Use of brackets denotes a link to a character or place file (optional). Avoid using commas within subplot, character, or place name lists, as the plugin uses comma-space (`, `) as a delimiter when processing these fields.
+> **Note**: Use of brackets denotes a link to a character or place file (optional).
 
 > **POV Convention**: The first character listed in the `Character` field is considered the point-of-view (POV) character for the scene.
 
@@ -335,7 +340,7 @@ Place:
 
 ```yaml
 ---
-Class: Beat
+Class: Beat                   # Deprecated: Plot
 Act: 1
 When:                         # Optional: Story timeline date for chronological positioning (YYYY-MM-DD HH:MM)
 Description: The first impression of your story. A snapshot before the journey begins.
