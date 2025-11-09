@@ -1,6 +1,6 @@
 import type { Scene } from '../../main';
 import { formatNumber } from '../../utils/svg';
-import { getSceneState, buildSquareClasses, buildTextClasses, extractGradeFromScene, type PluginRendererFacade } from '../../utils/sceneHelpers';
+import { getSceneState, buildSquareClasses, buildTextClasses, extractGradeFromScene, isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers';
 import { getScenePrefixNumber, getNumberSquareSize, parseSceneTitle } from '../../utils/text';
 import { generateNumberSquareGroup, makeSceneId } from '../../utils/numberSquareHelpers';
 
@@ -44,7 +44,7 @@ export function renderNumberSquaresUnified(params: {
   let svg = '<g class="rt-number-squares">';
 
   scenes.forEach((scene, idx) => {
-    if (scene.itemType === 'Plot') return;
+    if (isBeatNote(scene)) return;
     
     const number = getScenePrefixNumber(scene.title, scene.number);
     if (!number) return;
@@ -76,7 +76,7 @@ export function renderNumberSquaresUnified(params: {
       const actIndex = sortByWhen ? 0 : (sceneActNumber - 1);
       
       const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
-      const filteredScenes = scenesInActAndSubplot.filter(s => s.itemType !== 'Plot');
+      const filteredScenes = scenesInActAndSubplot.filter(s => !isBeatNote(s));
       const sceneIndex = filteredScenes.indexOf(scene);
       
       // Calculate angles based on sorting method
@@ -171,7 +171,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   
   let svg = '';
   scenes.forEach((scene) => {
-    if (scene.itemType === 'Plot') return;
+    if (isBeatNote(scene)) return;
     const number = getScenePrefixNumber(scene.title, scene.number);
     if (!number) return;
     const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
@@ -187,7 +187,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     const actIndex = sortByWhen ? 0 : (sceneActNumber - 1);
     
     const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
-    const filteredScenesForIndex = scenesInActAndSubplot.filter(s => s.itemType !== 'Plot');
+    const filteredScenesForIndex = scenesInActAndSubplot.filter(s => !isBeatNote(s));
     const sceneIndex = filteredScenesForIndex.indexOf(scene);
     if (sceneIndex === -1) return;
     

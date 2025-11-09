@@ -1,10 +1,12 @@
-import { TFile } from 'obsidian';
+import { TFile, App } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
+import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 
 interface ViewLike {
     plugin: {
-        app: {
-            vault: { getAbstractFileByPath: (path: string) => unknown };
+        app: App;
+        settings: {
+            enableSceneTitleAutoExpand?: boolean;
         };
     };
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
@@ -18,9 +20,18 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
     // Note: Don't add 'scene-hover' class here - it hides subplot labels!
     // The class should only be added during actual hover events
 
-    // Hover to show synopsis for main plot scenes; click to open
-    const findSynopsisForScene = (sceneId: string): Element | null => {
-        return svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
+    // Create scene interaction manager for title expansion and styling
+    const manager = new SceneInteractionManager(view as any, svg);
+    manager.setTitleExpansionEnabled(view.plugin.settings.enableSceneTitleAutoExpand ?? true);
+
+    let currentGroup: Element | null = null;
+    let currentSceneId: string | null = null;
+    let rafId: number | null = null;
+
+    const clearSelection = () => {
+        manager.onSceneLeave();
+        currentGroup = null;
+        currentSceneId = null;
     };
 
     const getSceneIdFromGroup = (group: Element): string | null => {
@@ -31,39 +42,48 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
     // Register handlers for Scene elements (main plot scenes)
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
-        if (!g) return;
+        if (!g || g === currentGroup) return;
+        
         const sid = getSceneIdFromGroup(g);
         if (!sid) return;
+        
+        // Clear previous selection
+        clearSelection();
         
         // Add scene-hover class to hide subplot labels during hover
         svg.classList.add('scene-hover');
         
-        const syn = findSynopsisForScene(sid);
-        if (syn) {
-            syn.classList.add('rt-visible');
-            (view.plugin as any).updateSynopsisPosition(syn, e as unknown as MouseEvent, svg, sid);
-        }
-        // Emphasize this scene group
-        const pathEl = g.querySelector('.rt-scene-path');
-        if (pathEl) (pathEl as Element).classList.add('rt-selected');
+        currentGroup = g;
+        currentSceneId = sid;
+        
+        // Use manager for hover interactions (handles title expansion and styling)
+        manager.onSceneHover(g, sid);
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
         const toEl = e.relatedTarget as Element | null;
-        const fromGroup = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
-        if (!fromGroup) return;
-        if (toEl && fromGroup.contains(toEl)) return;
+        if (currentGroup && toEl && currentGroup.contains(toEl)) return;
         
         // Remove scene-hover class to show subplot labels again
         svg.classList.remove('scene-hover');
         
-        const sid = getSceneIdFromGroup(fromGroup);
-        if (sid) {
-            const syn = findSynopsisForScene(sid);
-            if (syn) syn.classList.remove('rt-visible');
+        clearSelection();
+    });
+
+    view.registerDomEvent(svg as unknown as HTMLElement, 'pointermove', (e: PointerEvent) => {
+        if (rafId !== null) return;
+        rafId = window.requestAnimationFrame(() => {
+            manager.onMouseMove(e as unknown as MouseEvent);
+            rafId = null;
+        });
+    });
+    
+    // Cleanup on pointerout
+    view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', () => {
+        if (rafId !== null) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
         }
-        const pathEl = fromGroup.querySelector('.rt-scene-path');
-        if (pathEl) (pathEl as Element).classList.remove('rt-selected');
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', async (e: MouseEvent) => {

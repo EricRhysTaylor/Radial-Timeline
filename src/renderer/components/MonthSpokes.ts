@@ -17,27 +17,57 @@ export function renderMonthSpokesAndInnerLabels(params: {
   lineOuterRadius: number;
   currentMonthIndex: number;
   includeIntermediateSpokes?: boolean;
+  outerSpokeInnerRadius?: number;  // Optional: if provided, render additional outer spokes from this radius
 }): string {
-  const { months, lineInnerRadius, lineOuterRadius, currentMonthIndex, includeIntermediateSpokes = false } = params;
+  const { months, lineInnerRadius, lineOuterRadius, currentMonthIndex, includeIntermediateSpokes = false, outerSpokeInnerRadius } = params;
+  
+  // Inner calendar spokes - always render these short spokes around the calendar labels
+  const innerSpokeStart = lineInnerRadius - 5;
+  const innerSpokeEnd = lineInnerRadius + 30;
+  
   let svg = '<g class="month-spokes">';
+  
+  // Render main month spokes and labels
   months.forEach(({ name, angle }, monthIndex) => {
-    const x1 = formatNumber((lineInnerRadius - 5) * Math.cos(angle));
-    const y1 = formatNumber((lineInnerRadius - 5) * Math.sin(angle));
-    const x2 = formatNumber(lineOuterRadius * Math.cos(angle));
-    const y2 = formatNumber(lineOuterRadius * Math.sin(angle));
-
     const isActBoundary = [0, 4, 8].includes(monthIndex);
     const isPastMonth = monthIndex < currentMonthIndex;
-
+    
+    // Inner calendar reference spokes (always rendered)
+    const innerX1 = formatNumber(innerSpokeStart * Math.cos(angle));
+    const innerY1 = formatNumber(innerSpokeStart * Math.sin(angle));
+    const innerX2 = formatNumber(innerSpokeEnd * Math.cos(angle));
+    const innerY2 = formatNumber(innerSpokeEnd * Math.sin(angle));
+    
     svg += `
       <line  
-        x1="${x1}"
-        y1="${y1}"
-        x2="${x2}"
-        y2="${y2}"
-        class="rt-month-spoke-line${isActBoundary ? ' rt-act-boundary' : ''}${isPastMonth ? ' rt-past-month' : ''}"
+        x1="${innerX1}"
+        y1="${innerY1}"
+        x2="${innerX2}"
+        y2="${innerY2}"
+        class="rt-month-spoke-line rt-inner-calendar-spoke${isActBoundary ? ' rt-act-boundary' : ''}${isPastMonth ? ' rt-past-month' : ''}"
       />`;
+    
+    // Outer spokes (only if outerSpokeInnerRadius is provided)
+    if (outerSpokeInnerRadius !== undefined) {
+      const outerX1 = formatNumber(outerSpokeInnerRadius * Math.cos(angle));
+      const outerY1 = formatNumber(outerSpokeInnerRadius * Math.sin(angle));
+      const outerX2 = formatNumber(lineOuterRadius * Math.cos(angle));
+      const outerY2 = formatNumber(lineOuterRadius * Math.sin(angle));
+      
+      // For dashed lines, add stroke-dashoffset to start with a full dash at the outer edge
+      const dashOffset = isActBoundary ? '' : ' stroke-dashoffset="2"';
+      
+      svg += `
+      <line  
+        x1="${outerX1}"
+        y1="${outerY1}"
+        x2="${outerX2}"
+        y2="${outerY2}"
+        class="rt-month-spoke-line${isActBoundary ? ' rt-act-boundary' : ''}${isPastMonth ? ' rt-past-month' : ''}"${dashOffset}
+      />`;
+    }
 
+    // Inner month labels (curved text paths)
     const innerLabelRadius = lineInnerRadius;
     const pixelToRadian = (5 * 2 * Math.PI) / (2 * Math.PI * innerLabelRadius);
     const startAngle = angle + pixelToRadian;
@@ -60,7 +90,8 @@ export function renderMonthSpokesAndInnerLabels(params: {
     `;
   });
 
-  if (includeIntermediateSpokes && months.length > 0) {
+  // Render intermediate spokes (dashed mini-ticks between major month markers)
+  if (includeIntermediateSpokes && months.length > 0 && outerSpokeInnerRadius !== undefined) {
     const multiplier = 3;
     const majorStep = (2 * Math.PI) / months.length;
 
@@ -68,8 +99,8 @@ export function renderMonthSpokesAndInnerLabels(params: {
       for (let step = 1; step < multiplier; step++) {
         const rawAngle = months[monthIndex].angle + (majorStep * step) / multiplier;
         const angle = normalizeAngle(rawAngle);
-        const x1 = formatNumber((lineInnerRadius - 5) * Math.cos(angle));
-        const y1 = formatNumber((lineInnerRadius - 5) * Math.sin(angle));
+        const x1 = formatNumber(outerSpokeInnerRadius * Math.cos(angle));
+        const y1 = formatNumber(outerSpokeInnerRadius * Math.sin(angle));
         const x2 = formatNumber(lineOuterRadius * Math.cos(angle));
         const y2 = formatNumber(lineOuterRadius * Math.sin(angle));
 
@@ -80,6 +111,7 @@ export function renderMonthSpokesAndInnerLabels(params: {
         x2="${x2}"
         y2="${y2}"
         class="rt-month-spoke-line rt-month-spoke-intermediate"
+        stroke-dashoffset="2"
       />`;
       }
     }

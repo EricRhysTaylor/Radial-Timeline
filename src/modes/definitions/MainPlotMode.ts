@@ -21,7 +21,7 @@ export const MAIN_PLOT_MODE: ModeDefinition = {
     rendering: {
         outerRingContent: 'main-plot-only',
         innerRingContent: 'subplot-scenes',
-        plotBeatDisplay: 'none',
+        beatDisplay: 'none',
         sceneColoring: 'publish-stage',
         numberSquares: 'full',
         overlayLayers: [],

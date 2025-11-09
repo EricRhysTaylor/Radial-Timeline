@@ -21,7 +21,7 @@ export const ALL_SCENES_MODE: ModeDefinition = {
     rendering: {
         outerRingContent: 'all-scenes',
         innerRingContent: 'subplot-scenes',
-        plotBeatDisplay: 'outer-ring-slices',
+        beatDisplay: 'outer-ring-slices',
         sceneColoring: 'subplot',
         numberSquares: 'full',
         overlayLayers: [],

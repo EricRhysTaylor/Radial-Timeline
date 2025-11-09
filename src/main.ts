@@ -24,6 +24,7 @@ import { assembleManuscript } from './utils/manuscript';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { parseSceneTitle } from './utils/text';
 import { parseWhenField } from './utils/date';
+import { isStoryBeat } from './utils/sceneHelpers';
 import { compareReleaseVersionsDesc, parseReleaseVersion } from './utils/releases';
 
 
@@ -52,16 +53,6 @@ function normalizeBooleanValue(value: unknown): boolean {
     }
     // Handle null, undefined, or any other falsy value as false
     return false;
-}
-
-/**
- * Check if a Class field represents a story beat
- * Accepts both "Plot" (legacy) and "Beat" (recommended), case-insensitive
- */
-function isStoryBeat(classValue: unknown): boolean {
-    if (typeof classValue !== 'string') return false;
-    const normalized = classValue.toLowerCase().trim();
-    return normalized === 'plot' || normalized === 'beat';
 }
 
 interface RadialTimelineSettings {

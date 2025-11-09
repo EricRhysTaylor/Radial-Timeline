@@ -47,6 +47,7 @@ export class ModeManager {
     /**
      * Switch to a new mode
      * Handles lifecycle: exit current → update state → enter new → refresh
+     * If the new mode's onEnter hook throws an error, the mode switch is cancelled and reverted.
      */
     async switchMode(newMode: TimelineMode): Promise<void> {
         const currentMode = this.getCurrentMode();
@@ -72,8 +73,20 @@ export class ModeManager {
         await this.plugin.saveSettings();
         
         // Execute enter lifecycle hook for new mode
+        // If it throws, revert the mode change
         if (newModeDefinition.onEnter) {
-            await newModeDefinition.onEnter(this.view);
+            try {
+                await newModeDefinition.onEnter(this.view);
+            } catch (error) {
+                // Mode entry failed, revert to previous mode
+                console.error(`[ModeManager] Failed to enter ${newMode}:`, error);
+                this.view.currentMode = currentMode;
+                this.plugin.settings.currentMode = currentMode;
+                await this.plugin.saveSettings();
+                
+                // Don't refresh - stay in the current mode's state
+                return;
+            }
         }
         
         // Refresh the timeline to show the new mode

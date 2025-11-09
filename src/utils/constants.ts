@@ -32,9 +32,6 @@ export const GRID_CELL_GAP_Y = 4;
 export const GRID_HEADER_OFFSET_Y = 12;
 export const GRID_LINE_HEIGHT = 26;
 
-// Plot arc width in pixels at a given radius
-export const PLOT_PIXEL_WIDTH = 18; // converted to radians via (PLOT_PIXEL_WIDTH / middleRadius)
-
 // Stage and status orderings
 export const STAGE_ORDER = ["Zero", "Author", "House", "Press"] as const;
 export const STAGES_FOR_GRID = ["Zero", "Author", "House", "Press"] as const;

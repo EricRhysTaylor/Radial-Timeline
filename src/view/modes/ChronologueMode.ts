@@ -54,7 +54,13 @@ export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement):
 function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement): void {
     // Create scene interaction manager for title expansion
     const manager = new SceneInteractionManager(view as any, svg);
-    manager.setTitleExpansionEnabled(view.plugin.settings.enableSceneTitleAutoExpand ?? true);
+    
+    // ALWAYS DISABLE title expansion in Chronologue mode:
+    // - Not needed: Chronological order focuses on temporal relationships, not scene titles
+    // - Causes layout breaks: If a scene is expanded when entering shift mode, the expanded 
+    //   state persists and breaks the layout
+    // - User settings toggle is ignored for Chronologue mode
+    manager.setTitleExpansionEnabled(false);
     
     const sceneIdCache = new WeakMap<Element, string>();
 
@@ -288,8 +294,9 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         
         const syn = synopsisBySceneId.get(sid);
         if (syn) {
-            syn.classList.add('rt-visible');
+            // Calculate position BEFORE making visible to prevent flicker in wrong location
             view.plugin.updateSynopsisPosition?.(syn, e as unknown as MouseEvent, svg, sid);
+            syn.classList.add('rt-visible');
         }
         
         highlightScene(sid);
@@ -314,6 +321,9 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
 
         const related = e.relatedTarget as Element | null;
 
+        // Always cleanup manager state (angles, etc.) even when moving to another scene
+        manager.onSceneLeave();
+
         // If moving to another scene, allow the other handler to take over without clearing shared state
         if (related?.closest('.rt-scene-group[data-item-type="Scene"]')) {
             return;
@@ -328,9 +338,6 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             unhighlightScene(currentHoveredSceneId, false);
             currentHoveredSceneId = null;
         }
-
-        // Use manager for cleanup
-        manager.onSceneLeave();
 
         // Remove scene-hover class and restore default styling
         svg.classList.remove('scene-hover');

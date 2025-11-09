@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, PLOT_PIXEL_WIDTH, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
+import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
 import type { Scene } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString, generateChronologicalTicks, calculateTimeSpan, durationSelectionToMs, type ChronologicalTickInfo } from '../utils/date';
@@ -16,6 +16,7 @@ import {
     buildTextClasses,
     extractPosition,
     sortScenes,
+    isBeatNote,
     type PluginRendererFacade
 } from '../utils/sceneHelpers';
 import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
@@ -24,6 +25,33 @@ import { getMostAdvancedStageColor } from '../utils/colour';
 import { renderGossamerLayer } from './gossamerLayer';
 import { computeRingGeometry } from './layout/Rings';
 import { arcPath } from './layout/Paths';
+import {
+    SVG_SIZE,
+    INNER_RADIUS,
+    SUBPLOT_OUTER_RADIUS_MAINPLOT,
+    SUBPLOT_OUTER_RADIUS_STANDARD,
+    SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
+    MONTH_LABEL_RADIUS,
+    CHRONOLOGUE_DATE_RADIUS,
+    MONTH_TICK_END,
+    MONTH_TICK_START,
+    ACT_LABEL_RADIUS,
+    CHRONOLOGUE_DURATION_ARC_RADIUS,
+    ELAPSED_ARC_RADIUS,
+    ELAPSED_TICK_LENGTH,
+    SCENE_TITLE_INSET,
+    SYNOPSIS_INSET,
+    BEAT_TITLE_INSET,
+    TEXTPATH_START_NUDGE_RAD,
+    MAX_TEXT_WIDTH,
+    PLOT_PIXEL_WIDTH,
+    BEAT_FONT_PX,
+    CHAR_WIDTH_EM,
+    LETTER_SPACING_EM,
+    ESTIMATE_FUDGE_RENDER,
+    PADDING_RENDER_PX,
+    ANGULAR_GAP_PX
+} from './layout/LayoutConstants';
 import { renderCenterGrid } from './components/Grid';
 import { renderMonthLabelDefs } from './components/Months';
 import { renderSubplotLabels } from './components/SubplotLabels';
@@ -62,9 +90,6 @@ const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
   Completed: 'Completed — tasks or scenes finished'
 };
 
-
-// --- Small helpers to centralize ring logic ---
-
 // --- Story beat label post-adjust state (prevents duplicate/clobber passes) ---
 type BeatLabelAdjustState = { retryId?: number; signature?: string; success?: boolean; lastAbortSignature?: string };
 const beatLabelAdjustState = new WeakMap<HTMLElement, BeatLabelAdjustState>();
@@ -75,54 +100,6 @@ function getLabelSignature(container: HTMLElement): string {
         .join('|');
     return ids;
 }
-
-
-// RADIAL TIMELINE GEOMETRY CONSTANTS - CONTROL PANEL TUNING VALUES
-// Visual hierarchy from center outward:
-
-const SVG_SIZE = 1600;           // Total SVG canvas (800px radius)
-
-//CHRONOLOGUE MODE GEOMETRY CONSTANTS
-const MONTH_TICK_END = 799;      // Outer edge of month tick marks (Chronologue mode)
-const MONTH_TICK_START = 764;    // Inner edge of month tick marks (Chronologue mode)
-const MONTH_LABEL_RADIUS = 790;  // Where month labels are positioned
-const CHRONOLOGUE_DATE_RADIUS = 792;  // Where chronologue boundary start and end dates are positioned
-const CHRONOLOGUE_DURATION_ARC_RADIUS = 758;  // Absolute radius for chronologue duration arcs (750 + 8px offset)
-export const ELAPSED_ARC_RADIUS = 766;  // Absolute radius for elapsed time arc (SHIFT mode) - based on standard outer radius
-export const ELAPSED_TICK_LENGTH = 14;  // px length of elapsed time arc endpoint markers
-
-
-// SUBPLOT RINGS - MAIN PLOT - ALL SCENES - GOSSAMER MODE GEOMETRY CONSTANTS
-export const SUBPLOT_OUTER_RADIUS_MAINPLOT = 778;     // Where subplot rings end (Main Plot mode - more room since beats hidden)
-export const SUBPLOT_OUTER_RADIUS_STANDARD = 766;     // Where subplot rings end (All Scenes mode and Gossamer mode)
-export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;  // Where subplot rings end (Chronologue mode - smaller for time details)
-const INNER_RADIUS = 200;                      // Where subplot rings start from center
-
-
-// SYNOPSIS TEXT GEOMETRY CONSTANTS
-export const SYNOPSIS_INSET = 0;                      // px inward from subplot outer radius for synopsis text positioning
-
-
-
-const MAX_TEXT_WIDTH = 500;      // Maximum text width for synopsis text
-
-//LABELS
-const ACT_LABEL_RADIUS = 790;     // px outward from outer scene edge for ACT labels
-const MONTH_TEXT_INSET = 13;     // px inward toward center from outer perimeter (larger = closer to origin)
-const MONTH_TICK_TERMINAL = 35;  // px outward from outer scene edge for month tick lines
-const SCENE_TITLE_INSET = 22;    // fixed pixels inward from the scene's outer boundary for title path
-
-// --- Tuning constants for story beat label rendering ---
-const BEAT_FONT_PX = 9; // keep in sync with .rt-storybeat-title in CSS
-const CHAR_WIDTH_EM = 0.62; // approx glyph width in em
-const LETTER_SPACING_EM = 0.07; // additional spacing in em
-const ESTIMATE_FUDGE_RENDER = 1.35; // generous length when rendering
-const PADDING_RENDER_PX = 24; // extra pixels for render
-const ANGULAR_GAP_PX = 16; // gap used when checking overlaps
-const TEXTPATH_START_NUDGE_RAD = 0.02; // small start nudge for text paths
-
-// Offsets are based solely on the outer scene ring's outer radius
-const BEAT_TITLE_INSET = -3;
 
 // --- Small helpers ---
 function stripNumericPrefix(title: string | undefined): string {
@@ -179,7 +156,7 @@ function getEffectiveScenesForRing(allScenes: Scene[], actIndex: number, subplot
         allScenes.forEach(s => {
             const a = s.actNumber !== undefined ? s.actNumber - 1 : 0;
             if (a !== actIndex) return;
-            if (s.itemType === 'Plot') {
+            if (isBeatNote(s)) {
                 const key = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
                 if (seenPlotKeys.has(key)) return;
                 seenPlotKeys.add(key);
@@ -194,7 +171,7 @@ function getEffectiveScenesForRing(allScenes: Scene[], actIndex: number, subplot
         return result;
     }
     const list = subplot ? (grouped[actIndex] && grouped[actIndex][subplot]) || [] : [];
-    return outerAllScenes ? list.filter(s => s.itemType !== 'Plot') : list.filter(s => s.itemType !== 'Plot');
+    return outerAllScenes ? list.filter(s => !isBeatNote(s)) : list.filter(s => !isBeatNote(s));
 }
 
 function buildSynopsis(
@@ -208,7 +185,7 @@ function buildSynopsis(
     // Format date consistently - extract just the date portion to avoid timezone shifts
     const contentLines = [
         scene.title || '',
-        ...(scene.itemType === 'Plot' && scene.Description
+        ...(isBeatNote(scene) && scene.Description
             ? plugin.splitIntoBalancedLines(scene.Description, maxTextWidth)
             : scene.synopsis
             ? plugin.splitIntoBalancedLines(scene.synopsis, maxTextWidth)
@@ -216,7 +193,7 @@ function buildSynopsis(
     ];
     
     // For Beat notes, add Gossamer1 score right after Description (before separator)
-    if (scene.itemType === 'Plot') {
+    if (isBeatNote(scene)) {
         const gossamer1 = scene.Gossamer1;
         if (gossamer1 !== undefined && gossamer1 !== null) {
             contentLines.push(`<gossamer>${gossamer1}/100</gossamer>`);
@@ -227,7 +204,7 @@ function buildSynopsis(
     contentLines.push('\u00A0');
     
     // Add metadata for non-Plot scenes
-    if (scene.itemType !== 'Plot') {
+    if (!isBeatNote(scene)) {
         const rawSubplots = orderedSubplots.join(', ');
         contentLines.push(rawSubplots);
         
@@ -249,15 +226,15 @@ function computePositions(innerR: number, outerR: number, startAngle: number, en
     const middleRadius = (innerR + outerR) / 2;
     const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
     const totalAngularSpace = endAngle - startAngle;
-    const plotCount = items.filter(it => it.itemType === 'Plot').length;
+    const plotCount = items.filter(it => isBeatNote(it)).length;
     const plotTotalAngularSpace = plotCount * plotAngularWidth;
-    const sceneCount = items.filter(it => it.itemType !== 'Plot').length;
+    const sceneCount = items.filter(it => !isBeatNote(it)).length;
     const sceneAngularSize = sceneCount > 0 ? (totalAngularSpace - plotTotalAngularSpace) / sceneCount : 0;
 
     let current = startAngle;
     const positions = new Map<number, PositionInfo>();
     items.forEach((it, idx) => {
-        if (it.itemType === 'Plot') {
+        if (isBeatNote(it)) {
             positions.set(idx, { startAngle: current, endAngle: current + plotAngularWidth, angularSize: plotAngularWidth });
             current += plotAngularWidth;
         } else {
@@ -279,7 +256,7 @@ function getFillForItem(
     subplotColorResolver?: (subplot: string) => string,
     isOuterAllScenes?: boolean
 ): string {
-    if (scene.itemType === 'Plot') {
+    if (isBeatNote(scene)) {
         // Solid white for plot beats
         return '#FFFFFF';
     }
@@ -564,7 +541,7 @@ export function createTimelineSVG(
         // Precompute plot note indexes and grouping to avoid repeated scans
         // Filter out beats if they shouldn't be rendered (e.g., in Chronologue mode)
         const shouldShowBeats = shouldRenderStoryBeats(plugin);
-        const allScenesPlotNotes = shouldShowBeats ? scenes.filter(s => s.itemType === 'Plot') : [];
+        const allScenesPlotNotes = shouldShowBeats ? scenes.filter(s => isBeatNote(s)) : [];
         const totalPlotNotes = allScenesPlotNotes.length;
         const plotIndexByKey = new Map<string, number>();
         allScenesPlotNotes.forEach((p, i) => plotIndexByKey.set(`${String(p.title || '')}::${String(p.actNumber ?? '')}`, i));
@@ -683,21 +660,16 @@ export function createTimelineSVG(
             const combined: Scene[] = [];
             
             scenes.forEach(s => {
-                // In chronologue mode, include all scenes (ignore Act)
-                if (s.itemType === 'Plot') {
-                    // Plot items are included in combined but filtered later for tick generation
-                    const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
-                    if (!seenPaths.has(pKey)) {
-                        seenPaths.add(pKey);
-                        combined.push(s);
-                    }
-                } else {
-                    // Scenes: deduplicate by path or title+when
-                    const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
-                    if (!seenPaths.has(key)) {
-                        seenPaths.add(key);
-                        combined.push(s);
-                    }
+                // In chronologue mode, SKIP beats entirely - only scenes
+                if (isBeatNote(s)) {
+                    return; // Beats never appear in Chronologue mode
+                }
+                
+                // Scenes: deduplicate by path or title+when
+                const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
+                if (!seenPaths.has(key)) {
+                    seenPaths.add(key);
+                    combined.push(s);
                 }
             });
             
@@ -706,8 +678,8 @@ export function createTimelineSVG(
             const forceChronological = true; // Chronologue mode forces chronological
             const sortedCombined = sortScenes(combined, sortByWhen, forceChronological);
             
-            // Filter to scenes only (no plot beats) for tick generation
-            const sortedScenes = sortedCombined.filter(s => s.itemType !== 'Plot');
+            // No need to filter beats - they were never added to combined
+            const sortedScenes = sortedCombined;
             
             // Calculate time span for intelligent labeling
             const validDates = sortedScenes
@@ -936,25 +908,26 @@ export function createTimelineSVG(
 
          
         // Month spokes and inner labels (always calendar months)
-        // In Chronologue mode, don't render the calendar month spokes to outer radius
+        // - Inner calendar spokes: always rendered (short spokes around inner labels)
+        // - Outer spokes: only for non-Chronologue modes (from subplotOuterRadius to outer edge)
         if (!isChronologueMode) {
             svg += renderMonthSpokesAndInnerLabels({
                 months,
                 lineInnerRadius,
                 lineOuterRadius: monthTickEnd,
                 currentMonthIndex,
-                includeIntermediateSpokes: true
+                includeIntermediateSpokes: true,
+                outerSpokeInnerRadius: subplotOuterRadius  // Add outer spokes from edge of inner rings
             });
         } else {
-            // In Chronologue mode, only render inner labels and short spokes (not extending to outer ring)
-            const chronologueInnerRadius = lineInnerRadius - 5;
-            const chronologueOuterRadius = lineInnerRadius + 30; // Short spokes for inner calendar reference
+            // In Chronologue mode, only render inner calendar spokes and labels (no outer spokes)
             svg += renderMonthSpokesAndInnerLabels({
                 months,
                 lineInnerRadius,
-                lineOuterRadius: chronologueOuterRadius,
+                lineOuterRadius: monthTickEnd,  // Not used since we don't render outer spokes
                 currentMonthIndex,
                 includeIntermediateSpokes: false
+                // No outerSpokeInnerRadius - only inner calendar spokes
             });
         }
 
@@ -1087,11 +1060,11 @@ export function createTimelineSVG(
             const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
 
             // Never generate inner-ring synopses for Plot notes here
-            if (scene.itemType === 'Plot') {
+            if (isBeatNote(scene)) {
                 return;
             }
 
-            const filteredScenesForIndex = scenesInActAndSubplot.filter(s => s.itemType !== 'Plot');
+            const filteredScenesForIndex = scenesInActAndSubplot.filter(s => !isBeatNote(s));
             const sceneIndex = filteredScenesForIndex.indexOf(scene);
 
             const sceneId = makeSceneId(actIndex, ring, sceneIndex, false, false);
@@ -1238,7 +1211,10 @@ export function createTimelineSVG(
                             if (sAct !== act) return;
                         }
                         
-                        if (s.itemType === 'Plot') {
+                        if (isBeatNote(s)) {
+                            // Skip beats entirely in Chronologue mode - beats should never appear
+                            if (isChronologueMode) return;
+                            
                             // Plot notes are handled separately (no multi-subplot logic needed)
                             const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
                             if (!seenPlotKeys.has(pKey)) {
@@ -1318,10 +1294,10 @@ export function createTimelineSVG(
                             const sceneEndAngle = position.endAngle;
                         
                         // Extend plot slices slightly beyond the outer ring for a subtle "poke"
-                        const effectiveOuterR = scene.itemType === 'Plot' ? (outerR + 2) : outerR;
+                        const effectiveOuterR = isBeatNote(scene) ? (outerR + 2) : outerR;
                         
                         // Capture exact angles and geometry for Gossamer plot beats
-                        if (scene.itemType === 'Plot' && scene.title) {
+                        if (isBeatNote(scene) && scene.title) {
                             // Strip the scene number prefix (e.g., "1 Opening Image" -> "Opening Image")
                             const titleWithoutNumber = scene.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
                             // Use exact title (no normalization) for angle lookup
@@ -1340,7 +1316,7 @@ export function createTimelineSVG(
                         // Scene titles: fixed inset from the top (outer) boundary of the cell
                         const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
 
-                        const color = scene.itemType === 'Plot' 
+                        const color = isBeatNote(scene) 
                             ? '#E6E6E6' 
                             : getFillForItem(plugin, scene, maxStageColor, PUBLISH_STAGE_COLORS, totalPlotNotes, plotIndexByKey, true, subplotColorFor, true);
                         const arcPath = sceneArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
@@ -1398,7 +1374,7 @@ export function createTimelineSVG(
                         
                         // Get publish stage color for plot slices
                         const plotStrokeAttr = (() => {
-                            if (scene.itemType === 'Plot') {
+                            if (isBeatNote(scene)) {
                                 const publishStage = scene['Publish Stage'] || 'Zero';
                                 const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
                                 return `stroke="${stageColor}" stroke-width="2"`;
@@ -1413,9 +1389,9 @@ export function createTimelineSVG(
                                   fill="${color}" 
                                   ${plotStrokeAttr}
                                   class="${sceneClasses}"/>
-                            ${scene.itemType === 'Plot' ? `` : ``}
+                            ${isBeatNote(scene) ? `` : ``}
 
-                            ${scene.itemType !== 'Plot' ? `
+                            ${!isBeatNote(scene) ? `
                             <path id="textPath-${act}-${ring}-outer-${idx}" 
                                   d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} 
                                      A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
@@ -1483,7 +1459,7 @@ export function createTimelineSVG(
                         const shouldShowBeats = shouldRenderStoryBeats(plugin);
                         const isOuterRingAllScenes = isOuterRing && shouldShowAllScenesInOuterRing(plugin);
                         const isAllScenesMode = shouldShowAllScenesInOuterRing(plugin);
-                        const effectiveScenes = sortedCurrentScenes.filter(scene => scene.itemType !== "Plot");
+                        const effectiveScenes = sortedCurrentScenes.filter(scene => !isBeatNote(scene));
                         
                         // Compute positions for this ring using shared helper
                         const scenePositions = computePositions(innerR, outerR, startAngle, endAngle, effectiveScenes);
@@ -1573,7 +1549,7 @@ export function createTimelineSVG(
                                       class="${sceneClasses}"/>
 
                                 <!-- Scene title path (using only the text part) - Skip for Plot notes -->
-                                ${scene.itemType !== "Plot" ? `
+                                ${!isBeatNote(scene) ? `
                                 <path id="textPath-${act}-${ring}-${idx}" 
                                       d="M ${formatNumber(textPathRadius * Math.cos(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} ${formatNumber(textPathRadius * Math.sin(sceneStartAngle + TEXTPATH_START_NUDGE_RAD))} 
                                          A ${formatNumber(textPathRadius)} ${formatNumber(textPathRadius)} 0 0 1 ${formatNumber(textPathRadius * Math.cos(sceneEndAngle))} ${formatNumber(textPathRadius * Math.sin(sceneEndAngle))}" 
@@ -1662,7 +1638,7 @@ export function createTimelineSVG(
 
         // Calculate the number of scenes for each status using a Set to track unique scenes
         // Filter out Plot items, only count Scene items
-        const sceneNotesOnly = scenes.filter(scene => scene.itemType !== "Plot");
+        const sceneNotesOnly = scenes.filter(scene => !isBeatNote(scene));
         const processedScenes = new Set<string>(); // Track scenes by their path
         const statusCounts = sceneNotesOnly.reduce((acc, scene) => {
             // Skip if we've already processed this scene
@@ -1796,7 +1772,7 @@ export function createTimelineSVG(
         stagesForGrid.forEach(s => { gridCounts[s] = { Todo: 0, Working: 0, Due: 0, Completed: 0 }; });
 
         scenes.forEach(scene => {
-            if (scene.itemType === "Plot") return;
+            if (isBeatNote(scene)) return;
             if (!scene.path || processedPathsForGrid.has(scene.path)) return;
             processedPathsForGrid.add(scene.path);
 
@@ -1837,7 +1813,7 @@ export function createTimelineSVG(
         const seenTitlePaths = new Set<string>();
         let maxSceneNumber = 0;
         scenes.forEach(scene => {
-            if (scene.itemType === 'Plot') return;
+            if (isBeatNote(scene)) return;
             if (!scene.path || seenTitlePaths.has(scene.path)) return;
             seenTitlePaths.add(scene.path);
             const { number } = parseSceneTitle(scene.title || '', scene.number);
@@ -1856,7 +1832,7 @@ export function createTimelineSVG(
         const seenForMax = new Set<string>();
         let highestPrefixNumber = 0;
         scenes.forEach(scene => {
-            if (scene.itemType === 'Plot') return;
+            if (isBeatNote(scene)) return;
             if (!scene.path || seenForMax.has(scene.path)) return;
             seenForMax.add(scene.path);
             const { number } = parseSceneTitle(scene.title || '', scene.number);
@@ -1985,7 +1961,10 @@ export function createTimelineSVG(
                         if (sAct !== act) return;
                     }
                     
-                    if (s.itemType === 'Plot') {
+                    if (isBeatNote(s)) {
+                        // Skip beats entirely in Chronologue mode - beats should never appear
+                        if (isChronologueMode) return;
+                        
                         const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
                         if (seenPlotKeys.has(pKey)) return;
                         seenPlotKeys.add(pKey);
@@ -2051,7 +2030,7 @@ export function createTimelineSVG(
                 // Map beat names to their Beat note paths to enable dot click/open
                 const beatPathByName = new Map<string, string>();
                 scenes.forEach(s => {
-                    if (s.itemType !== 'Plot' || !s.title || !s.path) return;
+                    if (!isBeatNote(s) || !s.title || !s.path) return;
                     const titleWithoutNumber = s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
                     beatPathByName.set(titleWithoutNumber, s.path);
                 });
@@ -2059,7 +2038,7 @@ export function createTimelineSVG(
                 // Map beat names to their publish stage colors for gossamer dots and spokes
                 const publishStageColorByBeat = new Map<string, string>();
                 scenes.forEach(s => {
-                    if (s.itemType !== 'Plot' || !s.title) return;
+                    if (!isBeatNote(s) || !s.title) return;
                     const titleWithoutNumber = s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
                     const publishStage = s['Publish Stage'] || 'Zero';
                     const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;

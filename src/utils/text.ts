@@ -289,3 +289,15 @@ export function stripObsidianComments(text: string): string {
   // Remove all %%...%% blocks (non-greedy match, multi-line aware)
   return text.replace(/%%[\s\S]*?%%/g, '').trim();
 }
+
+/**
+ * Strip Obsidian wiki link syntax [[...]] from text.
+ * Handles both simple [[Link]] and aliased [[Link|Alias]] formats.
+ * @param text - Text that may contain wiki links
+ * @returns Text with wiki link brackets removed (just the link target or alias)
+ */
+export function stripWikiLinks(text: string): string {
+  if (!text) return text;
+  // Replace [[Link|Alias]] with Alias, and [[Link]] with Link
+  return text.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, link, alias) => alias || link).trim();
+}

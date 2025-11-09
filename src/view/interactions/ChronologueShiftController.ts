@@ -7,7 +7,7 @@
 import { Scene } from '../../main';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
-import { ELAPSED_ARC_RADIUS, ELAPSED_TICK_LENGTH } from '../../renderer/TimelineRenderer';
+import { ELAPSED_ARC_RADIUS, ELAPSED_TICK_LENGTH } from '../../renderer/layout/LayoutConstants';
 
 // Base SVG dimensions (source viewBox size)
 const SHIFT_BUTTON_BASE_WIDTH = 133; // Base width from SVG path

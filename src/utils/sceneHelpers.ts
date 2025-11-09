@@ -30,6 +30,16 @@ export function normalizeBooleanValue(value: unknown): boolean {
 }
 
 /**
+ * Check if a Class field represents a story beat
+ * Accepts both "Plot" (legacy) and "Beat" (recommended), case-insensitive
+ */
+export function isStoryBeat(classValue: unknown): boolean {
+    if (typeof classValue !== 'string') return false;
+    const normalized = classValue.toLowerCase().trim();
+    return normalized === 'plot' || normalized === 'beat';
+}
+
+/**
  * Check if a scene is a beat note (supports both new 'Beat' and legacy 'Plot' itemType)
  */
 export function isBeatNote(scene: Scene | { itemType?: string }): boolean {

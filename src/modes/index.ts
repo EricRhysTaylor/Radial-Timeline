@@ -19,7 +19,7 @@ export {
     type ModeUIConfig,
     type OuterRingContent,
     type InnerRingContent,
-    type PlotBeatDisplay,
+    type BeatDisplay,
     type SceneColoring,
     type NumberSquareDisplay,
     type OverlayLayer,

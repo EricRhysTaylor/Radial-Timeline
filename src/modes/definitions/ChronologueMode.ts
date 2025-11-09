@@ -21,7 +21,7 @@ export const CHRONOLOGUE_MODE: ModeDefinition = {
     rendering: {
         outerRingContent: 'chronologue',
         innerRingContent: 'chronologue',
-        plotBeatDisplay: 'none',
+        beatDisplay: 'none',
         sceneColoring: 'subplot',
         numberSquares: 'full',
         overlayLayers: ['chronological-timeline'],

@@ -88,12 +88,10 @@ export class SceneInteractionManager {
      * Handle scene leave
      */
     onSceneLeave(): void {
-        // Reset expansion if we had a scene expanded
-        if (this.currentGroup) {
-            const sceneTitle = this.currentGroup.querySelector('.rt-scene-title');
-            if (sceneTitle && this.enabled) {
-                this.resetAngularRedistribution();
-            }
+        // Always reset expansion if we have stored angles
+        // This ensures we clean up properly even if state changed during hover
+        if (this.originalAngles.size > 0) {
+            this.resetAngularRedistribution();
         }
         
         // Clear selection
@@ -274,6 +272,10 @@ export class SceneInteractionManager {
                 }
             }
         });
+        
+        // Clear stored state after reset
+        this.originalAngles.clear();
+        this.originalSquareTransforms.clear();
     }
     
     private redistributeActScenes(hoveredGroup: Element): void {

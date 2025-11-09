@@ -48,11 +48,11 @@ export type InnerRingContent =
     | 'hidden';            // Don't show inner rings
 
 /**
- * Plot beat display strategy
+ * Beat display strategy
  */
-export type PlotBeatDisplay = 
+export type BeatDisplay = 
     | 'outer-ring-slices'  // Gray slices with labels in outer ring (All Scenes mode)
-    | 'none';              // Don't show plot beats (Main Plot mode)
+    | 'none';              // Don't show beats (Chronologue, Main Plot modes)
 
 /**
  * Scene coloring strategy
@@ -134,8 +134,8 @@ export interface ModeRenderingConfig {
     /** What content to show in the inner rings */
     innerRingContent: InnerRingContent;
     
-    /** How to display plot beats */
-    plotBeatDisplay: PlotBeatDisplay;
+    /** How to display story beats */
+    beatDisplay: BeatDisplay;
     
     /** How to color scenes */
     sceneColoring: SceneColoring;

@@ -28,7 +28,7 @@ export function shouldRenderStoryBeats(plugin: PluginFacade): boolean {
     const modeDef = getModeDefinition(currentMode as TimelineMode);
     
     // Check if beats are shown in this mode
-    return modeDef.rendering.plotBeatDisplay !== 'none';
+    return modeDef.rendering.beatDisplay !== 'none';
 }
 
 /**

@@ -4,6 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
+import { Notice } from 'obsidian';
 import { ModeDefinition, TimelineMode } from '../ModeDefinition';
 
 /**
@@ -21,7 +22,7 @@ export const GOSSAMER_MODE: ModeDefinition = {
     rendering: {
         outerRingContent: 'all-scenes',
         innerRingContent: 'subplot-scenes',
-        plotBeatDisplay: 'outer-ring-slices',
+        beatDisplay: 'outer-ring-slices',
         sceneColoring: 'subplot',
         numberSquares: 'full',
         overlayLayers: [
@@ -50,9 +51,6 @@ export const GOSSAMER_MODE: ModeDefinition = {
     // Lifecycle hooks
     onEnter: async (view) => {
         // Import and run the Gossamer initialization
-        const { toggleGossamerMode } = await import('../../GossamerCommands');
-        // Use the plugin from the view to call toggleGossamerMode
-        // This will handle all the Gossamer setup (building runs, checking scores, etc.)
         const plugin = view.plugin;
         
         // Get current scenes
@@ -61,9 +59,8 @@ export const GOSSAMER_MODE: ModeDefinition = {
         
         if (beatNotes.length === 0) {
             // No beats found, cannot enter Gossamer mode
-            // Switch back to ALL_SCENES
-            view.currentMode = TimelineMode.ALL_SCENES;
-            return;
+            new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
+            throw new Error('Cannot enter Gossamer mode: No story beats found');
         }
         
         // Build and store Gossamer runs
@@ -72,6 +69,18 @@ export const GOSSAMER_MODE: ModeDefinition = {
         
         const selectedBeatModel = plugin.settings.beatSystem?.trim() || undefined;
         const allRuns = buildAllGossamerRuns(scenes as any, selectedBeatModel);
+        
+        if (allRuns.current.beats.length === 0) {
+            const systemMsg = selectedBeatModel ? ` with Beat Model: ${selectedBeatModel}` : '';
+            new Notice(`Cannot enter Gossamer mode: No story beat notes found${systemMsg}. Create notes with Class: Beat (or Class: Plot for backward compatibility).`);
+            throw new Error(`Cannot enter Gossamer mode: No beats found for system: ${selectedBeatModel}`);
+        }
+        
+        // Check if ALL beat notes are missing Gossamer1 scores
+        const hasAnyScores = beatNotes.some(s => typeof s.Gossamer1 === 'number');
+        if (!hasAnyScores) {
+            new Notice('Warning: No Gossamer1 scores found in story beat notes. Defaulting all beats to 0. Add Gossamer1: <score> to your beat note frontmatter.');
+        }
         
         // Store runs on plugin
         (plugin as any)._gossamerLastRun = allRuns.current;

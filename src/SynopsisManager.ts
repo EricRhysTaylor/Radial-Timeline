@@ -12,7 +12,7 @@ import {
   SUBPLOT_OUTER_RADIUS_STANDARD, 
   SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
   SYNOPSIS_INSET
-} from './renderer/TimelineRenderer';
+} from './renderer/layout/LayoutConstants';
 
 interface Scene {
   title?: string;

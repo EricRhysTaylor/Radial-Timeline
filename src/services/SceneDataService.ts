@@ -15,7 +15,8 @@ import { App, TFile } from 'obsidian';
 import { Scene } from '../main';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseWhenField } from '../utils/date';
-import { normalizeBooleanValue } from '../utils/sceneHelpers';
+import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
+import { stripWikiLinks } from '../utils/text';
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
@@ -105,6 +106,12 @@ export class SceneDataService {
                         
                         const beatsUpdate = metadata["Beats Update"];
                         
+                        // Parse Character field and strip Obsidian wiki links [[...]]
+                        const rawCharacter = metadata.Character;
+                        const characterList = Array.isArray(rawCharacter) 
+                            ? (rawCharacter as string[]).map(c => stripWikiLinks(c))
+                            : (rawCharacter ? [stripWikiLinks(rawCharacter as string)] : undefined);
+                        
                         scenes.push({
                             date: when.toISOString().split('T')[0],
                             when: when,
@@ -115,7 +122,7 @@ export class SceneDataService {
                             actNumber: validActNumber,
                             pov: metadata.POV as string | undefined,
                             location: metadata.Place as string | undefined,
-                            Character: Array.isArray(metadata.Character) ? metadata.Character as string[] : (metadata.Character ? [metadata.Character as string] : undefined),
+                            Character: characterList,
                             synopsis: metadata.Synopsis as string | undefined,
                             status: metadata.Status as string | string[] | undefined,
                             "Publish Stage": metadata["Publish Stage"] as string | undefined,
@@ -123,15 +130,22 @@ export class SceneDataService {
                             pendingEdits: metadata["Pending Edits"] as string | undefined,
                             Duration: duration,
                             Book: metadata.Book as string | undefined,
-                            "previousSceneAnalysis": metadata["previousSceneAnalysis"] as string | undefined,
-                            "currentSceneAnalysis": metadata["currentSceneAnalysis"] as string | undefined,
-                            "nextSceneAnalysis": metadata["nextSceneAnalysis"] as string | undefined,
+                            // AI Scene Analysis fields - handle both string and array formats from YAML
+                            "previousSceneAnalysis": Array.isArray(metadata["previousSceneAnalysis"]) 
+                                ? (metadata["previousSceneAnalysis"] as string[]).join('\n')
+                                : metadata["previousSceneAnalysis"] as string | undefined,
+                            "currentSceneAnalysis": Array.isArray(metadata["currentSceneAnalysis"]) 
+                                ? (metadata["currentSceneAnalysis"] as string[]).join('\n')
+                                : metadata["currentSceneAnalysis"] as string | undefined,
+                            "nextSceneAnalysis": Array.isArray(metadata["nextSceneAnalysis"]) 
+                                ? (metadata["nextSceneAnalysis"] as string[]).join('\n')
+                                : metadata["nextSceneAnalysis"] as string | undefined,
                             itemType: "Scene",
                             "Beats Update": normalizeBooleanValue(beatsUpdate)
                         });
                     }
                 }
-                } else if (metadata && (metadata.Class === "Plot" || metadata.Class === "Beat")) {
+                } else if (metadata && isStoryBeat(metadata.Class)) {
                     // Defer processing of Plot/Beat items until after all scenes are collected
                     const actValue = metadata.Act;
                     const actNumber = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
@@ -183,57 +197,67 @@ export class SceneDataService {
                 when = whenStr;
             }
             
-            if (when && !isNaN(when.getTime())) {
-                const dateKey = when.toISOString().split('T')[0];
-                const scenesOnDate = scenesByDate.get(dateKey) || [];
-                
-                // Determine subplots for the plot/beat
-                let targetSubplots: string[] = ["Main Plot"];
-                
-                if (scenesOnDate.length > 0) {
-                    // Use subplots from scenes on this date
-                    const uniqueSubplots = new Set<string>();
-                    scenesOnDate.forEach(s => {
-                        if (s.subplot) uniqueSubplots.add(s.subplot);
-                    });
-                    if (uniqueSubplots.size > 0) {
-                        targetSubplots = Array.from(uniqueSubplots);
-                    }
-                } else if (metadata.Subplot) {
-                    // Use subplot from metadata
-                    targetSubplots = Array.isArray(metadata.Subplot)
-                        ? metadata.Subplot
-                        : [metadata.Subplot];
+            // For beats, When is optional - use manuscript order if not provided
+            // Determine date key: if When exists, use it; otherwise use a placeholder for manuscript ordering
+            const dateKey = when && !isNaN(when.getTime()) 
+                ? when.toISOString().split('T')[0]
+                : ''; // Empty string for beats without When (will be ordered by act/filename)
+            
+            const scenesOnDate = dateKey ? (scenesByDate.get(dateKey) || []) : [];
+            
+            // Determine subplots for the plot/beat
+            let targetSubplots: string[] = ["Main Plot"];
+            
+            if (scenesOnDate.length > 0) {
+                // Use subplots from scenes on this date
+                const uniqueSubplots = new Set<string>();
+                scenesOnDate.forEach(s => {
+                    if (s.subplot) uniqueSubplots.add(s.subplot);
+                });
+                if (uniqueSubplots.size > 0) {
+                    targetSubplots = Array.from(uniqueSubplots);
                 }
-                
-                // Get beat system from metadata or plugin settings
-                const beatModel = (metadata["Beat Model"] || this.settings.beatSystem || "") as string;
-                
-                // Filter by beat system if requested
-                if (filterBeats && this.settings.beatSystem) {
-                    if (!beatModel || beatModel.toLowerCase() !== this.settings.beatSystem.toLowerCase()) {
-                        continue; // Skip beats from other systems
-                    }
+            } else if (metadata.Subplot) {
+                // Use subplot from metadata
+                targetSubplots = Array.isArray(metadata.Subplot)
+                    ? metadata.Subplot
+                    : [metadata.Subplot];
+            }
+            
+            // Get beat system from metadata or plugin settings
+            const beatModel = (metadata["Beat Model"] || this.settings.beatSystem || "") as string;
+            
+            // Filter by beat system if requested
+            if (filterBeats && this.settings.beatSystem) {
+                if (!beatModel || beatModel.toLowerCase() !== this.settings.beatSystem.toLowerCase()) {
+                    continue; // Skip beats from other systems
                 }
-                
-                // Create a beat for each target subplot
-                for (const subplot of targetSubplots) {
-                    filteredScenes.push({
-                        date: dateKey,
-                        when: when,
-                        path: file.path,
-                        title: metadata.Title as string | undefined ?? file.basename,
-                        subplot: subplot,
-                        act: String(validActNumber),
-                        actNumber: validActNumber,
-                        synopsis: metadata.Synopsis as string | undefined,
-                        Description: metadata.Description as string | undefined,
-                        "Beat Model": beatModel,
-                        Range: metadata.Range as string | undefined,
-                        "Suggest Placement": metadata["Suggest Placement"] as string | undefined,
-                        itemType: "Beat"
-                    });
-                }
+            }
+            
+            // Create a beat for each target subplot
+            for (const subplot of targetSubplots) {
+                filteredScenes.push({
+                    date: dateKey,
+                    when: when,
+                    path: file.path,
+                    title: metadata.Title as string | undefined ?? file.basename,
+                    subplot: subplot,
+                    act: String(validActNumber),
+                    actNumber: validActNumber,
+                    synopsis: metadata.Synopsis as string | undefined,
+                    Description: metadata.Description as string | undefined,
+                    "Beat Model": beatModel,
+                    Range: metadata.Range as string | undefined,
+                    "Suggest Placement": metadata["Suggest Placement"] as string | undefined,
+                    itemType: "Beat", // Modern standard - renderer should use isBeatNote() helper
+                    // Include all Gossamer score fields (Gossamer1-30)
+                    Gossamer1: metadata.Gossamer1 as number | undefined,
+                    Gossamer2: metadata.Gossamer2 as number | undefined,
+                    Gossamer3: metadata.Gossamer3 as number | undefined,
+                    Gossamer4: metadata.Gossamer4 as number | undefined,
+                    Gossamer5: metadata.Gossamer5 as number | undefined,
+                    "Publish Stage": metadata["Publish Stage"] as string | undefined
+                });
             }
         }
         
