@@ -1,16 +1,17 @@
-import { TFile } from 'obsidian';
+import { TFile, App } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { Scene } from '../../main';
+import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 
 export interface AllScenesView {
     currentMode: string;
     plugin: {
-        app: {
-            vault: { getAbstractFileByPath: (path: string) => unknown };
-            metadataCache: { getFileCache: (file: unknown) => { frontmatter?: Record<string, unknown> } | null };
-            fileManager: { processFrontMatter: (file: unknown, fn: (yaml: Record<string, unknown>) => void) => Promise<void> };
-        };
-        settings: Record<string, unknown>;
+        app: App;
+        settings: {
+            enableZeroDraftMode?: boolean;
+            dominantSubplots?: Record<string, string>;
+        } & Record<string, unknown>;
+        saveSettings?: () => Promise<void>;
     };
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
     getSquareGroupForSceneId(svg: SVGSVGElement, sceneId: string): SVGGElement | null;
@@ -29,6 +30,9 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
         view.registerDomEvent(path as HTMLElement, 'click', async (evt: MouseEvent) => {
             const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
             if (!(file instanceof TFile)) return;
+            
+            // Handle dominant subplot selection for scenes in multiple subplots
+            await handleDominantSubplotSelection(view, group, svgElement, scenes);
 
             if (view.plugin.settings.enableZeroDraftMode) {
                 const cache = view.plugin.app.metadataCache.getFileCache(file);

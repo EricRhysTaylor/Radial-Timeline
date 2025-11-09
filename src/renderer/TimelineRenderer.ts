@@ -41,7 +41,7 @@ import { renderPlotGroup } from './components/Plots';
 import { renderMonthSpokesAndInnerLabels, renderGossamerMonthSpokes } from './components/MonthSpokes';
 import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
 import { shouldRenderStoryBeats, shouldShowSubplotRings, shouldShowAllScenesInOuterRing, shouldShowInnerRingContent, getSubplotLabelText } from './modules/ModeRenderingHelpers';
-import { renderChronologueTimelineArc, renderChronologicalBackboneArc } from './components/ChronologueTimeline';
+import { renderChronologueTimelineArc, renderChronologicalBackboneArc, collectChronologueSceneEntries, type ChronologueSceneEntry } from './components/ChronologueTimeline';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -139,6 +139,36 @@ function estimatePixelsFromTitle(title: string, fontPx: number, fudge: number, p
 function estimateAngleFromTitle(title: string, baseRadius: number, fontPx: number, fudge: number, paddingPx: number): number {
     const px = estimatePixelsFromTitle(title, fontPx, fudge, paddingPx);
     return px / Math.max(1, baseRadius);
+}
+
+type PerfStopHandler = () => void;
+type PerfRecord = { label: string; duration: number; timestamp: number };
+function pushPerfRecord(plugin: PluginRendererFacade, record: PerfRecord): void {
+    if (!plugin) return;
+    const host = plugin as unknown as { _perfMeasurements?: PerfRecord[] };
+    if (!Array.isArray(host._perfMeasurements)) {
+        host._perfMeasurements = [];
+    }
+    host._perfMeasurements.push(record);
+    const MAX_RECORDS = 60;
+    if (host._perfMeasurements.length > MAX_RECORDS) {
+        host._perfMeasurements.shift();
+    }
+}
+function startPerfSegment(plugin: PluginRendererFacade, label: string): PerfStopHandler {
+    const canMeasure = typeof performance !== 'undefined' && typeof performance.now === 'function';
+    if (!canMeasure) {
+        return () => {};
+    }
+    const start = performance.now();
+    return () => {
+        const duration = performance.now() - start;
+        const record = { label, duration, timestamp: Date.now() };
+        pushPerfRecord(plugin, record);
+        if (typeof console !== 'undefined' && typeof console.info === 'function') {
+            console.info(`[RadialTimeline][perf] ${label}: ${duration.toFixed(2)}ms`);
+        }
+    };
 }
 
 function getEffectiveScenesForRing(allScenes: Scene[], actIndex: number, subplot: string | undefined, outerAllScenes: boolean, isOuter: boolean, grouped: { [act: number]: { [subplot: string]: Scene[] } }): Scene[] {
@@ -487,7 +517,7 @@ export function createTimelineSVG(
   plugin: PluginRendererFacade,
   scenes: Scene[],
 ): { svgString: string; maxStageColor: string } {
-    
+        const stopTotalPerf = startPerfSegment(plugin, 'timeline.total');
         const sceneCount = scenes.length;
         const size = SVG_SIZE;
         const innerRadius = INNER_RADIUS;
@@ -496,6 +526,7 @@ export function createTimelineSVG(
         const monthTickStart = MONTH_TICK_START;
         const monthTickEnd = MONTH_TICK_END;
         const maxTextWidth = MAX_TEXT_WIDTH;
+        const stopPrepPerf = startPerfSegment(plugin, 'timeline.scene-prep');
     
         // Get the most advanced publish stage color using standardized helper
         // This color is used for act labels, Gossamer elements, and other UI components
@@ -555,6 +586,9 @@ export function createTimelineSVG(
         const isMainPlotMode = currentMode === 'main-plot';
         const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
         const forceChronological = isChronologueMode;
+        const chronologueSceneEntries: ChronologueSceneEntry[] | undefined = isChronologueMode
+            ? collectChronologueSceneEntries(scenes)
+            : undefined;
         
         // Use appropriate subplot outer radius based on mode
         // - Chronologue mode: smaller radius to make room for time details
@@ -613,10 +647,12 @@ export function createTimelineSVG(
             
             // Sort by manuscript order (filename prefix)
             for (let act = 0; act < NUM_ACTS; act++) {
-                Object.keys(scenesByActAndSubplot[act] || {}).forEach(subplot => {
-                    scenesByActAndSubplot[act][subplot] = sortScenes(scenesByActAndSubplot[act][subplot], false, false);
-                });
-            }
+            Object.keys(scenesByActAndSubplot[act] || {}).forEach(subplot => {
+                scenesByActAndSubplot[act][subplot] = sortScenes(scenesByActAndSubplot[act][subplot], false, false);
+            });
+        }
+
+        stopPrepPerf();
         }        
         
         // Define the months and their angles (or chronological ticks in Chronologue mode)
@@ -636,6 +672,7 @@ export function createTimelineSVG(
         let outerLabels: { name: string; shortName: string; angle: number; isMajor?: boolean; isFirst?: boolean; isLast?: boolean; sceneIndex?: number }[];
         
         if (isChronologueMode) {
+            const stopChronoLabels = startPerfSegment(plugin, 'timeline.chronologue-labels');
             // In Chronologue mode, we need to align ticks to actual scene positions
             // Build the EXACT same scene list that's used for outer ring rendering
             const startAngle = -Math.PI / 2; // Top of circle
@@ -705,6 +742,7 @@ export function createTimelineSVG(
                 isLast: tick.isLast,
                 sceneIndex: tick.sceneIndex
             }));
+            stopChronoLabels();
         } else {
             // Use standard calendar months for outer labels too
             outerLabels = standardMonths;
@@ -1108,6 +1146,8 @@ export function createTimelineSVG(
         // Manuscript order: Use 3 Act zones of 120° each
         const actsToRender = sortByWhen ? 1 : NUM_ACTS;
         
+        const stopRingRender = startPerfSegment(plugin, 'timeline.render-rings');
+
         // Draw scenes and dummy scenes
         for (let act = 0; act < actsToRender; act++) {
             const totalRings = NUM_RINGS;
@@ -1148,7 +1188,48 @@ export function createTimelineSVG(
                     const seenPaths = new Set<string>();
                     const seenPlotKeys = new Set<string>();
                     const combined: Scene[] = [];
-
+                    
+                    // Helper to select which Scene object to use when multiple exist for same path
+                    const selectSceneForOuterRing = (scenePath: string, candidateScenes: Scene[]): Scene => {
+                        console.log('[DominantSubplot] Selecting scene for path:', scenePath);
+                        console.log('[DominantSubplot] Candidate scenes:', candidateScenes.map(s => s.subplot));
+                        
+                        // 1. Check if there's a stored dominant subplot preference
+                        const dominantSubplot = plugin.settings.dominantSubplots?.[scenePath];
+                        console.log('[DominantSubplot] Stored preference:', dominantSubplot);
+                        
+                        if (dominantSubplot) {
+                            const preferredScene = candidateScenes.find(s => s.subplot === dominantSubplot);
+                            if (preferredScene) {
+                                console.log('[DominantSubplot] Using stored preference:', dominantSubplot);
+                                return preferredScene; // Use stored preference
+                            }
+                            // If stored subplot is invalid, clean it up and fall through to default
+                            console.log('[DominantSubplot] Stored preference invalid, cleaning up');
+                            if (plugin.settings.dominantSubplots) {
+                                delete plugin.settings.dominantSubplots[scenePath];
+                            }
+                        }
+                        
+                        // 2. Default: Use the outermost subplot (earliest in masterSubplotOrder)
+                        let outermostScene = candidateScenes[0]; // Fallback
+                        let outermostIndex = Infinity;
+                        
+                        for (const scene of candidateScenes) {
+                            const subplot = scene.subplot || 'Main Plot';
+                            const index = masterSubplotOrder.indexOf(subplot);
+                            if (index !== -1 && index < outermostIndex) {
+                                outermostIndex = index;
+                                outermostScene = scene;
+                            }
+                        }
+                        
+                        console.log('[DominantSubplot] Using outermost subplot (default):', outermostScene.subplot);
+                        return outermostScene;
+                    };
+                    
+                    // Group scenes by path to handle scenes in multiple subplots
+                    const scenesByPath = new Map<string, Scene[]>();
                     scenes.forEach(s => {
                         // When using When date sorting, include all scenes (ignore Act)
                         // When using manuscript order, filter by Act
@@ -1158,21 +1239,38 @@ export function createTimelineSVG(
                         }
                         
                         if (s.itemType === 'Plot') {
+                            // Plot notes are handled separately (no multi-subplot logic needed)
                             const pKey = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
-                            if (seenPlotKeys.has(pKey)) return;
-                            seenPlotKeys.add(pKey);
-                            combined.push(s);
-                            } else {
+                            if (!seenPlotKeys.has(pKey)) {
+                                seenPlotKeys.add(pKey);
+                                combined.push(s);
+                            }
+                        } else {
+                            // Group scenes by path
                             const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
-                            if (seenPaths.has(key)) return;
-                            seenPaths.add(key);
-                            combined.push(s);
-                            
-                            // Extract grade from 2beats for All Scenes mode using helper
-                            const sceneIndex = combined.length - 1; // Current index in combined array
-                            const allScenesSceneId = makeSceneId(act, NUM_RINGS - 1, sceneIndex, true, true);
-                            extractGradeFromScene(s, allScenesSceneId, sceneGrades, plugin);
+                            if (!scenesByPath.has(key)) {
+                                scenesByPath.set(key, []);
+                            }
+                            scenesByPath.get(key)!.push(s);
                         }
+                    });
+                    
+                    // Now process grouped scenes, selecting the appropriate one for each path
+                    scenesByPath.forEach((scenesForPath, pathKey) => {
+                        if (seenPaths.has(pathKey)) return;
+                        seenPaths.add(pathKey);
+                        
+                        // Select which Scene object to use based on dominant subplot preference
+                        const selectedScene = selectSceneForOuterRing(
+                            scenesForPath[0].path || '',
+                            scenesForPath
+                        );
+                        combined.push(selectedScene);
+                        
+                        // Extract grade from 2beats for All Scenes mode using helper
+                        const sceneIndex = combined.length - 1; // Current index in combined array
+                        const allScenesSceneId = makeSceneId(act, NUM_RINGS - 1, sceneIndex, true, true);
+                        extractGradeFromScene(selectedScene, allScenesSceneId, sceneGrades, plugin);
                     });
                     
                     // Sort the combined array - Chronologue mode forces chronological
@@ -1545,6 +1643,7 @@ export function createTimelineSVG(
                 }
             }
         }
+        stopRingRender();
 
         // After all scenes are drawn, add just the act borders (vertical lines only)
         svg += renderActBorders({ NUM_ACTS, innerRadius, outerRadius: subplotOuterRadius });
@@ -2024,13 +2123,15 @@ export function createTimelineSVG(
 
         // Add Chronologue mode arcs
         if (isChronologueMode) {
+            const stopChronoOverlays = startPerfSegment(plugin, 'timeline.chronologue-overlays');
             const durationCapMs = durationSelectionToMs(plugin.settings.chronologueDurationCapSelection);
             const chronologueTimelineArc = renderChronologueTimelineArc(
                 scenes, 
                 subplotOuterRadius,  // Use subplot outer radius for arcs
                 manuscriptOrderPositions,
                 durationCapMs,
-                CHRONOLOGUE_DURATION_ARC_RADIUS  // Pass the absolute radius constant
+                CHRONOLOGUE_DURATION_ARC_RADIUS,  // Pass the absolute radius constant
+                chronologueSceneEntries
             );
             if (chronologueTimelineArc) {
                 svg += chronologueTimelineArc;
@@ -2040,7 +2141,7 @@ export function createTimelineSVG(
             const outerRingIndex = NUM_RINGS - 1;
             const outerRingInnerR = ringStartRadii[outerRingIndex];
             const outerRingOuterR = outerRingInnerR + ringWidths[outerRingIndex];
-            svg += renderChronologicalBackboneArc(scenes, outerRingInnerR, outerRingOuterR, 3, manuscriptOrderPositions);
+            svg += renderChronologicalBackboneArc(scenes, outerRingInnerR, outerRingOuterR, 3, manuscriptOrderPositions, chronologueSceneEntries);
             // Arc 3: Shift mode elapsed time (conditionally rendered when shift mode active)
             // Note: This would need shift mode state to be passed in - placeholder for future enhancement
             // if (shiftModeActive && selectedScenes.length === 2) {
@@ -2051,6 +2152,7 @@ export function createTimelineSVG(
             if (boundaryLabelsHtml) {
                 svg += boundaryLabelsHtml;
             }
+            stopChronoOverlays();
         }
 
         // Add JavaScript to handle synopsis visibility
@@ -2065,5 +2167,6 @@ export function createTimelineSVG(
         // const maxStageColor = ... // Needs to be defined/calculated earlier
 
         // Return both the string and the color
+        stopTotalPerf();
         return { svgString: generatedSvgString, maxStageColor: maxStageColor };
     }

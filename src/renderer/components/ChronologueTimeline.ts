@@ -8,6 +8,39 @@ import { formatNumber } from '../../utils/svg';
 import { Scene } from '../../main';
 import { parseWhenField, calculateTimeSpan, parseDuration, detectDiscontinuities, detectSceneOverlaps } from '../../utils/date';
 
+export interface ChronologueSceneEntry {
+    scene: Scene;
+    date: Date;
+    sourceIndex: number;
+}
+
+/**
+ * Build a de-duplicated, chronologue-friendly list of scene entries.
+ * Scenes are uniquely identified by their path (preferred) or title+timestamp.
+ */
+export function collectChronologueSceneEntries(scenes: Scene[]): ChronologueSceneEntry[] {
+    const seenKeys = new Set<string>();
+    const entries: ChronologueSceneEntry[] = [];
+
+    scenes.forEach((scene, index) => {
+        const whenDate =
+            scene.when instanceof Date
+                ? scene.when
+                : parseWhenField(typeof scene.when === 'string' ? scene.when : '');
+        if (!whenDate) return;
+
+        const key = scene.path
+            ? `path:${scene.path}`
+            : `title:${scene.title ?? ''}::${whenDate.getTime()}`;
+
+        if (seenKeys.has(key)) return;
+        seenKeys.add(key);
+        entries.push({ scene, date: whenDate, sourceIndex: index });
+    });
+
+    return entries;
+}
+
 
 /**
  * Render the chronological timeline arc with proportional tick marks
@@ -23,27 +56,10 @@ export function renderChronologueTimelineArc(
     outerRadius: number,
     scenePositions?: Map<string, { startAngle: number; endAngle: number }>,
     durationCapMs?: number | null,
-    arcRadius: number = 758  // Absolute radius for duration arcs
+    arcRadius: number = 758,  // Absolute radius for duration arcs
+    precomputedEntries?: ChronologueSceneEntry[]
 ): string {
-    // Parse all When fields and filter out invalid dates (deduplicate by path/title+time)
-    const seenKeys = new Set<string>();
-    const sceneEntries: Array<{ scene: Scene; date: Date; sourceIndex: number }> = [];
-
-    scenes.forEach((scene, index) => {
-        const whenDate =
-            scene.when instanceof Date
-                ? scene.when
-                : parseWhenField(typeof scene.when === 'string' ? scene.when : '');
-        if (!whenDate) return;
-
-        const key = scene.path
-            ? `path:${scene.path}`
-            : `title:${scene.title ?? ''}::${whenDate.getTime()}`;
-        if (seenKeys.has(key)) return;
-        seenKeys.add(key);
-        sceneEntries.push({ scene, date: whenDate, sourceIndex: index });
-    });
-
+    const sceneEntries = precomputedEntries ?? collectChronologueSceneEntries(scenes);
     const validDates = sceneEntries.map(entry => entry.date);
 
     if (validDates.length === 0) {
@@ -83,7 +99,7 @@ export function renderChronologueTimelineArc(
 }
 
 interface DurationTickArcParams {
-    sceneEntries: Array<{ scene: Scene; date: Date; sourceIndex: number }>;
+    sceneEntries: ChronologueSceneEntry[];
     arcRadius: number;
     timeSpanTotalMs: number;
     scenePositions: Map<string, { startAngle: number; endAngle: number }>;
@@ -303,47 +319,32 @@ export function renderChronologicalBackboneArc(
     outerRingInnerRadius: number,
     outerRingOuterRadius: number,
     discontinuityThreshold: number = 3,
-    scenePositions?: Map<string, { startAngle: number; endAngle: number }>
+    scenePositions?: Map<string, { startAngle: number; endAngle: number }>,
+    precomputedEntries?: ChronologueSceneEntry[]
 ): string {
-    // Parse dates and filter valid ones (only Scene items, not Beat items)
-    const validScenes: { scene: Scene; date: Date }[] = [];
-    scenes.forEach(scene => {
-        // Skip beats - only process Scene items in Chronologue mode
-        if (scene.itemType !== 'Scene') return;
-        
-        let whenDate: Date | null = null;
-        if (scene.when instanceof Date) {
-            whenDate = scene.when;
-        } else if (typeof scene.when === 'string') {
-            whenDate = parseWhenField(scene.when);
-        }
-        
-        if (whenDate) {
-            validScenes.push({ scene, date: whenDate });
-        }
-    });
-    
-    if (validScenes.length === 0 || !scenePositions) return '';
-    
-    // Deduplicate scenes (same path = same scene, even if it appears in multiple subplots)
-    const uniqueScenesMap = new Map<string, Scene>();
-    validScenes.forEach(({ scene }) => {
-        const key = scene.path || `title:${scene.title || ''}`;
+    const sceneEntries = precomputedEntries ?? collectChronologueSceneEntries(scenes);
+    if (sceneEntries.length === 0 || !scenePositions) return '';
+
+    // Deduplicate scene items (ignore Plot/Beat entries)
+    const uniqueScenesMap = new Map<string, ChronologueSceneEntry>();
+    sceneEntries.forEach(entry => {
+        if (entry.scene.itemType !== 'Scene') return;
+        const key = entry.scene.path || `title:${entry.scene.title || ''}`;
         if (!uniqueScenesMap.has(key)) {
-            uniqueScenesMap.set(key, scene);
+            uniqueScenesMap.set(key, entry);
         }
     });
-    
+
     // Sort unique scenes chronologically for discontinuity detection
     const uniqueScenesSorted = Array.from(uniqueScenesMap.values()).sort((a, b) => {
-        const dateA = a.when instanceof Date ? a.when : parseWhenField(String(a.when));
-        const dateB = b.when instanceof Date ? b.when : parseWhenField(String(b.when));
-        if (!dateA || !dateB) return 0;
-        return dateA.getTime() - dateB.getTime();
+        return a.date.getTime() - b.date.getTime();
     });
     
     // Detect discontinuities (large time gaps between consecutive chronological scenes)
-    const discontinuityIndices = detectDiscontinuities(uniqueScenesSorted, discontinuityThreshold);
+    const discontinuityIndices = detectDiscontinuities(
+        uniqueScenesSorted.map(entry => ({ when: entry.date })),
+        discontinuityThreshold
+    );
     
     if (discontinuityIndices.length === 0) return '';
     
@@ -359,7 +360,7 @@ export function renderChronologicalBackboneArc(
         const currScene = uniqueScenesSorted[sceneIndex];
         
         // Get manuscript-order position for this scene
-        const sceneKey = currScene.path || `title:${currScene.title || ''}`;
+        const sceneKey = currScene.scene.path || `title:${currScene.scene.title || ''}`;
         const manuscriptPosition = scenePositions.get(sceneKey);
         
         if (!manuscriptPosition) return;

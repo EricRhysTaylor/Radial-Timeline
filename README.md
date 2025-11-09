@@ -26,7 +26,7 @@
 <hr style="margin-bottom: 20px;">
 
 
-The manuscript visualization plugin for Obsidian
+The manuscript visualization plugin for Obsidian.
 
 **Stop losing track of subplot threads across dozens of scenes.** Radial Timeline™ transforms your manuscript into a live visual map where you can see your entire story structure at a glance.
 

@@ -37,11 +37,11 @@ export function sortScenes(
 export interface PluginRendererFacade {
     settings: {
         publishStageColors: Record<string, string>;
-        debug: boolean;
         targetCompletionDate?: string;
         enableAiSceneAnalysis: boolean;
         showEstimate?: boolean;
         chronologueDurationCapSelection?: string;
+        dominantSubplots?: Record<string, string>;
     };
     searchActive: boolean;
     searchResults: Set<string>;

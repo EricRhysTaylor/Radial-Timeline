@@ -7,13 +7,20 @@
     "publishedAt": "2025-11-05T20:39:14Z"
   },
   "latest": {
-    "version": "4.0.1",
-    "title": "4.0.1",
-    "body": "## What's Changed\r\n\r\n- Bug in Chronologue mode, whereby hovering in all scenes, the ring will fail to activate the same scene in subplots.\r\n- Readme Updates",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.1",
-    "publishedAt": "2025-11-06T22:57:22Z"
+    "version": "4.0.2",
+    "title": "4.0.2",
+    "body": "## Changes\r\n\r\n### README & Documentation\r\n- Various edits and improvements to documentation\r\n- New readme illustrations added\r\n\r\n### Chronologue Mode Refinements\r\n\r\n#### Outer Perimeter Fine-tuning\r\n- Enlarged duration arcs. Moved time unit labels up.\r\n- Moved chronological tick styling from inline SVG to CSS for easier customization\r\n\r\n#### Time Unit Labeling Finesse\r\n- **Elegant time display**: Now shows \"noon\" and \"midnight\" instead of \"12:00pm\" and \"12:00am\" (matching synopsis treatment)\r\n- **Intelligent adaptive labeling** maintains context-aware display based on time gaps between major scene labels",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.2",
+    "publishedAt": "2025-11-08T00:24:59Z"
   },
   "patches": [
+    {
+      "version": "4.0.2",
+      "title": "4.0.2",
+      "body": "## Changes\r\n\r\n### README & Documentation\r\n- Various edits and improvements to documentation\r\n- New readme illustrations added\r\n\r\n### Chronologue Mode Refinements\r\n\r\n#### Outer Perimeter Fine-tuning\r\n- Enlarged duration arcs. Moved time unit labels up.\r\n- Moved chronological tick styling from inline SVG to CSS for easier customization\r\n\r\n#### Time Unit Labeling Finesse\r\n- **Elegant time display**: Now shows \"noon\" and \"midnight\" instead of \"12:00pm\" and \"12:00am\" (matching synopsis treatment)\r\n- **Intelligent adaptive labeling** maintains context-aware display based on time gaps between major scene labels",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.2",
+      "publishedAt": "2025-11-08T00:24:59Z"
+    },
     {
       "version": "4.0.1",
       "title": "4.0.1",

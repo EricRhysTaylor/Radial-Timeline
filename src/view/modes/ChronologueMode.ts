@@ -4,22 +4,25 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { TFile } from 'obsidian';
+import { TFile, App } from 'obsidian';
 import { Scene } from '../../main';
 import { setupChronologueShiftController, isShiftModeActive } from '../interactions/ChronologueShiftController';
 import { openOrRevealFile } from '../../utils/fileUtils';
+import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 
 export interface ChronologueView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
     plugin: {
         refreshTimelineIfNeeded?: (path: string | null) => void;
-        app?: {
-            vault: { getAbstractFileByPath: (path: string) => unknown };
-        };
+        app?: App;
         updateSynopsisPosition?: (synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string) => void;
-        [key: string]: any; // SAFE: any type used for plugin facade extension without tight coupling
+        settings: {
+            dominantSubplots?: Record<string, string>;
+        };
+        saveSettings?: () => Promise<void>;
     };
     currentMode: string;
+    sceneData?: Scene[]; // Full scene data from view
     [key: string]: any; // SAFE: any type used for view augmentation by Obsidian/other modules
 }
 
@@ -338,6 +341,12 @@ function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement):
             if (handled) {
                 return; // Shift mode handled the click
             }
+        }
+        
+        // Handle dominant subplot selection for scenes in multiple subplots
+        const scenes = view.sceneData || (view as any).scenes || [];
+        if (scenes.length > 0) {
+            await handleDominantSubplotSelection(view, g, svg, scenes);
         }
         
         // Normal behavior: open scene file

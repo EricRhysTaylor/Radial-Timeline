@@ -76,7 +76,6 @@ interface RadialTimelineSettings {
     // Mode system
     currentMode?: string; // Current timeline mode (TimelineMode enum value)
     logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
-    debug: boolean; // Add debug setting
     targetCompletionDate?: string; // Optional: Target date as yyyy-mm-dd string
     openaiApiKey?: string; // <<< ADDED: Optional OpenAI API Key
     anthropicApiKey?: string; // <<< ADDED: Anthropic API Key
@@ -100,6 +99,8 @@ interface RadialTimelineSettings {
     activeAiContextTemplateId?: string;
     // Beat System for Gossamer
     beatSystem?: string; // Selected beat system (e.g., "Save The Cat", "Hero's Journey", "Story Grid")
+    // Dominant subplot selection for scenes in multiple subplots
+    dominantSubplots?: Record<string, string>; // Maps scene path → dominant subplot name for outer ring color
     // Resume state (internal, not exposed in UI)
     _isResuming?: boolean; // Temporary flag to indicate resume operation
     _resumingMode?: 'flagged' | 'unprocessed' | 'force-all'; // Mode being resumed
@@ -209,7 +210,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     ],
     currentMode: 'all-scenes', // Default to All Scenes mode
     logApiInteractions: true, // <<< ADDED: Default for new setting
-    debug: false,
     targetCompletionDate: undefined, // Ensure it's undefined by default
     openaiApiKey: '', // Default to empty string
     anthropicApiKey: '', // <<< ADDED: Default empty string
@@ -266,6 +266,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     ],
     activeAiContextTemplateId: 'commercial_genre',
     beatSystem: 'Save The Cat', // Default beat system
+    dominantSubplots: {}, // Default: empty map, will use outermost subplot for scenes in multiple subplots
     lastSeenReleaseNotesVersion: '',
     cachedReleaseNotes: null,
     releaseNotesLastFetched: undefined
@@ -2230,16 +2231,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
     }
 
     // Remove redundant parseSceneTitle method - use the one from utils/text.ts instead
-
-    // Centralized debug logger: only logs in development builds
-    private shouldDebugLog(): boolean {
-        // Best-effort dev detection; safe in browser/Obsidian envs
-        const isDev = typeof process !== 'undefined'
-            && typeof process.env !== 'undefined'
-            && process.env.NODE_ENV === 'development';
-        // Only allow logs in dev
-        return isDev === true;
-    }
 
     // Overloads to satisfy facades expecting (message, data?) while allowing variadic usage
     public log<T>(message: string, data?: T): void;

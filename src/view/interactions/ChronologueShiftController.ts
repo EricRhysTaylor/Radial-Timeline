@@ -153,6 +153,20 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                     syn.classList.remove('rt-visible');
                 }
             });
+            
+            // Check if there's a currently hovered scene and apply shift styling to it
+            const hoveredGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]:hover');
+            if (hoveredGroups.length > 0) {
+                const hoveredGroup = hoveredGroups[0];
+                const scenePathEncoded = hoveredGroup.getAttribute('data-path');
+                if (scenePathEncoded) {
+                    hoveredScenePath = scenePathEncoded;
+                    hoveredGroup.classList.add('rt-shift-hover');
+                    // Activate matching number square with subplot color
+                    const sid = getSceneIdFromGroup(hoveredGroup);
+                    setNumberSquareActiveBySceneId(svg, sid, true);
+                }
+            }
         }
     };
     
@@ -170,6 +184,25 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             removeShiftModeFromAllScenes(svg);
             // Remove shift mode marker (also hides discontinuity markers via CSS)
             svg.removeAttribute('data-shift-mode');
+            
+            // Clear all regular Chronologue hover states (from normal mode)
+            // This ensures we return to a clean state with no highlights
+            svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title, .rt-discontinuity-marker').forEach(el => {
+                el.classList.remove('rt-selected', 'rt-non-selected');
+            });
+            
+            // Clear inline styles on number squares (subplot colors applied in shift mode)
+            svg.querySelectorAll('.rt-number-square[style]').forEach(square => {
+                (square as SVGElement).removeAttribute('style');
+            });
+            
+            // Hide all synopses
+            svg.querySelectorAll('.rt-scene-info.rt-visible').forEach(syn => {
+                syn.classList.remove('rt-visible');
+            });
+            
+            // Remove scene-hover class from SVG if present
+            svg.classList.remove('scene-hover');
         }
     };
     
@@ -507,6 +540,44 @@ function setNumberSquareActiveBySceneId(svg: SVGSVGElement, sceneId: string | nu
     const text = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
     if (square) (square as SVGElement).classList.toggle('rt-shift-active', active);
     if (text) (text as SVGElement).classList.toggle('rt-shift-active', active);
+    
+    // Apply subplot color to the number square when activating in shift mode
+    if (active && square) {
+        applySubplotColorToNumberSquare(svg, square as SVGElement, sceneId);
+    } else if (!active && square) {
+        // Remove subplot color when deactivating
+        (square as SVGElement).removeAttribute('style');
+    }
+}
+
+/**
+ * Apply subplot color to a number square based on scene data
+ * Used in shift mode to show subplot affiliation via fill color
+ */
+function applySubplotColorToNumberSquare(svg: SVGSVGElement, numberSquare: SVGElement, sceneId: string): void {
+    // Find the corresponding scene group
+    const sceneGroup = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]')).find(group => {
+        const pathEl = group.querySelector('.rt-scene-path');
+        return pathEl?.id === sceneId;
+    });
+    
+    if (!sceneGroup) return;
+    
+    // Get subplot index from the scene group
+    const subplotIndexAttr = sceneGroup.getAttribute('data-subplot-index');
+    if (!subplotIndexAttr) return;
+    
+    const subplotIndex = parseInt(subplotIndexAttr, 10);
+    if (isNaN(subplotIndex)) return;
+    
+    // Get subplot color from CSS variable
+    const colorIdx = subplotIndex % 16;
+    const varName = `--rt-subplot-colors-${colorIdx}`;
+    const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    const subplotColor = computed || '#EFBDEB'; // fallback
+    
+    // Apply the subplot color inline (overrides CSS)
+    numberSquare.setAttribute('style', `fill: ${subplotColor} !important;`);
 }
 
 /**
