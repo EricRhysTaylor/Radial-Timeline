@@ -1,0 +1,397 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ */
+
+/**
+ * Scene Interaction Manager
+ * 
+ * Manages scene hover interactions, synopsis display, and scene title auto-expansion.
+ * Extracted from the 400-line closure in TimeLineView.ts to enable reuse across modes.
+ */
+
+import type { RadialTimelineView } from '../TimeLineView';
+import {
+    SceneAngleData,
+    needsExpansion,
+    calculateTargetSize,
+    getActBoundaries,
+    redistributeAngles,
+    buildArcPath,
+    buildTextPath,
+    HOVER_EXPAND_FACTOR,
+    SCENE_TITLE_INSET
+} from './SceneTitleExpansion';
+
+export class SceneInteractionManager {
+    private view: RadialTimelineView;
+    private svg: SVGSVGElement;
+    private enabled: boolean = true;
+    
+    // State tracking
+    private currentGroup: Element | null = null;
+    private currentSynopsis: Element | null = null;
+    private currentSceneId: string | null = null;
+    private rafId: number | null = null;
+    
+    // Original state storage for reset
+    private originalAngles = new Map<string, { start: number; end: number }>();
+    private originalSquareTransforms = new Map<string, string>();
+    
+    // Text measurement element (reused to avoid constant creation/destruction)
+    private measurementText: SVGTextElement;
+    
+    constructor(view: RadialTimelineView, svg: SVGSVGElement) {
+        this.view = view;
+        this.svg = svg;
+        
+        // Create reusable text measurement element
+        this.measurementText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        this.measurementText.classList.add('rt-measure-text');
+        svg.appendChild(this.measurementText);
+    }
+    
+    /**
+     * Enable or disable title expansion based on settings
+     */
+    setTitleExpansionEnabled(enabled: boolean): void {
+        this.enabled = enabled;
+    }
+    
+    /**
+     * Handle scene hover
+     */
+    onSceneHover(group: Element, sceneId: string): void {
+        this.currentGroup = group;
+        this.currentSceneId = sceneId;
+        this.currentSynopsis = this.findSynopsisForScene(sceneId);
+        
+        // Apply selection styles
+        this.applySelection(group, sceneId);
+        
+        // Show synopsis
+        if (this.currentSynopsis) {
+            this.currentSynopsis.classList.add('rt-visible');
+        }
+        
+        // Trigger title expansion if enabled
+        if (this.enabled && this.view.plugin.settings.enableSceneTitleAutoExpand) {
+            const sceneTitle = group.querySelector('.rt-scene-title');
+            if (sceneTitle) {
+                this.redistributeActScenes(group);
+            }
+        }
+    }
+    
+    /**
+     * Handle scene leave
+     */
+    onSceneLeave(): void {
+        // Reset expansion if we had a scene expanded
+        if (this.currentGroup) {
+            const sceneTitle = this.currentGroup.querySelector('.rt-scene-title');
+            if (sceneTitle && this.enabled) {
+                this.resetAngularRedistribution();
+            }
+        }
+        
+        // Clear selection
+        this.clearSelection();
+        
+        this.currentGroup = null;
+        this.currentSynopsis = null;
+        this.currentSceneId = null;
+    }
+    
+    /**
+     * Update synopsis position on mouse move
+     */
+    onMouseMove(e: MouseEvent): void {
+        if (this.rafId !== null) return;
+        
+        this.rafId = window.requestAnimationFrame(() => {
+            this.rafId = null;
+            
+            if (!this.currentSynopsis || !this.currentSceneId) return;
+            if (!this.currentSynopsis.classList.contains('rt-visible')) return;
+            
+            this.view.plugin.updateSynopsisPosition(
+                this.currentSynopsis,
+                e,
+                this.svg,
+                this.currentSceneId
+            );
+        });
+    }
+    
+    /**
+     * Clean up resources
+     */
+    cleanup(): void {
+        if (this.rafId !== null) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        
+        if (this.measurementText && this.measurementText.parentNode) {
+            this.measurementText.parentNode.removeChild(this.measurementText);
+        }
+        
+        this.resetAngularRedistribution();
+        this.clearSelection();
+    }
+    
+    // ========================================================================
+    // Private Helper Methods
+    // ========================================================================
+    
+    private findSynopsisForScene(sceneId: string): Element | null {
+        return this.svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
+    }
+    
+    private clearSelection(): void {
+        const all = this.svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title, .rt-discontinuity-marker');
+        all.forEach(el => el.classList.remove('rt-selected'));
+        
+        // Only clear muted state when NOT in Gossamer mode
+        if (this.view.currentMode !== 'gossamer') {
+            all.forEach(el => el.classList.remove('rt-non-selected'));
+        }
+        
+        if (this.currentSynopsis) {
+            this.currentSynopsis.classList.remove('rt-visible');
+        }
+    }
+    
+    private applySelection(group: Element, sceneId: string): void {
+        // Highlight the path
+        const pathEl = group.querySelector('.rt-scene-path');
+        if (pathEl) pathEl.classList.add('rt-selected');
+        
+        // Highlight number square and text
+        const numberSquare = this.svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
+        if (numberSquare) numberSquare.classList.add('rt-selected');
+        
+        const numberText = this.svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
+        if (numberText) numberText.classList.add('rt-selected');
+        
+        const sceneTitle = group.querySelector('.rt-scene-title');
+        if (sceneTitle) sceneTitle.classList.add('rt-selected');
+        
+        // Find related scenes (same path) and don't mute them
+        const related = new Set<Element>();
+        const currentPathAttr = group.getAttribute('data-path');
+        if (currentPathAttr) {
+            const matches = this.svg.querySelectorAll(`[data-path="${currentPathAttr}"]`);
+            matches.forEach(mg => {
+                if (mg === group) return;
+                const rp = mg.querySelector('.rt-scene-path');
+                if (rp) related.add(rp);
+                const rt = mg.querySelector('.rt-scene-title');
+                if (rt) related.add(rt);
+                const rid = (rp as SVGPathElement | null)?.id;
+                if (rid) {
+                    const rsq = this.svg.querySelector(`.rt-number-square[data-scene-id="${rid}"]`);
+                    if (rsq) related.add(rsq);
+                    const rtx = this.svg.querySelector(`.rt-number-text[data-scene-id="${rid}"]`);
+                    if (rtx) related.add(rtx);
+                }
+            });
+        }
+        
+        // Mute everything else
+        const all = this.svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title, .rt-discontinuity-marker');
+        all.forEach(el => {
+            if (!el.classList.contains('rt-selected') && !related.has(el)) {
+                el.classList.add('rt-non-selected');
+            }
+        });
+    }
+    
+    // ========================================================================
+    // Scene Title Expansion Logic
+    // ========================================================================
+    
+    private storeOriginalAngles(): void {
+        if (this.originalAngles.size > 0) return; // Already stored
+        
+        this.svg.querySelectorAll('.rt-scene-group').forEach((group: Element) => {
+            const start = Number(group.getAttribute('data-start-angle')) || 0;
+            const end = Number(group.getAttribute('data-end-angle')) || 0;
+            this.originalAngles.set(group.id, { start, end });
+            
+            // Store original number square transforms
+            const scenePathEl = group.querySelector('.rt-scene-path') as SVGPathElement;
+            if (scenePathEl) {
+                const sceneId = scenePathEl.id;
+                const numberSquareGroup = this.view.getSquareGroupForSceneId(this.svg, sceneId);
+                
+                if (numberSquareGroup) {
+                    const originalTransform = numberSquareGroup.getAttribute('transform') || '';
+                    this.originalSquareTransforms.set(sceneId, originalTransform);
+                }
+            }
+        });
+    }
+    
+    private resetAngularRedistribution(): void {
+        this.originalAngles.forEach((angles, groupId) => {
+            const group = this.svg.getElementById(groupId);
+            if (!group) return;
+            
+            const innerR = Number(group.getAttribute('data-inner-r')) || 0;
+            const outerR = Number(group.getAttribute('data-outer-r')) || 0;
+            
+            // Reset scene path
+            const path = group.querySelector('.rt-scene-path') as SVGPathElement;
+            if (path) {
+                path.setAttribute('d', buildArcPath(innerR, outerR, angles.start, angles.end));
+            }
+            
+            // Reset text path
+            const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
+            if (textPath) {
+                const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
+                textPath.setAttribute('d', buildTextPath(textPathRadius, angles.start, angles.end));
+            }
+            
+            // Reset number square transform
+            const scenePathEl = group.querySelector('.rt-scene-path') as SVGPathElement;
+            if (scenePathEl) {
+                const sceneId = scenePathEl.id;
+                const originalTransform = this.originalSquareTransforms.get(sceneId);
+                if (originalTransform !== undefined) {
+                    const match = originalTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+                    if (match) {
+                        this.view.setNumberSquareGroupPosition(
+                            this.svg,
+                            sceneId,
+                            parseFloat(match[1]),
+                            parseFloat(match[2])
+                        );
+                    }
+                }
+            }
+        });
+    }
+    
+    private redistributeActScenes(hoveredGroup: Element): void {
+        this.storeOriginalAngles();
+        
+        const hoveredAct = hoveredGroup.getAttribute('data-act');
+        const hoveredRing = hoveredGroup.getAttribute('data-ring');
+        if (!hoveredAct || !hoveredRing) return;
+        
+        // Find all elements in the same act and ring
+        const actElements: SceneAngleData[] = [];
+        const sceneElements: Element[] = [];
+        
+        this.svg.querySelectorAll('.rt-scene-group').forEach((group: Element) => {
+            if (group.getAttribute('data-act') === hoveredAct && 
+                group.getAttribute('data-ring') === hoveredRing) {
+                const path = group.querySelector('.rt-scene-path');
+                if (path) {
+                    const sceneTitle = group.querySelector('.rt-scene-title');
+                    const isScene = !!sceneTitle;
+                    
+                    if (isScene) {
+                        sceneElements.push(group);
+                    }
+                    
+                    actElements.push({
+                        id: group.id,
+                        startAngle: Number(group.getAttribute('data-start-angle')) || 0,
+                        endAngle: Number(group.getAttribute('data-end-angle')) || 0,
+                        innerRadius: Number(group.getAttribute('data-inner-r')) || 0,
+                        outerRadius: Number(group.getAttribute('data-outer-r')) || 0,
+                        isScene
+                    });
+                }
+            }
+        });
+        
+        if (actElements.length <= 1) return; // Need at least 2 elements
+        if (!sceneElements.includes(hoveredGroup)) return; // Don't expand plot slices
+        
+        // Measure if title needs expansion
+        const hoveredData = actElements.find(e => e.id === hoveredGroup.id);
+        if (!hoveredData) return;
+        
+        const hoveredMidR = (hoveredData.innerRadius + hoveredData.outerRadius) / 2;
+        const currentArcPx = (hoveredData.endAngle - hoveredData.startAngle) * hoveredMidR;
+        
+        // Measure text width
+        const hoveredSceneTitle = hoveredGroup.querySelector('.rt-scene-title');
+        if (!hoveredSceneTitle) return;
+        
+        const titleText = hoveredSceneTitle.textContent || '';
+        if (!titleText.trim()) return;
+        
+        // Use measurement element
+        this.measurementText.textContent = titleText;
+        const hoveredComputed = getComputedStyle(hoveredSceneTitle as Element);
+        
+        const fontFamily = hoveredComputed.fontFamily || 'sans-serif';
+        const fontSize = hoveredComputed.fontSize || '18px';
+        this.measurementText.style.setProperty('--rt-measurement-font-family', fontFamily);
+        this.measurementText.style.setProperty('--rt-measurement-font-size', fontSize);
+        
+        const textBBox = this.measurementText.getBBox();
+        const textWidth = textBBox.width;
+        
+        // Check if expansion is needed
+        if (!needsExpansion(textWidth, currentArcPx, hoveredMidR)) {
+            return; // Text already fits
+        }
+        
+        // Calculate target size
+        const targetSize = calculateTargetSize(textWidth, hoveredMidR);
+        
+        // Get act boundaries
+        const actNum = Number(hoveredAct);
+        const actBounds = getActBoundaries(actNum);
+        
+        // Redistribute angles
+        const redistribution = redistributeAngles(
+            actElements,
+            hoveredGroup.id,
+            targetSize,
+            actBounds.start
+        );
+        
+        // Apply redistribution
+        redistribution.forEach(result => {
+            const group = this.svg.getElementById(result.id);
+            if (!group) return;
+            
+            const innerR = Number(group.getAttribute('data-inner-r')) || 0;
+            const outerR = Number(group.getAttribute('data-outer-r')) || 0;
+            
+            // Update scene path
+            const path = group.querySelector('.rt-scene-path') as SVGPathElement;
+            if (path) {
+                path.setAttribute('d', buildArcPath(innerR, outerR, result.newStartAngle, result.newEndAngle));
+            }
+            
+            // Update text path
+            const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
+            if (textPath) {
+                const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
+                textPath.setAttribute('d', buildTextPath(textPathRadius, result.newStartAngle, result.newEndAngle));
+            }
+            
+            // Update number square position
+            const scenePathEl = group.querySelector('.rt-scene-path') as SVGPathElement;
+            if (scenePathEl) {
+                const sceneId = scenePathEl.id;
+                const squareRadius = (innerR + outerR) / 2;
+                const squareX = squareRadius * Math.cos(result.newStartAngle);
+                const squareY = squareRadius * Math.sin(result.newStartAngle);
+                
+                this.view.setNumberSquareGroupPosition(this.svg, sceneId, squareX, squareY);
+            }
+        });
+    }
+}
+

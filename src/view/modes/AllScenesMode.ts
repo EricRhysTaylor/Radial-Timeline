@@ -2,6 +2,7 @@ import { TFile, App } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { Scene } from '../../main';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
+import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 
 export interface AllScenesView {
     currentMode: string;
@@ -10,6 +11,7 @@ export interface AllScenesView {
         settings: {
             enableZeroDraftMode?: boolean;
             dominantSubplots?: Record<string, string>;
+            enableSceneTitleAutoExpand?: boolean;
         } & Record<string, unknown>;
         saveSettings?: () => Promise<void>;
     };
@@ -92,67 +94,24 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
 export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTMLElement, scenes: Scene[]): void {
     const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
     if (!svg) return;
+    
+    // Create scene interaction manager
+    const manager = new SceneInteractionManager(view as any, svg);
+    manager.setTitleExpansionEnabled(view.plugin.settings.enableSceneTitleAutoExpand ?? true);
 
     let currentGroup: Element | null = null;
-    let currentSynopsis: Element | null = null;
     let currentSceneId: string | null = null;
     let rafId: number | null = null;
 
     const clearSelection = () => {
-        const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title, .rt-discontinuity-marker');
-        all.forEach(el => el.classList.remove('rt-selected'));
-        if (view.currentMode !== 'gossamer') {
-            all.forEach(el => el.classList.remove('rt-non-selected'));
-        }
-        if (currentSynopsis) currentSynopsis.classList.remove('rt-visible');
-        currentGroup = null; currentSynopsis = null; currentSceneId = null;
-    };
-
-    const applySelection = (group: Element, sceneId: string) => {
-        const pathEl = group.querySelector('.rt-scene-path');
-        if (pathEl) (pathEl as Element).classList.add('rt-selected');
-        const numberSquare = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
-        if (numberSquare) numberSquare.classList.add('rt-selected');
-        const numberText = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
-        if (numberText) numberText.classList.add('rt-selected');
-        const sceneTitle = group.querySelector('.rt-scene-title');
-        if (sceneTitle) sceneTitle.classList.add('rt-selected');
-
-        const related = new Set<Element>();
-        const currentPathAttr = group.getAttribute('data-path');
-        if (currentPathAttr) {
-            const matches = svg.querySelectorAll(`[data-path="${currentPathAttr}"]`);
-            matches.forEach(mg => {
-                if (mg === group) return;
-                const rp = mg.querySelector('.rt-scene-path'); if (rp) related.add(rp);
-                const rt = mg.querySelector('.rt-scene-title'); if (rt) related.add(rt);
-                const rid = (rp as SVGPathElement | null)?.id;
-                if (rid) {
-                    const rsq = svg.querySelector(`.rt-number-square[data-scene-id="${rid}"]`); if (rsq) related.add(rsq);
-                    const rtx = svg.querySelector(`.rt-number-text[data-scene-id="${rid}"]`); if (rtx) related.add(rtx);
-                }
-            });
-        }
-        const all = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title, .rt-discontinuity-marker');
-        all.forEach(el => {
-            if (!el.classList.contains('rt-selected') && !related.has(el)) el.classList.add('rt-non-selected');
-        });
+        manager.onSceneLeave();
+        currentGroup = null;
+        currentSceneId = null;
     };
 
     const getSceneIdFromGroup = (group: Element): string | null => {
         const pathEl = group.querySelector('.rt-scene-path') as SVGPathElement | null;
         return pathEl?.id || null;
-    };
-
-    const findSynopsisForScene = (sceneId: string): Element | null => {
-        return svg.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
-    };
-
-    const onMove = (e: PointerEvent) => {
-        if (currentSynopsis && currentSceneId) {
-            (view.plugin as any).updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, currentSceneId);
-        }
-        rafId = null;
     };
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
@@ -165,18 +124,9 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
         svg.classList.add('scene-hover');
         currentGroup = g;
         currentSceneId = sid;
-        currentSynopsis = findSynopsisForScene(sid);
-        applySelection(g, sid);
-        if (currentSynopsis) {
-            currentSynopsis.classList.add('rt-visible');
-            (view.plugin as any).updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
-        }
         
-        // 🚫 DO NOT add redistributeActScenes here!
-        // Scene title auto-expansion is handled by the old legacy code in TimeLineView.ts
-        // when !view.interactionController. Adding it here causes double-handler bugs.
-        // See: TimeLineView.ts line ~832 for details
-        // The setting plugin.settings.enableSceneTitleAutoExpand controls this globally.
+        // Use manager for hover interactions
+        manager.onSceneHover(g, sid);
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
@@ -189,10 +139,13 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointermove', (e: PointerEvent) => {
         if (rafId !== null) return;
-        rafId = window.requestAnimationFrame(() => onMove(e));
+        rafId = window.requestAnimationFrame(() => {
+            manager.onMouseMove(e as unknown as MouseEvent);
+            rafId = null;
+        });
     });
     
-    // Since AllScenesView doesn't expose a register cleanup, rely on pointerout to cancel outstanding RAF
+    // Cleanup on pointerout
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', () => {
         if (rafId !== null) {
             cancelAnimationFrame(rafId);

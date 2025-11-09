@@ -9,6 +9,7 @@ import { Scene } from '../../main';
 import { setupChronologueShiftController, isShiftModeActive } from '../interactions/ChronologueShiftController';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
+import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 
 export interface ChronologueView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
@@ -18,6 +19,7 @@ export interface ChronologueView {
         updateSynopsisPosition?: (synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string) => void;
         settings: {
             dominantSubplots?: Record<string, string>;
+            enableSceneTitleAutoExpand?: boolean;
         };
         saveSettings?: () => Promise<void>;
     };
@@ -50,6 +52,10 @@ export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement):
  * Setup scene hover interactions for synopsis display
  */
 function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement): void {
+    // Create scene interaction manager for title expansion
+    const manager = new SceneInteractionManager(view as any, svg);
+    manager.setTitleExpansionEnabled(view.plugin.settings.enableSceneTitleAutoExpand ?? true);
+    
     const sceneIdCache = new WeakMap<Element, string>();
 
     const getSceneIdFromGroup = (group: Element): string | null => {
@@ -288,11 +294,8 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         
         highlightScene(sid);
         
-        // 🚫 DO NOT add redistributeActScenes here!
-        // Scene title auto-expansion is handled by the old legacy code in TimeLineView.ts
-        // when !view.interactionController. Adding it here causes double-handler bugs.
-        // See: TimeLineView.ts line ~832 for details
-        // The setting plugin.settings.enableSceneTitleAutoExpand controls this globally.
+        // Use manager for scene title expansion
+        manager.onSceneHover(g, sid);
         
         // Show warning for scenes without When field
         if (g.classList.contains('rt-chronologue-warning')) {
@@ -325,6 +328,9 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             unhighlightScene(currentHoveredSceneId, false);
             currentHoveredSceneId = null;
         }
+
+        // Use manager for cleanup
+        manager.onSceneLeave();
 
         // Remove scene-hover class and restore default styling
         svg.classList.remove('scene-hover');
