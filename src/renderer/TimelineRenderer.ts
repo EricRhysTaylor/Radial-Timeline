@@ -648,6 +648,8 @@ export function createTimelineSVG(
         const monthTickEnd = MONTH_TICK_END;
         const maxTextWidth = MAX_TEXT_WIDTH;
         
+        // Synopses are hidden by CSS until hover - no need to log anything
+        
         // Try to use cached computations
         let cached = globalRenderCache.get(scenes, plugin.settings);
         if (!cached) {
@@ -1487,6 +1489,7 @@ export function createTimelineSVG(
                             const { number, text } = parseSceneTitle(scene.title || '', scene.number);
                             const position = scenePositions.get(idx);
                             if (!position) return; // Skip if position is undefined
+                            
                             const sceneStartAngle = position.startAngle;
                             const sceneEndAngle = position.endAngle;
                             // Scene titles: fixed inset from the top (outer) boundary of the cell
@@ -1548,7 +1551,7 @@ export function createTimelineSVG(
                             })();
             
                             // Apply appropriate CSS classes based on open status and search match
-                            let sceneClasses = "rt-scene-path";
+                            let sceneClasses = "rt-scene-path rt-scene-arc";
                             if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += " rt-scene-is-open";
                             // Don't add search-result class to scene paths anymore
             

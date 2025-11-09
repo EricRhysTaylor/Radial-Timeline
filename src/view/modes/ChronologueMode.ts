@@ -108,6 +108,8 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
     }
 
     const sceneElementRefs = new Map<string, SceneElementRefs>();
+    const scenesByPath = new Map<string, string[]>(); // Cache: path -> array of sceneIds
+    
     svg.querySelectorAll<SVGGElement>('.rt-scene-group[data-item-type="Scene"]').forEach(group => {
         const sceneId = getSceneIdFromGroup(group);
         if (!sceneId) return;
@@ -121,6 +123,15 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             numberText: numberTextBySceneId.get(sceneId) ?? null,
             title: titleEl ?? null,
         });
+        
+        // Build path-to-sceneIds cache for fast lookups
+        const pathAttr = group.getAttribute('data-path');
+        if (pathAttr) {
+            if (!scenesByPath.has(pathAttr)) {
+                scenesByPath.set(pathAttr, []);
+            }
+            scenesByPath.get(pathAttr)!.push(sceneId);
+        }
     });
 
     const fadeTargets: SVGElement[] = [];
@@ -135,15 +146,16 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
     let currentHoveredSceneId: string | null = null;
     let globalFadeApplied = false;
 
+    // Optimized: Use CSS class on parent instead of iterating all elements
     const applyGlobalFade = () => {
         if (globalFadeApplied) return;
-        fadeTargets.forEach(el => el.classList.add('rt-non-selected'));
+        svg.classList.add('rt-global-fade');
         globalFadeApplied = true;
     };
 
     const clearGlobalFade = () => {
         if (!globalFadeApplied) return;
-        fadeTargets.forEach(el => el.classList.remove('rt-non-selected'));
+        svg.classList.remove('rt-global-fade');
         globalFadeApplied = false;
     };
 
@@ -166,32 +178,33 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             refs.title.classList.remove('rt-non-selected');
         }
 
-        // Find and highlight all matching scenes in other rings by data-path
+        // Find and highlight all matching scenes in other rings using cached path mapping
         const primaryGroup = refs.path?.closest('.rt-scene-group[data-item-type="Scene"]');
         const currentPathAttr = primaryGroup?.getAttribute('data-path');
         if (currentPathAttr) {
-            const matches = svg.querySelectorAll(`.rt-scene-group[data-item-type="Scene"][data-path="${currentPathAttr}"]`);
-            matches.forEach(mg => {
-                const matchSceneId = getSceneIdFromGroup(mg);
-                if (!matchSceneId || matchSceneId === sceneId) return;
-                
-                const matchRefs = sceneElementRefs.get(matchSceneId);
-                if (!matchRefs) return;
-                
-                if (matchRefs.path) {
-                    matchRefs.path.classList.add('rt-selected');
-                    matchRefs.path.classList.remove('rt-non-selected');
-                }
-                if (matchRefs.numberSquare) {
-                    matchRefs.numberSquare.classList.remove('rt-non-selected');
-                }
-                if (matchRefs.numberText) {
-                    matchRefs.numberText.classList.remove('rt-non-selected');
-                }
-                if (matchRefs.title) {
-                    matchRefs.title.classList.remove('rt-non-selected');
-                }
-            });
+            const matchingSceneIds = scenesByPath.get(currentPathAttr);
+            if (matchingSceneIds) {
+                matchingSceneIds.forEach(matchSceneId => {
+                    if (matchSceneId === sceneId) return; // Skip self
+                    
+                    const matchRefs = sceneElementRefs.get(matchSceneId);
+                    if (!matchRefs) return;
+                    
+                    if (matchRefs.path) {
+                        matchRefs.path.classList.add('rt-selected');
+                        matchRefs.path.classList.remove('rt-non-selected');
+                    }
+                    if (matchRefs.numberSquare) {
+                        matchRefs.numberSquare.classList.remove('rt-non-selected');
+                    }
+                    if (matchRefs.numberText) {
+                        matchRefs.numberText.classList.remove('rt-non-selected');
+                    }
+                    if (matchRefs.title) {
+                        matchRefs.title.classList.remove('rt-non-selected');
+                    }
+                });
+            }
         }
     };
 
@@ -222,37 +235,39 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         toggleFade(refs.numberText);
         toggleFade(refs.title);
 
-        // Find and unhighlight all matching scenes in other rings by data-path
+        // Find and unhighlight all matching scenes using cached path mapping
         const primaryGroup = refs.path?.closest('.rt-scene-group[data-item-type="Scene"]');
         const currentPathAttr = primaryGroup?.getAttribute('data-path');
         if (currentPathAttr) {
-            const matches = svg.querySelectorAll(`.rt-scene-group[data-item-type="Scene"][data-path="${currentPathAttr}"]`);
-            matches.forEach(mg => {
-                const matchSceneId = getSceneIdFromGroup(mg);
-                if (!matchSceneId || matchSceneId === sceneId) return;
-                
-                const matchRefs = sceneElementRefs.get(matchSceneId);
-                if (!matchRefs) return;
-                
-                if (matchRefs.path) {
-                    matchRefs.path.classList.remove('rt-selected');
-                    if (keepFaded) {
-                        matchRefs.path.classList.add('rt-non-selected');
-                    } else {
-                        matchRefs.path.classList.remove('rt-non-selected');
+            const matchingSceneIds = scenesByPath.get(currentPathAttr);
+            if (matchingSceneIds) {
+                matchingSceneIds.forEach(matchSceneId => {
+                    if (matchSceneId === sceneId) return; // Skip self
+                    
+                    const matchRefs = sceneElementRefs.get(matchSceneId);
+                    if (!matchRefs) return;
+                    
+                    if (matchRefs.path) {
+                        matchRefs.path.classList.remove('rt-selected');
+                        if (keepFaded) {
+                            matchRefs.path.classList.add('rt-non-selected');
+                        } else {
+                            matchRefs.path.classList.remove('rt-non-selected');
+                        }
                     }
-                }
-                
-                toggleFade(matchRefs.numberSquare);
-                toggleFade(matchRefs.numberText);
-                toggleFade(matchRefs.title);
-            });
+                    
+                    toggleFade(matchRefs.numberSquare);
+                    toggleFade(matchRefs.numberText);
+                    toggleFade(matchRefs.title);
+                });
+            }
         }
     };
 
     // Register hover handlers for Scene elements
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
         // Suspend hover synopsis reveal when shift mode is active
+        // CHECK THIS FIRST before any other work!
         if (isShiftModeActive()) {
             return;
         }

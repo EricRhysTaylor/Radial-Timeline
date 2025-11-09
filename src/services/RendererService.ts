@@ -8,10 +8,51 @@ import { renderTargetDateTick } from '../renderer/components/ProgressTicks';
 import { renderEstimatedDateElements, renderEstimationArc } from '../renderer/components/Progress';
 import { updateAllTimeBasedElements } from '../renderer/DynamicLayerUpdater';
 import { ELAPSED_ARC_RADIUS } from '../renderer/layout/LayoutConstants';
+// Import new DOM updaters
+import { updateSceneColors, updateSceneOpenClasses, updateSceneSearchHighlights } from '../renderer/dom/SceneDOMUpdater';
+import { updateNumberSquareStates, updateNumberSquareGrades } from '../renderer/dom/NumberSquareDOMUpdater';
+import { updateSynopsisText, updateSynopsisVisibility } from '../renderer/dom/SynopsisDOMUpdater';
+import { updateSubplotLabels, updateSubplotLabelVisibility } from '../renderer/dom/SubplotLabelDOMUpdater';
 
 export class RendererService {
     private app: App;
     constructor(app: App) { this.app = app; }
+
+    /**
+     * Update scene colors for dominant subplot changes (DOM update)
+     */
+    updateSceneColorsDOM(container: HTMLElement, plugin: any, changedScenes: Scene[]): boolean { // SAFE: any type used for plugin interface compatibility
+        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        if (!svg) return false;
+        return updateSceneColors(svg, plugin, changedScenes);
+    }
+
+    /**
+     * Update number square states (status, AI grades) (DOM update)
+     */
+    updateNumberSquaresDOM(container: HTMLElement, plugin: any, scenes: Scene[]): boolean { // SAFE: any type used for plugin interface compatibility
+        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        if (!svg) return false;
+        return updateNumberSquareStates(svg, plugin, scenes);
+    }
+
+    /**
+     * Update synopsis text content (DOM update)
+     */
+    updateSynopsisDOM(container: HTMLElement, changedScenes: Scene[]): boolean {
+        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        if (!svg) return false;
+        return updateSynopsisText(svg, changedScenes);
+    }
+
+    /**
+     * Update subplot labels for mode changes (DOM update)
+     */
+    updateSubplotLabelsDOM(container: HTMLElement, newLabels: Map<string, string>): boolean {
+        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
+        if (!svg) return false;
+        return updateSubplotLabels(svg, newLabels);
+    }
 
     /**
      * Update open-file visual state without full re-render.

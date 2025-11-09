@@ -70,6 +70,7 @@ export function sortScenes(
 export interface PluginRendererFacade {
     settings: {
         publishStageColors: Record<string, string>;
+        subplotColors: string[];
         targetCompletionDate?: string;
         enableAiSceneAnalysis: boolean;
         showEstimate?: boolean;

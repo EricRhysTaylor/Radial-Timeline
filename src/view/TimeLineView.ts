@@ -355,6 +355,16 @@ export class RadialTimelineView extends ItemView {
                         updated = this.rendererService.updateProgressAndTicks(this) || updated;
                     }
                     
+                    // Handle dominant subplot changes (scene colors only)
+                    if (changeResult.changeTypes.has(ChangeType.DOMINANT_SUBPLOT)) {
+                        updated = this.rendererService.updateSceneColorsDOM(container, this.plugin, sceneData) || updated;
+                    }
+                    
+                    // Handle synopsis text changes
+                    if (changeResult.changeTypes.has(ChangeType.SYNOPSIS)) {
+                        updated = this.rendererService.updateSynopsisDOM(container, sceneData) || updated;
+                    }
+                    
                     if (updated) {
                         // Selective update succeeded
                         this.lastSnapshot = currentSnapshot;

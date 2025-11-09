@@ -18,6 +18,8 @@ export enum ChangeType {
     SETTINGS = 'settings',            // Settings changed
     TIME = 'time',                    // Time-based (year progress, month)
     GOSSAMER = 'gossamer',            // Gossamer data updated
+    DOMINANT_SUBPLOT = 'dominant_subplot',  // Dominant subplot changed (scene colors only)
+    SYNOPSIS = 'synopsis',            // Synopsis text changed
 }
 
 /**
@@ -187,16 +189,20 @@ export function detectChanges(
         changeTypes.add(ChangeType.MODE);
     }
     
-    // Detect settings changes
+    // Detect settings changes (excluding dominant subplots - handled separately)
     if (prev.sortByWhen !== current.sortByWhen || 
         prev.showEstimate !== current.showEstimate ||
         prev.aiEnabled !== current.aiEnabled ||
         prev.targetDate !== current.targetDate ||
         prev.chronologueDurationCap !== current.chronologueDurationCap ||
         prev.publishStageColorsHash !== current.publishStageColorsHash ||
-        prev.subplotColorsHash !== current.subplotColorsHash ||
-        prev.dominantSubplotsHash !== current.dominantSubplotsHash) {
+        prev.subplotColorsHash !== current.subplotColorsHash) {
         changeTypes.add(ChangeType.SETTINGS);
+    }
+    
+    // Detect dominant subplot changes separately (for selective update)
+    if (prev.dominantSubplotsHash !== current.dominantSubplotsHash) {
+        changeTypes.add(ChangeType.DOMINANT_SUBPLOT);
     }
     
     // Detect time changes
@@ -213,7 +219,13 @@ export function detectChanges(
     const hasChanges = changeTypes.size > 0;
     
     // Selective updates are possible for certain change types only
-    const selectiveChangeTypes = [ChangeType.OPEN_FILES, ChangeType.SEARCH, ChangeType.TIME];
+    const selectiveChangeTypes = [
+        ChangeType.OPEN_FILES, 
+        ChangeType.SEARCH, 
+        ChangeType.TIME,
+        ChangeType.DOMINANT_SUBPLOT,  // DOM update for scene colors
+        ChangeType.SYNOPSIS            // DOM update for synopsis text
+    ];
     const canUseSelectiveUpdate = hasChanges && 
         Array.from(changeTypes).every(type => selectiveChangeTypes.includes(type));
     

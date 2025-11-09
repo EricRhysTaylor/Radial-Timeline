@@ -305,7 +305,7 @@ export default class SynopsisManager {
     const lineHeight = 24;
     
     // Create the main container group
-    const containerGroup = createSynopsisContainer(sceneId);
+    const containerGroup = createSynopsisContainer(sceneId, scene.path);
     
     // Create the synopsis text group
     const synopsisTextGroup = createTextGroup();

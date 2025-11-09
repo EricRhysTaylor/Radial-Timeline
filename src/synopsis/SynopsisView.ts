@@ -1,10 +1,14 @@
 // Focuses on building SVG elements for synopses (no data rules)
 import type { SynopsisScene } from './SynopsisData';
 
-export function createSynopsisContainer(sceneId: string): SVGGElement {
+export function createSynopsisContainer(sceneId: string, scenePath?: string): SVGGElement {
   const containerGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
   containerGroup.setAttribute("class", "rt-scene-info rt-info-container");
   containerGroup.setAttribute("data-for-scene", sceneId);
+  // Add scene path for DOM updates
+  if (scenePath) {
+    containerGroup.setAttribute("data-scene-path", encodeURIComponent(scenePath));
+  }
   return containerGroup;
 }
 

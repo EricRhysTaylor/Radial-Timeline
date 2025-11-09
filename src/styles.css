@@ -165,6 +165,26 @@
 .radial-timeline-container .rt-scene-path.rt-faded {
   opacity: 0.3;
 }
+
+/* Optimized global fade: Apply to all children when parent has class */
+.rt-global-fade .rt-scene-path,
+.rt-global-fade .rt-number-square,
+.rt-global-fade .rt-number-text,
+.rt-global-fade .rt-scene-title {
+  /* Will be overridden by .rt-selected and specific element rules */
+}
+.rt-global-fade .rt-scene-path:not(.rt-selected) {
+  fill: var(--rt-color-empty-selected) !important;
+}
+.rt-global-fade .rt-number-square:not(.rt-selected) {
+  fill: #EFEFEF;
+  stroke: none;
+  stroke-width: 0;
+}
+.rt-global-fade .rt-number-text:not(.rt-selected) {
+  fill: #FFFFFF;
+}
+
 .radial-timeline-container .rt-scene-path.rt-non-selected {
   fill: var(--rt-color-empty-selected) !important;
 }
@@ -2937,7 +2957,6 @@
 /* Shift mode: All scene groups fade to low opacity by default */
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"] {
   opacity: 0.15;
-  transition: opacity 0.2s ease-in-out;
 }
 
 /* Shift mode: All scene fills are gray */
@@ -2955,11 +2974,12 @@
   opacity: 0.5; /* Dim the text to match the faded scenes */
 }
 
-/* Shift mode: Hover/selected scenes restore full opacity */
+/* Shift mode: Hover/selected scenes restore full opacity and disable transition */
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:hover,
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:has(.rt-shift-locked) {
   opacity: 1 !important;
+  transition: none !important; /* Override parent transition for instant hover */
 }
 
 /* Shift mode: Hover/selected scenes get accent color */
@@ -2972,8 +2992,28 @@
 
 /* Shift mode: A new class, managed by JS, to restore number squares on hover/select */
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active {
-  fill: #FFFFFF !important; /* White background */
+  /* Apply subplot color based on data attribute - avoid inline styles */
+  fill: var(--rt-subplot-colors-0); /* Default fallback */
 }
+
+/* Apply subplot colors via data attributes - avoids inline style recalc */
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="0"]  { fill: var(--rt-subplot-colors-0) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="1"]  { fill: var(--rt-subplot-colors-1) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="2"]  { fill: var(--rt-subplot-colors-2) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="3"]  { fill: var(--rt-subplot-colors-3) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="4"]  { fill: var(--rt-subplot-colors-4) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="5"]  { fill: var(--rt-subplot-colors-5) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="6"]  { fill: var(--rt-subplot-colors-6) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="7"]  { fill: var(--rt-subplot-colors-7) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="8"]  { fill: var(--rt-subplot-colors-8) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="9"]  { fill: var(--rt-subplot-colors-9) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="10"] { fill: var(--rt-subplot-colors-10) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="11"] { fill: var(--rt-subplot-colors-11) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="12"] { fill: var(--rt-subplot-colors-12) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="13"] { fill: var(--rt-subplot-colors-13) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="14"] { fill: var(--rt-subplot-colors-14) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="15"] { fill: var(--rt-subplot-colors-15) !important; }
+
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
   fill: #000000 !important; /* Black text */
   opacity: 1 !important; /* Full opacity when active */

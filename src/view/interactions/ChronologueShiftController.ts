@@ -81,6 +81,20 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     
     const sceneGeometry = new Map<string, SceneGeometryInfo>(); // Map scene path (encoded) to outer ring geometry
     
+    // Cache scene groups by scene ID for O(1) lookup
+    const sceneGroupBySceneId = new Map<string, Element>();
+    const sceneSubplotIndexBySceneId = new Map<string, number>();
+    const numberSquareBySceneId = new Map<string, SVGElement>();
+    const numberTextBySceneId = new Map<string, SVGElement>();
+    
+    // Pre-compute and cache all subplot colors to avoid getComputedStyle() calls
+    const subplotColors: string[] = [];
+    for (let i = 0; i < 16; i++) {
+        const varName = `--rt-subplot-colors-${i}`;
+        const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        subplotColors[i] = computed || '#EFBDEB';
+    }
+    
     // Cache synopsis elements for fast lookup (avoiding querySelectorAll on every hover)
     const allSynopsisElements: Element[] = Array.from(svg.querySelectorAll('.rt-scene-info'));
     const synopsisBySceneId = new Map<string, Element>();
@@ -96,7 +110,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     const getSceneIdFromGroup = (group: Element): string | null => {
         const cached = sceneIdCache.get(group);
         if (cached) return cached;
-        
+
         const pathEl = group.querySelector<SVGPathElement>('.rt-scene-path');
         const sceneId = pathEl?.id ?? null;
         if (sceneId) {
@@ -110,6 +124,27 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     const sceneGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]'));
     
     sceneGroups.forEach((group) => {
+        // Cache scene group by scene ID for fast lookup
+        const sceneId = getSceneIdFromGroup(group);
+        if (sceneId) {
+            sceneGroupBySceneId.set(sceneId, group);
+            
+            // Cache subplot index
+            const subplotIndexAttr = group.getAttribute('data-subplot-index');
+            if (subplotIndexAttr) {
+                const subplotIndex = parseInt(subplotIndexAttr, 10);
+                if (!isNaN(subplotIndex)) {
+                    sceneSubplotIndexBySceneId.set(sceneId, subplotIndex);
+                }
+            }
+            
+            // Cache number squares and text for this scene
+            const square = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`) as SVGElement | null;
+            const text = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`) as SVGElement | null;
+            if (square) numberSquareBySceneId.set(sceneId, square);
+            if (text) numberTextBySceneId.set(sceneId, text);
+        }
+        
         const scenePath = group.getAttribute('data-path'); // Already URL-encoded
         if (!scenePath) return;
 
@@ -164,7 +199,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                     hoveredGroup.classList.add('rt-shift-hover');
                     // Activate matching number square with subplot color
                     const sid = getSceneIdFromGroup(hoveredGroup);
-                    setNumberSquareActiveBySceneId(svg, sid, true);
+                    setNumberSquareActiveBySceneId(sid, true, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
                 }
             }
         }
@@ -177,6 +212,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             globalShiftModeActive = false;
             updateShiftButtonState(shiftButton, false);
             selectedScenes = [];
+            rebuildSelectedPathsSet(); // Rebuild Set after clearing
             hoveredScenePath = null;
             elapsedTimeClickCount = 0;
             removeElapsedTimeArc(svg);
@@ -333,6 +369,13 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     
     // Setup shift mode hover handlers - MUST run before other handlers
     const setupShiftModeHover = () => {
+        // Build selected paths Set for O(1) lookups (rebuilt when scenes selected/deselected)
+        let selectedPathsSet = new Set<string>();
+        
+        const rebuildSelectedPathsSet = () => {
+            selectedPathsSet = new Set(selectedScenes.map(s => s.path ? encodeURIComponent(s.path) : '').filter(p => p));
+        };
+        
         // Use capture phase to run before other handlers
         view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
             if (!shiftModeActive) return;
@@ -340,26 +383,24 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
             if (!g) return;
             
-            // Stop event propagation to prevent other handlers from running
-            // (no need to process synopsis - it's completely disabled in shift mode)
-            e.stopPropagation();
+            // Stop ALL event handlers (including other listeners on same element)
+            e.stopImmediatePropagation();
+            e.preventDefault();
             
             const scenePathEncoded = g.getAttribute('data-path');
             if (!scenePathEncoded) return;
             
-            // Check if this scene is locked
-            const isLocked = selectedScenes.some(s => {
-                const encoded = s.path ? encodeURIComponent(s.path) : '';
-                return encoded === scenePathEncoded;
-            });
+            // Check if this scene is locked - O(1) lookup with Set
+            const isLocked = selectedPathsSet.has(scenePathEncoded);
             
             if (!isLocked) {
-                // Only show hover state if not locked
+                // Add hover class - CSS handles the visual styling
                 hoveredScenePath = scenePathEncoded;
                 g.classList.add('rt-shift-hover');
-                // Activate matching number square using cached scene ID
+                
+                // Activate number square
                 const sid = getSceneIdFromGroup(g);
-                setNumberSquareActiveBySceneId(svg, sid, true);
+                setNumberSquareActiveBySceneId(sid, true, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
             }
         }, { capture: true }); // Use capture phase
         
@@ -370,30 +411,32 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
             if (!g) return;
             
-            // Stop event propagation
-            e.stopPropagation();
+            // Stop ALL event handlers
+            e.stopImmediatePropagation();
+            e.preventDefault();
             
             const scenePathEncoded = g.getAttribute('data-path');
             if (!scenePathEncoded) return;
             
-            // Check if this scene is locked
-            const isLocked = selectedScenes.some(s => {
-                const encoded = s.path ? encodeURIComponent(s.path) : '';
-                return encoded === scenePathEncoded;
-            });
+            // Check if this scene is locked - O(1) lookup with Set
+            const isLocked = selectedPathsSet.has(scenePathEncoded);
             
             if (!isLocked) {
-                // Remove hover state only if not locked
+                // Remove hover class
                 hoveredScenePath = null;
                 g.classList.remove('rt-shift-hover');
-                // Deactivate matching number square using cached scene ID
+                
+                // Deactivate number square
                 const sid = getSceneIdFromGroup(g);
-                setNumberSquareActiveBySceneId(svg, sid, false);
+                setNumberSquareActiveBySceneId(sid, false, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
             }
         }, { capture: true }); // Use capture phase
+        
+        // Return function to rebuild Set when selected scenes change
+        return rebuildSelectedPathsSet;
     };
     
-    setupShiftModeHover();
+    const rebuildSelectedPathsSet = setupShiftModeHover();
     
     // Export click handler for external use (called from ChronologueMode)
     (view as any).handleShiftModeClick = (e: MouseEvent, sceneGroup: Element) => {
@@ -423,7 +466,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 const encoded = s.path ? encodeURIComponent(s.path) : '';
                 return encoded !== scenePathEncoded;
             });
-            updateSceneSelection(svg, selectedScenes);
+            rebuildSelectedPathsSet(); // Rebuild Set after change
+            updateSceneSelection(svg, selectedScenes, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
             if (selectedScenes.length < 2) {
                 removeElapsedTimeArc(svg);
             } else {
@@ -438,7 +482,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             selectedScenes = selectedScenes.slice(-2); // Keep only last 2
         }
         
-        updateSceneSelection(svg, selectedScenes);
+        rebuildSelectedPathsSet(); // Rebuild Set after change
+        updateSceneSelection(svg, selectedScenes, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
         
         // If we have 2 scenes, show elapsed time
         if (selectedScenes.length === 2) {
@@ -534,51 +579,40 @@ function updateShiftButtonState(button: SVGGElement, active: boolean): void {
  * Toggle number square and its text for a given sceneId
  * sceneId corresponds to the id of the scene path (e.g. "scene-path-0-2-5")
  */
-function setNumberSquareActiveBySceneId(svg: SVGSVGElement, sceneId: string | null | undefined, active: boolean): void {
+function setNumberSquareActiveBySceneId(
+    sceneId: string | null | undefined, 
+    active: boolean, 
+    numberSquareBySceneId: Map<string, SVGElement>,
+    numberTextBySceneId: Map<string, SVGElement>,
+    sceneSubplotIndexBySceneId: Map<string, number>,
+    subplotColors: string[]
+): void {
     if (!sceneId) return;
-    const square = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
-    const text = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
-    if (square) (square as SVGElement).classList.toggle('rt-shift-active', active);
-    if (text) (text as SVGElement).classList.toggle('rt-shift-active', active);
     
-    // Apply subplot color to the number square when activating in shift mode
-    if (active && square) {
-        applySubplotColorToNumberSquare(svg, square as SVGElement, sceneId);
-    } else if (!active && square) {
-        // Remove subplot color when deactivating
-        (square as SVGElement).removeAttribute('style');
+    // Use cached elements instead of querySelector
+    const square = numberSquareBySceneId.get(sceneId);
+    const text = numberTextBySceneId.get(sceneId);
+    
+    if (square) {
+        square.classList.toggle('rt-shift-active', active);
+        // Set subplot index as data attribute for CSS to use
+        if (active) {
+            const subplotIndex = sceneSubplotIndexBySceneId.get(sceneId);
+            if (subplotIndex !== undefined) {
+                const colorIdx = subplotIndex % 16;
+                square.setAttribute('data-subplot-idx', colorIdx.toString());
+            }
+        } else {
+            square.removeAttribute('data-subplot-idx');
+        }
     }
+    
+    if (text) text.classList.toggle('rt-shift-active', active);
 }
 
 /**
- * Apply subplot color to a number square based on scene data
- * Used in shift mode to show subplot affiliation via fill color
+ * DEPRECATED - removed inline to reduce function call overhead
  */
-function applySubplotColorToNumberSquare(svg: SVGSVGElement, numberSquare: SVGElement, sceneId: string): void {
-    // Find the corresponding scene group
-    const sceneGroup = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]')).find(group => {
-        const pathEl = group.querySelector('.rt-scene-path');
-        return pathEl?.id === sceneId;
-    });
-    
-    if (!sceneGroup) return;
-    
-    // Get subplot index from the scene group
-    const subplotIndexAttr = sceneGroup.getAttribute('data-subplot-index');
-    if (!subplotIndexAttr) return;
-    
-    const subplotIndex = parseInt(subplotIndexAttr, 10);
-    if (isNaN(subplotIndex)) return;
-    
-    // Get subplot color from CSS variable
-    const colorIdx = subplotIndex % 16;
-    const varName = `--rt-subplot-colors-${colorIdx}`;
-    const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-    const subplotColor = computed || '#EFBDEB'; // fallback
-    
-    // Apply the subplot color inline (overrides CSS)
-    numberSquare.setAttribute('style', `fill: ${subplotColor} !important;`);
-}
 
 /**
  * Apply shift mode styling to all scenes (make them non-select/gray)
@@ -616,7 +650,17 @@ function removeShiftModeFromAllScenes(svg: SVGSVGElement): void {
 /**
  * Update scene selection highlights (locked scenes stay active)
  */
-function updateSceneSelection(svg: SVGSVGElement, selectedScenes: Scene[]): void {
+function updateSceneSelection(
+    svg: SVGSVGElement, 
+    selectedScenes: Scene[], 
+    numberSquareBySceneId: Map<string, SVGElement>,
+    numberTextBySceneId: Map<string, SVGElement>,
+    sceneSubplotIndexBySceneId: Map<string, number>,
+    subplotColors: string[]
+): void {
+    // Build a Set for O(1) lookup instead of O(n) .some()
+    const selectedPaths = new Set(selectedScenes.map(s => s.path ? encodeURIComponent(s.path) : '').filter(p => p));
+    
     // Remove existing locked highlights
     const allSceneGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]');
     allSceneGroups.forEach(group => {
@@ -624,17 +668,14 @@ function updateSceneSelection(svg: SVGSVGElement, selectedScenes: Scene[]): void
         if (path) {
             path.classList.remove('rt-shift-locked', 'rt-shift-selected');
         }
-        // Remove hover state if it's now locked
+        // Remove hover state if it's now locked - O(1) lookup with Set
         const scenePathEncoded = group.getAttribute('data-path');
-        if (scenePathEncoded && selectedScenes.some(s => {
-            const encoded = s.path ? encodeURIComponent(s.path) : '';
-            return encoded === scenePathEncoded;
-        })) {
+        if (scenePathEncoded && selectedPaths.has(scenePathEncoded)) {
             group.classList.remove('rt-shift-hover');
         }
         // Also clear number square active for all, will re-apply for selected below
         const sid = group.querySelector('.rt-scene-path')?.id || null;
-        setNumberSquareActiveBySceneId(svg, sid, false);
+        setNumberSquareActiveBySceneId(sid, false, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
     });
     
     // Add locked state to selected scenes
@@ -650,7 +691,7 @@ function updateSceneSelection(svg: SVGSVGElement, selectedScenes: Scene[]): void
                 path.classList.add('rt-shift-locked');
                 path.classList.add('rt-shift-selected'); // Legacy compatibility
                 // Activate matching number square/text
-                setNumberSquareActiveBySceneId(svg, (path as SVGElement).id, true);
+                setNumberSquareActiveBySceneId((path as SVGElement).id, true, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
             }
             // Remove hover state since it's now locked
             sceneGroup.classList.remove('rt-shift-hover');
