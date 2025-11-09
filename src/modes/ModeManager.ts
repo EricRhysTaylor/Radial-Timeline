@@ -40,8 +40,8 @@ export class ModeManager {
             return currentModeString as TimelineMode;
         }
         
-        // Fallback to ALL_SCENES if invalid
-        return TimelineMode.ALL_SCENES;
+        // Fallback to NARRATIVE if invalid
+        return TimelineMode.NARRATIVE;
     }
     
     /**
@@ -105,8 +105,8 @@ export class ModeManager {
         const toggleableModes = getToggleableModes();
         
         if (toggleableModes.length === 0) {
-            // No toggleable modes, default to ALL_SCENES
-            await this.switchMode(TimelineMode.ALL_SCENES);
+            // No toggleable modes, default to NARRATIVE
+            await this.switchMode(TimelineMode.NARRATIVE);
             return;
         }
         

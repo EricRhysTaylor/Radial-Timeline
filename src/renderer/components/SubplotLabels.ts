@@ -1,12 +1,15 @@
 import { formatNumber, escapeXml } from '../../utils/svg';
+import { getSubplotLabelText } from '../modules/ModeRenderingHelpers';
+import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 
 export function renderSubplotLabels(params: {
   NUM_RINGS: number;
   ringStartRadii: number[];
   ringWidths: number[];
   masterSubplotOrder: string[];
+  plugin: PluginRendererFacade;
 }): string {
-  const { NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder } = params;
+  const { NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, plugin } = params;
   const totalRings = NUM_RINGS;
   const subplotCount = masterSubplotOrder.length;
   const ringsToUse = Math.min(subplotCount, totalRings);
@@ -28,7 +31,7 @@ export function renderSubplotLabels(params: {
     const arcPixelLength = labelRadius * arcLength;
     const d = `M ${formatNumber(labelRadius * Math.cos(startAngle))} ${formatNumber(labelRadius * Math.sin(startAngle))} A ${formatNumber(labelRadius)} ${formatNumber(labelRadius)} 0 0 1 ${formatNumber(labelRadius * Math.cos(endAngle))} ${formatNumber(labelRadius * Math.sin(endAngle))}`;
     const isOuterRing = ringOffset === 0;
-    const labelRaw = (isOuterRing) ? 'ALL SCENES' : subplot.toUpperCase();
+    const labelRaw = getSubplotLabelText(plugin, subplot, isOuterRing);
     svg += `
       <path id="${labelPathId}" d="${d}" fill="none" />
       <g class="subplot-label-group" data-font-size="${fontSize}">

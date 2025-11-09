@@ -25,6 +25,7 @@ import { getMostAdvancedStageColor } from '../utils/colour';
 import { renderGossamerLayer } from './gossamerLayer';
 import { computeRingGeometry } from './layout/Rings';
 import { arcPath } from './layout/Paths';
+import { type CachedComputations, type DynamicValues, globalRenderCache } from './RenderCache';
 import {
     SVG_SIZE,
     INNER_RADIUS,
@@ -102,6 +103,152 @@ function getLabelSignature(container: HTMLElement): string {
 }
 
 // --- Small helpers ---
+/**
+ * Compute expensive values that can be cached between renders
+ * These values depend on scene data and settings, but not on dynamic state (time, open files, etc.)
+ */
+function computeCacheableValues(
+    plugin: PluginRendererFacade,
+    scenes: Scene[]
+): Omit<CachedComputations, 'scenesHash' | 'settingsHash' | 'timestamp'> {
+    const stopCacheCompute = startPerfSegment(plugin, 'timeline.cache-compute');
+    
+    // Determine mode and sorting
+    const currentMode = (plugin.settings as any).currentMode || 'narrative';
+    const isChronologueMode = currentMode === 'chronologue';
+    const isSubplotMode = currentMode === 'subplot';
+    const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+    const forceChronological = isChronologueMode;
+    
+    // 1. Collect all unique subplots
+    const allSubplotsSet = new Set<string>();
+    scenes.forEach(scene => {
+        const key = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+        allSubplotsSet.add(key);
+    });
+    const allSubplots = Array.from(allSubplotsSet);
+    const NUM_RINGS = allSubplots.length;
+    
+    // 2. Precompute plot note indexes and grouping
+    const shouldShowBeats = shouldRenderStoryBeats(plugin);
+    const allScenesPlotNotes = shouldShowBeats ? scenes.filter(s => isBeatNote(s)) : [];
+    const totalPlotNotes = allScenesPlotNotes.length;
+    const plotIndexByKey = new Map<string, number>();
+    allScenesPlotNotes.forEach((p, i) => plotIndexByKey.set(`${String(p.title || '')}::${String(p.actNumber ?? '')}`, i));
+    const plotsBySubplot = new Map<string, Scene[]>();
+    allScenesPlotNotes.forEach(p => {
+        const key = String(p.subplot || '');
+        const arr = plotsBySubplot.get(key) || [];
+        arr.push(p);
+        plotsBySubplot.set(key, arr);
+    });
+    
+    // 3. Group scenes by Act and Subplot
+    const scenesByActAndSubplot: { [act: number]: { [subplot: string]: Scene[] } } = {};
+    
+    if (sortByWhen) {
+        // When date sorting: Use single "act" (act 0) for full 360° circle
+        scenesByActAndSubplot[0] = {};
+        
+        scenes.forEach(scene => {
+            const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+            
+            if (!scenesByActAndSubplot[0][subplot]) {
+                scenesByActAndSubplot[0][subplot] = [];
+            }
+            
+            scenesByActAndSubplot[0][subplot].push(scene);
+        });
+        
+        // Sort by When date (chronologically)
+        Object.keys(scenesByActAndSubplot[0]).forEach(subplot => {
+            scenesByActAndSubplot[0][subplot] = sortScenes(scenesByActAndSubplot[0][subplot], true, forceChronological);
+        });
+        
+    } else {
+        // Manuscript order: Group by Act AND Subplot (3 Act zones)
+        for (let act = 0; act < NUM_ACTS; act++) {
+            scenesByActAndSubplot[act] = {};
+        }
+        
+        scenes.forEach(scene => {
+            const act = scene.actNumber !== undefined ? scene.actNumber - 1 : 0;
+            const validAct = (act >= 0 && act < NUM_ACTS) ? act : 0;
+            const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+            
+            if (!scenesByActAndSubplot[validAct][subplot]) {
+                scenesByActAndSubplot[validAct][subplot] = [];
+            }
+            
+            scenesByActAndSubplot[validAct][subplot].push(scene);
+        });
+        
+        // Sort by manuscript order (filename prefix)
+        for (let act = 0; act < NUM_ACTS; act++) {
+            Object.keys(scenesByActAndSubplot[act] || {}).forEach(subplot => {
+                scenesByActAndSubplot[act][subplot] = sortScenes(scenesByActAndSubplot[act][subplot], false, false);
+            });
+        }
+    }
+    
+    // 4. Create master subplot order
+    const allSubplotsMap = new Map<string, number>();
+    const actsToCheck = sortByWhen ? 1 : NUM_ACTS;
+    
+    for (let actIndex = 0; actIndex < actsToCheck; actIndex++) {
+        Object.entries(scenesByActAndSubplot[actIndex] || {}).forEach(([subplot, scenes]) => {
+            allSubplotsMap.set(subplot, (allSubplotsMap.get(subplot) || 0) + scenes.length);
+        });
+    }
+    
+    const subplotCounts = Array.from(allSubplotsMap.entries()).map(([subplot, count]) => ({
+        subplot,
+        count
+    }));
+    
+    subplotCounts.sort((a, b) => {
+        if (a.subplot === "Main Plot" || !a.subplot) return -1;
+        if (b.subplot === "Main Plot" || !b.subplot) return 1;
+        return b.count - a.count;
+    });
+    
+    const masterSubplotOrder = subplotCounts.map(item => item.subplot);
+    
+    // 5. Compute ring geometry
+    const subplotOuterRadius = isChronologueMode 
+        ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
+        : isSubplotMode 
+        ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
+        : SUBPLOT_OUTER_RADIUS_STANDARD;
+    
+    const ringGeo = computeRingGeometry({
+        size: SVG_SIZE,
+        innerRadius: INNER_RADIUS,
+        subplotOuterRadius,
+        outerRadius: MONTH_LABEL_RADIUS,
+        numRings: NUM_RINGS,
+        monthTickTerminal: 0,
+        monthTextInset: 0,
+    });
+    
+    // 6. Get max stage color
+    const maxStageColor = getMostAdvancedStageColor(scenes, plugin.settings.publishStageColors);
+    
+    stopCacheCompute();
+    
+    return {
+        scenesByActAndSubplot,
+        masterSubplotOrder,
+        totalPlotNotes,
+        plotIndexByKey,
+        plotsBySubplot,
+        ringWidths: ringGeo.ringWidths,
+        ringStartRadii: ringGeo.ringStartRadii,
+        lineInnerRadius: ringGeo.lineInnerRadius,
+        maxStageColor
+    };
+}
+
 function stripNumericPrefix(title: string | undefined): string {
     const full = title || '';
     const m = full.match(/^(?:\s*\d+(?:\.\d+)?\s+)?(.+)/);
@@ -142,9 +289,6 @@ function startPerfSegment(plugin: PluginRendererFacade, label: string): PerfStop
         const duration = performance.now() - start;
         const record = { label, duration, timestamp: Date.now() };
         pushPerfRecord(plugin, record);
-        if (typeof console !== 'undefined' && typeof console.info === 'function') {
-            console.info(`[RadialTimeline][perf] ${label}: ${duration.toFixed(2)}ms`);
-        }
     };
 }
 
@@ -266,7 +410,7 @@ function getFillForItem(
     const publishStage = scene['Publish Stage'] || 'Zero';
     if (!norm) return `url(#plaidTodo${publishStage})`;
     if (norm === 'Completed') {
-        // Completed: use subplot colors in all-scenes mode, else stage color
+        // Completed: use subplot colors in narrative mode, else stage color
         if (isOuterAllScenes && subplotColorResolver) {
             const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
             return subplotColorResolver(subplotName);
@@ -503,12 +647,33 @@ export function createTimelineSVG(
         const monthTickStart = MONTH_TICK_START;
         const monthTickEnd = MONTH_TICK_END;
         const maxTextWidth = MAX_TEXT_WIDTH;
-        const stopPrepPerf = startPerfSegment(plugin, 'timeline.scene-prep');
+        
+        // Try to use cached computations
+        let cached = globalRenderCache.get(scenes, plugin.settings);
+        if (!cached) {
+            // Cache miss - compute expensive values
+            const stopPrepPerf = startPerfSegment(plugin, 'timeline.scene-prep');
+            cached = globalRenderCache.set(scenes, plugin.settings, computeCacheableValues(plugin, scenes));
+            stopPrepPerf();
+        } else {
+            // Cache hit - log for performance monitoring
+            plugin.log('[RenderCache] Cache HIT - skipping expensive computations');
+        }
     
-        // Get the most advanced publish stage color using standardized helper
-        // This color is used for act labels, Gossamer elements, and other UI components
-        // that should reflect the overall project's most advanced publication state
-        const maxStageColor = getMostAdvancedStageColor(scenes, plugin.settings.publishStageColors);
+        // Extract cached values
+        const {
+            scenesByActAndSubplot,
+            masterSubplotOrder,
+            totalPlotNotes,
+            plotIndexByKey,
+            plotsBySubplot,
+            ringWidths,
+            ringStartRadii,
+            lineInnerRadius,
+            maxStageColor
+        } = cached;
+        
+        const NUM_RINGS = masterSubplotOrder.length;
 
         // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
         let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
@@ -521,116 +686,26 @@ export function createTimelineSVG(
 
         // Create defs for patterns and gradients
         svg += `<defs>`;
-
+        
         // Create a map to store scene number information for the scene square and synopsis
         const sceneNumbersMap = new Map<string, SceneNumberInfo>();
-    
-        // Collect all unique subplots (normalize empty to "Main Plot")
-        const allSubplotsSet = new Set<string>();
-        scenes.forEach(scene => {
-            const key = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-            allSubplotsSet.add(key);
-        });
-        const allSubplots = Array.from(allSubplotsSet);
-    
-        // Dynamically set NUM_RINGS based on the number of unique subplots
-        const NUM_RINGS = allSubplots.length;
-    
-        // Ring colors are now handled by CSS variables and dynamic color logic
-    
-        // Precompute plot note indexes and grouping to avoid repeated scans
-        // Filter out beats if they shouldn't be rendered (e.g., in Chronologue mode)
-        const shouldShowBeats = shouldRenderStoryBeats(plugin);
-        const allScenesPlotNotes = shouldShowBeats ? scenes.filter(s => isBeatNote(s)) : [];
-        const totalPlotNotes = allScenesPlotNotes.length;
-        const plotIndexByKey = new Map<string, number>();
-        allScenesPlotNotes.forEach((p, i) => plotIndexByKey.set(`${String(p.title || '')}::${String(p.actNumber ?? '')}`, i));
-        const plotsBySubplot = new Map<string, Scene[]>();
-        allScenesPlotNotes.forEach(p => {
-            const key = String(p.subplot || '');
-            const arr = plotsBySubplot.get(key) || [];
-            arr.push(p);
-            plotsBySubplot.set(key, arr);
-        });
-
-        // Global stacking for plot titles across all acts (outer-ring all-scenes only)
-        // Stacking map removed
-
-        // Determine sorting method
-        // Chronologue mode always uses chronological sorting (by When date)
-        const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
+        
+        // Determine sorting method (needed for later logic, already computed in cache but extracted here for readability)
+        const currentMode = (plugin.settings as any).currentMode || 'narrative';
         const isChronologueMode = currentMode === 'chronologue';
-        const isMainPlotMode = currentMode === 'main-plot';
+        const isSubplotMode = currentMode === 'subplot';
         const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
         const forceChronological = isChronologueMode;
         const chronologueSceneEntries: ChronologueSceneEntry[] | undefined = isChronologueMode
             ? collectChronologueSceneEntries(scenes)
             : undefined;
         
-        // Use appropriate subplot outer radius based on mode
-        // - Chronologue mode: smaller radius to make room for time details
-        // - Main Plot mode: larger radius since scene beats are hidden
-        // - Standard modes: default radius
+        // Use appropriate subplot outer radius based on mode (needed for ring rendering)
         const subplotOuterRadius = isChronologueMode 
             ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
-            : isMainPlotMode 
+            : isSubplotMode 
             ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
             : SUBPLOT_OUTER_RADIUS_STANDARD;
-        
-        // Group scenes differently based on sorting method:
-        // - When sorting by When date: Group only by Subplot (full 360° circle)
-        // - When sorting by manuscript: Group by Act AND Subplot (3 Act zones)
-        const scenesByActAndSubplot: { [act: number]: { [subplot: string]: Scene[] } } = {};
-        
-        if (sortByWhen) {
-            // When date sorting: Use single "act" (act 0) for full 360° circle
-            scenesByActAndSubplot[0] = {};
-            
-            scenes.forEach(scene => {
-                const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-                
-                if (!scenesByActAndSubplot[0][subplot]) {
-                    scenesByActAndSubplot[0][subplot] = [];
-                }
-                
-                scenesByActAndSubplot[0][subplot].push(scene);
-            });
-            
-            // Sort by When date (chronologically)
-            Object.keys(scenesByActAndSubplot[0]).forEach(subplot => {
-                scenesByActAndSubplot[0][subplot] = sortScenes(scenesByActAndSubplot[0][subplot], true, forceChronological);
-            });
-            
-        } else {
-            // Manuscript order: Group by Act AND Subplot (3 Act zones)
-            for (let act = 0; act < NUM_ACTS; act++) {
-                scenesByActAndSubplot[act] = {};
-            }
-            
-            scenes.forEach(scene => {
-                const act = scene.actNumber !== undefined ? scene.actNumber - 1 : 0; // Subtract 1 for 0-based index, default to 0 if undefined
-                
-                // Ensure act is within valid range
-                const validAct = (act >= 0 && act < NUM_ACTS) ? act : 0;
-                
-                const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-                
-                if (!scenesByActAndSubplot[validAct][subplot]) {
-                    scenesByActAndSubplot[validAct][subplot] = [];
-                }
-                
-                scenesByActAndSubplot[validAct][subplot].push(scene);
-            });
-            
-            // Sort by manuscript order (filename prefix)
-            for (let act = 0; act < NUM_ACTS; act++) {
-            Object.keys(scenesByActAndSubplot[act] || {}).forEach(subplot => {
-                scenesByActAndSubplot[act][subplot] = sortScenes(scenesByActAndSubplot[act][subplot], false, false);
-            });
-        }
-
-        stopPrepPerf();
-        }        
         
         // Define the months and their angles (or chronological ticks in Chronologue mode)
         // INNER months always use standard calendar (for year progress ring)
@@ -720,24 +795,11 @@ export function createTimelineSVG(
             outerLabels = standardMonths;
         }
     
-        // Compute ring widths and radii via helper
-        const N = NUM_RINGS;
-        const ringGeo = computeRingGeometry({
-            size,
-            innerRadius,
-            subplotOuterRadius,     // Controls subplot ring size
-            outerRadius: monthLabelRadius,  // Use month label position for outer boundary
-            numRings: N,
-            monthTickTerminal: 0,   // Not used anymore - we set ticks explicitly
-            monthTextInset: 0,      // Not used anymore - we set labels explicitly
-        });
-        const { ringWidths, ringStartRadii, lineInnerRadius } = ringGeo;
-    
         // **Include the `<style>` code here**
         svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg" ${isChronologueMode ? 'data-chronologue-mode="true"' : ''} preserveAspectRatio="xMidYMid meet">`;
         
 
-        // After radii are known, compute global stacking map (outer-ring all-scenes only)
+        // After radii are known, compute global stacking map (outer-ring narrative only)
         if (shouldShowAllScenesInOuterRing(plugin)) {
             // No global stacking computation
         }
@@ -980,44 +1042,6 @@ export function createTimelineSVG(
         // Target completion tick/marker
         svg += renderTargetDateTick({ plugin, progressRadius, dateToAngle });
 
-        // Create master subplot order before the act loop
-        const masterSubplotOrder = (() => {
-            // Create a combined set of all subplots from all acts
-            const allSubplotsMap = new Map<string, number>();
-            
-            // When using When date sorting, only check act 0 (all scenes)
-            // When using manuscript order, check all acts
-            const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
-            const isChronologueMode = currentMode === 'chronologue';
-            const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
-            const actsToCheck = sortByWhen ? 1 : NUM_ACTS;
-            
-            // Iterate through acts to gather all subplots
-            for (let actIndex = 0; actIndex < actsToCheck; actIndex++) {
-                Object.entries(scenesByActAndSubplot[actIndex] || {}).forEach(([subplot, scenes]) => {
-                    // Add scenes count to existing count or initialize
-                    allSubplotsMap.set(subplot, (allSubplotsMap.get(subplot) || 0) + scenes.length);
-                });
-            }
-            
-            // Convert map to array of subplot objects
-            const subplotCounts = Array.from(allSubplotsMap.entries()).map(([subplot, count]) => ({
-                subplot,
-                count
-            }));
-
-            // Sort subplot, but ensure "Main Plot" or empty subplot is first
-            subplotCounts.sort((a, b) => {
-                // If either subplot is "Main Plot" or empty, prioritize it
-                if (a.subplot === "Main Plot" || !a.subplot) return -1;
-                if (b.subplot === "Main Plot" || !b.subplot) return 1;
-                // Otherwise, sort by count as before
-                return b.count - a.count;
-            });
-
-            return subplotCounts.map(item => item.subplot);
-        })();
-
         // Resolver for subplot CSS color variables (Ring 1 = outermost = subplotColors[0])
         const subplotCssColor = (name: string): string => {
             const idx = masterSubplotOrder.indexOf(name);
@@ -1051,7 +1075,7 @@ export function createTimelineSVG(
             // Get the scenes for this act and subplot to determine correct index
             // When using When date sorting, all scenes are in act 0
             // When using manuscript order, use the scene's actual act
-            const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
+            const currentMode = (plugin.settings as any).currentMode || 'narrative';
             const isChronologueMode = currentMode === 'chronologue';
             const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
             
@@ -1151,7 +1175,7 @@ export function createTimelineSVG(
                 const subplot = masterSubplotOrder[ringOffset];
                 const isOuterRing = ringOffset === 0;
 
-                // Special handling: when outer ring all-scenes mode is ON, draw each subplot's scenes
+                // Special handling: when outer ring narrative mode is ON, draw each subplot's scenes
                 // in the outer ring using the same angular positions they have in their own subplot rings.
                 if (isOuterRing && shouldShowAllScenesInOuterRing(plugin)) {
                     // Use the outer scope sortByWhen and forceChronological variables (already set at line 540-541)
@@ -1164,21 +1188,15 @@ export function createTimelineSVG(
                     
                     // Helper to select which Scene object to use when multiple exist for same path
                     const selectSceneForOuterRing = (scenePath: string, candidateScenes: Scene[]): Scene => {
-                        console.log('[DominantSubplot] Selecting scene for path:', scenePath);
-                        console.log('[DominantSubplot] Candidate scenes:', candidateScenes.map(s => s.subplot));
-                        
                         // 1. Check if there's a stored dominant subplot preference
                         const dominantSubplot = plugin.settings.dominantSubplots?.[scenePath];
-                        console.log('[DominantSubplot] Stored preference:', dominantSubplot);
                         
                         if (dominantSubplot) {
                             const preferredScene = candidateScenes.find(s => s.subplot === dominantSubplot);
                             if (preferredScene) {
-                                console.log('[DominantSubplot] Using stored preference:', dominantSubplot);
                                 return preferredScene; // Use stored preference
                             }
                             // If stored subplot is invalid, clean it up and fall through to default
-                            console.log('[DominantSubplot] Stored preference invalid, cleaning up');
                             if (plugin.settings.dominantSubplots) {
                                 delete plugin.settings.dominantSubplots[scenePath];
                             }
@@ -1197,7 +1215,6 @@ export function createTimelineSVG(
                             }
                         }
                         
-                        console.log('[DominantSubplot] Using outermost subplot (default):', outermostScene.subplot);
                         return outermostScene;
                     };
                     
@@ -1436,7 +1453,7 @@ export function createTimelineSVG(
 
                     if (currentScenes && currentScenes.length > 0) {
                         // Chronologue mode always uses chronological sorting
-                        const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
+                        const currentMode = (plugin.settings as any).currentMode || 'narrative';
                         const isChronologueMode = currentMode === 'chronologue';
                         const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
                         const forceChronological = isChronologueMode;
@@ -1489,7 +1506,7 @@ export function createTimelineSVG(
                                 }
                                 
                                 if (norm === 'Completed') {
-                                    // In all-scenes mode, tint inner-ring scenes (non–Main Plot) by subplot color
+                                    // In narrative mode, tint inner-ring scenes (non–Main Plot) by subplot color
                                     if (isAllScenesMode) {
                                         const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
                                         if (subplotName !== 'Main Plot') {
@@ -1576,9 +1593,9 @@ export function createTimelineSVG(
                             svg += `<path d="${voidArcPath}" class="rt-void-cell"/>`;
                         }
                     } else {
-                        // Empty subplot ring. When outer-ring-all-scenes is ON, do NOT place Plot notes here.
+                        // Empty subplot ring. When outer-ring-narrative is ON, do NOT place Plot notes here.
                         if (!shouldShowAllScenesInOuterRing(plugin)) {
-                            // Only in non-all-scenes mode do we place Plot notes in empty rings
+                            // Only in non-narrative mode do we place Plot notes in empty rings
                         const plotNotesInSubplot = plotsBySubplot.get(subplot) || [];
                         if (plotNotesInSubplot.length > 0) {
                             const middleRadius = (innerR + outerR) / 2;
@@ -1913,12 +1930,12 @@ export function createTimelineSVG(
 
         // Subplot label background layer
         svg += `<g class="background-layer">`;
-        svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder });
+        svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, plugin });
         svg += `</g>`;
 
         // Add number squares after background layer but before synopses
         if (shouldShowAllScenesInOuterRing(plugin)) {
-            // In outer-ring-all-scenes mode, draw number squares for ALL rings
+            // In outer-ring-narrative mode, draw number squares for ALL rings
             
         svg += `<g class="rt-number-squares">`;
             
@@ -1929,7 +1946,7 @@ export function createTimelineSVG(
             const squareRadiusOuter = (innerROuter + outerROuter) / 2;
 
             // Determine number of acts to iterate based on sorting method
-            const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
+            const currentMode = (plugin.settings as any).currentMode || 'narrative';
             const isChronologueMode = currentMode === 'chronologue';
             const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
             const actsToRender = sortByWhen ? 1 : NUM_ACTS;
@@ -1991,8 +2008,7 @@ export function createTimelineSVG(
                 svg += renderOuterRingNumberSquares({ plugin, act, ringOuter, squareRadiusOuter, positions, combined: sortedCombined, sceneGrades });
             }
             
-            // Then, draw squares for inner subplot rings (excluding Main Plot since it's on outer ring)
-            
+            // Then, draw squares for inner subplot rings (excluding Main Plot which is the outer ring)
             svg += renderInnerRingsNumberSquaresAllScenes({ plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades });
             
             svg += `</g>`;

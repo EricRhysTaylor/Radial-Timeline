@@ -301,7 +301,7 @@ async function enterGossamerMode(plugin: RadialTimelinePlugin) {
         // Update mode toggle button to show it will return to the original mode
         const modeToggle = svg.querySelector('#mode-toggle') as SVGGElement | null;
         if (modeToggle) {
-          const originalMode = _previousBaseMode || 'all-scenes';
+          const originalMode = _previousBaseMode || 'narrative';
           modeToggle.setAttribute('data-current-mode', originalMode);
           const title = modeToggle.querySelector('title');
           if (title) {
@@ -406,7 +406,7 @@ let _isExitingGossamer = false;
 export function setBaseModeAllScenes(plugin: RadialTimelinePlugin) {
   // Save the current mode before entering Gossamer (if not already saved)
   if (_previousBaseMode === null) {
-    _previousBaseMode = plugin.settings.currentMode || 'all-scenes';
+    _previousBaseMode = plugin.settings.currentMode || 'narrative';
   }
 }
 
@@ -417,8 +417,8 @@ export function restoreBaseMode(plugin: RadialTimelinePlugin): string {
     _previousBaseMode = null;
     return mode;
   }
-  // Default to all-scenes if no saved mode
-  return 'all-scenes';
+  // Default to narrative if no saved mode
+  return 'narrative';
 }
 
 export function resetGossamerModeState() {
@@ -456,7 +456,7 @@ function hasKey(obj: unknown, key: string): obj is Record<string, unknown> {
 function getInteractionMode(view: unknown): 'allscenes' | 'mainplot' | 'gossamer' | undefined {
   if (hasKey(view, 'currentMode')) {
     const val = (view as Record<string, unknown>).currentMode;
-    if (val === 'all-scenes' || val === 'gossamer' || val === 'main-plot') return val as any;
+    if (val === 'narrative' || val === 'gossamer' || val === 'subplot') return val as any;
   }
   return undefined;
 }

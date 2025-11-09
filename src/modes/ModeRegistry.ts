@@ -12,8 +12,8 @@
  */
 
 import { ModeDefinition, TimelineMode } from './ModeDefinition';
-import { ALL_SCENES_MODE } from './definitions/AllScenesMode';
-import { MAIN_PLOT_MODE } from './definitions/MainPlotMode';
+import { NARRATIVE_MODE } from './definitions/AllScenesMode';
+import { SUBPLOT_MODE } from './definitions/MainPlotMode';
 import { GOSSAMER_MODE } from './definitions/GossamerMode';
 import { CHRONOLOGUE_MODE } from './definitions/ChronologueMode';
 
@@ -21,8 +21,8 @@ import { CHRONOLOGUE_MODE } from './definitions/ChronologueMode';
  * Registry of all available modes
  */
 const MODE_REGISTRY = new Map<TimelineMode, ModeDefinition>([
-    [TimelineMode.ALL_SCENES, ALL_SCENES_MODE],
-    [TimelineMode.MAIN_PLOT, MAIN_PLOT_MODE],
+    [TimelineMode.NARRATIVE, NARRATIVE_MODE],
+    [TimelineMode.SUBPLOT, SUBPLOT_MODE],
     [TimelineMode.CHRONOLOGUE, CHRONOLOGUE_MODE],
     [TimelineMode.GOSSAMER, GOSSAMER_MODE],
 ]);
@@ -33,8 +33,8 @@ const MODE_REGISTRY = new Map<TimelineMode, ModeDefinition>([
 export function getModeDefinition(mode: TimelineMode): ModeDefinition {
     const definition = MODE_REGISTRY.get(mode);
     if (!definition) {
-        // Fallback to All Scenes mode if mode not found
-        return ALL_SCENES_MODE;
+        // Fallback to Narrative mode if mode not found
+        return NARRATIVE_MODE;
     }
     return definition;
 }
@@ -64,7 +64,7 @@ export function getNextToggleMode(currentMode: TimelineMode): TimelineMode {
     
     if (currentIndex === -1) {
         // Current mode is not toggleable, default to first toggleable mode
-        return toggleable[0]?.id || TimelineMode.ALL_SCENES;
+        return toggleable[0]?.id || TimelineMode.NARRATIVE;
     }
     
     // Cycle to next mode

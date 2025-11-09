@@ -20,7 +20,7 @@ export const GOSSAMER_MODE: ModeDefinition = {
     description: 'Gossamer score analysis overlay with beat tracking and historical data',
     
     rendering: {
-        outerRingContent: 'all-scenes',
+        outerRingContent: 'narrative',
         innerRingContent: 'subplot-scenes',
         beatDisplay: 'outer-ring-slices',
         sceneColoring: 'subplot',
@@ -43,6 +43,7 @@ export const GOSSAMER_MODE: ModeDefinition = {
     },
     
     ui: {
+        acronym: 'GOSS',
         tooltip: 'Switch to Gossamer mode',
         showInToggleButton: true, // Show in mode toggle button
         order: 3

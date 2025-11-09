@@ -54,7 +54,7 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing e
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot1.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
       <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot1.jpeg" alt="All Scenes Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">All Scenes Timeline</div>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Narrative Timeline</div>
   </div>
   <div style="text-align: center;">
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
@@ -73,7 +73,7 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing e
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot3.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
       <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot3.jpeg" alt="Main Plot Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Main Plot Mode</div>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Mode</div>
   </div>
   <div style="text-align: center;">
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot4.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
@@ -152,9 +152,9 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 - **Status Colors**: Scenes color-coded by status (Todo = plaid, Working = pink, Overdue = red, Complete = publish stage or subplot color customizable in settings)
 - **Completion Estimates**: Plugin calculates target completion date based on your recent writing pace
 - **Publishing Stages**: Track manuscript through Zero → Author → House → Press
-- **Main Plot Mode**: Switch to main plot (navigation top right via page icon or keyboard 2) for simplified view emphasizing publication progress over structure
+- **Subplot Mode**: Switch to subplot mode (navigation top right via page icon or keyboard 2) for simplified view emphasizing publication progress as well as individual subplots
 
-**Modes**: All Scenes (key 1) or Main Plot (key 2)<br>
+**Modes**: Narrative (key 1) or Subplot (key 2)<br>
 **Settings**: Publishing stage colors
 
 ## Constructing Your Story Timeline with Chronologue Mode
@@ -190,9 +190,9 @@ Chronologue mode is essential for constructing and visualizing the chronological
 ## AI Scene Analysis
 
 - **Scene-by-scene evaluation**: AI analyzes individual scenes in triplets (previous/current/next) to provide story beat assessment and grade evaluation
-- **Multiple ordering options**: Run analysis in manuscript order (All Scenes mode) or by subplot order to get different perspectives on narrative scene flow
+- **Multiple ordering options**: Run analysis in manuscript order (Narrative mode) or by subplot order to get different perspectives on narrative scene flow
 
-**Modes**: All Scenes mode (key 1), Main Plot mode (key 2)<br>
+**Modes**: Narrative mode (key 1), Subplot mode (key 2)<br>
 **Command**: AI scene analysis (manuscript order), AI scene analysis (subplot order)<br>
 **Settings**: AI LLM for scene analysis
 
@@ -212,11 +212,11 @@ Chronologue mode is essential for constructing and visualizing the chronological
 
 ## View modes via primary navigation
 
-## All Scenes Mode (keyboard 1)
-Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order) and **Author time** (completion progress). **Tip** For scenes in more than one subplot, click on the scene to make that subplot dominant in the color styling of the all scenes outer ring.
+## Narrative Mode (keyboard 1)
+Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order) and **Author time** (completion progress). **Tip** For scenes in more than one subplot, click on the scene to make that subplot dominant in the color styling of the narrative mode outer ring.
 
-## Main Plot Mode (keyboard 2)
-Removes story beats, shows only main plot scenes on outer ring, uses publish stage coloring. Structured around the **3-act model** with scenes distributed across three acts (120° per act). Simplified view emphasizing **Publishing time** (revision stages) and completion readiness. Perfect for tracking manuscript progress through Zero → Author → House → Press stages.
+## Subplot Mode (keyboard 2)
+Shows Main Plot subplot in the outer ring with publish stage coloring, other subplots in their respective inner rings. Removes story beats for a cleaner view. Structured around the **3-act model** with scenes distributed across three acts (120° per act). Simplified view emphasizing **Publishing time** (revision stages) and completion readiness. Perfect for tracking manuscript progress through Zero → Author → House → Press stages.
 
 ## Chronologue Mode (keyboard 3)
 Displays scenes in chronological story order based on `When` field. **Removes the 3-act structure** entirely—scenes are positioned across the full 360° circle based solely on when they occur in your story's timeline. Perfect for mystery/thriller writers or anyone mapping **Chronological time** (event sequences in story-world) while also arranging for narrative order to maximize suspense.
@@ -324,11 +324,13 @@ Subplot:
   - Main Plot
   - Romance Arc
 Character:
-  - "[[Protagonist]]"
-  - "[[Mentor]]"
+  - "[[Protagonist]]"       #Obsidian wikilink format to click through to a note
+  - "Mentor"
+  - Child One                #No link
 Place:
-  - "[[Castle]]"
-  - "[[Forest]]"
+  - "[[Castle]]"            #wikilink
+  - "Forest"
+  - Planet Nine
 ```
 > **Note**: Use of brackets denotes a link to a character or place file (optional).
 
@@ -344,8 +346,10 @@ When:                         # Optional: Story timeline date for chronological 
 Description: The first impression of your story. A snapshot before the journey begins.
 Beat Model: Save The Cat
 Range: 0-20
-Gossamer1: 12
+Gossamer1: 12                 # Up to 30 evaluation passes
 Gossamer1 Justification: 
+Gossamer2: 21
+Gossamer2 Justification: 
 ---
 ```
 

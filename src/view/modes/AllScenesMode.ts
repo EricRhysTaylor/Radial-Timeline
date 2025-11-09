@@ -21,7 +21,7 @@ export interface AllScenesView {
 }
 
 export function setupSceneInteractions(view: AllScenesView, group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
-    if (view.currentMode !== 'all-scenes') return;
+    if (view.currentMode !== 'narrative') return;
 
     const path = group.querySelector('.rt-scene-path');
     if (!path) return;

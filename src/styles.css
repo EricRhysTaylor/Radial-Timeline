@@ -1005,7 +1005,7 @@
 .rt-color-grid-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
   padding-top: 2px;
   margin-top: 0;
@@ -1081,11 +1081,11 @@
   border-radius: 0; /* ensure square inside */
 }
 .rt-color-grid-controls .rt-hex-input {
-  width: 7em; /* fits #RRGGBB with less space */
+  width: 5.5em; /* fits #RRGGBB with less space */
   border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 6px 8px;
   box-shadow: none;
   outline: none;
   flex-shrink: 1;

@@ -1,6 +1,7 @@
 import { resetGossamerModeState } from '../../GossamerCommands';
 import type { ModeManager } from '../../modes/ModeManager';
 import { TimelineMode } from '../../modes/ModeDefinition';
+import { getToggleableModes } from '../../modes/ModeRegistry';
 
 interface ModeToggleView {
     currentMode?: string;
@@ -13,12 +14,17 @@ interface ModeToggleView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
 }
 
-const MODE_OPTIONS = [
-    { id: 'all-scenes', label: 'All Scenes', acronym: 'ALLS', order: 1 },
-    { id: 'main-plot', label: 'Main Plot', acronym: 'MAIN', order: 2 },
-    { id: 'chronologue', label: 'Chronologue', acronym: 'CHRO', order: 3 },
-    { id: 'gossamer', label: 'Gossamer', acronym: 'GOSS', order: 4 }
-] as const;
+// Build MODE_OPTIONS dynamically from mode registry - SINGLE SOURCE OF TRUTH
+function buildModeOptions() {
+    return getToggleableModes().map(mode => ({
+        id: mode.id,
+        label: mode.name,
+        acronym: mode.ui.acronym || mode.name.substring(0, 4).toUpperCase(),
+        order: mode.ui.order
+    }));
+}
+
+const MODE_OPTIONS = buildModeOptions();
 
 // Positioning constants (adjustable values)
 const POS_X = 658; // Horizontal center position
@@ -279,7 +285,7 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
     svg.appendChild(modeSelector);
     
     // Update initial state
-    updateModeSelectorState(modeSelector, view.currentMode || 'all-scenes');
+    updateModeSelectorState(modeSelector, view.currentMode || 'narrative');
     
     // Register click handlers for each mode option
     MODE_OPTIONS.forEach(mode => {

@@ -383,19 +383,41 @@ export class GossamerScoreModal extends Modal {
 
   private async copyTemplateForAI(): Promise<void> {
     try {
-      // Build template with beat names for AI to fill in
+      // Get beat system name for context
+      const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
+      
+      // Build template with beat names and ideal ranges
       const lines: string[] = [];
-      lines.push('# Beat Momentum Scores (0-100)');
-      lines.push('# Fill in scores for each beat based on the story progression:');
+      lines.push(`# Beat Momentum Scores (0-100) — ${settingsSystem}`);
+      lines.push('');
+      lines.push('## Momentum Scale:');
+      lines.push('- 0-20: Quiet, establishing, low tension');
+      lines.push('- 21-40: Building, complications emerging');
+      lines.push('- 41-60: Rising stakes, conflict developing');
+      lines.push('- 61-80: High tension, major conflicts');
+      lines.push('- 81-100: Peak tension, climactic moments');
+      lines.push('');
+      lines.push('## Consider for each beat:');
+      lines.push('- Tension and conflict level');
+      lines.push('- Stakes for protagonist');
+      lines.push('- Emotional intensity');
+      lines.push('- Pacing and urgency');
+      lines.push('');
+      lines.push('## Fill in scores:');
       lines.push('');
       
       for (const entry of this.entries) {
-        // Use the full beat title for better matching when pasting back
-        lines.push(`${entry.beatTitle}: `);
+        // Include ideal range if available
+        if (entry.range) {
+          lines.push(`${entry.beatTitle} (ideal: ${entry.range}): `);
+        } else {
+          lines.push(`${entry.beatTitle}: `);
+        }
       }
       
       lines.push('');
-      lines.push('# Note: Scores should be 0-100. Leave blank if unsure.');
+      lines.push('# Note: Scores should reflect narrative momentum at each story beat.');
+      lines.push('# Aim for scores within the ideal range when appropriate.');
       
       const template = lines.join('\n');
       await navigator.clipboard.writeText(template);

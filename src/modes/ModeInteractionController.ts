@@ -52,11 +52,11 @@ export class ModeInteractionController {
         
         // Setup handlers based on mode type
         switch (mode.id) {
-            case TimelineMode.ALL_SCENES:
+            case TimelineMode.NARRATIVE:
                 await this.setupAllScenesHandlers(svg);
                 break;
                 
-            case TimelineMode.MAIN_PLOT:
+            case TimelineMode.SUBPLOT:
                 await this.setupMainPlotHandlers(svg);
                 break;
                 

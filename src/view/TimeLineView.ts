@@ -17,6 +17,13 @@ import { isShiftModeActive } from './interactions/ChronologueShiftController';
 import { RendererService } from '../services/RendererService';
 import { ModeManager, createModeManager } from '../modes/ModeManager';
 import { ModeInteractionController, createInteractionController } from '../modes/ModeInteractionController';
+import { 
+    createSnapshot, 
+    detectChanges, 
+    describeChanges, 
+    type TimelineSnapshot, 
+    ChangeType 
+} from '../renderer/ChangeDetection';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -36,6 +43,9 @@ export class RadialTimelineView extends ItemView {
     // Frontmatter values to track to reduce unnecessary SVG View refreshes
     private lastFrontmatterValues: Record<string, unknown> = {};
     private timelineRefreshTimeout: number | null = null;
+    
+    // Change detection snapshot for optimizing renders
+    private lastSnapshot: TimelineSnapshot | null = null;
         
     // Scene data (scenes)
     sceneData: Scene[] = [];
@@ -50,7 +60,7 @@ export class RadialTimelineView extends ItemView {
     private cachedBookTitle: string | undefined = undefined;
     
     // Mode system
-    private _currentMode: string = 'all-scenes'; // TimelineMode enum value
+    private _currentMode: string = 'narrative'; // TimelineMode enum value
     private modeManager?: ModeManager; // Centralized mode management
     private interactionController?: ModeInteractionController; // Interaction handler management
     
@@ -101,7 +111,7 @@ export class RadialTimelineView extends ItemView {
         this.rendererService = (plugin as any).rendererService as RendererService;
         
         // Initialize mode management
-        this._currentMode = plugin.settings.currentMode || 'all-scenes';
+        this._currentMode = plugin.settings.currentMode || 'narrative';
         try {
             this.modeManager = createModeManager(plugin, this);
             this.interactionController = createInteractionController(this);
@@ -284,12 +294,6 @@ export class RadialTimelineView extends ItemView {
 
         const perfStart = performance.now();
         const container = this.containerEl.children[1] as HTMLElement;
-        container.empty();
-        
-        const loadingEl = container.createEl("div", {
-            cls: "rt-loading-message",
-            text: "Loading timeline data..."
-        });
         
         // First update the tracking of open files
         this.updateOpenFilesTracking();
@@ -309,21 +313,91 @@ export class RadialTimelineView extends ItemView {
                     this.cachedBookTitle = bookTitle;
                 }
                 
-                // Remove the loading message
-                loadingEl.remove();
+                // Create snapshot of current state
+                const currentSnapshot = createSnapshot(
+                    sceneData,
+                    this.plugin.openScenePaths,
+                    this.plugin.searchActive,
+                    this.plugin.searchResults,
+                    this._currentMode,
+                    this.plugin.settings,
+                    (this.plugin as any)._gossamerLastRun
+                );
+                
+                // Detect changes from last render
+                const changeResult = detectChanges(this.lastSnapshot, currentSnapshot);
+                
+                // Log change detection results
+                this.log('[ChangeDetection] ' + describeChanges(changeResult));
+                
+                // Decide rendering strategy
+                if (changeResult.updateStrategy === 'none') {
+                    // No changes - skip render entirely
+                    this.log('[Render] Skipped - no changes detected');
+                    return;
+                } else if (changeResult.updateStrategy === 'selective' && this.rendererService) {
+                    // Selective update using RendererService
+                    this.log('[Render] Using selective update');
+                    let updated = false;
+                    
+                    // Handle open files changes
+                    if (changeResult.changeTypes.has(ChangeType.OPEN_FILES)) {
+                        updated = this.rendererService.updateOpenClasses(container, this.plugin.openScenePaths) || updated;
+                    }
+                    
+                    // Handle search changes
+                    if (changeResult.changeTypes.has(ChangeType.SEARCH)) {
+                        updated = this.rendererService.updateSearchHighlights(this) || updated;
+                    }
+                    
+                    // Handle time changes (year progress ring) using selective update
+                    if (changeResult.changeTypes.has(ChangeType.TIME)) {
+                        updated = this.rendererService.updateProgressAndTicks(this) || updated;
+                    }
+                    
+                    if (updated) {
+                        // Selective update succeeded
+                        this.lastSnapshot = currentSnapshot;
+                        const totalTime = performance.now() - perfStart;
+                        this.log(`[Render] Selective update completed in ${totalTime.toFixed(2)}ms`);
+                        return;
+                    }
+                    
+                    // Selective update failed - fall through to full render
+                    this.log('[Render] Selective update failed, falling back to full render');
+                }
+                
+                // Full render
+                this.log('[Render] Using full render');
+                const loadingEl = container.createEl("div", {
+                    cls: "rt-loading-message",
+                    text: "Loading timeline data..."
+                });
+                
+                // Clear container for full render
+                container.empty();
+                container.appendChild(loadingEl);
                 
                 // Render the timeline with the scene data
                 const renderStart = performance.now();
                 this.renderTimeline(container, this.sceneData);
                 const renderTime = performance.now() - renderStart;
                 
-                const totalTime = performance.now() - perfStart;
+                // Remove loading message
+                loadingEl.remove();
                 
+                // Update snapshot after successful render
+                this.lastSnapshot = currentSnapshot;
+                
+                const totalTime = performance.now() - perfStart;
+                this.log(`[Render] Full render completed in ${totalTime.toFixed(2)}ms (data: ${dataLoadTime.toFixed(2)}ms, render: ${renderTime.toFixed(2)}ms)`);
 
             })
             .catch(error => {
-                loadingEl.textContent = `Error: ${error.message}`;
-                loadingEl.className = "error-message";
+                const errorEl = container.createEl("div", {
+                    cls: "rt-error-message",
+                    text: `Error: ${error.message}`
+                });
                 console.error("Failed to load timeline data", error);
             });
         
@@ -455,8 +529,8 @@ export class RadialTimelineView extends ItemView {
                     await gossamerDef.onEnter(this);
                 } catch (e) {
                     console.error('[Gossamer] Failed to initialize on load:', e);
-                    // Fallback to all-scenes mode if initialization fails
-                    this._currentMode = 'all-scenes';
+                    // Fallback to narrative mode if initialization fails
+                    this._currentMode = 'narrative';
                 }
             }
         }

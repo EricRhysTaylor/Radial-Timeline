@@ -6,6 +6,8 @@ import { renderGossamerMonthSpokes } from '../renderer/components/MonthSpokes';
 import { renderProgressRing } from '../renderer/components/ProgressRing';
 import { renderTargetDateTick } from '../renderer/components/ProgressTicks';
 import { renderEstimatedDateElements, renderEstimationArc } from '../renderer/components/Progress';
+import { updateAllTimeBasedElements } from '../renderer/DynamicLayerUpdater';
+import { ELAPSED_ARC_RADIUS } from '../renderer/layout/LayoutConstants';
 
 export class RendererService {
     private app: App;

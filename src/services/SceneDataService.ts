@@ -294,40 +294,14 @@ export class SceneDataService {
     }
     
     /**
-     * Filter scenes to show only one representation per file
-     * (the dominant subplot if set, otherwise all subplots)
+     * Keep all scenes but mark the dominant subplot for visual coloring
+     * (this does NOT filter - all subplot versions are kept for rendering in their respective rings)
      */
     private filterScenesByDominantSubplot(scenes: Scene[]): Scene[] {
-        const scenesByPath = new Map<string, Scene[]>();
-        
-        // Group by path
-        scenes.forEach(scene => {
-            if (!scene.path) return;
-            if (!scenesByPath.has(scene.path)) {
-                scenesByPath.set(scene.path, []);
-            }
-            scenesByPath.get(scene.path)!.push(scene);
-        });
-        
-        const result: Scene[] = [];
-        
-        scenesByPath.forEach((scenesForPath, path) => {
-            if (scenesForPath.length === 1) {
-                // Only one subplot - include it
-                result.push(scenesForPath[0]);
-            } else {
-                // Multiple subplots - check for dominant
-                const dominant = scenesForPath.find(s => (s as any)._isDominantSubplot);
-                if (dominant) {
-                    result.push(dominant);
-                } else {
-                    // No dominant set - include all
-                    result.push(...scenesForPath);
-                }
-            }
-        });
-        
-        return result;
+        // Don't filter - just return all scenes
+        // The _isDominantSubplot flag is already set by applyDominantSubplotPreferences
+        // and will be used by the renderer for coloring purposes in narrative/chronologue modes
+        return scenes;
     }
     
     /**

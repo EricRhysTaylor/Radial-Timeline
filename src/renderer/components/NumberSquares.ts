@@ -67,7 +67,7 @@ export function renderNumberSquaresUnified(params: {
       const ring = NUM_RINGS - 1 - subplotIndex;
       
       // Check if using When date sorting
-      const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
+      const currentMode = (plugin.settings as any).currentMode || 'narrative';
       const isChronologueMode = currentMode === 'chronologue';
       const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
       
@@ -165,7 +165,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades } = params;
   
   // Check if using When date sorting
-  const currentMode = (plugin.settings as any).currentMode || 'all-scenes';
+  const currentMode = (plugin.settings as any).currentMode || 'narrative';
   const isChronologueMode = currentMode === 'chronologue';
   const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
   
@@ -175,6 +175,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     const number = getScenePrefixNumber(scene.title, scene.number);
     if (!number) return;
     const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+    // Skip Main Plot scenes - they're always in the outer ring, not inner rings
     if (subplot === 'Main Plot') return;
     const subplotIndex = masterSubplotOrder.indexOf(subplot);
     if (subplotIndex === -1) return;
@@ -188,7 +189,9 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     
     const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
     const filteredScenesForIndex = scenesInActAndSubplot.filter(s => !isBeatNote(s));
-    const sceneIndex = filteredScenesForIndex.indexOf(scene);
+    // Find scene by path/title instead of object reference (fixes first-render bug)
+    const sceneKey = scene.path || scene.title || '';
+    const sceneIndex = filteredScenesForIndex.findIndex(s => (s.path || s.title || '') === sceneKey);
     if (sceneIndex === -1) return;
     
     // Calculate angles based on sorting method

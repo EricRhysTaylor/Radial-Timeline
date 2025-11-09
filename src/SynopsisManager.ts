@@ -321,7 +321,7 @@ export default class SynopsisManager {
     // Process title content with special handling for formatting
     // Format date from When field for display
     // For Beats (Plot items), only show date if NOT in Gossamer mode
-    const currentMode = (this.plugin.settings as any).currentMode || 'all-scenes';
+    const currentMode = (this.plugin.settings as any).currentMode || 'narrative';
     const isGossamerMode = currentMode === 'gossamer';
     const shouldShowDate = scene.when && !(scene.itemType === 'Plot' && isGossamerMode);
     const formattedDate = shouldShowDate ? this.formatDateForDisplay(scene.when) : undefined;
@@ -602,14 +602,14 @@ export default class SynopsisManager {
       const margin = 30;
       
       // Get current mode to determine appropriate subplot outer radius
-      const currentMode = (this.plugin.settings as any).currentMode || 'all-scenes';
+      const currentMode = (this.plugin.settings as any).currentMode || 'narrative';
       const isChronologueMode = currentMode === 'chronologue';
-      const isMainPlotMode = currentMode === 'main-plot';
+      const isSubplotMode = currentMode === 'subplot';
       
       // Use imported constants from TimelineRenderer for consistent sizing
       const subplotOuterRadius = isChronologueMode 
           ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
-          : isMainPlotMode 
+          : isSubplotMode 
           ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
           : SUBPLOT_OUTER_RADIUS_STANDARD;
       

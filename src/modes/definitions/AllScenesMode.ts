@@ -7,19 +7,19 @@
 import { ModeDefinition, TimelineMode } from '../ModeDefinition';
 
 /**
- * All Scenes Mode Definition
+ * Narrative Mode Definition
  * 
  * Shows all scenes from all subplots in manuscript order.
  * The outer ring displays combined scenes with subplot colors,
  * while inner rings show subplot-specific scenes.
  */
-export const ALL_SCENES_MODE: ModeDefinition = {
-    id: TimelineMode.ALL_SCENES,
-    name: 'All Scenes',
+export const NARRATIVE_MODE: ModeDefinition = {
+    id: TimelineMode.NARRATIVE,
+    name: 'Narrative',
     description: 'View all scenes across all subplots in manuscript order with subplot coloring',
     
     rendering: {
-        outerRingContent: 'all-scenes',
+        outerRingContent: 'narrative',
         innerRingContent: 'subplot-scenes',
         beatDisplay: 'outer-ring-slices',
         sceneColoring: 'subplot',
@@ -36,9 +36,11 @@ export const ALL_SCENES_MODE: ModeDefinition = {
     },
     
     ui: {
-        tooltip: 'Switch to Main Plot mode',
+        acronym: 'NARR',
+        tooltip: 'Switch to Subplot mode',
         showInToggleButton: true,
         order: 1
     }
 };
+
 

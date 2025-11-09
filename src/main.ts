@@ -200,7 +200,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         '#004777', // 14
         '#8B4513'  // 15 - Brown for Ring 16
     ],
-    currentMode: 'all-scenes', // Default to All Scenes mode
+    currentMode: 'narrative', // Default to Narrative mode
     logApiInteractions: true, // <<< ADDED: Default for new setting
     targetCompletionDate: undefined, // Ensure it's undefined by default
     openaiApiKey: '', // Default to empty string
@@ -927,7 +927,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // All styles should live in styles.css so Obsidian can manage load/unload.
 
         // Initialize services and managers
-        this.timelineService = new TimelineService(this.app);
+        this.timelineService = new TimelineService(this.app, this);
         this.sceneDataService = new SceneDataService(this.app, this.settings);
         const { SearchService } = await import('./services/SearchService');
         const { FileTrackingService } = await import('./services/FileTrackingService');

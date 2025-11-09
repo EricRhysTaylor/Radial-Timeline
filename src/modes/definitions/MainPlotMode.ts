@@ -7,19 +7,20 @@
 import { ModeDefinition, TimelineMode } from '../ModeDefinition';
 
 /**
- * Main Plot Mode Definition
+ * Subplot Mode Definition
  * 
- * Shows only Main Plot scenes in the outer ring with publish stage coloring.
+ * Shows Main Plot scenes in the outer ring with publish stage coloring.
+ * Other subplots are shown in their respective inner rings.
  * Beat notes are removed entirely from the timeline.
- * Non-plot elements are visually muted.
+ * Non-Main-Plot elements are visually muted.
  */
-export const MAIN_PLOT_MODE: ModeDefinition = {
-    id: TimelineMode.MAIN_PLOT,
-    name: 'Main Plot',
-    description: 'View only Main Plot scenes with publish stage coloring throughout',
+export const SUBPLOT_MODE: ModeDefinition = {
+    id: TimelineMode.SUBPLOT,
+    name: 'Subplot',
+    description: 'View Main Plot scenes with publish stage coloring, other subplots in inner rings',
     
     rendering: {
-        outerRingContent: 'main-plot-only',
+        outerRingContent: 'subplot-only',
         innerRingContent: 'subplot-scenes',
         beatDisplay: 'none',
         sceneColoring: 'publish-stage',
@@ -36,9 +37,11 @@ export const MAIN_PLOT_MODE: ModeDefinition = {
     },
     
     ui: {
-        tooltip: 'Switch to All Scenes mode',
+        acronym: 'SUBP',
+        tooltip: 'Switch to Narrative mode',
         showInToggleButton: true,
         order: 2
     }
 };
+
 

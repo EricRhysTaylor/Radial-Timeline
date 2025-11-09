@@ -18,11 +18,11 @@ import type { RadialTimelineView } from '../view/TimeLineView';
  * Available timeline display modes
  */
 export enum TimelineMode {
-    /** All scenes from all subplots in manuscript order */
-    ALL_SCENES = 'all-scenes',
+    /** All scenes from all subplots in manuscript order (Narrative Mode) */
+    NARRATIVE = 'narrative',
     
-    /** Only main plot scenes with publish stage coloring */
-    MAIN_PLOT = 'main-plot',
+    /** Each subplot in its own ring with publish stage coloring (Subplot Mode) */
+    SUBPLOT = 'subplot',
     
     /** Gossamer analysis overlay with beat tracking */
     GOSSAMER = 'gossamer',
@@ -35,8 +35,8 @@ export enum TimelineMode {
  * Outer ring content strategy
  */
 export type OuterRingContent = 
-    | 'all-scenes'         // All scenes from all subplots in manuscript order
-    | 'main-plot-only'     // Only Main Plot subplot scenes
+    | 'narrative'          // All scenes from all subplots in manuscript order (Narrative Mode)
+    | 'subplot-only'       // Only Main Plot subplot scenes (Subplot Mode)
     | 'chronologue';       // Scenes ordered by story chronology based on When field
 
 /**
@@ -51,15 +51,15 @@ export type InnerRingContent =
  * Beat display strategy
  */
 export type BeatDisplay = 
-    | 'outer-ring-slices'  // Gray slices with labels in outer ring (All Scenes mode)
-    | 'none';              // Don't show beats (Chronologue, Main Plot modes)
+    | 'outer-ring-slices'  // Gray slices with labels in outer ring (Narrative mode)
+    | 'none';              // Don't show beats (Chronologue, Subplot modes)
 
 /**
  * Scene coloring strategy
  */
 export type SceneColoring = 
-    | 'subplot'            // Color by subplot (All Scenes mode)
-    | 'publish-stage'      // Color by publish stage (Main Plot mode)
+    | 'subplot'            // Color by subplot (Narrative mode)
+    | 'publish-stage'      // Color by publish stage (Subplot mode)
     | 'chronological';     // Color by story time (future)
 
 /**
@@ -85,7 +85,7 @@ export type OverlayLayer =
  */
 export type VisualMuting = 
     | 'non-plot'           // Mute all non-plot elements (Gossamer mode)
-    | 'non-main-plot'      // Mute all non-main-plot elements (Main Plot mode)
+    | 'non-main-plot'      // Mute all non-main-plot elements (Subplot mode)
     | 'future-scenes';     // Mute scenes that haven't happened yet in story (future)
 
 /**
@@ -111,7 +111,7 @@ export type ModeClickBehavior =
  */
 export type ModeExitBehavior = 
     | 'click-background'         // Click background to exit (Gossamer)
-    | 'toggle-button'            // Use mode toggle button (All Scenes ↔ Main Plot)
+    | 'toggle-button'            // Use mode toggle button (Narrative ↔ Subplot)
     | 'none';                    // No special exit behavior
 
 /**
@@ -176,6 +176,9 @@ export interface ModeInteractionConfig {
 export interface ModeUIConfig {
     /** Icon for this mode (if used in UI) */
     icon?: string;
+    
+    /** Short acronym for compact display (e.g., "NARR", "SUBP") */
+    acronym?: string;
     
     /** Tooltip text for toggle button */
     tooltip?: string;
