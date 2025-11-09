@@ -737,7 +737,31 @@ export class RadialTimelineView extends ItemView {
                 
             // Add the fragment to the container
             container.appendChild(fragment);
+            
+            // ============================================================================
+            // SCENE HOVER INTERACTIONS - ARCHITECTURE NOTE
+            // ============================================================================
+            // This codebase uses TWO DIFFERENT systems for scene hover interactions:
+            //
+            // 1. LEGACY SYSTEM (below): Used when view.interactionController is NOT present
+            //    - Includes scene title auto-expansion via redistributeActScenes()
+            //    - Controlled by plugin.settings.enableSceneTitleAutoExpand
+            //    - Located in this file (TimeLineView.ts)
+            //
+            // 2. MODE-SPECIFIC SYSTEM: Used when view.interactionController IS present  
+            //    - Implemented in src/view/modes/*.ts (AllScenesMode, ChronologueMode, etc.)
+            //    - Does NOT include redistributeActScenes() to avoid double-handler bugs
+            //    - Set up via view.interactionController.setupMode()
+            //
+            // ⚠️ CRITICAL: Do NOT add redistributeActScenes() to mode-specific handlers!
+            // Doing so causes the "crazy jumping scene bug" where scenes reload on hover.
+            // The legacy system below handles this when mode controllers aren't used.
+            // ============================================================================
+            
             // --- SVG-level delegated hover for scenes and synopsis (bind after append) ---
+            // NOTE: Skip this old hover setup if using mode-specific interaction controllers
+            // to avoid double handlers and the scene jumping bug with redistributeActScenes
+            if (!this.interactionController) {
             (function setupDelegatedSceneHover(view: RadialTimelineView) {
                 const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
                 if (!svg) return;
@@ -826,7 +850,11 @@ export class RadialTimelineView extends ItemView {
                         view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
                     }
                     
-                    // Trigger scene title auto-expansion for scenes with titles
+                    // ⚠️ SCENE TITLE AUTO-EXPANSION (Legacy)
+                    // This redistributeActScenes call is ONLY used when view.interactionController is NOT present
+                    // Mode-specific handlers (AllScenesMode, ChronologueMode, etc.) implement their own logic
+                    // Controlled by: plugin.settings.enableSceneTitleAutoExpand
+                    // DO NOT add similar logic to mode-specific handlers to avoid double-handler bugs!
                     const sceneTitle = g.querySelector('.rt-scene-title');
                     if (sceneTitle) {
                         redistributeActScenes(g);
@@ -944,6 +972,10 @@ export class RadialTimelineView extends ItemView {
                 };
 
                 // Redistribute scenes within an act to expand hovered scene
+                // ⚠️ WARNING: This function causes scene jumping if called from multiple places!
+                // It should ONLY be called from this legacy hover handler when !view.interactionController
+                // Mode-specific handlers should NOT implement their own version to avoid conflicts
+                // Controlled by setting: plugin.settings.enableSceneTitleAutoExpand (defaults to true)
                 const redistributeActScenes = (hoveredGroup: Element) => {
                     // Check if auto-expand is disabled in settings
                     if (!view.plugin.settings.enableSceneTitleAutoExpand) return;
@@ -1157,6 +1189,7 @@ export class RadialTimelineView extends ItemView {
                 });
                 
             })(this);
+            } // End of conditional skip for interaction controller
             // --- end delegated hover ---
             
             // Set up Gossamer event listeners AFTER everything is rendered

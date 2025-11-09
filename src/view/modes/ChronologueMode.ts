@@ -288,6 +288,12 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         
         highlightScene(sid);
         
+        // 🚫 DO NOT add redistributeActScenes here!
+        // Scene title auto-expansion is handled by the old legacy code in TimeLineView.ts
+        // when !view.interactionController. Adding it here causes double-handler bugs.
+        // See: TimeLineView.ts line ~832 for details
+        // The setting plugin.settings.enableSceneTitleAutoExpand controls this globally.
+        
         // Show warning for scenes without When field
         if (g.classList.contains('rt-chronologue-warning')) {
             showWhenFieldWarning(svg, g, e as unknown as MouseEvent);

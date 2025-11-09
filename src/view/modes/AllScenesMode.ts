@@ -171,11 +171,12 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
             currentSynopsis.classList.add('rt-visible');
             (view.plugin as any).updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
         }
-        const sceneTitle = g.querySelector('.rt-scene-title');
-        if (sceneTitle) {
-            // Trigger scene title auto-expansion if enabled
-            // TODO: Move redistributeActScenes logic from TimeLineView.ts here
-        }
+        
+        // 🚫 DO NOT add redistributeActScenes here!
+        // Scene title auto-expansion is handled by the old legacy code in TimeLineView.ts
+        // when !view.interactionController. Adding it here causes double-handler bugs.
+        // See: TimeLineView.ts line ~832 for details
+        // The setting plugin.settings.enableSceneTitleAutoExpand controls this globally.
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
