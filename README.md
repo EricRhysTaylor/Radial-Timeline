@@ -213,7 +213,7 @@ Chronologue mode is essential for constructing and visualizing the chronological
 ## View modes via primary navigation
 
 ## All Scenes Mode (keyboard 1)
-Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order) and **Author time** (completion progress).
+Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order) and **Author time** (completion progress). **Tip** For scenes in more than one subplot, click on the scene to make that subplot dominant in the color styling of the all scenes outer ring.
 
 ## Main Plot Mode (keyboard 2)
 Removes story beats, shows only main plot scenes on outer ring, uses publish stage coloring. Structured around the **3-act model** with scenes distributed across three acts (120° per act). Simplified view emphasizing **Publishing time** (revision stages) and completion readiness. Perfect for tracking manuscript progress through Zero → Author → House → Press stages.

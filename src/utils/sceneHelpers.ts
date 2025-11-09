@@ -7,6 +7,29 @@ import { Scene } from '../main';
 import { parseWhenField } from './date';
 
 /**
+ * Normalize a value to a boolean
+ * Handles various input types (boolean, string, number)
+ */
+export function normalizeBooleanValue(value: unknown): boolean {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+    if (typeof value === 'string') {
+        const lower = value.toLowerCase().trim();
+        // Handle empty string or just whitespace as false
+        if (lower === '' || lower === ' ') {
+            return false;
+        }
+        return lower === 'yes' || lower === 'true' || lower === '1';
+    }
+    if (typeof value === 'number') {
+        return value === 1;
+    }
+    // Handle null, undefined, or any other falsy value as false
+    return false;
+}
+
+/**
  * Check if a scene is a beat note (supports both new 'Beat' and legacy 'Plot' itemType)
  */
 export function isBeatNote(scene: Scene | { itemType?: string }): boolean {

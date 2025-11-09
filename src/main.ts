@@ -6,6 +6,7 @@
 
 import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, normalizePath } from "obsidian";
 import { TimelineService } from './services/TimelineService';
+import { SceneDataService } from './services/SceneDataService';
 import { escapeRegExp } from './utils/regex';
 import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils/colour';
 import { decodeHtmlEntities } from './utils/text';
@@ -436,6 +437,7 @@ export default class RadialTimelinePlugin extends Plugin {
     
     // Services
     private timelineService!: TimelineService;
+    private sceneDataService!: SceneDataService;
     private searchService!: import('./services/SearchService').SearchService;
     private fileTrackingService!: import('./services/FileTrackingService').FileTrackingService;
     private rendererService!: RendererService;
@@ -935,6 +937,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // Initialize services and managers
         this.timelineService = new TimelineService(this.app);
+        this.sceneDataService = new SceneDataService(this.app, this.settings);
         const { SearchService } = await import('./services/SearchService');
         const { FileTrackingService } = await import('./services/FileTrackingService');
         this.searchService = new SearchService(this.app, this);
@@ -1751,224 +1754,8 @@ export default class RadialTimelinePlugin extends Plugin {
 
     // Public method to get scene data
     async getSceneData(options?: GetSceneDataOptions): Promise<Scene[]> {
-        const filterBeats = options?.filterBeatsBySystem ?? true;
-
-        // Find markdown files in vault that match the filters
-        const files = this.app.vault.getMarkdownFiles().filter((file: TFile) => {
-            // If sourcePath is empty, include all files, otherwise only include files in the sourcePath
-            if (this.settings.sourcePath) {
-                return file.path.startsWith(this.settings.sourcePath);
-            }
-            return true;
-        });
-
-        const scenes: Scene[] = [];
-        const plotsToProcess: Array<{file: TFile, metadata: Record<string, unknown>, validActNumber: number}> = [];
-    
-        for (const file of files) {
-            try {
-            const rawMetadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
-                const metadata = rawMetadata ? normalizeFrontmatterKeys(rawMetadata) : undefined;
-                
-                if (metadata && metadata.Class === "Scene") {
-                // Parse the When field using the centralized parser (single source of truth)
-                const whenStr = metadata.When;
-                
-                let when: Date | undefined;
-                if (typeof whenStr === 'string') {
-                    const parsed = parseWhenField(whenStr);
-                    if (parsed) {
-                        when = parsed;
-                    }
-                } else if (whenStr instanceof Date) {
-                    // Already a Date object
-                    when = whenStr;
-                }
-                
-                if (when && !isNaN(when.getTime())) {
-                    // Split subplots if provided, otherwise default to "Main Plot"
-                    const subplots = metadata.Subplot
-                        ? Array.isArray(metadata.Subplot) 
-                            ? metadata.Subplot 
-                            : [metadata.Subplot]
-                        : ["Main Plot"];
-                    
-                    // Read actNumber from metadata, default to 1 if missing or empty
-                    const actValue = metadata.Act;
-                    const actNumber = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
-    
-                    // Ensure actNumber is a valid number between 1 and 3
-                    const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
-    
-                    // Parse Character metadata - it might be a string or array
-                    let characterList: string[] = [];
-                    const characterData = metadata.Character;
-                    if (characterData) {
-                        // Convert to array if it's a string
-                        if (Array.isArray(characterData)) {
-                            characterList = characterData.map((char: unknown) => String(char).replace(/[\[\]]/g, ''));
-                        } else {
-                            characterList = [String(characterData).replace(/[\[\]]/g, '')];
-                        }
-                    }
-    
-                    // Extract scene number from filename (e.g., "52 Escaping Earth.md" → 52)
-                    const sceneNumberMatch = file.name.match(/^(\d+(\.\d+)?)/);
-                    const sceneNumber = sceneNumberMatch ? parseFloat(sceneNumberMatch[1]) : undefined;
-    
-                    // Create a separate entry for each subplot
-                    subplots.forEach(subplot => {
-                        if (when) { // Guard clause for type safety
-                            scenes.push({
-                                title: (typeof metadata.Title === 'string' ? metadata.Title : file.basename),
-                                    date: when.toISOString(),
-                                    path: file.path,
-                                subplot: subplot,
-                                    act: validActNumber.toString(),
-                                    pov: (typeof metadata.POV === 'string' ? metadata.POV : undefined),
-                                    location: (typeof metadata.Location === 'string' ? metadata.Location : undefined),
-                                    number: sceneNumber,
-                                    synopsis: (typeof metadata.Synopsis === 'string' ? metadata.Synopsis : undefined),
-                                    when: when,
-                                actNumber: validActNumber,
-                                    Character: characterList,
-                                    status: (typeof metadata.Status === 'string' || Array.isArray(metadata.Status) ? metadata.Status as string | string[] : undefined),
-                                    "Publish Stage": (typeof metadata["Publish Stage"] === 'string' ? metadata["Publish Stage"] : undefined),
-                                    due: (typeof metadata.Due === 'string' ? metadata.Due : undefined),
-                                    pendingEdits: (typeof metadata["Pending Edits"] === 'string' ? metadata["Pending Edits"] : undefined),
-                                    Book: (typeof metadata.Book === 'string' ? metadata.Book : undefined),
-                                    Duration: (typeof metadata.Duration === 'string' ? metadata.Duration : undefined),
-                                // Only process AI scene analysis fields if AI features are enabled (performance optimization)
-                                "previousSceneAnalysis": this.settings.enableAiSceneAnalysis ? (typeof metadata["previousSceneAnalysis"] === 'string' ? metadata["previousSceneAnalysis"] : (Array.isArray(metadata["previousSceneAnalysis"]) ? metadata["previousSceneAnalysis"].join('\n') : (metadata["previousSceneAnalysis"] ? String(metadata["previousSceneAnalysis"]) : undefined))) : undefined,
-                                "currentSceneAnalysis": this.settings.enableAiSceneAnalysis ? (typeof metadata["currentSceneAnalysis"] === 'string' ? metadata["currentSceneAnalysis"] : (Array.isArray(metadata["currentSceneAnalysis"]) ? metadata["currentSceneAnalysis"].join('\n') : (metadata["currentSceneAnalysis"] ? String(metadata["currentSceneAnalysis"]) : undefined))) : undefined,
-                                "nextSceneAnalysis": this.settings.enableAiSceneAnalysis ? (typeof metadata["nextSceneAnalysis"] === 'string' ? metadata["nextSceneAnalysis"] : (Array.isArray(metadata["nextSceneAnalysis"]) ? metadata["nextSceneAnalysis"].join('\n') : (metadata["nextSceneAnalysis"] ? String(metadata["nextSceneAnalysis"]) : undefined))) : undefined,
-                                "Beats Update": (typeof metadata["Beats Update"] === 'boolean' || typeof metadata["Beats Update"] === 'string') ? metadata["Beats Update"] as (boolean | string) : undefined,
-                                itemType: "Scene"
-                            });
-                        }
-                    });
-                }
-            }
-                
-            // Store story beat notes for processing after we know all subplots
-            // Supports both "Class: Plot" (legacy) and "Class: Beat" (recommended)
-            if (metadata && isStoryBeat(metadata.Class)) {
-                // Read actNumber from metadata, default to 1 if missing or empty
-                const actValue = metadata.Act;
-                const actNumber = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
-                const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
-                
-                plotsToProcess.push({
-                    file: file,
-                    metadata: metadata,
-                    validActNumber: validActNumber
-                });
-            }
-            } catch (error) {
-                console.error(`Error processing file ${file.path}:`, error);
-        }
-        }
-
-        // Process Beat notes - create ONE entry per beat note (not duplicated per subplot)
-        // Beat notes are shown only in the outer ring and are not subplot-specific
-        plotsToProcess.forEach(plotInfo => {
-            const beatModel = (plotInfo.metadata["Beat Model"] as string) || undefined;
-            
-            if (filterBeats) {
-                // Filter beat notes based on selected story structure system
-                const selectedSystem = this.settings.beatSystem || 'Custom';
-                
-                // If Custom is selected, only show beats that DON'T have a recognized Beat Model
-                if (selectedSystem === 'Custom') {
-                    const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
-                    if (beatModel && recognizedSystems.includes(beatModel)) {
-                        // Skip beats that belong to recognized systems when Custom is selected
-                        return;
-                    }
-                } else {
-                    // For specific systems, only show beats that match the selected system
-                    if (beatModel !== selectedSystem) {
-                        // Skip beats that don't match the selected system
-                        return;
-                    }
-                }
-            }
-            
-            const gossamer1Value = typeof plotInfo.metadata.Gossamer1 === 'number' ? plotInfo.metadata.Gossamer1 : undefined;
-            const rangeValue = typeof plotInfo.metadata.Range === 'string' ? plotInfo.metadata.Range : undefined;
-            const suggestPlacementValue = typeof plotInfo.metadata["Suggest Placement"] === 'string' ? plotInfo.metadata["Suggest Placement"] : undefined;
-            
-            // Parse When field for beats (same logic as scenes)
-            const whenStr = plotInfo.metadata.When;
-            let beatWhen: Date | undefined;
-            if (whenStr) {
-                // Handle case where When might already be a Date object (from Obsidian)
-                if (whenStr instanceof Date) {
-                    beatWhen = whenStr;
-                } else if (typeof whenStr === 'string' && whenStr.trim() !== '') {
-                    const parsed = parseWhenField(whenStr);
-                    beatWhen = parsed || undefined;
-                }
-            }
-            
-            scenes.push({
-                title: plotInfo.file.basename,
-                date: beatWhen ? beatWhen.toISOString() : "1900-01-01T12:00:00Z", // Use When field or dummy date
-                path: plotInfo.file.path,
-                subplot: undefined, // Beat notes are not associated with any specific subplot
-                act: plotInfo.validActNumber.toString(),
-                actNumber: plotInfo.validActNumber,
-                when: beatWhen, // Add when field for chronological sorting
-                itemType: "Plot",
-                Description: (plotInfo.metadata.Description as string) || '',
-                "Beat Model": beatModel,
-                "Publish Stage": (plotInfo.metadata["Publish Stage"] as string) || undefined,
-                Range: rangeValue,
-                "Suggest Placement": suggestPlacementValue,
-                Gossamer1: gossamer1Value,
-                Gossamer2: typeof plotInfo.metadata.Gossamer2 === 'number' ? plotInfo.metadata.Gossamer2 : undefined,
-                Gossamer3: typeof plotInfo.metadata.Gossamer3 === 'number' ? plotInfo.metadata.Gossamer3 : undefined,
-                Gossamer4: typeof plotInfo.metadata.Gossamer4 === 'number' ? plotInfo.metadata.Gossamer4 : undefined,
-                Gossamer5: typeof plotInfo.metadata.Gossamer5 === 'number' ? plotInfo.metadata.Gossamer5 : undefined,
-                Gossamer6: typeof plotInfo.metadata.Gossamer6 === 'number' ? plotInfo.metadata.Gossamer6 : undefined,
-                Gossamer7: typeof plotInfo.metadata.Gossamer7 === 'number' ? plotInfo.metadata.Gossamer7 : undefined,
-                Gossamer8: typeof plotInfo.metadata.Gossamer8 === 'number' ? plotInfo.metadata.Gossamer8 : undefined,
-                Gossamer9: typeof plotInfo.metadata.Gossamer9 === 'number' ? plotInfo.metadata.Gossamer9 : undefined,
-                Gossamer10: typeof plotInfo.metadata.Gossamer10 === 'number' ? plotInfo.metadata.Gossamer10 : undefined,
-                Gossamer11: typeof plotInfo.metadata.Gossamer11 === 'number' ? plotInfo.metadata.Gossamer11 : undefined,
-                Gossamer12: typeof plotInfo.metadata.Gossamer12 === 'number' ? plotInfo.metadata.Gossamer12 : undefined,
-                Gossamer13: typeof plotInfo.metadata.Gossamer13 === 'number' ? plotInfo.metadata.Gossamer13 : undefined,
-                Gossamer14: typeof plotInfo.metadata.Gossamer14 === 'number' ? plotInfo.metadata.Gossamer14 : undefined,
-                Gossamer15: typeof plotInfo.metadata.Gossamer15 === 'number' ? plotInfo.metadata.Gossamer15 : undefined,
-                Gossamer16: typeof plotInfo.metadata.Gossamer16 === 'number' ? plotInfo.metadata.Gossamer16 : undefined,
-                Gossamer17: typeof plotInfo.metadata.Gossamer17 === 'number' ? plotInfo.metadata.Gossamer17 : undefined,
-                Gossamer18: typeof plotInfo.metadata.Gossamer18 === 'number' ? plotInfo.metadata.Gossamer18 : undefined,
-                Gossamer19: typeof plotInfo.metadata.Gossamer19 === 'number' ? plotInfo.metadata.Gossamer19 : undefined,
-                Gossamer20: typeof plotInfo.metadata.Gossamer20 === 'number' ? plotInfo.metadata.Gossamer20 : undefined,
-                Gossamer21: typeof plotInfo.metadata.Gossamer21 === 'number' ? plotInfo.metadata.Gossamer21 : undefined,
-                Gossamer22: typeof plotInfo.metadata.Gossamer22 === 'number' ? plotInfo.metadata.Gossamer22 : undefined,
-                Gossamer23: typeof plotInfo.metadata.Gossamer23 === 'number' ? plotInfo.metadata.Gossamer23 : undefined,
-                Gossamer24: typeof plotInfo.metadata.Gossamer24 === 'number' ? plotInfo.metadata.Gossamer24 : undefined,
-                Gossamer25: typeof plotInfo.metadata.Gossamer25 === 'number' ? plotInfo.metadata.Gossamer25 : undefined,
-                Gossamer26: typeof plotInfo.metadata.Gossamer26 === 'number' ? plotInfo.metadata.Gossamer26 : undefined,
-                Gossamer27: typeof plotInfo.metadata.Gossamer27 === 'number' ? plotInfo.metadata.Gossamer27 : undefined,
-                Gossamer28: typeof plotInfo.metadata.Gossamer28 === 'number' ? plotInfo.metadata.Gossamer28 : undefined,
-                Gossamer29: typeof plotInfo.metadata.Gossamer29 === 'number' ? plotInfo.metadata.Gossamer29 : undefined,
-                Gossamer30: typeof plotInfo.metadata.Gossamer30 === 'number' ? plotInfo.metadata.Gossamer30 : undefined
-            });
-        });
-
-        
-        // Filter out story beats if current mode doesn't support them
-        const currentMode = this.settings.currentMode || 'all-scenes';
-        if (currentMode === 'chronologue' || currentMode === 'main-plot') {
-            // Remove Plot/Beat items from the data in modes that don't show beats
-            return scenes.filter(s => s.itemType !== 'Plot');
-        }
-        
-        // Don't sort here - let each rendering mode handle its own sort order
-        // (All Scenes and Main Plot use manuscript order, Chronologue uses When field)
-        return scenes;
+        // Delegate to SceneDataService
+        return this.sceneDataService.getSceneData(options);
     }
 
 
