@@ -266,8 +266,9 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         if (currentHoveredSceneId === sid) {
             const syn = synopsisBySceneId.get(sid);
             if (syn) {
-                syn.classList.add('rt-visible');
+                // Calculate position BEFORE making visible to prevent flicker
                 view.plugin.updateSynopsisPosition?.(syn, e as unknown as MouseEvent, svg, sid);
+                syn.classList.add('rt-visible');
             }
             if (g.classList.contains('rt-chronologue-warning')) {
                 showWhenFieldWarning(svg, g, e as unknown as MouseEvent);

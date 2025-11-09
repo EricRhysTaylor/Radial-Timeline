@@ -57,7 +57,8 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
         currentSceneId = sid;
         
         // Use manager for hover interactions (handles title expansion and styling)
-        manager.onSceneHover(g, sid);
+        // Pass mouse event to position synopsis immediately and prevent flicker
+        manager.onSceneHover(g, sid, e as unknown as MouseEvent);
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {

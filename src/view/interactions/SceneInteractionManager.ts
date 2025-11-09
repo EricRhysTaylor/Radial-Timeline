@@ -62,7 +62,7 @@ export class SceneInteractionManager {
     /**
      * Handle scene hover
      */
-    onSceneHover(group: Element, sceneId: string): void {
+    onSceneHover(group: Element, sceneId: string, mouseEvent?: MouseEvent): void {
         this.currentGroup = group;
         this.currentSceneId = sceneId;
         this.currentSynopsis = this.findSynopsisForScene(sceneId);
@@ -70,8 +70,17 @@ export class SceneInteractionManager {
         // Apply selection styles
         this.applySelection(group, sceneId);
         
-        // Show synopsis
+        // Show synopsis - position it BEFORE making visible to prevent flicker
         if (this.currentSynopsis) {
+            // If mouse event provided, position immediately to prevent flicker
+            if (mouseEvent) {
+                this.view.plugin.updateSynopsisPosition(
+                    this.currentSynopsis,
+                    mouseEvent,
+                    this.svg,
+                    sceneId
+                );
+            }
             this.currentSynopsis.classList.add('rt-visible');
         }
         

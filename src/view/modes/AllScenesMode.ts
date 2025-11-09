@@ -125,8 +125,8 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
         currentGroup = g;
         currentSceneId = sid;
         
-        // Use manager for hover interactions
-        manager.onSceneHover(g, sid);
+        // Use manager for hover interactions - pass mouse event to position synopsis immediately
+        manager.onSceneHover(g, sid, e as unknown as MouseEvent);
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
