@@ -126,15 +126,79 @@ export class RendererService {
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
         if (!svg) return false;
 
-        // Always remove existing gossamer groups first
-        svg.querySelectorAll('.rt-gossamer-layer, .rt-gossamer-spokes').forEach(node => node.parentNode?.removeChild(node));
+        const applyGossamerMask = () => {
+            if (view.currentMode === 'gossamer') {
+                svg.setAttribute('data-gossamer-mode', 'true');
+                const elements = svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
+                elements.forEach(el => {
+                    const group = el.closest('.rt-scene-group');
+                    const itemType = group?.getAttribute('data-item-type');
+                    if (itemType !== 'Beat') {
+                        el.classList.add('rt-non-selected');
+                    }
+                });
+            } else {
+                svg.removeAttribute('data-gossamer-mode');
+            }
+        };
 
-        // If not in gossamer mode, nothing else to do
-        if (view.currentMode !== 'gossamer') return true;
+        const removeExisting = () => {
+            svg.querySelectorAll('.rt-gossamer-layer, .rt-gossamer-spokes').forEach(node => node.parentNode?.removeChild(node));
+        };
+
+        const captureGeometry = () => {
+            // Prefer existing gossamer spokes if present (exact radii)
+            let innerRadius: number | null = null;
+            let outerRadius: number | null = null;
+            const existingGossamerSpoke = svg.querySelector('.rt-gossamer-spokes line') as SVGLineElement | null;
+            if (existingGossamerSpoke) {
+                const x1 = Number(existingGossamerSpoke.getAttribute('x1') || '0');
+                const y1 = Number(existingGossamerSpoke.getAttribute('y1') || '0');
+                const x2 = Number(existingGossamerSpoke.getAttribute('x2') || '0');
+                const y2 = Number(existingGossamerSpoke.getAttribute('y2') || '0');
+                innerRadius = Math.hypot(x1, y1);
+                outerRadius = Math.hypot(x2, y2);
+            }
+            // Fallback: estimate from beat groups (min inner, max outer)
+            const beatGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]')) as SVGGElement[];
+            if (beatGroups.length > 0) {
+                if (innerRadius === null || !Number.isFinite(innerRadius)) {
+                    const inners = beatGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
+                    if (inners.length > 0) innerRadius = Math.min(...inners);
+                }
+                if (outerRadius === null || !Number.isFinite(outerRadius)) {
+                    const outers = beatGroups.map(g => Number(g.getAttribute('data-outer-r') || '0')).filter(n => Number.isFinite(n));
+                    if (outers.length > 0) outerRadius = Math.max(...outers);
+                }
+            }
+            // Last-resort defaults
+            if (innerRadius === null || !Number.isFinite(innerRadius)) innerRadius = 200;
+            if (outerRadius === null || !Number.isFinite(outerRadius)) outerRadius = innerRadius + 300;
+
+            // Outer ring inner radius for beat outlines
+            let outerRingInnerRadius = innerRadius;
+            if (beatGroups.length > 0) {
+                const inners = beatGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
+                if (inners.length > 0) outerRingInnerRadius = Math.min(...inners);
+            }
+
+            return { innerRadius, outerRadius, outerRingInnerRadius };
+        };
+
+        const isGossamerMode = view.currentMode === 'gossamer';
+        if (!isGossamerMode) {
+            removeExisting();
+            applyGossamerMask();
+            return true;
+        }
 
         const pluginAny = view.plugin as any;
         const run = pluginAny._gossamerLastRun || null;
-        if (!run) return false;
+        if (!run) {
+            removeExisting();
+            applyGossamerMask();
+            return false;
+        }
 
         // Gather scenes (prefer cached on view)
         const scenes: Scene[] = Array.isArray((view as any).sceneData) && (view as any).sceneData.length > 0
@@ -163,42 +227,10 @@ export class RendererService {
             });
         }
 
-        // Derive geometry from existing DOM
-        // Prefer existing gossamer spokes if present (exact radii)
-        let innerRadius: number | null = null;
-        let outerRadius: number | null = null;
-        const existingGossamerSpoke = svg.querySelector('.rt-gossamer-spokes line') as SVGLineElement | null;
-        if (existingGossamerSpoke) {
-            const x1 = Number(existingGossamerSpoke.getAttribute('x1') || '0');
-            const y1 = Number(existingGossamerSpoke.getAttribute('y1') || '0');
-            const x2 = Number(existingGossamerSpoke.getAttribute('x2') || '0');
-            const y2 = Number(existingGossamerSpoke.getAttribute('y2') || '0');
-            innerRadius = Math.hypot(x1, y1);
-            outerRadius = Math.hypot(x2, y2);
-        }
-        // Fallback: estimate from beat groups (min inner, max outer)
-        if (innerRadius === null || outerRadius === null) {
-            const beatGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]')) as SVGGElement[];
-            if (beatGroups.length > 0) {
-                const inners = beatGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
-                const outers = beatGroups.map(g => Number(g.getAttribute('data-outer-r') || '0')).filter(n => Number.isFinite(n));
-                if (inners.length > 0) innerRadius = Math.min(...inners);
-                if (outers.length > 0) outerRadius = Math.max(...outers);
-            }
-        }
-        // Last-resort defaults
-        if (innerRadius === null || !Number.isFinite(innerRadius)) innerRadius = 200;
-        if (outerRadius === null || !Number.isFinite(outerRadius)) outerRadius = innerRadius + 300;
+        const { innerRadius, outerRadius, outerRingInnerRadius } = captureGeometry();
 
-        // Outer ring inner radius for beat outlines
-        let outerRingInnerRadius = innerRadius;
-        {
-            const beatGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Beat"]')) as SVGGElement[];
-            if (beatGroups.length > 0) {
-                const inners = beatGroups.map(g => Number(g.getAttribute('data-inner-r') || '0')).filter(n => Number.isFinite(n));
-                if (inners.length > 0) outerRingInnerRadius = Math.min(...inners);
-            }
-        }
+        // Remove existing spokes/layer now that measurements are captured
+        removeExisting();
 
         // Historical runs and band
         const historicalRuns = pluginAny._gossamerHistoricalRuns || [];
@@ -230,7 +262,10 @@ export class RendererService {
 
         const spokesNode = toNode(spokesHtml);
         const layerNode = toNode(layerHtml);
-        if (!spokesNode && !layerNode) return false;
+        if (!spokesNode && !layerNode) {
+            applyGossamerMask();
+            return false;
+        }
 
         // Insert before synopses so synopses remain on top
         const firstSynopsis = svg.querySelector('.rt-scene-info');
@@ -242,6 +277,7 @@ export class RendererService {
             if (layerNode) svg.appendChild(layerNode);
         }
 
+        applyGossamerMask();
         return true;
     }
 
@@ -320,5 +356,3 @@ export class RendererService {
         return true;
     }
 }
-
-

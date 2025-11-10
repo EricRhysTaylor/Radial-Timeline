@@ -332,7 +332,7 @@ export function zeroOffsetRun(run: GossamerRun): GossamerRun {
 
 export function extractPresentBeatScores(run: GossamerRun): { beat: string; score: number }[] {
   return run.beats
-    .filter(b => (b.status === 'present' || b.status === 'outlineOnly') && typeof b.score === 'number')
+    .filter(b => b.status === 'present' && typeof b.score === 'number')
     .map(b => ({ beat: b.beat, score: b.score as number }));
 }
 
@@ -482,4 +482,3 @@ export function appendGossamerScore(
 
   return { nextIndex: maxHistory, updated };
 }
-

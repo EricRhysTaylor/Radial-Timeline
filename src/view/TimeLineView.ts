@@ -373,6 +373,11 @@ export class RadialTimelineView extends ItemView {
                     if (changeResult.changeTypes.has(ChangeType.SYNOPSIS)) {
                         updated = this.rendererService.updateSynopsisDOM(container, sceneData) || updated;
                     }
+
+                    // Handle gossamer changes
+                    if (changeResult.changeTypes.has(ChangeType.GOSSAMER)) {
+                        updated = this.rendererService.updateGossamerLayer(this as any) || updated;
+                    }
                     
                     if (updated) {
                         // Selective update succeeded
@@ -430,11 +435,6 @@ export class RadialTimelineView extends ItemView {
             }
         }
 
-        // If currently in gossamer mode and SVG exists, try selective gossamer rebuild now
-        const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
-        if (svg && this.currentMode === 'gossamer') {
-            try { this.rendererService?.updateGossamerLayer(this as any); } catch {}
-        }
     }
     
 

@@ -464,6 +464,11 @@ export function adjustBeatLabelsAfterRender(container: HTMLElement, attempt: num
         beatLabelAdjustState.set(container, state);
     }
 
+    // If we've already successfully adjusted this exact signature, skip re-running
+    if (state.signature === signature && state.success) {
+        return;
+    }
+
     if (isHidden && attempt < MAX_ATTEMPTS) {
         const rafId = requestAnimationFrame(() => adjustBeatLabelsAfterRender(container, attempt + 1));
         state.retryId = rafId;

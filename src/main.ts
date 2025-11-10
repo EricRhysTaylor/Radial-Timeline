@@ -55,7 +55,7 @@ function normalizeBooleanValue(value: unknown): boolean {
     return false;
 }
 
-interface RadialTimelineSettings {
+export interface RadialTimelineSettings {
     sourcePath: string;
     validFolderPaths: string[]; // <<< ADDED: Store previously validated folder paths for autocomplete
     publishStageColors: {

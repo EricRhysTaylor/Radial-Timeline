@@ -4,7 +4,8 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { Scene } from '../main';
+import type { Scene, RadialTimelineSettings } from '../main';
+import type { GossamerRun } from '../utils/gossamer';
 
 /**
  * Types of changes that can trigger renders
@@ -52,6 +53,7 @@ export interface TimelineSnapshot {
     
     // Gossamer
     gossamerRunExists: boolean;
+    gossamerRunHash: string;
     
     timestamp: number;
 }
@@ -75,8 +77,8 @@ export function createSnapshot(
     searchActive: boolean,
     searchResults: Set<string>,
     currentMode: string,
-    settings: any, // SAFE: any type used for settings object with dynamic properties from plugin
-    gossamerRun: any // SAFE: any type used for gossamer run data structure
+    settings: RadialTimelineSettings,
+    gossamerRun: GossamerRun | null | undefined
 ): TimelineSnapshot {
     // Create comprehensive hash of scene data that includes all rendering-relevant fields
     const sceneHash = scenes
@@ -128,6 +130,29 @@ export function createSnapshot(
     
     const now = new Date();
     
+    const gossamerRunHash = (() => {
+        if (!gossamerRun) return '';
+        try {
+            const beats = Array.isArray(gossamerRun.beats)
+                ? gossamerRun.beats.map((beat) => ({
+                    beat: beat?.beat ?? '',
+                    score: typeof beat?.score === 'number' ? beat.score : '',
+                    status: beat?.status ?? '',
+                    range: beat?.range ? `${beat.range.min ?? ''}-${beat.range.max ?? ''}` : '',
+                    out: beat?.isOutOfRange ? '1' : '0'
+                }))
+                : [];
+            return JSON.stringify({
+                beats,
+                label: gossamerRun.meta?.label ?? '',
+                model: gossamerRun.meta?.model ?? '',
+                summary: gossamerRun.overall?.summary ?? ''
+            });
+        } catch {
+            return String(Date.now());
+        }
+    })();
+
     return {
         sceneCount: scenes.length,
         sceneHash,
@@ -146,6 +171,7 @@ export function createSnapshot(
         subplotColorsHash,
         dominantSubplotsHash,
         gossamerRunExists: !!gossamerRun,
+        gossamerRunHash,
         timestamp: Date.now()
     };
 }
@@ -211,7 +237,8 @@ export function detectChanges(
     }
     
     // Detect gossamer changes
-    if (prev.gossamerRunExists !== current.gossamerRunExists) {
+    if (prev.gossamerRunExists !== current.gossamerRunExists ||
+        prev.gossamerRunHash !== current.gossamerRunHash) {
         changeTypes.add(ChangeType.GOSSAMER);
     }
     
@@ -224,7 +251,8 @@ export function detectChanges(
         ChangeType.SEARCH, 
         ChangeType.TIME,
         ChangeType.DOMINANT_SUBPLOT,  // DOM update for scene colors
-        ChangeType.SYNOPSIS            // DOM update for synopsis text
+        ChangeType.SYNOPSIS,          // DOM update for synopsis text
+        ChangeType.GOSSAMER
     ];
     const canUseSelectiveUpdate = hasChanges && 
         Array.from(changeTypes).every(type => selectiveChangeTypes.includes(type));
@@ -276,4 +304,3 @@ export function describeChanges(result: ChangeDetectionResult): string {
     
     return `Changes detected: ${changes} (strategy: ${result.updateStrategy})`;
 }
-
