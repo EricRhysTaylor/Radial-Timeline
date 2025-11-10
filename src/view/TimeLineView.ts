@@ -291,6 +291,8 @@ export class RadialTimelineView extends ItemView {
 
     refreshTimeline() {
         if (!this.plugin) return;
+        
+        this.log(`[REFRESH TIMELINE] Called - currentMode: ${this._currentMode}`);
 
         const perfStart = performance.now();
         const container = this.containerEl.children[1] as HTMLElement;
@@ -443,6 +445,42 @@ export class RadialTimelineView extends ItemView {
         // Mouse coordinate tracking disabled - no debug mode toggle exists
     }
     
+    /**
+     * Called whenever the view is shown/revealed (e.g., when switching tabs back to this view)
+     * Unlike onOpen which is called only once when the view is created
+     */
+    onload(): void {
+        this.log('========== TIMELINE VIEW LOADED/SHOWN ==========');
+        this.log(`Current mode: ${this._currentMode}`);
+        this.log(`Settings mode: ${this.plugin.settings.currentMode || 'narrative'}`);
+        
+        // Check what's in the DOM
+        const container = this.containerEl.children[1] as HTMLElement | undefined;
+        if (container) {
+            const svg = container.querySelector('.radial-timeline-svg');
+            if (svg) {
+                const dataMode = svg.getAttribute('data-mode');
+                const dataGossamer = svg.getAttribute('data-gossamer-mode');
+                const gossamerLayer = svg.querySelector('.rt-gossamer-layer');
+                const nonSelectedCount = svg.querySelectorAll('.rt-non-selected').length;
+                
+                this.log(`SVG exists: data-mode="${dataMode}", data-gossamer-mode="${dataGossamer}"`);
+                this.log(`Gossamer layer exists: ${!!gossamerLayer}`);
+                this.log(`Non-selected elements: ${nonSelectedCount}`);
+            } else {
+                this.log('No SVG element found in container');
+            }
+        } else {
+            this.log('No container element found');
+        }
+        
+        // Check gossamer data
+        const hasGossamerData = !!(this.plugin as any)._gossamerLastRun;
+        this.log(`Gossamer data exists on plugin: ${hasGossamerData}`);
+        
+        this.log('===============================================');
+    }
+    
     async onOpen(): Promise<void> {
         this.log('Opening timeline view');
 
@@ -466,8 +504,16 @@ export class RadialTimelineView extends ItemView {
         
         // Register for active leaf changes which might mean tabs were changed
         this.registerEvent(
-            this.app.workspace.on('active-leaf-change', () => {
+            this.app.workspace.on('active-leaf-change', (leaf) => {
                 this.log('Active leaf changed event');
+                
+                // Check if this view is becoming active
+                const isThisViewActive = leaf?.view === this;
+                
+                if (isThisViewActive) {
+                    this.log(`Timeline view became active - currentMode: ${this._currentMode}, settings.currentMode: ${this.plugin.settings.currentMode}`);
+                }
+                
                 this.updateOpenFilesTracking();
             })
         );
