@@ -284,15 +284,11 @@ export class RadialTimelineView extends ItemView {
             // Try selective update first
             const updated = this.rendererService?.updateOpenClasses(container, this.openScenePaths);
             if (!updated) this.refreshTimeline();
-        } else {
-            this.log('No changes in open files detected');
         }
     }
 
     refreshTimeline() {
         if (!this.plugin) return;
-        
-        this.log(`[REFRESH TIMELINE] Called - currentMode: ${this._currentMode}`);
 
         const perfStart = performance.now();
         const container = this.containerEl.children[1] as HTMLElement;
@@ -316,7 +312,6 @@ export class RadialTimelineView extends ItemView {
                     (this.plugin as any)._gossamerLastRun = allRuns.current;
                     (this.plugin as any)._gossamerHistoricalRuns = allRuns.historical;
                     (this.plugin as any)._gossamerMinMax = allRuns.minMax;
-                    this.log('[Gossamer] Rebuilt gossamer run data on refresh.');
                 }
                 
                 this.sceneData = sceneData;
@@ -343,13 +338,9 @@ export class RadialTimelineView extends ItemView {
                 // Detect changes from last render
                 const changeResult = detectChanges(this.lastSnapshot, currentSnapshot);
                 
-                // Log change detection results
-                this.log('[ChangeDetection] ' + describeChanges(changeResult));
-                
                 // Decide rendering strategy
                 if (changeResult.updateStrategy === 'none') {
                     // No changes - skip render entirely
-                    this.log('[Render] Skipped - no changes detected');
                     return;
                 } else if (changeResult.updateStrategy === 'selective' && this.rendererService) {
                     // Selective update using RendererService
@@ -394,7 +385,6 @@ export class RadialTimelineView extends ItemView {
                 }
                 
                 // Full render
-                this.log('[Render] Using full render');
                 const loadingEl = container.createEl("div", {
                     cls: "rt-loading-message",
                     text: "Loading timeline data..."
@@ -414,9 +404,6 @@ export class RadialTimelineView extends ItemView {
                 
                 // Update snapshot after successful render
                 this.lastSnapshot = currentSnapshot;
-                
-                const totalTime = performance.now() - perfStart;
-                this.log(`[Render] Full render completed in ${totalTime.toFixed(2)}ms (data: ${dataLoadTime.toFixed(2)}ms, render: ${renderTime.toFixed(2)}ms)`);
 
             })
             .catch(error => {
@@ -450,40 +437,10 @@ export class RadialTimelineView extends ItemView {
      * Unlike onOpen which is called only once when the view is created
      */
     onload(): void {
-        this.log('========== TIMELINE VIEW LOADED/SHOWN ==========');
-        this.log(`Current mode: ${this._currentMode}`);
-        this.log(`Settings mode: ${this.plugin.settings.currentMode || 'narrative'}`);
-        
-        // Check what's in the DOM
-        const container = this.containerEl.children[1] as HTMLElement | undefined;
-        if (container) {
-            const svg = container.querySelector('.radial-timeline-svg');
-            if (svg) {
-                const dataMode = svg.getAttribute('data-mode');
-                const dataGossamer = svg.getAttribute('data-gossamer-mode');
-                const gossamerLayer = svg.querySelector('.rt-gossamer-layer');
-                const nonSelectedCount = svg.querySelectorAll('.rt-non-selected').length;
-                
-                this.log(`SVG exists: data-mode="${dataMode}", data-gossamer-mode="${dataGossamer}"`);
-                this.log(`Gossamer layer exists: ${!!gossamerLayer}`);
-                this.log(`Non-selected elements: ${nonSelectedCount}`);
-            } else {
-                this.log('No SVG element found in container');
-            }
-        } else {
-            this.log('No container element found');
-        }
-        
-        // Check gossamer data
-        const hasGossamerData = !!(this.plugin as any)._gossamerLastRun;
-        this.log(`Gossamer data exists on plugin: ${hasGossamerData}`);
-        
-        this.log('===============================================');
+        // View is now loaded and visible
     }
     
     async onOpen(): Promise<void> {
-        this.log('Opening timeline view');
-
         await this.plugin.maybeShowReleaseNotesModal();
         
         // Register event to track file opens
@@ -497,7 +454,6 @@ export class RadialTimelineView extends ItemView {
         // Register event for layout changes (tab opening/closing)
         this.registerEvent(
             this.app.workspace.on('layout-change', () => {
-                this.log('Layout changed event');
                 this.updateOpenFilesTracking();
             })
         );
@@ -505,13 +461,11 @@ export class RadialTimelineView extends ItemView {
         // Register for active leaf changes which might mean tabs were changed
         this.registerEvent(
             this.app.workspace.on('active-leaf-change', (leaf) => {
-                this.log('Active leaf changed event');
-                
                 // Check if this view is becoming active
                 const isThisViewActive = leaf?.view === this;
                 
                 if (isThisViewActive) {
-                    this.log(`Timeline view became active - currentMode: ${this._currentMode}, settings.currentMode: ${this.plugin.settings.currentMode}`);
+                    // Timeline view became active
                 }
                 
                 this.updateOpenFilesTracking();
@@ -680,8 +634,6 @@ export class RadialTimelineView extends ItemView {
 
             return;
         }
-        
-        this.log(`Found ${scenes.length} scenes to render`);
         
         this.sceneData = scenes;
 

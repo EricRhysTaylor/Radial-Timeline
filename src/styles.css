@@ -167,12 +167,6 @@
 }
 
 /* Optimized global fade: Apply to all children when parent has class */
-.rt-global-fade .rt-scene-path,
-.rt-global-fade .rt-number-square,
-.rt-global-fade .rt-number-text,
-.rt-global-fade .rt-scene-title {
-  /* Will be overridden by .rt-selected and specific element rules */
-}
 .rt-global-fade .rt-scene-path:not(.rt-selected) {
   fill: var(--rt-color-empty-selected) !important;
 }
@@ -327,12 +321,6 @@
   fill: #ff6666 !important;
 }
 
-.rt-gossamer-range-dot {
-  opacity: 0.7;
-  stroke: var(--color-base-00); /* white */
-  stroke-width: 1px;
-}
-
 /* Gossamer1 dots on hover - add white stroke to create inner dot effect, keep colored fill */
 .rt-gossamer-dot:hover,
 .rt-gossamer-dot.rt-hover {
@@ -370,15 +358,46 @@
 
 /* Range boundary values - numbers showing min/max range values with white stroke */
 .rt-gossamer-range-value {
-  font-size: 14px;
+  font-size: 12px;
   text-anchor: middle;
   dominant-baseline: middle;
   pointer-events: none;
   cursor: default;
   font-weight: 600;
+  fill: var(--rt-max-publish-stage-color, var(--rt-gossamer-default-color));
   stroke: white;
   stroke-width: 7px;
   paint-order: stroke fill;
+}
+
+/* Score text - interactive numbers showing current beat scores */
+.rt-gossamer-score-text {
+  font-size: 16px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: all;
+  cursor: pointer;
+  font-weight: 600;
+  fill: var(--rt-max-publish-stage-color, var(--rt-gossamer-default-color));
+  stroke: white;
+  stroke-width: 7px;
+  paint-order: stroke fill;
+}
+
+.rt-gossamer-score-text:hover,
+.rt-gossamer-score-text.rt-hover {
+  stroke: white;
+  stroke-width: 9px;
+  font-size: 13px;
+}
+
+/* Missing data scores use error color */
+.rt-gossamer-score-text.rt-gossamer-missing-data {
+  fill: var(--rt-gossamer-error-color);
+}
+
+.rt-gossamer-score-text.rt-gossamer-missing-data:hover {
+  opacity: 1;
 }
 
 .rt-gossamer-range-segment {
@@ -396,10 +415,6 @@
 }
 .rt-gossamer-range-segment.rt-below-range {
   stroke: #AA0000; /* Muted red for scores below ideal range (slow/boring) */
-  opacity: 0.8;
-}
-.rt-gossamer-range-segment.rt-out-of-range {
-  stroke: #AA0000; /* Legacy fallback - deprecated in favor of above/below specific classes */
   opacity: 0.8;
 }
 .rt-gossamer-spoke.rt-gossamer-spoke-hover {

@@ -92,7 +92,7 @@ export function renderGossamerLayer(
   
   const segments: string[] = [];
   let current: { x: number; y: number }[] = [];
-  const dots: string[] = [];
+  const scoreTexts: string[] = [];
   const spokes: string[] = [];
   const beatOutlines: string[] = [];
   const rangeSquares: string[] = []; // Range boundary squares - rendered last (on top)
@@ -143,11 +143,11 @@ export function renderGossamerLayer(
       spokes.push(`<line class="rt-gossamer-ideal-range" data-beat="${escapeAttr(name)}" x1="${fmt(rangeMinX)}" y1="${fmt(rangeMinY)}" x2="${fmt(rangeMaxX)}" y2="${fmt(rangeMaxY)}" stroke="${beatColor}" stroke-width="${idealRangeWidth}"/>`);
       
       // Range boundary text values
-      rangeSquares.push(`<text class="rt-gossamer-range-value" x="${fmt(rangeMinX)}" y="${fmt(rangeMinY + 1)}" fill="${beatColor}">${range.min}</text>`);
-      rangeSquares.push(`<text class="rt-gossamer-range-value" x="${fmt(rangeMaxX)}" y="${fmt(rangeMaxY + 1)}" fill="${beatColor}">${range.max}</text>`);
+      rangeSquares.push(`<text class="rt-gossamer-range-value" data-beat="${escapeAttr(name)}" x="${fmt(rangeMinX)}" y="${fmt(rangeMinY + 1)}">${range.min}</text>`);
+      rangeSquares.push(`<text class="rt-gossamer-range-value" data-beat="${escapeAttr(name)}" x="${fmt(rangeMaxX)}" y="${fmt(rangeMaxY + 1)}">${range.max}</text>`);
     }
     
-    // Only render DOT and DEVIATION if score exists
+    // Only render SCORE TEXT and DEVIATION if score exists
     if (typeof score === 'number') {
       const r = mapScoreToRadius(score, innerRadius, outerRadius);
       const x = r * Math.cos(angle);
@@ -160,13 +160,8 @@ export function renderGossamerLayer(
       const encodedPath = path ? encodeURIComponent(path) : '';
       const data = `data-beat="${escapeAttr(name)}" data-score="${String(score)}"${encodedPath ? ` data-path="${escapeAttr(encodedPath)}"` : ''}${run?.meta?.label ? ` data-label="${escapeAttr(run.meta.label)}"` : ''}`;
       
-      const errorColor = getCSSVar('--rt-gossamer-error-color', '#ff4444');
-      const maxStageColor = getCSSVar('--rt-max-publish-stage-color', '#7a7a7a');
-      const dotRadius = getCSSVar('--rt-gossamer-dot-current', '4');
-      const stageColor = isMissingInSequence ? errorColor : maxStageColor;
-      
-      // Render dot
-      dots.push(`<circle class="rt-gossamer-dot${isMissingInSequence ? ' rt-gossamer-missing-data' : ''}" cx="${fmt(x)}" cy="${fmt(y)}" r="${dotRadius}" fill="${stageColor}" ${data}></circle>`);
+      // Render score text with dedicated class for interaction
+      scoreTexts.push(`<text class="rt-gossamer-score-text${isMissingInSequence ? ' rt-gossamer-missing-data' : ''}" x="${fmt(x)}" y="${fmt(y + 1)}" ${data}>${score}</text>`);
       
       // Range deviation segment if range exists
       if (beatData?.range) {
@@ -226,7 +221,7 @@ export function renderGossamerLayer(
   
   if (current.length > 1) segments.push(buildPath(current));
 
-  if (segments.length === 0 && dots.length === 0 && spokes.length === 0 && beatOutlines.length === 0) return '';
+  if (segments.length === 0 && scoreTexts.length === 0 && spokes.length === 0 && beatOutlines.length === 0) return '';
 
   // Optional min/max band fill (rendered FIRST - behind everything)
   let bandSvg = '';
@@ -301,17 +296,17 @@ export function renderGossamerLayer(
   // 1. Band (behind everything)
   // 2. Historical runs (oldest to newest)
   // 3. Main current line
-  // 4. Spokes (behind dots but in front of plots)
+  // 4. Spokes (behind score text but in front of plots)
   // 5. Beat outlines
   // 6. Historical dots (small, non-interactive)
   // 7. Range boundary markers (text with white stroke)
-  // 8. Current dots (on top, interactive, in front of range markers)
-  const dotsSvg = dots.join('');
+  // 8. Current score text (on top, interactive, in front of range markers)
+  const scoreTextsSvg = scoreTexts.join('');
   const spokesSvg = spokes.join('');
   const beatOutlinesSvg = beatOutlines.join('');
   const rangeMarkersSvg = rangeSquares.join('');
   
-  return `<g class="rt-gossamer-layer">${bandSvg}${overlaySvg}${mainPaths}${spokesSvg}${beatOutlinesSvg}${overlayDotsSvg}${rangeMarkersSvg}${dotsSvg}</g>`;
+  return `<g class="rt-gossamer-layer">${bandSvg}${overlaySvg}${mainPaths}${spokesSvg}${beatOutlinesSvg}${overlayDotsSvg}${rangeMarkersSvg}${scoreTextsSvg}</g>`;
 }
 
 /**

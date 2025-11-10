@@ -102,7 +102,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
 
     // 2. Gossamer Dot Hover: Show synopsis, sync plot slice+spoke+center dot
     const dotOver = (e: PointerEvent) => {
-        const dot = (e.target as Element).closest('.rt-gossamer-dot') as SVGCircleElement | null;
+        const dot = (e.target as Element).closest('.rt-gossamer-dot, .rt-gossamer-score-text');
         if (!dot) return;
         
         dot.classList.add('rt-hover');
@@ -156,9 +156,10 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
         // Remove hover from all historical dots
         svg.querySelectorAll('.rt-gossamer-dot-historical.rt-hover').forEach(hd => hd.classList.remove('rt-hover'));
         const toEl = e.relatedTarget as Element | null;
-        // If moving to a beat slice or another dot, keep highlights
+        // If moving to a beat slice, another dot, or score text, keep highlights
         if (toEl && (toEl.closest('.rt-scene-group[data-item-type="Beat"]') || 
-                    toEl.closest('.rt-gossamer-dot'))) return;
+                    toEl.closest('.rt-gossamer-dot') ||
+                    toEl.closest('.rt-gossamer-score-text'))) return;
 
         svg.classList.remove('scene-hover');
 
@@ -176,7 +177,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
         svg.querySelectorAll('.rt-gossamer-spoke-hover').forEach(el => {
             el.classList.remove('rt-gossamer-spoke-hover');
         });
-        svg.querySelectorAll('.rt-gossamer-dot.rt-hover').forEach(el => {
+        svg.querySelectorAll('.rt-gossamer-dot.rt-hover, .rt-gossamer-score-text.rt-hover').forEach(el => {
             el.classList.remove('rt-hover');
         });
         svg.querySelectorAll('.rt-gossamer-dot-center.rt-hover').forEach(el => {
@@ -205,7 +206,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     };
 
     const dotClick = async (e: MouseEvent) => {
-        const dot = (e.target as Element).closest('.rt-gossamer-dot');
+        const dot = (e.target as Element).closest('.rt-gossamer-dot, .rt-gossamer-score-text');
         if (!dot) return;
         
         e.stopPropagation();
@@ -224,7 +225,9 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     const backgroundClick = (e: MouseEvent) => {
         const target = e.target as Element;
         
-        if (target.closest('.rt-gossamer-dot') || target.closest('.rt-scene-group[data-item-type="Beat"]')) {
+        if (target.closest('.rt-gossamer-dot') || 
+            target.closest('.rt-gossamer-score-text') ||
+            target.closest('.rt-scene-group[data-item-type="Beat"]')) {
             return;
         }
         

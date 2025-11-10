@@ -2039,11 +2039,8 @@ export function createTimelineSVG(
             const isGossamerMode = views.some((leaf: { view: { currentMode?: string } }) => {
                 const view = leaf.view as { currentMode?: string };
                 const mode = view?.currentMode;
-                plugin.log(`[Gossamer Check] View mode: ${mode}`);
                 return mode === 'gossamer';
             });
-            
-            plugin.log(`[Gossamer Check] isGossamerMode: ${isGossamerMode}, views checked: ${views.length}`);
 
             if (isGossamerMode) {
                 // Map 0–100 to a band that aligns with darker grid lines: use innerRadius for 0 and actualOuterRadius for 100

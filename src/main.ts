@@ -945,7 +945,6 @@ export default class RadialTimelinePlugin extends Plugin {
         this.registerView(
             TIMELINE_VIEW_TYPE,
             (leaf: WorkspaceLeaf) => {
-                this.log('Creating new RadialTimelineView');
                 return new RadialTimelineView(leaf, this);
             }
         );
@@ -1525,8 +1524,6 @@ export default class RadialTimelinePlugin extends Plugin {
          // Register file open/close events (consolidated from duplicate listener above)
         this.registerEvent(this.app.workspace.on('file-open', (file) => {
             if (file) {
-                this.log('File opened: ' + file.path);
-                
                 // Clear highlight from previously opened file
                 if (this._lastHighlightedFile && this._lastHighlightedFile !== file.path) {
                     this.highlightSceneInTimeline(this._lastHighlightedFile, false);
@@ -1645,8 +1642,6 @@ export default class RadialTimelinePlugin extends Plugin {
         const views = this.getTimelineViews();
         if (views.length === 0) return;
 
-        this.log(`${isHighlighting ? 'Highlighting' : 'Unhighlighting'} scene in timeline for file: ${filePath}`);
-
         for (const view of views) {
             try {
                 const container = view.contentEl.querySelector('.radial-timeline-container');
@@ -1719,7 +1714,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 }
 
                 if (!foundScene) {
-                    this.log(`No scene found in timeline matching path: ${filePath}`);
+                    // Scene not found in timeline
                 }
             } catch (error) {
                 this.log(`Error highlighting scene in timeline: ${error}`);
@@ -2127,8 +2122,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         if (hasChanged) {
             // Debounced refresh for all open views
             this.refreshTimelineIfNeeded(null);
-        } else {
-            this.log('No changes in open files detected');
         }
     }
 
@@ -2675,7 +2668,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
     // Method to clear the scene data cache
     public clearSceneDataCache(): void {
         this.sceneDataCache.clear();
-        this.log('[Cache] Scene data cache cleared');
     }
 } // End of RadialTimelinePlugin class
 

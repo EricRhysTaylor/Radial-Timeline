@@ -21,7 +21,6 @@ export class FileTrackingService {
             for (const p of openFilePaths) { if (!this.plugin.openScenePaths.has(p)) { changed = true; break; } }
         }
         if (!changed) {
-            this.plugin.log('No changes in open files detected');
             return;
         }
 
