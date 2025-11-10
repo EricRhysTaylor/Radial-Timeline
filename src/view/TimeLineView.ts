@@ -121,8 +121,8 @@ export class RadialTimelineView extends ItemView {
     }
     
     private log<T>(message: string, data?: T) {
-        // Forward to plugin logger; it is dev-guarded
-        this.plugin.log(message, data);
+        // Simple logging - outputs directly to console
+        console.log('[Timeline]', message, data !== undefined ? data : '');
     }
     
     getViewType(): string {

@@ -1658,7 +1658,12 @@ export default class RadialTimelinePlugin extends Plugin {
                 if (isHighlighting) {
                     const allElements = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
                     allElements.forEach(element => {
-                        element.classList.remove('rt-selected', 'rt-non-selected');
+                        element.classList.remove('rt-selected');
+                        // Don't remove rt-non-selected in gossamer mode - it's used for muting non-Beat scenes
+                        const currentMode = svgElement.getAttribute('data-mode');
+                        if (currentMode !== 'gossamer') {
+                            element.classList.remove('rt-non-selected');
+                        }
                     });
                 }
 
@@ -2013,13 +2018,11 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
 
     // Remove redundant parseSceneTitle method - use the one from utils/text.ts instead
 
-    // Overloads to satisfy facades expecting (message, data?) while allowing variadic usage
+    // Simple logging - outputs directly to console
     public log<T>(message: string, data?: T): void;
     public log(...args: unknown[]): void;
     public log(...args: unknown[]) {
-        // No-op to comply with Obsidian plugin guidelines and project policy
-        // Intentionally avoiding console.* calls in plugin code
-        void args; // prevent unused variable in some TS configs
+        console.log('[RadialTimeline]', ...args);
     }
 
     // Method to refresh the timeline if the active view exists (with debouncing)

@@ -115,7 +115,10 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     };
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
-        if (view.currentMode === 'gossamer') return;
+        // Check SVG data-mode attribute for definitive mode state
+        const svgMode = svg.getAttribute('data-mode');
+        if (svgMode === 'gossamer') return;
+        
         const g = (e.target as Element).closest('.rt-scene-group');
         if (!g || g === currentGroup) return;
         clearSelection();
@@ -130,7 +133,10 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
-        if (view.currentMode === 'gossamer') return;
+        // Check SVG data-mode attribute for definitive mode state  
+        const svgMode = svg.getAttribute('data-mode');
+        if (svgMode === 'gossamer') return;
+        
         const toEl = e.relatedTarget as Element | null;
         if (currentGroup && toEl && currentGroup.contains(toEl)) return;
         svg.classList.remove('scene-hover');
