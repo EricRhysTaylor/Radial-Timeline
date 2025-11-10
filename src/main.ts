@@ -425,6 +425,9 @@ export default class RadialTimelinePlugin extends Plugin {
     searchTerm: string = '';
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
+    private readonly eventBus = new EventTarget();
+    private sceneDataCache = new Map<string, { scenes: Scene[]; timestamp: number }>();
+    private metadataCacheListener: (() => void) | null = null;
     
     // Services
     private timelineService!: TimelineService;
@@ -2660,6 +2663,16 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         // Clean up any other resources
         this.hideBeatsStatusBar();
         // Note: Do NOT detach leaves here - Obsidian handles this automatically
+    }
+
+    public dispatch<T>(type: string, detail: T): void {
+        this.eventBus.dispatchEvent(new CustomEvent(type, { detail }));
+    }
+
+    // Method to clear the scene data cache
+    public clearSceneDataCache(): void {
+        this.sceneDataCache.clear();
+        this.log('[Cache] Scene data cache cleared');
     }
 } // End of RadialTimelinePlugin class
 

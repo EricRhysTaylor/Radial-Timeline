@@ -82,14 +82,14 @@ export function renderGossamerLayer(
     return m;
   })();
 
-  // Build contiguous segments from present beats with numeric scores
+  // Build contiguous segments from present beats with numeric scores for bezier lines
   const present = extractPresentBeatScores(run);
-  if (!present.length) return '';
 
   const { innerRadius, outerRadius } = polar;
 
-  // Create one path per contiguous present segment in dynamic beat order (use exact beat names)
+  // Build score map for beats that have scores
   const nameToScore = new Map(present.map(p => [p.beat, p.score]));
+  
   const segments: string[] = [];
   let current: { x: number; y: number }[] = [];
   const dots: string[] = [];
@@ -98,82 +98,85 @@ export function renderGossamerLayer(
   const rangeSquares: string[] = []; // Range boundary squares - rendered last (on top)
 
   beatOrder.forEach(name => {
-    const score = nameToScore.get(name);
     const angle = localAngles.get(name);
+    if (typeof angle !== 'number') return; // Need angle to render anything
     
-    if (typeof score === 'number' && typeof angle === 'number') {
+    // Get the specific color for this beat, with a fallback
+    const beatColor = publishStageColorByBeat?.get(name) || mostAdvancedColor;
+    
+    const score = nameToScore.get(name);
+    const beatData = run.beats.find(b => b.beat === name);
+    const beatStatus = beatStatusMap.get(name);
+    
+    // ALWAYS render spoke and outline if we have the beat and angle
+    const spokeEnd = spokeEndRadius ?? outerRadius;
+    const sx1 = innerRadius * Math.cos(angle);
+    const sy1 = innerRadius * Math.sin(angle);
+    const sx2 = spokeEnd * Math.cos(angle);
+    const sy2 = spokeEnd * Math.sin(angle);
+    
+    // Base spoke: render with beat-specific or most advanced color
+    spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}" stroke="${beatColor}"/>`);
+    
+    // ALWAYS render beat slice outline if we have slice info
+    if (beatSlicesByName) {
+      const sliceInfo = beatSlicesByName.get(name);
+      if (sliceInfo) {
+        const arcPath = buildCellArcPath(sliceInfo.innerR, sliceInfo.outerR, sliceInfo.startAngle, sliceInfo.endAngle);
+        beatOutlines.push(`<path class="rt-gossamer-beat-outline" d="${arcPath}" stroke="${beatColor}" data-beat="${escapeAttr(name)}"/>`);
+      }
+    }
+    
+    // ALWAYS render ideal range if Range field exists
+    if (beatData?.range) {
+      const range = beatData.range;
+      const minRadius = mapScoreToRadius(range.min, innerRadius, outerRadius);
+      const maxRadius = mapScoreToRadius(range.max, innerRadius, outerRadius);
+      
+      const rangeMinX = minRadius * Math.cos(angle);
+      const rangeMinY = minRadius * Math.sin(angle);
+      const rangeMaxX = maxRadius * Math.cos(angle);
+      const rangeMaxY = maxRadius * Math.sin(angle);
+      
+      // Draw ideal range segment (between min and max)
+      const idealRangeWidth = getCSSVar('--rt-gossamer-ideal-range-width', '6px');
+      spokes.push(`<line class="rt-gossamer-ideal-range" data-beat="${escapeAttr(name)}" x1="${fmt(rangeMinX)}" y1="${fmt(rangeMinY)}" x2="${fmt(rangeMaxX)}" y2="${fmt(rangeMaxY)}" stroke="${beatColor}" stroke-width="${idealRangeWidth}"/>`);
+      
+      // Range boundary text values
+      rangeSquares.push(`<text class="rt-gossamer-range-value" x="${fmt(rangeMinX)}" y="${fmt(rangeMinY + 1)}" fill="${beatColor}">${range.min}</text>`);
+      rangeSquares.push(`<text class="rt-gossamer-range-value" x="${fmt(rangeMaxX)}" y="${fmt(rangeMaxY + 1)}" fill="${beatColor}">${range.max}</text>`);
+    }
+    
+    // Only render DOT and DEVIATION if score exists
+    if (typeof score === 'number') {
       const r = mapScoreToRadius(score, innerRadius, outerRadius);
       const x = r * Math.cos(angle);
       const y = r * Math.sin(angle);
+      
       current.push({ x, y });
+      
+      const isMissingInSequence = beatStatus === 'outlineOnly';
       const path = beatPathByName?.get(name) || '';
-      // Use URL-encoded path to match scene groups' data-path attribute
       const encodedPath = path ? encodeURIComponent(path) : '';
       const data = `data-beat="${escapeAttr(name)}" data-score="${String(score)}"${encodedPath ? ` data-path="${escapeAttr(encodedPath)}"` : ''}${run?.meta?.label ? ` data-label="${escapeAttr(run.meta.label)}"` : ''}`;
       
-      // Check if this beat is missing data (outlineOnly status)
-      const beatStatus = beatStatusMap.get(name);
-      const isMissingData = beatStatus === 'outlineOnly';
-      
-      // Get publish stage color for this beat, or error color if missing data
       const errorColor = getCSSVar('--rt-gossamer-error-color', '#ff4444');
       const maxStageColor = getCSSVar('--rt-max-publish-stage-color', '#7a7a7a');
       const dotRadius = getCSSVar('--rt-gossamer-dot-current', '4');
-      const stageColor = isMissingData ? errorColor : maxStageColor;
+      const stageColor = isMissingInSequence ? errorColor : maxStageColor;
       
-      // Gossamer1 dots: use max publish stage color (hover CSS will add stroke effect)
-      dots.push(`<circle class="rt-gossamer-dot${isMissingData ? ' rt-gossamer-missing-data' : ''}" cx="${fmt(x)}" cy="${fmt(y)}" r="${dotRadius}" fill="${stageColor}" ${data}></circle>`);
+      // Render dot
+      dots.push(`<circle class="rt-gossamer-dot${isMissingInSequence ? ' rt-gossamer-missing-data' : ''}" cx="${fmt(x)}" cy="${fmt(y)}" r="${dotRadius}" fill="${stageColor}" ${data}></circle>`);
       
-      // Spoke rendering with range deviation segments
-      const spokeEnd = spokeEndRadius ?? outerRadius;
-      const sx1 = innerRadius * Math.cos(angle);
-      const sy1 = innerRadius * Math.sin(angle);
-      const sx2 = spokeEnd * Math.cos(angle);
-      const sy2 = spokeEnd * Math.sin(angle);
-      
-      // Base spoke: render thin spoke from inner to outer (rendered FIRST, behind range segments)
-      spokes.push(`<line class="rt-gossamer-spoke" data-beat="${escapeAttr(name)}" x1="${fmt(sx1)}" y1="${fmt(sy1)}" x2="${fmt(sx2)}" y2="${fmt(sy2)}"/>`);
-      
-      // Ideal range markers: show range boundaries with tick marks and numbers
-      // Render AFTER base spoke but BEFORE deviation segments
-      const beatData = run.beats.find(b => b.beat === name);
-      if (beatData?.range && typeof score === 'number') {
-        const range = beatData.range;
-        
-        // Calculate radius positions for min and max range boundaries
-        const minRadius = mapScoreToRadius(range.min, innerRadius, outerRadius);
-        const maxRadius = mapScoreToRadius(range.max, innerRadius, outerRadius);
-        
-        // Draw ideal range segment (between min and max)
-        const rangeMinX = minRadius * Math.cos(angle);
-        const rangeMinY = minRadius * Math.sin(angle);
-        const rangeMaxX = maxRadius * Math.cos(angle);
-        const rangeMaxY = maxRadius * Math.sin(angle);
-        
-        spokes.push(`<line class="rt-gossamer-ideal-range" data-beat="${escapeAttr(name)}" x1="${fmt(rangeMinX)}" y1="${fmt(rangeMinY)}" x2="${fmt(rangeMaxX)}" y2="${fmt(rangeMaxY)}" stroke="${mostAdvancedColor}"/>`);
-        
-        // Store range boundary text values for rendering last (on top of everything)
-        // Text positioned at exact range boundary points with white stroke for visibility
-        
-        // Min boundary value (centered at exact min boundary point)
-        rangeSquares.push(`<text class="rt-gossamer-range-value" x="${fmt(rangeMinX)}" y="${fmt(rangeMinY + 1)}" fill="${mostAdvancedColor}">${range.min}</text>`);
-        
-        // Max boundary value (centered at exact max boundary point)
-        rangeSquares.push(`<text class="rt-gossamer-range-value" x="${fmt(rangeMaxX)}" y="${fmt(rangeMaxY + 1)}" fill="${mostAdvancedColor}">${range.max}</text>`);
-      }
-      
-      // Range deviation segment: thick colored segment between score and range boundary
-      // Render AFTER ideal range markers so it appears on top
-      if (beatData?.range && typeof score === 'number') {
+      // Range deviation segment if range exists
+      if (beatData?.range) {
         const range = beatData.range;
         const scoreRadius = mapScoreToRadius(score, innerRadius, outerRadius);
         
-        // Determine if score is in-range or out-of-range
         const isInRange = score >= range.min && score <= range.max;
         const isBelowRange = score < range.min;
         const isAboveRange = score > range.max;
         
-        // Calculate deviation segment endpoints
         let segmentStart: number;
         let segmentEnd: number;
         
@@ -218,26 +221,12 @@ export function renderGossamerLayer(
         
         spokes.push(`<line class="${segmentClass}" data-beat="${escapeAttr(name)}" x1="${fmt(segX1)}" y1="${fmt(segY1)}" x2="${fmt(segX2)}" y2="${fmt(segY2)}"/>`);
       }
-      
-      // Build beat slice outline if we have slice info
-      if (beatSlicesByName) {
-        const sliceInfo = beatSlicesByName.get(name);
-        if (sliceInfo) {
-          const arcPath = buildCellArcPath(sliceInfo.innerR, sliceInfo.outerR, sliceInfo.startAngle, sliceInfo.endAngle);
-          beatOutlines.push(`<path class="rt-gossamer-beat-outline" d="${arcPath}" data-beat="${escapeAttr(name)}"/>`); // Use CSS variable for beat outline color
-        }
-      }
-    } else {
-      // No angle (shouldn't happen if beat is in beatOrder, but handle gracefully)
-      if (current.length > 1) {
-        segments.push(buildPath(current));
-      }
-      current = [];
     }
   });
+  
   if (current.length > 1) segments.push(buildPath(current));
 
-  if (segments.length === 0 && dots.length === 0) return '';
+  if (segments.length === 0 && dots.length === 0 && spokes.length === 0 && beatOutlines.length === 0) return '';
 
   // Optional min/max band fill (rendered FIRST - behind everything)
   let bandSvg = '';

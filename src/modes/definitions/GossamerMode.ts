@@ -53,6 +53,11 @@ export const GOSSAMER_MODE: ModeDefinition = {
     onEnter: async (view) => {
         // Import and run the Gossamer initialization
         const plugin = view.plugin;
+
+        // Force a data refresh by clearing the cache first
+        if (typeof (plugin as any).clearSceneDataCache === 'function') {
+            (plugin as any).clearSceneDataCache();
+        }
         
         // Get current scenes
         const scenes = await plugin.getSceneData();
@@ -77,10 +82,9 @@ export const GOSSAMER_MODE: ModeDefinition = {
             throw new Error(`Cannot enter Gossamer mode: No beats found for system: ${selectedBeatModel}`);
         }
         
-        // Check if ALL beat notes are missing Gossamer1 scores
-        const hasAnyScores = beatNotes.some(s => typeof s.Gossamer1 === 'number');
-        if (!hasAnyScores) {
-            new Notice('Warning: No Gossamer1 scores found in story beat notes. Defaulting all beats to 0. Add Gossamer1: <score> to your beat note frontmatter.');
+        // Show info message if no scores exist (graceful, not a warning)
+        if (!allRuns.hasAnyScores) {
+            new Notice('No Gossamer scores found. Showing ideal ranges and spokes. Add scores using "Gossamer enter momentum scores" command.');
         }
         
         // Store runs on plugin

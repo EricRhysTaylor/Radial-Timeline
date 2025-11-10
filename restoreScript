@@ -1,0 +1,35 @@
+cd "/Users/ericrhystaylor/Documents/Code Projects/radial-timeline"
+
+node - <<'NODE'
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+
+const bundlePath = path.resolve('vault-restore-point/main.js'); // ← update if needed
+const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+const outDir = path.resolve('recovery', `from-build-${stamp}`);
+await fs.mkdir(outDir, { recursive: true });
+
+const source = await fs.readFile(bundlePath, 'utf8');
+const headerRegex = /^\/\/ src\/([^\n]+)\n/gm;
+const modules = [];
+
+let match;
+while ((match = headerRegex.exec(source))) {
+  modules.push({ file: match[1], headerStart: match.index, bodyStart: headerRegex.lastIndex });
+}
+
+for (let i = 0; i < modules.length; i++) {
+  const { file, bodyStart } = modules[i];
+  const nextHeader = i + 1 < modules.length ? modules[i + 1].headerStart : source.length;
+  const body = source.slice(bodyStart, nextHeader).trim();
+  if (!body) continue;
+
+  const target = path.join(outDir, file);
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  const banner = `// Recovered from ${bundlePath} on ${new Date().toISOString()}\n\n`;
+  await fs.writeFile(target, banner + body, 'utf8');
+  console.log(`Recovered ${file}`);
+}
+
+console.log(`\nDone. Files written to ${outDir}`);
+NODE

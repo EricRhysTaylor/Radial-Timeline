@@ -25,7 +25,6 @@ import {
 } from './SceneTitleExpansion';
 
 export class SceneInteractionManager {
-    private view: RadialTimelineView;
     private svg: SVGSVGElement;
     private enabled: boolean = true;
     
@@ -42,14 +41,43 @@ export class SceneInteractionManager {
     // Text measurement element (reused to avoid constant creation/destruction)
     private measurementText: SVGTextElement;
     
+    // Cleanup registration (for Obsidian's Component system)
+    private cleanupCallbacks: (() => void)[] = [];
+    
     constructor(view: RadialTimelineView, svg: SVGSVGElement) {
-        this.view = view;
         this.svg = svg;
         
         // Create reusable text measurement element
         this.measurementText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         this.measurementText.classList.add('rt-measure-text');
         svg.appendChild(this.measurementText);
+        
+        // Register cleanup for animation frames
+        if (view.register) {
+            view.register(() => {
+                if (this.rafId !== null) {
+                    cancelAnimationFrame(this.rafId);
+                    this.rafId = null;
+                }
+            });
+        }
+    }
+    
+    /**
+     * Get the view (uses getLeavesOfType to avoid persistent reference)
+     */
+    private getView(): RadialTimelineView | null {
+        // Access app through the SVG's owner document
+        const doc = this.svg.ownerDocument;
+        if (!doc || !doc.defaultView) return null;
+        
+        // SAFE: app is added to window by Obsidian
+        const win = doc.defaultView as any;
+        if (!win.app) return null;
+        
+        const leaves = win.app.workspace.getLeavesOfType('radial-timeline');
+        if (!leaves || leaves.length === 0) return null;
+        return leaves[0].view as RadialTimelineView;
     }
     
     /**
@@ -63,6 +91,9 @@ export class SceneInteractionManager {
      * Handle scene hover
      */
     onSceneHover(group: Element, sceneId: string, mouseEvent?: MouseEvent): void {
+        const view = this.getView();
+        if (!view) return;
+        
         this.currentGroup = group;
         this.currentSceneId = sceneId;
         this.currentSynopsis = this.findSynopsisForScene(sceneId);
@@ -74,7 +105,7 @@ export class SceneInteractionManager {
         if (this.currentSynopsis) {
             // If mouse event provided, position immediately to prevent flicker
             if (mouseEvent) {
-                this.view.plugin.updateSynopsisPosition(
+                view.plugin.updateSynopsisPosition(
                     this.currentSynopsis,
                     mouseEvent,
                     this.svg,
@@ -85,7 +116,7 @@ export class SceneInteractionManager {
         }
         
         // Trigger title expansion if enabled
-        if (this.enabled && this.view.plugin.settings.enableSceneTitleAutoExpand) {
+        if (this.enabled && view.plugin.settings.enableSceneTitleAutoExpand) {
             const sceneTitle = group.querySelector('.rt-scene-title');
             if (sceneTitle) {
                 this.redistributeActScenes(group);
@@ -120,10 +151,11 @@ export class SceneInteractionManager {
         this.rafId = window.requestAnimationFrame(() => {
             this.rafId = null;
             
-            if (!this.currentSynopsis || !this.currentSceneId) return;
+            const view = this.getView();
+            if (!view || !this.currentSynopsis || !this.currentSceneId) return;
             if (!this.currentSynopsis.classList.contains('rt-visible')) return;
             
-            this.view.plugin.updateSynopsisPosition(
+            view.plugin.updateSynopsisPosition(
                 this.currentSynopsis,
                 e,
                 this.svg,
@@ -162,7 +194,8 @@ export class SceneInteractionManager {
         all.forEach(el => el.classList.remove('rt-selected'));
         
         // Only clear muted state when NOT in Gossamer mode
-        if (this.view.currentMode !== 'gossamer') {
+        const view = this.getView();
+        if (view && view.currentMode !== 'gossamer') {
             all.forEach(el => el.classList.remove('rt-non-selected'));
         }
         
@@ -223,6 +256,9 @@ export class SceneInteractionManager {
     private storeOriginalAngles(): void {
         if (this.originalAngles.size > 0) return; // Already stored
         
+        const view = this.getView();
+        if (!view) return;
+        
         this.svg.querySelectorAll('.rt-scene-group').forEach((group: Element) => {
             const start = Number(group.getAttribute('data-start-angle')) || 0;
             const end = Number(group.getAttribute('data-end-angle')) || 0;
@@ -232,7 +268,7 @@ export class SceneInteractionManager {
             const scenePathEl = group.querySelector('.rt-scene-path') as SVGPathElement;
             if (scenePathEl) {
                 const sceneId = scenePathEl.id;
-                const numberSquareGroup = this.view.getSquareGroupForSceneId(this.svg, sceneId);
+                const numberSquareGroup = view.getSquareGroupForSceneId(this.svg, sceneId);
                 
                 if (numberSquareGroup) {
                     const originalTransform = numberSquareGroup.getAttribute('transform') || '';
@@ -271,12 +307,15 @@ export class SceneInteractionManager {
                 if (originalTransform !== undefined) {
                     const match = originalTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
                     if (match) {
-                        this.view.setNumberSquareGroupPosition(
-                            this.svg,
-                            sceneId,
-                            parseFloat(match[1]),
-                            parseFloat(match[2])
-                        );
+                        const view = this.getView();
+                        if (view) {
+                            view.setNumberSquareGroupPosition(
+                                this.svg,
+                                sceneId,
+                                parseFloat(match[1]),
+                                parseFloat(match[2])
+                            );
+                        }
                     }
                 }
             }
@@ -400,7 +439,10 @@ export class SceneInteractionManager {
                 const squareX = squareRadius * Math.cos(result.newStartAngle);
                 const squareY = squareRadius * Math.sin(result.newStartAngle);
                 
-                this.view.setNumberSquareGroupPosition(this.svg, sceneId, squareX, squareY);
+                const view = this.getView();
+                if (view) {
+                    view.setNumberSquareGroupPosition(this.svg, sceneId, squareX, squareY);
+                }
             }
         });
     }

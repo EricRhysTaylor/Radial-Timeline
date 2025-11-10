@@ -226,12 +226,14 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
   current: GossamerRun;
   historical: Array<{ label: string; points: { beat: string; score: number }[]; color: string }>;
   minMax: { min: { beat: string; score: number }[]; max: { beat: string; score: number }[] } | null;
+  hasAnyScores: boolean;
 } {
   if (!scenes || scenes.length === 0) {
     return {
       current: buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true),
       historical: [],
-      minMax: null
+      minMax: null,
+      hasAnyScores: false
     };
   }
 
@@ -308,7 +310,11 @@ export function buildAllGossamerRuns(scenes: { itemType?: string; [key: string]:
     }
   }
   
-  return { current, historical, minMax };
+  const hasAnyCurrentScores = current.beats.some(b => b.status === 'present' && typeof b.score === 'number');
+  const hasHistoricalScores = historical.some(run => run.points.some(point => typeof point.score === 'number' && !Number.isNaN(point.score)));
+  const hasAnyScores = hasAnyCurrentScores || hasHistoricalScores;
+  
+  return { current, historical, minMax, hasAnyScores };
 }
 
 export function zeroOffsetRun(run: GossamerRun): GossamerRun {
@@ -432,4 +438,48 @@ export function shiftGossamerHistory(frontmatter: Record<string, any>): Record<s
   return updated;
 }
 
+export function appendGossamerScore(
+  frontmatter: Record<string, any>,
+  maxHistory: number = 30
+): { nextIndex: number; updated: Record<string, any> } {
+  const updated = { ...frontmatter };
+  const hasValue = (value: unknown): boolean => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'number') return !Number.isNaN(value);
+    if (typeof value === 'string') return value.trim().length > 0;
+    return false;
+  };
+
+  for (let i = 1; i <= maxHistory; i++) {
+    const key = `Gossamer${i}`;
+    if (!hasValue(updated[key])) {
+      return { nextIndex: i, updated };
+    }
+  }
+
+  // All slots are full – drop the oldest (index 1) and shift everything up.
+  for (let i = 2; i <= maxHistory; i++) {
+    const currentKey = `Gossamer${i}`;
+    const previousKey = `Gossamer${i - 1}`;
+    const currentJustKey = `Gossamer${i} Justification`;
+    const previousJustKey = `Gossamer${i - 1} Justification`;
+
+    if (hasValue(updated[currentKey])) {
+      updated[previousKey] = updated[currentKey];
+    } else {
+      delete updated[previousKey];
+    }
+
+    if (hasValue(updated[currentJustKey])) {
+      updated[previousJustKey] = updated[currentJustKey];
+    } else {
+      delete updated[previousJustKey];
+    }
+  }
+
+  delete updated[`Gossamer${maxHistory}`];
+  delete updated[`Gossamer${maxHistory} Justification`];
+
+  return { nextIndex: maxHistory, updated };
+}
 

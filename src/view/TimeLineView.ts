@@ -300,8 +300,22 @@ export class RadialTimelineView extends ItemView {
         
         // Get the scene data using the plugin's method
         this.plugin.getSceneData()
-            .then(sceneData => {
+            .then(async (sceneData) => {
                 const dataLoadTime = performance.now() - perfStart;
+
+                // If in Gossamer mode, the change might be a score update. We must
+                // rebuild the run data here to ensure the renderer gets the latest scores.
+                if (this._currentMode === 'gossamer') {
+                    const { buildAllGossamerRuns } = await import('../utils/gossamer');
+                    const selectedBeatModel = this.plugin.settings.beatSystem?.trim() || undefined;
+                    const allRuns = buildAllGossamerRuns(sceneData as any, selectedBeatModel);
+        
+                    // Update the plugin's stored run data so the renderer can access it
+                    (this.plugin as any)._gossamerLastRun = allRuns.current;
+                    (this.plugin as any)._gossamerHistoricalRuns = allRuns.historical;
+                    (this.plugin as any)._gossamerMinMax = allRuns.minMax;
+                    this.log('[Gossamer] Rebuilt gossamer run data on refresh.');
+                }
                 
                 this.sceneData = sceneData;
                 // Expose last scene data on plugin for selective services that need it
@@ -353,11 +367,6 @@ export class RadialTimelineView extends ItemView {
                     // Handle time changes (year progress ring) using selective update
                     if (changeResult.changeTypes.has(ChangeType.TIME)) {
                         updated = this.rendererService.updateProgressAndTicks(this) || updated;
-                    }
-                    
-                    // Handle dominant subplot changes (scene colors only)
-                    if (changeResult.changeTypes.has(ChangeType.DOMINANT_SUBPLOT)) {
-                        updated = this.rendererService.updateSceneColorsDOM(container, this.plugin, sceneData) || updated;
                     }
                     
                     // Handle synopsis text changes

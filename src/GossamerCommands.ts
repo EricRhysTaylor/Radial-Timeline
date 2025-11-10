@@ -2,7 +2,7 @@
  * Gossamer Commands and State - Manual Score Entry
  */
 import type RadialTimelinePlugin from './main';
-import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, shiftGossamerHistory, extractBeatOrder } from './utils/gossamer';
+import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, appendGossamerScore, extractBeatOrder } from './utils/gossamer';
 import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
 import { GossamerProcessingModal, type ManuscriptInfo, type AnalysisOptions } from './modals/GossamerProcessingModal';
@@ -26,7 +26,7 @@ function findBeatNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile
 }
 
 /**
- * Save Gossamer scores to Beat note frontmatter with history shifting
+ * Save Gossamer scores to Beat note frontmatter with appending (G1=oldest, newest=highest number)
  */
 async function saveGossamerScores(
   plugin: RadialTimelinePlugin,
@@ -45,12 +45,12 @@ async function saveGossamerScores(
       await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
         const fm = yaml as Record<string, any>;
         
-        // Shift history down (Gossamer1 → Gossamer2, etc.)
-        const shifted = shiftGossamerHistory(fm);
-        Object.assign(fm, shifted);
+        // Append new score to end (G1=oldest, newest=highest number)
+        const { nextIndex, updated } = appendGossamerScore(fm);
+        Object.assign(fm, updated);
         
-        // Set new score
-        fm.Gossamer1 = newScore;
+        // Set new score at next available index
+        fm[`Gossamer${nextIndex}`] = newScore;
         
         // Clean up old/deprecated fields
         delete fm.GossamerLocation;
@@ -221,10 +221,9 @@ export async function toggleGossamerMode(plugin: RadialTimelinePlugin): Promise<
       return;
     }
     
-    // Check if ALL beat notes are missing Gossamer1 scores
-      const hasAnyScores = beatNotes.some(s => typeof s.Gossamer1 === 'number');
-    if (!hasAnyScores) {
-      new Notice('Warning: No Gossamer1 scores found in story beat notes. Defaulting all beats to 0. Add Gossamer1: <score> to your beat note frontmatter.');
+    // Show info message if no scores exist (graceful, not a warning)
+    if (!allRuns.hasAnyScores) {
+      new Notice('No Gossamer scores found. Showing ideal ranges and spokes. Add scores using "Gossamer enter momentum scores" command.');
     }
     
     // Store all runs on plugin (for renderer)
@@ -429,24 +428,30 @@ export function resetGossamerModeState() {
 export function resetRotation(plugin: RadialTimelinePlugin) {
   const views = getAllViews(plugin);
   if (!Array.isArray(views)) return;
-  views.forEach(v => { if (hasKey(v, 'rotationState')) (v as { rotationState: boolean }).rotationState = false; });
+  views.forEach((view) => {
+    if (hasKey(view, 'rotationState')) {
+      (view as { rotationState: boolean }).rotationState = false;
+    }
+  });
 }
 
 // --- Safe access helpers ---
 function getAllViews(plugin: RadialTimelinePlugin): unknown[] | null {
-  const p = plugin as unknown as { getTimelineViews?: () => unknown[] };
-  if (typeof p.getTimelineViews === 'function') return p.getTimelineViews();
-  return null;
+    const timelineService = (plugin as any).timelineService;
+    if (timelineService && typeof timelineService.getTimelineViews === 'function') {
+        return timelineService.getTimelineViews();
+    }
+    return null;
 }
 
 function getFirstView(plugin: RadialTimelinePlugin): unknown | null {
-  const p = plugin as unknown as { getTimelineViews?: () => unknown[]; getFirstTimelineView?: () => unknown | null };
-  if (typeof p.getTimelineViews === 'function') {
-    const list = p.getTimelineViews();
-    if (Array.isArray(list) && list.length > 0) return list[0];
-  }
-  if (typeof p.getFirstTimelineView === 'function') return p.getFirstTimelineView();
-  return null;
+    const timelineService = (plugin as any).timelineService;
+    if (timelineService && typeof timelineService.getFirstTimelineView === 'function') {
+        return timelineService.getFirstTimelineView();
+    }
+    // Fallback for older versions or if the method doesn't exist
+    const views = getAllViews(plugin);
+    return views && views.length > 0 ? views[0] : null;
 }
 
 function hasKey(obj: unknown, key: string): obj is Record<string, unknown> {
@@ -682,13 +687,13 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       await plugin.app.fileManager.processFrontMatter(file, (yaml) => {
         const fm = yaml as Record<string, any>;
         
-        // Shift Gossamer history down (Gossamer1 → Gossamer2, etc.)
-        const shifted = shiftGossamerHistory(fm);
-        Object.assign(fm, shifted);
+        // Append new score to end (G1=oldest, newest=highest number)
+        const { nextIndex, updated } = appendGossamerScore(fm);
+        Object.assign(fm, updated);
         
-        // Set new score and justification
-        fm.Gossamer1 = beat.momentumScore;
-        fm['Gossamer1 Justification'] = beat.justification || '';
+        // Set new score and justification at next available index
+        fm[`Gossamer${nextIndex}`] = beat.momentumScore;
+        fm[`Gossamer${nextIndex} Justification`] = beat.justification || '';
         
         // Add timestamp and model info
         const now = new Date();
@@ -1084,7 +1089,6 @@ async function createGossamerProcessingLog(
 
   await plugin.app.vault.create(logPath, logLines.join('\n'));
 }
-
 
 
 
