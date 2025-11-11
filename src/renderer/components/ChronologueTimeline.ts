@@ -6,7 +6,7 @@
 
 import { formatNumber } from '../../utils/svg';
 import { TimelineItem } from '../../main';
-import { parseWhenField, calculateTimeSpan, parseDuration, detectDiscontinuities, detectSceneOverlaps, prepareScenesForDiscontinuityDetection } from '../../utils/date';
+import { parseWhenField, calculateTimeSpan, parseDuration, detectDiscontinuities, detectSceneOverlaps, prepareScenesForDiscontinuityDetection, calculateAutoDiscontinuityThreshold } from '../../utils/date';
 
 export interface ChronologueSceneEntry {
     scene: TimelineItem;
@@ -328,27 +328,33 @@ export function renderChronologicalBackboneArc(
     const sceneEntries = precomputedEntries ?? collectChronologueSceneEntries(scenes);
     if (sceneEntries.length === 0 || !scenePositions) return '';
 
-    // Use single source of truth helper to prepare scenes for discontinuity detection
-    // This ensures the calculation matches what's shown in the settings panel
+    // USE THE SAME HELPER AS SETTINGS - SINGLE SOURCE OF TRUTH
     const preparedScenes = prepareScenesForDiscontinuityDetection(scenes);
     
     if (preparedScenes.length < 3) return '';
     
-    // Detect discontinuities using the prepared (filtered, deduplicated, sorted) scenes
-    const discontinuityIndices = detectDiscontinuities(
-        preparedScenes,
-        discontinuityThreshold,
-        customThresholdMs
-    );
+    // Calculate what the auto threshold would be
+    const autoThreshold = calculateAutoDiscontinuityThreshold(scenes);
     
-    if (discontinuityIndices.length === 0) return '';
+    // Use custom threshold if provided, otherwise use the calculated auto threshold
+    const effectiveThreshold = customThresholdMs ?? autoThreshold;
     
-    // Build lookup from date to scene entry for positioning
-    // We need to map the discontinuity indices (from prepared scenes) back to scene entries
-    const dateToSceneEntry = new Map<number, ChronologueSceneEntry>();
+    if (!effectiveThreshold || effectiveThreshold <= 0) {
+        return '';
+    }
+    
+    // Detect discontinuities using the effective threshold
+    const discontinuityIndices = detectDiscontinuities(preparedScenes, effectiveThreshold);
+    
+    if (discontinuityIndices.length === 0) {
+        return '';
+    }
+    
+    // Build a map from timestamp to sceneEntry for positioning
+    const timestampToEntry = new Map<number, ChronologueSceneEntry>();
     sceneEntries.forEach(entry => {
         if (entry.scene.itemType === 'Scene') {
-            dateToSceneEntry.set(entry.date.getTime(), entry);
+            timestampToEntry.set(entry.date.getTime(), entry);
         }
     });
     
@@ -361,20 +367,20 @@ export function renderChronologicalBackboneArc(
     discontinuityIndices.forEach(sceneIndex => {
         if (sceneIndex >= preparedScenes.length) return;
         
-        const currDate = preparedScenes[sceneIndex].when;
-        const nextDate = sceneIndex < preparedScenes.length - 1 ? preparedScenes[sceneIndex + 1].when : null;
+        const currScene = preparedScenes[sceneIndex];
+        const nextScene = sceneIndex < preparedScenes.length - 1 ? preparedScenes[sceneIndex + 1] : null;
         
         // Check if adjacent scenes have very close timestamps
         const TIME_TOLERANCE_MS = 60000; // 1 minute
-        const hasAdjacentSameTime = nextDate && 
-            Math.abs(currDate.getTime() - nextDate.getTime()) < TIME_TOLERANCE_MS;
+        const hasAdjacentSameTime = nextScene && 
+            Math.abs(currScene.when.getTime() - nextScene.when.getTime()) < TIME_TOLERANCE_MS;
         
         if (hasAdjacentSameTime) {
             return;
         }
         
-        // Find the scene entry for this date
-        const sceneEntry = dateToSceneEntry.get(currDate.getTime());
+        // Find the scene entry for positioning
+        const sceneEntry = timestampToEntry.get(currScene.when.getTime());
         if (!sceneEntry) return;
         
         // Get manuscript-order position for this scene

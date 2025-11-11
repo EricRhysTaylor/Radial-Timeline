@@ -616,6 +616,20 @@ export function calculateAutoDiscontinuityThreshold(
     const medianIndex = Math.floor(sortedGaps.length / 2);
     const medianGap = sortedGaps[medianIndex];
     
+    // If median gap is 0 or very small, many scenes have identical/close timestamps
+    // In this case, use the median of NON-ZERO gaps to find the typical meaningful gap
+    if (medianGap === 0) {
+        const nonZeroGaps = sortedGaps.filter(g => g > 0);
+        if (nonZeroGaps.length === 0) {
+            // All gaps are 0 - all scenes have the same timestamp
+            return null;
+        }
+        // Use the median of non-zero gaps instead of the overall median
+        const nonZeroMedianIndex = Math.floor(nonZeroGaps.length / 2);
+        const nonZeroMedian = nonZeroGaps[nonZeroMedianIndex];
+        return nonZeroMedian * 3;
+    }
+    
     // Return 3× median
     return medianGap * 3;
 }
@@ -625,72 +639,22 @@ export function calculateAutoDiscontinuityThreshold(
  * Returns indices of scenes that have unusually large time gaps before them
  * 
  * @param scenes - Array of scenes with When dates (sorted chronologically)
- * @param threshold - Multiplier for median gap (default 3x) OR absolute threshold in milliseconds if customThresholdMs is provided
- * @param customThresholdMs - Optional: Absolute threshold in milliseconds. If provided, gaps larger than this are considered discontinuities.
+ * @param thresholdMs - Absolute threshold in milliseconds. Gaps larger than this are considered discontinuities.
  * @returns Array of scene indices with large gaps before them
  */
 export function detectDiscontinuities(
     scenes: { when?: Date }[], 
-    threshold: number = 3,
-    customThresholdMs?: number
+    thresholdMs: number
 ): number[] {
     if (scenes.length < 3) {
         return [];
     }
     
-    // Calculate gaps between consecutive scenes
-    const gaps: number[] = [];
-    
-    for (let i = 1; i < scenes.length; i++) {
-        const prev = scenes[i - 1].when;
-        const curr = scenes[i].when;
-        
-        if (prev && curr) {
-            const gap = curr.getTime() - prev.getTime();
-            if (gap >= 0) { // Only count forward gaps
-                gaps.push(gap);
-            }
-        }
-    }
-    
-    if (gaps.length === 0) {
+    if (!thresholdMs || thresholdMs <= 0) {
         return [];
     }
     
-    // If custom threshold is provided, use only that
-    if (customThresholdMs !== undefined) {
-        const discontinuityIndices: number[] = [];
-        
-        for (let i = 1; i < scenes.length; i++) {
-            const prev = scenes[i - 1].when;
-            const curr = scenes[i].when;
-            
-            if (prev && curr) {
-                const gap = curr.getTime() - prev.getTime();
-                if (gap >= 0 && gap >= customThresholdMs) {
-                    discontinuityIndices.push(i);
-                }
-            }
-        }
-        
-        return discontinuityIndices;
-    }
-    
-    // Calculate median gap
-    const sortedGaps = [...gaps].sort((a, b) => a - b);
-    const medianIndex = Math.floor(sortedGaps.length / 2);
-    const medianGap = sortedGaps[medianIndex];
-    
-    const thresholdValue = medianGap * threshold;
-    
-    // IMPORTANT: Don't return early if medianGap is 0 - there might still be outliers!
-    // Instead, check if ALL gaps are 0
-    const maxGap = Math.max(...gaps);
-    if (maxGap === 0) {
-        return [];
-    }
-    
-    // Find scenes with gaps that are statistical outliers (gap >= threshold)
+    // Find scenes with gaps >= threshold
     const discontinuityIndices: number[] = [];
     
     for (let i = 1; i < scenes.length; i++) {
@@ -699,11 +663,8 @@ export function detectDiscontinuities(
         
         if (prev && curr) {
             const gap = curr.getTime() - prev.getTime();
-            
-            if (gap >= 0 && medianGap > 0) {
-                if (gap >= thresholdValue) {
-                    discontinuityIndices.push(i);
-                }
+            if (gap >= 0 && gap >= thresholdMs) {
+                discontinuityIndices.push(i);
             }
         }
     }
