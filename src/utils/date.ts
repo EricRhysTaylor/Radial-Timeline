@@ -549,6 +549,78 @@ export function formatDurationSelectionLabel(selection: string | undefined): str
 }
 
 /**
+ * Filter and deduplicate scenes for discontinuity detection
+ * SINGLE SOURCE OF TRUTH for scene filtering logic used in both settings display and rendering
+ * 
+ * This ensures the discontinuity threshold shown in settings matches the actual calculation.
+ * 
+ * Rules:
+ * 1. Only include Scene items (exclude Plot/Beat)
+ * 2. Deduplicate by path/title (same scene appearing multiple times)
+ * 3. Only include scenes with valid When dates
+ * 4. Return sorted chronologically
+ * 
+ * @param scenes - Raw scene array from timeline data
+ * @returns Filtered, deduplicated, sorted array of scenes with when dates
+ */
+export function prepareScenesForDiscontinuityDetection(
+    scenes: { when?: Date; itemType?: string; path?: string; title?: string }[]
+): { when: Date }[] {
+    // Filter to only Scene items (not Plot/Beat) with valid dates
+    const uniqueScenesMap = new Map<string, { when: Date }>();
+    scenes.forEach(scene => {
+        if (scene.itemType !== 'Scene') return;
+        if (!(scene.when instanceof Date)) return;
+        const key = scene.path || `title:${scene.title || ''}`;
+        if (!uniqueScenesMap.has(key)) {
+            uniqueScenesMap.set(key, { when: scene.when });
+        }
+    });
+    
+    // Sort chronologically
+    const uniqueScenes = Array.from(uniqueScenesMap.values());
+    return uniqueScenes.sort((a, b) => a.when.getTime() - b.when.getTime());
+}
+
+/**
+ * Calculate auto discontinuity threshold (3× median gap between scenes)
+ * SINGLE SOURCE OF TRUTH for auto-threshold calculation
+ * 
+ * @param scenes - Raw scene array (will be filtered/deduplicated internally)
+ * @returns Threshold in milliseconds, or null if cannot be calculated
+ */
+export function calculateAutoDiscontinuityThreshold(
+    scenes: { when?: Date; itemType?: string; path?: string; title?: string }[]
+): number | null {
+    const preparedScenes = prepareScenesForDiscontinuityDetection(scenes);
+    
+    if (preparedScenes.length < 3) {
+        return null;
+    }
+    
+    // Calculate gaps between consecutive scenes
+    const gaps: number[] = [];
+    for (let i = 1; i < preparedScenes.length; i++) {
+        const gap = preparedScenes[i].when.getTime() - preparedScenes[i - 1].when.getTime();
+        if (gap >= 0) {
+            gaps.push(gap);
+        }
+    }
+    
+    if (gaps.length === 0) {
+        return null;
+    }
+    
+    // Calculate median gap
+    const sortedGaps = [...gaps].sort((a, b) => a - b);
+    const medianIndex = Math.floor(sortedGaps.length / 2);
+    const medianGap = sortedGaps[medianIndex];
+    
+    // Return 3× median
+    return medianGap * 3;
+}
+
+/**
  * Detect discontinuities in scene timeline
  * Returns indices of scenes that have unusually large time gaps before them
  * 
@@ -606,7 +678,10 @@ export function detectDiscontinuities(
     
     // Calculate median gap
     const sortedGaps = [...gaps].sort((a, b) => a - b);
-    const medianGap = sortedGaps[Math.floor(sortedGaps.length / 2)];
+    const medianIndex = Math.floor(sortedGaps.length / 2);
+    const medianGap = sortedGaps[medianIndex];
+    
+    const thresholdValue = medianGap * threshold;
     
     // IMPORTANT: Don't return early if medianGap is 0 - there might still be outliers!
     // Instead, check if ALL gaps are 0
@@ -615,7 +690,7 @@ export function detectDiscontinuities(
         return [];
     }
     
-    // Find scenes with gaps that are statistical outliers (gap >= threshold * median)
+    // Find scenes with gaps that are statistical outliers (gap >= threshold)
     const discontinuityIndices: number[] = [];
     
     for (let i = 1; i < scenes.length; i++) {
@@ -624,8 +699,11 @@ export function detectDiscontinuities(
         
         if (prev && curr) {
             const gap = curr.getTime() - prev.getTime();
-            if (gap >= 0 && medianGap > 0 && gap >= medianGap * threshold) {
-                discontinuityIndices.push(i);
+            
+            if (gap >= 0 && medianGap > 0) {
+                if (gap >= thresholdValue) {
+                    discontinuityIndices.push(i);
+                }
             }
         }
     }

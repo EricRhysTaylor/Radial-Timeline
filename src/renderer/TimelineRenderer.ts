@@ -2156,7 +2156,10 @@ export function createTimelineSVG(
                 const parsed = parseDurationDetail(plugin.settings.discontinuityThreshold);
                 if (parsed) {
                     customThresholdMs = parsed.ms;
+                    console.log('[TimelineRenderer] Using CUSTOM discontinuity threshold from settings:', plugin.settings.discontinuityThreshold, '=', customThresholdMs, 'ms');
                 }
+            } else {
+                console.log('[TimelineRenderer] Using AUTO discontinuity threshold (3x median gap)');
             }
             
             svg += renderChronologicalBackboneArc(

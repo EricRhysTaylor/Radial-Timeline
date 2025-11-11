@@ -6,7 +6,7 @@
 
 import { formatNumber } from '../../utils/svg';
 import { TimelineItem } from '../../main';
-import { parseWhenField, calculateTimeSpan, parseDuration, detectDiscontinuities, detectSceneOverlaps } from '../../utils/date';
+import { parseWhenField, calculateTimeSpan, parseDuration, detectDiscontinuities, detectSceneOverlaps, prepareScenesForDiscontinuityDetection } from '../../utils/date';
 
 export interface ChronologueSceneEntry {
     scene: TimelineItem;
@@ -328,29 +328,29 @@ export function renderChronologicalBackboneArc(
     const sceneEntries = precomputedEntries ?? collectChronologueSceneEntries(scenes);
     if (sceneEntries.length === 0 || !scenePositions) return '';
 
-    // Deduplicate scene items (ignore Plot/Beat entries)
-    const uniqueScenesMap = new Map<string, ChronologueSceneEntry>();
-    sceneEntries.forEach(entry => {
-        if (entry.scene.itemType !== 'Scene') return;
-        const key = entry.scene.path || `title:${entry.scene.title || ''}`;
-        if (!uniqueScenesMap.has(key)) {
-            uniqueScenesMap.set(key, entry);
-        }
-    });
-
-    // Sort unique scenes chronologically for discontinuity detection
-    const uniqueScenesSorted = Array.from(uniqueScenesMap.values()).sort((a, b) => {
-        return a.date.getTime() - b.date.getTime();
-    });
+    // Use single source of truth helper to prepare scenes for discontinuity detection
+    // This ensures the calculation matches what's shown in the settings panel
+    const preparedScenes = prepareScenesForDiscontinuityDetection(scenes);
     
-    // Detect discontinuities (large time gaps between consecutive chronological scenes)
+    if (preparedScenes.length < 3) return '';
+    
+    // Detect discontinuities using the prepared (filtered, deduplicated, sorted) scenes
     const discontinuityIndices = detectDiscontinuities(
-        uniqueScenesSorted.map(entry => ({ when: entry.date })),
+        preparedScenes,
         discontinuityThreshold,
         customThresholdMs
     );
     
     if (discontinuityIndices.length === 0) return '';
+    
+    // Build lookup from date to scene entry for positioning
+    // We need to map the discontinuity indices (from prepared scenes) back to scene entries
+    const dateToSceneEntry = new Map<number, ChronologueSceneEntry>();
+    sceneEntries.forEach(entry => {
+        if (entry.scene.itemType === 'Scene') {
+            dateToSceneEntry.set(entry.date.getTime(), entry);
+        }
+    });
     
     // Place discontinuity markers at the exact middle of the outer scene ring (radially)
     const markerRadius = (outerRingInnerRadius + outerRingOuterRadius) / 2;
@@ -359,24 +359,26 @@ export function renderChronologicalBackboneArc(
     
     // Add discontinuity "∞" symbols at detected gaps
     discontinuityIndices.forEach(sceneIndex => {
-        if (sceneIndex >= uniqueScenesSorted.length) return;
+        if (sceneIndex >= preparedScenes.length) return;
         
-        const currScene = uniqueScenesSorted[sceneIndex];
-        const nextScene = sceneIndex < uniqueScenesSorted.length - 1 ? uniqueScenesSorted[sceneIndex + 1] : null;
+        const currDate = preparedScenes[sceneIndex].when;
+        const nextDate = sceneIndex < preparedScenes.length - 1 ? preparedScenes[sceneIndex + 1].when : null;
         
-        // Check if the current scene has adjacent scenes with the same or very close timestamps
-        // If so, skip the discontinuity marker to avoid confusing displays
+        // Check if adjacent scenes have very close timestamps
         const TIME_TOLERANCE_MS = 60000; // 1 minute
-        
-        const hasAdjacentSameTime = nextScene && 
-            Math.abs(currScene.date.getTime() - nextScene.date.getTime()) < TIME_TOLERANCE_MS;
+        const hasAdjacentSameTime = nextDate && 
+            Math.abs(currDate.getTime() - nextDate.getTime()) < TIME_TOLERANCE_MS;
         
         if (hasAdjacentSameTime) {
             return;
         }
         
+        // Find the scene entry for this date
+        const sceneEntry = dateToSceneEntry.get(currDate.getTime());
+        if (!sceneEntry) return;
+        
         // Get manuscript-order position for this scene
-        const sceneKey = currScene.scene.path || `title:${currScene.scene.title || ''}`;
+        const sceneKey = sceneEntry.scene.path || `title:${sceneEntry.scene.title || ''}`;
         const manuscriptPosition = scenePositions.get(sceneKey);
         
         if (!manuscriptPosition) return;
@@ -388,7 +390,6 @@ export function renderChronologicalBackboneArc(
         const y = formatNumber(markerRadius * Math.sin(midAngle));
         
         // Calculate dynamic font size based on angular width of the scene slice
-        // For dense timelines (100+ scenes), smaller slices need smaller symbols
         const angularWidth = manuscriptPosition.endAngle - manuscriptPosition.startAngle;
         const arcLengthAtMarker = markerRadius * angularWidth; // Arc length in pixels
         
