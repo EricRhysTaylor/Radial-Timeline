@@ -371,8 +371,20 @@ export function renderChronologicalBackboneArc(
         const x = formatNumber(markerRadius * Math.cos(midAngle));
         const y = formatNumber(markerRadius * Math.sin(midAngle));
         
-        // Discontinuity symbol "∞" centered in the middle of the scene arc
-        svg += `<text x="${x}" y="${y}" class="rt-discontinuity-marker" text-anchor="middle" dominant-baseline="middle">∞</text>`;
+        // Calculate dynamic font size based on angular width of the scene slice
+        // For dense timelines (100+ scenes), smaller slices need smaller symbols
+        const angularWidth = manuscriptPosition.endAngle - manuscriptPosition.startAngle;
+        const arcLengthAtMarker = markerRadius * angularWidth; // Arc length in pixels
+        
+        // Scale font-size to fit within the slice: aim for 60% of arc length to prevent overflow
+        // Clamp between 8px (minimum readable) and 20px (maximum for large slices)
+        const dynamicFontSize = Math.max(8, Math.min(20, arcLengthAtMarker * 0.6));
+        
+        // Scale stroke-width proportionally: maintain stroke:font ratio of ~0.3
+        const dynamicStrokeWidth = Math.max(2, Math.min(6, dynamicFontSize * 0.3));
+        
+        // Discontinuity symbol "∞" centered in the middle of the scene arc with dynamic sizing
+        svg += `<text x="${x}" y="${y}" class="rt-discontinuity-marker" text-anchor="middle" dominant-baseline="middle" font-size="${formatNumber(dynamicFontSize)}" stroke-width="${formatNumber(dynamicStrokeWidth)}">∞</text>`;
     });
     
     svg += `</g>`;
