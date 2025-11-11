@@ -8,6 +8,7 @@ import { renderTargetDateTick } from '../renderer/components/ProgressTicks';
 import { renderEstimatedDateElements, renderEstimationArc } from '../renderer/components/Progress';
 import { updateAllTimeBasedElements } from '../renderer/DynamicLayerUpdater';
 import { ELAPSED_ARC_RADIUS } from '../renderer/layout/LayoutConstants';
+import { dateToAngle } from '../utils/date';
 // Import new DOM updaters
 import { updateSceneColors, updateSceneOpenClasses, updateSceneSearchHighlights } from '../renderer/dom/SceneDOMUpdater';
 import { updateNumberSquareStates, updateNumberSquareGrades } from '../renderer/dom/NumberSquareDOMUpdater';
@@ -309,15 +310,6 @@ export class RendererService {
         const startOfYear = new Date(now.getFullYear(), 0, 1);
         const yearProgress = (now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24 * 365);
         const currentYearStartAngle = -Math.PI / 2;
-
-        // date -> angle helper (aligns 12 o'clock at -PI/2, clockwise)
-        const dateToAngle = (d: Date): number => {
-            const m = d.getMonth();
-            const day = d.getDate();
-            const daysInMonth = new Date(d.getFullYear(), m + 1, 0).getDate();
-            const yearPos = m / 12 + (day / daysInMonth) / 12;
-            return ((yearPos + 0.75) % 1) * Math.PI * 2; // +0.75 turns 0 to -PI/2
-        };
 
         // Build markup
         const segmentsHtml = renderProgressRing({ progressRadius, yearProgress, currentYearStartAngle, segmentCount: 6 });

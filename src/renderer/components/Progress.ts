@@ -1,15 +1,22 @@
 import { formatNumber } from '../../utils/svg';
+import { dateToAngle } from '../../utils/date';
 
 export function renderEstimatedDateElements(params: {
-  estimateDate: Date;
+  estimateDate: Date | null;
   progressRadius: number;
 }): string {
   const { estimateDate, progressRadius } = params;
-  const estimatedMonth = estimateDate.getMonth();
-  const estimatedDay = estimateDate.getDate();
-  const estimatedDaysInMonth = new Date(estimateDate.getFullYear(), estimatedMonth + 1, 0).getDate();
-  const estimatedYearPos = estimatedMonth / 12 + estimatedDay / estimatedDaysInMonth / 12;
-  const absoluteDatePos = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
+  
+  // null date means "use default angle" (book complete, no target set)
+  let absoluteDatePos: number;
+  
+  if (estimateDate === null) {
+    // Use exact default angle (-PI/2) to match target tick default
+    absoluteDatePos = -Math.PI / 2;
+  } else {
+    // Use same dateToAngle function as target tick (from utils/date)
+    absoluteDatePos = dateToAngle(estimateDate);
+  }
 
   const tickOuterRadius = progressRadius + 5;
   const tickInnerRadius = progressRadius - 35;
@@ -26,8 +33,10 @@ export function renderEstimatedDateElements(params: {
     `;
   }
 
-  const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
-  const dateDisplay = `${dateFormatter.format(estimateDate)}`;
+  // Display "Jan 1" for null date (book complete, no target set), otherwise show actual date
+  const displayDate = estimateDate === null ? new Date(new Date().getFullYear(), 0, 1) : estimateDate;
+  const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+  const dateDisplay = dateFormatter.format(displayDate);
 
   const labelRadius = progressRadius - 45;
   const maxOffset = -18;
@@ -48,16 +57,21 @@ export function renderEstimatedDateElements(params: {
 
 
 export function renderEstimationArc(params: {
-  estimateDate: Date;
+  estimateDate: Date | null;
   progressRadius: number;
 }): string {
   const { estimateDate, progressRadius } = params;
+  
+  // Don't render arc if date is null (default angle)
+  if (estimateDate === null) {
+    return '';
+  }
+  
   const startAngle = -Math.PI / 2; // 12 o'clock
-  const estimatedMonth = estimateDate.getMonth();
-  const estimatedDay = estimateDate.getDate();
-  const estimatedDaysInMonth = new Date(estimateDate.getFullYear(), estimatedMonth + 1, 0).getDate();
-  const estimatedYearPos = estimatedMonth / 12 + estimatedDay / estimatedDaysInMonth / 12;
-  const estimatedDateAngle = ((estimatedYearPos + 0.75) % 1) * Math.PI * 2;
+  
+  // Use same dateToAngle function for consistency
+  const estimatedDateAngle = dateToAngle(estimateDate);
+  
   let arcAngleSpan = estimatedDateAngle - startAngle;
   if (arcAngleSpan < 0) arcAngleSpan += 2 * Math.PI;
   const x0 = progressRadius * Math.cos(startAngle);

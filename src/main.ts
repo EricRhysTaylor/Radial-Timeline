@@ -24,7 +24,7 @@ import { assembleManuscript } from './utils/manuscript';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { parseSceneTitle } from './utils/text';
 import { parseWhenField } from './utils/date';
-import { isStoryBeat } from './utils/sceneHelpers';
+import { isStoryBeat, isBeatNote } from './utils/sceneHelpers';
 import { compareReleaseVersionsDesc, parseReleaseVersion } from './utils/releases';
 
 
@@ -380,15 +380,6 @@ function escapeXml(unsafe: string): string {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&apos;');
-}
-
-// Helper function to calculate angle for a given date
-function dateToAngle(date: Date): number {
-    const startOfYear = new Date(date.getFullYear(), 0, 1);
-    const dayOfYear = (date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24);
-    const daysInYear = (new Date(date.getFullYear(), 11, 31).getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24) + 1;
-    const progress = dayOfYear / daysInYear;
-    return (progress * 2 * Math.PI) - (Math.PI / 2); // Offset by -90deg to start at top
 }
 
 // Helper function to create a properly formatted SVG arc path
@@ -2399,29 +2390,52 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
 
     // Add this function inside the RadialTimelinePlugin class
     public calculateCompletionEstimate(scenes: TimelineItem[]): {
-        date: Date;
+        date: Date | null;  // null means "use default angle"
         total: number;
         remaining: number;
         rate: number; // Scenes per week
     } | null {
-        // Filter out Plot notes - only calculate completion based on actual Scene notes
-        const sceneNotesOnly = scenes.filter(scene => scene.itemType !== "Plot");
+        // Filter out Beat notes - only calculate completion based on actual Scene notes
+        const sceneNotesOnly = scenes.filter(scene => !isBeatNote(scene));
         
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Normalize to start of day
+        if (sceneNotesOnly.length === 0) {
+            return null;
+        }
 
-        // --- New Calculation Logic --- START ---
-        const startOfYear = new Date(today.getFullYear(), 0, 1); // Jan 1st of current year
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Case 1: Check if book is complete (all scenes in Press stage and Complete status)
+        const allScenesComplete = sceneNotesOnly.every(scene => {
+            const publishStage = scene["Publish Stage"]?.toString().trim().toLowerCase() || '';
+            const sceneStatus = scene.status?.toString().trim().toLowerCase() || '';
+            return publishStage === 'press' && (sceneStatus === 'complete' || sceneStatus === 'done');
+        });
+        
+        if (allScenesComplete) {
+            // Book is done! Return target date if set, otherwise null (= use default angle)
+            const targetDate = this.settings.targetCompletionDate 
+                ? new Date(this.settings.targetCompletionDate + 'T00:00:00')
+                : null;
+            
+            return {
+                date: targetDate,
+                total: sceneNotesOnly.length,
+                remaining: 0,
+                rate: 0
+            };
+        }
+
+        // Case 2: Calculate estimate based on completion rate
+        const startOfYear = new Date(today.getFullYear(), 0, 1);
         const startOfYearTime = startOfYear.getTime();
         const todayTime = today.getTime();
-
-        // Calculate days passed since start of year (minimum 1 day)
         const daysPassedThisYear = Math.max(1, Math.round((todayTime - startOfYearTime) / (1000 * 60 * 60 * 24)));
 
         let completedThisYear = 0;
         const completedPathsThisYear = new Set<string>();
 
-        // Calculate completed scenes this year
+        // Count scenes completed this year
         sceneNotesOnly.forEach(scene => {
             const dueDateStr = scene.due;
             const scenePath = scene.path;
@@ -2441,26 +2455,23 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
                     completedPathsThisYear.add(scenePath);
                 }
             } catch (e) {
-                // Ignore errors parsing date during calculation
+                // Ignore errors parsing date
             }
         });
 
+        // Case 3: No scenes completed this year - cannot estimate
         if (completedThisYear <= 0) {
             return null;
         }
 
+        // Calculate remaining work
         const scenesPerDay = completedThisYear / daysPassedThisYear;
-
-        // --- Get Current Status Counts (Necessary for Remaining/Total) ---
-        // Use a fresh calculation based on the provided scenes array (excluding Plot notes)
-        const processedPaths = new Set<string>(); // Track unique paths
+        const processedPaths = new Set<string>();
         const currentStatusCounts = sceneNotesOnly.reduce((acc, scene) => {
-            // --- Add check for unique path --- START ---
             if (!scene.path || processedPaths.has(scene.path)) {
-                return acc; // Skip if no path or already counted
+                return acc;
             }
             processedPaths.add(scene.path);
-            // --- Add check for unique path --- END ---
 
             const normalizedStatus = scene.status?.toString().trim().toLowerCase() || 'Todo';
             
@@ -2483,10 +2494,9 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
             return acc;
         }, {} as Record<string, number>);
         
-        // Calculate remaining and total from these counts
-        const completedCount = currentStatusCounts['Completed'] || 0; // Count completed scenes
-        const totalScenes = Object.values(currentStatusCounts).reduce((sum, count) => sum + count, 0); // Sum all counts for total
-        const remainingScenes = totalScenes - completedCount; // Remaining = Total - Completed
+        const completedCount = currentStatusCounts['Completed'] || 0;
+        const totalScenes = Object.values(currentStatusCounts).reduce((sum, count) => sum + count, 0);
+        const remainingScenes = totalScenes - completedCount;
 
         if (remainingScenes <= 0) {
             return null;
@@ -2499,12 +2509,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         }
 
         const scenesPerWeek = scenesPerDay * 7;
-
-        // --- REMOVED latest... updates ---
-        // this.latestTotalScenes = totalScenes;
-        // this.latestRemainingScenes = remainingScenes;
-        // this.latestScenesPerWeek = parseFloat(scenesPerWeek.toFixed(1));
-
         const estimatedDate = new Date(today);
         estimatedDate.setDate(today.getDate() + Math.ceil(daysNeeded));
         
@@ -2512,7 +2516,7 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
             date: estimatedDate,
             total: totalScenes,
             remaining: remainingScenes,
-            rate: parseFloat(scenesPerWeek.toFixed(1)) // Use rounded value
+            rate: parseFloat(scenesPerWeek.toFixed(1))
         };
     }
 

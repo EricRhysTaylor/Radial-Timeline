@@ -118,7 +118,7 @@ export function updateEstimationElements(
         if (!timelineRoot) return false;
         
         // Generate new estimation elements
-        const yearsDiff = estimateResult.date.getFullYear() - new Date().getFullYear();
+        const yearsDiff = estimateResult.date ? estimateResult.date.getFullYear() - new Date().getFullYear() : 0;
         let newEstimationSvg = '';
         
         if (yearsDiff <= 0) {

@@ -75,6 +75,7 @@ export function renderGeneralSection(params: {
                         plugin.settings.targetCompletionDate = undefined;
                         text.inputEl.removeClass('rt-setting-input-error');
                         await plugin.saveSettings();
+                        plugin.refreshTimelineIfNeeded(null);
                         return;
                     }
 
@@ -88,6 +89,7 @@ export function renderGeneralSection(params: {
                         return;
                     }
                     await plugin.saveSettings();
+                    plugin.refreshTimelineIfNeeded(null);
                 });
         });
 

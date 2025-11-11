@@ -955,22 +955,23 @@ export function createTimelineSVG(
              // Use estimateResult.date instead of estimatedCompletionDate
              const estimatedCompletionDate = estimateResult.date;
 
-             const startAngle = -Math.PI/2; // 12 o'clock position
-             
-             const estimatedYear = estimatedCompletionDate.getFullYear();
-             const estimatedMonth = estimatedCompletionDate.getMonth();
-             const estimatedDay = estimatedCompletionDate.getDate();
-             
-             const estimatedDaysInMonth = new Date(estimatedYear, estimatedMonth + 1, 0).getDate();
-             const now = new Date(); // Need current time for diff calculations
-             const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
+             if (estimatedCompletionDate) {
+                 const startAngle = -Math.PI/2; // 12 o'clock position
+                 
+                 const estimatedYear = estimatedCompletionDate.getFullYear();
+                 const estimatedMonth = estimatedCompletionDate.getMonth();
+                 const estimatedDay = estimatedCompletionDate.getDate();
+                 
+                 const estimatedDaysInMonth = new Date(estimatedYear, estimatedMonth + 1, 0).getDate();
+                 const now = new Date(); // Need current time for diff calculations
+                 const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
 
-             // Note: Red circles removed - year indicators now shown in date label instead
-             
-            if (yearsDiff <= 0) {
-                svg += renderEstimationArc({ estimateDate: estimatedCompletionDate, progressRadius });
-            }
-
+                 // Note: Red circles removed - year indicators now shown in date label instead
+                 
+                if (yearsDiff <= 0) {
+                    svg += renderEstimationArc({ estimateDate: estimatedCompletionDate, progressRadius });
+                }
+             }
          }
          // --- Draw Estimation Arc --- END ---
 
