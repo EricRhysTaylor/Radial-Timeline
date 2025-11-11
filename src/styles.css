@@ -358,17 +358,18 @@
 
 /* Range boundary values - numbers showing min/max range values with white stroke */
 .rt-gossamer-range-value {
-  font-size: 12px;
+  font-size: 11px;
   text-anchor: middle;
   dominant-baseline: middle;
   pointer-events: none !important;
   cursor: default;
   font-weight: 600;
-  fill: var(--text-muted);
+  fill: var(--rt-gossamer-historical-color);
   stroke: white;
-  stroke-width: 7px;
+  stroke-width: 5px;
   paint-order: stroke fill;
 }
+
 
 /* Hide range values when JavaScript adds rt-hidden class on hover */
 .rt-gossamer-range-value.rt-hidden {
@@ -652,7 +653,7 @@
 
 .rt-subplot-text {
   font-size: 16px;
-  fill: var(--text-muted, #555555);
+  fill: var(--text-muted);
   font-weight: normal;
   
 }
@@ -718,8 +719,8 @@
 .rt-search-term {
   fill: inherit;
   stroke: var(--rt-color-search);
-  stroke-width: var(--rt-search-stroke-width, 1px);
-  stroke-opacity: var(--rt-search-stroke-opacity, 0.3);
+  stroke-width: var(--rt-search-stroke-width);
+  stroke-opacity: var(--rt-search-stroke-opacity);
   paint-order: stroke;
 }
 
@@ -2383,11 +2384,6 @@
 
 .rt-gossamer-score-input.rt-input-error {
   border-color: var(--text-error);
-}
-
-.rt-gossamer-range-note {
-  font-size: 11px;
-  color: var(--text-muted);
 }
 
 .rt-gossamer-score-buttons {
