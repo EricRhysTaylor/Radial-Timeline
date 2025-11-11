@@ -40,10 +40,11 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
 
         const encodedPath = g.getAttribute('data-path') || '';
         if (encodedPath) {
-            const dot = svg.querySelector(`.rt-gossamer-dot[data-path="${encodedPath}"]`) as SVGCircleElement | null;
-            if (dot) {
-                dot.classList.add('rt-hover');
-                const beatName = dot.getAttribute('data-beat');
+            // Find either dot or score text for this beat
+            const dotOrScore = svg.querySelector(`.rt-gossamer-dot[data-path="${encodedPath}"], .rt-gossamer-score-text[data-path="${encodedPath}"]`);
+            if (dotOrScore) {
+                dotOrScore.classList.add('rt-hover');
+                const beatName = dotOrScore.getAttribute('data-beat');
                 if (beatName) {
                     // Show center dot
                     const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
@@ -57,6 +58,9 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
                     // Highlight all historical dots with matching beat name
                     const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
                     historicalDots.forEach(hd => hd.classList.add('rt-hover'));
+                    // Hide range values for this beat
+                    const rangeValues = svg.querySelectorAll(`.rt-gossamer-range-value[data-beat="${beatName}"]`);
+                    rangeValues.forEach(rv => rv.classList.add('rt-hidden'));
                 }
                 g.classList.add('rt-gossamer-hover');
             }
@@ -68,7 +72,8 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
 
         const toEl = e.relatedTarget as Element | null;
         if (toEl && (currentGroup.contains(toEl) ||
-                    !!toEl.closest('.rt-gossamer-dot'))) return;
+                    !!toEl.closest('.rt-gossamer-dot') ||
+                    !!toEl.closest('.rt-gossamer-score-text'))) return;
 
         svg.classList.remove('scene-hover');
         if (currentSynopsis) {
@@ -78,10 +83,11 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
 
         const encodedPath = currentGroup.getAttribute('data-path') || '';
         if (encodedPath) {
-            const dot = svg.querySelector(`.rt-gossamer-dot[data-path="${encodedPath}"]`) as SVGCircleElement | null;
-            if (dot) {
-                dot.classList.remove('rt-hover');
-                const beatName = dot.getAttribute('data-beat');
+            // Find either dot or score text
+            const dotOrScore = svg.querySelector(`.rt-gossamer-dot[data-path="${encodedPath}"], .rt-gossamer-score-text[data-path="${encodedPath}"]`);
+            if (dotOrScore) {
+                dotOrScore.classList.remove('rt-hover');
+                const beatName = dotOrScore.getAttribute('data-beat');
                 if (beatName) {
                     // Hide center dot
                     const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
@@ -92,6 +98,12 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
                     // Remove beat outline highlight
                     const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
                     if (beatOutline) beatOutline.classList.remove('rt-hover');
+                    // Remove hover from historical dots
+                    const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
+                    historicalDots.forEach(hd => hd.classList.remove('rt-hover'));
+                    // Restore range values for this beat
+                    const rangeValues = svg.querySelectorAll(`.rt-gossamer-range-value[data-beat="${beatName}"]`);
+                    rangeValues.forEach(rv => rv.classList.remove('rt-hidden'));
                 }
                 currentGroup.classList.remove('rt-gossamer-hover');
             }
@@ -118,6 +130,9 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
             if (centerDot) centerDot.classList.add('rt-hover');
             const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
             if (beatOutline) beatOutline.classList.add('rt-hover');
+            // Hide range values for this beat
+            const rangeValues = svg.querySelectorAll(`.rt-gossamer-range-value[data-beat="${beatName}"]`);
+            rangeValues.forEach(rv => rv.classList.add('rt-hidden'));
         }
         
         // Find and highlight the beat slice (both have encoded paths now)
@@ -153,8 +168,6 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
     };
 
     const dotOut = (e: PointerEvent) => {
-        // Remove hover from all historical dots
-        svg.querySelectorAll('.rt-gossamer-dot-historical.rt-hover').forEach(hd => hd.classList.remove('rt-hover'));
         const toEl = e.relatedTarget as Element | null;
         // If moving to a beat slice, another dot, or score text, keep highlights
         if (toEl && (toEl.closest('.rt-scene-group[data-item-type="Beat"]') || 
@@ -173,7 +186,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
             currentGroup = null;
         }
 
-        // Remove all highlights
+        // Remove all highlights (including historical dots and range values)
         svg.querySelectorAll('.rt-gossamer-spoke-hover').forEach(el => {
             el.classList.remove('rt-gossamer-spoke-hover');
         });
@@ -185,6 +198,12 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
         });
         svg.querySelectorAll('.rt-gossamer-beat-outline.rt-hover').forEach(el => {
             el.classList.remove('rt-hover');
+        });
+        svg.querySelectorAll('.rt-gossamer-dot-historical.rt-hover').forEach(hd => {
+            hd.classList.remove('rt-hover');
+        });
+        svg.querySelectorAll('.rt-gossamer-range-value.rt-hidden').forEach(rv => {
+            rv.classList.remove('rt-hidden');
         });
     };
 

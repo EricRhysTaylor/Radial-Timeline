@@ -344,7 +344,6 @@ export class RadialTimelineView extends ItemView {
                     return;
                 } else if (changeResult.updateStrategy === 'selective' && this.rendererService) {
                     // Selective update using RendererService
-                    this.log('[Render] Using selective update');
                     let updated = false;
                     
                     // Handle open files changes
@@ -375,8 +374,6 @@ export class RadialTimelineView extends ItemView {
                     if (updated) {
                         // Selective update succeeded
                         this.lastSnapshot = currentSnapshot;
-                        const totalTime = performance.now() - perfStart;
-                        this.log(`[Render] Selective update completed in ${totalTime.toFixed(2)}ms`);
                         return;
                     }
                     
@@ -446,7 +443,6 @@ export class RadialTimelineView extends ItemView {
         // Register event to track file opens
         this.registerEvent(
             this.app.workspace.on('file-open', () => {
-                this.log('File opened event');
                 this.updateOpenFilesTracking();
             })
         );
@@ -475,7 +471,6 @@ export class RadialTimelineView extends ItemView {
         // Register for quick switching between files
         this.registerEvent(
             this.app.workspace.on('quick-preview', () => {
-                this.log('Quick preview event');
                 this.updateOpenFilesTracking();
             })
         );
@@ -521,9 +516,6 @@ export class RadialTimelineView extends ItemView {
                 
                 // If values are the same, no need to trigger refresh
                 if (previousFrontmatter === currentFrontmatter) return;
-                
-                // Log only meaningful changes
-                this.log('Scene/Plot frontmatter changed for file: ' + file.path);
                 
                 // Debounce the refresh per settings (default 5s)
                 if (this.timelineRefreshTimeout) window.clearTimeout(this.timelineRefreshTimeout);

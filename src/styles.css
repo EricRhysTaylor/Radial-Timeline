@@ -52,14 +52,14 @@
   --rt-gossamer-historical-color: #c0c0c0;      /* Historical runs (Gossamer2-5, light gray) */
   
   /* Dot Sizes */
-  --rt-gossamer-dot-current: 6px;               /* Current run (Gossamer1) dot radius */
+  --rt-gossamer-dot-current: 7px;               /* Current run (Gossamer1) dot radius */
   --rt-gossamer-dot-historical: 5px;            /* Historical runs (Gossamer2-5) dot radius */
   
   /* Strokes & Lines */
   --rt-gossamer-line-width: 2px;                /* beat line thickness */
   --rt-gossamer-line-historical-width: 1.5px;   /* Historical beat line thickness */
   --rt-gossamer-spoke-width: 1px;               /* Spoke line thickness */
-  --rt-gossamer-spoke-color: var(--rt-max-publish-stage-color, #e0e0e0); /* Spoke line color - use publish stage color */
+  --rt-gossamer-spoke-color: var(--rt-max-publish-stage-color); /* Spoke line color - use publish stage color */
   
   /* Opacity & Transparency */
   --rt-gossamer-band-opacity: 0.5;              /* Min/max shading band opacity */
@@ -256,7 +256,7 @@
 }
 .radial-timeline-svg #mode-toggle:hover use,
 .radial-timeline-svg #mode-toggle.rt-mode-toggle-hover use {
-  color: var(--rt-max-publish-stage-color, #ffffff) !important;
+  color: var(--rt-max-publish-stage-color) !important;
   stroke: currentColor !important;
 }
 
@@ -287,7 +287,7 @@
 
 /* Mode indicator hover effects */
 .radial-timeline-svg #mode-toggle:hover .mode-indicator-text {
-  fill: var(--rt-max-publish-stage-color, #ffffff);
+  fill: var(--rt-max-publish-stage-color);
 }
 
 /* Hide mode toggle in Gossamer mode */
@@ -298,7 +298,7 @@
 /* Gossamer momentum styling */
 .rt-gossamer-layer { pointer-events: none; }
 .rt-gossamer-line { 
-  stroke: var(--rt-max-publish-stage-color, var(--rt-gossamer-default-color)); /* Use max publish stage color for connecting line */
+  stroke: var(--rt-max-publish-stage-color); /* Use max publish stage color for connecting line */
   stroke-width: var(--rt-gossamer-line-width); 
   fill: none; 
 }
@@ -306,7 +306,7 @@
   stroke-width: var(--rt-gossamer-line-historical-width);
   opacity: var(--rt-gossamer-line-historical-opacity);
 }
-/* Gossamer dots (12px diameter) */
+/* Gossamer dots */
 .rt-gossamer-dot { 
   /* fill color and r (radius) set inline via publish stage color */
   pointer-events: all; 
@@ -321,19 +321,19 @@
   fill: #ff6666 !important;
 }
 
-/* Gossamer1 dots on hover - add white stroke to create inner dot effect, keep colored fill */
+/* Gossamer1 dots on hover - add white stroke outline */
 .rt-gossamer-dot:hover,
 .rt-gossamer-dot.rt-hover {
   stroke: white;
-  stroke-width: 2;
+  stroke-width: 3;
 }
 .rt-gossamer-dot-historical {
   stroke-width: 1px;
 }
 .rt-gossamer-dot-historical.rt-hover {
-  /* Add white stroke when Gossamer1 dot or beat slice is hovered */
+  /* Add white stroke outline when Gossamer1 dot or beat slice is hovered */
   stroke: white;
-  stroke-width: 2;
+  stroke-width: 3;
 }
 .rt-gossamer-band { 
   /* Band showing min/max spread - color set inline (#f5f5f5) */
@@ -341,7 +341,7 @@
   pointer-events: none; /* Don't interfere with hover on dots/slices */
 }
 .rt-gossamer-spoke { 
-  stroke: var(--rt-max-publish-stage-color, var(--rt-gossamer-spoke-color)); /* Use publish stage color for spokes */
+  stroke: var(--rt-max-publish-stage-color); /* Use publish stage color for spokes */
   stroke-width: var(--rt-gossamer-spoke-width); 
   stroke-dasharray: none;
   pointer-events: none; /* Spokes don't have their own hover, only respond to dot/slice hover */
@@ -361,13 +361,18 @@
   font-size: 12px;
   text-anchor: middle;
   dominant-baseline: middle;
-  pointer-events: none;
+  pointer-events: none !important;
   cursor: default;
   font-weight: 600;
-  fill: var(--rt-max-publish-stage-color, var(--rt-gossamer-default-color));
+  fill: var(--text-muted);
   stroke: white;
   stroke-width: 7px;
   paint-order: stroke fill;
+}
+
+/* Hide range values when JavaScript adds rt-hidden class on hover */
+.rt-gossamer-range-value.rt-hidden {
+  opacity: 0;
 }
 
 /* Score text - interactive numbers showing current beat scores */
@@ -378,7 +383,7 @@
   pointer-events: all;
   cursor: pointer;
   font-weight: 600;
-  fill: var(--rt-max-publish-stage-color, var(--rt-gossamer-default-color));
+  fill: var(--rt-max-publish-stage-color);
   stroke: white;
   stroke-width: 7px;
   paint-order: stroke fill;
@@ -387,8 +392,8 @@
 .rt-gossamer-score-text:hover,
 .rt-gossamer-score-text.rt-hover {
   stroke: white;
-  stroke-width: 9px;
-  font-size: 13px;
+  stroke-width: 7px;
+  font-size: 20px;
 }
 
 /* Missing data scores use error color */
@@ -435,24 +440,25 @@
   opacity: 1 !important; /* Fully opaque for prominence */
 }
 
-/* Story beat slice hover styling - path turns white on hover or Gossamer sync */
-.rt-scene-group.rt-gossamer-hover .rt-scene-path,
-.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats:hover .rt-scene-path,
-.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"]:hover .rt-scene-path {
-  fill: #ffffff !important;
-  opacity: 1 !important;
-  stroke: white !important; /* Turn stroke white on hover */
-}
-
-/* Story beat slices in Gossamer mode: fill is interactive, stroke is hidden to avoid conflicts */
+/* Story beat slices in Gossamer mode - base state */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats .rt-scene-path,
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"] .rt-scene-path {
   cursor: pointer;
-  stroke: none !important; /* Hide original stroke - gossamer beat outline displays the stroke visually */
-  pointer-events: fill !important; /* Only fill area is interactive - prevents outline from interfering with hover detection */
+  stroke: none;
+  pointer-events: fill !important;
 }
 
-/* Scene slices (non-Beat) in Gossamer mode: no pointer cursor */
+/* Story beat slices in Gossamer mode - hover state (same pattern as score text) */
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats .rt-scene-path:hover,
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"] .rt-scene-path:hover,
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.rt-gossamer-hover .rt-scene-path {
+  fill: white !important;
+  stroke: white !important;
+  stroke-width: 3px !important;
+  opacity: 1 !important;
+}
+
+/* Non-beat slices in Gossamer mode - not interactive */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group:not(.beats):not([data-item-type="Beat"]) .rt-scene-path {
   cursor: default !important;
   pointer-events: none !important;
@@ -460,7 +466,7 @@
 
 /* Beat slice outlines in gossamer layer - purely visual, not interactive */
 .rt-gossamer-beat-outline {
-  stroke: var(--rt-max-publish-stage-color, var(--rt-gossamer-default-color)); /* Use publish stage color for beat outlines */
+  stroke: var(--rt-max-publish-stage-color); /* Use publish stage color for beat outlines */
   stroke-width: 2px;
   fill: none;
   pointer-events: none !important; /* Not interactive - fill area handles all hover/click */
@@ -771,7 +777,7 @@
 }
 /* Title tspans use publish stage color like Act labels */
 .rt-title-text-main tspan[data-item-type=title] {
-  fill: var(--rt-max-publish-stage-color, var(--text-normal)) !important;
+  fill: var(--rt-max-publish-stage-color) !important;
 }
 
 /* Date and Duration tspans - small gray text */
@@ -2487,7 +2493,7 @@
 
 .beats-text-grade {
   font-size: 16px; /* Let's try 14px, closer to metadata */
-  fill: var(--rt-max-publish-stage-color, var(--text-muted)); /* Darker green for better visibility */
+  fill: var(--rt-max-publish-stage-color); /* Darker green for better visibility */
   font-weight: bold;
 }
 
@@ -2513,7 +2519,7 @@
 }
 
   .rt-subplot-ring-label-text {
-      fill: var(--rt-max-publish-stage-color, var(--text-muted)); /* Use max stage color, fallback to muted text */
+      fill: var(--rt-max-publish-stage-color); /* Use max stage color */
       opacity: .3; /* Corrected opacity back to 30% */
       font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
       font-weight: 400; /* Regular weight */
@@ -2687,7 +2693,7 @@
 
 /* Ensure gossamer score uses publish stage color like Act labels */
 .rt-gossamer-score-line [data-item-type=title] {
-  fill: var(--rt-max-publish-stage-color, var(--text-normal)) !important;
+  fill: var(--rt-max-publish-stage-color) !important;
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;
