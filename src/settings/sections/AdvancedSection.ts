@@ -1,6 +1,6 @@
 import { App, Setting as Settings, Notice, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { Scene } from '../../main';
+import type { TimelineItem } from '../../main';
 import { parseDurationDetail, formatDurationSelectionLabel } from '../../utils/date';
 
 interface DurationCapOption {
@@ -11,7 +11,7 @@ interface DurationCapOption {
 }
 
 async function collectDurationCapOptions(plugin: RadialTimelinePlugin): Promise<DurationCapOption[]> {
-    let scenes: Scene[] | undefined = plugin.lastSceneData;
+    let scenes: TimelineItem[] | undefined = plugin.lastSceneData;
     if (!Array.isArray(scenes) || scenes.length === 0) {
         try {
             scenes = await plugin.getSceneData();
@@ -155,9 +155,9 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 });
         });
 
-    // 5. Scene ordering by When date (LAST - DISABLED/GRAYED OUT)
+    // 5. TimelineItem ordering by When date (LAST - DISABLED/GRAYED OUT)
     const sortSetting = new Settings(containerEl)
-        .setName('Scene ordering based on When date')
+        .setName('TimelineItem ordering based on When date')
         .setDesc('Coming soon: Sort scenes chronologically by When date instead of manuscript order. This feature is currently in development and will be available in a future update.')
         .addToggle(toggle => toggle
             .setValue(false)

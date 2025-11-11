@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { Scene } from '../main';
+import type { TimelineItem } from '../main';
 import { STAGE_ORDER } from './constants';
 
 /**
@@ -27,7 +27,7 @@ import { STAGE_ORDER } from './constants';
  * @returns The hex color of the most advanced publish stage found, or the Zero stage color as fallback
  */
 export function getMostAdvancedStageColor(
-  scenes: Scene[],
+  scenes: TimelineItem[],
   publishStageColors: Record<string, string>
 ): string {
   const stageOrder = [...STAGE_ORDER];

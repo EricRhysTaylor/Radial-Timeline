@@ -1,4 +1,4 @@
-import type { Scene } from '../../main';
+import type { TimelineItem } from '../../main';
 import { formatNumber } from '../../utils/svg';
 import { getSceneState, buildSquareClasses, buildTextClasses, extractGradeFromScene, isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers';
 import { getScenePrefixNumber, getNumberSquareSize, parseSceneTitle } from '../../utils/text';
@@ -10,7 +10,7 @@ import { generateNumberSquareGroup, makeSceneId } from '../../utils/numberSquare
  */
 export function renderNumberSquaresUnified(params: {
   plugin: PluginRendererFacade;
-  scenes: Scene[];
+  scenes: TimelineItem[];
   sceneGrades: Map<string, string>;
   // For All Scenes mode (outer ring)
   positions?: Map<number, { startAngle: number; endAngle: number }>;
@@ -22,7 +22,7 @@ export function renderNumberSquaresUnified(params: {
   masterSubplotOrder?: string[];
   ringStartRadii?: number[];
   ringWidths?: number[];
-  scenesByActAndSubplot?: Record<number, Record<string, Scene[]>>;
+  scenesByActAndSubplot?: Record<number, Record<string, TimelineItem[]>>;
   sceneNumbersMap?: Map<string, { number: string; x: number; y: number; width: number; height: number }>;
 }): string {
   const { 
@@ -138,7 +138,7 @@ export function renderOuterRingNumberSquares(params: {
   ringOuter: number;
   squareRadiusOuter: number;
   positions: Map<number, { startAngle: number; endAngle: number }>;
-  combined: Scene[];
+  combined: TimelineItem[];
   sceneGrades: Map<string, string>;
 }): string {
   return renderNumberSquaresUnified({
@@ -158,8 +158,8 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   masterSubplotOrder: string[];
   ringStartRadii: number[];
   ringWidths: number[];
-  scenesByActAndSubplot: Record<number, Record<string, Scene[]>>;
-  scenes: Scene[];
+  scenesByActAndSubplot: Record<number, Record<string, TimelineItem[]>>;
+  scenes: TimelineItem[];
   sceneGrades: Map<string, string>;
 }): string {
   const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades } = params;
@@ -237,8 +237,8 @@ export function renderNumberSquaresStandard(params: {
   masterSubplotOrder: string[];
   ringStartRadii: number[];
   ringWidths: number[];
-  scenesByActAndSubplot: Record<number, Record<string, Scene[]>>;
-  scenes: Scene[];
+  scenesByActAndSubplot: Record<number, Record<string, TimelineItem[]>>;
+  scenes: TimelineItem[];
   sceneGrades: Map<string, string>;
   sceneNumbersMap: Map<string, { number: string; x: number; y: number; width: number; height: number }>;
 }): string {

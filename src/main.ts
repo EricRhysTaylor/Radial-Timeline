@@ -107,7 +107,9 @@ export interface RadialTimelineSettings {
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
 const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline"; // Sentence case per guidelines
 
-export interface Scene {
+// Note: This interface represents ANY timeline item - both Class: Scene files and Class: Beat files
+// Named 'TimelineItem' to distinguish from the itemType value "Scene"
+export interface TimelineItem {
     title?: string;
     date: string;
     path?: string;
@@ -426,7 +428,7 @@ export default class RadialTimelinePlugin extends Plugin {
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
     private readonly eventBus = new EventTarget();
-    private sceneDataCache = new Map<string, { scenes: Scene[]; timestamp: number }>();
+    private sceneDataCache = new Map<string, { scenes: TimelineItem[]; timestamp: number }>();
     private metadataCacheListener: (() => void) | null = null;
     
     // Services
@@ -435,7 +437,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private searchService!: import('./services/SearchService').SearchService;
     private fileTrackingService!: import('./services/FileTrackingService').FileTrackingService;
     private rendererService!: RendererService;
-    public lastSceneData?: Scene[];
+    public lastSceneData?: TimelineItem[];
     
     // Completion estimate stats
     latestTotalScenes: number = 0;
@@ -1122,7 +1124,6 @@ export default class RadialTimelinePlugin extends Plugin {
 
                             
                             if (isSceneFile) {
-                                this.log(`Hovering over scene file: ${filePath}`);
                                 this.highlightSceneInTimeline(filePath, true);
                             }
                         } else {
@@ -1598,7 +1599,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 const scenes = (view as any)['sceneData'] || [];
 
                 if (scenes.length > 0) {
-                    const matchingScene = scenes.find((scene: Scene) => {
+                    const matchingScene = scenes.find((scene: TimelineItem) => {
                         if (!scene.path) return false;
                         if (scene.path === filePath) return true;
                         if (scene.path.startsWith('/') && scene.path.substring(1) === filePath) return true;
@@ -1630,7 +1631,6 @@ export default class RadialTimelinePlugin extends Plugin {
 
             return false;
         } catch (error) {
-            this.log(`Error checking if file is a scene: ${error}`);
             return false;
         }
     }
@@ -1717,7 +1717,7 @@ export default class RadialTimelinePlugin extends Plugin {
                     // Scene not found in timeline
                 }
             } catch (error) {
-                this.log(`Error highlighting scene in timeline: ${error}`);
+                // Silently handle highlight errors
             }
         }
     }
@@ -1747,13 +1747,13 @@ export default class RadialTimelinePlugin extends Plugin {
     // Method to generate timeline (legacy HTML method - will be removed later)
 
     // Public method to get scene data
-    async getSceneData(options?: GetSceneDataOptions): Promise<Scene[]> {
+    async getSceneData(options?: GetSceneDataOptions): Promise<TimelineItem[]> {
         // Delegate to SceneDataService
         return this.sceneDataService.getSceneData(options);
     }
 
 
-public createTimelineSVG(scenes: Scene[]) {
+public createTimelineSVG(scenes: TimelineItem[]) {
   return createTimelineSVG(this, scenes);
 }
 
@@ -1794,7 +1794,7 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
     public splitIntoBalancedLines(text: string, maxWidth: number): string[] {
         // Check if the text already contains tspan elements (like search highlights)
         if (text.includes('<tspan')) {
-            this.log(`Using DOM-based line splitting for text with tspans: ${text.substring(0, 50)}...`);
+            // Use DOM-based line splitting for text with tspans
             
             // Parse the HTML using DOMParser
             const parser = new DOMParser();
@@ -1802,7 +1802,7 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
             
             // Check for parsing errors
             if (doc.querySelector('parsererror')) {
-                this.log('Error parsing SVG content with tspans, returning original text');
+                // Error parsing SVG content with tspans, return original text
                 return [text];
             }
             
@@ -1873,7 +1873,7 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         return [firstPart, secondPart];
     }
 
-    private generateSynopsisHTML(scene: Scene, contentLines: string[], sceneId: string): string {
+    private generateSynopsisHTML(scene: TimelineItem, contentLines: string[], sceneId: string): string {
         return this.synopsisManager.generateHTML(scene, contentLines, sceneId);
     }
 
@@ -2013,13 +2013,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
 
     // Remove redundant parseSceneTitle method - use the one from utils/text.ts instead
 
-    // Simple logging - outputs directly to console
-    public log<T>(message: string, data?: T): void;
-    public log(...args: unknown[]): void;
-    public log(...args: unknown[]) {
-        console.log('[RadialTimeline]', ...args);
-    }
-
     // Method to refresh the timeline if the active view exists (with debouncing)
     refreshTimelineIfNeeded(file: TAbstractFile | null | undefined) { this.timelineService.refreshTimelineIfNeeded(file, 400); }
 
@@ -2109,13 +2102,7 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
                 }
             }
             
-            if (addedFiles.length > 0) {
-                this.log(`New files opened: ${addedFiles.join(', ')}`);
-            }
-            
-            if (removedFiles.length > 0) {
-                this.log(`Files no longer open: ${removedFiles.join(', ')}`);
-            }
+            // Track file changes (removed diagnostic logs)
         }
         
         // Update the UI if something changed
@@ -2411,7 +2398,7 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
     // --- END: Color Conversion & Desaturation Helpers ---
 
     // Add this function inside the RadialTimelinePlugin class
-    public calculateCompletionEstimate(scenes: Scene[]): {
+    public calculateCompletionEstimate(scenes: TimelineItem[]): {
         date: Date;
         total: number;
         remaining: number;
@@ -2459,7 +2446,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         });
 
         if (completedThisYear <= 0) {
-            this.log("Completion estimate: No scenes completed this year. Cannot estimate.");
             return null;
         }
 
@@ -2503,14 +2489,12 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         const remainingScenes = totalScenes - completedCount; // Remaining = Total - Completed
 
         if (remainingScenes <= 0) {
-            this.log("Completion estimate: No remaining scenes to estimate.");
             return null;
         }
 
         const daysNeeded = remainingScenes / scenesPerDay;
 
         if (!isFinite(daysNeeded) || daysNeeded < 0 || scenesPerDay <= 0) {
-            this.log(`Completion estimate: Cannot estimate (Rate: ${scenesPerDay.toFixed(3)}, Needed: ${daysNeeded}).`);
             return null;
         }
 

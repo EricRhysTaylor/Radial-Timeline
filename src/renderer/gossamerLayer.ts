@@ -1,7 +1,7 @@
 /*
  * Gossamer SVG layer helper
  */
-import type { Scene } from '../main';
+import type { TimelineItem } from '../main';
 import { GossamerRun, extractPresentBeatScores, extractBeatOrder } from '../utils/gossamer';
 import { getMostAdvancedStageColor } from '../utils/colour';
 
@@ -30,7 +30,7 @@ export interface BeatSliceInfo {
 }
 
 export function renderGossamerLayer(
-  scenes: Scene[],
+  scenes: TimelineItem[],
   run: GossamerRun | null | undefined,
   polar: PolarConfig,
   anglesByBeat?: Map<string, number>,

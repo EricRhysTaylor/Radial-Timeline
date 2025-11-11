@@ -5,7 +5,7 @@
  */
 
 import { App } from 'obsidian';
-import { Scene } from '../../main';
+import { TimelineItem } from '../../main';
 import { RadialTimelineView } from '../TimeLineView';
 
 interface DominantSubplotView {
@@ -32,7 +32,7 @@ export async function handleDominantSubplotSelection(
     view: DominantSubplotView,
     clickedGroup: Element,
     svgElement: SVGSVGElement,
-    scenes: Scene[]
+    scenes: TimelineItem[]
 ): Promise<void> {
     // Get the subplot index from the clicked scene group
     const subplotIndexAttr = clickedGroup.getAttribute('data-subplot-index');
@@ -64,7 +64,7 @@ export async function handleDominantSubplotSelection(
     const scenesInClickedSubplot = scenes.filter(s => s.subplot === clickedSubplot);
     
     // Group scenes by path to find which ones exist in multiple subplots
-    const pathToScenes = new Map<string, Scene[]>();
+    const pathToScenes = new Map<string, TimelineItem[]>();
     scenes.forEach(s => {
         if (s.path) {
             if (!pathToScenes.has(s.path)) {

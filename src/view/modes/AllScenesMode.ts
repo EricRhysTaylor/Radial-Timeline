@@ -1,6 +1,6 @@
 import { TFile, App } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
-import { Scene } from '../../main';
+import { TimelineItem } from '../../main';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 
@@ -20,7 +20,7 @@ export interface AllScenesView {
     setNumberSquareGroupPosition(svg: SVGSVGElement, sceneId: string, x: number, y: number): void;
 }
 
-export function setupSceneInteractions(view: AllScenesView, group: Element, svgElement: SVGSVGElement, scenes: Scene[]): void {
+export function setupSceneInteractions(view: AllScenesView, group: Element, svgElement: SVGSVGElement, scenes: TimelineItem[]): void {
     if (view.currentMode !== 'narrative') return;
 
     const path = group.querySelector('.rt-scene-path');
@@ -91,7 +91,7 @@ export function setupSceneInteractions(view: AllScenesView, group: Element, svgE
     }
 }
 
-export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTMLElement, scenes: Scene[]): void {
+export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTMLElement, scenes: TimelineItem[]): void {
     const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
     if (!svg) return;
     

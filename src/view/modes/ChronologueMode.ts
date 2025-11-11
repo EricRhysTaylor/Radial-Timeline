@@ -5,7 +5,7 @@
  */
 
 import { TFile, App } from 'obsidian';
-import { Scene } from '../../main';
+import { TimelineItem } from '../../main';
 import { setupChronologueShiftController, isShiftModeActive } from '../interactions/ChronologueShiftController';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
@@ -24,7 +24,7 @@ export interface ChronologueView {
         saveSettings?: () => Promise<void>;
     };
     currentMode: string;
-    sceneData?: Scene[]; // Full scene data from view
+    sceneData?: TimelineItem[]; // Full scene data from view
     [key: string]: any; // SAFE: any type used for view augmentation by Obsidian/other modules
 }
 

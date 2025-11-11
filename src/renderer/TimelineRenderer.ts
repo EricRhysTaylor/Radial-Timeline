@@ -5,7 +5,7 @@
  */
 
 import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
-import type { Scene } from '../main';
+import type { TimelineItem } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString, generateChronologicalTicks, calculateTimeSpan, durationSelectionToMs, type ChronologicalTickInfo } from '../utils/date';
 import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
@@ -59,14 +59,14 @@ import { renderSubplotLabels } from './components/SubplotLabels';
 import { renderDefs, renderProgressRingGradients } from './components/Defs';
 import { renderEstimatedDateElements, renderEstimationArc } from './components/Progress';
 import { sceneArcPath, renderVoidCellPath } from './components/SceneArcs';
-import { renderPlotSlice } from './components/PlotSlices';
+import { renderBeatSlice } from './components/BeatSlices';
 import { renderActBorders } from './components/Acts';
 import { renderActLabels } from './components/ActLabels';
 import { renderTargetDateTick } from './components/ProgressTicks';
 import { renderProgressRing } from './components/ProgressRing';
 import { serializeSynopsesToString } from './components/Synopses';
 import { renderSceneGroup } from './components/Scenes';
-import { renderPlotGroup } from './components/Plots';
+import { renderBeatGroup } from './components/Beats';
 import { renderMonthSpokesAndInnerLabels, renderGossamerMonthSpokes } from './components/MonthSpokes';
 import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
 import { shouldRenderStoryBeats, shouldShowSubplotRings, shouldShowAllScenesInOuterRing, shouldShowInnerRingContent, getSubplotLabelText } from './modules/ModeRenderingHelpers';
@@ -109,7 +109,7 @@ function getLabelSignature(container: HTMLElement): string {
  */
 function computeCacheableValues(
     plugin: PluginRendererFacade,
-    scenes: Scene[]
+    scenes: TimelineItem[]
 ): Omit<CachedComputations, 'scenesHash' | 'settingsHash' | 'timestamp'> {
     const stopCacheCompute = startPerfSegment(plugin, 'timeline.cache-compute');
     
@@ -135,7 +135,7 @@ function computeCacheableValues(
     const totalPlotNotes = allScenesPlotNotes.length;
     const plotIndexByKey = new Map<string, number>();
     allScenesPlotNotes.forEach((p, i) => plotIndexByKey.set(`${String(p.title || '')}::${String(p.actNumber ?? '')}`, i));
-    const plotsBySubplot = new Map<string, Scene[]>();
+    const plotsBySubplot = new Map<string, TimelineItem[]>();
     allScenesPlotNotes.forEach(p => {
         const key = String(p.subplot || '');
         const arr = plotsBySubplot.get(key) || [];
@@ -144,7 +144,7 @@ function computeCacheableValues(
     });
     
     // 3. Group scenes by Act and Subplot
-    const scenesByActAndSubplot: { [act: number]: { [subplot: string]: Scene[] } } = {};
+    const scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } } = {};
     
     if (sortByWhen) {
         // When date sorting: Use single "act" (act 0) for full 360° circle
@@ -292,11 +292,11 @@ function startPerfSegment(plugin: PluginRendererFacade, label: string): PerfStop
     };
 }
 
-function getEffectiveScenesForRing(allScenes: Scene[], actIndex: number, subplot: string | undefined, outerAllScenes: boolean, isOuter: boolean, grouped: { [act: number]: { [subplot: string]: Scene[] } }): Scene[] {
+function getEffectiveScenesForRing(allScenes: TimelineItem[], actIndex: number, subplot: string | undefined, outerAllScenes: boolean, isOuter: boolean, grouped: { [act: number]: { [subplot: string]: TimelineItem[] } }): TimelineItem[] {
     if (isOuter && outerAllScenes) {
         const seenPaths = new Set<string>();
         const seenPlotKeys = new Set<string>();
-        const result: Scene[] = [];
+        const result: TimelineItem[] = [];
         allScenes.forEach(s => {
             const a = s.actNumber !== undefined ? s.actNumber - 1 : 0;
             if (a !== actIndex) return;
@@ -320,7 +320,7 @@ function getEffectiveScenesForRing(allScenes: Scene[], actIndex: number, subplot
 
 function buildSynopsis(
     plugin: PluginRendererFacade,
-    scene: Scene,
+    scene: TimelineItem,
     sceneId: string,
     maxTextWidth: number,
     orderedSubplots: string[],
@@ -355,7 +355,7 @@ function buildSynopsis(
         // Format characters with >pov< marker for first character
         const characters = scene.Character || [];
         const rawCharacters = characters.length > 0
-            ? characters.map((char, index) => index === 0 ? `${char} >pov<` : char).join(', ')
+            ? characters.map((char: string, index: number) => index === 0 ? `${char} >pov<` : char).join(', ')
             : '';
         contentLines.push(rawCharacters);
     }
@@ -366,7 +366,7 @@ function buildSynopsis(
 }
 
 type PositionInfo = { startAngle: number; endAngle: number; angularSize: number };
-function computePositions(innerR: number, outerR: number, startAngle: number, endAngle: number, items: Scene[]): Map<number, PositionInfo> {
+function computePositions(innerR: number, outerR: number, startAngle: number, endAngle: number, items: TimelineItem[]): Map<number, PositionInfo> {
     const middleRadius = (innerR + outerR) / 2;
     const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
     const totalAngularSpace = endAngle - startAngle;
@@ -391,7 +391,7 @@ function computePositions(innerR: number, outerR: number, startAngle: number, en
 
 function getFillForItem(
     plugin: PluginRendererFacade,
-    scene: Scene,
+    scene: TimelineItem,
     maxStageColor: string,
     publishStageColors: Record<string, string>,
     totalPlotNotes: number,
@@ -641,7 +641,7 @@ export function adjustBeatLabelsAfterRender(container: HTMLElement, attempt: num
 
 export function createTimelineSVG(
   plugin: PluginRendererFacade,
-  scenes: Scene[],
+  scenes: TimelineItem[],
 ): { svgString: string; maxStageColor: string } {
         const stopTotalPerf = startPerfSegment(plugin, 'timeline.total');
         const sceneCount = scenes.length;
@@ -663,8 +663,7 @@ export function createTimelineSVG(
             cached = globalRenderCache.set(scenes, plugin.settings, computeCacheableValues(plugin, scenes));
             stopPrepPerf();
         } else {
-            // Cache hit - log for performance monitoring
-            plugin.log('[RenderCache] Cache HIT - skipping expensive computations');
+            // Cache hit - skipping expensive computations
         }
     
         // Extract cached values
@@ -739,7 +738,7 @@ export function createTimelineSVG(
             
             // Build combined array exactly like outer ring does (act 0 for chronologue mode)
             const seenPaths = new Set<string>();
-            const combined: Scene[] = [];
+            const combined: TimelineItem[] = [];
             
             scenes.forEach(s => {
                 // In chronologue mode, SKIP beats entirely - only scenes
@@ -1191,10 +1190,10 @@ export function createTimelineSVG(
                     // and unique by title+act for Plot notes) for this act only.
                     const seenPaths = new Set<string>();
                     const seenPlotKeys = new Set<string>();
-                    const combined: Scene[] = [];
+                    const combined: TimelineItem[] = [];
                     
                     // Helper to select which Scene object to use when multiple exist for same path
-                    const selectSceneForOuterRing = (scenePath: string, candidateScenes: Scene[]): Scene => {
+                    const selectSceneForOuterRing = (scenePath: string, candidateScenes: TimelineItem[]): TimelineItem => {
                         // 1. Check if there's a stored dominant subplot preference
                         const dominantSubplot = plugin.settings.dominantSubplots?.[scenePath];
                         
@@ -1226,7 +1225,7 @@ export function createTimelineSVG(
                     };
                     
                     // Group scenes by path to handle scenes in multiple subplots
-                    const scenesByPath = new Map<string, Scene[]>();
+                    const scenesByPath = new Map<string, TimelineItem[]>();
                     scenes.forEach(s => {
                         // When using When date sorting, include all scenes (ignore Act)
                         // When using manuscript order, filter by Act
@@ -1365,7 +1364,9 @@ export function createTimelineSVG(
                             );
                             // If this is a Plot note, append Gossamer info if available
                             synopsesElements.push(synopsisElOuter);
-                        } catch {}
+                        } catch (error) {
+                            console.warn('Failed to build synopsis for scene:', scene.path, error);
+                        }
                         let sceneClasses = 'rt-scene-path';
                         if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += ' rt-scene-is-open';
                         const dyOffset = 0; // keep scene titles exactly on the midline path
@@ -1624,7 +1625,7 @@ export function createTimelineSVG(
                                     ? plugin.darkenColor(maxStageColor, Math.abs(adjustment))
                                     : plugin.lightenColor(maxStageColor, adjustment);
                                 const sceneId = `scene-path-${act}-${ring}-${idx}`;
-                                svg += renderPlotSlice({ act, ring, idx, innerR, outerR, startAngle: plotStartAngle, endAngle: plotEndAngle, sceneId, plot: plotNote });
+                                svg += renderBeatSlice({ act, ring, idx, innerR, outerR, startAngle: plotStartAngle, endAngle: plotEndAngle, sceneId, beat: plotNote });
                                 currentAngle += plotAngularWidth;
                             });
                             if (remainingSpace > 0.001) {
@@ -1976,7 +1977,7 @@ export function createTimelineSVG(
                 // Build combined list for this act (or all scenes if using When date)
                 const seenPaths = new Set<string>();
                 const seenPlotKeys = new Set<string>();
-                const combined: Scene[] = [];
+                const combined: TimelineItem[] = [];
 
                 scenes.forEach(s => {
                     // When using When date sorting, include all scenes (ignore Act)

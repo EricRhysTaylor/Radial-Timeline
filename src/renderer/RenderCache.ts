@@ -4,13 +4,13 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { Scene } from '../main';
+import type { TimelineItem } from '../main';
 
 /**
  * Hash function for creating cache keys from scene arrays
  * Uses comprehensive scene data to detect any rendering-relevant changes
  */
-function hashScenes(scenes: Scene[]): string {
+function hashScenes(scenes: TimelineItem[]): string {
     // Create a stable hash based on all fields that affect rendering
     return scenes
         .map(s => {
@@ -40,11 +40,11 @@ function hashScenes(scenes: Scene[]): string {
             
             // Include all Gossamer fields (Gossamer1 through Gossamer30)
             for (let i = 1; i <= 30; i++) {
-                const gossamerKey = `Gossamer${i}` as keyof Scene;
+                const gossamerKey = `Gossamer${i}` as keyof TimelineItem;
                 parts.push((s[gossamerKey] as any) || '');
                 
                 // Include Gossamer justifications (rendered in Gossamer mode)
-                const justificationKey = `Gossamer${i} Justification` as keyof Scene;
+                const justificationKey = `Gossamer${i} Justification` as keyof TimelineItem;
                 parts.push((s[justificationKey] as any) || '');
             }
             
@@ -89,11 +89,11 @@ function hashSettings(settings: {
  */
 export interface CachedComputations {
     // Scene grouping and ordering
-    scenesByActAndSubplot: { [act: number]: { [subplot: string]: Scene[] } };
+    scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } };
     masterSubplotOrder: string[];
     totalPlotNotes: number;
     plotIndexByKey: Map<string, number>;
-    plotsBySubplot: Map<string, Scene[]>;
+    plotsBySubplot: Map<string, TimelineItem[]>;
     
     // Ring geometry
     ringWidths: number[];
@@ -136,7 +136,7 @@ export class RenderCache {
     /**
      * Check if cached computations are still valid
      */
-    isValid(scenes: Scene[], settings: any): boolean { // SAFE: any type used for settings object with dynamic properties
+    isValid(scenes: TimelineItem[], settings: any): boolean { // SAFE: any type used for settings object with dynamic properties
         if (!this.cache) return false;
         
         const scenesHash = hashScenes(scenes);
@@ -151,7 +151,7 @@ export class RenderCache {
     /**
      * Get cached computations if valid, otherwise return null
      */
-    get(scenes: Scene[], settings: any): CachedComputations | null { // SAFE: any type used for settings object with dynamic properties
+    get(scenes: TimelineItem[], settings: any): CachedComputations | null { // SAFE: any type used for settings object with dynamic properties
         if (this.isValid(scenes, settings)) {
             return this.cache;
         }
@@ -162,7 +162,7 @@ export class RenderCache {
      * Store new cached computations
      */
     set(
-        scenes: Scene[],
+        scenes: TimelineItem[],
         settings: any, // SAFE: any type used for settings object with dynamic properties
         computations: Omit<CachedComputations, 'scenesHash' | 'settingsHash' | 'timestamp'>
     ): CachedComputations {

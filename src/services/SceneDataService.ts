@@ -12,7 +12,7 @@
  */
 
 import { App, TFile } from 'obsidian';
-import { Scene } from '../main';
+import { TimelineItem } from '../main';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseWhenField } from '../utils/date';
 import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
@@ -48,7 +48,7 @@ export class SceneDataService {
     /**
      * Get all scene data from the vault
      */
-    async getSceneData(options?: GetSceneDataOptions): Promise<Scene[]> {
+    async getSceneData(options?: GetSceneDataOptions): Promise<TimelineItem[]> {
         const filterBeats = options?.filterBeatsBySystem ?? true;
 
         // Find markdown files in vault that match the filters
@@ -60,7 +60,7 @@ export class SceneDataService {
             return true;
         });
 
-        const scenes: Scene[] = [];
+        const scenes: TimelineItem[] = [];
         const plotsToProcess: Array<{file: TFile, metadata: Record<string, unknown>, validActNumber: number}> = [];
     
         for (const file of files) {
@@ -165,7 +165,7 @@ export class SceneDataService {
         const filteredScenes = this.filterScenesByDominantSubplot(scenes);
         
         // Build a map: date -> scenes (only unique file paths)
-        const scenesByDate = new Map<string, Scene[]>();
+        const scenesByDate = new Map<string, TimelineItem[]>();
         const processedPaths = new Set<string>();
         
         for (const scene of filteredScenes) {
@@ -250,11 +250,11 @@ export class SceneDataService {
     /**
      * Apply dominant subplot preferences from settings
      */
-    private applyDominantSubplotPreferences(scenes: Scene[]): void {
+    private applyDominantSubplotPreferences(scenes: TimelineItem[]): void {
         if (!this.settings.dominantSubplots) return;
         
         // Group scenes by path
-        const scenesByPath = new Map<string, Scene[]>();
+        const scenesByPath = new Map<string, TimelineItem[]>();
         scenes.forEach(scene => {
             if (!scene.path) return;
             if (!scenesByPath.has(scene.path)) {
@@ -280,7 +280,7 @@ export class SceneDataService {
      * Keep all scenes but mark the dominant subplot for visual coloring
      * (this does NOT filter - all subplot versions are kept for rendering in their respective rings)
      */
-    private filterScenesByDominantSubplot(scenes: Scene[]): Scene[] {
+    private filterScenesByDominantSubplot(scenes: TimelineItem[]): TimelineItem[] {
         // Don't filter - just return all scenes
         // The _isDominantSubplot flag is already set by applyDominantSubplotPreferences
         // and will be used by the renderer for coloring purposes in narrative/chronologue modes

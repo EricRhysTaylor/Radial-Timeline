@@ -3,7 +3,7 @@
  */
 import { Modal, App, ButtonComponent, Notice, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { Scene } from '../main';
+import type { TimelineItem } from '../main';
 import { normalizeBeatName } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem, detectPlotSystemFromNotes } from '../utils/beatsSystems';
@@ -23,13 +23,13 @@ interface BeatScoreEntry {
 
 export class GossamerScoreModal extends Modal {
   private plugin: RadialTimelinePlugin;
-  private plotBeats: Scene[];
+  private plotBeats: TimelineItem[];
   private entries: BeatScoreEntry[] = [];
 
   constructor(
     app: App,
     plugin: RadialTimelinePlugin,
-    plotBeats: Scene[]
+    plotBeats: TimelineItem[]
   ) {
     super(app);
     this.plugin = plugin;

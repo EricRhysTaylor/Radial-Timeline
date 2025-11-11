@@ -5,11 +5,11 @@
  */
 
 import { formatNumber } from '../../utils/svg';
-import { Scene } from '../../main';
+import { TimelineItem } from '../../main';
 import { parseWhenField, calculateTimeSpan, parseDuration, detectDiscontinuities, detectSceneOverlaps } from '../../utils/date';
 
 export interface ChronologueSceneEntry {
-    scene: Scene;
+    scene: TimelineItem;
     date: Date;
     sourceIndex: number;
 }
@@ -18,7 +18,7 @@ export interface ChronologueSceneEntry {
  * Build a de-duplicated, chronologue-friendly list of scene entries.
  * Scenes are uniquely identified by their path (preferred) or title+timestamp.
  */
-export function collectChronologueSceneEntries(scenes: Scene[]): ChronologueSceneEntry[] {
+export function collectChronologueSceneEntries(scenes: TimelineItem[]): ChronologueSceneEntry[] {
     const seenKeys = new Set<string>();
     const entries: ChronologueSceneEntry[] = [];
 
@@ -52,7 +52,7 @@ export function collectChronologueSceneEntries(scenes: Scene[]): ChronologueScen
  * @param scenePositions - Optional map of scene angular positions (manuscript order, keyed by scene path/title)
  */
 export function renderChronologueTimelineArc(
-    scenes: Scene[],
+    scenes: TimelineItem[],
     outerRadius: number,
     scenePositions?: Map<string, { startAngle: number; endAngle: number }>,
     durationCapMs?: number | null,
@@ -269,8 +269,8 @@ function mapTimeToAngle(timeMs: number, startMs: number, endMs: number): number 
  * Render elapsed time arc between two selected scenes
  */
 export function renderElapsedTimeArc(
-    scene1: Scene,
-    scene2: Scene,
+    scene1: TimelineItem,
+    scene2: TimelineItem,
     outerRadius: number,
     arcWidth: number = 2
 ): string {
@@ -315,7 +315,7 @@ export function renderElapsedTimeArc(
  * @returns SVG string
  */
 export function renderChronologicalBackboneArc(
-    scenes: Scene[],
+    scenes: TimelineItem[],
     outerRingInnerRadius: number,
     outerRingOuterRadius: number,
     discontinuityThreshold: number = 3,
@@ -381,7 +381,7 @@ export function renderChronologicalBackboneArc(
 }
 
 /**
- * Arc 2: Scene Duration Overlay
+ * Arc 2: TimelineItem Duration Overlay
  * Renders colored arc segments showing each scene's duration
  * Red segments indicate temporal overlaps
  * 
@@ -390,14 +390,14 @@ export function renderChronologicalBackboneArc(
  * @returns SVG string
  */
 export function renderSceneDurationArcs(
-    scenes: Scene[],
+    scenes: TimelineItem[],
     outerRadius: number
 ): string {
     // Detect overlaps
     const overlapIndices = detectSceneOverlaps(scenes);
     
     // Parse dates and calculate time range
-    const validScenes: { scene: Scene; date: Date; index: number }[] = [];
+    const validScenes: { scene: TimelineItem; date: Date; index: number }[] = [];
     scenes.forEach((scene, index) => {
         const whenDate =
             scene.when instanceof Date

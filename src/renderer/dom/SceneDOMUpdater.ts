@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { Scene } from '../../main';
+import type { TimelineItem } from '../../main';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 
 /**
@@ -14,7 +14,7 @@ import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 export function updateSceneColors(
     svg: SVGSVGElement,
     plugin: PluginRendererFacade,
-    changedScenes: Scene[]
+    changedScenes: TimelineItem[]
 ): boolean {
     try {
         const subplotColors = plugin.settings.subplotColors || [];

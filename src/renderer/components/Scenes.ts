@@ -1,9 +1,9 @@
-import type { Scene } from '../../main';
+import type { TimelineItem } from '../../main';
 import { formatNumber } from '../../utils/svg';
 import { isBeatNote } from '../../utils/sceneHelpers';
 
 export function renderSceneGroup(params: {
-  scene: Scene;
+  scene: TimelineItem;
   act: number;
   ring: number;
   idx: number;

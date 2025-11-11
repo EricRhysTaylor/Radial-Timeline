@@ -4,6 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 import type RadialTimelinePlugin from './main';
+import type { TimelineItem } from './main';
 import { decodeHtmlEntities, parseSceneTitleComponents } from './utils/text';
 import { getPublishStageStyle, splitSynopsisLines, decodeContentLines, isOverdueAndIncomplete } from './synopsis/SynopsisData';
 import { createSynopsisContainer, createTextGroup, createText } from './synopsis/SynopsisView';
@@ -13,30 +14,6 @@ import {
   SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
   SYNOPSIS_INSET
 } from './renderer/layout/LayoutConstants';
-
-interface Scene {
-  title?: string;
-  date: string;
-  path?: string;
-  subplot?: string;
-  act?: string;
-  pov?: string;
-  location?: string;
-  number?: number;
-  synopsis?: string;
-  when?: Date;
-  actNumber?: number;
-  Character?: string[];
-  status?: string | string[];
-  "Publish Stage"?: string;
-  due?: string;
-  pendingEdits?: string;
-  Duration?: string;
-  "previousSceneAnalysis"?: string;
-  "currentSceneAnalysis"?: string;
-  "nextSceneAnalysis"?: string;
-  itemType?: "Scene" | "Plot" | "Beat";
-}
 
 /**
  * Handles generating synopsis SVG/HTML blocks and positioning logic.
@@ -248,7 +225,7 @@ export default class SynopsisManager {
    * Create a DOM element for a scene synopsis with consistent formatting
    * @returns An SVG group element containing the formatted synopsis
    */
-  generateElement(scene: Scene, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number): SVGGElement {
+  generateElement(scene: TimelineItem, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number): SVGGElement {
     const { stageClass, titleColor } = getPublishStageStyle(scene["Publish Stage"], this.plugin.settings.publishStageColors);
     
     const { synopsisEndIndex, metadataItems } = splitSynopsisLines(contentLines);
@@ -568,7 +545,7 @@ export default class SynopsisManager {
   /**
    * Generate SVG string from DOM element (temporary compatibility method)
    */
-  generateHTML(scene: Scene, contentLines: string[], sceneId: string): string {
+  generateHTML(scene: TimelineItem, contentLines: string[], sceneId: string): string {
     const element = this.generateElement(scene, contentLines, sceneId);
     const serializer = new XMLSerializer();
     return serializer.serializeToString(element);

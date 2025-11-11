@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { Scene } from '../../main';
+import { TimelineItem } from '../../main';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
 import { ELAPSED_ARC_RADIUS, ELAPSED_TICK_LENGTH } from '../../renderer/layout/LayoutConstants';
@@ -39,7 +39,7 @@ export interface ChronologueShiftView {
         [key: string]: any; // SAFE: any type used for facade extension by downstream plugins
     };
     currentMode: string;
-    sceneData?: Scene[]; // Full scene data from view
+    sceneData?: TimelineItem[]; // Full scene data from view
     [key: string]: any; // SAFE: any type used for additional runtime fields from Obsidian
 }
 
@@ -66,7 +66,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     }
     
     let shiftModeActive = false;
-    let selectedScenes: Scene[] = []; // Locked scenes (stay selected)
+    let selectedScenes: TimelineItem[] = []; // Locked scenes (stay selected)
     let hoveredScenePath: string | null = null; // Currently hovered scene (encoded path)
     let elapsedTimeClickCount = 0;
     
@@ -339,14 +339,14 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     
     // Helper function to find scene by path - use view.sceneData if available
     // path parameter is already URL-encoded (from data-path attribute)
-    const findSceneByPath = (path: string): Scene | null => {
+    const findSceneByPath = (path: string): TimelineItem | null => {
         // Decode path for comparison with Scene.path (which is decoded)
         const decodedPath = decodeURIComponent(path);
         
         // First try to find in view.sceneData or view.scenes (full Scene objects)
         const allScenes = (view as any).sceneData || (view as any).scenes;
         if (allScenes && Array.isArray(allScenes)) {
-            const scene = allScenes.find((s: Scene) => s.path === decodedPath);
+            const scene = allScenes.find((s: TimelineItem) => s.path === decodedPath);
             if (scene) {
                 return scene;
             }
@@ -364,7 +364,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             title: '',
             subplot: '',
             itemType: 'Scene' as const,
-        } as Scene;
+        } as TimelineItem;
     };
     
     // Setup shift mode hover handlers - MUST run before other handlers
@@ -652,7 +652,7 @@ function removeShiftModeFromAllScenes(svg: SVGSVGElement): void {
  */
 function updateSceneSelection(
     svg: SVGSVGElement, 
-    selectedScenes: Scene[], 
+    selectedScenes: TimelineItem[], 
     numberSquareBySceneId: Map<string, SVGElement>,
     numberTextBySceneId: Map<string, SVGElement>,
     sceneSubplotIndexBySceneId: Map<string, number>,
@@ -722,7 +722,7 @@ function removeSceneHighlights(svg: SVGSVGElement): void {
  */
 function showElapsedTime(
     svg: SVGSVGElement,
-    scenes: Scene[],
+    scenes: TimelineItem[],
     clickCount: number,
     sceneGeometry: Map<string, SceneGeometryInfo>,
     defaultOuterRadius: number
@@ -739,7 +739,7 @@ function showElapsedTime(
     const geometry1 = sceneGeometry.get(encodedPath1);
     const geometry2 = sceneGeometry.get(encodedPath2);
 
-    const parseSceneDate = (scene: Scene): Date | null => {
+    const parseSceneDate = (scene: TimelineItem): Date | null => {
         if (scene.when instanceof Date) return scene.when;
         if (typeof scene.when === 'string') return parseWhenField(scene.when);
         return null;

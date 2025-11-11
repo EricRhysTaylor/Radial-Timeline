@@ -7,7 +7,7 @@
 import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice, normalizePath } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
-import type { Scene } from '../main';
+import type { TimelineItem } from '../main';
 import { SceneNumberInfo } from '../utils/constants';
 import ZeroDraftModal from '../modals/ZeroDraftModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
@@ -48,7 +48,7 @@ export class RadialTimelineView extends ItemView {
     private lastSnapshot: TimelineSnapshot | null = null;
         
     // Scene data (scenes)
-    sceneData: Scene[] = [];
+    sceneData: TimelineItem[] = [];
     
     // Set of open scene paths (for tracking open files)
     openScenePaths: Set<string> = new Set<string>();
@@ -118,11 +118,6 @@ export class RadialTimelineView extends ItemView {
         } catch (e) {
             // Mode management initialization failed
         }
-    }
-    
-    private log<T>(message: string, data?: T) {
-        // Simple logging - outputs directly to console
-        console.log('[Timeline]', message, data !== undefined ? data : '');
     }
     
     getViewType(): string {
@@ -269,14 +264,8 @@ export class RadialTimelineView extends ItemView {
                 }
             }
             
-            if (addedFiles.length > 0) {
-                this.log(`New files opened: ${addedFiles.join(', ')}`);
-            }
-            
-            if (removedFiles.length > 0) {
-                this.log(`Files no longer open: ${removedFiles.join(', ')}`);
-            }
-        }
+            // Track file changes (removed diagnostic logs)
+                    }
         
         // Update the UI if something changed
         if (hasChanged) {
@@ -379,7 +368,6 @@ export class RadialTimelineView extends ItemView {
                     }
                     
                     // Selective update failed - fall through to full render
-                    this.log('[Render] Selective update failed, falling back to full render');
                 }
                 
                 // Full render
@@ -572,11 +560,10 @@ export class RadialTimelineView extends ItemView {
     
     // Add missing addHighlightRectangles method
     private addHighlightRectangles(): void {
-        this.log(`Adding highlight rectangles for search term: "${this.plugin.searchTerm}" with ${this.plugin.searchResults.size} results`);
         addHighlightRectanglesExt(this);
     }
     
-    renderTimeline(container: HTMLElement, scenes: Scene[]): void {
+    renderTimeline(container: HTMLElement, scenes: TimelineItem[]): void {
         // Clear existing content
         container.empty();
         
@@ -606,7 +593,6 @@ export class RadialTimelineView extends ItemView {
             }
 
             container.createEl("div", { text: messageText });
-            this.log("No scenes found. Source path:", sourcePath || "<not set>");
 
             // Add button to create a template scene file
             const demoButton = container.createEl("button", {
@@ -870,8 +856,6 @@ export class RadialTimelineView extends ItemView {
     private highlightFileInExplorer(filePath: string, isHighlighting: boolean): void {
         if (!filePath) return;
         
-        this.log(`${isHighlighting ? 'Highlighting' : 'Unhighlighting'} file in explorer: ${filePath}`);
-        
         try {
             // Get the file object
             const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
@@ -900,7 +884,7 @@ export class RadialTimelineView extends ItemView {
                 }
             }
         } catch (error) {
-            this.log(`Error highlighting file: ${error}`);
+            // Silently handle file highlighting errors
         }
     }
     

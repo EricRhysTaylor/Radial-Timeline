@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { Scene } from '../../main';
+import type { TimelineItem } from '../../main';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 import { getSceneState, buildSquareClasses, buildTextClasses } from '../../utils/sceneHelpers';
 
@@ -15,7 +15,7 @@ import { getSceneState, buildSquareClasses, buildTextClasses } from '../../utils
 export function updateNumberSquareStates(
     svg: SVGSVGElement,
     plugin: PluginRendererFacade,
-    scenes: Scene[]
+    scenes: TimelineItem[]
 ): boolean {
     try {
         let updated = false;

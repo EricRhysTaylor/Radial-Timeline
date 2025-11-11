@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import type { Scene } from '../main';
+import type { TimelineItem } from '../main';
 import { addHighlightRectangles as addHighlightRectanglesExt } from '../view/interactions';
 import { renderGossamerLayer } from '../renderer/gossamerLayer';
 import { renderGossamerMonthSpokes } from '../renderer/components/MonthSpokes';
@@ -21,7 +21,7 @@ export class RendererService {
     /**
      * Update scene colors for dominant subplot changes (DOM update)
      */
-    updateSceneColorsDOM(container: HTMLElement, plugin: any, changedScenes: Scene[]): boolean { // SAFE: any type used for plugin interface compatibility
+    updateSceneColorsDOM(container: HTMLElement, plugin: any, changedScenes: TimelineItem[]): boolean { // SAFE: any type used for plugin interface compatibility
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
         if (!svg) return false;
         return updateSceneColors(svg, plugin, changedScenes);
@@ -30,7 +30,7 @@ export class RendererService {
     /**
      * Update number square states (status, AI grades) (DOM update)
      */
-    updateNumberSquaresDOM(container: HTMLElement, plugin: any, scenes: Scene[]): boolean { // SAFE: any type used for plugin interface compatibility
+    updateNumberSquaresDOM(container: HTMLElement, plugin: any, scenes: TimelineItem[]): boolean { // SAFE: any type used for plugin interface compatibility
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
         if (!svg) return false;
         return updateNumberSquareStates(svg, plugin, scenes);
@@ -39,7 +39,7 @@ export class RendererService {
     /**
      * Update synopsis text content (DOM update)
      */
-    updateSynopsisDOM(container: HTMLElement, changedScenes: Scene[]): boolean {
+    updateSynopsisDOM(container: HTMLElement, changedScenes: TimelineItem[]): boolean {
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
         if (!svg) return false;
         return updateSynopsisText(svg, changedScenes);
@@ -120,7 +120,7 @@ export class RendererService {
      * - If not in gossamer mode, removes any existing gossamer elements.
      * Returns true on success, false if SVG or required data is missing (caller may fall back to full refresh).
      */
-  updateGossamerLayer(view: { containerEl: HTMLElement; plugin: any; sceneData?: Scene[]; currentMode?: string }): boolean { // SAFE: any type used for plugin interface compatibility with dynamic properties
+  updateGossamerLayer(view: { containerEl: HTMLElement; plugin: any; sceneData?: TimelineItem[]; currentMode?: string }): boolean { // SAFE: any type used for plugin interface compatibility with dynamic properties
         const container = view.containerEl.children[1] as HTMLElement | undefined;
         if (!container) return false;
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
@@ -201,8 +201,8 @@ export class RendererService {
         }
 
         // Gather scenes (prefer cached on view)
-        const scenes: Scene[] = Array.isArray((view as any).sceneData) && (view as any).sceneData.length > 0
-            ? ((view as any).sceneData as Scene[])
+        const scenes: TimelineItem[] = Array.isArray((view as any).sceneData) && (view as any).sceneData.length > 0
+            ? ((view as any).sceneData as TimelineItem[])
             : (view.plugin.lastSceneData || []);
 
         // Angles/slices captured during main render
@@ -285,7 +285,7 @@ export class RendererService {
      * Selectively update the year progress ring, target-date tick/marker,
      * and estimated date elements without full re-render.
      */
-  updateProgressAndTicks(view: { containerEl: HTMLElement; plugin: any; sceneData?: Scene[] }): boolean { // SAFE: any type used for plugin interface compatibility with dynamic properties
+  updateProgressAndTicks(view: { containerEl: HTMLElement; plugin: any; sceneData?: TimelineItem[] }): boolean { // SAFE: any type used for plugin interface compatibility with dynamic properties
         const container = view.containerEl.children[1] as HTMLElement | undefined;
         if (!container) return false;
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
@@ -327,7 +327,7 @@ export class RendererService {
         let estimationHtml = '';
         try {
             if ((view.plugin.settings.showEstimate ?? true) && typeof view.plugin.calculateCompletionEstimate === 'function') {
-                const scenes: Scene[] = (view as any).sceneData || (view.plugin as any).lastSceneData || [];
+                const scenes: TimelineItem[] = (view as any).sceneData || (view.plugin as any).lastSceneData || [];
                 const estimateResult = view.plugin.calculateCompletionEstimate(scenes);
                 if (estimateResult) {
                     // Only draw arc for current/past year (mirror renderer logic)

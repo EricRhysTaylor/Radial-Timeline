@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-import { Scene } from '../main';
+import { TimelineItem } from '../main';
 import { parseWhenField } from './date';
 
 /**
@@ -42,7 +42,7 @@ export function isStoryBeat(classValue: unknown): boolean {
 /**
  * Check if a scene is a beat note (supports both new 'Beat' and legacy 'Plot' itemType)
  */
-export function isBeatNote(scene: Scene | { itemType?: string }): boolean {
+export function isBeatNote(scene: TimelineItem | { itemType?: string }): boolean {
     return scene.itemType === 'Beat' || scene.itemType === 'Plot';
 }
 
@@ -53,10 +53,10 @@ export function isBeatNote(scene: Scene | { itemType?: string }): boolean {
  * @param forceChronological - If true, always use chronological sort (for Chronologue mode)
  */
 export function sortScenes(
-    scenes: Scene[], 
+    scenes: TimelineItem[], 
     sortByWhen: boolean, 
     forceChronological: boolean = false
-): Scene[] {
+): TimelineItem[] {
     // When sorting by manuscript order, treat beats and scenes together
     if (!forceChronological && !sortByWhen) {
         return scenes.slice().sort(sortByManuscriptOrder);
@@ -84,9 +84,8 @@ export interface PluginRendererFacade {
     desaturateColor(hex: string, amount: number): string;
     lightenColor(hex: string, percent: number): string;
     darkenColor(hex: string, percent: number): string;
-    calculateCompletionEstimate(scenes: Scene[]): { date: Date; total: number; remaining: number; rate: number } | null;
-    log<T>(message: string, data?: T): void;
-    synopsisManager: { generateElement: (scene: Scene, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number) => SVGGElement };
+    calculateCompletionEstimate(scenes: TimelineItem[]): { date: Date; total: number; remaining: number; rate: number } | null;
+    synopsisManager: { generateElement: (scene: TimelineItem, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number) => SVGGElement };
     safeSvgText(text: string): string;
     latestStatusCounts?: Record<string, number>;
     splitIntoBalancedLines: (text: string, maxWidth: number) => string[];
@@ -104,7 +103,7 @@ export interface SceneState {
  * Optimized with caching to avoid repeated string operations
  */
 export function extractGradeFromScene(
-    scene: Scene, 
+    scene: TimelineItem, 
     sceneId: string, 
     sceneGrades: Map<string, string>, 
     plugin: PluginRendererFacade
@@ -136,7 +135,7 @@ export function extractGradeFromScene(
 /**
  * Helper function to check scene state
  */
-export function getSceneState(scene: Scene, plugin: PluginRendererFacade): SceneState {
+export function getSceneState(scene: TimelineItem, plugin: PluginRendererFacade): SceneState {
     const isSceneOpen = !!(scene.path && plugin.openScenePaths.has(scene.path));
     const isSearchMatch = !!(plugin.searchActive && scene.path && plugin.searchResults.has(scene.path));
     const hasEdits = !!(scene.pendingEdits && scene.pendingEdits.trim() !== '');
@@ -177,7 +176,7 @@ export function buildTextClasses(
  * Sort scenes chronologically by their When field
  * Scenes without When field fall back to manuscript order (prefix number, then alphanumeric)
  */
-export function sortScenesChronologically(scenes: Scene[]): Scene[] {
+export function sortScenesChronologically(scenes: TimelineItem[]): TimelineItem[] {
     return scenes.slice().sort((a, b) => {
         // Parse When fields - handle both Date objects and strings
         const aWhen = a.when instanceof Date ? a.when : parseWhenField(typeof a.when === 'string' ? a.when : '');
@@ -206,7 +205,7 @@ export function sortScenesChronologically(scenes: Scene[]): Scene[] {
  * Returns the filename prefix number (e.g., "01 Scene" → 1)
  * Returns Infinity if no prefix found (sorts to end)
  */
-export function extractPosition(item: Scene): number {
+export function extractPosition(item: TimelineItem): number {
     const title = item.title || '';
     
     // Extract prefix number
@@ -222,7 +221,7 @@ export function extractPosition(item: Scene): number {
 /**
  * Sort scenes by manuscript order (prefix number, then alphanumeric)
  */
-export function sortByManuscriptOrder(a: Scene, b: Scene): number {
+export function sortByManuscriptOrder(a: TimelineItem, b: TimelineItem): number {
     // Extract positions (prefix or Range for beats)
     const aPos = extractPosition(a);
     const bPos = extractPosition(b);

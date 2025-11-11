@@ -1,4 +1,4 @@
-import type { Scene } from '../../main';
+import type { TimelineItem } from '../../main';
 import { formatNumber } from '../../utils/svg';
 
 export function sceneArcPath(innerR: number, outerR: number, startAngle: number, endAngle: number): string {

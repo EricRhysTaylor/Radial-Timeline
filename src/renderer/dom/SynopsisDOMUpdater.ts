@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { Scene } from '../../main';
+import type { TimelineItem } from '../../main';
 
 /**
  * Updates synopsis text content in the DOM without regenerating SVG
@@ -12,7 +12,7 @@ import type { Scene } from '../../main';
  */
 export function updateSynopsisText(
     svg: SVGSVGElement,
-    changedScenes: Scene[]
+    changedScenes: TimelineItem[]
 ): boolean {
     try {
         let updated = false;

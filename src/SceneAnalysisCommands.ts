@@ -700,7 +700,6 @@ async function logApiInteractionToFile(
                 throw e;
             } else if (!(e instanceof Error)) {
                 // Non-critical; log only when debug is enabled
-                plugin.log(`[BeatsCommands] Non-Error while ensuring folder exists:`, e);
             }
         }
 
@@ -1510,13 +1509,10 @@ export async function processBySubplotOrder(
                          if (updated) {
                              await plugin.saveSettings();
                          } else {
-                             plugin.log(`[API Beats][processBySubplotOrder] Failed to update file for subplot ${subplotName} after getting beats for: ${currentScenePath}`);
                          }
                      } else {
-                         plugin.log(`[API Beats][processBySubplotOrder] Failed to parse AI result for subplot ${subplotName}, scene: ${currentScenePath}`);
                      }
                  } else {
-                     plugin.log(`[API Beats][processBySubplotOrder] No result from AI for subplot ${subplotName}, scene: ${currentScenePath}`);
                  }
                  totalProcessedCount++;
                  notice.setMessage(`Progress: ${totalProcessedCount}/${totalTripletsAcrossSubplots} scenes processed...`);
@@ -1624,9 +1620,7 @@ async function processSubplotWithModal(
             // Update triplet information in the modal to show subplot context
             if (modal && typeof modal.setTripletInfo === 'function') {
                 modal.setTripletInfo(prevNum, currentNum, nextNum);
-                plugin.log(`Updated triplet info for subplot "${subplotName}": prev=${prevNum}, current=${currentNum}, next=${nextNum}`);
             } else {
-                plugin.log(`Modal or setTripletInfo not available for subplot "${subplotName}"`);
             }
 
             const contextPrompt = getActiveContextPrompt(plugin);
@@ -1656,7 +1650,6 @@ async function processSubplotWithModal(
                     const success = await updateSceneFile(vault, triplet.current, parsedAnalysis, plugin, aiResult.modelIdUsed);
                     if (success) {
                         processedCount++;
-                        plugin.log(`Successfully updated beats for scene ${triplet.current.sceneNumber} in subplot "${subplotName}"`);
                     } else {
                         modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${currentPath}`);
                     }
@@ -1669,9 +1662,7 @@ async function processSubplotWithModal(
         }
 
         await plugin.saveSettings();
-        plugin.log(`Subplot processing completed: ${processedCount}/${total} scenes processed for "${subplotName}"`);
     } catch (error) {
-        plugin.log(`Error processing subplot "${subplotName}": ${error instanceof Error ? error.message : String(error)}`);
         throw error;
     }
 }
@@ -1709,7 +1700,6 @@ export async function processEntireSubplotWithModal(
                 return validScenes.length;
             }
         } catch (error) {
-            plugin.log(`Error counting scenes for subplot "${subplotName}": ${error instanceof Error ? error.message : String(error)}`);
             return 0;
         }
     };
@@ -1847,7 +1837,6 @@ async function processEntireSubplotWithModalInternal(
             if (isResuming) {
                 // Resume: skip scenes processed today
                 if (hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true })) {
-                    plugin.log(`[Resume] Skipping scene processed today: ${triplet.current.file.basename}`);
                     continue;
                 }
             }
@@ -1868,9 +1857,7 @@ async function processEntireSubplotWithModalInternal(
             // Update triplet information in the modal to show subplot context
             if (modal && typeof modal.setTripletInfo === 'function') {
                 modal.setTripletInfo(prevNum, currentNum, nextNum);
-                plugin.log(`Updated triplet info for entire subplot "${subplotName}": prev=${prevNum}, current=${currentNum}, next=${nextNum}`);
             } else {
-                plugin.log(`Modal or setTripletInfo not available for entire subplot "${subplotName}"`);
             }
 
             const contextPrompt = getActiveContextPrompt(plugin);
@@ -1897,7 +1884,6 @@ async function processEntireSubplotWithModalInternal(
                     const success = await updateSceneFile(vault, triplet.current, parsedAnalysis, plugin, aiResult.modelIdUsed);
                     if (success) {
                         processedCount++;
-                        plugin.log(`Successfully updated beats for scene ${triplet.current.sceneNumber} in entire subplot "${subplotName}"`);
                     } else {
                         modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${currentPath}`);
                     }
@@ -1910,9 +1896,7 @@ async function processEntireSubplotWithModalInternal(
         }
 
         await plugin.saveSettings();
-        plugin.log(`Entire subplot processing completed: ${processedCount}/${total} scenes processed for "${subplotName}"`);
     } catch (error) {
-        plugin.log(`Error processing entire subplot "${subplotName}": ${error instanceof Error ? error.message : String(error)}`);
         throw error;
     }
 }
@@ -1941,7 +1925,6 @@ export async function processBySubplotNameWithModal(
             });
             return validScenes.length;
         } catch (error) {
-            plugin.log(`Error counting scenes for subplot "${subplotName}": ${error instanceof Error ? error.message : String(error)}`);
             return 0;
         }
     };
