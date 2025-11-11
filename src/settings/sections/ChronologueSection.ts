@@ -157,7 +157,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     // Calculate threshold dynamically when settings are displayed
     const updateDescriptionAndPlaceholder = () => {
         const autoThreshold = calculateAutoThreshold();
-        discontinuitySetting.setDesc(`In shift mode, the ∞ symbol marks large time gaps between scenes. By default, this is auto-calculated as 3× the median gap between scenes. Current auto value: ${autoThreshold.display}. You can override this with a custom duration (e.g., "4 days", "1 week", "30 minutes").`);
+        discontinuitySetting.setDesc(`In shift mode, the ∞ symbol marks large time gaps between scenes. By default, this is auto-calculated as 3× the median gap between scenes. Current auto value: ${autoThreshold.display}. You can override this with a custom gap threshold (e.g., "4 days", "1 week", "30 minutes").`);
         if (discontinuityText) {
             const currentValue = plugin.settings.discontinuityThreshold || '';
             discontinuityText.setPlaceholder(`${autoThreshold.display} (auto)`);
@@ -197,7 +197,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             const parsed = parseDurationDetail(trimmed);
             if (!parsed) {
                 text.inputEl.addClass('rt-setting-input-error');
-                new Notice('Invalid duration format. Examples: "4 days", "1 week", "2 months"');
+                new Notice('Invalid gap threshold format. Examples: "4 days", "1 week", "2 months"');
                 return;
             }
 
