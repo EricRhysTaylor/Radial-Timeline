@@ -358,7 +358,7 @@
 
 /* Range boundary values - numbers showing min/max range values with white stroke */
 .rt-gossamer-range-value {
-  font-size: 11px;
+  font-size: 12px;
   text-anchor: middle;
   dominant-baseline: middle;
   pointer-events: none !important;
@@ -373,7 +373,7 @@
 
 /* Hide range values when JavaScript adds rt-hidden class on hover */
 .rt-gossamer-range-value.rt-hidden {
-  opacity: 0;
+  opacity: 0.7;
 }
 
 /* Score text - interactive numbers showing current beat scores */
@@ -639,16 +639,6 @@
   border-radius: 5px;
   overflow-x: auto;
   margin: 1em 0;
-}
-.metadata-example {
-  line-height: 2em;
-  white-space: pre;
-  user-select: all;
-  cursor: text;
-  background-color: var(--background-secondary);
-  padding: 10px;
-  border-radius: 5px;
-  overflow-x: auto;
 }
 
 .rt-subplot-text {
@@ -924,54 +914,6 @@
 .rt-highlight-rect.rt-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)); }
 .rt-highlight-rect.rt-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)); }
 
-.rt-color-picker-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-.rt-color-picker-container {
-  background-color: var(--background-primary);
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  position: relative;
-}
-.rt-color-picker-input {
-  width: 100%;
-  height: 40px;
-  margin-bottom: 10px;
-}
-.rt-color-picker-text-input {
-  width: 100%;
-  margin-bottom: 5px;
-  padding: 5px;
-}
-.rt-color-picker-buttons {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-.rt-color-picker-button {
-  padding: 5px 15px;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-}
-.rt-color-picker-button.ok {
-  background-color: var(--interactive-accent);
-  color: white;
-}
-.rt-color-picker-button.cancel {
-  background-color: var(--background-modifier-error);
-  color: white;
-}
 .rt-color-swatch {
   display: inline-block;
   width: 20px;
@@ -2465,11 +2407,6 @@
     gap: 10px;
     justify-content: flex-end;
     align-items: center; /* Align items vertically */
-}
-
-/* Input field styles */
-.rt-search-input {
-    flex: 2;
 }
 
 /* Info container styles */

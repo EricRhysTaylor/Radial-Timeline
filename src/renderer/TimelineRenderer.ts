@@ -2079,6 +2079,7 @@ export function createTimelineSVG(
                 // Get historical runs and min/max band from plugin
                 const historicalRuns = (plugin as any)._gossamerHistoricalRuns || [];
                 const minMax = (plugin as any)._gossamerMinMax || null;
+                const hasAnyScores = (plugin as any)._gossamerHasAnyScores || false;
 
                 // Render gossamer layer with all runs and band AFTER spokes so plots appear on top
                 const layer = renderGossamerLayer(
@@ -2092,7 +2093,8 @@ export function createTimelineSVG(
                     outerRingInnerRadius,
                     publishStageColorByBeat,
                     beatSlicesByName,
-                    plugin.settings.publishStageColors
+                    plugin.settings.publishStageColors,
+                    hasAnyScores // Flag to control whether to show red zeros for missing scores
                 );
                 if (layer) svg += layer;
             }

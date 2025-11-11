@@ -312,6 +312,7 @@ export class RadialTimelineView extends ItemView {
                     (this.plugin as any)._gossamerLastRun = allRuns.current;
                     (this.plugin as any)._gossamerHistoricalRuns = allRuns.historical;
                     (this.plugin as any)._gossamerMinMax = allRuns.minMax;
+                    (this.plugin as any)._gossamerHasAnyScores = allRuns.hasAnyScores;
                 }
                 
                 this.sceneData = sceneData;

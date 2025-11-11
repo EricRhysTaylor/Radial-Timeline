@@ -40,28 +40,42 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
 
         const encodedPath = g.getAttribute('data-path') || '';
         if (encodedPath) {
-            // Find either dot or score text for this beat
+            // Find either dot or score text for this beat (to get data-beat attribute)
             const dotOrScore = svg.querySelector(`.rt-gossamer-dot[data-path="${encodedPath}"], .rt-gossamer-score-text[data-path="${encodedPath}"]`);
+            
+            // Get beat name - first try from dot/score, then fall back to scene title or spoke
+            let beatName: string | null = null;
             if (dotOrScore) {
                 dotOrScore.classList.add('rt-hover');
-                const beatName = dotOrScore.getAttribute('data-beat');
-                if (beatName) {
-                    // Show center dot
-                    const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
-                    if (centerDot) centerDot.classList.add('rt-hover');
-                    // Highlight spoke
-                    const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
-                    if (spoke) spoke.classList.add('rt-gossamer-spoke-hover');
-                    // Highlight beat outline
-                    const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
-                    if (beatOutline) beatOutline.classList.add('rt-hover');
-                    // Highlight all historical dots with matching beat name
-                    const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
-                    historicalDots.forEach(hd => hd.classList.add('rt-hover'));
-                    // Hide range values for this beat
-                    const rangeValues = svg.querySelectorAll(`.rt-gossamer-range-value[data-beat="${beatName}"]`);
-                    rangeValues.forEach(rv => rv.classList.add('rt-hidden'));
+                beatName = dotOrScore.getAttribute('data-beat');
+            }
+            
+            // If no dot/score (missing data), try to get beat name from the scene title in the beat group
+            if (!beatName) {
+                // The beat slice group typically has a title element with the beat name
+                const titleEl = g.querySelector('.rt-storybeat-title');
+                if (titleEl) {
+                    beatName = titleEl.textContent?.trim() || null;
                 }
+            }
+            
+            if (beatName) {
+                // Show center dot
+                const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
+                if (centerDot) centerDot.classList.add('rt-hover');
+                // Highlight spoke
+                const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
+                if (spoke) spoke.classList.add('rt-gossamer-spoke-hover');
+                // Highlight beat outline
+                const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
+                if (beatOutline) beatOutline.classList.add('rt-hover');
+                // Highlight all historical dots with matching beat name
+                const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
+                historicalDots.forEach(hd => hd.classList.add('rt-hover'));
+                // Hide range values for this beat
+                const rangeValues = svg.querySelectorAll(`.rt-gossamer-range-value[data-beat="${beatName}"]`);
+                rangeValues.forEach(rv => rv.classList.add('rt-hidden'));
+                
                 g.classList.add('rt-gossamer-hover');
             }
         }
@@ -85,26 +99,39 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
         if (encodedPath) {
             // Find either dot or score text
             const dotOrScore = svg.querySelector(`.rt-gossamer-dot[data-path="${encodedPath}"], .rt-gossamer-score-text[data-path="${encodedPath}"]`);
+            
+            // Get beat name - try from dot/score, then fall back to scene title
+            let beatName: string | null = null;
             if (dotOrScore) {
                 dotOrScore.classList.remove('rt-hover');
-                const beatName = dotOrScore.getAttribute('data-beat');
-                if (beatName) {
-                    // Hide center dot
-                    const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
-                    if (centerDot) centerDot.classList.remove('rt-hover');
-                    // Remove spoke highlight
-                    const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
-                    if (spoke) spoke.classList.remove('rt-gossamer-spoke-hover');
-                    // Remove beat outline highlight
-                    const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
-                    if (beatOutline) beatOutline.classList.remove('rt-hover');
-                    // Remove hover from historical dots
-                    const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
-                    historicalDots.forEach(hd => hd.classList.remove('rt-hover'));
-                    // Restore range values for this beat
-                    const rangeValues = svg.querySelectorAll(`.rt-gossamer-range-value[data-beat="${beatName}"]`);
-                    rangeValues.forEach(rv => rv.classList.remove('rt-hidden'));
+                beatName = dotOrScore.getAttribute('data-beat');
+            }
+            
+            // If no dot/score (missing data), get beat name from the beat title
+            if (!beatName) {
+                const titleEl = currentGroup.querySelector('.rt-storybeat-title');
+                if (titleEl) {
+                    beatName = titleEl.textContent?.trim() || null;
                 }
+            }
+            
+            if (beatName) {
+                // Hide center dot
+                const centerDot = svg.querySelector(`.rt-gossamer-dot-center[data-beat="${beatName}"]`);
+                if (centerDot) centerDot.classList.remove('rt-hover');
+                // Remove spoke highlight
+                const spoke = svg.querySelector(`.rt-gossamer-spoke[data-beat="${beatName}"]`);
+                if (spoke) spoke.classList.remove('rt-gossamer-spoke-hover');
+                // Remove beat outline highlight
+                const beatOutline = svg.querySelector(`.rt-gossamer-beat-outline[data-beat="${beatName}"]`);
+                if (beatOutline) beatOutline.classList.remove('rt-hover');
+                // Remove hover from historical dots
+                const historicalDots = svg.querySelectorAll(`.rt-gossamer-dot-historical[data-beat="${beatName}"]`);
+                historicalDots.forEach(hd => hd.classList.remove('rt-hover'));
+                // Restore range values for this beat
+                const rangeValues = svg.querySelectorAll(`.rt-gossamer-range-value[data-beat="${beatName}"]`);
+                rangeValues.forEach(rv => rv.classList.remove('rt-hidden'));
+                
                 currentGroup.classList.remove('rt-gossamer-hover');
             }
         }

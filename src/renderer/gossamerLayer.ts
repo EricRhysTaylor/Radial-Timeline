@@ -40,7 +40,8 @@ export function renderGossamerLayer(
   spokeEndRadius?: number,
   publishStageColorByBeat?: Map<string, string>,
   beatSlicesByName?: Map<string, BeatSliceInfo>,
-  publishStageColors?: Record<string, string>
+  publishStageColors?: Record<string, string>,
+  hasAnyScores: boolean = false // If false, use simplified view with no red zeros
 ): string {
   if (!run) return '';
   
@@ -147,24 +148,28 @@ export function renderGossamerLayer(
       rangeSquares.push(`<text class="rt-gossamer-range-value" data-beat="${escapeAttr(name)}" x="${fmt(rangeMaxX)}" y="${fmt(rangeMaxY + 1)}">${range.max}</text>`);
     }
     
-    // Only render SCORE TEXT and DEVIATION if score exists
-    if (typeof score === 'number') {
-      const r = mapScoreToRadius(score, innerRadius, outerRadius);
+    // Render SCORE TEXT if score exists OR if it's missing in sequence (show as 0 in red)
+    // Only show red zeros if we have ANY scores in the system (hasAnyScores = true)
+    // If no scores exist yet, use simplified view with no score indicators
+    const isMissingInSequence = beatStatus === 'outlineOnly';
+    const displayScore = typeof score === 'number' ? score : (isMissingInSequence && hasAnyScores ? 0 : null);
+    
+    if (displayScore !== null) {
+      const r = mapScoreToRadius(displayScore, innerRadius, outerRadius);
       const x = r * Math.cos(angle);
       const y = r * Math.sin(angle);
       
       current.push({ x, y });
       
-      const isMissingInSequence = beatStatus === 'outlineOnly';
       const path = beatPathByName?.get(name) || '';
       const encodedPath = path ? encodeURIComponent(path) : '';
-      const data = `data-beat="${escapeAttr(name)}" data-score="${String(score)}"${encodedPath ? ` data-path="${escapeAttr(encodedPath)}"` : ''}${run?.meta?.label ? ` data-label="${escapeAttr(run.meta.label)}"` : ''}`;
+      const data = `data-beat="${escapeAttr(name)}" data-score="${String(displayScore)}"${encodedPath ? ` data-path="${escapeAttr(encodedPath)}"` : ''}${run?.meta?.label ? ` data-label="${escapeAttr(run.meta.label)}"` : ''}`;
       
-      // Render score text with dedicated class for interaction
-      scoreTexts.push(`<text class="rt-gossamer-score-text${isMissingInSequence ? ' rt-gossamer-missing-data' : ''}" x="${fmt(x)}" y="${fmt(y + 1)}" ${data}>${score}</text>`);
+      // Render score text with dedicated class for interaction - use missing-data class for 0 scores from missing beats
+      scoreTexts.push(`<text class="rt-gossamer-score-text${isMissingInSequence ? ' rt-gossamer-missing-data' : ''}" x="${fmt(x)}" y="${fmt(y + 1)}" ${data}>${displayScore}</text>`);
       
-      // Range deviation segment if range exists
-      if (beatData?.range) {
+      // Range deviation segment if range exists and we have a real score (not missing)
+      if (beatData?.range && typeof score === 'number') {
         const range = beatData.range;
         const scoreRadius = mapScoreToRadius(score, innerRadius, outerRadius);
         
