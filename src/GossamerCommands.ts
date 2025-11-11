@@ -173,8 +173,8 @@ function setInMemoryRun(plugin: RadialTimelinePlugin, run: GossamerRun): void {
  * Open Gossamer score entry modal
  */
 export async function openGossamerScoreEntry(plugin: RadialTimelinePlugin): Promise<void> {
-  // Get all story beat notes, unfiltered by system, so the modal can provide helpful warnings
-  const scenes = await plugin.getSceneData({ filterBeatsBySystem: false });
+  // Get story beat notes filtered by Beat Model setting (same as gossamer rendering)
+  const scenes = await plugin.getSceneData();
   // Support both 'Beat' (new standard) and 'Plot' (legacy)
   const plotBeats = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
@@ -516,7 +516,13 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       
       // Get all beat notes
       const scenes = await plugin.getSceneData();
-      const plotBeats = scenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
+      let plotBeats = scenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
+      
+      // Use centralized filtering helper (single source of truth)
+      const { filterBeatsBySystem } = await import('./utils/gossamer');
+      if (beatSystem && beatSystem.trim() !== '' && plotBeats.some(p => p["Beat Model"])) {
+        plotBeats = filterBeatsBySystem(plotBeats, beatSystem);
+      }
       
       if (plotBeats.length === 0) {
         modal.addError('No story beats found. Create notes with frontmatter "Class: Beat".');
@@ -844,7 +850,13 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
   try {
     // Get scenes and beats to show in confirmation
     const scenes = await plugin.getSceneData();
-    const plotBeats = scenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
+    let plotBeats = scenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
+    
+    // Use centralized filtering helper (single source of truth)
+    const { filterBeatsBySystem } = await import('./utils/gossamer');
+    if (beatSystem && beatSystem.trim() !== '' && plotBeats.some(p => p["Beat Model"])) {
+      plotBeats = filterBeatsBySystem(plotBeats, beatSystem);
+    }
     
     // Get sorted scene files (single source of truth)
     const { getSortedSceneFiles } = await import('./utils/manuscript');

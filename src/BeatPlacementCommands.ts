@@ -453,7 +453,15 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
   // Pre-gather manuscript info for confirmation view
   try {
     const allScenes = await plugin.getSceneData();
-    const plotBeats = allScenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
+    let plotBeats = allScenes.filter(s => (s.itemType === 'Beat' || s.itemType === 'Plot'));
+    
+    const beatSystem = plugin.settings.beatSystem || 'Save The Cat';
+    
+    // Use centralized filtering helper (single source of truth)
+    const { filterBeatsBySystem } = await import('./utils/gossamer');
+    if (beatSystem && beatSystem.trim() !== '' && plotBeats.some(p => p["Beat Model"])) {
+      plotBeats = filterBeatsBySystem(plotBeats, beatSystem);
+    }
     
     // Get sorted scene files (single source of truth)
     const { getSortedSceneFiles } = await import('./utils/manuscript');
@@ -462,8 +470,6 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
     // Quick manuscript assembly to get actual stats
     const manuscript = await assembleManuscript(sceneFiles, plugin.app.vault);
     const estimatedTokens = Math.ceil(manuscript.totalWords / 0.75);
-    
-    const beatSystem = plugin.settings.beatSystem || 'Save The Cat';
     
     const manuscriptInfo: ManuscriptInfo = {
       totalScenes: manuscript.totalScenes,

@@ -29,6 +29,43 @@ export interface GossamerRun {
   };
 }
 
+/**
+ * Single source of truth for filtering beats by Beat Model.
+ * Handles both built-in systems (Save The Cat, Hero's Journey, Story Grid) and Custom.
+ * 
+ * @param beats - Array of beat objects with optional "Beat Model" field
+ * @param selectedBeatSystem - The beat system to filter by (e.g., "Save The Cat", "Custom")
+ * @returns Filtered array of beats matching the selected system
+ */
+export function filterBeatsBySystem<T>(
+  beats: T[],
+  selectedBeatSystem?: string
+): T[] {
+  if (!selectedBeatSystem || selectedBeatSystem.trim() === '') {
+    return beats; // No filtering if no system selected
+  }
+
+  if (selectedBeatSystem === 'Custom') {
+    // For Custom: exclude beats that belong to built-in systems
+    const builtInSystems = ['save the cat', 'savethecat', "hero's journey", 'herosjourney', 'story grid', 'storygrid'];
+    return beats.filter(b => {
+      const beatModel = (b as any)["Beat Model"]; // SAFE: dynamic field access for Beat Model filtering
+      if (!beatModel || typeof beatModel !== 'string') return true; // Include beats with no Beat Model
+      const normalizedModel = beatModel.toLowerCase().replace(/\s+/g, '').replace(/'/g, '');
+      return !builtInSystems.includes(normalizedModel);
+    });
+  } else {
+    // For specific system: only include beats matching that system
+    const normalizedSelected = selectedBeatSystem.toLowerCase().replace(/\s+/g, '').replace(/'/g, '');
+    return beats.filter(b => {
+      const beatModel = (b as any)["Beat Model"]; // SAFE: dynamic field access for Beat Model filtering
+      if (!beatModel || typeof beatModel !== 'string') return false;
+      const normalizedModel = beatModel.toLowerCase().replace(/\s+/g, '').replace(/'/g, '');
+      return normalizedModel === normalizedSelected;
+    });
+  }
+}
+
 export const DefaultGossamerMomentum: { beat: string; score: number; notes: string }[] = [
   { beat: 'Opening Image',          score: 4,  notes: 'Quiet status quo before disturbance.' },
   { beat: 'Theme Stated',           score: 8,  notes: 'Subtle tension; hints of deeper change.' },
@@ -84,14 +121,10 @@ export function buildRunFromGossamerField(
   // Filter Beat notes by Beat Model only if explicitly specified and not empty
   // Support both 'Beat' (new standard) and 'Plot' (legacy)
   let plotNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
+  
+  // Use centralized filtering helper (single source of truth)
   if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotNotes.some(p => p["Beat Model"])) {
-    const normalizedSelected = selectedBeatModel.toLowerCase().replace(/\s+/g, '');
-    plotNotes = plotNotes.filter(p => {
-      const plotSystem = p["Beat Model"];
-      if (typeof plotSystem !== 'string') return false;
-      const normalizedPlotSystem = plotSystem.toLowerCase().replace(/\s+/g, '');
-      return normalizedPlotSystem === normalizedSelected;
-    });
+    plotNotes = filterBeatsBySystem(plotNotes, selectedBeatModel);
   }
   
   if (plotNotes.length === 0) {
@@ -345,15 +378,9 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
   // Support both 'Beat' (new standard) and 'Plot' (legacy)
   let plotBeats = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
-  // Filter by Beat Model only if explicitly specified and not empty
+  // Use centralized filtering helper (single source of truth)
   if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotBeats.some(p => p["Beat Model"])) {
-    const normalizedSelected = selectedBeatModel.toLowerCase().replace(/\s+/g, '');
-    plotBeats = plotBeats.filter(p => {
-      const plotSystem = p["Beat Model"];
-      if (!plotSystem) return false;
-      const normalizedPlotSystem = plotSystem.toLowerCase().replace(/\s+/g, '');
-      return normalizedPlotSystem === normalizedSelected;
-    });
+    plotBeats = filterBeatsBySystem(plotBeats, selectedBeatModel);
   }
   
   // Sort by numeric prefix

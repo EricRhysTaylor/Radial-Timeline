@@ -17,6 +17,7 @@ import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseWhenField } from '../utils/date';
 import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
 import { stripWikiLinks } from '../utils/text';
+import { filterBeatsBySystem } from '../utils/gossamer';
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
@@ -184,7 +185,19 @@ export class SceneDataService {
         }
         
         // Process plot/beat items
-        for (const { file, metadata, validActNumber } of plotsToProcess) {
+        // Filter by Beat Model if requested (use centralized helper - single source of truth)
+        let beatsToProcess = plotsToProcess;
+        if (filterBeats && this.settings.beatSystem) {
+            // Map to objects with "Beat Model" field for filtering
+            const beatsWithModel = beatsToProcess.map(p => ({
+                original: p,
+                "Beat Model": p.metadata["Beat Model"]
+            }));
+            const filtered = filterBeatsBySystem(beatsWithModel, this.settings.beatSystem);
+            beatsToProcess = filtered.map(f => f.original);
+        }
+        
+        for (const { file, metadata, validActNumber } of beatsToProcess) {
             const whenStr = metadata.When;
             let when: Date | undefined;
             
@@ -203,62 +216,32 @@ export class SceneDataService {
                 ? when.toISOString().split('T')[0]
                 : ''; // Empty string for beats without When (will be ordered by act/filename)
             
-            const scenesOnDate = dateKey ? (scenesByDate.get(dateKey) || []) : [];
-            
-            // Determine subplots for the plot/beat
-            let targetSubplots: string[] = ["Main Plot"];
-            
-            if (scenesOnDate.length > 0) {
-                // Use subplots from scenes on this date
-                const uniqueSubplots = new Set<string>();
-                scenesOnDate.forEach(s => {
-                    if (s.subplot) uniqueSubplots.add(s.subplot);
-                });
-                if (uniqueSubplots.size > 0) {
-                    targetSubplots = Array.from(uniqueSubplots);
-                }
-            } else if (metadata.Subplot) {
-                // Use subplot from metadata
-                targetSubplots = Array.isArray(metadata.Subplot)
-                    ? metadata.Subplot
-                    : [metadata.Subplot];
-            }
-            
             // Get beat system from metadata or plugin settings
             const beatModel = (metadata["Beat Model"] || this.settings.beatSystem || "") as string;
             
-            // Filter by beat system if requested
-            if (filterBeats && this.settings.beatSystem) {
-                if (!beatModel || beatModel.toLowerCase() !== this.settings.beatSystem.toLowerCase()) {
-                    continue; // Skip beats from other systems
-                }
-            }
-            
-            // Create a beat for each target subplot
-            for (const subplot of targetSubplots) {
-                filteredScenes.push({
-                    date: dateKey,
-                    when: when,
-                    path: file.path,
-                    title: metadata.Title as string | undefined ?? file.basename,
-                    subplot: subplot,
-                    act: String(validActNumber),
-                    actNumber: validActNumber,
-                    synopsis: metadata.Synopsis as string | undefined,
-                    Description: metadata.Description as string | undefined,
-                    "Beat Model": beatModel,
-                    Range: metadata.Range as string | undefined,
-                    "Suggest Placement": metadata["Suggest Placement"] as string | undefined,
-                    itemType: "Beat", // Modern standard - renderer should use isBeatNote() helper
-                    // Include all Gossamer score fields (Gossamer1-30)
-                    Gossamer1: metadata.Gossamer1 as number | undefined,
-                    Gossamer2: metadata.Gossamer2 as number | undefined,
-                    Gossamer3: metadata.Gossamer3 as number | undefined,
-                    Gossamer4: metadata.Gossamer4 as number | undefined,
-                    Gossamer5: metadata.Gossamer5 as number | undefined,
-                    "Publish Stage": metadata["Publish Stage"] as string | undefined
-                });
-            }
+            // Beats appear only once in the outermost ring - not duplicated per subplot
+            filteredScenes.push({
+                date: dateKey,
+                when: when,
+                path: file.path,
+                title: metadata.Title as string | undefined ?? file.basename,
+                subplot: "Main Plot", // Beats always use Main Plot for outermost ring
+                act: String(validActNumber),
+                actNumber: validActNumber,
+                synopsis: metadata.Synopsis as string | undefined,
+                Description: metadata.Description as string | undefined,
+                "Beat Model": beatModel,
+                Range: metadata.Range as string | undefined,
+                "Suggest Placement": metadata["Suggest Placement"] as string | undefined,
+                itemType: "Beat", // Modern standard - renderer should use isBeatNote() helper
+                // Include all Gossamer score fields (Gossamer1-30)
+                Gossamer1: metadata.Gossamer1 as number | undefined,
+                Gossamer2: metadata.Gossamer2 as number | undefined,
+                Gossamer3: metadata.Gossamer3 as number | undefined,
+                Gossamer4: metadata.Gossamer4 as number | undefined,
+                Gossamer5: metadata.Gossamer5 as number | undefined,
+                "Publish Stage": metadata["Publish Stage"] as string | undefined
+            });
         }
         
         return filteredScenes;
