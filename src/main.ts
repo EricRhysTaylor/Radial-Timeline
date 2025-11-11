@@ -2007,7 +2007,12 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
     // Remove redundant parseSceneTitle method - use the one from utils/text.ts instead
 
     // Method to refresh the timeline if the active view exists (with debouncing)
-    refreshTimelineIfNeeded(file: TAbstractFile | null | undefined) { this.timelineService.refreshTimelineIfNeeded(file, 400); }
+    refreshTimelineIfNeeded(file: TAbstractFile | null | undefined, delayMs?: number) { 
+        // For settings changes (file=null), use 0ms delay for immediate feedback
+        // For file changes, use provided delay or default 400ms
+        const effectiveDelay = file === null && delayMs === undefined ? 0 : (delayMs ?? 400);
+        this.timelineService.refreshTimelineIfNeeded(file, effectiveDelay);
+    }
 
 
 

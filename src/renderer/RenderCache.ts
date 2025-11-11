@@ -61,6 +61,7 @@ function hashSettings(settings: {
     sortByWhenDate?: boolean;
     showEstimate?: boolean;
     chronologueDurationCapSelection?: string;
+    discontinuityThreshold?: string;
     publishStageColors?: Record<string, string>;
     subplotColors?: string[];
     enableAiSceneAnalysis?: boolean;
@@ -72,6 +73,7 @@ function hashSettings(settings: {
         sort: settings.sortByWhenDate,
         estimate: settings.showEstimate,
         durationCap: settings.chronologueDurationCapSelection,
+        discontinuityThreshold: settings.discontinuityThreshold,
         // Include color values since they affect gradients and patterns
         stageColors: settings.publishStageColors,
         subplotColors: settings.subplotColors,

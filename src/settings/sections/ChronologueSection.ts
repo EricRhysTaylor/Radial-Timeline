@@ -76,7 +76,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         dropdown.onChange(async (value) => {
             plugin.settings.chronologueDurationCapSelection = value;
             await plugin.saveSettings();
-            plugin.refreshTimelineIfNeeded(null);
+            plugin.refreshTimelineIfNeeded(null); // Uses default debounce delay
         });
         // Set fixed width for dropdown (override CSS with important)
         dropdown.selectEl.style.setProperty('width', '160px', 'important');
@@ -113,15 +113,59 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         });
 
     // 2. Discontinuity threshold customization
+    
+    // Calculate the actual auto threshold based on current scenes
+    const calculateAutoThreshold = (): { display: string; days: number | null } => {
+        try {
+            const scenes = plugin.lastSceneData || [];
+            if (scenes.length < 3) return { display: 'not yet calculated', days: null };
+            
+            // Get scenes with When dates
+            const scenesWithDates = scenes.filter(s => s.when instanceof Date);
+            if (scenesWithDates.length < 3) return { display: 'not yet calculated', days: null };
+            
+            // Sort chronologically
+            const sorted = [...scenesWithDates].sort((a, b) => 
+                (a.when as Date).getTime() - (b.when as Date).getTime()
+            );
+            
+            // Calculate gaps
+            const gaps: number[] = [];
+            for (let i = 1; i < sorted.length; i++) {
+                const prev = sorted[i - 1].when as Date;
+                const curr = sorted[i].when as Date;
+                const gap = curr.getTime() - prev.getTime();
+                if (gap >= 0) gaps.push(gap);
+            }
+            
+            if (gaps.length === 0) return { display: 'not yet calculated', days: null };
+            
+            // Calculate median gap
+            const sortedGaps = [...gaps].sort((a, b) => a - b);
+            const medianGap = sortedGaps[Math.floor(sortedGaps.length / 2)];
+            
+            // Calculate threshold: 3× median gap
+            const threshold = medianGap * 3;
+            
+            // Convert to days for display
+            const days = Math.round(threshold / (24 * 60 * 60 * 1000));
+            return { display: `${days} days`, days };
+        } catch {
+            return { display: 'not yet calculated', days: null };
+        }
+    };
+
+    const autoThreshold = calculateAutoThreshold();
+    
     const discontinuitySetting = new Settings(containerEl)
         .setName('Discontinuity gap threshold')
-        .setDesc('In shift mode, the ∞ symbol marks large time gaps between scenes. By default, this is auto-calculated (3× median gap or 30 days). You can override this with a custom duration (e.g., "4 days", "1 week").');
+        .setDesc(`In shift mode, the ∞ symbol marks large time gaps between scenes. By default, this is auto-calculated as 3× the median gap between scenes. Current auto value: ${autoThreshold.display}. You can override this with a custom duration (e.g., "4 days", "1 week").`);
 
     let discontinuityText: any; // SAFE: any type used for Obsidian TextComponent reference (library limitation)
     discontinuitySetting.addText(text => {
         discontinuityText = text;
         const currentValue = plugin.settings.discontinuityThreshold || '';
-        text.setPlaceholder('30 days (auto)')
+        text.setPlaceholder(`${autoThreshold.display} (auto)`)
             .setValue(currentValue);
         
         // Validate on blur (when user clicks out)

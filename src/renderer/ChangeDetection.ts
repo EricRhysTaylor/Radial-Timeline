@@ -47,6 +47,7 @@ export interface TimelineSnapshot {
     aiEnabled: boolean;
     targetDate: string | undefined;
     chronologueDurationCap: string | undefined;
+    discontinuityThreshold: string | undefined;
     publishStageColorsHash: string;
     subplotColorsHash: string;
     dominantSubplotsHash: string;
@@ -167,6 +168,7 @@ export function createSnapshot(
         aiEnabled: settings.enableAiSceneAnalysis ?? false,
         targetDate: settings.targetCompletionDate,
         chronologueDurationCap: settings.chronologueDurationCapSelection,
+        discontinuityThreshold: settings.discontinuityThreshold,
         publishStageColorsHash,
         subplotColorsHash,
         dominantSubplotsHash,
@@ -221,6 +223,7 @@ export function detectChanges(
         prev.aiEnabled !== current.aiEnabled ||
         prev.targetDate !== current.targetDate ||
         prev.chronologueDurationCap !== current.chronologueDurationCap ||
+        prev.discontinuityThreshold !== current.discontinuityThreshold ||
         prev.publishStageColorsHash !== current.publishStageColorsHash ||
         prev.subplotColorsHash !== current.subplotColorsHash) {
         changeTypes.add(ChangeType.SETTINGS);

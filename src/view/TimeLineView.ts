@@ -639,6 +639,11 @@ export class RadialTimelineView extends ItemView {
                     // Set data-mode attribute for CSS targeting
                     svgElement.setAttribute('data-mode', this.currentMode);
                     
+                    // Preserve shift mode state across re-renders (chronologue mode only)
+                    if (this.currentMode === 'chronologue' && isShiftModeActive()) {
+                        svgElement.setAttribute('data-shift-mode', 'active');
+                    }
+                    
                     // If Gossamer mode is active, reuse hover-state styling: mute everything except Beat notes
                     if (this.currentMode === 'gossamer') {
                     svgElement.setAttribute('data-gossamer-mode', 'true');
