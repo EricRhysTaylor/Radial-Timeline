@@ -7,7 +7,7 @@
 import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
 import type { TimelineItem } from '../main';
 import { formatNumber, escapeXml } from '../utils/svg';
-import { dateToAngle, isOverdueDateString, generateChronologicalTicks, calculateTimeSpan, durationSelectionToMs, type ChronologicalTickInfo } from '../utils/date';
+import { dateToAngle, isOverdueDateString, generateChronologicalTicks, calculateTimeSpan, durationSelectionToMs, parseDurationDetail, type ChronologicalTickInfo } from '../utils/date';
 import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
 import { 
     extractGradeFromScene, 
@@ -2149,7 +2149,25 @@ export function createTimelineSVG(
             const outerRingIndex = NUM_RINGS - 1;
             const outerRingInnerR = ringStartRadii[outerRingIndex];
             const outerRingOuterR = outerRingInnerR + ringWidths[outerRingIndex];
-            svg += renderChronologicalBackboneArc(scenes, outerRingInnerR, outerRingOuterR, 3, manuscriptOrderPositions, chronologueSceneEntries);
+            
+            // Parse custom discontinuity threshold from settings if provided
+            let customThresholdMs: number | undefined = undefined;
+            if (plugin.settings.discontinuityThreshold) {
+                const parsed = parseDurationDetail(plugin.settings.discontinuityThreshold);
+                if (parsed) {
+                    customThresholdMs = parsed.ms;
+                }
+            }
+            
+            svg += renderChronologicalBackboneArc(
+                scenes, 
+                outerRingInnerR, 
+                outerRingOuterR, 
+                3, 
+                manuscriptOrderPositions, 
+                chronologueSceneEntries,
+                customThresholdMs
+            );
             // Arc 3: Shift mode elapsed time (conditionally rendered when shift mode active)
             // Note: This would need shift mode state to be passed in - placeholder for future enhancement
             // if (shiftModeActive && selectedScenes.length === 2) {

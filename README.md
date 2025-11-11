@@ -346,9 +346,9 @@ When:                         # Optional: Story timeline date for chronological 
 Description: The first impression of your story. A snapshot before the journey begins.
 Beat Model: Save The Cat
 Range: 0-20
-Gossamer1: 12                 # Up to 30 evaluation passes
+Gossamer1: 12                 # First run (oldest) - Up to 30 evaluation passes
 Gossamer1 Justification: 
-Gossamer2: 21
+Gossamer2: 21                 # Second run (most recent in this example)
 Gossamer2 Justification: 
 ---
 ```

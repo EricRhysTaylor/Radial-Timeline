@@ -17,13 +17,15 @@ import {
 } from 'obsidian';
 import { FolderSuggest } from './FolderSuggest';
 import { renderGeneralSection } from './sections/GeneralSection';
+import { renderPublicationSection } from './sections/PublicationSection';
+import { renderChronologueSection } from './sections/ChronologueSection';
+import { renderStoryBeatsSection } from './sections/TemplatesSection';
 import { AiContextModal } from './AiContextModal';
 import { fetchAnthropicModels } from '../api/anthropicApi';
 import { fetchOpenAiModels } from '../api/openaiApi';
 import { fetchGeminiModels } from '../api/geminiApi';
 import RadialTimelinePlugin, { DEFAULT_SETTINGS } from '../main';
 import { renderColorsSection } from './sections/ColorsSection';
-import { renderTemplatesSection } from './sections/TemplatesSection';
 import { renderReadmeSection } from './sections/ReadmeSection';
 import { renderAdvancedSection } from './sections/AdvancedSection';
 import { renderAiSection } from './sections/AiSection';
@@ -254,10 +256,19 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Patreon support section at the top
         this.renderPatreonSection(containerEl);
 
+        // 1. Source path (from GeneralSection)
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl });
 
-        renderTemplatesSection({ app: this.app, plugin: this.plugin, containerEl });
+        // 2. Publication and Progress section (target date, show estimate, zero draft mode)
+        renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl });
+
+        // 3. Chronologue Mode settings (duration cap, discontinuity threshold)
+        renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl });
+
+        // 4. Story Beats System and Gossamer (templates dropdown, create templates button)
+        renderStoryBeatsSection({ app: this.app, plugin: this.plugin, containerEl });
             
+        // 5. AI LLM for Scene Analysis
         renderAiSection({
             app: this.app,
             plugin: this.plugin,
@@ -274,11 +285,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             },
         });
 
-        // Advanced settings right after AI section
+        // 6. Advanced settings (scene clipping, debounce, disabled when date sorting)
         renderAdvancedSection({ app: this.app, plugin: this.plugin, containerEl });
 
-        // Debug mode setting removed: console logging only in development builds
-
+        // Colors section
         renderColorsSection(containerEl, this.plugin);
         
         renderReleaseNotesSection({ plugin: this.plugin, containerEl });

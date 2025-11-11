@@ -312,6 +312,8 @@ export function renderElapsedTimeArc(
  * @param outerRingOuterRadius - Outer radius of the outer scene ring
  * @param discontinuityThreshold - Gap multiplier for discontinuity detection (default 3x median)
  * @param scenePositions - Map of scene angular positions (manuscript order, keyed by scene path/title)
+ * @param precomputedEntries - Optional pre-computed chronologue scene entries
+ * @param customThresholdMs - Optional: Absolute threshold in milliseconds. If provided, gaps larger than this are considered discontinuities.
  * @returns SVG string
  */
 export function renderChronologicalBackboneArc(
@@ -320,7 +322,8 @@ export function renderChronologicalBackboneArc(
     outerRingOuterRadius: number,
     discontinuityThreshold: number = 3,
     scenePositions?: Map<string, { startAngle: number; endAngle: number }>,
-    precomputedEntries?: ChronologueSceneEntry[]
+    precomputedEntries?: ChronologueSceneEntry[],
+    customThresholdMs?: number
 ): string {
     const sceneEntries = precomputedEntries ?? collectChronologueSceneEntries(scenes);
     if (sceneEntries.length === 0 || !scenePositions) return '';
@@ -340,11 +343,21 @@ export function renderChronologicalBackboneArc(
         return a.date.getTime() - b.date.getTime();
     });
     
+    console.log('[ChronologueBackbone] Total unique scenes:', uniqueScenesSorted.length);
+    console.log('[ChronologueBackbone] Scenes 0-20 in chronological order (showing title and date):');
+    for (let i = 0; i < Math.min(20, uniqueScenesSorted.length); i++) {
+        console.log(`  [${i}]: ${uniqueScenesSorted[i].scene.title} - ${uniqueScenesSorted[i].date.toISOString()}`);
+    }
+    
     // Detect discontinuities (large time gaps between consecutive chronological scenes)
     const discontinuityIndices = detectDiscontinuities(
         uniqueScenesSorted.map(entry => ({ when: entry.date })),
-        discontinuityThreshold
+        discontinuityThreshold,
+        customThresholdMs
     );
+    
+    console.log('[ChronologueBackbone] Discontinuity indices:', discontinuityIndices);
+    console.log('[ChronologueBackbone] Mapping discontinuities to manuscript positions...');
     
     if (discontinuityIndices.length === 0) return '';
     
@@ -358,10 +371,31 @@ export function renderChronologicalBackboneArc(
         if (sceneIndex >= uniqueScenesSorted.length) return;
         
         const currScene = uniqueScenesSorted[sceneIndex];
+        const prevScene = sceneIndex > 0 ? uniqueScenesSorted[sceneIndex - 1] : null;
+        
+        // Log the scene and gap details
+        console.log(`[ChronologueBackbone] Discontinuity at chronological index ${sceneIndex}:`,
+            '\n  Previous scene:', prevScene ? {
+                title: prevScene.scene.title,
+                path: prevScene.scene.path,
+                date: prevScene.date.toISOString()
+            } : 'N/A',
+            '\n  Current scene:', {
+                title: currScene.scene.title,
+                path: currScene.scene.path,
+                date: currScene.date.toISOString()
+            });
         
         // Get manuscript-order position for this scene
         const sceneKey = currScene.scene.path || `title:${currScene.scene.title || ''}`;
         const manuscriptPosition = scenePositions.get(sceneKey);
+        
+        if (!manuscriptPosition) {
+            console.log(`[ChronologueBackbone] No manuscript position found for scene key: ${sceneKey}`);
+            return;
+        }
+        
+        console.log(`[ChronologueBackbone] Placing ∞ marker at angles:`, manuscriptPosition);
         
         if (!manuscriptPosition) return;
         

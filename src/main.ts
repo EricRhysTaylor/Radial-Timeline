@@ -86,6 +86,7 @@ export interface RadialTimelineSettings {
     enableHoverDebugLogging?: boolean; // Emit verbose hover redistribution logs to console
     sortByWhenDate?: boolean; // Sort scenes by When date (true) or manuscript order (false). Chronologue mode always uses When date.
     chronologueDurationCapSelection?: string; // Value|unit key used for duration arc cap (or 'auto')
+    discontinuityThreshold?: string; // Custom discontinuity gap threshold (e.g., "4 days") or undefined for auto-calculated
     // AI Context Templates
     aiContextTemplates?: Array<{id: string; name: string; prompt: string; isBuiltIn: boolean}>;
     activeAiContextTemplateId?: string;
@@ -216,6 +217,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     enableZeroDraftMode: false,
     metadataRefreshDebounceMs: 10000,
     showEstimate: true,
+    discontinuityThreshold: undefined, // Default to auto-calculated (3x median gap or 30 days)
     enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
     enableHoverDebugLogging: false,
     sortByWhenDate: false, // Default: manuscript order (backward compatible)

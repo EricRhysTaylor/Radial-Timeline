@@ -4,16 +4,19 @@ import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModa
 import { getPlotSystem } from '../../utils/beatsSystems';
 import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
 
-export function renderTemplatesSection(params: {
+export function renderStoryBeatsSection(params: {
     app: App;
     plugin: RadialTimelinePlugin;
     containerEl: HTMLElement;
 }): void {
     const { app, plugin, containerEl } = params;
 
-    // Story Structure setting (for Gossamer mode)
     new Settings(containerEl)
         .setName('Story beats system and gossamer')
+        .setHeading();
+
+    new Settings(containerEl)
+        .setName('Story beats system')
         .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer view.')
         .addDropdown(dropdown => {
             dropdown

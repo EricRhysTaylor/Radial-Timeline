@@ -553,14 +553,26 @@ export function formatDurationSelectionLabel(selection: string | undefined): str
  * Returns indices of scenes that have unusually large time gaps before them
  * 
  * @param scenes - Array of scenes with When dates (sorted chronologically)
- * @param threshold - Multiplier for median gap (default 3x)
+ * @param threshold - Multiplier for median gap (default 3x) OR absolute threshold in milliseconds if customThresholdMs is provided
+ * @param customThresholdMs - Optional: Absolute threshold in milliseconds. If provided, gaps larger than this are considered discontinuities.
  * @returns Array of scene indices with large gaps before them
  */
-export function detectDiscontinuities(scenes: { when?: Date }[], threshold: number = 3): number[] {
-    if (scenes.length < 3) return []; // Need at least 3 scenes to detect outliers
+export function detectDiscontinuities(
+    scenes: { when?: Date }[], 
+    threshold: number = 3,
+    customThresholdMs?: number
+): number[] {
+    console.log('[Discontinuity] Starting detection for', scenes.length, 'scenes');
+    
+    if (scenes.length < 3) {
+        console.log('[Discontinuity] Too few scenes (<3), returning empty');
+        return [];
+    }
     
     // Calculate gaps between consecutive scenes
     const gaps: number[] = [];
+    const gapDetails: Array<{ index: number; prevDate: string; currDate: string; gapMs: number; gapDays: number }> = [];
+    
     for (let i = 1; i < scenes.length; i++) {
         const prev = scenes[i - 1].when;
         const curr = scenes[i].when;
@@ -569,27 +581,82 @@ export function detectDiscontinuities(scenes: { when?: Date }[], threshold: numb
             const gap = curr.getTime() - prev.getTime();
             if (gap >= 0) { // Only count forward gaps
                 gaps.push(gap);
+                gapDetails.push({
+                    index: i,
+                    prevDate: prev.toISOString(),
+                    currDate: curr.toISOString(),
+                    gapMs: gap,
+                    gapDays: gap / (24 * 60 * 60 * 1000)
+                });
             }
         }
     }
     
-    if (gaps.length === 0) return [];
+    if (gaps.length === 0) {
+        console.log('[Discontinuity] No valid gaps found, returning empty');
+        return [];
+    }
+    
+    console.log('[Discontinuity] Found', gaps.length, 'gaps');
+    console.log('[Discontinuity] Gap details:', gapDetails);
+    
+    // Log first 10 scenes for context
+    console.log('[Discontinuity] First 10 scenes in chronological order:');
+    for (let i = 0; i < Math.min(10, scenes.length); i++) {
+        const scene = scenes[i];
+        if (scene && scene.when) {
+            console.log(`  [${i}]:`, scene.when.toISOString(), scene);
+        }
+    }
+    
+    // If custom threshold is provided, use only that
+    if (customThresholdMs !== undefined) {
+        console.log('[Discontinuity] Using custom threshold:', customThresholdMs, 'ms (', customThresholdMs / (24 * 60 * 60 * 1000), 'days)');
+        const discontinuityIndices: number[] = [];
+        
+        for (let i = 1; i < scenes.length; i++) {
+            const prev = scenes[i - 1].when;
+            const curr = scenes[i].when;
+            
+            if (prev && curr) {
+                const gap = curr.getTime() - prev.getTime();
+                if (gap >= 0 && gap > customThresholdMs) {
+                    console.log('[Discontinuity] Scene', i, 'exceeds custom threshold - gap:', gap, 'ms (', gap / (24 * 60 * 60 * 1000), 'days)');
+                    discontinuityIndices.push(i);
+                }
+            }
+        }
+        
+        console.log('[Discontinuity] Custom threshold result:', discontinuityIndices.length, 'discontinuities at indices:', discontinuityIndices);
+        return discontinuityIndices;
+    }
     
     // Calculate median gap
     const sortedGaps = [...gaps].sort((a, b) => a - b);
     const medianGap = sortedGaps[Math.floor(sortedGaps.length / 2)];
     
-    if (medianGap === 0) return []; // All scenes at same time
+    console.log('[Discontinuity] Sorted gaps (ms):', sortedGaps);
+    console.log('[Discontinuity] Median gap:', medianGap, 'ms (', medianGap / (24 * 60 * 60 * 1000), 'days)');
+    
+    // IMPORTANT: Don't return early if medianGap is 0 - there might still be outliers!
+    // Instead, check if ALL gaps are 0
+    const maxGap = Math.max(...gaps);
+    if (maxGap === 0) {
+        console.log('[Discontinuity] All gaps are 0, returning empty');
+        return [];
+    }
     
     // Absolute threshold: a gap greater than 30 days is always considered a discontinuity
     const ABSOLUTE_THRESHOLD_DAYS = 30;
     const absoluteThresholdMs = ABSOLUTE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
     
+    console.log('[Discontinuity] Absolute threshold:', absoluteThresholdMs, 'ms (30 days)');
+    console.log('[Discontinuity] Statistical threshold: medianGap * threshold =', medianGap * threshold, 'ms');
+    
     // Find scenes with gaps that are either:
-    // 1. Statistical outliers: gap > threshold * median
+    // 1. Statistical outliers: gap > threshold * median (but only if median > 0)
     // 2. Absolute large gaps: gap > 30 days
     const discontinuityIndices: number[] = [];
-    let gapIndex = 0;
     
     for (let i = 1; i < scenes.length; i++) {
         const prev = scenes[i - 1].when;
@@ -598,17 +665,24 @@ export function detectDiscontinuities(scenes: { when?: Date }[], threshold: numb
         if (prev && curr) {
             const gap = curr.getTime() - prev.getTime();
             if (gap >= 0) {
-                const isStatisticalOutlier = gap > medianGap * threshold;
+                const isStatisticalOutlier = medianGap > 0 && gap > medianGap * threshold;
                 const isAbsoluteLarge = gap > absoluteThresholdMs;
                 
                 if (isStatisticalOutlier || isAbsoluteLarge) {
+                    const prevDate = prev.toISOString();
+                    const currDate = curr.toISOString();
+                    console.log(`[Discontinuity] Scene index ${i} has discontinuity:`,
+                        '\n    Previous scene [' + (i-1) + ']:', prevDate,
+                        '\n    Current scene [' + i + ']:', currDate,
+                        '\n    Gap:', gap, 'ms (', (gap / (24 * 60 * 60 * 1000)).toFixed(2), 'days)',
+                        '\n    Reason: statistical=' + isStatisticalOutlier + ', absolute=' + isAbsoluteLarge);
                     discontinuityIndices.push(i);
                 }
-                gapIndex++;
             }
         }
     }
     
+    console.log('[Discontinuity] Final result:', discontinuityIndices.length, 'discontinuities at indices:', discontinuityIndices);
     return discontinuityIndices;
 }
 

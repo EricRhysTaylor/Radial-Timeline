@@ -134,7 +134,7 @@ When:                         # Optional: Story timeline date (YYYY-MM-DD HH:MM)
 Description: The first impression of your story. A snapshot of the protagonist's life before the journey begins. This 'before' picture sets up the world and establishes what will change by the end. Show the protagonist in their everyday life, revealing the flaw or gap that will be addressed.
 Beat Model: Save The Cat
 Range: 0-10                   # Momentum range for this beat
-Gossamer1: 12
+Gossamer1: 12                 # Latest gossamer score
 ---
 ```
 
@@ -153,11 +153,11 @@ When: 2026-01-15 08:00        # Story timeline position
 Description: The first impression of your story. A snapshot of the protagonist's life before the journey begins.
 Beat Model: Save The Cat
 Range: 0-10
-Gossamer1: 12    # Always the most recent score
-Gossamer2: 8     # Second run forms a second line and range
-Gossamer3: 4     # Third run for trend analysis
+Gossamer1: 4     # First run (oldest)
+Gossamer2: 8     # Second run
+Gossamer3: 12    # Third run
 Gossamer4: 15    # Fourth run
-Gossamer5: 6     # Oldest scores capped at Gossamer30
+Gossamer5: 18    # Fifth run (most recent in this example)
 ---
 ```
 
@@ -403,15 +403,24 @@ Set to `Yes` to flag scene for AI beats triplet analysis. Used by Scene Analysis
 
 Momentum scores for beat analysis in Gossamer view.
 
-- `Gossamer1` is always the most recent score
-- `Gossamer2-30` store historical runs
+- **Gossamer1** is the oldest score (first analysis run)
+- **Gossamer2-30** store subsequent runs in chronological order
+- The **highest numbered field** contains the most recent score (e.g., Gossamer5 is newer than Gossamer3)
 - Supports up to 30 historical tracking points
-- Scores automatically shift when new analysis runs
+- Each new Gossamer analysis run appends to the next sequential number
 
 ```yaml
-Gossamer1: 12    # Current
-Gossamer2: 8     # Previous run
-Gossamer3: 4     # 2 runs ago
+Gossamer1: 4     # First run (oldest)
+Gossamer2: 8     # Second run
+Gossamer3: 12    # Third run (most recent in this example)
+```
+
+After running a fourth analysis with score 15:
+```yaml
+Gossamer1: 4     # First run (oldest)
+Gossamer2: 8     # Second run
+Gossamer3: 12    # Third run
+Gossamer4: 15    # Fourth run (now the most recent)
 ```
 
 ---

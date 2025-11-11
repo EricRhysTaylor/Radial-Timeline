@@ -76,6 +76,7 @@ export interface PluginRendererFacade {
         showEstimate?: boolean;
         chronologueDurationCapSelection?: string;
         dominantSubplots?: Record<string, string>;
+        discontinuityThreshold?: string;
     };
     searchActive: boolean;
     searchResults: Set<string>;
