@@ -176,7 +176,7 @@ Chronologue mode is essential for constructing and visualizing the chronological
 - Missing transition scenes
 
 **Modes**: Chronologue mode (key **3**), Shift mode (key **Shift**)<br>
-**Settings**: Chronologue duration arc cap (Advanced section)
+**Settings**: Duration arc cap, Discontinuity gap threshold (Chronologue section)
 
 ## Analyzing Narrative Momentum with Gossamer Mode
 
@@ -224,7 +224,7 @@ Displays scenes in chronological story order based on `When` field. **Removes th
 - **Shift Mode** (keyboard **Shift**, **caps lock** or click button): wireframe view revealing the chronological backbone
   - Click shift button, then select two scenes to see elapsed time comparison
   - Color-coded elapsed time arc: Start tick (Zero stage purple) → End tick (Press stage green)  
-  - **Discontinuities marked with ∞ symbol**: Large time jumps between scenes are automatically detected and displayed in shift mode, revealing gaps in your chronological coverage
+  - **Discontinuities marked with ∞ symbol**: Large time jumps between scenes are automatically detected and displayed in shift mode. The threshold is auto-calculated as 3× the median gap between scenes, or customize it in Settings → Chronologue → Discontinuity gap threshold
   <div style="text-align: center; margin: 20px 0;">
   <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot-discontinuity.png" alt="Discontinuity infinity symbols in Chronologue Mode" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Discontinuity infinity symbols in Chronologue Mode</div>
@@ -266,26 +266,32 @@ Prevents edits to completed zero-draft scenes. Click completed scene → modal f
 
 Access via Obsidian Settings → Community Plugins → Radial Timeline
 
-**Getting Started:**
-- **Source path**: Root folder for scene files (e.g., `Book 1`). Leave blank to scan entire vault.
+**Source path:**
+- Root folder for scene files (e.g., `Book 1`). Leave blank to scan entire vault.
+
+**Publication and progress:**
 - **Target completion date**: Optional target (YYYY-MM-DD). Marker appears on outer ring.
-
-**Writing Features:**
+- **Show estimated completion date**: Toggle visibility of the completion date estimate label near the progress ring.
 - **Zero draft mode**: Prevents edits to completed zero-draft scenes
-- **Story beat system**: Select and generate story beat note templates (Save the Cat, Hero's Journey, Story Grid, or custom)
 
-**AI Features:**
+**Chronologue mode settings:**
+- **Chronologue duration arc cap**: Select maximum duration to display on scene duration arcs, or use "auto" for intelligent selection based on your story's longest scene. Scenes at or above this value fill the entire segment; shorter durations scale proportionally.
+- **Discontinuity gap threshold**: Controls when the ∞ symbol appears in shift mode. Auto-calculated as 3× the median time gap between consecutive scenes. Override with a custom gap threshold (e.g., "4 days", "1 week") to mark larger or smaller time jumps as discontinuities.
+
+**Story beats system and gossamer:**
+- **Story beats system**: Select story structure model (Save The Cat, Hero's Journey, Story Grid, or Custom)
+- **Create story beat template notes**: Generate template beat notes with YAML frontmatter
+
+**AI features:**
 - **AI Provider**: Choose Anthropic, Gemini, or OpenAI for scene analysis
 - **Contextual Prompt**: Customize AI analysis prompts
 - **API Logging**: Track AI interactions in "AI" folder and manuscript generation with table of contents
 
-**Advanced**
-- **Chronologue duration arc cap**: Select maximum duration to display on scene duration arcs, or use "auto" for intelligent selection based on your story's longest scene. Scenes at or above this value fill the entire segment; shorter durations scale proportionally.
+**Advanced:**
 - **Auto-expand clipped scene titles**: Disable to prevent scene title expansion on hover, making it easier to quickly slide over multiple scenes and read titles from the synopsis instead.
-- **Show estimated completion date**: Toggle visibility of the completion date estimate label near the progress ring.
 - **Metadata refresh debounce (ms)**: Delay before refreshing timeline after YAML frontmatter changes. Increase (default 5000ms) if your vault is large and updates feel too frequent.
 
-**Visual Customization**
+**Visual customization:**
 - **Publishing stage colors**: Customize colors for Zero, Author, House, Press stages (click swatch for color picker and each has reset to default button)
 - **Ring colors**: Customize up to 16 subplot ring colors (repeats after 16)
 
@@ -377,7 +383,7 @@ From Obsidian
 Manual installation
 
 1.  Download the latest main.js, styles.css, and manifest.json from the <a href="https://github.com/EricRhysTaylor/radial-timeline/releases" target="_blank" rel="noopener">releases</a> page.
-2.  Extract the files to your vault's .obsidian/plugins/radial-timeline
+2.  Extract the files to your vault's .obsidian/plugins/radial-timeline (may be hidden by file system)
 
 <hr>
 
@@ -427,6 +433,8 @@ Please see the Github Wiki for documentation at <a href="https://github.com/Eric
 <a href="https://www.buymeacoffee.com/ericrhysTaylor" target="_blank" rel="noopener">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="buy me a coffee" style="width: 150px;" >
 </a>
+
+<script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#5b8bde', 'Z8Z21NMQRN');kofiwidget2.draw();</script>
 
 <hr>
 
