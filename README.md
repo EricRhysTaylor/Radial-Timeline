@@ -359,10 +359,7 @@ Gossamer2 Justification:
 ---
 ```
 
-> **Tip**: Beat notes support both ordering methods:
-> - **Manuscript order** (default): Uses Act field and filename prefix numbers (e.g., `01 Opening Image.md`)
-> - **Chronological order**: Add `When` field (e.g., `When: 2026-01-15 12:00`) to position beats at specific points in the story timeline
-> - When "Sort by When date" is enabled (Settings → Advanced), beats with `When` fields will appear at their chronological positions alongside scenes
+> **Tip**: Beat notes are currently displayed in narrative order using the Act field and filename prefix numbers (e.g., `01 Opening Image.md`). Support for chronological positioning with `When` fields may be added in a future update.
 
 **Need more fields?** See the complete [YAML Field Reference](./docs/YAML_REFERENCE.md) for:
 - Standard scene with common metadata (Revision, Book, Words, and more)
@@ -431,10 +428,9 @@ This project stands on the shoulders of many generous teachers, tools, and story
 Please see the Github Wiki for documentation at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/wiki"  target="_blank" rel="noopener">Github Radial Timeline Wiki</a>. Also check out the Discussions group at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/discussions" target="_blank" rel="noopener">Discussions</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">Github Repository Issues page</a>. If you find the radial timeline plugin useful and would like to support continued development, please consider joining my <a href="https://www.patreon.com/c/EricRhysTaylor" target="_blank" rel="noopener">Patreon</a> or just buying me a coffee:
 
 <a href="https://www.buymeacoffee.com/ericrhysTaylor" target="_blank" rel="noopener">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="buy me a coffee" style="width: 150px;" >
-</a>
-
-<script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support me on Ko-fi', '#5b8bde', 'Z8Z21NMQRN');kofiwidget2.draw();</script>
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="buy me a coffee" style="width: 150px;"></a>
+&nbsp;&nbsp;&nbsp;&nbsp;
+<a href='https://ko-fi.com/Z8Z21NMQRN' target='_blank'><img style='border:0px;width:150px;' src='https://storage.ko-fi.com/cdn/kofi4.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
 <hr>
 

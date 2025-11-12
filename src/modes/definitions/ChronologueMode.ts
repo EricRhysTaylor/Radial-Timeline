@@ -5,6 +5,7 @@
  */
 
 import { ModeDefinition, TimelineMode } from '../ModeDefinition';
+import type { RadialTimelineView } from '../../view/TimeLineView';
 
 /**
  * Chronologue Mode Definition
@@ -40,5 +41,58 @@ export const CHRONOLOGUE_MODE: ModeDefinition = {
         tooltip: 'Switch to Chronologue mode',
         showInToggleButton: true,
         order: 3
+    },
+    
+    /**
+     * Exit lifecycle hook - Clean up shift mode state
+     */
+    onExit: async (view: RadialTimelineView) => {
+        // Call the chronologue shift cleanup function if it exists
+        if ((view as any)._chronologueShiftCleanup) {
+            (view as any)._chronologueShiftCleanup();
+            // Clear the cleanup function reference
+            delete (view as any)._chronologueShiftCleanup;
+        }
+        
+        // Reset the global shift mode state
+        const { resetShiftModeState } = await import('../../view/interactions/ChronologueShiftController');
+        resetShiftModeState();
+        
+        // Clean up any remaining shift mode UI from the SVG
+        const container = (view as any).containerEl as HTMLElement;
+        if (container) {
+            const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement;
+            if (svg) {
+                // Remove shift mode data attribute
+                svg.removeAttribute('data-shift-mode');
+                
+                // Remove shift button
+                const shiftButton = svg.querySelector('#shift-mode-toggle');
+                if (shiftButton) {
+                    shiftButton.remove();
+                }
+                
+                // Clean up any shift mode classes
+                svg.querySelectorAll('.rt-shift-hover, .rt-shift-locked, .rt-shift-selected, .rt-shift-non-select').forEach(el => {
+                    el.classList.remove('rt-shift-hover', 'rt-shift-locked', 'rt-shift-selected', 'rt-shift-non-select');
+                });
+                
+                // Clean up number square shift classes
+                svg.querySelectorAll('.rt-shift-active').forEach(el => {
+                    el.classList.remove('rt-shift-active');
+                    el.removeAttribute('data-subplot-idx');
+                });
+                
+                // Remove elapsed time elements
+                svg.querySelectorAll('.rt-elapsed-time-arc, .rt-elapsed-time-group').forEach(el => {
+                    el.remove();
+                });
+                
+                // Clean up any regular Chronologue hover states
+                svg.querySelectorAll('.rt-selected, .rt-non-selected').forEach(el => {
+                    el.classList.remove('rt-selected', 'rt-non-selected');
+                });
+            }
+        }
     }
 };

@@ -56,6 +56,14 @@ export function isShiftModeActive(): boolean {
 }
 
 /**
+ * Reset the global shift mode state
+ * Called when exiting Chronologue mode to ensure clean state
+ */
+export function resetShiftModeState(): void {
+    globalShiftModeActive = false;
+}
+
+/**
  * Setup Chronologue Shift Mode Controller
  * Handles the shift button and two-scene selection for elapsed time comparison
  */
