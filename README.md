@@ -180,11 +180,11 @@ Chronologue mode is essential for constructing and visualizing the chronological
 
 ## Analyzing Narrative Momentum with Gossamer Mode
 
-- **Gossamer Mode**: Chart narrative momentum across story beats and over time with manual score entry
+- **Gossamer Mode**: Chart narrative momentum across story beats and over time with manual score entry<br>
 - **Historical tracking**: Compare momentum scores across up to 30 iterations to track how your story evolves
 
-**Modes**: Gossamer mode (key **4**) 
-**Command**: Gossamer enter momentum scores
+**Modes**: Gossamer mode (key **4**)<br>
+**Command**: Gossamer enter momentum scores<br>
 **Settings**: Story beats system
 
 ## AI Scene Analysis
@@ -192,7 +192,7 @@ Chronologue mode is essential for constructing and visualizing the chronological
 - **Scene-by-scene evaluation**: AI analyzes individual scenes in triplets (previous/current/next) to provide story beat assessment and grade evaluation
 - **Multiple ordering options**: Run analysis in manuscript order (Narrative mode) or by subplot order to get different perspectives on narrative scene flow
 
-**Modes**: Narrative mode (key 1), Subplot mode (key 2)<br>
+**Modes**: Narrative mode (key 1), Subplot mode (key 2), Chronologue mode (key 3)<br>
 **Command**: AI scene analysis (manuscript order), AI scene analysis (subplot order)<br>
 **Settings**: AI LLM for scene analysis
 

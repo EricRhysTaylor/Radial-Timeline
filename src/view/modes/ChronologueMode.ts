@@ -145,19 +145,16 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
     });
 
     let currentHoveredSceneId: string | null = null;
-    let globalFadeApplied = false;
 
     // Optimized: Use CSS class on parent instead of iterating all elements
     const applyGlobalFade = () => {
-        if (globalFadeApplied) return;
+        if (svg.classList.contains('rt-global-fade')) return;
         svg.classList.add('rt-global-fade');
-        globalFadeApplied = true;
     };
 
     const clearGlobalFade = () => {
-        if (!globalFadeApplied) return;
+        if (!svg.classList.contains('rt-global-fade')) return;
         svg.classList.remove('rt-global-fade');
-        globalFadeApplied = false;
     };
 
     const highlightScene = (sceneId: string): void => {

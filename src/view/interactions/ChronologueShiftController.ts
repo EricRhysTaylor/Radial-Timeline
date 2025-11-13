@@ -228,6 +228,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             removeShiftModeFromAllScenes(svg);
             // Remove shift mode marker (also hides discontinuity markers via CSS)
             svg.removeAttribute('data-shift-mode');
+            svg.classList.remove('rt-global-fade');
             
             // Clear all regular Chronologue hover states (from normal mode)
             // This ensures we return to a clean state with no highlights
@@ -247,6 +248,18 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             
             // Remove scene-hover class from SVG if present
             svg.classList.remove('scene-hover');
+
+            // If the cursor is still hovering a scene group, re-trigger standard hover handling
+            const hoveredSceneGroup = svg.querySelector('.rt-scene-group[data-item-type="Scene"]:hover');
+            if (hoveredSceneGroup) {
+                requestAnimationFrame(() => {
+                    hoveredSceneGroup.dispatchEvent(new PointerEvent('pointerover', {
+                        bubbles: true,
+                        pointerId: 1,
+                        pointerType: 'mouse'
+                    }));
+                });
+            }
         }
     };
     

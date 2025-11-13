@@ -42,7 +42,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
     // 3. Scene ordering by When date (DISABLED/GRAYED OUT)
     const sortSetting = new Settings(containerEl)
         .setName('Scene ordering based on When date')
-        .setDesc('Coming soon: Sort scenes chronologically by When date instead of manuscript order. This feature is currently in development and will be available in a future update.')
+        .setDesc('Coming someday maybe not sure yet: Sort scenes chronologically by When date instead of manuscript order. This feature is currently in development and will be available in a future update.')
         .addToggle(toggle => toggle
             .setValue(false)
             .setDisabled(true) // Make toggle inoperative
