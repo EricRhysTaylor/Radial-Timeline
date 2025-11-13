@@ -270,19 +270,14 @@ export default class SynopsisManager {
       return value || '#EFBDEB';
     };
     
-    const getCharacterColor = (character: string): string => {
-      // Similar to subplot colors but with slightly different ranges
-      const hue = Math.floor(Math.random() * 360);
-      const saturation = 60 + Math.floor(Math.random() * 30); // 60-90%
-      const lightness = 30 + Math.floor(Math.random() * 15);  // 30-45%
-      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-    };
-    
     // Set the line height
     const lineHeight = 24;
     
     // Create the main container group
     const containerGroup = createSynopsisContainer(sceneId, scene.path);
+    
+    // Store publish stage color on synopsis for hover title color updates in Subplot mode
+    containerGroup.setAttribute('data-stage-color', titleColor);
     
     // Create the synopsis text group
     const synopsisTextGroup = createTextGroup();
@@ -498,7 +493,8 @@ export default class SynopsisManager {
             const hasPovMarker = trimmedChar.includes('>pov<');
             const characterText = hasPovMarker ? trimmedChar.replace(' >pov<', '') : trimmedChar;
             
-            const color = getCharacterColor(characterText); // Restore random color
+            // Use synopsis text color (gray) for consistency
+            const color = '#666666';
             const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
             tspan.setAttribute("data-item-type", "character");
             tspan.style.setProperty('--rt-dynamic-color', color);

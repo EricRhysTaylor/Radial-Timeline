@@ -766,9 +766,9 @@
   font-weight: 400;
   font-style: normal !important;
 }
-/* Title tspans use publish stage color like Act labels */
+/* Title tspans use dynamic color (set on hover) or fallback to max publish stage color */
 .rt-title-text-main tspan[data-item-type=title] {
-  fill: var(--rt-max-publish-stage-color) !important;
+  fill: var(--rt-dynamic-color, var(--rt-max-publish-stage-color)) !important;
 }
 
 /* Date and Duration tspans - small gray text */
