@@ -5,7 +5,7 @@
  */
 
 import { App } from 'obsidian';
-import { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import { RadialTimelineView } from '../TimeLineView';
 
 interface DominantSubplotView {
@@ -105,4 +105,3 @@ export async function handleDominantSubplotSelection(
         }
     }
 }
-

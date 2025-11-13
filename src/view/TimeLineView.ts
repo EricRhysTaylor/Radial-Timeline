@@ -7,7 +7,7 @@
 import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice, normalizePath } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
-import type { TimelineItem } from '../main';
+import type { TimelineItem } from '../types';
 import { SceneNumberInfo } from '../utils/constants';
 import ZeroDraftModal from '../modals/ZeroDraftModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';

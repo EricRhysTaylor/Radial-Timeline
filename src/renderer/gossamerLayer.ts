@@ -1,7 +1,7 @@
 /*
  * Gossamer SVG layer helper
  */
-import type { TimelineItem } from '../main';
+import type { TimelineItem } from '../types';
 import { GossamerRun, extractPresentBeatScores, extractBeatOrder } from '../utils/gossamer';
 import { getMostAdvancedStageColor } from '../utils/colour';
 
@@ -522,6 +522,5 @@ function buildCellArcPath(innerR: number, outerR: number, startAngle: number, en
   const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
   return `M ${fmt(x1)} ${fmt(y1)} L ${fmt(x2)} ${fmt(y2)} A ${fmt(outerR)} ${fmt(outerR)} 0 ${largeArc} 1 ${fmt(x3)} ${fmt(y3)} L ${fmt(x4)} ${fmt(y4)} A ${fmt(innerR)} ${fmt(innerR)} 0 ${largeArc} 0 ${fmt(x1)} ${fmt(y1)} Z`;
 }
-
 
 

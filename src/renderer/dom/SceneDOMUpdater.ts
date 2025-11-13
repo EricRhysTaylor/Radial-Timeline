@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 
 /**
@@ -136,4 +136,3 @@ function getMasterSubplotOrder(svg: SVGSVGElement): string[] {
         .map(label => label.getAttribute('data-subplot-name'))
         .filter((name): name is string => name !== null);
 }
-

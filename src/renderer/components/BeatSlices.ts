@@ -1,7 +1,7 @@
 import { sceneArcPath } from './SceneArcs';
 import { renderBeatGroup } from './Beats';
 import { formatNumber } from '../../utils/svg';
-import type { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 
 export function renderBeatSlice(params: {
   act: number;
@@ -23,5 +23,4 @@ export function renderBeatSlice(params: {
     </g>
   `;
 }
-
 

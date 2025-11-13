@@ -6,7 +6,7 @@
 
 import { App, MarkdownRenderer, Modal } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { EmbeddedReleaseNotesEntry } from '../main';
+import type { EmbeddedReleaseNotesEntry } from '../types';
 import { DEFAULT_RELEASES_URL, parseReleaseVersion } from '../utils/releases';
 
 export class ReleaseNotesModal extends Modal {

@@ -5,7 +5,7 @@
  */
 
 import { formatNumber } from '../../utils/svg';
-import { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import { parseWhenField, calculateTimeSpan, parseDuration, detectDiscontinuities, detectSceneOverlaps, prepareScenesForDiscontinuityDetection, calculateAutoDiscontinuityThreshold } from '../../utils/date';
 
 export interface ChronologueSceneEntry {

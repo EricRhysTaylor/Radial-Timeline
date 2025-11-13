@@ -2934,6 +2934,14 @@
   fill: var(--text-muted) !important; /* Dark muted text to match dark theme */
   opacity: 0.5; /* Dim the text to match the faded scenes */
 }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-scene-is-open:not(.rt-shift-active) {
+  fill: var(--interactive-normal) !important;
+  stroke: none !important;
+}
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-scene-is-open:not(.rt-shift-active) {
+  fill: var(--text-muted) !important;
+  opacity: 0.5 !important;
+}
 
 /* Shift mode: Hover/selected scenes restore full opacity and disable transition */
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:hover,

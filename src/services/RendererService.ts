@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import type { TimelineItem } from '../main';
+import type { TimelineItem } from '../types';
 import { addHighlightRectangles as addHighlightRectanglesExt } from '../view/interactions';
 import { renderGossamerLayer } from '../renderer/gossamerLayer';
 import { renderGossamerMonthSpokes } from '../renderer/components/MonthSpokes';

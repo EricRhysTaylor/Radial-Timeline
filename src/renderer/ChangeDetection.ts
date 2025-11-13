@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { TimelineItem, RadialTimelineSettings } from '../main';
+import type { TimelineItem, RadialTimelineSettings } from '../types';
 import type { GossamerRun } from '../utils/gossamer';
 
 /**

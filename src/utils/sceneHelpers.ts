@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-import { TimelineItem } from '../main';
+import type { TimelineItem } from '../types';
 import { parseWhenField } from './date';
 
 /**

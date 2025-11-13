@@ -24,7 +24,8 @@ import { assembleManuscript } from './utils/manuscript';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { parseSceneTitle } from './utils/text';
 import { parseWhenField } from './utils/date';
-import { isStoryBeat, isBeatNote } from './utils/sceneHelpers';
+import { isStoryBeat, isBeatNote, normalizeBooleanValue } from './utils/sceneHelpers';
+import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry } from './types';
 import { compareReleaseVersionsDesc, parseReleaseVersion } from './utils/releases';
 
 
@@ -35,146 +36,9 @@ declare const EMBEDDED_RELEASE_NOTES: string;
 // Import the new scene analysis function <<< UPDATED IMPORT
 import { processByManuscriptOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotNameWithModal, processEntireSubplotWithModal } from './SceneAnalysisCommands';
 
-// Helper function to normalize boolean values from various formats
-function normalizeBooleanValue(value: unknown): boolean {
-    if (typeof value === 'boolean') {
-        return value;
-    }
-    if (typeof value === 'string') {
-        const lower = value.toLowerCase().trim();
-        // Handle empty string or just whitespace as false
-        if (lower === '' || lower === ' ') {
-            return false;
-        }
-        return lower === 'yes' || lower === 'true' || lower === '1';
-    }
-    if (typeof value === 'number') {
-        return value === 1;
-    }
-    // Handle null, undefined, or any other falsy value as false
-    return false;
-}
-
-export interface RadialTimelineSettings {
-    sourcePath: string;
-    validFolderPaths: string[]; // <<< ADDED: Store previously validated folder paths for autocomplete
-    publishStageColors: {
-        Zero: string;
-        Author: string;
-        House: string;
-        Press: string;
-    };
-    subplotColors: string[]; // 16 subplot palette colors
-    // Mode system
-    currentMode?: string; // Current timeline mode (TimelineMode enum value)
-    logApiInteractions: boolean; // <<< ADDED: Setting to log API calls to files
-    targetCompletionDate?: string; // Optional: Target date as yyyy-mm-dd string
-    openaiApiKey?: string; // <<< ADDED: Optional OpenAI API Key
-    anthropicApiKey?: string; // <<< ADDED: Anthropic API Key
-    anthropicModelId?: string; // <<< ADDED: Selected Anthropic Model ID
-    geminiApiKey?: string; // <<< ADDED: Gemini API Key
-    geminiModelId?: string; // <<< ADDED: Selected Gemini Model ID
-    defaultAiProvider?: 'openai' | 'anthropic' | 'gemini'; // <<< ADDED: Default AI provider
-    openaiModelId?: string; // <<< ADDED: Selected OpenAI Model ID
-    // Feature toggles
-    enableAiSceneAnalysis: boolean; // Show AI scene analysis features (colors + synopsis)
-    enableZeroDraftMode?: boolean; // Intercept complete scenes in Stage Zero for Pending Edits modal
-    // Advanced
-    metadataRefreshDebounceMs?: number; // Debounce for frontmatter-changed refresh
-    showEstimate?: boolean; // Toggle estimation arc/label near progress ring
-    enableSceneTitleAutoExpand?: boolean; // Auto-expand clipped scene titles on hover
-    enableHoverDebugLogging?: boolean; // Emit verbose hover redistribution logs to console
-    sortByWhenDate?: boolean; // Sort scenes by When date (true) or manuscript order (false). Chronologue mode always uses When date.
-    chronologueDurationCapSelection?: string; // Value|unit key used for duration arc cap (or 'auto')
-    discontinuityThreshold?: string; // Custom discontinuity gap threshold (e.g., "4 days") or undefined for auto-calculated
-    // AI Context Templates
-    aiContextTemplates?: Array<{id: string; name: string; prompt: string; isBuiltIn: boolean}>;
-    activeAiContextTemplateId?: string;
-    // Beat System for Gossamer
-    beatSystem?: string; // Selected beat system (e.g., "Save The Cat", "Hero's Journey", "Story Grid")
-    // Dominant subplot selection for scenes in multiple subplots
-    dominantSubplots?: Record<string, string>; // Maps scene path → dominant subplot name for outer ring color
-    // Resume state (internal, not exposed in UI)
-    _isResuming?: boolean; // Temporary flag to indicate resume operation
-    _resumingMode?: 'flagged' | 'unprocessed' | 'force-all'; // Mode being resumed
-    lastSeenReleaseNotesVersion?: string; // Track release modal consumption
-    cachedReleaseNotes?: EmbeddedReleaseNotesBundle | null;
-    releaseNotesLastFetched?: string;
-    // Optional: Store the fetched models list to avoid refetching?
-    // availableOpenAiModels?: { id: string, description?: string }[];
-}
-
 // Constants for the view
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
 const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline"; // Sentence case per guidelines
-
-// Note: This interface represents ANY timeline item - both Class: Scene files and Class: Beat files
-// Named 'TimelineItem' to distinguish from the itemType value "Scene"
-export interface TimelineItem {
-    title?: string;
-    date: string;
-    path?: string;
-    subplot?: string;
-    act?: string;
-    // Use singular meta key: Character
-    // character?: string[]; // removed in favor of Character
-    pov?: string;
-    location?: string;
-    number?: number;
-    synopsis?: string;
-    when?: Date; // Keep for backward compatibility 
-    actNumber?: number; // Keep for backward compatibility
-    Character?: string[]; // Keep for backward compatibility
-    status?: string | string[]; // Add status property
-    "Publish Stage"?: string; // Add publish stage property
-    due?: string; // Add due date property
-    pendingEdits?: string; // Add pending edits property
-    Duration?: string; // Scene duration (e.g., "2 hours", "3 days")
-    Book?: string; // Add book title property
-    "previousSceneAnalysis"?: string; // Add previousSceneAnalysis property
-    "currentSceneAnalysis"?: string; // Add currentSceneAnalysis property 
-    "nextSceneAnalysis"?: string; // Add nextSceneAnalysis property
-    "Beats Update"?: boolean | string; // Scene analysis processing flag (legacy name kept for compatibility)
-    // Beat-specific properties  
-    itemType?: "Scene" | "Plot" | "Beat"; // Distinguish between Scene and Beat items (Plot is legacy for Beat)
-    Description?: string; // For Beat descriptions
-    "Beat Model"?: string; // Beat system (e.g., "Save The Cat", "Hero's Journey")
-    Range?: string; // Ideal momentum range for this beat (e.g., "0-20", "71-90")
-    "Suggest Placement"?: string; // AI-suggested scene number for optimal beat placement (e.g., "33.5")
-    // Gossamer score fields
-    Gossamer1?: number; // Current Gossamer score
-    Gossamer2?: number; // Gossamer score history
-    Gossamer3?: number;
-    Gossamer4?: number;
-    Gossamer5?: number;
-    Gossamer6?: number;
-    Gossamer7?: number;
-    Gossamer8?: number;
-    Gossamer9?: number;
-    Gossamer10?: number;
-    Gossamer11?: number;
-    Gossamer12?: number;
-    Gossamer13?: number;
-    Gossamer14?: number;
-    Gossamer15?: number;
-    Gossamer16?: number;
-    Gossamer17?: number;
-    Gossamer18?: number;
-    Gossamer19?: number;
-    Gossamer20?: number;
-    Gossamer21?: number;
-    Gossamer22?: number;
-    Gossamer23?: number;
-    Gossamer24?: number;
-    Gossamer25?: number;
-    Gossamer26?: number;
-    Gossamer27?: number;
-    Gossamer28?: number;
-    Gossamer29?: number;
-    Gossamer30?: number;
-}
-
-// SceneNumberInfo now imported from constants
 
 export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     sourcePath: '',
@@ -269,20 +133,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
 };
 
 // STATUS_COLORS now imported from constants
-
-export interface EmbeddedReleaseNotesEntry {
-    version: string;
-    title: string;
-    body: string;
-    url?: string;
-    publishedAt?: string;
-}
-
-export interface EmbeddedReleaseNotesBundle {
-    major?: EmbeddedReleaseNotesEntry | null;
-    latest?: EmbeddedReleaseNotesEntry | null;
-    patches?: EmbeddedReleaseNotesEntry[];
-}
 
 const NUM_ACTS = 3;
 

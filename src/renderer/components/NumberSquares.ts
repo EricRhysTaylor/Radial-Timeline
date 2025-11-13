@@ -1,4 +1,4 @@
-import type { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import { formatNumber } from '../../utils/svg';
 import { getSceneState, buildSquareClasses, buildTextClasses, extractGradeFromScene, isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers';
 import { getScenePrefixNumber, getNumberSquareSize, parseSceneTitle } from '../../utils/text';
@@ -254,5 +254,4 @@ export function renderNumberSquaresStandard(params: {
     sceneNumbersMap: params.sceneNumbersMap
   });
 }
-
 

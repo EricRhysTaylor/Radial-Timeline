@@ -12,7 +12,7 @@
  */
 
 import { App, TFile } from 'obsidian';
-import { TimelineItem } from '../main';
+import type { TimelineItem } from '../types';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseWhenField } from '../utils/date';
 import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
@@ -302,4 +302,3 @@ export class SceneDataService {
         return metadata.Class === "Scene";
     }
 }
-

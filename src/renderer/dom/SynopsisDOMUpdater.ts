@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 
 /**
  * Updates synopsis text content in the DOM without regenerating SVG
@@ -79,4 +79,3 @@ export function updateSynopsisVisibility(
         return false;
     }
 }
-

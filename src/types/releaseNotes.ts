@@ -1,0 +1,17 @@
+/*
+ * Embedded release notes bundle definitions
+ */
+
+export interface EmbeddedReleaseNotesEntry {
+    version: string;
+    title: string;
+    body: string;
+    url?: string;
+    publishedAt?: string;
+}
+
+export interface EmbeddedReleaseNotesBundle {
+    major?: EmbeddedReleaseNotesEntry | null;
+    latest?: EmbeddedReleaseNotesEntry | null;
+    patches?: EmbeddedReleaseNotesEntry[];
+}

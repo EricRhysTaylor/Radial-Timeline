@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 import type RadialTimelinePlugin from './main';
-import type { TimelineItem } from './main';
+import type { TimelineItem } from './types';
 import { decodeHtmlEntities, parseSceneTitleComponents } from './utils/text';
 import { getPublishStageStyle, splitSynopsisLines, decodeContentLines, isOverdueAndIncomplete } from './synopsis/SynopsisData';
 import { createSynopsisContainer, createTextGroup, createText } from './synopsis/SynopsisView';

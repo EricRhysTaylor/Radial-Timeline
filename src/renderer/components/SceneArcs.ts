@@ -1,4 +1,4 @@
-import type { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import { formatNumber } from '../../utils/svg';
 
 export function sceneArcPath(innerR: number, outerR: number, startAngle: number, endAngle: number): string {
@@ -15,5 +15,4 @@ export function renderVoidCellPath(innerR: number, outerR: number, startAngle: n
   const path = sceneArcPath(innerR, outerR, startAngle, endAngle);
   return `<path d="${path}" class="rt-void-cell"/>`;
 }
-
 

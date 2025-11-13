@@ -3,7 +3,7 @@
  */
 import { Modal, App, ButtonComponent, Notice, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { TimelineItem } from '../main';
+import type { TimelineItem } from '../types';
 import { normalizeBeatName } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem, detectPlotSystemFromNotes } from '../utils/beatsSystems';
@@ -709,4 +709,3 @@ export class GossamerScoreModal extends Modal {
     contentEl.empty();
   }
 }
-

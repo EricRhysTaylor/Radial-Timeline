@@ -1,4 +1,4 @@
-import type { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import { formatNumber } from '../../utils/svg';
 
 export function renderBeatGroup(params: {
@@ -17,5 +17,4 @@ export function renderBeatGroup(params: {
     <g class="rt-scene-group beats" data-item-type="Beat" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(startAngle)}" data-end-angle="${formatNumber(endAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-path="${beat.path ? encodeURIComponent(beat.path) : ''}" id="${groupId}">
   `;
 }
-
 

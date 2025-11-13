@@ -5,7 +5,7 @@
  */
 
 import { TFile, App } from 'obsidian';
-import { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import { setupChronologueShiftController, isShiftModeActive } from '../interactions/ChronologueShiftController';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';

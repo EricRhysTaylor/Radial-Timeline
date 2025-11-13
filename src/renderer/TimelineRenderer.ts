@@ -5,7 +5,7 @@
  */
 
 import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
-import type { TimelineItem } from '../main';
+import type { TimelineItem } from '../types';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString, generateChronologicalTicks, calculateTimeSpan, durationSelectionToMs, parseDurationDetail, type ChronologicalTickInfo } from '../utils/date';
 import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';

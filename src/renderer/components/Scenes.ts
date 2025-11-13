@@ -1,4 +1,4 @@
-import type { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import { formatNumber } from '../../utils/svg';
 import { isBeatNote } from '../../utils/sceneHelpers';
 
@@ -19,5 +19,4 @@ export function renderSceneGroup(params: {
     <g class="rt-scene-group${isBeatNote(scene) ? ' beats' : ''}" data-item-type="${isBeatNote(scene) ? 'Beat' : 'Scene'}" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(startAngle)}" data-end-angle="${formatNumber(endAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${String(subplotIdxAttr)}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="${groupId}">
   `;
 }
-
 

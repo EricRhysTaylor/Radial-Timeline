@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
 import { ELAPSED_ARC_RADIUS, ELAPSED_TICK_LENGTH } from '../../renderer/layout/LayoutConstants';

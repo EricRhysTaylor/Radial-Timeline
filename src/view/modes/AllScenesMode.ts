@@ -1,6 +1,6 @@
 import { TFile, App } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
-import { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
@@ -160,5 +160,4 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
         }
     });
 }
-
 

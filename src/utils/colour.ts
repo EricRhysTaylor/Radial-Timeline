@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import type { TimelineItem } from '../main';
+import type { TimelineItem } from '../types';
 import { STAGE_ORDER } from './constants';
 
 /**

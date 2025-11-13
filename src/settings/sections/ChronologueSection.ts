@@ -1,6 +1,6 @@
 import { App, Setting as Settings, Notice, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { TimelineItem } from '../../main';
+import type { TimelineItem } from '../../types';
 import { parseDurationDetail, formatDurationSelectionLabel, calculateAutoDiscontinuityThreshold } from '../../utils/date';
 
 interface DurationCapOption {
@@ -230,4 +230,3 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             new Notice('Discontinuity threshold reset to auto-calculated value');
         }));
 }
-

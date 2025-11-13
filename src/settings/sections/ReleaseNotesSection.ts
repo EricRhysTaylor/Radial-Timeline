@@ -6,7 +6,7 @@
 
 import { MarkdownRenderer } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import type { EmbeddedReleaseNotesEntry } from '../../main';
+import type { EmbeddedReleaseNotesEntry } from '../../types';
 import { DEFAULT_RELEASES_URL, compareReleaseVersionsDesc, parseReleaseVersion } from '../../utils/releases';
 
 interface ReleaseNotesSectionArgs {
