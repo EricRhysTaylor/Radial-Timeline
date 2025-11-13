@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, requestUrl, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, normalizePath } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, normalizePath } from "obsidian";
 import { TimelineService } from './services/TimelineService';
 import { SceneDataService } from './services/SceneDataService';
 import { escapeRegExp } from './utils/regex';
@@ -15,26 +15,24 @@ import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG, adjustBeatLabelsAfterRender } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
 import { RendererService } from './services/RendererService';
-import { openGossamerScoreEntry, runGossamerAiAnalysis } from './GossamerCommands';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 import { ReleaseNotesModal } from './modals/ReleaseNotesModal';
 import { shiftGossamerHistory } from './utils/gossamer';
-import { assembleManuscript } from './utils/manuscript';
 import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { parseSceneTitle } from './utils/text';
 import { parseWhenField } from './utils/date';
 import { isStoryBeat, isBeatNote, normalizeBooleanValue } from './utils/sceneHelpers';
 import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry } from './types';
-import { compareReleaseVersionsDesc, parseReleaseVersion } from './utils/releases';
+import { ReleaseNotesService } from './services/ReleaseNotesService';
+import { CommandRegistrar } from './services/CommandRegistrar';
 
 
 // Declare the variable that will be injected by the build process
 declare const EMBEDDED_README_CONTENT: string;
-declare const EMBEDDED_RELEASE_NOTES: string;
 
 // Import the new scene analysis function <<< UPDATED IMPORT
-import { processByManuscriptOrder, testYamlUpdateFormatting, createTemplateScene, getDistinctSubplotNames, processBySubplotNameWithModal, processEntireSubplotWithModal } from './SceneAnalysisCommands';
+import { createTemplateScene } from './SceneAnalysisCommands';
 
 // Constants for the view
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -279,6 +277,8 @@ export default class RadialTimelinePlugin extends Plugin {
     private searchService!: import('./services/SearchService').SearchService;
     private fileTrackingService!: import('./services/FileTrackingService').FileTrackingService;
     private rendererService!: RendererService;
+    private releaseNotesService!: ReleaseNotesService;
+    private commandRegistrar!: CommandRegistrar;
     public lastSceneData?: TimelineItem[];
     
     // Completion estimate stats
@@ -292,9 +292,6 @@ export default class RadialTimelinePlugin extends Plugin {
     // Add property to store the latest status counts for completion estimate
     public latestStatusCounts?: Record<string, number>;
     
-    private releaseNotesBundle: EmbeddedReleaseNotesBundle | null = null;
-    private releaseModalShownThisSession = false;
-    private releaseNotesFetchPromise: Promise<boolean> | null = null;
     
     // Track active scene analysis processing modal and status bar item
     public activeBeatsModal: SceneAnalysisProcessingModal | null = null;
@@ -400,371 +397,55 @@ export default class RadialTimelinePlugin extends Plugin {
         return resultNodes;
     }
 
-    private normalizeReleaseEntry(value: unknown): EmbeddedReleaseNotesEntry | null {
-        if (!value || typeof value !== 'object') return null;
-        const raw = value as Record<string, unknown>;
-        const rawVersion =
-            typeof raw.version === 'string' ? raw.version :
-            typeof raw.tag === 'string' ? raw.tag :
-            typeof raw.tag_name === 'string' ? raw.tag_name as string :
-            typeof raw.name === 'string' ? raw.name as string :
-            '';
-        const version = rawVersion.toString().trim().replace(/^v/i, '');
-        if (!version) return null;
-        const title =
-            typeof raw.title === 'string' && raw.title.trim().length > 0
-                ? raw.title
-                : (typeof raw.name === 'string' && raw.name.trim().length > 0
-                    ? raw.name
-                    : `Radial Timeline ${version}`);
-        const body = typeof raw.body === 'string' ? raw.body : '';
-        const entry: EmbeddedReleaseNotesEntry = {
-            version,
-            title,
-            body: body.length > 0 ? body : 'No release notes were provided for this version.',
-        };
-        const url =
-            typeof raw.html_url === 'string' ? raw.html_url :
-            typeof raw.htmlUrl === 'string' ? raw.htmlUrl as string :
-            typeof raw.url === 'string' ? raw.url :
-            undefined;
-        if (url) {
-            entry.url = url;
-        }
-        const published =
-            typeof raw.publishedAt === 'string' ? raw.publishedAt :
-            typeof raw.published_at === 'string' ? raw.published_at as string :
-            undefined;
-        if (published) {
-            entry.publishedAt = published;
-        }
-        return entry;
-    }
-
-    private loadEmbeddedReleaseNotes(): EmbeddedReleaseNotesBundle | null {
-        try {
-            const raw = typeof EMBEDDED_RELEASE_NOTES !== 'undefined' ? EMBEDDED_RELEASE_NOTES : '';
-            if (!raw) return null;
-            const parsed = JSON.parse(raw);
-            if (!parsed) return null;
-            
-            // New format: major, latest, patches
-            if (parsed.major || parsed.latest || parsed.patches) {
-                const major = this.normalizeReleaseEntry(parsed.major) ?? null;
-                const latest = this.normalizeReleaseEntry(parsed.latest) ?? null;
-                const patches = Array.isArray(parsed.patches)
-                    ? (parsed.patches as unknown[])
-                        .map((entry: unknown) => this.normalizeReleaseEntry(entry))
-                        .filter((entry): entry is EmbeddedReleaseNotesEntry => entry !== null)
-                    : undefined;
-                return {
-                    major,
-                    latest,
-                    patches,
-                };
-            }
-            
-            // Legacy format: featured, current (for backward compatibility)
-            if (parsed.featured || parsed.current) {
-                const major = this.normalizeReleaseEntry(parsed.featured) ?? null;
-                const latest = this.normalizeReleaseEntry(parsed.current) ?? null;
-                const patches = Array.isArray(parsed.patches)
-                    ? (parsed.patches as unknown[])
-                        .map((entry: unknown) => this.normalizeReleaseEntry(entry))
-                        .filter((entry): entry is EmbeddedReleaseNotesEntry => entry !== null)
-                    : undefined;
-                return {
-                    major,
-                    latest,
-                    patches,
-                };
-            }
-            
-            // Single entry format (fallback)
-            if (parsed.version || parsed.body) {
-                const entry = this.normalizeReleaseEntry(parsed);
-                if (!entry) return null;
-                return { major: entry, latest: entry };
-            }
-            
-            return null;
-        } catch (error) {
-            console.error('Failed to parse embedded release notes:', error);
-            return null;
-        }
-    }
-
     public getReleaseNotesBundle(): EmbeddedReleaseNotesBundle | null {
-        return this.releaseNotesBundle;
+        return this.releaseNotesService?.getBundle() ?? null;
     }
 
     public async markReleaseNotesSeen(version: string): Promise<void> {
-        if (!version) return;
-        if (this.settings.lastSeenReleaseNotesVersion === version) return;
-        this.settings.lastSeenReleaseNotesVersion = version;
-        await this.saveSettings();
+        if (!this.releaseNotesService) return;
+        await this.releaseNotesService.markReleaseNotesSeen(version);
     }
 
     public async maybeShowReleaseNotesModal(): Promise<void> {
-        const bundle = this.releaseNotesBundle;
+        if (!this.releaseNotesService) return;
+        const bundle = this.releaseNotesService.getBundle();
         if (!bundle) return;
-        if (this.releaseModalShownThisSession) return;
-        
-        // Check against the latest version
-        const latestVersion = bundle.latest?.version ?? bundle.major?.version;
+        const latestVersion = bundle.latest?.version ?? bundle.major?.version ?? '';
         if (!latestVersion) return;
-        
+
         const seenVersion = this.settings.lastSeenReleaseNotesVersion ?? '';
-        if (latestVersion === seenVersion) return;
-        
-        // Only show modal automatically for major releases (x.0.0)
-        const versionInfo = parseReleaseVersion(latestVersion);
-        if (!versionInfo) return;
-        if (versionInfo.minor !== 0 || versionInfo.patch !== 0) {
-            // For patch releases, don't auto-show modal, but mark as seen
-            this.settings.lastSeenReleaseNotesVersion = latestVersion;
-            await this.saveSettings();
-            return;
-        }
-        
+        if (seenVersion === latestVersion) return;
+        if (this.releaseNotesService.hasShownModalThisSession()) return;
+
+        this.releaseNotesService.markModalShown();
+        await this.releaseNotesService.markReleaseNotesSeen(latestVersion);
         this.openReleaseNotesModal();
     }
 
     public openReleaseNotesModal(force: boolean = false): void {
-        const bundle = this.releaseNotesBundle;
-        if (!bundle) return;
-        
-        // Featured release is the major release (e.g., 3.0.0)
+        if (!this.releaseNotesService) return;
+        const bundle = this.releaseNotesService.getBundle();
+        if (!bundle) {
+            if (force) new Notice('Release notes are not available offline yet. Connect to the internet and try again.');
+            return;
+        }
+
         const major = bundle.major ?? bundle.latest;
-        if (!major) return;
-        
-        const patches = this.collectReleasePatches(bundle, major);
-        if (this.releaseModalShownThisSession && !force) return;
-        
-        this.releaseModalShownThisSession = true;
+        if (!major) {
+            if (force) new Notice('No release notes found.');
+            return;
+        }
+
+        const patches = this.releaseNotesService.collectReleasePatches(bundle, major);
         const modal = new ReleaseNotesModal(this.app, this, major, patches);
         modal.open();
     }
 
-    private collectReleasePatches(bundle: EmbeddedReleaseNotesBundle, major: EmbeddedReleaseNotesEntry): EmbeddedReleaseNotesEntry[] {
-        const seen = new Set<string>([major.version]);
-        const patches: EmbeddedReleaseNotesEntry[] = [];
-        const add = (entry: EmbeddedReleaseNotesEntry | null | undefined) => {
-            if (!entry) return;
-            if (seen.has(entry.version)) return;
-            seen.add(entry.version);
-            patches.push(entry);
-        };
-
-        // Add all patches from the bundle
-        const patchSource: EmbeddedReleaseNotesEntry[] = Array.isArray(bundle.patches) ? bundle.patches : [];
-        for (const entry of patchSource) {
-            add(entry);
-        }
-
-        // Add latest if it's different from major
-        add(bundle.latest);
-        
-        patches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
-        return patches;
-    }
-
-    private mergeReleaseBundles(primary: EmbeddedReleaseNotesBundle | null, fallback: EmbeddedReleaseNotesBundle | null): EmbeddedReleaseNotesBundle | null {
-        if (!primary && !fallback) return null;
-        if (!primary) return fallback;
-        if (!fallback) return primary;
-
-        const merged: EmbeddedReleaseNotesBundle = {
-            major: primary.major ?? fallback.major ?? null,
-            latest: primary.latest ?? fallback.latest ?? null,
-        };
-
-        const patches: EmbeddedReleaseNotesEntry[] = [];
-        const seen = new Set<string>();
-        const add = (entry: EmbeddedReleaseNotesEntry | null | undefined) => {
-            if (!entry) return;
-            if (seen.has(entry.version)) return;
-            seen.add(entry.version);
-            patches.push(entry);
-        };
-
-        const sources: Array<EmbeddedReleaseNotesEntry[] | undefined> = [
-            primary.patches,
-            fallback.patches,
-        ];
-
-        for (const source of sources) {
-            if (!Array.isArray(source)) continue;
-            for (const entry of source) {
-                add(entry);
-            }
-        }
-
-        // Add latest entries if not already included
-        add(primary.latest);
-        add(fallback.latest);
-        add(primary.major);
-        add(fallback.major);
-
-        if (patches.length > 0) {
-            patches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
-            merged.patches = patches;
-        }
-
-        return merged;
-    }
-
-    public async ensureReleaseNotesFresh(force: boolean): Promise<boolean> {
-        if (!force && this.releaseNotesFetchPromise) {
-            return this.releaseNotesFetchPromise;
-        }
-        const task = this.performReleaseNotesFetch(force).finally(() => {
-            this.releaseNotesFetchPromise = null;
-        });
-        this.releaseNotesFetchPromise = task;
-        return task;
-    }
-
-    private async performReleaseNotesFetch(force: boolean): Promise<boolean> {
-        const now = Date.now();
-        if (!force && this.settings.releaseNotesLastFetched) {
-            const last = Date.parse(this.settings.releaseNotesLastFetched);
-            if (!Number.isNaN(last) && now - last < 24 * 60 * 60 * 1000) {
-                return false; // Fresh enough
-            }
-        }
-
-        try {
-            const bundle = await this.downloadReleaseNotesBundle();
-            if (!bundle) {
-                return false;
-            }
-            const embedded = this.loadEmbeddedReleaseNotes();
-            const merged = this.mergeReleaseBundles(bundle, embedded);
-            this.settings.cachedReleaseNotes = merged;
-            this.settings.releaseNotesLastFetched = new Date(now).toISOString();
-            await this.saveSettings();
-            this.releaseNotesBundle = merged;
-            return true;
-        } catch (error) {
-            console.error('Failed to refresh release notes from GitHub:', error);
-            return false;
-        }
-    }
-
-    private async downloadReleaseNotesBundle(): Promise<EmbeddedReleaseNotesBundle | null> {
-        const latest = await this.fetchGitHubRelease('latest');
-        if (!latest) {
-            return null;
-        }
-
-        const semver = parseReleaseVersion(latest.version);
-        let major: EmbeddedReleaseNotesEntry | null = latest;
-        let patches: EmbeddedReleaseNotesEntry[] | undefined;
-
-        if (semver) {
-            if (semver.minor !== 0 || semver.patch !== 0) {
-                const majorTag = `${semver.major}.0.0`;
-                const majorRelease = await this.fetchGitHubRelease(majorTag);
-                if (majorRelease) {
-                    major = majorRelease;
-                }
-            }
-            const fetchedPatches = await this.fetchGitHubPatchReleases(semver.major);
-            if (fetchedPatches.length > 0) {
-                const seen = new Set<string>([major?.version ?? '']);
-                patches = [];
-                for (const entry of fetchedPatches) {
-                    if (!entry) continue;
-                    if (seen.has(entry.version)) continue;
-                    seen.add(entry.version);
-                    patches.push(entry);
-                }
-            }
-        }
-
-        return {
-            major,
-            latest,
-            patches,
-        };
-    }
-
-    private async fetchGitHubRelease(tagOrLatest: 'latest' | string): Promise<EmbeddedReleaseNotesEntry | null> {
-        const base = 'https://api.github.com/repos/EricRhysTaylor/Radial-Timeline';
-        const url = tagOrLatest === 'latest'
-            ? `${base}/releases/latest`
-            : `${base}/releases/tags/${encodeURIComponent(tagOrLatest)}`;
-
-        try {
-            const response = await requestUrl({
-                url,
-                headers: {
-                    'Accept': 'application/vnd.github+json',
-                    'User-Agent': 'RadialTimelinePlugin'
-                }
-            });
-
-            if (response.status >= 400) {
-                return null;
-            }
-
-            const data = JSON.parse(response.text ?? '{}');
-            return this.normalizeReleaseEntry(data);
-        } catch (error) {
-            console.warn(`Unable to fetch release info for ${tagOrLatest}:`, error);
-            return null;
-        }
-    }
-
-    private async fetchGitHubPatchReleases(major: number): Promise<EmbeddedReleaseNotesEntry[]> {
-        const base = 'https://api.github.com/repos/EricRhysTaylor/Radial-Timeline';
-        try {
-            const response = await requestUrl({
-                url: `${base}/releases?per_page=100`,
-                headers: {
-                    'Accept': 'application/vnd.github+json',
-                    'User-Agent': 'RadialTimelinePlugin'
-                }
-            });
-
-            if (response.status >= 400) {
-                return [];
-            }
-
-            const payload = JSON.parse(response.text ?? '[]');
-            if (!Array.isArray(payload)) return [];
-
-            const patches: EmbeddedReleaseNotesEntry[] = [];
-            const seen = new Set<string>();
-
-            for (const raw of payload) {
-                const entry = this.normalizeReleaseEntry(raw);
-                if (!entry) continue;
-                if (seen.has(entry.version)) continue;
-                seen.add(entry.version);
-                const info = parseReleaseVersion(entry.version);
-                if (!info) continue;
-                if (info.major !== major) continue;
-                if (info.minor === 0 && info.patch === 0) continue;
-                patches.push(entry);
-            }
-
-            patches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
-            return patches;
-        } catch (error) {
-            console.warn(`Unable to fetch release list for major ${major}:`, error);
-            return [];
-        }
-    }
-
     async onload() {
         await this.loadSettings();
-        const embeddedBundle = this.loadEmbeddedReleaseNotes();
-        const cachedBundle = this.settings.cachedReleaseNotes ?? null;
-        this.releaseNotesBundle = this.mergeReleaseBundles(cachedBundle, embeddedBundle);
-        this.releaseModalShownThisSession = false;
-        void this.ensureReleaseNotesFresh(false);
+        this.releaseNotesService = new ReleaseNotesService(this.settings, () => this.saveSettings());
+        this.releaseNotesService.initializeFromEmbedded();
+        void this.releaseNotesService.ensureReleaseNotesFresh(false);
 
         // Migration: Convert old field names to new field names
         await migrateSceneAnalysisFields(this);
@@ -782,6 +463,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.fileTrackingService = new FileTrackingService(this);
         this.rendererService = new RendererService(this.app);
         this.synopsisManager = new SynopsisManager(this);
+        this.commandRegistrar = new CommandRegistrar(this, this.app);
 
         // CSS variables for publish stage colors are set once on layout ready
         
@@ -793,139 +475,8 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         );
         
-        // Add ribbon icon
-        this.addRibbonIcon('shell', 'Radial timeline', () => {
-            this.activateView();
-        });
-
-        // Add commands (ordered for command palette)
-        
-        // 1. Search timeline
-        this.addCommand({
-            id: 'search-timeline',
-            name: 'Search timeline',
-            callback: () => {
-                this.openSearchPrompt();
-            }
-        });
-
-        // 2. Clear search
-        this.addCommand({
-            id: 'clear-timeline-search',
-            name: 'Clear search',
-            callback: () => {
-                this.clearSearch();
-            }
-        });
-
-        // Gossamer enter momentum scores (manual entry)
-        this.addCommand({
-            id: 'gossamer-enter-scores',
-            name: 'Gossamer enter momentum scores',
-            callback: async () => {
-                try {
-                    await openGossamerScoreEntry(this);
-                } catch (e) {
-                    new Notice('Failed to open Gossamer score entry.');
-                    console.error(e);
-                }
-            }
-        });
-
-        // Generate manuscript file
-        this.addCommand({
-            id: 'gossamer-generate-manuscript',
-            name: 'Generate manuscript',
-            callback: async () => {
-                try {
-                    new Notice('Assembling manuscript...');
-                    
-                    // Get sorted scene files (single source of truth)
-                    const { getSortedSceneFiles } = await import('./utils/manuscript');
-                    const { files: sceneFiles, sortOrder } = await getSortedSceneFiles(this);
-                    
-                    if (sceneFiles.length === 0) {
-                        new Notice('No scenes found in source path.');
-                        return;
-                    }
-                    
-                    // Assemble manuscript with Obsidian-style clickable links
-                    const manuscript = await assembleManuscript(sceneFiles, this.app.vault, undefined, true, sortOrder);
-                    
-                    if (!manuscript.text || manuscript.text.trim().length === 0) {
-                        new Notice('Manuscript is empty. Check that your scene files have content.');
-                        return;
-                    }
-                    
-                    // Save to AI folder - use friendly local timestamp
-                    const now = new Date();
-                    const dateStr = now.toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                    });
-                    const timeStr = now.toLocaleTimeString(undefined, {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true
-                    }).replace(/:/g, '.'); // Replace colon with period for valid filename
-                    
-                    const manuscriptPath = `AI/Manuscript ${dateStr} ${timeStr} PTD.md`;
-                    
-                    try {
-                        await this.app.vault.createFolder('AI');
-                    } catch (e) {
-                        // Folder might already exist - ignore error
-                    }
-                    
-                    // Check if file already exists (shouldn't happen with timestamp, but just in case)
-                    const existing = this.app.vault.getAbstractFileByPath(manuscriptPath);
-                    if (existing) {
-                        new Notice(`File ${manuscriptPath} already exists. Try again in a moment.`);
-                        return;
-                    }
-                    
-                    // Create the file
-                    const createdFile = await this.app.vault.create(manuscriptPath, manuscript.text);
-                    
-                    // Open the file in a new tab
-                    const leaf = this.app.workspace.getLeaf('tab');
-                    await leaf.openFile(createdFile);
-                    
-                    new Notice(`Manuscript generated: ${manuscript.totalScenes} scenes, ${manuscript.totalWords.toLocaleString()} words. Saved to ${manuscriptPath}`);
-                } catch (e) {
-                    const errorMsg = (e as Error)?.message || 'Unknown error';
-                    new Notice(`Failed to generate manuscript: ${errorMsg}`);
-                    console.error(e);
-                }
-            }
-        });
-
-        // ===================================================================
-        // GOSSAMER AI ANALYSIS - DORMANT
-        // The AI analysis feature is temporarily disabled while under development.
-        // Manual score entry remains available. To re-enable AI analysis, uncomment below.
-        // ===================================================================
-        
-        // 4c. Gemini AI Gossamer analysis (DORMANT)
-        // this.addCommand({
-        //     id: 'gossamer-ai-analysis',
-        //     name: 'Gossamer AI momentum analysis (Gemini)',
-        //     checkCallback: (checking: boolean) => {
-        //         if (!this.settings.enableAiSceneAnalysis) return false; // hide when AI features disabled
-        //         if (checking) return true;
-        //         (async () => {
-        //             try {
-        //                 await runGossamerAiAnalysis(this);
-        //             } catch (e) {
-        //                 const errorMsg = (e as Error)?.message || 'Unknown error';
-        //                 new Notice(`Failed to run Gossamer AI analysis: ${errorMsg}`);
-        //                 console.error(e);
-        //             }
-        //         })();
-        //         return true;
-        //     }
-        // });
+        // Register ribbon + commands
+        this.commandRegistrar.registerAll();
 
         // Add settings tab (only once)
         if (!this._settingsTabAdded) {
@@ -1180,7 +731,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 }
 
                 try {
-                     await processByManuscriptOrder(this, this.app.vault);
+                     await this.processSceneAnalysisByManuscriptOrder();
                 } catch (error) {
                     console.error("Error running manuscript order beat update:", error);
                     new Notice("Error during manuscript order update.");
@@ -1261,7 +812,7 @@ export default class RadialTimelinePlugin extends Plugin {
                                 .setDisabled(true)
                                 .onClick(async () => {
                                     this.close();
-                                    await processBySubplotNameWithModal(this.plugin, this.plugin.app.vault, this.selectedSubplot);
+                                    await this.plugin.processSceneAnalysisBySubplotName(this.selectedSubplot);
                                 });
                             
                             const processEntireButton = new ButtonComponent(this.buttonRow)
@@ -1270,7 +821,7 @@ export default class RadialTimelinePlugin extends Plugin {
                                 .setDisabled(true)
                                 .onClick(async () => {
                                     this.close();
-                                    await processEntireSubplotWithModal(this.plugin, this.plugin.app.vault, this.selectedSubplot);
+                                    await this.plugin.processEntireSubplot(this.selectedSubplot);
                                 });
                             
                             const purgeButton = new ButtonComponent(this.buttonRow)
@@ -1293,7 +844,7 @@ export default class RadialTimelinePlugin extends Plugin {
                             
                             // Load subplots asynchronously after modal is shown
                             try {
-                                const names = await getDistinctSubplotNames(this.plugin, this.plugin.app.vault);
+                                const names = await (await import('./SceneAnalysisCommands')).getDistinctSubplotNames(this.plugin, this.plugin.app.vault);
                                 if (names.length === 0) {
                                     new Notice('No subplots found.');
                                     this.close();
@@ -1424,6 +975,21 @@ export default class RadialTimelinePlugin extends Plugin {
         this.updateStatusBar();
     }
     public getRendererService(): RendererService { return this.rendererService; }
+    
+    public async processSceneAnalysisByManuscriptOrder(): Promise<void> {
+        const { processByManuscriptOrder } = await import('./SceneAnalysisCommands');
+        await processByManuscriptOrder(this, this.app.vault);
+    }
+
+    public async processSceneAnalysisBySubplotName(subplotName: string): Promise<void> {
+        const { processBySubplotNameWithModal } = await import('./SceneAnalysisCommands');
+        await processBySubplotNameWithModal(this, this.app.vault, subplotName);
+    }
+
+    public async processEntireSubplot(subplotName: string): Promise<void> {
+        const { processEntireSubplotWithModal } = await import('./SceneAnalysisCommands');
+        await processEntireSubplotWithModal(this, this.app.vault, subplotName);
+    }
     
     // Store paths of current hover interactions to avoid redundant processing
     private _currentHoverPath: string | null = null;
@@ -1960,7 +1526,7 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
     }
 
     // Search related methods
-    private openSearchPrompt(): void { this.searchService.openSearchPrompt(); }
+    public openSearchPrompt(): void { this.searchService.openSearchPrompt(); }
     
     public performSearch(term: string): void { this.searchService.performSearch(term); }
     
