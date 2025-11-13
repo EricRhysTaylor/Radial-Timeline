@@ -251,15 +251,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
             // If the cursor is still hovering a scene group, re-trigger standard hover handling
             const hoveredSceneGroup = svg.querySelector('.rt-scene-group[data-item-type="Scene"]:hover');
-            if (hoveredSceneGroup) {
-                requestAnimationFrame(() => {
-                    hoveredSceneGroup.dispatchEvent(new PointerEvent('pointerover', {
-                        bubbles: true,
-                        pointerId: 1,
-                        pointerType: 'mouse'
-                    }));
-                });
-            }
         }
     };
     
