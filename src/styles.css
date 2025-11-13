@@ -28,8 +28,8 @@
   /* Search and UI Colors */
   --rt-color-search: #ffe374;   /* Yellow for search highlighting */
   /* Search highlight tuning */
-  --rt-search-stroke-width: 0.2em;      /* default stroke thickness for search outline */
-  --rt-search-stroke-opacity: 0.7;      /* default stroke opacity for search outline */
+  --rt-search-stroke-width: 3px;      /* default stroke thickness for search outline */
+  --rt-search-stroke-opacity: 1;      /* default stroke opacity for search outline */
   
   /* Plaid Colors and Opacity */
   --rt-color-working: #FF69B4;          /* Match pink color for Working in Manuscript Calendar */
@@ -844,6 +844,10 @@
 .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B { fill: #ffbb00; }
 .rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C { fill: #ff0000; }
 .rt-number-square.rt-search-result { fill: var(--rt-color-search) !important; }
+.rt-number-square.rt-search-result.rt-non-selected,
+.rt-number-square.rt-search-result.rt-scene-is-open.rt-non-selected {
+  fill: #EFEFEF !important;
+}
 .rt-number-text.rt-search-result.rt-non-selected {
   fill: #FFFFFF !important;
 }
@@ -853,7 +857,7 @@
 .rt-number-text.rt-scene-is-open.rt-search-result {
   fill: #000000 !important;
 }
-/* Search result squares always yellow - removed conflicting .rt-non-selected override */
+/* Search result squares stay yellow unless muted via rt-non-selected */
 .rt-number-square.rt-search-result.rt-selected {
   fill: var(--rt-color-search);
   stroke: #ff9500;

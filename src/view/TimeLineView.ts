@@ -392,6 +392,14 @@ export class RadialTimelineView extends ItemView {
                 // Update snapshot after successful render
                 this.lastSnapshot = currentSnapshot;
 
+                // Re-wire search controls and highlights now that DOM is current
+                this.setupSearchControls();
+                if (this.plugin.searchActive) {
+                    if (!this.rendererService?.updateSearchHighlights(this)) {
+                        window.setTimeout(() => this.addHighlightRectangles(), 100);
+                    }
+                }
+
             })
             .catch(error => {
                 const errorEl = container.createEl("div", {
@@ -400,17 +408,6 @@ export class RadialTimelineView extends ItemView {
                 });
                 console.error("Failed to load timeline data", error);
             });
-        
-        // Setup search controls
-        this.setupSearchControls();
-        
-        // Add highlight rectangles if search is active (selective refresh)
-        if (this.plugin.searchActive) {
-            if (!this.rendererService?.updateSearchHighlights(this)) {
-                window.setTimeout(() => this.addHighlightRectangles(), 100);
-            }
-        }
-
     }
     
 
