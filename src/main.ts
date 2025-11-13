@@ -26,6 +26,7 @@ import { isStoryBeat, isBeatNote, normalizeBooleanValue } from './utils/sceneHel
 import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
+import { HoverHighlighter } from './services/HoverHighlighter';
 
 
 // Declare the variable that will be injected by the build process
@@ -968,8 +969,8 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         }));
 
-         // Setup hover listeners
-        this.setupHoverListeners();
+        // Setup hover listeners
+        new HoverHighlighter(this.app, this).register();
 
         // Initial status bar update
         this.updateStatusBar();
@@ -1044,7 +1045,7 @@ export default class RadialTimelinePlugin extends Plugin {
     }
     
     // Helper method to highlight a scene in the timeline when hovering over a file
-    private highlightSceneInTimeline(filePath: string, isHighlighting: boolean): void {
+    public highlightSceneInTimeline(filePath: string, isHighlighting: boolean): void {
         if (!filePath) return;
 
         const views = this.getTimelineViews();
@@ -1951,10 +1952,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         }
         // Add any specific logic needed when a file affecting the timeline is renamed
         this.refreshTimelineIfNeeded(file);
-    }
-
-    private setupHoverListeners(): void {
-        // ... (Existing hover listener setup) ...
     }
 
     // Method to update status bar items if needed
