@@ -715,9 +715,13 @@
 }
 
 /* Allow inline subplot/character colors to apply in synopsis */
+/* Tspans don't inherit stroke from parent text elements, so set explicitly */
 .rt-info-text.rt-metadata-text tspan[data-item-type=subplot],
 .rt-info-text.rt-metadata-text tspan[data-item-type=character] {
   fill: var(--rt-dynamic-color, var(--text-normal)) !important;
+  stroke: white;
+  stroke-width: 4px;
+  paint-order: stroke;
 }
 
 /* POV marker styling - superscript after first character name */
@@ -849,11 +853,7 @@
 .rt-number-text.rt-scene-is-open.rt-search-result {
   fill: #000000 !important;
 }
-.rt-number-square.rt-search-result.rt-non-selected {
-  fill: #EFEFEF !important;
-  stroke: #EFEFEF;
-  stroke-width: 2px;
-}
+/* Search result squares always yellow - removed conflicting .rt-non-selected override */
 .rt-number-square.rt-search-result.rt-selected {
   fill: var(--rt-color-search);
   stroke: #ff9500;

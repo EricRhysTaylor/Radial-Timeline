@@ -198,9 +198,9 @@ Chronologue mode is essential for constructing and visualizing the chronological
 
 ## Finding & Navigating Scenes
 
-- **Search Timeline**: Keyword search across title, date, time, duration, synopsis, AI beats, subplots, and characters.
-- **Hover Details**: See full title, date/time and duration, revision/overdue status, synopsis, AI story beats (optional), subplots, character on hover. 
-- **Adaptive Color System**: Scene title color adapts to match the subplot ring in Narrative/Chronologue modes or the publish stage in Subplot mode. Listed subplots match respective subplot color.
+- **Search Timeline**: Keyword search across scene objects and synopsis title, date, time, duration, synopsis, AI beats, subplots, and characters.
+- **Hover Details**: See full title, date/time and duration, revision/overdue status, synopsis, AI story beats (optional), subplots and characters on hover. 
+- **Adaptive Synopsis Color System**: Scene title color adapts to match the subplot ring in Narrative/Chronologue modes or the publish stage in Subplot mode. Subplots match respective subplot color.
 - **Click to Open**: Click any scene or beat to jump directly to that note
 
 **Command**: Search timeline, Clear search<br>

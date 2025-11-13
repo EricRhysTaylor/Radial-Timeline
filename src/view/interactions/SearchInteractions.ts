@@ -25,15 +25,14 @@ export function addHighlightRectangles(view: SearchView): void {
 
     const searchTerm = view.plugin.searchTerm;
     const escapedPattern = escapeRegExp(searchTerm);
-    const wordBoundaryRegex = new RegExp(`\\b(${escapedPattern})\\b`, 'gi');
 
-    const highlightTspan = (tspan: Element, originalText: string, fillColor?: string | null, useWordBoundary = false) => {
+    const highlightTspan = (tspan: Element, originalText: string, fillColor: string | null) => {
         while (tspan.firstChild) tspan.removeChild(tspan.firstChild);
-        if (fillColor) (tspan as Element).setAttribute('fill', fillColor || '');
-        const regex = useWordBoundary ? wordBoundaryRegex : new RegExp(`(${escapedPattern})`, 'gi');
-        regex.lastIndex = 0;
+        
+        const regex = new RegExp(`(${escapedPattern})`, 'gi');
         let lastIndex = 0;
         let match: RegExpExecArray | null;
+        
         while ((match = regex.exec(originalText)) !== null) {
             if (match.index > lastIndex) {
                 tspan.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
@@ -55,8 +54,7 @@ export function addHighlightRectangles(view: SearchView): void {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = tspan.getAttribute('fill');
-        const useWordBoundary = !!originalText.match(wordBoundaryRegex);
-        highlightTspan(tspan, originalText, fillColor, useWordBoundary);
+        highlightTspan(tspan, originalText, fillColor);
     });
 
     // Character tspans
@@ -64,49 +62,31 @@ export function addHighlightRectangles(view: SearchView): void {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
         const fillColor = tspan.getAttribute('fill');
-        if (fillColor) {
-            tspan.classList.add('rt-with-dynamic-fill');
-            (tspan as HTMLElement).style.setProperty('--rt-dynamic-fill-color', fillColor);
-        }
-        highlightTspan(tspan, originalText, fillColor || undefined);
+        highlightTspan(tspan, originalText, fillColor);
     });
 
     // Title tspans
     view.contentEl.querySelectorAll('tspan[data-item-type="title"]').forEach((tspan) => {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
-        while (tspan.firstChild) tspan.removeChild(tspan.firstChild);
-        const regex = new RegExp(`(${escapedPattern})`, 'gi');
-        regex.lastIndex = 0;
-        let lastIndex = 0;
-        let match: RegExpExecArray | null;
-        while ((match = regex.exec(originalText)) !== null) {
-            if (match.index > lastIndex) {
-                tspan.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
-            }
-            const highlightSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-            highlightSpan.setAttribute('class', 'rt-search-term');
-            highlightSpan.textContent = match[0];
-            tspan.appendChild(highlightSpan);
-            lastIndex = match.index + match[0].length;
-        }
-        if (lastIndex < originalText.length) {
-            tspan.appendChild(document.createTextNode(originalText.substring(lastIndex)));
-        }
+        const fillColor = (tspan as SVGTSpanElement).style.getPropertyValue('--rt-dynamic-color') || null;
+        highlightTspan(tspan, originalText, fillColor);
     });
 
     // Date tspans
     view.contentEl.querySelectorAll('tspan[data-item-type="date"]').forEach((tspan) => {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
-        highlightTspan(tspan, originalText);
+        const fillColor = tspan.getAttribute('fill');
+        highlightTspan(tspan, originalText, fillColor);
     });
 
     // Duration tspans
     view.contentEl.querySelectorAll('tspan[data-item-type="duration"]').forEach((tspan) => {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
-        highlightTspan(tspan, originalText);
+        const fillColor = tspan.getAttribute('fill');
+        highlightTspan(tspan, originalText, fillColor);
     });
 
     // Synopsis text elements (only those without tspan children)
@@ -114,11 +94,13 @@ export function addHighlightRectangles(view: SearchView): void {
         if (textEl.querySelector('tspan')) return;
         const originalText = textEl.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
-        const fillColor = (textEl as SVGTextElement).getAttribute('fill') || '';
+        const fillColor = (textEl as SVGTextElement).getAttribute('fill');
+        
         while (textEl.firstChild) textEl.removeChild(textEl.firstChild);
         const regex = new RegExp(`(${escapedPattern})`, 'gi');
         let lastIndex = 0;
         let match: RegExpExecArray | null;
+        
         while ((match = regex.exec(originalText)) !== null) {
             if (match.index > lastIndex) {
                 textEl.appendChild(document.createTextNode(originalText.substring(lastIndex, match.index)));
@@ -139,7 +121,7 @@ export function addHighlightRectangles(view: SearchView): void {
     view.contentEl.querySelectorAll('svg .rt-synopsis-text text tspan:not([data-item-type])').forEach((tspan) => {
         const originalText = tspan.textContent || '';
         if (!originalText || !originalText.match(new RegExp(escapedPattern, 'i'))) return;
-        const fillColor = (tspan as SVGTSpanElement).getAttribute('fill') || 'inherit';
+        const fillColor = (tspan as SVGTSpanElement).getAttribute('fill');
         highlightTspan(tspan, originalText, fillColor);
     });
 

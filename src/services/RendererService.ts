@@ -100,15 +100,15 @@ export class RendererService {
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
         if (!svg) return false;
 
-        // Remove existing inline tspan markers
+        // Remove existing inline tspan markers for synopsis text highlighting
         const existing = svg.querySelectorAll('.rt-search-term');
         existing.forEach(node => node.parentNode?.removeChild(node));
 
-        // Remove search-result classes from number elements
-        svg.querySelectorAll('.rt-number-square.rt-search-result').forEach(el => el.classList.remove('rt-search-result'));
-        svg.querySelectorAll('.rt-number-text.rt-search-result').forEach(el => el.classList.remove('rt-search-result'));
+        // NOTE: Do NOT remove rt-search-result classes from number squares
+        // They are correctly set during initial SVG rendering via getSceneState()
+        // Removing them here causes search highlighting to fail until mode switch
 
-        // Re-apply highlights if search is active
+        // Re-apply text highlights (synopsis/title tspans) if search is active
         try {
             addHighlightRectanglesExt(view as any);
         } catch {}
