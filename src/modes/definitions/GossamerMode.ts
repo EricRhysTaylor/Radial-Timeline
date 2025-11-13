@@ -54,11 +54,6 @@ export const GOSSAMER_MODE: ModeDefinition = {
         // Import and run the Gossamer initialization
         const plugin = view.plugin;
 
-        // Force a data refresh by clearing the cache first
-        if (typeof (plugin as any).clearSceneDataCache === 'function') {
-            (plugin as any).clearSceneDataCache();
-        }
-        
         // Get current scenes
         const scenes = await plugin.getSceneData();
         const beatNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
@@ -106,4 +101,3 @@ export const GOSSAMER_MODE: ModeDefinition = {
         // Future: migrate cleanup logic here
     }
 };
-

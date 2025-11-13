@@ -421,7 +421,6 @@ export default class RadialTimelinePlugin extends Plugin {
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
     private readonly eventBus = new EventTarget();
-    private sceneDataCache = new Map<string, { scenes: TimelineItem[]; timestamp: number }>();
     private metadataCacheListener: (() => void) | null = null;
     
     // Services
@@ -2660,10 +2659,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         this.eventBus.dispatchEvent(new CustomEvent(type, { detail }));
     }
 
-    // Method to clear the scene data cache
-    public clearSceneDataCache(): void {
-        this.sceneDataCache.clear();
-    }
 } // End of RadialTimelinePlugin class
 
 /**

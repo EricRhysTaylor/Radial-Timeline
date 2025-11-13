@@ -25,7 +25,6 @@ import { getMostAdvancedStageColor } from '../utils/colour';
 import { renderGossamerLayer } from './gossamerLayer';
 import { computeRingGeometry } from './layout/Rings';
 import { arcPath } from './layout/Paths';
-import { type CachedComputations, type DynamicValues, globalRenderCache } from './RenderCache';
 import {
     SVG_SIZE,
     INNER_RADIUS,
@@ -95,6 +94,18 @@ const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
 type BeatLabelAdjustState = { retryId?: number; signature?: string; success?: boolean; lastAbortSignature?: string };
 const beatLabelAdjustState = new WeakMap<HTMLElement, BeatLabelAdjustState>();
 
+interface PrecomputedRenderValues {
+    scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } };
+    masterSubplotOrder: string[];
+    totalPlotNotes: number;
+    plotIndexByKey: Map<string, number>;
+    plotsBySubplot: Map<string, TimelineItem[]>;
+    ringWidths: number[];
+    ringStartRadii: number[];
+    lineInnerRadius: number;
+    maxStageColor: string;
+}
+
 function getLabelSignature(container: HTMLElement): string {
     const ids = Array.from(container.querySelectorAll('.rt-storybeat-title textPath'))
         .map((tp) => (tp as SVGTextPathElement).getAttribute('href') || '')
@@ -104,14 +115,14 @@ function getLabelSignature(container: HTMLElement): string {
 
 // --- Small helpers ---
 /**
- * Compute expensive values that can be cached between renders
- * These values depend on scene data and settings, but not on dynamic state (time, open files, etc.)
+ * Compute expensive values that are reused throughout render generation.
+ * These values depend on scene data and settings, but not on dynamic state (time, open files, etc.).
  */
 function computeCacheableValues(
     plugin: PluginRendererFacade,
     scenes: TimelineItem[]
-): Omit<CachedComputations, 'scenesHash' | 'settingsHash' | 'timestamp'> {
-    const stopCacheCompute = startPerfSegment(plugin, 'timeline.cache-compute');
+): PrecomputedRenderValues {
+    const stopPrecompute = startPerfSegment(plugin, 'timeline.precompute');
     
     // Determine mode and sorting
     const currentMode = (plugin.settings as any).currentMode || 'narrative';
@@ -234,7 +245,7 @@ function computeCacheableValues(
     // 6. Get max stage color
     const maxStageColor = getMostAdvancedStageColor(scenes, plugin.settings.publishStageColors);
     
-    stopCacheCompute();
+    stopPrecompute();
     
     return {
         scenesByActAndSubplot,
@@ -655,18 +666,11 @@ export function createTimelineSVG(
         
         // Synopses are hidden by CSS until hover - no need to log anything
         
-        // Try to use cached computations
-        let cached = globalRenderCache.get(scenes, plugin.settings);
-        if (!cached) {
-            // Cache miss - compute expensive values
-            const stopPrepPerf = startPerfSegment(plugin, 'timeline.scene-prep');
-            cached = globalRenderCache.set(scenes, plugin.settings, computeCacheableValues(plugin, scenes));
-            stopPrepPerf();
-        } else {
-            // Cache hit - skipping expensive computations
-        }
+        const stopPrepPerf = startPerfSegment(plugin, 'timeline.scene-prep');
+        const precomputed = computeCacheableValues(plugin, scenes);
+        stopPrepPerf();
     
-        // Extract cached values
+        // Extract precomputed values
         const {
             scenesByActAndSubplot,
             masterSubplotOrder,
@@ -677,7 +681,7 @@ export function createTimelineSVG(
             ringStartRadii,
             lineInnerRadius,
             maxStageColor
-        } = cached;
+        } = precomputed;
         
         const NUM_RINGS = masterSubplotOrder.length;
 
@@ -696,7 +700,7 @@ export function createTimelineSVG(
         // Create a map to store scene number information for the scene square and synopsis
         const sceneNumbersMap = new Map<string, SceneNumberInfo>();
         
-        // Determine sorting method (needed for later logic, already computed in cache but extracted here for readability)
+        // Determine sorting method (needed for later logic; pulled out for readability)
         const currentMode = (plugin.settings as any).currentMode || 'narrative';
         const isChronologueMode = currentMode === 'chronologue';
         const isSubplotMode = currentMode === 'subplot';
