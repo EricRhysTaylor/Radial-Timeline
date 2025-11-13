@@ -1,6 +1,7 @@
 import { TFile, App } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
+import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
 
 interface ViewLike {
     plugin: {

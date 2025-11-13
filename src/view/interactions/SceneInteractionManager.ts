@@ -12,6 +12,7 @@
  */
 
 import type { RadialTimelineView } from '../TimeLineView';
+import { updateSynopsisTitleColor } from './SynopsisTitleColorManager';
 import {
     SceneAngleData,
     needsExpansion,
@@ -112,6 +113,11 @@ export class SceneInteractionManager {
                     sceneId
                 );
             }
+            
+            // Update title color based on mode
+            const currentMode = (view.plugin.settings as any).currentMode || 'narrative';
+            updateSynopsisTitleColor(this.currentSynopsis, sceneId, currentMode);
+            
             this.currentSynopsis.classList.add('rt-visible');
         }
         

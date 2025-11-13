@@ -3,6 +3,7 @@ import { openOrRevealFile } from '../../utils/fileUtils';
 import { TimelineItem } from '../../main';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
+import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
 
 export interface AllScenesView {
     currentMode: string;

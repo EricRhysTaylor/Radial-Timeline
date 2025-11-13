@@ -10,6 +10,7 @@ import { setupChronologueShiftController, isShiftModeActive } from '../interacti
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
+import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
 
 export interface ChronologueView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
@@ -283,6 +284,8 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             if (syn) {
                 // Calculate position BEFORE making visible to prevent flicker
                 view.plugin.updateSynopsisPosition?.(syn, e as unknown as MouseEvent, svg, sid);
+                // Update title color based on Chronologue mode (use subplot color)
+                updateSynopsisTitleColor(syn, sid, 'chronologue');
                 syn.classList.add('rt-visible');
             }
             if (g.classList.contains('rt-chronologue-warning')) {
@@ -312,6 +315,8 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         if (syn) {
             // Calculate position BEFORE making visible to prevent flicker in wrong location
             view.plugin.updateSynopsisPosition?.(syn, e as unknown as MouseEvent, svg, sid);
+            // Update title color based on Chronologue mode (use subplot color)
+            updateSynopsisTitleColor(syn, sid, 'chronologue');
             syn.classList.add('rt-visible');
         }
         
