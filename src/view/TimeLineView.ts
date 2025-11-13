@@ -341,8 +341,9 @@ export class RadialTimelineView extends ItemView {
                         updated = this.rendererService.updateOpenClasses(container, this.plugin.openScenePaths) || updated;
                     }
                     
-                    // Handle search changes
+                    // Handle search changes (highlight text + number square state)
                     if (changeResult.changeTypes.has(ChangeType.SEARCH)) {
+                        updated = this.rendererService.updateNumberSquaresDOM(container, this.plugin, sceneData) || updated;
                         updated = this.rendererService.updateSearchHighlights(this) || updated;
                     }
                     

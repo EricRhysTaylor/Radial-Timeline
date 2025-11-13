@@ -94,7 +94,7 @@ export class RendererService {
      * Clears previous rt-search-term nodes and rt-search-result classes,
      * then re-applies highlights using existing logic.
      */
-  updateSearchHighlights(view: { containerEl: HTMLElement; plugin: any; registerDomEvent?: Function }): boolean { // SAFE: any type used for plugin interface compatibility with dynamic properties
+    updateSearchHighlights(view: { containerEl: HTMLElement; plugin: any; registerDomEvent?: Function }): boolean { // SAFE: any type used for plugin interface compatibility with dynamic properties
         const container = view.containerEl.children[1] as HTMLElement | undefined;
         if (!container) return false;
         const svg = container.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
@@ -102,7 +102,12 @@ export class RendererService {
 
         // Remove existing inline tspan markers for synopsis text highlighting
         const existing = svg.querySelectorAll('.rt-search-term');
-        existing.forEach(node => node.parentNode?.removeChild(node));
+        existing.forEach(node => {
+            const parent = node.parentNode;
+            if (!parent) return node.remove();
+            const textNode = document.createTextNode(node.textContent || '');
+            parent.replaceChild(textNode, node);
+        });
 
         // NOTE: Do NOT remove rt-search-result classes from number squares
         // They are correctly set during initial SVG rendering via getSceneState()

@@ -25,13 +25,14 @@ export function updateNumberSquareStates(
             
             const encodedPath = encodeURIComponent(scene.path);
             
-            // Find all number squares for this scene
-            const sceneGroups = svg.querySelectorAll(`[data-path="${encodedPath}"]`);
+            const sceneGroups = svg.querySelectorAll(`.rt-scene-group[data-path="${encodedPath}"]`);
             
             sceneGroups.forEach(group => {
-                // Find the number square within this group
-                const numberSquare = group.querySelector('.rt-number-square');
-                const numberText = group.querySelector('.rt-number-text');
+                const scenePath = group.querySelector('.rt-scene-path') as SVGPathElement | null;
+                const sceneId = scenePath?.id;
+                
+                const numberSquare = sceneId ? svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`) : null;
+                const numberText = sceneId ? svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`) : null;
                 
                 if (!numberSquare || !numberText) return;
                 
@@ -110,4 +111,3 @@ export function updateNumberSquareGrades(
         return false;
     }
 }
-

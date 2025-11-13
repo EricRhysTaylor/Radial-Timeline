@@ -25,6 +25,7 @@ export function addHighlightRectangles(view: SearchView): void {
 
     const searchTerm = view.plugin.searchTerm;
     const escapedPattern = escapeRegExp(searchTerm);
+    const svg = view.contentEl.querySelector('.radial-timeline-svg') as SVGSVGElement | null;
 
     const highlightTspan = (tspan: Element, originalText: string, fillColor: string | null) => {
         while (tspan.firstChild) tspan.removeChild(tspan.firstChild);
@@ -126,16 +127,24 @@ export function addHighlightRectangles(view: SearchView): void {
     });
 
     // Mark search-result classes on scene groups with matched paths
-    const allSceneGroups = view.contentEl.querySelectorAll('.rt-scene-group');
+    if (!svg) {
+        return;
+    }
+
+    const allSceneGroups = svg.querySelectorAll('.rt-scene-group');
     allSceneGroups.forEach((group) => {
         const pathAttr = group.getAttribute('data-path');
-        if (pathAttr && view.plugin.searchResults.has(decodeURIComponent(pathAttr))) {
-            const numberSquare = group.querySelector('.rt-number-square');
-            const numberText = group.querySelector('.rt-number-text');
-            if (numberSquare) numberSquare.classList.add('rt-search-result');
-            if (numberText) numberText.classList.add('rt-search-result');
-        }
+        if (!pathAttr) return;
+        if (!view.plugin.searchResults.has(decodeURIComponent(pathAttr))) return;
+
+        const scenePath = group.querySelector('.rt-scene-path') as SVGPathElement | null;
+        const sceneId = scenePath?.id;
+        if (!sceneId) return;
+
+        const numberSquare = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
+        const numberText = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
+        if (numberSquare) numberSquare.classList.add('rt-search-result');
+        if (numberText) numberText.classList.add('rt-search-result');
     });
 }
-
 
