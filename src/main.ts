@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal, normalizePath } from "obsidian";
+import { App, Plugin, Notice, Setting, PluginSettingTab, TFile, TAbstractFile, WorkspaceLeaf, ItemView, MarkdownView, MarkdownRenderer, TextComponent, Modal, ButtonComponent, Editor, parseYaml, stringifyYaml, Menu, MenuItem, Platform, DropdownComponent, Component, TFolder, SuggestModal } from "obsidian";
 import { TimelineService } from './services/TimelineService';
 import { SceneDataService } from './services/SceneDataService';
 import { escapeRegExp } from './utils/regex';
@@ -31,6 +31,7 @@ import { ThemeService } from './services/ThemeService';
 import type { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 import { TimelineMetricsService } from './services/TimelineMetricsService';
 import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
+import { SettingsService } from './services/SettingsService';
 
 
 // Declare the variable that will be injected by the build process
@@ -176,6 +177,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private beatsProcessingService!: BeatsProcessingService;
     private themeService!: ThemeService;
     private timelineMetricsService!: TimelineMetricsService;
+    private settingsService!: SettingsService;
     public lastSceneData?: TimelineItem[];
     
     // Completion estimate stats
@@ -367,6 +369,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.beatsProcessingService = new BeatsProcessingService(this.statusBarService);
         this.themeService = new ThemeService(this);
         this.timelineMetricsService = new TimelineMetricsService(this);
+        this.settingsService = new SettingsService(this);
 
         // CSS variables for publish stage colors are set once on layout ready
         
@@ -551,29 +554,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
     // Helper method to validate and remember folder paths
     async validateAndRememberPath(path: string): Promise<boolean> {
-        if (!path || path.trim() === '') return false;
-
-        // Use Obsidian's normalizePath for user-defined paths
-        const normalizedPath = normalizePath(path.trim());
-
-        // Check if the folder exists in the vault and is a folder
-        const file = this.app.vault.getAbstractFileByPath(normalizedPath);
-        const isValid = file instanceof TFolder && file.path === normalizedPath;
-        
-        if (isValid) {
-            // Add to valid paths if not already present
-            if (!this.settings.validFolderPaths.includes(normalizedPath)) {
-                this.settings.validFolderPaths.unshift(normalizedPath); // Add to beginning
-                // Keep only the last 10 paths to avoid clutter
-                if (this.settings.validFolderPaths.length > 10) {
-                    this.settings.validFolderPaths = this.settings.validFolderPaths.slice(0, 10);
-                }
-                await this.saveSettings();
-            }
-            return true;
-        }
-        
-        return false;
+        return this.settingsService.validateAndRememberPath(path);
     }
 
     // Remove redundant parseSceneTitle method - use the one from utils/text.ts instead
