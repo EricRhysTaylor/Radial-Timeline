@@ -8,7 +8,7 @@ import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_
 import type { TimelineItem } from '../types';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString, generateChronologicalTicks, calculateTimeSpan, durationSelectionToMs, parseDurationDetail, type ChronologicalTickInfo } from '../utils/date';
-import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize, splitIntoBalancedLines } from '../utils/text';
+import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
 import { 
     extractGradeFromScene, 
     getSceneState, 
@@ -46,12 +46,14 @@ import {
     MAX_TEXT_WIDTH,
     PLOT_PIXEL_WIDTH,
     BEAT_FONT_PX,
-    CHAR_WIDTH_EM,
-    LETTER_SPACING_EM,
     ESTIMATE_FUDGE_RENDER,
     PADDING_RENDER_PX,
     ANGULAR_GAP_PX
 } from './layout/LayoutConstants';
+import { computePositions, getEffectiveScenesForRing, type PositionInfo } from './utils/SceneLayout';
+import { startPerfSegment } from './utils/Performance';
+import { getFillForScene } from './utils/SceneFill';
+import { estimatePixelsFromTitle } from './utils/LabelMetrics';
 import { renderCenterGrid } from './components/Grid';
 import { renderMonthLabelDefs } from './components/Months';
 import { renderSubplotLabels } from './components/SubplotLabels';
@@ -70,6 +72,7 @@ import { renderMonthSpokesAndInnerLabels, renderGossamerMonthSpokes } from './co
 import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
 import { shouldRenderStoryBeats, shouldShowSubplotRings, shouldShowAllScenesInOuterRing, shouldShowInnerRingContent, getSubplotLabelText } from './modules/ModeRenderingHelpers';
 import { renderChronologueTimelineArc, renderChronologicalBackboneArc, collectChronologueSceneEntries, type ChronologueSceneEntry } from './components/ChronologueTimeline';
+import { buildSynopsisElement } from './utils/SynopsisBuilder';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -258,181 +261,6 @@ function computeCacheableValues(
         lineInnerRadius: ringGeo.lineInnerRadius,
         maxStageColor
     };
-}
-
-function stripNumericPrefix(title: string | undefined): string {
-    const full = title || '';
-    const m = full.match(/^(?:\s*\d+(?:\.\d+)?\s+)?(.+)/);
-    return m ? m[1] : full;
-}
-
-function estimatePixelsFromTitle(title: string, fontPx: number, fudge: number, paddingPx: number): number {
-    const approxPerChar = fontPx * (CHAR_WIDTH_EM + LETTER_SPACING_EM) * fudge;
-    return Math.max(0, title.length * approxPerChar + paddingPx);
-}
-
-function estimateAngleFromTitle(title: string, baseRadius: number, fontPx: number, fudge: number, paddingPx: number): number {
-    const px = estimatePixelsFromTitle(title, fontPx, fudge, paddingPx);
-    return px / Math.max(1, baseRadius);
-}
-
-type PerfStopHandler = () => void;
-type PerfRecord = { label: string; duration: number; timestamp: number };
-function pushPerfRecord(plugin: PluginRendererFacade, record: PerfRecord): void {
-    if (!plugin) return;
-    const host = plugin as unknown as { _perfMeasurements?: PerfRecord[] };
-    if (!Array.isArray(host._perfMeasurements)) {
-        host._perfMeasurements = [];
-    }
-    host._perfMeasurements.push(record);
-    const MAX_RECORDS = 60;
-    if (host._perfMeasurements.length > MAX_RECORDS) {
-        host._perfMeasurements.shift();
-    }
-}
-function startPerfSegment(plugin: PluginRendererFacade, label: string): PerfStopHandler {
-    const canMeasure = typeof performance !== 'undefined' && typeof performance.now === 'function';
-    if (!canMeasure) {
-        return () => {};
-    }
-    const start = performance.now();
-    return () => {
-        const duration = performance.now() - start;
-        const record = { label, duration, timestamp: Date.now() };
-        pushPerfRecord(plugin, record);
-    };
-}
-
-function getEffectiveScenesForRing(allScenes: TimelineItem[], actIndex: number, subplot: string | undefined, outerAllScenes: boolean, isOuter: boolean, grouped: { [act: number]: { [subplot: string]: TimelineItem[] } }): TimelineItem[] {
-    if (isOuter && outerAllScenes) {
-        const seenPaths = new Set<string>();
-        const seenPlotKeys = new Set<string>();
-        const result: TimelineItem[] = [];
-        allScenes.forEach(s => {
-            const a = s.actNumber !== undefined ? s.actNumber - 1 : 0;
-            if (a !== actIndex) return;
-            if (isBeatNote(s)) {
-                const key = `${String(s.title || '')}::${String(s.actNumber ?? '')}`;
-                if (seenPlotKeys.has(key)) return;
-                seenPlotKeys.add(key);
-                result.push(s);
-            } else {
-                const k = s.path || `${s.title || ''}::${String(s.when || '')}`;
-                if (seenPaths.has(k)) return;
-                seenPaths.add(k);
-                result.push(s);
-            }
-        });
-        return result;
-    }
-    const list = subplot ? (grouped[actIndex] && grouped[actIndex][subplot]) || [] : [];
-    return outerAllScenes ? list.filter(s => !isBeatNote(s)) : list.filter(s => !isBeatNote(s));
-}
-
-function buildSynopsis(
-    plugin: PluginRendererFacade,
-    scene: TimelineItem,
-    sceneId: string,
-    maxTextWidth: number,
-    orderedSubplots: string[],
-    subplotIndexResolver?: (name: string) => number
-): SVGGElement {
-    // Format date consistently - extract just the date portion to avoid timezone shifts
-    const contentLines = [
-        scene.title || '',
-        ...(isBeatNote(scene) && scene.Description
-            ? splitIntoBalancedLines(scene.Description, maxTextWidth)
-            : scene.synopsis
-            ? splitIntoBalancedLines(scene.synopsis, maxTextWidth)
-            : [])
-    ];
-    
-    // For Beat notes, add Gossamer1 score right after Description (before separator)
-    if (isBeatNote(scene)) {
-        const gossamer1 = scene.Gossamer1;
-        if (gossamer1 !== undefined && gossamer1 !== null) {
-            contentLines.push(`<gossamer>${gossamer1}/100</gossamer>`);
-        }
-    }
-    
-    // Add separator
-    contentLines.push('\u00A0');
-    
-    // Add metadata for non-Plot scenes
-    if (!isBeatNote(scene)) {
-        const rawSubplots = orderedSubplots.join(', ');
-        contentLines.push(rawSubplots);
-        
-        // Format characters with >pov< marker for first character
-        const characters = scene.Character || [];
-        const rawCharacters = characters.length > 0
-            ? characters.map((char: string, index: number) => index === 0 ? `${char} >pov<` : char).join(', ')
-            : '';
-        contentLines.push(rawCharacters);
-    }
-    
-    const filtered = contentLines.filter(line => line && line.trim() !== '\u00A0');
-    // Pass resolver so SynopsisManager can map each subplot name to the same CSS variable index used in rings
-    return plugin.synopsisManager.generateElement(scene, filtered, sceneId, subplotIndexResolver);
-}
-
-type PositionInfo = { startAngle: number; endAngle: number; angularSize: number };
-function computePositions(innerR: number, outerR: number, startAngle: number, endAngle: number, items: TimelineItem[]): Map<number, PositionInfo> {
-    const middleRadius = (innerR + outerR) / 2;
-    const plotAngularWidth = PLOT_PIXEL_WIDTH / middleRadius;
-    const totalAngularSpace = endAngle - startAngle;
-    const plotCount = items.filter(it => isBeatNote(it)).length;
-    const plotTotalAngularSpace = plotCount * plotAngularWidth;
-    const sceneCount = items.filter(it => !isBeatNote(it)).length;
-    const sceneAngularSize = sceneCount > 0 ? (totalAngularSpace - plotTotalAngularSpace) / sceneCount : 0;
-
-    let current = startAngle;
-    const positions = new Map<number, PositionInfo>();
-    items.forEach((it, idx) => {
-        if (isBeatNote(it)) {
-            positions.set(idx, { startAngle: current, endAngle: current + plotAngularWidth, angularSize: plotAngularWidth });
-            current += plotAngularWidth;
-        } else {
-            positions.set(idx, { startAngle: current, endAngle: current + sceneAngularSize, angularSize: sceneAngularSize });
-            current += sceneAngularSize;
-        }
-    });
-    return positions;
-}
-
-function getFillForItem(
-    plugin: PluginRendererFacade,
-    scene: TimelineItem,
-    maxStageColor: string,
-    publishStageColors: Record<string, string>,
-    totalPlotNotes: number,
-    plotIndexByKey: Map<string, number>,
-    allowPlotShading: boolean,
-    subplotColorResolver?: (subplot: string) => string,
-    isOuterAllScenes?: boolean
-): string {
-    if (isBeatNote(scene)) {
-        // Solid white for plot beats
-        return '#FFFFFF';
-    }
-
-    const statusList = Array.isArray(scene.status) ? scene.status : [scene.status];
-    const norm = normalizeStatus(statusList[0]);
-    const publishStage = scene['Publish Stage'] || 'Zero';
-    if (!norm) return `url(#plaidTodo${publishStage})`;
-    if (norm === 'Completed') {
-        // Completed: use subplot colors in narrative mode, else stage color
-        if (isOuterAllScenes && subplotColorResolver) {
-            const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-            return subplotColorResolver(subplotName);
-        }
-        const stageColor = publishStageColors[publishStage as keyof typeof publishStageColors] || publishStageColors.Zero;
-        return stageColor;
-    }
-    if (scene.due && isOverdueDateString(scene.due)) return STATUS_COLORS.Due;
-    if (norm === 'Working') return `url(#plaidWorking${publishStage})`;
-    if (norm === 'Todo') return `url(#plaidTodo${publishStage})`;
-    return STATUS_COLORS[statusList[0] as keyof typeof STATUS_COLORS] || STATUS_COLORS.Todo;
 }
 
 /**
@@ -1117,7 +945,7 @@ export function createTimelineSVG(
             const sceneSubplot = scene.subplot || 'Main Plot';
             const orderedSubplots = [sceneSubplot, ...allSceneSubplots.filter(s => s !== sceneSubplot)];
 
-            const synopsisElement = buildSynopsis(
+            const synopsisElement = buildSynopsisElement(
                 plugin,
                 scene,
                 sceneId,
@@ -1344,9 +1172,7 @@ export function createTimelineSVG(
                         // Scene titles: fixed inset from the top (outer) boundary of the cell
                         const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
 
-                        const color = isBeatNote(scene) 
-                            ? '#E6E6E6' 
-                            : getFillForItem(plugin, scene, maxStageColor, PUBLISH_STAGE_COLORS, totalPlotNotes, plotIndexByKey, true, subplotColorFor, true);
+                        const color = getFillForScene(scene, PUBLISH_STAGE_COLORS, subplotColorFor, true);
                         const arcPath = sceneArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
                         const sceneId = makeSceneId(act, ring, idx, true, true);
                         
@@ -1355,7 +1181,7 @@ export function createTimelineSVG(
                             const allSceneSubplots = scenes.filter(s => s.path === scene.path).map(s => s.subplot).filter((s): s is string => s !== undefined);
                             const sceneSubplot = scene.subplot || 'Main Plot';
                             const orderedSubplots = [sceneSubplot, ...allSceneSubplots.filter(s => s !== sceneSubplot)];
-                            const synopsisElOuter = buildSynopsis(
+                            const synopsisElOuter = buildSynopsisElement(
                                 plugin,
                                 scene,
                                 sceneId,

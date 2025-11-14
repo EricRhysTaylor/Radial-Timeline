@@ -21,7 +21,7 @@ export class ReleaseNotesModal extends Modal {
         this.patches = patches;
     }
 
-    onOpen(): void {
+    async onOpen(): Promise<void> {
         const { contentEl, titleEl } = this;
         this.modalEl.addClass('rt-release-notes-modal');
         contentEl.empty();
@@ -47,10 +47,7 @@ export class ReleaseNotesModal extends Modal {
 
         const bodyHost = contentEl.createDiv();
         const majorBody = bodyHost.createDiv({ cls: 'rt-release-notes-modal-body markdown-preview-view' });
-        MarkdownRenderer.renderMarkdown(this.major.body, majorBody, '', this.plugin).catch(() => {
-            majorBody.empty();
-            majorBody.createEl('p', { text: 'Unable to render release notes. Please view them on GitHub instead.' });
-        });
+        await MarkdownRenderer.renderMarkdown(this.major.body, majorBody, '', this.plugin);
 
         for (const patch of this.patches) {
             const patchInfo = parseReleaseVersion(patch.version);
@@ -59,10 +56,7 @@ export class ReleaseNotesModal extends Modal {
             const summaryEl = details.createEl('summary', { text: label });
             summaryEl.classList.add('rt-release-notes-details-summary');
             const patchBody = details.createDiv({ cls: 'rt-release-notes-modal-body markdown-preview-view' });
-            MarkdownRenderer.renderMarkdown(patch.body, patchBody, '', this.plugin).catch(() => {
-                patchBody.empty();
-                patchBody.createEl('p', { text: 'Unable to render release notes. Please view them on GitHub instead.' });
-            });
+            await MarkdownRenderer.renderMarkdown(patch.body, patchBody, '', this.plugin);
         }
 
         const footerEl = contentEl.createDiv({ cls: 'rt-release-notes-modal-footer' });

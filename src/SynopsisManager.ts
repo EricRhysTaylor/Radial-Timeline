@@ -380,8 +380,8 @@ export default class SynopsisManager {
         spacerElement.setAttribute("class", "synopsis-spacer");
         spacerElement.setAttribute("x", "0");
         spacerElement.setAttribute("y", String(yPosition));
-        // Setting font-size to 0, as requested, since constants had no effect
-        spacerElement.setAttribute("font-size", `0px`); 
+        // We need a measurable font-size so layout math can read bbox height; keep it tiny and invisible.
+        spacerElement.setAttribute("font-size", "2px");
         spacerElement.textContent = "\u00A0"; // Non-breaking space
         spacerElement.classList.add('rt-invisible-spacer'); // Make it invisible
         synopsisTextGroup.appendChild(spacerElement);
@@ -773,10 +773,11 @@ export default class SynopsisManager {
         }
       }
       
-      const anchorY = baseY + yOffset;
+      let anchorY = baseY + yOffset;
       
       if (Math.abs(anchorY) >= radius) {
-        throw new Error(`Synopsis row ${rowIndex} exceeds radius bounds (|${anchorY}| >= ${radius}).`);
+        // Clamp rows that extend beyond the circle; they’ll hug the perimeter instead of crashing
+        anchorY = Math.sign(anchorY) * (radius - 1);
       }
 
       const radiusDiff = radius * radius - anchorY * anchorY;
@@ -827,11 +828,22 @@ export default class SynopsisManager {
     let referenceSize = Number.isFinite(fontSize) && fontSize > 0 ? fontSize : Number.NaN;
 
     if (!Number.isFinite(referenceSize) || referenceSize <= 0) {
-      const box = textElement.getBBox();
-      if (!box || !Number.isFinite(box.height) || box.height <= 0) {
-        throw new Error('Unable to determine inset; text element lacks measurable height.');
+      try {
+        const box = textElement.getBBox();
+        if (box && Number.isFinite(box.height) && box.height > 0) {
+          referenceSize = box.height;
+        }
+      } catch (error) {
+        console.warn('[Synopsis] Failed to read bbox height for inset calculation:', error);
       }
-      referenceSize = box.height;
+    }
+
+    if (!Number.isFinite(referenceSize) || referenceSize <= 0) {
+      console.warn(
+        `[Synopsis] Falling back to base inset for row ${rowIndex}; element has no measurable font size or height.`,
+        textElement
+      );
+      return SynopsisManager.TOP_HALF_BASE_INSET;
     }
 
     const ratio = rowIndex === 0 ? 0.9 : 0.6;
@@ -991,7 +1003,8 @@ export default class SynopsisManager {
 
       if (node.nodeType === Node.ELEMENT_NODE) {
         const element = node as Element;
-        if (element.tagName.toLowerCase() !== 'tspan') {
+        const tag = element.tagName.toLowerCase();
+        if (tag !== 'tspan' && tag !== 'span') {
           throw new Error(`Unsupported element <${element.tagName}> in synopsis content.`);
         }
 

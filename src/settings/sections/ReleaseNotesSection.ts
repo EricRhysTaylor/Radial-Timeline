@@ -54,10 +54,7 @@ export function renderReleaseNotesSection({ plugin, containerEl }: ReleaseNotesS
     headerLink.setAttr('target', '_blank');
 
     const previewEl = section.createDiv({ cls: 'rt-settings-release-notes-preview markdown-preview-view' });
-    MarkdownRenderer.renderMarkdown(major.body, previewEl, '', plugin).catch(() => {
-        previewEl.empty();
-        previewEl.createEl('p', { text: 'Unable to render release notes. View them on GitHub instead.' });
-    });
+    void MarkdownRenderer.renderMarkdown(major.body, previewEl, '', plugin);
 
     // Collect patches (excluding the major release)
     const seen = new Set<string>([major.version]);
@@ -87,9 +84,6 @@ export function renderReleaseNotesSection({ plugin, containerEl }: ReleaseNotesS
         details.createEl('summary', { cls: 'rt-settings-release-notes-summary', text: label });
         const patchBody = details.createDiv({ cls: 'rt-settings-release-notes-details-body' });
         const patchPreview = patchBody.createDiv({ cls: 'rt-settings-release-notes-preview markdown-preview-view' });
-        MarkdownRenderer.renderMarkdown(patchEntry.body, patchPreview, '', plugin).catch(() => {
-            patchPreview.empty();
-            patchPreview.createEl('p', { text: 'Unable to render release notes. View them on GitHub instead.' });
-        });
+        void MarkdownRenderer.renderMarkdown(patchEntry.body, patchPreview, '', plugin);
     }
 }
