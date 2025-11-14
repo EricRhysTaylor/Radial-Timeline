@@ -15,10 +15,9 @@ import SynopsisManager from './SynopsisManager';
 import { RadialTimelineView } from './view/TimeLineView';
 import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
-import { ReleaseNotesModal } from './modals/ReleaseNotesModal';
 import { parseWhenField } from './utils/date';
 import { normalizeBooleanValue } from './utils/sceneHelpers';
-import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry } from './types';
+import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
 import { HoverHighlighter } from './services/HoverHighlighter';
@@ -300,43 +299,15 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     public async markReleaseNotesSeen(version: string): Promise<void> {
-        if (!this.releaseNotesService) return;
-        await this.releaseNotesService.markReleaseNotesSeen(version);
+        await this.releaseNotesService?.markReleaseNotesSeen(version);
     }
 
     public async maybeShowReleaseNotesModal(): Promise<void> {
-        if (!this.releaseNotesService) return;
-        const bundle = this.releaseNotesService.getBundle();
-        if (!bundle) return;
-        const latestVersion = bundle.latest?.version ?? bundle.major?.version ?? '';
-        if (!latestVersion) return;
-
-        const seenVersion = this.settings.lastSeenReleaseNotesVersion ?? '';
-        if (seenVersion === latestVersion) return;
-        if (this.releaseNotesService.hasShownModalThisSession()) return;
-
-        this.releaseNotesService.markModalShown();
-        await this.releaseNotesService.markReleaseNotesSeen(latestVersion);
-        this.openReleaseNotesModal();
+        await this.releaseNotesService?.maybeShowReleaseNotesModal(this.app, this);
     }
 
     public openReleaseNotesModal(force: boolean = false): void {
-        if (!this.releaseNotesService) return;
-        const bundle = this.releaseNotesService.getBundle();
-        if (!bundle) {
-            if (force) new Notice('Release notes are not available offline yet. Connect to the internet and try again.');
-            return;
-        }
-
-        const major = bundle.major ?? bundle.latest;
-        if (!major) {
-            if (force) new Notice('No release notes found.');
-            return;
-        }
-
-        const patches = this.releaseNotesService.collectReleasePatches(bundle, major);
-        const modal = new ReleaseNotesModal(this.app, this, major, patches);
-        modal.open();
+        this.releaseNotesService?.openReleaseNotesModal(this.app, this, force);
     }
 
     async onload() {

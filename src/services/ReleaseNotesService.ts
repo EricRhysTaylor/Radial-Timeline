@@ -3,9 +3,11 @@
  * Handles embedded/remote release notes management, caching, and state.
  */
 
-import { requestUrl } from 'obsidian';
+import { requestUrl, App } from 'obsidian';
 import { compareReleaseVersionsDesc, parseReleaseVersion } from '../utils/releases';
 import type { EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, RadialTimelineSettings } from '../types';
+import { ReleaseNotesModal } from '../modals/ReleaseNotesModal';
+import type RadialTimelinePlugin from '../main';
 
 declare const EMBEDDED_RELEASE_NOTES: string;
 
@@ -25,7 +27,7 @@ export class ReleaseNotesService {
     initializeFromEmbedded(): void {
         const embedded = this.loadEmbeddedReleaseNotes();
         const cached = this.settings.cachedReleaseNotes ?? null;
-        this.releaseNotesBundle = this.mergeReleaseBundles(cached, embedded);
+        this.releaseNotesBundle = cached ?? embedded ?? null;
         this.releaseModalShownThisSession = false;
     }
 
@@ -45,6 +47,33 @@ export class ReleaseNotesService {
         const bundle = this.releaseNotesBundle;
         if (!bundle) return null;
         return bundle.latest?.version ?? bundle.major?.version ?? null;
+    }
+
+    async maybeShowReleaseNotesModal(app: App, plugin: RadialTimelinePlugin): Promise<void> {
+        const bundle = this.requireBundle();
+        const latestVersion = this.getLatestVersion();
+        if (!latestVersion) {
+            throw new Error('Release bundle missing latest version');
+        }
+
+        const seenVersion = this.settings.lastSeenReleaseNotesVersion ?? '';
+        if (seenVersion === latestVersion || this.releaseModalShownThisSession) return;
+
+        this.releaseModalShownThisSession = true;
+        await this.markReleaseNotesSeen(latestVersion);
+        this.openReleaseNotesModal(app, plugin);
+    }
+
+    openReleaseNotesModal(app: App, plugin: RadialTimelinePlugin, force = false): void {
+        const bundle = this.requireBundle();
+        const major = bundle.major ?? bundle.latest;
+        if (!major) {
+            throw new Error('Release bundle missing major entry');
+        }
+
+        const patches = this.collectReleasePatches(bundle, major);
+        const modal = new ReleaseNotesModal(app, plugin, major, patches);
+        modal.open();
     }
 
     async markReleaseNotesSeen(version: string): Promise<void> {
@@ -86,92 +115,49 @@ export class ReleaseNotesService {
     }
 
     private loadEmbeddedReleaseNotes(): EmbeddedReleaseNotesBundle | null {
-        try {
-            const parsed = JSON.parse(EMBEDDED_RELEASE_NOTES);
-            if (!parsed || typeof parsed !== 'object') return null;
-
-            const normalizeEntry = (value: unknown): EmbeddedReleaseNotesEntry | null => {
-                if (!value || typeof value !== 'object') return null;
-                const obj = value as Record<string, unknown>;
-                const version = typeof obj.version === 'string' ? obj.version : undefined;
-                const title = typeof obj.title === 'string' ? obj.title : undefined;
-                const body = typeof obj.body === 'string' ? obj.body : undefined;
-                if (!version || !title || !body) return null;
-                return {
-                    version,
-                    title,
-                    body,
-                    url: typeof obj.url === 'string' ? obj.url : undefined,
-                    publishedAt: typeof obj.publishedAt === 'string' ? obj.publishedAt : undefined
-                };
-            };
-
-            const major = normalizeEntry(parsed.major);
-            const latest = normalizeEntry(parsed.latest);
-            const patches = Array.isArray(parsed.patches)
-                ? (parsed.patches as unknown[])
-                    .map((entry) => normalizeEntry(entry))
-                    .filter((entry): entry is EmbeddedReleaseNotesEntry => entry !== null)
-                : undefined;
-
-            if (!major && !latest && (!patches || patches.length === 0)) {
-                return null;
-            }
-
-            return {
-                major: major ?? latest ?? null,
-                latest: latest ?? major ?? null,
-                patches
-            };
-        } catch (error) {
-            console.error('Failed to parse embedded release notes:', error);
-            return null;
+        const parsed = JSON.parse(EMBEDDED_RELEASE_NOTES);
+        if (!parsed || typeof parsed !== 'object') {
+            throw new Error('Embedded release notes are missing or malformed');
         }
+
+        const normalizeEntry = (value: unknown): EmbeddedReleaseNotesEntry => {
+            if (!value || typeof value !== 'object') {
+                throw new Error('Release entry is invalid');
+            }
+            const obj = value as Record<string, unknown>;
+            const version = obj.version;
+            const title = obj.title;
+            const body = obj.body;
+            if (typeof version !== 'string' || typeof title !== 'string' || typeof body !== 'string') {
+                throw new Error('Release entry missing required fields');
+            }
+            return {
+                version,
+                title,
+                body,
+                url: typeof obj.url === 'string' ? obj.url : undefined,
+                publishedAt: typeof obj.publishedAt === 'string' ? obj.publishedAt : undefined
+            };
+        };
+
+        const major = parsed.major ? normalizeEntry(parsed.major) : null;
+        const latest = parsed.latest ? normalizeEntry(parsed.latest) : null;
+        const patches = Array.isArray(parsed.patches)
+            ? parsed.patches.map(normalizeEntry)
+            : undefined;
+
+        return {
+            major,
+            latest,
+            patches
+        };
     }
 
-    private mergeReleaseBundles(primary: EmbeddedReleaseNotesBundle | null, fallback: EmbeddedReleaseNotesBundle | null): EmbeddedReleaseNotesBundle | null {
-        if (!primary && !fallback) return null;
-        if (!primary) return fallback;
-        if (!fallback) return primary;
-
-        const merged: EmbeddedReleaseNotesBundle = {
-            major: primary.major ?? fallback.major ?? null,
-            latest: primary.latest ?? fallback.latest ?? null,
-        };
-
-        const patches: EmbeddedReleaseNotesEntry[] = [];
-        const seen = new Set<string>();
-        const add = (entry: EmbeddedReleaseNotesEntry | null | undefined) => {
-            if (!entry) return;
-            if (seen.has(entry.version)) return;
-            seen.add(entry.version);
-            patches.push(entry);
-        };
-
-        const sources: Array<EmbeddedReleaseNotesEntry[] | undefined> = [
-            primary.patches,
-            fallback.patches,
-        ];
-
-        for (const source of sources) {
-            if (!Array.isArray(source)) continue;
-            for (const entry of source) {
-                add(entry);
-            }
+    private requireBundle(): EmbeddedReleaseNotesBundle {
+        if (!this.releaseNotesBundle) {
+            throw new Error('Release notes bundle is unavailable');
         }
-
-        // Add latest entries if not already included
-        add(primary.latest);
-        add(fallback.latest);
-        add(primary.major);
-        add(fallback.major);
-
-        if (patches.length > 0) {
-            patches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
-            merged.patches = patches;
-        }
-
-        return merged;
+        return this.releaseNotesBundle;
     }
 
     private async performReleaseNotesFetch(force: boolean): Promise<boolean> {
@@ -189,7 +175,10 @@ export class ReleaseNotesService {
                 return false;
             }
             const embedded = this.loadEmbeddedReleaseNotes();
-            const merged = this.mergeReleaseBundles(bundle, embedded);
+            const merged = bundle ?? embedded;
+            if (!merged) {
+                throw new Error('Downloaded release bundle is empty');
+            }
             this.settings.cachedReleaseNotes = merged;
             this.settings.releaseNotesLastFetched = new Date(now).toISOString();
             await this.saveSettings();

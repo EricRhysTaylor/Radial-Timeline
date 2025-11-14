@@ -25,7 +25,7 @@ export class SceneAnalysisService {
                 (async () => {
                     if (!this.ensureApiKey()) return;
                     try {
-                        await this.plugin.processSceneAnalysisByManuscriptOrder();
+                        await this.processByManuscriptOrder();
                     } catch (error) {
                         console.error('Error running manuscript order beat update:', error);
                         new Notice('Error during manuscript order update.');
@@ -179,7 +179,7 @@ class SubplotPickerModal extends Modal {
             .setDisabled(true)
             .onClick(async () => {
                 this.close();
-                await this.plugin.processSceneAnalysisBySubplotName(this.selectedSubplot);
+                await this.service.processBySubplotName(this.selectedSubplot);
             });
 
         const processEntireButton = new ButtonComponent(this.buttonRow)
@@ -188,7 +188,7 @@ class SubplotPickerModal extends Modal {
             .setDisabled(true)
             .onClick(async () => {
                 this.close();
-                await this.plugin.processEntireSubplot(this.selectedSubplot);
+                await this.service.processEntireSubplot(this.selectedSubplot);
             });
 
         const purgeButton = new ButtonComponent(this.buttonRow)
