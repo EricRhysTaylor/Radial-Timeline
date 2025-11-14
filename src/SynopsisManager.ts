@@ -5,7 +5,7 @@
  */
 import type RadialTimelinePlugin from './main';
 import type { TimelineItem } from './types';
-import { decodeHtmlEntities, parseSceneTitleComponents } from './utils/text';
+import { decodeHtmlEntities, parseSceneTitleComponents, splitIntoBalancedLines } from './utils/text';
 import { getPublishStageStyle, splitSynopsisLines, decodeContentLines, isOverdueAndIncomplete } from './synopsis/SynopsisData';
 import { createSynopsisContainer, createTextGroup, createText } from './synopsis/SynopsisView';
 import { 
@@ -323,7 +323,7 @@ export default class SynopsisManager {
     if (pendingEdits) {
       // Wrap revisions text using same logic as synopsis
       const maxWidth = 500; // Match timeline synopsis width
-      const lines = this.plugin.splitIntoBalancedLines(pendingEdits, maxWidth);
+      const lines = splitIntoBalancedLines(pendingEdits, maxWidth);
       for (let i = 0; i < lines.length; i++) {
         const y = (1 + extraLineCount) * lineHeight + (i * lineHeight);
         const text = `${i === 0 ? 'Revisions: ' : ''}${lines[i]}`;

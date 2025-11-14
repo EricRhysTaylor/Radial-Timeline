@@ -9,7 +9,7 @@ import { TimelineService } from './services/TimelineService';
 import { SceneDataService } from './services/SceneDataService';
 import { escapeRegExp } from './utils/regex';
 import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils/colour';
-import { decodeHtmlEntities } from './utils/text';
+import { decodeHtmlEntities, parseSceneTitle } from './utils/text';
 import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
 import { createTimelineSVG, adjustBeatLabelsAfterRender } from './renderer/TimelineRenderer';
@@ -17,9 +17,8 @@ import { RadialTimelineView } from './view/TimeLineView';
 import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { ReleaseNotesModal } from './modals/ReleaseNotesModal';
-import { parseSceneTitle } from './utils/text';
 import { parseWhenField } from './utils/date';
-import { isBeatNote, normalizeBooleanValue } from './utils/sceneHelpers';
+import { normalizeBooleanValue } from './utils/sceneHelpers';
 import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
@@ -29,14 +28,16 @@ import { GossamerScoreService } from './services/GossamerScoreService';
 import { SceneAnalysisService } from './services/SceneAnalysisService';
 import { StatusBarService } from './services/StatusBarService';
 import { BeatsProcessingService } from './services/BeatsProcessingService';
+import { ThemeService } from './services/ThemeService';
+import { sanitizeSvgText } from './utils/svg';
 import type { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
+import { TimelineMetricsService } from './services/TimelineMetricsService';
 
 
 // Declare the variable that will be injected by the build process
 declare const EMBEDDED_README_CONTENT: string;
 
 // Import the new scene analysis function <<< UPDATED IMPORT
-import { createTemplateScene } from './SceneAnalysisCommands';
 
 // Constants for the view
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -137,120 +138,6 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
 // STATUS_COLORS now imported from constants
 
 const NUM_ACTS = 3;
-
-
-// Helper functions for safe SVG creation - add at the top of the file
-function createSvgElement(tag: string, attributes: Record<string, string> = {}, classes: string[] = []): SVGElement {
-    const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
-    
-    // Set attributes
-    for (const [key, value] of Object.entries(attributes)) {
-        element.setAttribute(key, value);
-    }
-    
-    // Add classes
-    if (classes.length > 0) {
-        element.classList.add(...classes);
-    }
-    
-    return element;
-}
-
-function createSvgText(content: string, x: string | number, y: string | number, classes: string[] = []): SVGTextElement {
-    const text = createSvgElement("text", { x: x.toString(), y: y.toString() }) as SVGTextElement;
-    
-    // Add classes
-    if (classes.length > 0) {
-        text.classList.add(...classes);
-    }
-    
-    // Set text content safely
-    if (content) {
-        if (content.includes('<tspan')) {
-            // For content with tspan elements, we need to parse and add each element
-            // Create a temporary container
-            const parser = new DOMParser();
-            // Ensure the content is properly escaped except for tspan tags
-            const safeContent = content
-                .replace(/&(?!(amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;))/g, '&amp;')
-                .replace(/</g, (match, offset) => {
-                    // Only allow <tspan and </tspan
-                    return content.substring(offset, offset + 6) === '<tspan' || 
-                           content.substring(offset, offset + 7) === '</tspan' ? '<' : '&lt;';
-                })
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&apos;');
-                
-            const doc = parser.parseFromString(`<svg><text>${safeContent}</text></svg>`, 'image/svg+xml');
-            const parsedText = doc.querySelector('text');
-            
-            if (parsedText) {
-                // Copy all child nodes
-                while (parsedText.firstChild) {
-                    text.appendChild(parsedText.firstChild);
-                }
-            } else {
-                // Fallback to simple text if parsing failed
-                text.textContent = content;
-            }
-        } else {
-            // For plain text, just set the content
-            text.textContent = content;
-        }
-    }
-    
-    return text;
-}
-
-function createSvgTspan(content: string, classes: string[] = []): SVGTSpanElement {
-    const tspan = createSvgElement("tspan") as SVGTSpanElement;
-    
-    // Add classes
-    if (classes.length > 0) {
-        tspan.classList.add(...classes);
-    }
-    
-    // Set text content safely - escape any potential HTML/XML
-    if (content) {
-        tspan.textContent = content;
-    }
-    
-    return tspan;
-}
-
-function formatNumber(num: number): string {
-    if (Math.abs(num) < 0.001) return "0";
-    return num.toFixed(3).replace(/\.?0+$/, '');
-}
-
-// Remove redundant parseSceneTitle function - use the one from utils/text.ts instead
-
-// Helper function for XML escaping (moved outside class to be accessible to all)
-function escapeXml(unsafe: string): string {
-    return unsafe
-        .replace(/&(?!(amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;))/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-}
-
-// Helper function to create a properly formatted SVG arc path
-function createSvgArcPath(startAngle: number, endAngle: number, radius: number, largeArcFlag: number = 0): string {
-    // Calculate start and end points
-    const startX = radius * Math.cos(startAngle);
-    const startY = radius * Math.sin(startAngle);
-    const endX = radius * Math.cos(endAngle);
-    const endY = radius * Math.sin(endAngle);
-    
-    // Create standardized arc path
-    return `
-        M ${startX} ${startY}
-        A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}
-    `;
-}
-
 // Note: Search highlighting is now handled entirely by addHighlightRectangles() in TimeLineView.ts
 // after the SVG is rendered. This simplifies the code and ensures a single source of truth.
 
@@ -288,6 +175,8 @@ export default class RadialTimelinePlugin extends Plugin {
     private sceneAnalysisService!: SceneAnalysisService;
     private statusBarService!: StatusBarService;
     private beatsProcessingService!: BeatsProcessingService;
+    private themeService!: ThemeService;
+    private timelineMetricsService!: TimelineMetricsService;
     public lastSceneData?: TimelineItem[];
     
     // Completion estimate stats
@@ -477,6 +366,8 @@ export default class RadialTimelinePlugin extends Plugin {
         this.sceneAnalysisService = new SceneAnalysisService(this);
         this.statusBarService = new StatusBarService(this);
         this.beatsProcessingService = new BeatsProcessingService(this);
+        this.themeService = new ThemeService(this);
+        this.timelineMetricsService = new TimelineMetricsService(this);
 
         // CSS variables for publish stage colors are set once on layout ready
         
@@ -508,58 +399,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // Track workspace layout changes to update our view
         // (layout-change listener consolidated below at line ~949)
 
-        // 7. Create template note
-        this.addCommand({
-            id: 'create-template-scene',
-            name: 'Create template note',
-            callback: async () => {
-                await createTemplateScene(this, this.app.vault);
-            }
-        });
-
-        // 8. Open
-        this.addCommand({
-            id: 'open-timeline-view',
-            name: 'Open',
-            callback: () => {
-                this.activateView();
-            }
-        });
-
-        this.app.workspace.onLayoutReady(() => {
-            this.setCSSColorVariables(); // Set initial colors
-            this.fileTrackingService.updateOpenFilesTracking(); // Track initially open files
-        });
-
-         this.registerEvent(this.app.workspace.on('layout-change', () => {
-            this.fileTrackingService.updateOpenFilesTracking();
-            this.refreshTimelineIfNeeded(null);
-        }));
-
-        // Listen for deletions and renames only (metadata changes handled by view with debouncing)
-        // Removed 'modify' listener as it triggers on every keystroke
-        this.registerEvent(this.app.vault.on('delete', (file) => this.refreshTimelineIfNeeded(file)));
-        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => this.handleFileRename(file, oldPath)));
-
-        // Theme change listener
-        this.registerEvent(this.app.workspace.on('css-change', () => {
-            this.setCSSColorVariables();
-            // Prefer selective refresh for lightweight UI changes
-            try {
-                const views = this.getTimelineViews();
-                views.forEach(v => {
-                    const svg = (v as unknown as { containerEl?: HTMLElement })?.containerEl?.querySelector?.('.radial-timeline-svg');
-                    if (svg) {
-                        this.rendererService.updateProgressAndTicks(v as any);
-                        if ((v as any).currentMode === 'gossamer') {
-                            this.rendererService.updateGossamerLayer(v as any);
-                        }
-                    }
-                });
-            } catch {
-                this.refreshTimelineIfNeeded(null);
-            }
-        }));
+        this.fileTrackingService.registerWorkspaceListeners();
 
         // Setup hover listeners
         new HoverHighlighter(this.app, this, this.sceneHighlighter).register();
@@ -622,118 +462,6 @@ public createTimelineSVG(scenes: TimelineItem[]) {
 public adjustBeatLabelsAfterRender(container: HTMLElement) {
   return adjustBeatLabelsAfterRender(container);
 }
-
-    public darkenColor(color: string, percent: number): string {
-        const num = parseInt(color.replace("#", ""), 16);
-        const amt = Math.round(2.55 * percent);
-        const R = Math.max((num >> 16) - amt, 0);
-        const G = Math.max(((num >> 8) & 0x00FF) - amt, 0);
-        const B = Math.max((num & 0x0000FF) - amt, 0);
-        return `#${(1 << 24 | R << 16 | G << 8 | B).toString(16).slice(1)}`;
-    }
-
-    public lightenColor(color: string, percent: number): string {
-        // Parse the color
-        const num = parseInt(color.replace("#", ""), 16);
-        
-        // Extract original RGB values
-        const R = (num >> 16);
-        const G = ((num >> 8) & 0x00FF);
-        const B = (num & 0x0000FF);
-        
-        // Calculate lightened values
-        const mixRatio = Math.min(1, percent / 100); // How much white to mix in
-        
-        // Simple lightening calculation that preserves the hue
-        const newR = Math.min(255, Math.round(R + (255 - R) * mixRatio));
-        const newG = Math.min(255, Math.round(G + (255 - G) * mixRatio));
-        const newB = Math.min(255, Math.round(B + (255 - B) * mixRatio));
-        
-        return "#" + (1 << 24 | newR << 16 | newG << 8 | newB).toString(16).slice(1);
-    }
-
-    /// Helper function to split text into balanced lines
-    public splitIntoBalancedLines(text: string, maxWidth: number): string[] {
-        // Check if the text already contains tspan elements (like search highlights)
-        if (text.includes('<tspan')) {
-            // Use DOM-based line splitting for text with tspans
-            
-            // Parse the HTML using DOMParser
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg"><text>${text}</text></svg>`, 'image/svg+xml');
-            
-            // Check for parsing errors
-            if (doc.querySelector('parsererror')) {
-                // Error parsing SVG content with tspans, return original text
-                return [text];
-            }
-            
-            // Extract the text element
-            const textElement = doc.querySelector('text');
-            if (!textElement) {
-                return [text];
-            }
-            
-            // Get the text content without the tags for measuring
-            const plainText = textElement.textContent || '';
-            
-            // Split the plain text into lines based on length
-            const plainLines = this.splitPlainTextIntoLines(plainText, maxWidth);
-            
-            if (plainLines.length <= 1) {
-                // If we only have one line, just return the original text
-                return [text];
-            }
-            
-            // We need to split the text containing tspans
-            // This is a complex operation as we need to distribute the tspans across lines
-            // For now, just return the original text - future enhancement needed
-            return [text];
-        }
-        
-        // Regular text without tspans - use character-based splitting
-        return this.splitPlainTextIntoLines(text, maxWidth);
-    }
-    
-    // Helper method to split plain text into lines
-    private splitPlainTextIntoLines(text: string, maxWidth: number): string[] {
-        const words = text.split(/\s+/);
-        const lines: string[] = [];
-        let currentLine = '';
-        let currentWidth = 0;
-        const maxCharsPerLine = 50; // Approximately 400px at 16px font size
-        
-        for (let i = 0; i < words.length; i++) {
-            const word = words[i];
-            const wordWidth = word.length;
-            
-            if (currentWidth + wordWidth > maxCharsPerLine && currentLine !== '') {
-                lines.push(currentLine.trim());
-                currentLine = word;
-                currentWidth = wordWidth;
-            } else {
-                currentLine += (currentLine ? ' ' : '') + word;
-                currentWidth += wordWidth + (currentLine ? 1 : 0); // Add space width
-            }
-        }
-        
-        if (currentLine) {
-            lines.push(currentLine.trim());
-        }
-        
-        return lines;
-    }
-
-    // Add a helper method for hyphenation
-    private hyphenateWord(word: string, maxWidth: number, charWidth: number): [string, string] {
-        const maxChars = Math.floor(maxWidth / charWidth);
-        if (word.length <= maxChars) return [word, ''];
-        
-        // Simple hyphenation at maxChars-1 to account for hyphen
-        const firstPart = word.slice(0, maxChars - 1) + '-';
-        const secondPart = word.slice(maxChars - 1);
-        return [firstPart, secondPart];
-    }
 
     private generateSynopsisHTML(scene: TimelineItem, contentLines: string[], sceneId: string): string {
         return this.synopsisManager.generateHTML(scene, contentLines, sceneId);
@@ -986,46 +714,9 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
     
     public clearSearch(): void { this.searchService.clearSearch(); }
 
-    // Function to set CSS variables for RGB colors
-    public setCSSColorVariables() {
-        const root = document.documentElement;
-        const { publishStageColors, subplotColors } = this.settings;
-        
-        // Convert hex colors to RGB for CSS variables
-        Object.entries(publishStageColors).forEach(([stage, color]) => {
-            // Prefixed vars used by styles.css
-            root.style.setProperty(`--rt-publishStageColors-${stage}`, color);
-
-            const rgbValues = this.hexToRGB(color);
-            if (rgbValues) {
-                root.style.setProperty(`--rt-publishStageColors-${stage}-rgb`, rgbValues);
-            }
-        });
-
-        // Apply subplot palette colors (16 entries)
-        if (Array.isArray(subplotColors)) {
-            for (let i = 0; i < 16; i++) {
-                const color = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
-                if (color) {
-                    // CSS custom property used by styles.css swatches and rings
-                    root.style.setProperty(`--rt-subplot-colors-${i}`, color);
-                }
-            }
-        }
+    public setCSSColorVariables(): void {
+        this.themeService.applyCssVariables();
     }
-
-    // Helper function to convert hex to RGB values without the "rgb()" wrapper
-    private hexToRGB(hex: string): string | null {
-        const r = parseInt(hex.slice(1, 3), 16);
-        const g = parseInt(hex.slice(3, 5), 16);
-        const b = parseInt(hex.slice(5, 7), 16);
-        
-        if (isNaN(r) || isNaN(g) || isNaN(b)) {
-            return null;
-        }
-        
-            return `${r}, ${g}, ${b}`;
-        }
 
     // Add helper method to highlight search terms
     
@@ -1033,222 +724,7 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
 
     // Helper method to ensure text is safe for SVG
     public safeSvgText(text: string): string {
-        return (text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-    }
-
-    // Find the SVG element
-    public createSvgElement(svgContent: string, container: HTMLElement): SVGSVGElement | null {
-        try {
-            // Performance optimization: Track parsing time
-            const startTime = performance.now();
-            
-            // Create a new SVG element in the namespace
-            const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            
-            // Parse the SVG content using DOMParser
-            const parser = new DOMParser();
-            const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
-            
-            // Check for parsing errors
-            const parserError = svgDoc.querySelector('parsererror');
-            if (parserError) {
-                console.error('Error parsing SVG content:', parserError.textContent);
-                
-                // Try again with a fallback approach
-                const fallbackParser = new DOMParser();
-                const fallbackDoc = fallbackParser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${svgContent}</svg>`, 'image/svg+xml');
-                
-                // Check if this parsing succeeded
-                if (!fallbackDoc.querySelector('parsererror')) {
-                    const fallbackSvg = fallbackDoc.documentElement;
-                    
-                    // Copy all child nodes from the source SVG to our new element
-                    while (fallbackSvg.firstChild) {
-                        const child = fallbackSvg.firstChild;
-                        svgElement.appendChild(child);
-                    }
-                    
-                    // Set critical SVG attributes explicitly
-                    svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-                    svgElement.setAttribute('width', '100%');
-                    svgElement.setAttribute('height', '100%');
-                    svgElement.setAttribute('viewBox', '-800 -800 1600 1600');
-                    svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                    svgElement.setAttribute('class', 'radial-timeline-svg');
-                    
-                    // Performance optimization: Add directly to fragment
-                    const fragment = document.createDocumentFragment();
-                    fragment.appendChild(svgElement);
-                    
-                    return svgElement;
-                }
-                
-        return null;
-    }
-            
-            // Get the source SVG element
-            const sourceSvg = svgDoc.documentElement;
-
-            // Copy attributes from the parsed SVG root to the new SVG element
-            for (const attr of Array.from(sourceSvg.attributes)) {
-
-                // Skip xmlns as it's set manually, handle class separately
-                if (attr.name !== 'xmlns' && attr.name !== 'class') {
-                    svgElement.setAttribute(attr.name, attr.value);
-                }
-            }
-            // Merge classes
-            svgElement.classList.add(...Array.from(sourceSvg.classList));
-            
-            // Extract critical attributes from source SVG (already done, keep for safety)
-            const viewBox = sourceSvg.getAttribute('viewBox') || '-800 -800 1600 1600';
-            
-            // Set critical SVG attributes explicitly
-            svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-            svgElement.setAttribute('width', '100%');
-            svgElement.setAttribute('height', '100%');
-            svgElement.setAttribute('viewBox', viewBox);
-            svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-            svgElement.setAttribute('class', 'radial-timeline-svg');
-            
-            // Performance optimization: Use document fragment for better performance
-            const fragment = document.createDocumentFragment();
-            
-            // Copy all child nodes from the source SVG to our new element
-            while (sourceSvg.firstChild) {
-                svgElement.appendChild(sourceSvg.firstChild);
-            }
-            
-            // Add the SVG element to the container via fragment
-            fragment.appendChild(svgElement);
-            container.appendChild(fragment);
-            
-           
-            return svgElement;
-        } catch (error) {
-            console.error('Error creating SVG element:', error);
-            
-            // Final fallback approach - create minimal SVG directly
-            try {
-                // Create simple SVG root
-                const fallbackSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                
-                // Set critical SVG attributes explicitly
-                fallbackSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-                fallbackSvg.setAttribute('width', '100%');
-                fallbackSvg.setAttribute('height', '100%');
-                fallbackSvg.setAttribute('viewBox', '-800 -800 1600 1600');
-                fallbackSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                fallbackSvg.setAttribute('class', 'radial-timeline-svg');
-                
-                // Extract content using regex approach
-                const svgBodyMatch = svgContent.match(/<svg[^>]*>([\s\S]*)<\/svg>/i);
-                if (svgBodyMatch && svgBodyMatch[1]) {
-                    // Use DOMParser to safely extract content
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${svgBodyMatch[1]}</svg>`, 'image/svg+xml');
-                    
-                    // Performance optimization: Use document fragment for better performance
-                    const fragment = document.createDocumentFragment();
-                    
-                    if (!doc.querySelector('parsererror')) {
-                        const svgDoc = doc.documentElement;
-                        
-                        // Track RAF IDs for cleanup
-                        const rafIds: number[] = [];
-                        
-                        // Process elements in chunks to avoid UI blocking (max 100 elements per frame)
-                        const processNodes = (nodes: Element[], startIdx: number, callback: () => void) => {
-                            const CHUNK_SIZE = 100;
-                            const endIdx = Math.min(startIdx + CHUNK_SIZE, nodes.length);
-                            
-                            for (let i = startIdx; i < endIdx; i++) {
-                                const element = nodes[i];
-                                // Create element with namespace
-                                const newElement = document.createElementNS('http://www.w3.org/2000/svg', element.tagName.toLowerCase());
-                                
-                                // Copy attributes
-                                Array.from(element.attributes).forEach(attr => {
-                                    newElement.setAttribute(attr.name, attr.value);
-                                });
-                                
-                                // Copy content
-                                newElement.textContent = element.textContent;
-                                
-                                // Add to SVG
-                                fallbackSvg.appendChild(newElement);
-                            }
-                            
-                            if (endIdx < nodes.length) {
-                                // Process next chunk in next animation frame
-                                const rafId = window.requestAnimationFrame(() => processNodes(nodes, endIdx, callback));
-                                rafIds.push(rafId);
-                            } else {
-                                // Finished processing all nodes
-                                callback();
-                            }
-                        };
-                        
-                        // Register cleanup for all RAF IDs
-                        this.register(() => {
-                            rafIds.forEach(id => cancelAnimationFrame(id));
-                        });
-                        
-                        // Get all element nodes
-                        const elementNodes = Array.from(svgDoc.querySelectorAll('*'));
-                        
-                        // If there are too many nodes, process in chunks
-                        if (elementNodes.length > 100) {
-                            // Add loading indicator first
-                            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                            text.setAttribute('x', '0');
-                            text.setAttribute('y', '0');
-                            text.setAttribute('class', 'loading-message');
-                            text.setAttribute('font-size', '24');
-                            text.setAttribute('text-anchor', 'middle');
-                            text.textContent = 'Loading timeline...';
-                            fallbackSvg.appendChild(text);
-                            
-                            // Add the SVG to container first to show loading
-                            fragment.appendChild(fallbackSvg);
-                            container.appendChild(fragment);
-                            
-                            // Process nodes in chunks
-                            processNodes(elementNodes, 0, () => {
-                                // Remove loading indicator when done
-                                fallbackSvg.removeChild(text);
-                            });
-                        } else {
-                            // Process all nodes at once for small SVGs
-                            elementNodes.forEach(element => {
-                                const newElement = document.createElementNS('http://www.w3.org/2000/svg', element.tagName.toLowerCase());
-                                
-                                Array.from(element.attributes).forEach(attr => {
-                                    newElement.setAttribute(attr.name, attr.value);
-                                });
-                                
-                                newElement.textContent = element.textContent;
-                                fallbackSvg.appendChild(newElement);
-                            });
-                            
-                            // Add to container
-                            fragment.appendChild(fallbackSvg);
-                            container.appendChild(fragment);
-                        }
-                    }
-                } else {
-                    // Add to container via fragment
-                    const fragment = document.createDocumentFragment();
-                    fragment.appendChild(fallbackSvg);
-                    container.appendChild(fragment);
-                }
-                
-                return fallbackSvg;
-            } catch (innerError) {
-                console.error('All SVG parsing approaches failed:', innerError);
-                return null;
-            }
-        }
+        return sanitizeSvgText(text);
     }
 
 
@@ -1266,134 +742,12 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
 
     // Add this function inside the RadialTimelinePlugin class
     public calculateCompletionEstimate(scenes: TimelineItem[]): {
-        date: Date | null;  // null means "use default angle"
+        date: Date | null;
         total: number;
         remaining: number;
-        rate: number; // Scenes per week
+        rate: number;
     } | null {
-        // Filter out Beat notes - only calculate completion based on actual Scene notes
-        const sceneNotesOnly = scenes.filter(scene => !isBeatNote(scene));
-        
-        if (sceneNotesOnly.length === 0) {
-            return null;
-        }
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Case 1: Check if book is complete (all scenes in Press stage and Complete status)
-        const allScenesComplete = sceneNotesOnly.every(scene => {
-            const publishStage = scene["Publish Stage"]?.toString().trim().toLowerCase() || '';
-            const sceneStatus = scene.status?.toString().trim().toLowerCase() || '';
-            return publishStage === 'press' && (sceneStatus === 'complete' || sceneStatus === 'done');
-        });
-        
-        if (allScenesComplete) {
-            // Book is done! Return target date if set, otherwise null (= use default angle)
-            const targetDate = this.settings.targetCompletionDate 
-                ? new Date(this.settings.targetCompletionDate + 'T00:00:00')
-                : null;
-            
-            return {
-                date: targetDate,
-                total: sceneNotesOnly.length,
-                remaining: 0,
-                rate: 0
-            };
-        }
-
-        // Case 2: Calculate estimate based on completion rate
-        const startOfYear = new Date(today.getFullYear(), 0, 1);
-        const startOfYearTime = startOfYear.getTime();
-        const todayTime = today.getTime();
-        const daysPassedThisYear = Math.max(1, Math.round((todayTime - startOfYearTime) / (1000 * 60 * 60 * 24)));
-
-        let completedThisYear = 0;
-        const completedPathsThisYear = new Set<string>();
-
-        // Count scenes completed this year
-        sceneNotesOnly.forEach(scene => {
-            const dueDateStr = scene.due;
-            const scenePath = scene.path;
-            const sceneStatus = scene.status?.toString().trim().toLowerCase();
-
-            if (sceneStatus !== 'complete' && sceneStatus !== 'done') return;
-            if (!scenePath || completedPathsThisYear.has(scenePath)) return;
-            if (!dueDateStr) return;
-
-            try {
-                const dueDate = new Date(dueDateStr + 'T00:00:00');
-                dueDate.setHours(0, 0, 0, 0);
-                const dueTime = dueDate.getTime();
-
-                if (!isNaN(dueTime) && dueTime >= startOfYearTime && dueTime < todayTime) {
-                    completedThisYear++;
-                    completedPathsThisYear.add(scenePath);
-                }
-            } catch (e) {
-                // Ignore errors parsing date
-            }
-        });
-
-        // Case 3: No scenes completed this year - cannot estimate
-        if (completedThisYear <= 0) {
-            return null;
-        }
-
-        // Calculate remaining work
-        const scenesPerDay = completedThisYear / daysPassedThisYear;
-        const processedPaths = new Set<string>();
-        const currentStatusCounts = sceneNotesOnly.reduce((acc, scene) => {
-            if (!scene.path || processedPaths.has(scene.path)) {
-                return acc;
-            }
-            processedPaths.add(scene.path);
-
-            const normalizedStatus = scene.status?.toString().trim().toLowerCase() || 'Todo';
-            
-            if (normalizedStatus === "complete" || normalizedStatus === "done") {
-                acc["Completed"] = (acc["Completed"] || 0) + 1;
-            } else if (scene.due) {
-                try {
-                    const dueDate = new Date(scene.due + 'T00:00:00');
-                    if (!isNaN(dueDate.getTime()) && dueDate.getTime() < todayTime) {
-                        acc["Due"] = (acc["Due"] || 0) + 1;
-                    } else {
-                        acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
-                    }
-                } catch { 
-                    acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
-                }
-            } else {
-                acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
-            }
-            return acc;
-        }, {} as Record<string, number>);
-        
-        const completedCount = currentStatusCounts['Completed'] || 0;
-        const totalScenes = Object.values(currentStatusCounts).reduce((sum, count) => sum + count, 0);
-        const remainingScenes = totalScenes - completedCount;
-
-        if (remainingScenes <= 0) {
-            return null;
-        }
-
-        const daysNeeded = remainingScenes / scenesPerDay;
-
-        if (!isFinite(daysNeeded) || daysNeeded < 0 || scenesPerDay <= 0) {
-            return null;
-        }
-
-        const scenesPerWeek = scenesPerDay * 7;
-        const estimatedDate = new Date(today);
-        estimatedDate.setDate(today.getDate() + Math.ceil(daysNeeded));
-        
-        return {
-            date: estimatedDate,
-            total: totalScenes,
-            remaining: remainingScenes,
-            rate: parseFloat(scenesPerWeek.toFixed(1))
-        };
+        return this.timelineMetricsService.calculateCompletionEstimate(scenes);
     }
 
     public handleFileRename(file: TAbstractFile, oldPath: string): void {

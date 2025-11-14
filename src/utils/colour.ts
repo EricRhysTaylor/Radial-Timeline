@@ -108,4 +108,25 @@ export function desaturateColor(hexColor: string, amount: number): string {
   hsl.s = Math.max(0, hsl.s * (1 - amount));
   const desatRgb = hslToRgb(hsl.h, hsl.s, hsl.l);
   return rgbToHex(desatRgb.r, desatRgb.g, desatRgb.b);
-} 
+}
+
+export function darkenColor(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const r = Math.max((num >> 16) - amt, 0);
+  const g = Math.max(((num >> 8) & 0x00ff) - amt, 0);
+  const b = Math.max((num & 0x0000ff) - amt, 0);
+  return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
+}
+
+export function lightenColor(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = num >> 16;
+  const g = (num >> 8) & 0x00ff;
+  const b = num & 0x0000ff;
+  const mixRatio = Math.min(1, percent / 100);
+  const newR = Math.min(255, Math.round(r + (255 - r) * mixRatio));
+  const newG = Math.min(255, Math.round(g + (255 - g) * mixRatio));
+  const newB = Math.min(255, Math.round(b + (255 - b) * mixRatio));
+  return `#${(1 << 24 | newR << 16 | newG << 8 | newB).toString(16).slice(1)}`;
+}

@@ -26,6 +26,11 @@ export class FileTrackingService {
     }
 
     registerWorkspaceListeners(): void {
+        this.plugin.app.workspace.onLayoutReady(() => {
+            this.plugin.setCSSColorVariables();
+            this.updateOpenFilesTracking();
+        });
+
         this.plugin.registerEvent(this.plugin.app.workspace.on('layout-change', () => {
             this.updateOpenFilesTracking();
             this.plugin.refreshTimelineIfNeeded(null);
@@ -53,4 +58,3 @@ export class FileTrackingService {
         }));
     }
 }
-

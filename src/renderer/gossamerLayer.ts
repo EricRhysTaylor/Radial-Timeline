@@ -3,7 +3,7 @@
  */
 import type { TimelineItem } from '../types';
 import { GossamerRun, extractPresentBeatScores, extractBeatOrder } from '../utils/gossamer';
-import { getMostAdvancedStageColor } from '../utils/colour';
+import { getMostAdvancedStageColor, lightenColor } from '../utils/colour';
 
 export interface PolarConfig {
   innerRadius: number;
@@ -249,7 +249,7 @@ export function renderGossamerLayer(
       
       // Use a light version of the most advanced publish stage color with transparency
       const bandOpacity = getCSSVar('--rt-gossamer-band-opacity', '0.5');
-      const lightColor = lightenColor(mostAdvancedColor, 0.7); // 70% lighter
+      const lightColor = lightenColor(mostAdvancedColor, 70); // 70% lighter
       
       bandSvg = `<path class="rt-gossamer-band" d="${bandPath}" fill="${lightColor}" fill-opacity="${bandOpacity}"/>`;
     }
@@ -488,23 +488,6 @@ function buildOverlayPath(points: { beat: string; score: number }[], angles: Map
   if (pts.length < 2) return null;
   return buildBezierPath(pts, true);
 }
-
-
-function lightenColor(hex: string, amount: number): string {
-  // Convert hex to RGB, lighten, return hex
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  
-  const lighten = (c: number) => Math.round(c + (255 - c) * amount);
-  
-  const newR = lighten(r).toString(16).padStart(2, '0');
-  const newG = lighten(g).toString(16).padStart(2, '0');
-  const newB = lighten(b).toString(16).padStart(2, '0');
-  
-  return `#${newR}${newG}${newB}`;
-}
-
 function escapeAttr(s: string): string {
   return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -522,5 +505,3 @@ function buildCellArcPath(innerR: number, outerR: number, startAngle: number, en
   const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
   return `M ${fmt(x1)} ${fmt(y1)} L ${fmt(x2)} ${fmt(y2)} A ${fmt(outerR)} ${fmt(outerR)} 0 ${largeArc} 1 ${fmt(x3)} ${fmt(y3)} L ${fmt(x4)} ${fmt(y4)} A ${fmt(innerR)} ${fmt(innerR)} 0 ${largeArc} 0 ${fmt(x1)} ${fmt(y1)} Z`;
 }
-
-

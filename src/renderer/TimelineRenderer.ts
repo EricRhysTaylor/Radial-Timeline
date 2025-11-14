@@ -8,7 +8,7 @@ import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_
 import type { TimelineItem } from '../types';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString, generateChronologicalTicks, calculateTimeSpan, durationSelectionToMs, parseDurationDetail, type ChronologicalTickInfo } from '../utils/date';
-import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
+import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize, splitIntoBalancedLines } from '../utils/text';
 import { 
     extractGradeFromScene, 
     getSceneState, 
@@ -341,9 +341,9 @@ function buildSynopsis(
     const contentLines = [
         scene.title || '',
         ...(isBeatNote(scene) && scene.Description
-            ? plugin.splitIntoBalancedLines(scene.Description, maxTextWidth)
+            ? splitIntoBalancedLines(scene.Description, maxTextWidth)
             : scene.synopsis
-            ? plugin.splitIntoBalancedLines(scene.synopsis, maxTextWidth)
+            ? splitIntoBalancedLines(scene.synopsis, maxTextWidth)
             : [])
     ];
     
@@ -1626,9 +1626,6 @@ export function createTimelineSVG(
                                 const adjustmentRange = maxAdjustment * 2;
                                 const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
                                 const adjustment = (position * adjustmentRange) - maxAdjustment;
-                                const plotColor = adjustment < 0 
-                                    ? plugin.darkenColor(maxStageColor, Math.abs(adjustment))
-                                    : plugin.lightenColor(maxStageColor, adjustment);
                                 const sceneId = `scene-path-${act}-${ring}-${idx}`;
                                 svg += renderBeatSlice({ act, ring, idx, innerR, outerR, startAngle: plotStartAngle, endAngle: plotEndAngle, sceneId, beat: plotNote });
                                 currentAngle += plotAngularWidth;
