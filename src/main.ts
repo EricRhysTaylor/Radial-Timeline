@@ -416,18 +416,15 @@ export default class RadialTimelinePlugin extends Plugin {
     }
     
     public async processSceneAnalysisByManuscriptOrder(): Promise<void> {
-        const { processByManuscriptOrder } = await import('./SceneAnalysisCommands');
-        await processByManuscriptOrder(this, this.app.vault);
+        await this.sceneAnalysisService.processByManuscriptOrder();
     }
 
     public async processSceneAnalysisBySubplotName(subplotName: string): Promise<void> {
-        const { processBySubplotNameWithModal } = await import('./SceneAnalysisCommands');
-        await processBySubplotNameWithModal(this, this.app.vault, subplotName);
+        await this.sceneAnalysisService.processBySubplotName(subplotName);
     }
 
     public async processEntireSubplot(subplotName: string): Promise<void> {
-        const { processEntireSubplotWithModal } = await import('./SceneAnalysisCommands');
-        await processEntireSubplotWithModal(this, this.app.vault, subplotName);
+        await this.sceneAnalysisService.processEntireSubplot(subplotName);
     }
     
     // Helper to activate the timeline view
@@ -479,70 +476,21 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         }
 
-        // One-time (idempotent) migration of legacy model IDs to canonical ones
         const before = JSON.stringify({
             anthropicModelId: this.settings.anthropicModelId,
             openaiModelId: this.settings.openaiModelId,
             geminiModelId: this.settings.geminiModelId,
         });
 
-        const normalize = (prov: 'anthropic'|'openai'|'gemini', id: string | undefined): string => {
-            if (!id) return id as unknown as string;
-            if (prov === 'anthropic') {
-                if (id === 'claude-4.1-opus' || id === 'claude-opus-4-1' || id === 'claude-3-opus-20240229' || id === 'claude-opus-4-0' || id === 'claude-opus-4-1@20250805') return 'claude-opus-4-1-20250805';
-                if (id === 'claude-4-sonnet' || id === 'claude-sonnet-4-1' || id === 'claude-3-7-sonnet-20250219' || id === 'claude-sonnet-4-0' || id === 'claude-sonnet-4-1@20250805') return 'claude-sonnet-4-20250514';
-                return id;
-            }
-            if (prov === 'openai') {
-                if (id === 'gpt-5' || id === 'o3' || id === 'gpt-4o') return 'gpt-4.1';
-                return id;
-            }
-            // gemini
-            if (id !== 'gemini-2.5-pro') return 'gemini-2.5-pro';
-            return id;
-        };
-
-        this.settings.anthropicModelId = normalize('anthropic', this.settings.anthropicModelId);
-        this.settings.openaiModelId = normalize('openai', this.settings.openaiModelId);
-        this.settings.geminiModelId = normalize('gemini', this.settings.geminiModelId);
+        this.settingsService.normalizeModelIds();
+        const templatesMigrated = await this.settingsService.migrateAiContextTemplates();
 
         const after = JSON.stringify({
             anthropicModelId: this.settings.anthropicModelId,
             openaiModelId: this.settings.openaiModelId,
             geminiModelId: this.settings.geminiModelId,
         });
-        
-        // AI Context Templates migration
-        let templatesMigrated = false;
-        const oldBuiltInIds = new Set(['generic-editor', 'ya-biopunk-scifi', 'adult-thriller', 'adult-romance']);
-        
-        if (!this.settings.aiContextTemplates || this.settings.aiContextTemplates.length === 0) {
-            this.settings.aiContextTemplates = DEFAULT_SETTINGS.aiContextTemplates;
-            templatesMigrated = true;
-        } else {
-            // Remove old built-in templates and ensure new ones exist
-            const builtInTemplates = DEFAULT_SETTINGS.aiContextTemplates!;
-            
-            // Remove old built-in templates
-            this.settings.aiContextTemplates = this.settings.aiContextTemplates.filter(template => 
-                !template.isBuiltIn || !oldBuiltInIds.has(template.id)
-            );
-            
-            // Add new built-in templates if missing
-            const existingIds = new Set(this.settings.aiContextTemplates.map(t => t.id));
-            for (const builtIn of builtInTemplates) {
-                if (!existingIds.has(builtIn.id)) {
-                    this.settings.aiContextTemplates.push(builtIn);
-                    templatesMigrated = true;
-                }
-            }
-        }
-        
-        if (!this.settings.activeAiContextTemplateId || oldBuiltInIds.has(this.settings.activeAiContextTemplateId)) {
-            this.settings.activeAiContextTemplateId = DEFAULT_SETTINGS.activeAiContextTemplateId;
-            templatesMigrated = true;
-        }
-        
+
         if (before !== after || templatesMigrated) {
             await this.saveSettings();
         }
@@ -564,100 +512,8 @@ export default class RadialTimelinePlugin extends Plugin {
         // For settings changes (file=null), use 0ms delay for immediate feedback
         // For file changes, use provided delay or default 400ms
         const effectiveDelay = file === null && delayMs === undefined ? 0 : (delayMs ?? 400);
-        this.timelineService.refreshTimelineIfNeeded(file, effectiveDelay);
-    }
-
-
-
-    // Add this function near the top of the class, after refreshTimelineIfNeeded 
-    // Add method to update open files tracking
-    private updateOpenFilesTracking() {
-        
-        // Store the previous state to check if it changed
-        const previousOpenFiles = new Set(this.openScenePaths);
-        
-        this.openScenePaths = new Set<string>();
-        
-        // Get all open leaves
-        const leaves = this.app.workspace.getLeavesOfType('markdown');
-        const openFilesList: string[] = []; // Add proper type
-        
-        // Collect the paths of all open markdown files
-        leaves.forEach(leaf => {
-            // Check if the view is a MarkdownView with a file
-            const view = leaf.view;
-            if (view instanceof MarkdownView && view.file) {
-                this.openScenePaths.add(view.file.path);
-                openFilesList.push(view.file.path);
-            }
-        });
-        
-        // Also check if there's an active file not in a leaf
-        const activeFile = this.app.workspace.getActiveFile();
-        if (activeFile && !openFilesList.includes(activeFile.path)) {
-            this.openScenePaths.add(activeFile.path);
-            openFilesList.push(activeFile.path);
-        }
-        
-        // Get all open tabs from the workspace layout
-        try {
-            // @ts-ignore - Use the workspace layout accessor which may not be fully typed
-            const layout = this.app.workspace.getLayout();
-            if (layout && layout.leaves) {
-                const leafIds = Object.keys(layout.leaves as Record<string, unknown>);
-                
-                // Try to find any additional file paths from the layout
-                leafIds.forEach(id => {
-                    // @ts-ignore - Access the layout structure which may not be fully typed
-                    const leafData = layout.leaves[id];
-                    if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
-                        const filePath = leafData.state.file;
-                        if (!openFilesList.includes(filePath)) {
-                            this.openScenePaths.add(filePath);
-                            openFilesList.push(filePath);
-                        }
-                    }
-                });
-            }
-        } catch (e) {
-            console.error("Error accessing workspace layout:", e);
-        }
-        
-        
-        // Check if the open files have changed
-        let hasChanged = false;
-        
-        // Different size means something changed
-        if (previousOpenFiles.size !== this.openScenePaths.size) {
-            hasChanged = true;
-        } else {
-            // Check if any files were added or removed
-            const addedFiles = [];
-            const removedFiles = [];
-            
-            for (const path of previousOpenFiles) {
-                if (!this.openScenePaths.has(path)) {
-                    removedFiles.push(path);
-                    hasChanged = true;
-                }
-            }
-            
-                for (const path of this.openScenePaths) {
-                    if (!previousOpenFiles.has(path)) {
-                    addedFiles.push(path);
-                        hasChanged = true;
-                }
-            }
-            
-            // Track file changes (removed diagnostic logs)
-        }
-        
-        // Update the UI if something changed
-        if (hasChanged) {
-            // Debounced refresh for all open views
-            this.refreshTimelineIfNeeded(null);
-        }
-    }
+		this.timelineService.refreshTimelineIfNeeded(file, effectiveDelay);
+	}
 
     // Search related methods
     public openSearchPrompt(): void { this.searchService.openSearchPrompt(); }

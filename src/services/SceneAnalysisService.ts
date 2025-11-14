@@ -124,6 +124,21 @@ export class SceneAnalysisService {
         if (modelId.includes('o1')) return 'GPT-o1';
         return modelId;
     }
+
+    async processByManuscriptOrder(): Promise<void> {
+        const { processByManuscriptOrder } = await import('../SceneAnalysisCommands');
+        await processByManuscriptOrder(this.plugin, this.plugin.app.vault);
+    }
+
+    async processBySubplotName(subplotName: string): Promise<void> {
+        const { processBySubplotNameWithModal } = await import('../SceneAnalysisCommands');
+        await processBySubplotNameWithModal(this.plugin, this.plugin.app.vault, subplotName);
+    }
+
+    async processEntireSubplot(subplotName: string): Promise<void> {
+        const { processEntireSubplotWithModal } = await import('../SceneAnalysisCommands');
+        await processEntireSubplotWithModal(this.plugin, this.plugin.app.vault, subplotName);
+    }
 }
 
 class SubplotPickerModal extends Modal {
@@ -238,4 +253,5 @@ class SubplotPickerModal extends Modal {
             this.statsEl.setText('Unable to calculate scene count');
         }
     }
+
 }

@@ -1,28 +1,64 @@
 import type RadialTimelinePlugin from '../main';
-import { TFile, TAbstractFile } from 'obsidian';
+import { TFile, TAbstractFile, MarkdownView } from 'obsidian';
 
 export class FileTrackingService {
     constructor(private plugin: RadialTimelinePlugin) {}
 
     updateOpenFilesTracking(): void {
+        const previousOpenFiles = new Set(this.plugin.openScenePaths);
         const openFilePaths = new Set<string>();
-        this.plugin.app.workspace.iterateAllLeaves((leaf) => {
-            const file = (leaf as any).view?.file as TFile | undefined;
-            if (file && file.path) openFilePaths.add(file.path);
+        const openFilesList: string[] = [];
+
+        const leaves = this.plugin.app.workspace.getLeavesOfType('markdown');
+        leaves.forEach(leaf => {
+            const view = leaf.view;
+            if (view instanceof MarkdownView && view.file) {
+                openFilePaths.add(view.file.path);
+                openFilesList.push(view.file.path);
+            }
         });
 
-        let changed = false;
-        if (openFilePaths.size !== this.plugin.openScenePaths.size) changed = true;
-        else {
-            for (const p of openFilePaths) { if (!this.plugin.openScenePaths.has(p)) { changed = true; break; } }
-        }
-        if (!changed) {
-            return;
+        const activeFile = this.plugin.app.workspace.getActiveFile();
+        if (activeFile && !openFilesList.includes(activeFile.path)) {
+            openFilePaths.add(activeFile.path);
+            openFilesList.push(activeFile.path);
         }
 
+        try {
+            // @ts-ignore - access workspace layout internals
+            const layout = this.plugin.app.workspace.getLayout();
+            if (layout && layout.leaves) {
+                const leafIds = Object.keys(layout.leaves as Record<string, unknown>);
+                leafIds.forEach(id => {
+                    // @ts-ignore - layout leaf typing
+                    const leafData = layout.leaves[id];
+                    if (leafData && leafData.type === 'markdown' && leafData.state && leafData.state.file) {
+                        const filePath = leafData.state.file;
+                        if (!openFilesList.includes(filePath)) {
+                            openFilePaths.add(filePath);
+                            openFilesList.push(filePath);
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('[Radial Timeline] Error accessing workspace layout:', error);
+        }
+
+        let hasChanged = previousOpenFiles.size !== openFilePaths.size;
+        if (!hasChanged) {
+            for (const path of openFilePaths) {
+                if (!previousOpenFiles.has(path)) {
+                    hasChanged = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hasChanged) return;
+
         this.plugin.openScenePaths = openFilePaths;
-        const views = this.plugin.getTimelineViews();
-        views.forEach(v => v.refreshTimeline());
+        this.plugin.getTimelineViews().forEach(v => v.refreshTimeline());
     }
 
     registerWorkspaceListeners(): void {
