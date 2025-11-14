@@ -45,11 +45,22 @@ export class SceneAnalysisService {
                 if (checking) return true;
                 (async () => {
                     if (!this.ensureApiKey()) return;
-                    new SubplotPickerModal(this.plugin.app, this.plugin, this).open();
+                    const options = await this.getSubplotOptions();
+                    new SubplotPickerModal(this.plugin.app, this, options).open();
                 })();
                 return true;
             }
         });
+    }
+
+    async getSubplotOptions(): Promise<Array<{ name: string; stats: { flagged: number; processable: number; total: number } }>> {
+        const { getDistinctSubplotNames } = await import('../SceneAnalysisCommands');
+        const names = await getDistinctSubplotNames(this.plugin, this.plugin.app.vault);
+        if (!Array.isArray(names) || names.length === 0) {
+            throw new Error('No subplots found.');
+        }
+        const stats = await Promise.all(names.map(name => this.countProcessableScenes(name)));
+        return names.map((name, index) => ({ name, stats: stats[index] }));
     }
 
     private ensureApiKey(): boolean {
@@ -139,24 +150,33 @@ export class SceneAnalysisService {
         const { processEntireSubplotWithModal } = await import('../SceneAnalysisCommands');
         await processEntireSubplotWithModal(this.plugin, this.plugin.app.vault, subplotName);
     }
+
+    async purgeBeatsForSubplot(subplotName: string): Promise<void> {
+        const { purgeBeatsBySubplotName } = await import('../SceneAnalysisCommands');
+        await purgeBeatsBySubplotName(this.plugin, this.plugin.app.vault, subplotName);
+    }
 }
 
 class SubplotPickerModal extends Modal {
-    private choices: string[] = [];
-    private selectedSubplot = '';
+    private selectedSubplot: string;
     private statsEl: HTMLElement | null = null;
     private dropdown: DropdownComponent | null = null;
-    private buttonRow: HTMLElement | null = null;
+    private readonly statsBySubplot: Map<string, { flagged: number; processable: number; total: number }>;
 
     constructor(
         app: App,
-        private plugin: RadialTimelinePlugin,
-        private service: SceneAnalysisService
+        private service: SceneAnalysisService,
+        private readonly options: Array<{ name: string; stats: { flagged: number; processable: number; total: number } }>
     ) {
         super(app);
+        if (!options.length) {
+            throw new Error('No subplot options available.');
+        }
+        this.selectedSubplot = options[0].name;
+        this.statsBySubplot = new Map(options.map(opt => [opt.name, opt.stats]));
     }
 
-    async onOpen(): Promise<void> {
+    onOpen(): void {
         const { contentEl, titleEl } = this;
         titleEl.setText('Select subplot for beats processing');
         const modelName = this.service.getActiveModelName();
@@ -166,92 +186,58 @@ class SubplotPickerModal extends Modal {
         const selectContainer = contentEl.createDiv({ cls: 'rt-subplot-picker-select' });
         selectContainer.createEl('label', { text: 'Select subplot:', cls: 'rt-subplot-picker-label' });
         this.dropdown = new DropdownComponent(selectContainer);
-        this.dropdown.addOption('', 'Loading subplots...');
-        this.dropdown.setDisabled(true);
+        this.options.forEach((option, index) => {
+            this.dropdown?.addOption(option.name, `${index + 1}. ${option.name}`);
+        });
+        this.dropdown.setValue(this.selectedSubplot);
+        this.dropdown.onChange(value => {
+            this.selectedSubplot = value;
+            this.updateStats(value);
+        });
 
         this.statsEl = contentEl.createDiv({ cls: 'rt-subplot-picker-stats' });
-        this.statsEl.setText('Loading...');
+        this.updateStats(this.selectedSubplot);
 
-        this.buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
-        const processButton = new ButtonComponent(this.buttonRow)
+        const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
+        new ButtonComponent(buttonRow)
             .setButtonText('Process beats')
             .setCta()
-            .setDisabled(true)
             .onClick(async () => {
                 this.close();
                 await this.service.processBySubplotName(this.selectedSubplot);
             });
 
-        const processEntireButton = new ButtonComponent(this.buttonRow)
+        new ButtonComponent(buttonRow)
             .setButtonText('Process entire subplot')
             .setCta()
-            .setDisabled(true)
             .onClick(async () => {
                 this.close();
                 await this.service.processEntireSubplot(this.selectedSubplot);
             });
 
-        const purgeButton = new ButtonComponent(this.buttonRow)
+        new ButtonComponent(buttonRow)
             .setButtonText('Purge all beats')
             .setWarning()
-            .setDisabled(true)
             .onClick(async () => {
                 try {
-                    const { purgeBeatsBySubplotName } = await import('../SceneAnalysisCommands');
                     this.close();
-                    await purgeBeatsBySubplotName(this.plugin, this.plugin.app.vault, this.selectedSubplot);
+                    await this.service.purgeBeatsForSubplot(this.selectedSubplot);
                 } catch (error) {
                     new Notice(`Error: ${error instanceof Error ? error.message : String(error)}`);
                 }
             });
 
-        new ButtonComponent(this.buttonRow)
+        new ButtonComponent(buttonRow)
             .setButtonText('Cancel')
             .onClick(() => this.close());
-
-        try {
-            const { getDistinctSubplotNames } = await import('../SceneAnalysisCommands');
-            const names = await getDistinctSubplotNames(this.plugin, this.plugin.app.vault);
-            if (names.length === 0) {
-                new Notice('No subplots found.');
-                this.close();
-                return;
-            }
-            this.choices = names;
-            this.selectedSubplot = names[0];
-
-            if (this.dropdown) {
-                this.dropdown.selectEl.empty();
-                names.forEach((name, index) => {
-                    this.dropdown?.addOption(name, `${index + 1}. ${name}`);
-                });
-                this.dropdown.setValue(this.selectedSubplot);
-                this.dropdown.setDisabled(false);
-                this.dropdown.onChange(async (value) => {
-                    this.selectedSubplot = value;
-                    await this.updateStats(value);
-                });
-            }
-
-            processButton.setDisabled(false);
-            processEntireButton.setDisabled(false);
-            purgeButton.setDisabled(false);
-
-            await this.updateStats(this.selectedSubplot);
-        } catch (error) {
-            new Notice(`Error loading subplots: ${error instanceof Error ? error.message : String(error)}`);
-            this.close();
-        }
     }
 
-    private async updateStats(subplotName: string): Promise<void> {
+    private updateStats(subplotName: string): void {
         if (!this.statsEl) return;
-        try {
-            const stats = await this.service.countProcessableScenes(subplotName);
-            this.statsEl.setText(`${stats.flagged} scene${stats.flagged !== 1 ? 's' : ''} will be processed (${stats.processable} processable, ${stats.total} total)`);
-        } catch (error) {
-            this.statsEl.setText('Unable to calculate scene count');
+        const stats = this.statsBySubplot.get(subplotName);
+        if (!stats) {
+            throw new Error(`Unknown subplot selection: ${subplotName}`);
         }
+        this.statsEl.setText(`${stats.flagged} scene${stats.flagged !== 1 ? 's' : ''} will be processed (${stats.processable} processable, ${stats.total} total)`);
     }
-
 }
