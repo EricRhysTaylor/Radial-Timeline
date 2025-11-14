@@ -16,18 +16,20 @@ import { createTimelineSVG, adjustBeatLabelsAfterRender } from './renderer/Timel
 import { RadialTimelineView } from './view/TimeLineView';
 import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
-import { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 import { ReleaseNotesModal } from './modals/ReleaseNotesModal';
-import { shiftGossamerHistory } from './utils/gossamer';
-import { normalizeFrontmatterKeys } from './utils/frontmatter';
 import { parseSceneTitle } from './utils/text';
 import { parseWhenField } from './utils/date';
-import { isStoryBeat, isBeatNote, normalizeBooleanValue } from './utils/sceneHelpers';
+import { isBeatNote, normalizeBooleanValue } from './utils/sceneHelpers';
 import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
 import { HoverHighlighter } from './services/HoverHighlighter';
 import { SceneHighlighter } from './services/SceneHighlighter';
+import { GossamerScoreService } from './services/GossamerScoreService';
+import { SceneAnalysisService } from './services/SceneAnalysisService';
+import { StatusBarService } from './services/StatusBarService';
+import { BeatsProcessingService } from './services/BeatsProcessingService';
+import type { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 
 
 // Declare the variable that will be injected by the build process
@@ -282,6 +284,10 @@ export default class RadialTimelinePlugin extends Plugin {
     private releaseNotesService!: ReleaseNotesService;
     private commandRegistrar!: CommandRegistrar;
     private sceneHighlighter!: SceneHighlighter;
+    private gossamerScoreService!: GossamerScoreService;
+    private sceneAnalysisService!: SceneAnalysisService;
+    private statusBarService!: StatusBarService;
+    private beatsProcessingService!: BeatsProcessingService;
     public lastSceneData?: TimelineItem[];
     
     // Completion estimate stats
@@ -298,7 +304,6 @@ export default class RadialTimelinePlugin extends Plugin {
     
     // Track active scene analysis processing modal and status bar item
     public activeBeatsModal: SceneAnalysisProcessingModal | null = null;
-    private beatsStatusBarItem: HTMLElement | null = null;
 
     // Helper: get all currently open timeline views
     public getTimelineViews(): RadialTimelineView[] { return this.timelineService.getTimelineViews(); }
@@ -468,6 +473,10 @@ export default class RadialTimelinePlugin extends Plugin {
         this.synopsisManager = new SynopsisManager(this);
         this.commandRegistrar = new CommandRegistrar(this, this.app);
         this.sceneHighlighter = new SceneHighlighter(this);
+        this.gossamerScoreService = new GossamerScoreService(this.app, this);
+        this.sceneAnalysisService = new SceneAnalysisService(this);
+        this.statusBarService = new StatusBarService(this);
+        this.beatsProcessingService = new BeatsProcessingService(this);
 
         // CSS variables for publish stage colors are set once on layout ready
         
@@ -481,6 +490,7 @@ export default class RadialTimelinePlugin extends Plugin {
         
         // Register ribbon + commands
         this.commandRegistrar.registerAll();
+        this.sceneAnalysisService.registerCommands();
 
         // Add settings tab (only once)
         if (!this._settingsTabAdded) {
@@ -497,290 +507,6 @@ export default class RadialTimelinePlugin extends Plugin {
         
         // Track workspace layout changes to update our view
         // (layout-change listener consolidated below at line ~949)
-
-        // Helper: Get active AI model name for display
-        const getActiveModelName = (): string => {
-            const provider = this.settings.defaultAiProvider || 'openai';
-            let modelName = 'Unknown';
-            
-            if (provider === 'anthropic') {
-                const modelId = this.settings.anthropicModelId || 'claude-sonnet-4-20250514';
-                if (modelId.includes('sonnet-4-5') || modelId.includes('sonnet-4.5')) modelName = 'Claude Sonnet 4.5';
-                else if (modelId.includes('opus-4-1') || modelId.includes('opus-4.1')) modelName = 'Claude Opus 4.1';
-                else if (modelId.includes('opus-4')) modelName = 'Claude Opus 4';
-                else if (modelId.includes('sonnet-4')) modelName = 'Claude Sonnet 4';
-                else modelName = modelId;
-            } else if (provider === 'gemini') {
-                const modelId = this.settings.geminiModelId || 'gemini-2.5-pro';
-                if (modelId.includes('2.5-pro') || modelId.includes('2-5-pro')) modelName = 'Gemini 2.5 Pro';
-                else if (modelId.includes('2.0-pro') || modelId.includes('2-0-pro')) modelName = 'Gemini 2.0 Pro';
-                else modelName = modelId;
-            } else if (provider === 'openai') {
-                const modelId = this.settings.openaiModelId || 'gpt-4o';
-                if (modelId.includes('4.1') || modelId.includes('4-1')) modelName = 'GPT-4.1';
-                else if (modelId.includes('4o')) modelName = 'GPT-4o';
-                else if (modelId.includes('o1')) modelName = 'GPT-o1';
-                else modelName = modelId;
-            }
-            
-            return modelName;
-        };
-
-        // Helper: Count processable scenes (Working or Complete status) and flagged scenes (Beats Update = True)
-        const countProcessableScenes = async (subplotName?: string): Promise<{ flagged: number; processable: number; total: number }> => {
-            try {
-                // For subplot counting, use a more efficient approach that doesn't load all scene data
-                if (subplotName) {
-                    // Use the same efficient method as the beats processing
-                    const allScenes = await this.getSceneData();
-                    const filtered = allScenes.filter(scene => {
-                        const subplots = scene.subplot ? 
-                            (Array.isArray(scene.subplot) ? scene.subplot : [scene.subplot]) : [];
-                        return subplots.includes(subplotName);
-                    });
-                    
-                    const validScenes = filtered.filter(scene => {
-                        const beatsUpdate = scene["Beats Update"];
-                        const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
-                        return (statusValue === 'Working' || statusValue === 'Complete') && 
-                               normalizeBooleanValue(beatsUpdate);
-                    });
-                    
-                    const processableScenes = filtered.filter(scene => {
-                        const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
-                        return statusValue === 'Working' || statusValue === 'Complete';
-                    });
-                    
-                    return {
-                        flagged: validScenes.length,
-                        processable: processableScenes.length,
-                        total: filtered.length
-                    };
-                } else {
-                    // For manuscript order, use the original approach
-                    const allScenes = await this.getSceneData();
-                    
-                    // Normalize boolean value (handle Yes/True/1/true)
-                    const normalizeBool = (val: unknown): boolean => {
-                        if (typeof val === 'boolean') return val;
-                        if (typeof val === 'number') return val !== 0;
-                        if (typeof val === 'string') {
-                            const lower = val.toLowerCase().trim();
-                            return lower === 'yes' || lower === 'true' || lower === '1';
-                        }
-                        return false;
-                    };
-                    
-                    // Count scenes with processable content (Working or Complete status)
-                    const processableScenes = allScenes.filter(scene => {
-                        const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
-                        return statusValue === 'Working' || statusValue === 'Complete';
-                    });
-                    
-                    // Count scenes that are both processable AND flagged for beats processing
-                    const flaggedCount = processableScenes.filter(scene => {
-                        return normalizeBool(scene["Beats Update"]);
-                    }).length;
-                    
-                    return {
-                        flagged: flaggedCount,
-                        processable: processableScenes.length,
-                        total: allScenes.length
-                    };
-                }
-            } catch (error) {
-                return { flagged: 0, processable: 0, total: 0 };
-            }
-        };
-
-        // 5. Scene Analysis (manuscript order)
-        this.addCommand({
-            id: 'update-beats-manuscript-order',
-            name: 'Scene Analysis (manuscript order)',
-            checkCallback: (checking: boolean) => {
-                if (!this.settings.enableAiSceneAnalysis) return false; // hide when disabled
-                if (checking) return true;
-                (async () => {
-                // If there's already an active processing modal, just reopen it
-                if (this.activeBeatsModal && this.activeBeatsModal.isProcessing) {
-                    this.activeBeatsModal.open();
-                    return;
-                }
-                
-                const provider = this.settings.defaultAiProvider || 'openai';
-                let hasKey = true;
-                if (provider === 'anthropic') {
-                    hasKey = !!this.settings.anthropicApiKey?.trim();
-                    if (!hasKey) { new Notice('Anthropic API key is not set in settings.'); return; }
-                } else if (provider === 'gemini') {
-                    hasKey = !!this.settings.geminiApiKey?.trim();
-                    if (!hasKey) { new Notice('Gemini API key is not set in settings.'); return; }
-                } else {
-                    hasKey = !!this.settings.openaiApiKey?.trim();
-                    if (!hasKey) { new Notice('OpenAI API key is not set in settings.'); return; }
-                }
-
-                try {
-                     await this.processSceneAnalysisByManuscriptOrder();
-                } catch (error) {
-                    console.error("Error running manuscript order beat update:", error);
-                    new Notice("Error during manuscript order update.");
-                }
-                })();
-                return true;
-            }
-        });
-
-        // 6. Scene Analysis (subplot)
-        this.addCommand({
-            id: 'update-beats-choose-subplot',
-            name: 'Scene Analysis (subplot order)',
-            checkCallback: (checking: boolean) => {
-                if (!this.settings.enableAiSceneAnalysis) return false;
-                if (checking) return true;
-                (async () => {
-                    // Simple provider key check like other commands
-                    const provider = this.settings.defaultAiProvider || 'openai';
-                    let hasKey = true;
-                    if (provider === 'anthropic') hasKey = !!this.settings.anthropicApiKey?.trim();
-                    else if (provider === 'gemini') hasKey = !!this.settings.geminiApiKey?.trim();
-                    else hasKey = !!this.settings.openaiApiKey?.trim();
-                    if (!hasKey) { new Notice(`${provider[0].toUpperCase()+provider.slice(1)} API key is not set in settings.`); return; }
-
-                    // Create a modal for subplot selection with action buttons
-                    class SubplotPickerModal extends Modal {
-                        plugin: RadialTimelinePlugin;
-                        choices: string[] = [];
-                        selectedSubplot: string = '';
-                        statsEl: HTMLElement | null = null;
-                        dropdown: DropdownComponent | null = null;
-                        buttonRow: HTMLElement | null = null;
-                        
-                        constructor(app: App, plugin: RadialTimelinePlugin) {
-                            super(app);
-                            this.plugin = plugin;
-                        }
-                        
-                        async updateStats(subplotName: string): Promise<void> {
-                            if (!this.statsEl) return;
-                            
-                            try {
-                                const stats = await countProcessableScenes(subplotName);
-                                this.statsEl.setText(`${stats.flagged} scene${stats.flagged !== 1 ? 's' : ''} will be processed (${stats.processable} processable, ${stats.total} total)`);
-                            } catch (error) {
-                                this.statsEl.setText('Unable to calculate scene count');
-                            }
-                        }
-                        
-                        async onOpen(): Promise<void> {
-                            const { contentEl, titleEl } = this;
-                            titleEl.setText('Select subplot for beats processing');
-                            
-                            // Get model name using common helper
-                            const modelName = getActiveModelName();
-                            
-                            const infoEl = contentEl.createDiv({ cls: 'rt-subplot-picker-info' });
-                            infoEl.createEl('p', { text: `Process beats using ${modelName}` });
-                            
-                            // Dropdown for subplot selection with better spacing
-                            const selectContainer = contentEl.createDiv({ cls: 'rt-subplot-picker-select' });
-                            selectContainer.createEl('label', { text: 'Select subplot:', cls: 'rt-subplot-picker-label' });
-                            this.dropdown = new DropdownComponent(selectContainer);
-                            this.dropdown.addOption('', 'Loading subplots...');
-                            this.dropdown.setDisabled(true);
-                            
-                            // Stats display
-                            this.statsEl = contentEl.createDiv({ cls: 'rt-subplot-picker-stats' });
-                            this.statsEl.setText('Loading...');
-                            
-                            // Action buttons
-                            this.buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
-                            
-                            const processButton = new ButtonComponent(this.buttonRow)
-                                .setButtonText('Process beats')
-                                .setCta()
-                                .setDisabled(true)
-                                .onClick(async () => {
-                                    this.close();
-                                    await this.plugin.processSceneAnalysisBySubplotName(this.selectedSubplot);
-                                });
-                            
-                            const processEntireButton = new ButtonComponent(this.buttonRow)
-                                .setButtonText('Process entire subplot')
-                                .setCta()
-                                .setDisabled(true)
-                                .onClick(async () => {
-                                    this.close();
-                                    await this.plugin.processEntireSubplot(this.selectedSubplot);
-                                });
-                            
-                            const purgeButton = new ButtonComponent(this.buttonRow)
-                                .setButtonText('Purge all beats')
-                                .setWarning()
-                                .setDisabled(true)
-                                .onClick(async () => {
-                                    try {
-                                        const { purgeBeatsBySubplotName } = await import('./SceneAnalysisCommands');
-                                        this.close();
-                                        await purgeBeatsBySubplotName(this.plugin, this.plugin.app.vault, this.selectedSubplot);
-                                    } catch (error) {
-                                        new Notice(`Error: ${error instanceof Error ? error.message : String(error)}`);
-                                    }
-                                });
-                            
-                            new ButtonComponent(this.buttonRow)
-                                .setButtonText('Cancel')
-                                .onClick(() => this.close());
-                            
-                            // Load subplots asynchronously after modal is shown
-                            try {
-                                const names = await (await import('./SceneAnalysisCommands')).getDistinctSubplotNames(this.plugin, this.plugin.app.vault);
-                                if (names.length === 0) {
-                                    new Notice('No subplots found.');
-                                    this.close();
-                                    return;
-                                }
-                                
-                                this.choices = names;
-                                this.selectedSubplot = names[0];
-                                
-                                // Update dropdown with actual subplot names
-                                if (this.dropdown) {
-                                    // Clear loading option
-                                    this.dropdown.selectEl.empty();
-                                    
-                                    // Add actual subplots
-                                    names.forEach((name, index) => {
-                                        this.dropdown?.addOption(name, `${index + 1}. ${name}`);
-                                    });
-                                    
-                                    this.dropdown.setValue(this.selectedSubplot);
-                                    this.dropdown.setDisabled(false);
-                                    this.dropdown.onChange(async (value) => {
-                                        this.selectedSubplot = value;
-                                        await this.updateStats(value);
-                                    });
-                                }
-                                
-                                // Enable buttons
-                                processButton.setDisabled(false);
-                                processEntireButton.setDisabled(false);
-                                purgeButton.setDisabled(false);
-                                
-                                // Update stats for initial selection
-                                await this.updateStats(this.selectedSubplot);
-                            } catch (error) {
-                                new Notice(`Error loading subplots: ${error instanceof Error ? error.message : String(error)}`);
-                                this.close();
-                            }
-                        }
-                    }
-
-                    new SubplotPickerModal(this.app, this).open();
-                })();
-                return true;
-            }
-        });
 
         // 7. Create template note
         this.addCommand({
@@ -838,8 +564,8 @@ export default class RadialTimelinePlugin extends Plugin {
         // Setup hover listeners
         new HoverHighlighter(this.app, this, this.sceneHighlighter).register();
 
-        // Initial status bar update
-        this.updateStatusBar();
+        // Initial status bar update (placeholder for future stats)
+        // this.statusBarService.update(...);
     }
     public getRendererService(): RendererService { return this.rendererService; }
     
@@ -1670,7 +1396,7 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         };
     }
 
-    private handleFileRename(file: TAbstractFile, oldPath: string): void {
+    public handleFileRename(file: TAbstractFile, oldPath: string): void {
         if (this.openScenePaths.has(oldPath)) {
             this.openScenePaths.delete(oldPath);
             if (file instanceof TFile && this.sceneHighlighter.isSceneFile(file.path)) {
@@ -1681,112 +1407,22 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         this.refreshTimelineIfNeeded(file);
     }
 
-    // Method to update status bar items if needed
-    private updateStatusBar(): void {
-        // ... (update logic using latestTotalScenes, etc.) ...
-    }
-
     /**
      * Show status bar item with beats processing progress
      */
     showBeatsStatusBar(current: number, total: number): void {
-        if (!this.beatsStatusBarItem) {
-            this.beatsStatusBarItem = this.addStatusBarItem();
-            this.beatsStatusBarItem.addClass('rt-beats-status-bar');
-            // Make it clickable to reopen the modal
-            this.registerDomEvent(this.beatsStatusBarItem, 'click', () => {
-                if (this.activeBeatsModal) {
-                    this.activeBeatsModal.open();
-                }
-            });
-            this.beatsStatusBarItem.style.cursor = 'pointer';
-            this.beatsStatusBarItem.title = 'Click to view progress';
-        }
-        
-        const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
-        this.beatsStatusBarItem.setText(`Scene beats: ${current}/${total} (${percentage}%)`);
+        this.beatsProcessingService.showStatus(current, total);
     }
     
     /**
      * Hide and remove status bar item when processing completes
      */
     hideBeatsStatusBar(): void {
-        if (this.beatsStatusBarItem) {
-            this.beatsStatusBarItem.remove();
-            this.beatsStatusBarItem = null;
-        }
+        this.beatsProcessingService.hideStatus();
     }
 
-    /**
-     * Save Gossamer scores to Beat notes with history shifting
-     */
     async saveGossamerScores(scores: Map<string, number>): Promise<void> {
-        // Get files from source path only
-        const sourcePath = this.settings.sourcePath || '';
-        const allFiles = this.app.vault.getMarkdownFiles();
-        const files = sourcePath 
-            ? allFiles.filter(f => f.path.startsWith(sourcePath))
-            : allFiles;
-        
-        let updateCount = 0;
-        
-        for (const [beatTitle, newScore] of scores) {
-            // Find Beat note by title
-            let file: TFile | null = null;
-            
-            for (const f of files) {
-                const cache = this.app.metadataCache.getFileCache(f);
-                const rawFm = cache?.frontmatter;
-                const fm = rawFm ? normalizeFrontmatterKeys(rawFm) : undefined;
-                // Supports both "Class: Plot" (legacy) and "Class: Beat" (recommended)
-                if (fm && isStoryBeat(fm.Class)) {
-                    // Try multiple matching strategies
-                    const filename = f.basename;
-                    const titleMatch = filename === beatTitle || 
-                                     filename === beatTitle.replace(/^\d+\s+/, '') ||
-                                     filename.toLowerCase() === beatTitle.toLowerCase() ||
-                                     filename.toLowerCase().replace(/[-\s]/g, '') === beatTitle.toLowerCase().replace(/[-\s]/g, '');
-                    
-                    if (titleMatch) {
-                        file = f;
-                        break;
-                    }
-                }
-            }
-            
-            if (!file) {
-                continue;
-            }
-            
-            try {
-                await this.app.fileManager.processFrontMatter(file, (yaml) => {
-                    const fm = yaml as Record<string, any>;
-                    
-                    // Shift history down (Gossamer1 → Gossamer2, etc.)
-                    const shifted = shiftGossamerHistory(fm);
-                    Object.assign(fm, shifted);
-                    
-                    // Set new score
-                    fm.Gossamer1 = newScore;
-                    
-                    // Clean up old/deprecated fields
-                    delete fm.GossamerLocation;
-                    delete fm.GossamerNote;
-                    delete fm.GossamerRuns;
-                    delete fm.GossamerLatestRun;
-                });
-                
-                updateCount++;
-            } catch (e) {
-                console.error(`[Gossamer] Failed to update beat ${beatTitle}:`, e);
-            }
-        }
-        
-        if (updateCount > 0) {
-            new Notice(`Updated ${updateCount} beat score${updateCount > 1 ? 's' : ''}.`);
-        } else {
-            new Notice('No beats were updated.');
-        }
+        await this.gossamerScoreService.saveScores(scores);
     }
 
     onunload() {

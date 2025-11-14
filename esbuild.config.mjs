@@ -21,7 +21,7 @@ try {
 	readmeContent = fs.readFileSync(readmePath, 'utf-8');
 	// console.log('Read README.md for embedding.'); // Suppressed for cleaner build output
 } catch (err) {
-	console.error('Failed to read README.md for embedding:', err);
+	logErrorDetails('Failed to read README.md for embedding:', err);
 	readmeContent = 'Error: Could not load README content.'; // Fallback content
 }
 // --- Read README content --- END ---
@@ -32,7 +32,7 @@ let releaseNotesContent = '';
 try {
 	releaseNotesContent = fs.readFileSync(releaseNotesPath, 'utf-8');
 } catch (err) {
-	console.error('Failed to read src/data/releaseNotesBundle.json for embedding:', err);
+	logErrorDetails('Failed to read src/data/releaseNotesBundle.json for embedding:', err);
 	releaseNotesContent = JSON.stringify({
 		body: 'Release notes are unavailable. Visit the GitHub release page for full details.'
 	});
@@ -41,6 +41,40 @@ try {
 // Define source and destination paths
 const sourceDir = ".";
 let destDirs = [];
+
+function logErrorDetails(context, err) {
+	console.error(context);
+	console.error('  err:', err);
+	console.error('  err.code:', err?.code ?? 'n/a');
+	console.error('  err.path:', err?.path ?? 'n/a');
+	const esbuildErrors = err?.errors;
+	if (Array.isArray(esbuildErrors)) {
+		esbuildErrors.forEach((esErr, index) => {
+			console.error(`  err.errors[${index}]:`, esErr);
+			if (esErr?.detail) {
+				console.error(`    detail.code: ${esErr.detail.code ?? 'n/a'}`);
+				console.error(`    detail.path: ${esErr.detail.path ?? 'n/a'}`);
+			}
+		});
+	} else if (esbuildErrors) {
+		console.error('  err.errors:', esbuildErrors);
+	}
+}
+
+function verifyWritableDir(dir) {
+	try {
+		if (!fs.existsSync(dir)) {
+			fs.mkdirSync(dir, { recursive: true });
+		}
+		const testFilePath = path.join(dir, '.codex-write-test');
+		fs.writeFileSync(testFilePath, 'write-test');
+		fs.unlinkSync(testFilePath);
+		return true;
+	} catch (err) {
+		logErrorDetails(`Unable to verify write access to ${dir}`, err);
+		return false;
+	}
+}
 
 // Use a relative output directory when running in CI
 if (isCI) {
@@ -55,6 +89,8 @@ if (isCI) {
 	];
 }
 
+destDirs.forEach(dir => verifyWritableDir(dir));
+
 // Files to copy from src/ (in addition to the built JS)
 const filesToCopy = [
 	"manifest.json",
@@ -66,8 +102,13 @@ const filesToCopy = [
 async function copyBuildAssets() {
 	for (const destDir of destDirs) {
 		// Ensure the destination directory exists
-		if (!fs.existsSync(destDir)) {
-			fs.mkdirSync(destDir, { recursive: true });
+		try {
+			if (!fs.existsSync(destDir)) {
+				fs.mkdirSync(destDir, { recursive: true });
+			}
+		} catch (err) {
+			logErrorDetails(`Error ensuring destination directory ${destDir}`, err);
+			continue;
 		}
 		
 		// --- Copy individual files from src/ ---
@@ -86,7 +127,7 @@ async function copyBuildAssets() {
 					// Copy the file
 					fs.copyFileSync(sourcePath, destPath);
 				} catch (err) {
-					console.error(`Error copying ${file} to ${destDir}:`, err);
+					logErrorDetails(`Error copying ${file} to ${destDir}:`, err);
 				}
 			} else {
 				console.warn(`Warning: ${sourcePath} does not exist, skipping.`);
@@ -100,7 +141,7 @@ async function copyBuildAssets() {
 				try {
 					fs.copyFileSync(mainJsPath, path.join(destDir, "main.js"));
 				} catch (err) {
-					console.error(`Error copying main.js to ${destDir}:`, err);
+					logErrorDetails(`Error copying main.js to ${destDir}:`, err);
 				}
 			}
 		}
@@ -113,7 +154,7 @@ async function copyBuildAssets() {
 			fs.copyFileSync(srcManifest, path.join(sourceDir, "manifest.json"));
 		}
 	} catch (err) {
-		console.error("Error syncing manifest.json to project root:", err);
+		logErrorDetails("Error syncing manifest.json to project root:", err);
 	}
 	
 	// Note: Release files are now maintained in the release/ folder
@@ -158,12 +199,22 @@ const context = await esbuild.context({
 });
 
 if (prod) {
-	await context.rebuild();
+	try {
+		await context.rebuild();
+	} catch (err) {
+		logErrorDetails('esbuild production rebuild failed:', err);
+		throw err;
+	}
 	await copyBuildAssets();
 	console.log("Production build complete!");
 	await context.dispose(); // Gracefully dispose of the context
 } else {
-	await context.watch();
+	try {
+		await context.watch();
+	} catch (err) {
+		logErrorDetails('Failed to start esbuild watch mode:', err);
+		throw err;
+	}
 	// Copy files initially
 	await copyBuildAssets();
 	console.log("Watching for changes...");
@@ -183,12 +234,12 @@ if (prod) {
 					try {
 						fs.copyFileSync(sourcePath, path.join(sourceDir, "manifest.json"));
 					} catch (e) {
-						console.error("Error syncing root manifest.json on change:", e);
+						logErrorDetails("Error syncing root manifest.json on change:", e);
 					}
 				}
 				console.log(`Files updated in all destination directories`);
 			} catch (err) {
-				console.error(`Error updating ${file}:`, err);
+				logErrorDetails(`Error updating ${file}:`, err);
 			}
 		});
 	});
@@ -203,7 +254,7 @@ if (prod) {
 			}
 			console.log(`main.js updated in all destination directories`);
 		} catch (err) {
-			console.error(`Error updating main.js:`, err);
+			logErrorDetails(`Error updating main.js:`, err);
 		}
 	});
 }
