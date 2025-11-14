@@ -280,7 +280,7 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 - **Chronologue duration arc cap**: Select maximum duration to display on scene duration arcs, or use "auto" for intelligent selection based on your story's longest scene. Scenes at or above this value fill the entire segment; shorter durations scale proportionally.
 - **Discontinuity gap threshold**: Controls when the ∞ symbol appears in shift mode. Auto-calculated as 3× the median time gap between consecutive scenes. Override with a custom gap threshold (e.g., "4 days", "1 week") to mark larger or smaller time jumps as discontinuities.
 
-**Story beats system and gossamer:**
+**Gossamer story beats system:**
 - **Story beats system**: Select story structure model (Save The Cat, Hero's Journey, Story Grid, or Custom)
 - **Create story beat template notes**: Generate template beat notes with YAML frontmatter
 

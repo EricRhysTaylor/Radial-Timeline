@@ -12,7 +12,7 @@ export function renderStoryBeatsSection(params: {
     const { app, plugin, containerEl } = params;
 
     new Settings(containerEl)
-        .setName('Story beats system and gossamer')
+        .setName('Gossamer and story beats system')
         .setHeading();
 
     new Settings(containerEl)
