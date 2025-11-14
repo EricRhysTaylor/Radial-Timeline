@@ -106,7 +106,7 @@ export class SceneInteractionManager {
         if (this.currentSynopsis) {
             // If mouse event provided, position immediately to prevent flicker
             if (mouseEvent) {
-                view.plugin.updateSynopsisPosition(
+                view.plugin.synopsisManager.updatePosition(
                     this.currentSynopsis,
                     mouseEvent,
                     this.svg,
@@ -161,7 +161,7 @@ export class SceneInteractionManager {
             if (!view || !this.currentSynopsis || !this.currentSceneId) return;
             if (!this.currentSynopsis.classList.contains('rt-visible')) return;
             
-            view.plugin.updateSynopsisPosition(
+            view.plugin.synopsisManager.updatePosition(
                 this.currentSynopsis,
                 e,
                 this.svg,
@@ -453,4 +453,3 @@ export class SceneInteractionManager {
         });
     }
 }
-

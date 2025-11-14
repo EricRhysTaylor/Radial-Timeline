@@ -14,6 +14,7 @@ import {
   SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
   SYNOPSIS_INSET
 } from './renderer/layout/LayoutConstants';
+import { adjustBeatLabelsAfterRender } from './renderer/TimelineRenderer';
 
 /**
  * Handles generating synopsis SVG/HTML blocks and positioning logic.

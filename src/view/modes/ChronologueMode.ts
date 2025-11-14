@@ -6,6 +6,7 @@
 
 import { TFile, App } from 'obsidian';
 import type { TimelineItem } from '../../types';
+import type SynopsisManager from '../../SynopsisManager';
 import { setupChronologueShiftController, isShiftModeActive } from '../interactions/ChronologueShiftController';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
@@ -17,12 +18,12 @@ export interface ChronologueView {
     plugin: {
         refreshTimelineIfNeeded?: (path: string | null) => void;
         app?: App;
-        updateSynopsisPosition?: (synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string) => void;
         settings: {
             dominantSubplots?: Record<string, string>;
             enableSceneTitleAutoExpand?: boolean;
         };
         saveSettings?: () => Promise<void>;
+        synopsisManager: SynopsisManager;
     };
     currentMode: string;
     sceneData?: TimelineItem[]; // Full scene data from view
@@ -280,7 +281,7 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             const syn = synopsisBySceneId.get(sid);
             if (syn) {
                 // Calculate position BEFORE making visible to prevent flicker
-                view.plugin.updateSynopsisPosition?.(syn, e as unknown as MouseEvent, svg, sid);
+                view.plugin.synopsisManager.updatePosition(syn, e as unknown as MouseEvent, svg, sid);
                 // Update title color based on Chronologue mode (use subplot color)
                 updateSynopsisTitleColor(syn, sid, 'chronologue');
                 syn.classList.add('rt-visible');
@@ -311,7 +312,7 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         const syn = synopsisBySceneId.get(sid);
         if (syn) {
             // Calculate position BEFORE making visible to prevent flicker in wrong location
-            view.plugin.updateSynopsisPosition?.(syn, e as unknown as MouseEvent, svg, sid);
+            view.plugin.synopsisManager.updatePosition(syn, e as unknown as MouseEvent, svg, sid);
             // Update title color based on Chronologue mode (use subplot color)
             updateSynopsisTitleColor(syn, sid, 'chronologue');
             syn.classList.add('rt-visible');

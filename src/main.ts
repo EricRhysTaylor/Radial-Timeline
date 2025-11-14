@@ -12,7 +12,6 @@ import { hexToRgb, rgbToHsl, hslToRgb, rgbToHex, desaturateColor } from './utils
 import { decodeHtmlEntities, parseSceneTitle } from './utils/text';
 import { STATUS_COLORS, SceneNumberInfo } from './utils/constants';
 import SynopsisManager from './SynopsisManager';
-import { createTimelineSVG, adjustBeatLabelsAfterRender } from './renderer/TimelineRenderer';
 import { RadialTimelineView } from './view/TimeLineView';
 import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
@@ -29,9 +28,9 @@ import { SceneAnalysisService } from './services/SceneAnalysisService';
 import { StatusBarService } from './services/StatusBarService';
 import { BeatsProcessingService } from './services/BeatsProcessingService';
 import { ThemeService } from './services/ThemeService';
-import { sanitizeSvgText } from './utils/svg';
 import type { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcessingModal';
 import { TimelineMetricsService } from './services/TimelineMetricsService';
+import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
 
 
 // Declare the variable that will be injected by the build process
@@ -365,7 +364,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.gossamerScoreService = new GossamerScoreService(this.app, this);
         this.sceneAnalysisService = new SceneAnalysisService(this);
         this.statusBarService = new StatusBarService(this);
-        this.beatsProcessingService = new BeatsProcessingService(this);
+        this.beatsProcessingService = new BeatsProcessingService(this.statusBarService);
         this.themeService = new ThemeService(this);
         this.timelineMetricsService = new TimelineMetricsService(this);
 
@@ -408,6 +407,10 @@ export default class RadialTimelinePlugin extends Plugin {
         // this.statusBarService.update(...);
     }
     public getRendererService(): RendererService { return this.rendererService; }
+
+    public isSceneFile(path: string): boolean {
+        return this.sceneHighlighter.isSceneFile(path);
+    }
     
     public async processSceneAnalysisByManuscriptOrder(): Promise<void> {
         const { processByManuscriptOrder } = await import('./SceneAnalysisCommands');
@@ -446,36 +449,8 @@ export default class RadialTimelinePlugin extends Plugin {
         this.app.workspace.revealLeaf(leaf);
     }
 
-    // Method to generate timeline (legacy HTML method - will be removed later)
-
-    // Public method to get scene data
     async getSceneData(options?: GetSceneDataOptions): Promise<TimelineItem[]> {
-        // Delegate to SceneDataService
         return this.sceneDataService.getSceneData(options);
-    }
-
-
-public createTimelineSVG(scenes: TimelineItem[]) {
-  return createTimelineSVG(this, scenes);
-}
-
-public adjustBeatLabelsAfterRender(container: HTMLElement) {
-  return adjustBeatLabelsAfterRender(container);
-}
-
-    private generateSynopsisHTML(scene: TimelineItem, contentLines: string[], sceneId: string): string {
-        return this.synopsisManager.generateHTML(scene, contentLines, sceneId);
-    }
-
-    private formatSubplot(subplots: string): string {
-        if (!subplots) return '';
-        
-        const items = subplots.split(',').map(item => item.trim());
-        return items.map((subplot, i) => {
-            // Ensure subplot text is safe for SVG
-            const safeSubplot = this.safeSvgText(subplot);
-            return `<text class="rt-subplot-text" x="0" y="${-20 + i * 25}" text-anchor="middle">${safeSubplot}</text>`;
-        }).join('');
     }
 
     async loadSettings() {
@@ -614,10 +589,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
 
 
     // Add this function near the top of the class, after refreshTimelineIfNeeded 
-    public updateSynopsisPosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
-        this.synopsisManager.updatePosition(synopsis, event, svg, sceneId);
-    }
-
     // Add method to update open files tracking
     private updateOpenFilesTracking() {
         
@@ -722,11 +693,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
     
     // Helper method to convert DocumentFragment to string for backward compatibility
 
-    // Helper method to ensure text is safe for SVG
-    public safeSvgText(text: string): string {
-        return sanitizeSvgText(text);
-    }
-
 
     // --- START: Color Conversion & Desaturation Helpers ---
     // Ensure these are PUBLIC
@@ -748,17 +714,6 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
         rate: number;
     } | null {
         return this.timelineMetricsService.calculateCompletionEstimate(scenes);
-    }
-
-    public handleFileRename(file: TAbstractFile, oldPath: string): void {
-        if (this.openScenePaths.has(oldPath)) {
-            this.openScenePaths.delete(oldPath);
-            if (file instanceof TFile && this.sceneHighlighter.isSceneFile(file.path)) {
-                this.openScenePaths.add(file.path);
-            }
-        }
-        // Add any specific logic needed when a file affecting the timeline is renamed
-        this.refreshTimelineIfNeeded(file);
     }
 
     /**
@@ -790,51 +745,3 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
     }
 
 } // End of RadialTimelinePlugin class
-
-/**
- * Migration function to convert old field names to new field names
- * This ensures backward compatibility for existing data
- */
-async function migrateSceneAnalysisFields(plugin: RadialTimelinePlugin): Promise<void> {
-    try {
-        const files = plugin.app.vault.getMarkdownFiles();
-        let migratedCount = 0;
-        
-        for (const file of files) {
-            const cache = plugin.app.metadataCache.getFileCache(file);
-            const fm = cache?.frontmatter;
-            
-            if (fm && (fm['1beats'] || fm['2beats'] || fm['3beats'])) {
-                // Check if migration is needed (old fields exist but new fields don't)
-                const needsMigration = (fm['1beats'] || fm['2beats'] || fm['3beats']) && 
-                                     !(fm['previousSceneAnalysis'] || fm['currentSceneAnalysis'] || fm['nextSceneAnalysis']);
-                
-                if (needsMigration) {
-                    await plugin.app.fileManager.processFrontMatter(file, (frontmatter) => {
-                        const fmObj = frontmatter as Record<string, unknown>;
-                        
-                        // Migrate old field names to new field names
-                        if (fmObj['1beats']) {
-                            fmObj['previousSceneAnalysis'] = fmObj['1beats'];
-                            delete fmObj['1beats'];
-                        }
-                        if (fmObj['2beats']) {
-                            fmObj['currentSceneAnalysis'] = fmObj['2beats'];
-                            delete fmObj['2beats'];
-                        }
-                        if (fmObj['3beats']) {
-                            fmObj['nextSceneAnalysis'] = fmObj['3beats'];
-                            delete fmObj['3beats'];
-                        }
-                    });
-                    migratedCount++;
-                }
-            }
-        }
-        
-        // Migration completed silently
-        void migratedCount;
-    } catch (error) {
-        console.error('[Radial Timeline] Error during migration:', error);
-    }
-}

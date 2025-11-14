@@ -109,7 +109,7 @@ export class RadialTimelineView extends ItemView {
         super(leaf);
         this.plugin = plugin;
         this.openScenePaths = plugin.openScenePaths;
-        this.rendererService = (plugin as any).rendererService as RendererService;
+        this.rendererService = plugin.getRendererService();
         
         // Initialize mode management
         this._currentMode = plugin.settings.currentMode || 'narrative';
@@ -618,7 +618,8 @@ export class RadialTimelineView extends ItemView {
         try {
             // Generate the SVG content and get the max stage color
             const startTime = performance.now();
-            const { svgString, maxStageColor: calculatedMaxStageColor } = this.plugin.createTimelineSVG(scenes);
+            const renderer = this.rendererService ?? this.plugin.getRendererService();
+            const { svgString, maxStageColor: calculatedMaxStageColor } = renderer.generateTimeline(this.plugin, scenes);
 
             // Expose the dominant publish-stage colour to CSS so rules can use var(--rt-max-publish-stage-color)
             if (calculatedMaxStageColor) {
@@ -672,7 +673,7 @@ export class RadialTimelineView extends ItemView {
                 setupModeToggleController(this, svgElement as unknown as SVGSVGElement);
 
                 // Adjust story beat labels after render
-                const adjustLabels = () => this.plugin.adjustBeatLabelsAfterRender(timelineContainer);
+                const adjustLabels = () => this.rendererService?.adjustBeatLabelsAfterRender(timelineContainer);
                 const rafId1 = requestAnimationFrame(adjustLabels);
                 
                 // Re-adjust when the timeline view becomes active (workspace active-leaf-change)

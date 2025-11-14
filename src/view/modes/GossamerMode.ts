@@ -34,7 +34,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
             currentSynopsis = findSynopsisForScene(sid);
             if (currentSynopsis) {
                 currentSynopsis.classList.add('rt-visible');
-                view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
+                view.plugin.synopsisManager.updatePosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
             }
         }
 
@@ -173,7 +173,7 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
                 currentSynopsis = findSynopsisForScene(sid);
                 if (currentSynopsis) {
                     currentSynopsis.classList.add('rt-visible');
-                    view.plugin.updateSynopsisPosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
+                    view.plugin.synopsisManager.updatePosition(currentSynopsis, e as unknown as MouseEvent, svg, sid);
                 }
             }
         }
@@ -308,5 +308,4 @@ export function setupGossamerMode(view: RadialTimelineView, svg: SVGSVGElement):
         view.registerDomEvent(el as HTMLElement, 'click', (ev) => beatSliceClick(ev as MouseEvent));
     });
 }
-
 

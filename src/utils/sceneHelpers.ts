@@ -85,7 +85,6 @@ export interface PluginRendererFacade {
     desaturateColor(hex: string, amount: number): string;
     calculateCompletionEstimate(scenes: TimelineItem[]): { date: Date | null; total: number; remaining: number; rate: number } | null;
     synopsisManager: { generateElement: (scene: TimelineItem, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number) => SVGGElement };
-    safeSvgText(text: string): string;
     latestStatusCounts?: Record<string, number>;
 }
 

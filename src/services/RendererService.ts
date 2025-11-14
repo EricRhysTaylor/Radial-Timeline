@@ -1,5 +1,6 @@
 import type { App } from 'obsidian';
 import type { TimelineItem } from '../types';
+import type RadialTimelinePlugin from '../main';
 import { addHighlightRectangles as addHighlightRectanglesExt } from '../view/interactions';
 import { renderGossamerLayer } from '../renderer/gossamerLayer';
 import { renderGossamerMonthSpokes } from '../renderer/components/MonthSpokes';
@@ -14,10 +15,19 @@ import { updateSceneColors, updateSceneOpenClasses, updateSceneSearchHighlights 
 import { updateNumberSquareStates, updateNumberSquareGrades } from '../renderer/dom/NumberSquareDOMUpdater';
 import { updateSynopsisText, updateSynopsisVisibility } from '../renderer/dom/SynopsisDOMUpdater';
 import { updateSubplotLabels, updateSubplotLabelVisibility } from '../renderer/dom/SubplotLabelDOMUpdater';
+import { createTimelineSVG as buildTimelineSVG, adjustBeatLabelsAfterRender } from '../renderer/TimelineRenderer';
 
 export class RendererService {
     private app: App;
     constructor(app: App) { this.app = app; }
+
+    generateTimeline(plugin: RadialTimelinePlugin, scenes: TimelineItem[]) {
+        return buildTimelineSVG(plugin, scenes);
+    }
+
+    adjustBeatLabelsAfterRender(container: HTMLElement): void {
+        adjustBeatLabelsAfterRender(container);
+    }
 
     /**
      * Update scene colors for dominant subplot changes (DOM update)
