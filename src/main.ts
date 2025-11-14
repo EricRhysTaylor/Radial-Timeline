@@ -27,6 +27,7 @@ import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, 
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
 import { HoverHighlighter } from './services/HoverHighlighter';
+import { SceneHighlighter } from './services/SceneHighlighter';
 
 
 // Declare the variable that will be injected by the build process
@@ -280,6 +281,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private rendererService!: RendererService;
     private releaseNotesService!: ReleaseNotesService;
     private commandRegistrar!: CommandRegistrar;
+    private sceneHighlighter!: SceneHighlighter;
     public lastSceneData?: TimelineItem[];
     
     // Completion estimate stats
@@ -465,6 +467,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.rendererService = new RendererService(this.app);
         this.synopsisManager = new SynopsisManager(this);
         this.commandRegistrar = new CommandRegistrar(this, this.app);
+        this.sceneHighlighter = new SceneHighlighter(this);
 
         // CSS variables for publish stage colors are set once on layout ready
         
@@ -491,120 +494,6 @@ export default class RadialTimelinePlugin extends Plugin {
         // Listen for tab changes and file manager interactions using Obsidian's events
         // This is more reliable than DOM events
         // (file-open listener consolidated below at line ~941)
-        
-        // Track file explorer hover using DOM events since Obsidian doesn't have specific events for this
-        this.registerDomEvent(document, 'mouseover', (evt: MouseEvent) => {
-            const target = evt.target as HTMLElement;
-            const fileItem = target.closest('.nav-file-title');
-            if (fileItem) {
-                const navFile = fileItem.closest('.nav-file');
-                if (navFile) {
-                    const filePath = navFile.getAttribute('data-path');
-                    if (filePath) {
-
-                        
-                        // Store current hover path to avoid redundant processing
-                        if (this._currentHoverPath === filePath) {
-
-                            return;
-                        }
-                        this._currentHoverPath = filePath;
-                        
-                        // Only highlight if the file exists in the vault
-                        const file = this.app.vault.getAbstractFileByPath(filePath);
-                        if (file instanceof TFile) {
-                            // Check if this is a scene file by looking at cached scene data
-                            const isSceneFile = this.isSceneFile(filePath);
-
-                            
-                            if (isSceneFile) {
-                                this.highlightSceneInTimeline(filePath, true);
-                            }
-                        } else {
-                        }
-                    }
-                }
-            }
-        });
-        
-        this.registerDomEvent(document, 'mouseout', (evt: MouseEvent) => {
-            const target = evt.target as HTMLElement;
-            const fileItem = target.closest('.nav-file-title');
-            if (fileItem) {
-                const navFile = fileItem.closest('.nav-file');
-                if (navFile) {
-                    const filePath = navFile.getAttribute('data-path');
-                    if (filePath && this._currentHoverPath === filePath) {
-
-                        this._currentHoverPath = null;
-                        
-                        // Only unhighlight if it was a scene file
-                        const isSceneFile = this.isSceneFile(filePath);
-                        if (isSceneFile) {
-                            this.highlightSceneInTimeline(filePath, false);
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Also track tab hover using a similar approach
-        this.registerDomEvent(document, 'mouseover', (evt: MouseEvent) => {
-            const target = evt.target as HTMLElement;
-            const tabHeader = target.closest('.workspace-tab-header');
-            if (tabHeader) {
-                const tabId = tabHeader.getAttribute('data-tab-id');
-                if (tabId) {
-
-                    const leaf = this.app.workspace.getLeafById(tabId);
-                    if (leaf) {
-                        const state = leaf.getViewState();
-                        const filePath = state?.state?.file as string | undefined;
-                        if (filePath && state?.type === 'markdown') {
-                            
-                            // Avoid redundant processing
-                            if (this._currentTabHoverPath === filePath) {
-                                return;
-                            }
-                            this._currentTabHoverPath = filePath;
-                            
-                            // Only highlight if it's a scene file
-                            const isSceneFile = this.isSceneFile(filePath);
-                            
-                            if (isSceneFile) {
-                                this.highlightSceneInTimeline(filePath, true);
-                            }
-                        } else {
-                        }
-                    } else {
-                    }
-                }
-            }
-        });
-        
-        this.registerDomEvent(document, 'mouseout', (evt: MouseEvent) => {
-            const target = evt.target as HTMLElement;
-            const tabHeader = target.closest('.workspace-tab-header');
-            if (tabHeader) {
-                const tabId = tabHeader.getAttribute('data-tab-id');
-                if (tabId) {
-                    const leaf = this.app.workspace.getLeafById(tabId);
-                    if (leaf) {
-                        const state = leaf.getViewState();
-                        const filePath = state?.state?.file as string | undefined;
-                        if (filePath && state?.type === 'markdown' && this._currentTabHoverPath === filePath) {
-                            this._currentTabHoverPath = null;
-                            
-                            // Only unhighlight if it was a scene file
-                            const isSceneFile = this.isSceneFile(filePath);
-                            if (isSceneFile) {
-                                this.highlightSceneInTimeline(filePath, false);
-                            }
-                        }
-                    }
-                }
-            }
-        });
         
         // Track workspace layout changes to update our view
         // (layout-change listener consolidated below at line ~949)
@@ -916,30 +805,7 @@ export default class RadialTimelinePlugin extends Plugin {
             this.fileTrackingService.updateOpenFilesTracking(); // Track initially open files
         });
 
-         // Register file open/close events (consolidated from duplicate listener above)
-        this.registerEvent(this.app.workspace.on('file-open', (file) => {
-            if (file) {
-                // Clear highlight from previously opened file
-                if (this._lastHighlightedFile && this._lastHighlightedFile !== file.path) {
-                    this.highlightSceneInTimeline(this._lastHighlightedFile, false);
-                }
-                
-                // Highlight newly opened file
-                this.highlightSceneInTimeline(file.path, true);
-                this._lastHighlightedFile = file.path;
-                
-                // Check if the opened file is within the sourcePath
-                if (this.isSceneFile(file.path)) {
-                    this.openScenePaths.add(file.path);
-                    this.refreshTimelineIfNeeded(null);
-                } 
-            } else {
-                // Handle case where no file is open (e.g., closing the last tab)
-                // Potentially clear highlights or update state
-            }
-        }));
-
-        this.registerEvent(this.app.workspace.on('layout-change', () => {
+         this.registerEvent(this.app.workspace.on('layout-change', () => {
             this.fileTrackingService.updateOpenFilesTracking();
             this.refreshTimelineIfNeeded(null);
         }));
@@ -970,7 +836,7 @@ export default class RadialTimelinePlugin extends Plugin {
         }));
 
         // Setup hover listeners
-        new HoverHighlighter(this.app, this).register();
+        new HoverHighlighter(this.app, this, this.sceneHighlighter).register();
 
         // Initial status bar update
         this.updateStatusBar();
@@ -990,145 +856,6 @@ export default class RadialTimelinePlugin extends Plugin {
     public async processEntireSubplot(subplotName: string): Promise<void> {
         const { processEntireSubplotWithModal } = await import('./SceneAnalysisCommands');
         await processEntireSubplotWithModal(this, this.app.vault, subplotName);
-    }
-    
-    // Store paths of current hover interactions to avoid redundant processing
-    private _currentHoverPath: string | null = null;
-    private _currentTabHoverPath: string | null = null;
-    private _lastHighlightedFile: string | null = null;
-    
-    // Helper method to check if a file is a scene in the timeline
-    private isSceneFile(filePath: string): boolean {
-        const views = this.getTimelineViews();
-        if (views.length === 0) return false;
-
-        try {
-            // Check each view until a match is found
-            for (const view of views) {
-                const scenes = (view as any)['sceneData'] || [];
-
-                if (scenes.length > 0) {
-                    const matchingScene = scenes.find((scene: TimelineItem) => {
-                        if (!scene.path) return false;
-                        if (scene.path === filePath) return true;
-                        if (scene.path.startsWith('/') && scene.path.substring(1) === filePath) return true;
-                        if (!scene.path.startsWith('/') && '/' + scene.path === filePath) return true;
-                        return false;
-                    });
-                    if (matchingScene) return true;
-                } else {
-                    // Fallback to DOM lookup when scene cache isn't populated yet
-                    const container = view.contentEl.querySelector('.radial-timeline-container');
-                    if (!container) continue;
-                    const svgElement = container.querySelector('svg') as SVGSVGElement | null;
-                    if (!svgElement) continue;
-
-                    let encodedPath = encodeURIComponent(filePath);
-                    let sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                    if (!sceneGroup && filePath.startsWith('/')) {
-                        const altPath = filePath.substring(1);
-                        encodedPath = encodeURIComponent(altPath);
-                        sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                    } else if (!sceneGroup && !filePath.startsWith('/')) {
-                        const altPath = '/' + filePath;
-                        encodedPath = encodeURIComponent(altPath);
-                        sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                    }
-                    if (sceneGroup) return true;
-                }
-            }
-
-            return false;
-        } catch (error) {
-            return false;
-        }
-    }
-    
-    // Helper method to highlight a scene in the timeline when hovering over a file
-    public highlightSceneInTimeline(filePath: string, isHighlighting: boolean): void {
-        if (!filePath) return;
-
-        const views = this.getTimelineViews();
-        if (views.length === 0) return;
-
-        for (const view of views) {
-            try {
-                const container = view.contentEl.querySelector('.radial-timeline-container');
-                if (!container) continue;
-
-                const svgElement = container.querySelector('svg') as SVGSVGElement | null;
-                if (!svgElement) continue;
-
-                if (isHighlighting) {
-                    const allElements = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
-                    allElements.forEach(element => {
-                        element.classList.remove('rt-selected');
-                        // Don't remove rt-non-selected in gossamer mode - it's used for muting non-Beat scenes
-                        const currentMode = svgElement.getAttribute('data-mode');
-                        if (currentMode !== 'gossamer') {
-                            element.classList.remove('rt-non-selected');
-                        }
-                    });
-                }
-
-                let foundScene = false;
-                let encodedPath = encodeURIComponent(filePath);
-                let sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-
-                if (!sceneGroup && filePath.startsWith('/')) {
-                    const altPath = filePath.substring(1);
-                    encodedPath = encodeURIComponent(altPath);
-                    sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                } else if (!sceneGroup && !filePath.startsWith('/')) {
-                    const altPath = '/' + filePath;
-                    encodedPath = encodeURIComponent(altPath);
-                    sceneGroup = svgElement.querySelector(`.scene-group[data-path="${encodedPath}"]`);
-                }
-
-                if (sceneGroup) {
-                    foundScene = true;
-
-                    if (isHighlighting) {
-                        const currentPath = sceneGroup.querySelector('.rt-scene-path');
-                        if (currentPath) {
-                            currentPath.classList.add('rt-selected');
-
-                            const sceneId = (currentPath as SVGPathElement).id;
-                            const numberSquare = svgElement.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
-                            const numberText = svgElement.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
-
-                            if (numberSquare) numberSquare.classList.add('rt-selected');
-                            if (numberText) numberText.classList.add('rt-selected');
-
-                            const sceneTitle = sceneGroup.querySelector('.rt-scene-title');
-                            if (sceneTitle) sceneTitle.classList.add('rt-selected');
-
-                            const allScenePaths = svgElement.querySelectorAll('.rt-scene-path:not(.rt-selected)');
-                            allScenePaths.forEach(element => element.classList.add('rt-non-selected'));
-
-                            const synopsis = svgElement.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
-                            if (synopsis) synopsis.classList.add('rt-visible');
-                        }
-                    } else {
-                        const allElements = svgElement.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title');
-                        allElements.forEach(element => element.classList.remove('selected', 'non-selected'));
-
-                        const currentPath = sceneGroup.querySelector('.rt-scene-path');
-                        if (currentPath) {
-                            const sceneId = (currentPath as SVGPathElement).id;
-                            const synopsis = svgElement.querySelector(`.rt-scene-info[data-for-scene="${sceneId}"]`);
-                            if (synopsis) synopsis.classList.remove('rt-visible');
-                        }
-                    }
-                }
-
-                if (!foundScene) {
-                    // Scene not found in timeline
-                }
-            } catch (error) {
-                // Silently handle highlight errors
-            }
-        }
     }
     
     // Helper to activate the timeline view
@@ -1946,7 +1673,7 @@ public adjustBeatLabelsAfterRender(container: HTMLElement) {
     private handleFileRename(file: TAbstractFile, oldPath: string): void {
         if (this.openScenePaths.has(oldPath)) {
             this.openScenePaths.delete(oldPath);
-            if (file instanceof TFile && this.isSceneFile(file.path)) {
+            if (file instanceof TFile && this.sceneHighlighter.isSceneFile(file.path)) {
                 this.openScenePaths.add(file.path);
             }
         }
