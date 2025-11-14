@@ -53,44 +53,37 @@ export default class SynopsisManager {
    * @returns Formatted date string (e.g., "Aug 1, 1812 @ 8AM" or "Apr 6, 1812 @ Noon" or "Apr 6, 1812 @ Midnight")
    */
   private formatDateForDisplay(when: Date | undefined): string {
-    if (!when || !(when instanceof Date)) return '';
-    
-    try {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const month = months[when.getMonth()];
-      const day = when.getDate();
-      const year = when.getFullYear();
-      const hours = when.getHours();
-      const minutes = when.getMinutes();
-      
-      // Build date part: "Aug 1, 1812"
-      let dateStr = `${month} ${day}, ${year}`;
-      
-      // Handle special cases: exactly midnight or exactly noon
-      if (hours === 0 && minutes === 0) {
-        // Exactly midnight (12 AM)
-        dateStr += ` @ Midnight`;
-      } else if (hours === 12 && minutes === 0) {
-        // Exactly noon (12 PM)
-        dateStr += ` @ Noon`;
-      } else {
-        // Regular time formatting
-        const period = hours >= 12 ? 'PM' : 'AM';
-        const displayHours = hours % 12 === 0 ? 12 : hours % 12;
-        
-        if (minutes === 0) {
-          // No minutes, just "8AM"
-          dateStr += ` @ ${displayHours}${period}`;
-        } else {
-          // Include minutes "8:30AM"
-          dateStr += ` @ ${displayHours}:${String(minutes).padStart(2, '0')}${period}`;
-        }
-      }
-      
-      return dateStr;
-    } catch (e) {
+    if (!when) {
       return '';
     }
+    if (!(when instanceof Date) || Number.isNaN(when.getTime())) {
+      throw new Error('formatDateForDisplay requires a valid Date object');
+    }
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[when.getMonth()];
+    const day = when.getDate();
+    const year = when.getFullYear();
+    const hours = when.getHours();
+    const minutes = when.getMinutes();
+
+    let dateStr = `${month} ${day}, ${year}`;
+
+    if (hours === 0 && minutes === 0) {
+      dateStr += ' @ Midnight';
+    } else if (hours === 12 && minutes === 0) {
+      dateStr += ' @ Noon';
+    } else {
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+      if (minutes === 0) {
+        dateStr += ` @ ${displayHours}${period}`;
+      } else {
+        dateStr += ` @ ${displayHours}:${String(minutes).padStart(2, '0')}${period}`;
+      }
+    }
+
+    return dateStr;
   }
 
   /**
@@ -235,40 +228,43 @@ export default class SynopsisManager {
     const decodedContentLines = decodeContentLines(contentLines);
     
     // Deterministic subplot color from stylesheet variables
-    const getSubplotColor = (subplot: string, sceneId: string): string => {
-      if (subplotIndexResolver) {
-        try {
-          const idx = Math.max(0, subplotIndexResolver(subplot)) % 15;
-          const varName = `--rt-subplot-colors-${idx}`;
-          const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-          if (value) return value;
-        } catch {}
-      }
-      // Prefer the exact color used by the rendered scene cell via its group data attribute
-      try {
-        const sceneGroup = document.getElementById(sceneId)?.closest('.scene-group') as HTMLElement | null;
-        if (sceneGroup) {
-          const idxAttr = sceneGroup.getAttribute('data-subplot-index');
-          if (idxAttr) {
-            const idx = Math.max(0, parseInt(idxAttr, 10)) % 15;
-            const varName = `--rt-subplot-colors-${idx}`;
-            const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-            if (value) return value;
-          }
+    const getSubplotColor = (subplot: string, sceneIdentifier: string): string => {
+      const resolveCssVariable = (index: number): string => {
+        const normalizedIndex = Math.max(0, index) % 15;
+        const varName = `--rt-subplot-colors-${normalizedIndex}`;
+        const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        if (!value) {
+          throw new Error(`CSS variable ${varName} is not defined for subplot coloring.`);
         }
-      } catch {}
-      // Fallback: derive index from label element that carries data-subplot-index
-      const labels = Array.from(document.querySelectorAll('.subplot-label-text')) as HTMLElement[];
-      let idx = 0;
-      const match = labels.find(el => (el.getAttribute('data-subplot-name') || '').toLowerCase() === subplot.toLowerCase());
-      if (match) {
-        const attr = match.getAttribute('data-subplot-index');
-        if (attr) idx = Math.max(0, parseInt(attr, 10));
-      }
-      const varName = `--rt-subplot-colors-${idx % 15}`;
-      const root = document.documentElement;
-      const value = getComputedStyle(root).getPropertyValue(varName).trim();
-      return value || '#EFBDEB';
+        return value;
+      };
+
+      const resolveIndex = (): number => {
+        if (subplotIndexResolver) {
+          const resolved = subplotIndexResolver(subplot);
+          if (!Number.isFinite(resolved)) {
+            throw new Error(`Subplot index resolver returned an invalid value for "${subplot}".`);
+          }
+          return resolved;
+        }
+
+        const sceneGroup = document.getElementById(sceneIdentifier)?.closest('.scene-group') as HTMLElement | null;
+        if (!sceneGroup) {
+          throw new Error(`Scene group not found for synopsis ${sceneIdentifier}.`);
+        }
+        const idxAttr = sceneGroup.getAttribute('data-subplot-index');
+        if (!idxAttr) {
+          throw new Error(`Scene group for ${sceneIdentifier} is missing data-subplot-index.`);
+        }
+        const parsed = parseInt(idxAttr, 10);
+        if (Number.isNaN(parsed)) {
+          throw new Error(`Invalid subplot index "${idxAttr}" for scene ${sceneIdentifier}.`);
+        }
+        return parsed;
+      };
+
+      const index = resolveIndex();
+      return resolveCssVariable(index);
     };
     
     // Set the line height
@@ -552,83 +548,60 @@ export default class SynopsisManager {
    * Update the position of a synopsis based on mouse position
    */
   updatePosition(synopsis: Element, event: MouseEvent, svg: SVGSVGElement, sceneId: string): void {
-    if (!synopsis || !svg) {
-      return;
+    if (!(synopsis instanceof SVGElement)) {
+      throw new Error('Synopsis element must be an SVGElement.');
     }
-    
-    try {
-      // Get SVG coordinates from mouse position
-      const pt = svg.createSVGPoint();
-      pt.x = event.clientX;
-      pt.y = event.clientY;
-      const ctm = svg.getScreenCTM();
-      if (!ctm) {
-        return;
-      }
-      
-      const svgP = pt.matrixTransform(ctm.inverse());
-      
-      // Determine which quadrant the mouse is in
-      const quadrant = this.getQuadrant(svgP.x, svgP.y);
-      
-      // Calculate positioning parameters based on current mode
-      const size = 1600; // SVG size
-      const margin = 30;
-      
-      // Get current mode to determine appropriate subplot outer radius
-      const currentMode = (this.plugin.settings as any).currentMode || 'narrative';
-      const isChronologueMode = currentMode === 'chronologue';
-      const isSubplotMode = currentMode === 'subplot';
-      
-      // Use imported constants from TimelineRenderer for consistent sizing
-      const subplotOuterRadius = isChronologueMode 
-          ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
-          : isSubplotMode 
-          ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
-          : SUBPLOT_OUTER_RADIUS_STANDARD;
-      
-      const adjustedRadius = subplotOuterRadius - SYNOPSIS_INSET; // Position synopsis text inward from mode-specific radius
-      
-      
-      // Reset styles and classes
-      (synopsis as SVGElement).removeAttribute('style');
-      synopsis.classList.remove('rt-synopsis-q1', 'rt-synopsis-q2', 'rt-synopsis-q3', 'rt-synopsis-q4');
-      
-      // Configure position based on quadrant
-      const position = this.getPositionForQuadrant(quadrant, adjustedRadius);
-      
-      // Apply the position class and base transform
-      synopsis.classList.add(`rt-synopsis-${position.quadrantClass}`);
-      
-      // Calculate the initial x-position based on Pythagorean theorem
-      const y = position.y;
-      let x = 0;
-      
-      // Pythagorean calculation for the base x-position
-      // For y-coordinate on circle: x² + y² = r²
-      if (Math.abs(y) < adjustedRadius) {
-        x = Math.sqrt(adjustedRadius * adjustedRadius - y * y);
-        
-        // FIXED: Apply direction based on alignment - same convention as text positioning
-        // For right-aligned text (Q1, Q4), x should be positive
-        // For left-aligned text (Q2, Q3), x should be negative
-        x = position.isRightAligned ? x : -x;
-      }
-      
-      // Set the base transformation to position the synopsis correctly
-      synopsis.setAttribute('transform', `translate(${x}, ${y})`);
-      
-      // Ensure the synopsis is visible
-      synopsis.classList.add('rt-visible');
-      synopsis.setAttribute('opacity', '1');
-      synopsis.setAttribute('pointer-events', 'all');
-      
-      // Position text elements to follow the arc
-      this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf, adjustedRadius, sceneId);
-      
-    } catch (e) {
-      // Silent error handling
+    if (!svg) {
+      throw new Error('SVG root is required to position synopsis content.');
     }
+
+    const pt = svg.createSVGPoint();
+    pt.x = event.clientX;
+    pt.y = event.clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) {
+      throw new Error('Unable to compute screen CTM for timeline SVG.');
+    }
+
+    const svgP = pt.matrixTransform(ctm.inverse());
+    const quadrant = this.getQuadrant(svgP.x, svgP.y);
+
+    const currentMode = (this.plugin.settings as any).currentMode || 'narrative';
+    const isChronologueMode = currentMode === 'chronologue';
+    const isSubplotMode = currentMode === 'subplot';
+
+    const subplotOuterRadius = isChronologueMode 
+        ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
+        : isSubplotMode 
+        ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
+        : SUBPLOT_OUTER_RADIUS_STANDARD;
+
+    const adjustedRadius = subplotOuterRadius - SYNOPSIS_INSET;
+
+    synopsis.removeAttribute('style');
+    synopsis.classList.remove('rt-synopsis-q1', 'rt-synopsis-q2', 'rt-synopsis-q3', 'rt-synopsis-q4');
+
+    const position = this.getPositionForQuadrant(quadrant, adjustedRadius);
+    synopsis.classList.add(`rt-synopsis-${position.quadrantClass}`);
+
+    const y = position.y;
+    if (Math.abs(y) >= adjustedRadius) {
+      throw new Error(`Synopsis y-position ${y} exceeds radius ${adjustedRadius}`);
+    }
+
+    const diff = adjustedRadius * adjustedRadius - y * y;
+    if (diff < 0) {
+      throw new Error('Cannot compute synopsis x-position due to invalid radius difference.');
+    }
+    const baseX = Math.sqrt(diff);
+    const x = position.isRightAligned ? baseX : -baseX;
+
+    synopsis.setAttribute('transform', `translate(${x}, ${y})`);
+    synopsis.classList.add('rt-visible');
+    synopsis.setAttribute('opacity', '1');
+    synopsis.setAttribute('pointer-events', 'all');
+
+    this.positionTextElements(synopsis, position.isRightAligned, position.isTopHalf, adjustedRadius, sceneId);
   }
 
   /**
@@ -777,7 +750,6 @@ export default class SynopsisManager {
     
     // Position each row using Pythagorean theorem relative to circle center
     let yOffset = 0;
-    let lastValidAnchorX = 0; // Track the last valid anchor position for fallback positioning
     
     textRows.forEach((rowElements, rowIndex) => {
       const primaryEl = rowElements[0] ?? null;
@@ -803,27 +775,29 @@ export default class SynopsisManager {
       
       const anchorY = baseY + yOffset;
       
-      // Determine anchor position along the circle for this row
-      let anchorX = lastValidAnchorX;
-      try {
-        if (Math.abs(anchorY) < radius) {
-          const circleX = Math.sqrt(radius * radius - anchorY * anchorY);
-          const direction = isRightAligned ? 1 : -1;
-          let anchorAbsoluteX = circleX * direction;
-
-          if (isTopHalf) {
-            const inset = this.computeTopHalfInset(primaryEl, rowIndex);
-            const magnitude = Math.max(0, Math.abs(anchorAbsoluteX) - inset);
-            anchorAbsoluteX = magnitude * direction;
-          }
-
-          anchorX = anchorAbsoluteX - baseX;
-
-          lastValidAnchorX = anchorX;
-        }
-      } catch {
-        anchorX = lastValidAnchorX;
+      if (Math.abs(anchorY) >= radius) {
+        throw new Error(`Synopsis row ${rowIndex} exceeds radius bounds (|${anchorY}| >= ${radius}).`);
       }
+
+      const radiusDiff = radius * radius - anchorY * anchorY;
+      if (radiusDiff < 0) {
+        throw new Error(`Cannot resolve anchor for row ${rowIndex}; negative radius difference computed.`);
+      }
+
+      const circleX = Math.sqrt(radiusDiff);
+      const direction = isRightAligned ? 1 : -1;
+      let anchorAbsoluteX = circleX * direction;
+
+      if (isTopHalf) {
+        const inset = this.computeTopHalfInset(primaryEl, rowIndex);
+        const magnitude = Math.abs(anchorAbsoluteX) - inset;
+        if (magnitude < 0) {
+          throw new Error(`Inset ${inset} for row ${rowIndex} exceeds available radius.`);
+        }
+        anchorAbsoluteX = magnitude * direction;
+      }
+
+      const anchorX = anchorAbsoluteX - baseX;
       
       const { primaryWidth, metadataWidth, gap } = this.measureRowLayout(rowElements, metadataSpacing);
       const roundedAnchorX = Math.round(anchorX);
@@ -847,39 +821,25 @@ export default class SynopsisManager {
       return SynopsisManager.TOP_HALF_BASE_INSET;
     }
 
-    let referenceSize = Number.NaN;
+    const style = window.getComputedStyle(textElement);
+    const fontSize = style?.fontSize ? parseFloat(style.fontSize) : Number.NaN;
 
-    try {
-      const style = window.getComputedStyle(textElement);
-      if (style?.fontSize) {
-        referenceSize = parseFloat(style.fontSize);
-      }
-    } catch {
-      referenceSize = Number.NaN;
-    }
+    let referenceSize = Number.isFinite(fontSize) && fontSize > 0 ? fontSize : Number.NaN;
 
     if (!Number.isFinite(referenceSize) || referenceSize <= 0) {
-      try {
-        const box = textElement.getBBox();
-        if (box && Number.isFinite(box.height)) {
-          referenceSize = box.height;
-        }
-      } catch {
-        referenceSize = Number.NaN;
+      const box = textElement.getBBox();
+      if (!box || !Number.isFinite(box.height) || box.height <= 0) {
+        throw new Error('Unable to determine inset; text element lacks measurable height.');
       }
-    }
-
-    if (!Number.isFinite(referenceSize) || referenceSize <= 0) {
-      return SynopsisManager.TOP_HALF_BASE_INSET;
+      referenceSize = box.height;
     }
 
     const ratio = rowIndex === 0 ? 0.9 : 0.6;
     const scaled = referenceSize * ratio;
-    const clamped = Math.max(
+    return Math.max(
       SynopsisManager.TOP_HALF_MIN_INSET,
       Math.min(SynopsisManager.TOP_HALF_MAX_INSET, scaled)
     );
-    return clamped;
   }
 
   private measureRowLayout(rowElements: SVGTextElement[], defaultGap: number): { primaryWidth: number; metadataWidth: number; gap: number } {
@@ -965,30 +925,17 @@ export default class SynopsisManager {
   }
 
   private measureTextWidth(element: SVGTextElement): number {
-    try {
-      const box = element.getBBox();
-      if (box && Number.isFinite(box.width)) {
-        return Math.max(0, box.width);
-      }
-    } catch {
-      // getBBox may throw if element not rendered yet
+    const box = element.getBBox();
+    if (box && Number.isFinite(box.width)) {
+      return Math.max(0, box.width);
     }
-    
-    try {
-      const length = element.getComputedTextLength();
-      if (Number.isFinite(length)) {
-        return Math.max(0, length);
-      }
-    } catch {
-      // Ignore failures; return 0 below
+
+    const length = element.getComputedTextLength();
+    if (Number.isFinite(length)) {
+      return Math.max(0, length);
     }
-    
-    const rawText = element.textContent;
-    if (rawText && rawText.length > 0) {
-      return rawText.length * 8; // Rough fallback estimate per character
-    }
-    
-    return 0;
+
+    throw new Error('Unable to measure text width for synopsis element.');
   }
 
   /**
@@ -1019,66 +966,49 @@ export default class SynopsisManager {
     const container = doc.querySelector('div');
 
     if (!container) {
-
-      return;
+      throw new Error('Unable to create container for synopsis content.');
     }
-    
-    // Check if there are any direct text nodes
-    let hasDirectTextNodes = false;
-    container.childNodes.forEach(node => {
-      if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
-        hasDirectTextNodes = true;
+
+    const nodes = Array.from(container.childNodes);
+    if (nodes.length === 0) {
+      throw new Error('Synopsis content produced no nodes to render.');
+    }
+
+    const appendTextSpan = (textValue: string): void => {
+      if (!textValue.trim()) {
+        return;
       }
-    });
-    
+      const svgTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      svgTspan.textContent = textValue;
+      parentElement.appendChild(svgTspan);
+    };
 
-    
-    if (hasDirectTextNodes) {
-      // Handle mixed content (text nodes and elements)
-      container.childNodes.forEach(node => {
-        if (node.nodeType === Node.TEXT_NODE) {
-          // Add text directly
-          if (node.textContent?.trim()) {
-            parentElement.appendChild(document.createTextNode(node.textContent));
-  
-          }
-        } else if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === 'tspan') {
-          // Handle tspan element
-          const tspan = node as Element;
-          const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-          
-          // Copy attributes
-          Array.from(tspan.attributes).forEach(attr => {
-            svgTspan.setAttribute(attr.name, attr.value);
-          });
-          
-          svgTspan.textContent = tspan.textContent;
+    nodes.forEach(node => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        appendTextSpan(node.textContent ?? '');
+        return;
+      }
 
-          parentElement.appendChild(svgTspan);
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element;
+        if (element.tagName.toLowerCase() !== 'tspan') {
+          throw new Error(`Unsupported element <${element.tagName}> in synopsis content.`);
         }
-      });
-    } else {
-      // Process only tspan elements
-      const tspans = container.querySelectorAll('tspan');
-  
-      
-      tspans.forEach(tspan => {
-        const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-        
-        // Copy attributes
-        Array.from(tspan.attributes).forEach(attr => {
+
+        const svgTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        Array.from(element.attributes).forEach(attr => {
           svgTspan.setAttribute(attr.name, attr.value);
         });
-        
-        svgTspan.textContent = tspan.textContent;
+        svgTspan.textContent = element.textContent ?? '';
         parentElement.appendChild(svgTspan);
-      });
-    }
-    
-    // If no content was added to the parent element, add the original text as fallback
+        return;
+      }
+
+      throw new Error('Unsupported node type found in synopsis content.');
+    });
+
     if (!parentElement.hasChildNodes()) {
-  
-      parentElement.textContent = content;
+      throw new Error('Synopsis conversion produced no SVG tspans.');
     }
   }
 

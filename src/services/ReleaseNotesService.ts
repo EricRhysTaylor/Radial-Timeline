@@ -4,7 +4,7 @@
  */
 
 import { requestUrl, App } from 'obsidian';
-import { compareReleaseVersionsDesc, parseReleaseVersion } from '../utils/releases';
+import { compareReleaseVersionsDesc } from '../utils/releases';
 import type { EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, RadialTimelineSettings } from '../types';
 import { ReleaseNotesModal } from '../modals/ReleaseNotesModal';
 import type RadialTimelinePlugin from '../main';
@@ -116,41 +116,7 @@ export class ReleaseNotesService {
 
     private loadEmbeddedReleaseNotes(): EmbeddedReleaseNotesBundle | null {
         const parsed = JSON.parse(EMBEDDED_RELEASE_NOTES);
-        if (!parsed || typeof parsed !== 'object') {
-            throw new Error('Embedded release notes are missing or malformed');
-        }
-
-        const normalizeEntry = (value: unknown): EmbeddedReleaseNotesEntry => {
-            if (!value || typeof value !== 'object') {
-                throw new Error('Release entry is invalid');
-            }
-            const obj = value as Record<string, unknown>;
-            const version = obj.version;
-            const title = obj.title;
-            const body = obj.body;
-            if (typeof version !== 'string' || typeof title !== 'string' || typeof body !== 'string') {
-                throw new Error('Release entry missing required fields');
-            }
-            return {
-                version,
-                title,
-                body,
-                url: typeof obj.url === 'string' ? obj.url : undefined,
-                publishedAt: typeof obj.publishedAt === 'string' ? obj.publishedAt : undefined
-            };
-        };
-
-        const major = parsed.major ? normalizeEntry(parsed.major) : null;
-        const latest = parsed.latest ? normalizeEntry(parsed.latest) : null;
-        const patches = Array.isArray(parsed.patches)
-            ? parsed.patches.map(normalizeEntry)
-            : undefined;
-
-        return {
-            major,
-            latest,
-            patches
-        };
+        return this.normalizeBundleFromValue(parsed);
     }
 
     private requireBundle(): EmbeddedReleaseNotesBundle {
@@ -191,113 +157,57 @@ export class ReleaseNotesService {
     }
 
     private async downloadReleaseNotesBundle(): Promise<EmbeddedReleaseNotesBundle | null> {
-        const latest = await this.fetchGitHubRelease('latest');
-        if (!latest) {
+        const url = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/master/src/data/releaseNotesBundle.json';
+        try {
+            const response = await requestUrl({ url, method: 'GET' });
+            if (response.status !== 200) {
+                console.warn(`[ReleaseNotes] Unexpected response (${response.status}) fetching release bundle`);
+                return null;
+            }
+            const payload = response.json ?? (response.text ? JSON.parse(response.text) : null);
+            return this.normalizeBundleFromValue(payload);
+        } catch (error) {
+            console.warn('Unable to fetch release notes bundle:', error);
             return null;
         }
+    }
 
-        const semver = parseReleaseVersion(latest.version);
-        let major: EmbeddedReleaseNotesEntry | null = latest;
-        let patches: EmbeddedReleaseNotesEntry[] | undefined;
-
-        if (semver) {
-            if (semver.minor !== 0 || semver.patch !== 0) {
-                const majorTag = `${semver.major}.0.0`;
-                const majorRelease = await this.fetchGitHubRelease(majorTag);
-                if (majorRelease) {
-                    major = majorRelease;
-                }
-            }
-            const fetchedPatches = await this.fetchGitHubPatchReleases(semver.major);
-            if (fetchedPatches.length > 0) {
-                const seen = new Set<string>([major?.version ?? '']);
-                patches = [];
-                for (const entry of fetchedPatches) {
-                    if (!entry) continue;
-                    if (seen.has(entry.version)) continue;
-                    seen.add(entry.version);
-                    patches.push(entry);
-                }
-            }
+    private normalizeBundleFromValue(value: unknown): EmbeddedReleaseNotesBundle | null {
+        if (!value || typeof value !== 'object') {
+            throw new Error('Release bundle payload is missing or malformed');
         }
+
+        const normalizeEntry = (entryValue: unknown): EmbeddedReleaseNotesEntry => {
+            if (!entryValue || typeof entryValue !== 'object') {
+                throw new Error('Release entry is invalid');
+            }
+            const obj = entryValue as Record<string, unknown>;
+            const version = obj.version;
+            const title = obj.title;
+            const body = obj.body;
+            if (typeof version !== 'string' || typeof title !== 'string' || typeof body !== 'string') {
+                throw new Error('Release entry missing required fields');
+            }
+            return {
+                version,
+                title,
+                body,
+                url: typeof obj.url === 'string' ? obj.url : undefined,
+                publishedAt: typeof obj.publishedAt === 'string' ? obj.publishedAt : undefined
+            };
+        };
+
+        const bundleObj = value as Record<string, unknown>;
+        const major = bundleObj.major ? normalizeEntry(bundleObj.major) : null;
+        const latest = bundleObj.latest ? normalizeEntry(bundleObj.latest) : null;
+        const patches = Array.isArray(bundleObj.patches)
+            ? bundleObj.patches.map(normalizeEntry)
+            : undefined;
 
         return {
             major,
             latest,
             patches
         };
-    }
-
-    private async fetchGitHubRelease(tagOrLatest: 'latest' | string): Promise<EmbeddedReleaseNotesEntry | null> {
-        try {
-            const url = tagOrLatest === 'latest'
-                ? 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/master/release-notes/latest.json'
-                : `https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/master/release-notes/${encodeURIComponent(tagOrLatest)}.json`;
-
-            const response = await requestUrl({ url, method: 'GET' });
-            if (response.status !== 200) {
-                console.warn(`[ReleaseNotes] Unexpected response (${response.status}) fetching ${tagOrLatest}`);
-                return null;
-            }
-
-            return this.normalizeReleaseEntry(response.json);
-        } catch (error) {
-            console.warn(`Unable to fetch release notes (${tagOrLatest}):`, error);
-            return null;
-        }
-    }
-
-    private async fetchGitHubPatchReleases(major: number): Promise<EmbeddedReleaseNotesEntry[]> {
-        try {
-            const url = `https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/master/release-notes/patches/${major}.json`;
-            const response = await requestUrl({ url, method: 'GET' });
-            if (response.status !== 200) {
-                console.warn(`[ReleaseNotes] Unexpected response (${response.status}) fetching patches for ${major}`);
-                return [];
-            }
-
-            const payload = JSON.parse(response.text ?? '[]');
-            if (!Array.isArray(payload)) return [];
-
-            const patches: EmbeddedReleaseNotesEntry[] = [];
-            const seen = new Set<string>();
-
-            for (const raw of payload) {
-                const entry = this.normalizeReleaseEntry(raw);
-                if (!entry) continue;
-                if (seen.has(entry.version)) continue;
-                seen.add(entry.version);
-                const info = parseReleaseVersion(entry.version);
-                if (!info) continue;
-                if (info.major !== major) continue;
-                if (info.minor === 0 && info.patch === 0) continue;
-                patches.push(entry);
-            }
-
-            patches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
-            return patches;
-        } catch (error) {
-            console.warn(`Unable to fetch release list for major ${major}:`, error);
-            return [];
-        }
-    }
-
-    private normalizeReleaseEntry(value: unknown): EmbeddedReleaseNotesEntry | null {
-        if (!value || typeof value !== 'object') return null;
-        const obj = value as Record<string, unknown>;
-        const version = typeof obj.version === 'string' ? obj.version : undefined;
-        const title = typeof obj.title === 'string' ? obj.title : undefined;
-        const body = typeof obj.body === 'string' ? obj.body : undefined;
-
-        if (!version || !title || !body) return null;
-
-        const entry: EmbeddedReleaseNotesEntry = {
-            version,
-            title,
-            body,
-            url: typeof obj.url === 'string' ? obj.url : undefined,
-            publishedAt: typeof obj.publishedAt === 'string' ? obj.publishedAt : undefined
-        };
-        return entry;
     }
 }

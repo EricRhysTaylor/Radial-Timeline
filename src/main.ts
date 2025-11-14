@@ -311,6 +311,7 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     async onload() {
+        this.settingsService = new SettingsService(this);
         await this.loadSettings();
         this.releaseNotesService = new ReleaseNotesService(this.settings, () => this.saveSettings());
         this.releaseNotesService.initializeFromEmbedded();
@@ -340,7 +341,6 @@ export default class RadialTimelinePlugin extends Plugin {
         this.beatsProcessingService = new BeatsProcessingService(this.statusBarService);
         this.themeService = new ThemeService(this);
         this.timelineMetricsService = new TimelineMetricsService(this);
-        this.settingsService = new SettingsService(this);
 
         // CSS variables for publish stage colors are set once on layout ready
         
@@ -453,6 +453,10 @@ export default class RadialTimelinePlugin extends Plugin {
             geminiModelId: this.settings.geminiModelId,
         });
 
+        if (!this.settingsService) {
+            this.settingsService = new SettingsService(this);
+        }
+
         this.settingsService.normalizeModelIds();
         const templatesMigrated = await this.settingsService.migrateAiContextTemplates();
 
@@ -535,7 +539,7 @@ export default class RadialTimelinePlugin extends Plugin {
      * Hide and remove status bar item when processing completes
      */
     hideBeatsStatusBar(): void {
-        this.beatsProcessingService.hideStatus();
+        this.beatsProcessingService?.hideStatus();
     }
 
     async saveGossamerScores(scores: Map<string, number>): Promise<void> {
