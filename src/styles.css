@@ -691,33 +691,16 @@
   opacity: 1;
 }
 .rt-number-square.rt-selected {
-  transform: scale(1.05);
-  z-index: 10;
+  transform: none;
+  stroke: var(--rt-number-stroke-color, var(--scene-color, #705DCF));
 }
-.rt-number-square.rt-selected.rt-scene-is-open {
+.rt-number-square.rt-scene-is-open.rt-selected {
   stroke-width: 3px;
-  stroke: var(--scene-color, #705DCF);
+  fill: #FFFFFF;
 }
 .rt-number-square.rt-selected:not(.rt-scene-is-open) {
-  stroke-width: 1px;
-  stroke: var(--scene-color, #705DCF);
+  stroke-width: 2px;
 }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="0"]  { stroke: var(--rt-subplot-colors-0); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="1"]  { stroke: var(--rt-subplot-colors-1); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="2"]  { stroke: var(--rt-subplot-colors-2); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="3"]  { stroke: var(--rt-subplot-colors-3); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="4"]  { stroke: var(--rt-subplot-colors-4); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="5"]  { stroke: var(--rt-subplot-colors-5); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="6"]  { stroke: var(--rt-subplot-colors-6); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="7"]  { stroke: var(--rt-subplot-colors-7); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="8"]  { stroke: var(--rt-subplot-colors-8); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="9"]  { stroke: var(--rt-subplot-colors-9); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="10"] { stroke: var(--rt-subplot-colors-10); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="11"] { stroke: var(--rt-subplot-colors-11); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="12"] { stroke: var(--rt-subplot-colors-12); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="13"] { stroke: var(--rt-subplot-colors-13); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="14"] { stroke: var(--rt-subplot-colors-14); }
-.radial-timeline-svg:not([data-mode="gossamer"]) .rt-number-square.rt-selected:not(.rt-scene-is-open)[data-subplot-idx="15"] { stroke: var(--rt-subplot-colors-15); }
 
 .rt-number-square.rt-non-selected {
   fill: #EFEFEF;
@@ -853,11 +836,6 @@
 .rt-number-text.rt-scene-is-open {
   font-weight: normal;
   fill: #FFFFFF; /* white for default case; grade colors override via higher specificity */
-}
-.rt-number-square.rt-scene-is-open.rt-selected {
-  stroke: #705DCF;
-  stroke-width: 3px;
-  fill: #FFFFFF;
 }
 .rt-number-text.rt-scene-is-open.rt-selected {
   fill: #000000; /* black for default case; grade colors override via higher specificity */

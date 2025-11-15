@@ -25,7 +25,7 @@ export function renderNumberSquaresUnified(params: {
   scenesByActAndSubplot?: Record<number, Record<string, TimelineItem[]>>;
   sceneNumbersMap?: Map<string, { number: string; x: number; y: number; width: number; height: number }>;
   enableSubplotColors?: boolean;
-  resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
+  resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number; strokeVar?: string } | null;
 }): string {
   const { 
     plugin, 
@@ -141,7 +141,8 @@ export function renderNumberSquaresUnified(params: {
       grade,
       {
         cornerRadius: 4,
-        subplotIndex: subplotVisual?.subplotIndex
+        subplotIndex: subplotVisual?.subplotIndex,
+        customProperties: subplotVisual?.strokeVar ? { '--rt-number-stroke-color': subplotVisual.strokeVar } : undefined
       }
     );
   });
@@ -185,7 +186,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   scenes: TimelineItem[];
   sceneGrades: Map<string, string>;
   enableSubplotColors?: boolean;
-  resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
+  resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number; strokeVar?: string } | null;
 }): string {
   const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, enableSubplotColors = false, resolveSubplotVisual } = params;
   
@@ -263,7 +264,8 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
       grade,
       {
         cornerRadius: 4,
-        subplotIndex: subplotVisual?.subplotIndex
+        subplotIndex: subplotVisual?.subplotIndex,
+        customProperties: subplotVisual?.strokeVar ? { '--rt-number-stroke-color': subplotVisual.strokeVar } : undefined
       }
     );
   });
@@ -281,7 +283,7 @@ export function renderNumberSquaresStandard(params: {
   sceneGrades: Map<string, string>;
   sceneNumbersMap: Map<string, { number: string; x: number; y: number; width: number; height: number }>;
   enableSubplotColors?: boolean;
-  resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
+  resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number; strokeVar?: string } | null;
 }): string {
   return renderNumberSquaresUnified({
     plugin: params.plugin,

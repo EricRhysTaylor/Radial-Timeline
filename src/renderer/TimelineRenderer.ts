@@ -518,8 +518,10 @@ export function createTimelineSVG(
             ? (scene: TimelineItem) => {
                 const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
                 const idx = masterSubplotOrder.indexOf(subplotName);
+                const normalized = idx >= 0 ? (idx % 16) : 0;
                 return {
-                    subplotIndex: idx >= 0 ? (idx % 16) : 0
+                    subplotIndex: normalized,
+                    strokeVar: `var(--rt-subplot-colors-${normalized})`
                 };
             }
             : null;
