@@ -236,11 +236,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 el.classList.remove('rt-selected', 'rt-non-selected');
             });
             
-            // Clear inline styles on number squares (subplot colors applied in shift mode)
-            svg.querySelectorAll('.rt-number-square[style]').forEach(square => {
-                (square as SVGElement).removeAttribute('style');
-            });
-            
             // Hide all synopses
             svg.querySelectorAll('.rt-scene-info.rt-visible').forEach(syn => {
                 syn.classList.remove('rt-visible');

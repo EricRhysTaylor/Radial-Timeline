@@ -512,6 +512,24 @@ export function createTimelineSVG(
         } = precomputed;
         
         const NUM_RINGS = masterSubplotOrder.length;
+        const currentMode = (plugin.settings as any).currentMode || 'narrative';
+        const shouldApplyNumberSquareColors = currentMode !== 'gossamer';
+        const numberSquareVisualResolver = shouldApplyNumberSquareColors
+            ? (scene: TimelineItem) => {
+                const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+                const idx = masterSubplotOrder.indexOf(subplotName);
+                return {
+                    subplotIndex: idx >= 0 ? (idx % 16) : 0
+                };
+            }
+            : null;
+        const subplotColorFor = (subplotName: string) => {
+            const idx = masterSubplotOrder.indexOf(subplotName);
+            const normalized = idx >= 0 ? idx % 16 : 0;
+            const varName = `--rt-subplot-colors-${normalized}`;
+            const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+            return computed || '#EFBDEB';
+        };
 
         // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
         let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
@@ -529,7 +547,6 @@ export function createTimelineSVG(
         const sceneNumbersMap = new Map<string, SceneNumberInfo>();
         
         // Determine sorting method (needed for later logic; pulled out for readability)
-        const currentMode = (plugin.settings as any).currentMode || 'narrative';
         const isChronologueMode = currentMode === 'chronologue';
         const isSubplotMode = currentMode === 'subplot';
         const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
@@ -1126,19 +1143,6 @@ export function createTimelineSVG(
                     }
 
                     // Stacking removed
-
-                    // Render combined items into the outer ring
-                    // Helper to resolve subplot color from CSS variables (Ring 1 = outermost = subplotColors[0])
-                    const subplotColorFor = (subplotName: string) => {
-                        const idx = masterSubplotOrder.indexOf(subplotName);
-                        if (idx < 0) return '#EFBDEB'; // fallback for not found
-                        
-                        // Map subplot index to settings array - outermost ring (Ring 1) uses subplotColors[0]
-                        const colorIdx = idx % 16; // Direct order: outermost (idx=0) = Ring 1 = subplotColors[0]
-                        const varName = `--rt-subplot-colors-${colorIdx}`;
-                        const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-                        return computed || '#EFBDEB';
-                    };
 
                     // Story beat labels will be measured and adjusted after SVG is rendered
                     const beatTextRadius = outerR - BEAT_TITLE_INSET;
@@ -1842,15 +1846,48 @@ export function createTimelineSVG(
                 positionsDetailed.forEach((p, i) => positions.set(i, { startAngle: p.startAngle, endAngle: p.endAngle }));
 
                 // Draw squares for non-Plot scenes that have a number
-                svg += renderOuterRingNumberSquares({ plugin, act, ringOuter, squareRadiusOuter, positions, combined: sortedCombined, sceneGrades });
+                svg += renderOuterRingNumberSquares({
+                    plugin,
+                    act,
+                    ringOuter,
+                    squareRadiusOuter,
+                    positions,
+                    combined: sortedCombined,
+                    sceneGrades,
+                    enableSubplotColors: shouldApplyNumberSquareColors,
+                    resolveSubplotVisual: numberSquareVisualResolver || undefined
+                });
             }
             
             // Then, draw squares for inner subplot rings (excluding Main Plot which is the outer ring)
-            svg += renderInnerRingsNumberSquaresAllScenes({ plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades });
+            svg += renderInnerRingsNumberSquaresAllScenes({
+                plugin,
+                NUM_RINGS,
+                masterSubplotOrder,
+                ringStartRadii,
+                ringWidths,
+                scenesByActAndSubplot,
+                scenes,
+                sceneGrades,
+                enableSubplotColors: shouldApplyNumberSquareColors,
+                resolveSubplotVisual: numberSquareVisualResolver || undefined
+            });
             
             svg += `</g>`;
         } else if (!shouldShowAllScenesInOuterRing(plugin)) {
-            svg += renderNumberSquaresStandard({ plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, sceneNumbersMap });
+            svg += renderNumberSquaresStandard({
+                plugin,
+                NUM_RINGS,
+                masterSubplotOrder,
+                ringStartRadii,
+                ringWidths,
+                scenesByActAndSubplot,
+                scenes,
+                sceneGrades,
+                sceneNumbersMap,
+                enableSubplotColors: shouldApplyNumberSquareColors,
+                resolveSubplotVisual: numberSquareVisualResolver || undefined
+            });
         }
         
         // Close rotatable container

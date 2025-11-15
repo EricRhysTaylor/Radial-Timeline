@@ -25,8 +25,16 @@ export function generateNumberSquareGroup(
     sceneId: string, 
     number: string, 
     textClasses: string,
-    grade?: string
+    grade?: string,
+    options?: {
+        cornerRadius?: number;
+        subplotIndex?: number;
+    }
 ): string {
+    const cornerRadius = options?.cornerRadius ?? 0;
+    const radiusAttr = cornerRadius > 0 ? ` rx="${cornerRadius}" ry="${cornerRadius}"` : '';
+    const subplotAttr = options?.subplotIndex !== undefined ? ` data-subplot-idx="${options.subplotIndex}"` : '';
+
     return `
         <g class="number-square-group" transform="translate(${squareX}, ${squareY})">
             <g class="number-square-orient">
@@ -37,6 +45,7 @@ export function generateNumberSquareGroup(
                     height="${squareSize.height}" 
                     class="${squareClasses}" 
                     data-scene-id="${escapeXml(sceneId)}"
+                    ${radiusAttr}${subplotAttr}
                 />
                 <text 
                     x="0" 

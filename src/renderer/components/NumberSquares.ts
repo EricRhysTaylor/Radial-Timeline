@@ -24,6 +24,8 @@ export function renderNumberSquaresUnified(params: {
   ringWidths?: number[];
   scenesByActAndSubplot?: Record<number, Record<string, TimelineItem[]>>;
   sceneNumbersMap?: Map<string, { number: string; x: number; y: number; width: number; height: number }>;
+  enableSubplotColors?: boolean;
+  resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
 }): string {
   const { 
     plugin, 
@@ -38,7 +40,9 @@ export function renderNumberSquaresUnified(params: {
     ringStartRadii,
     ringWidths,
     scenesByActAndSubplot,
-    sceneNumbersMap
+    sceneNumbersMap,
+    enableSubplotColors = false,
+    resolveSubplotVisual
   } = params;
 
   let svg = '<g class="rt-number-squares">';
@@ -124,7 +128,22 @@ export function renderNumberSquaresUnified(params: {
       sceneNumbersMap.set(sceneId, { number, x: squareX, y: squareY, width: squareSize.width, height: squareSize.height });
     }
 
-    svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
+    const subplotVisual = enableSubplotColors && resolveSubplotVisual ? resolveSubplotVisual(scene) : null;
+
+    svg += generateNumberSquareGroup(
+      squareX,
+      squareY,
+      squareSize,
+      squareClasses,
+      sceneId,
+      number,
+      textClasses,
+      grade,
+      {
+        cornerRadius: 4,
+        subplotIndex: subplotVisual?.subplotIndex
+      }
+    );
   });
 
   svg += '</g>';
@@ -140,6 +159,8 @@ export function renderOuterRingNumberSquares(params: {
   positions: Map<number, { startAngle: number; endAngle: number }>;
   combined: TimelineItem[];
   sceneGrades: Map<string, string>;
+  enableSubplotColors?: boolean;
+  resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
 }): string {
   return renderNumberSquaresUnified({
     plugin: params.plugin,
@@ -148,7 +169,9 @@ export function renderOuterRingNumberSquares(params: {
     positions: params.positions,
     squareRadius: params.squareRadiusOuter,
     act: params.act,
-    ringOuter: params.ringOuter
+    ringOuter: params.ringOuter,
+    enableSubplotColors: params.enableSubplotColors,
+    resolveSubplotVisual: params.resolveSubplotVisual
   });
 }
 
@@ -161,8 +184,10 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   scenesByActAndSubplot: Record<number, Record<string, TimelineItem[]>>;
   scenes: TimelineItem[];
   sceneGrades: Map<string, string>;
+  enableSubplotColors?: boolean;
+  resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
 }): string {
-  const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades } = params;
+  const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, enableSubplotColors = false, resolveSubplotVisual } = params;
   
   // Check if using When date sorting
   const currentMode = (plugin.settings as any).currentMode || 'narrative';
@@ -226,7 +251,21 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
     const grade = sceneGrades.get(sceneId);
     if (plugin.settings.enableAiSceneAnalysis && grade) textClasses += ` rt-grade-${grade}`;
-    svg += generateNumberSquareGroup(squareX, squareY, squareSize, squareClasses, sceneId, number, textClasses, grade);
+    const subplotVisual = enableSubplotColors && resolveSubplotVisual ? resolveSubplotVisual(scene) : null;
+    svg += generateNumberSquareGroup(
+      squareX,
+      squareY,
+      squareSize,
+      squareClasses,
+      sceneId,
+      number,
+      textClasses,
+      grade,
+      {
+        cornerRadius: 4,
+        subplotIndex: subplotVisual?.subplotIndex
+      }
+    );
   });
   return svg;
 }
@@ -241,6 +280,8 @@ export function renderNumberSquaresStandard(params: {
   scenes: TimelineItem[];
   sceneGrades: Map<string, string>;
   sceneNumbersMap: Map<string, { number: string; x: number; y: number; width: number; height: number }>;
+  enableSubplotColors?: boolean;
+  resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
 }): string {
   return renderNumberSquaresUnified({
     plugin: params.plugin,
@@ -251,7 +292,8 @@ export function renderNumberSquaresStandard(params: {
     ringStartRadii: params.ringStartRadii,
     ringWidths: params.ringWidths,
     scenesByActAndSubplot: params.scenesByActAndSubplot,
-    sceneNumbersMap: params.sceneNumbersMap
+    sceneNumbersMap: params.sceneNumbersMap,
+    enableSubplotColors: params.enableSubplotColors,
+    resolveSubplotVisual: params.resolveSubplotVisual
   });
 }
-
