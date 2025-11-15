@@ -6,8 +6,7 @@ import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import { normalizeBeatName } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
-import { getPlotSystem, detectPlotSystemFromNotes } from '../utils/beatsSystems';
-import { validateBeatRanges } from '../utils/rangeValidation';
+import { getPlotSystem } from '../utils/beatsSystems';
 
 interface BeatScoreEntry {
   beatTitle: string; // Full title like "1 Opening Image" or "5 Theme Stated 5%"
@@ -19,12 +18,14 @@ interface BeatScoreEntry {
   scoresToDelete: Set<number>; // Track which Gossamer fields to delete (1, 2, 3, etc.)
   scoreDisplayEl?: HTMLElement; // Reference to the scores display element
   range?: string; // Ideal range from beat note (e.g., "0-20", "60-70")
+  description?: string; // Beat description from YAML
 }
 
 export class GossamerScoreModal extends Modal {
   private plugin: RadialTimelinePlugin;
   private plotBeats: TimelineItem[];
   private entries: BeatScoreEntry[] = [];
+  private includeBeatDescriptions = false;
 
   constructor(
     app: App,
@@ -108,10 +109,9 @@ export class GossamerScoreModal extends Modal {
     
     const plotSystemTemplate = getPlotSystem(settingsSystem);
     
-    // Validate beat count
+    // Validate beat count (only when template exists)
     const actualCount = filteredBeats.length;
-    const expectedCount = plotSystemTemplate?.beatCount || 15;
-    const countMismatch = actualCount !== expectedCount;
+    const countMismatch = plotSystemTemplate ? actualCount !== plotSystemTemplate.beatCount : false;
 
     // Validate Range fields (filter by beat system but ignore title matching)
     // NOTE: Temporarily disabled - metadata cache not refreshing Range field
@@ -130,9 +130,9 @@ export class GossamerScoreModal extends Modal {
           : `⚠️ No story beats found with "Beat Model: ${settingsSystem}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.`
       });
       noBeatsWarning.addClass('rt-gossamer-warning');
-    } else if (countMismatch) {
+    } else if (countMismatch && plotSystemTemplate) {
       const warningEl = contentEl.createEl('div', {
-        text: `⚠️ Expected ${expectedCount} beats for ${settingsSystem}, but found ${actualCount} story beats with matching Beat Model. Check your vault.`
+        text: `⚠️ Expected ${plotSystemTemplate.beatCount} beats for ${settingsSystem}, but found ${actualCount} story beats with matching Beat Model. Check your vault.`
       });
       warningEl.addClass('rt-gossamer-warning');
     }
@@ -160,6 +160,15 @@ export class GossamerScoreModal extends Modal {
       text: 'Enter momentum scores (0-100) for each beat. Previous scores will be saved as history.'
     });
     subtitleEl.addClass('rt-gossamer-score-subtitle');
+
+    const copyOptions = headerSection.createDiv('rt-gossamer-copy-options');
+    const toggleLabel = copyOptions.createEl('label', { cls: 'rt-gossamer-copy-toggle' });
+    const toggleInput = toggleLabel.createEl('input', { type: 'checkbox' });
+    toggleInput.checked = this.includeBeatDescriptions;
+    toggleInput.addEventListener('change', () => {
+      this.includeBeatDescriptions = toggleInput.checked;
+    });
+    toggleLabel.appendText('Include beat descriptions when copying template');
 
     // Scores container
     const scoresContainer = contentEl.createDiv('rt-gossamer-scores-container');
@@ -352,6 +361,11 @@ export class GossamerScoreModal extends Modal {
         if (typeof fm.Range === 'string') {
           entry.range = fm.Range;
         }
+        if (typeof fm.Description === 'string') {
+          entry.description = fm.Description;
+        } else if (typeof fm.description === 'string') {
+          entry.description = fm.description;
+        }
         
         // Get current score (handle both string and number)
         if (typeof fm.Gossamer1 === 'number') {
@@ -385,11 +399,53 @@ export class GossamerScoreModal extends Modal {
     try {
       // Get beat system name for context
       const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
-      
+
+      const { name: contextTemplateName, prompt: contextPrompt } = this.getActiveAiContextInfo();
+
       // Build template with beat names and ideal ranges
       const lines: string[] = [];
       lines.push(`# Beat Momentum Scores (0-100) — ${settingsSystem}`);
       lines.push('');
+      if (contextPrompt) {
+        lines.push('## Role & Manuscript Context');
+        if (contextTemplateName) {
+          lines.push(`Template: ${contextTemplateName}`);
+        }
+        lines.push(contextPrompt.trim());
+        lines.push('');
+      }
+      if (this.entries.length === 0) {
+        new Notice('No beats available to copy. Add Beat notes with the selected Beat Model first.');
+        return;
+      }
+
+      lines.push('## Story Beats Template Guidance');
+      lines.push(this.includeBeatDescriptions
+        ? 'Descriptions are pulled directly from each beat note\'s Description field.'
+        : 'Update each beat note\'s Range and Description fields to customize this list. Toggle above to include descriptions.');
+      lines.push('');
+
+      const missingRangeBeats: string[] = [];
+      const missingDescriptionBeats: string[] = [];
+
+      this.entries.forEach((entry, index) => {
+        const metadataParts: string[] = [];
+        if (entry.range && entry.range.trim().length > 0) {
+          metadataParts.push(`Ideal momentum: ${entry.range}`);
+        } else {
+          missingRangeBeats.push(entry.beatTitle);
+        }
+        const metadata = metadataParts.length > 0 ? ` (${metadataParts.join(' • ')})` : '';
+        lines.push(`${index + 1}. ${entry.beatTitle}${metadata}`);
+        if (this.includeBeatDescriptions) {
+          if (entry.description && entry.description.trim().length > 0) {
+            lines.push(`   ${entry.description.trim()}`);
+          } else {
+            missingDescriptionBeats.push(entry.beatTitle);
+          }
+        }
+        lines.push('');
+      });
       lines.push('## Momentum Scale:');
       lines.push('- 0-20: Quiet, establishing, low tension');
       lines.push('- 21-40: Building, complications emerging');
@@ -403,7 +459,13 @@ export class GossamerScoreModal extends Modal {
       lines.push('- Emotional intensity');
       lines.push('- Pacing and urgency');
       lines.push('');
-      lines.push('## Fill in scores:');
+      lines.push('## Output Instructions:');
+      lines.push('- Respond with the block titled "## Completed Momentum Scores" exactly as shown below.');
+      lines.push('- Replace the blank after each colon with a single integer from 0-100 (no percentage signs or trailing commentary).');
+      lines.push('- Keep the beat order identical so the response can be copied directly into the Obsidian modal.');
+      lines.push('- Favor the ideal range when it fits the manuscript context, but you may go outside the range if justified by the story.');
+      lines.push('');
+      lines.push('## Completed Momentum Scores');
       lines.push('');
       
       for (const entry of this.entries) {
@@ -416,13 +478,19 @@ export class GossamerScoreModal extends Modal {
       }
       
       lines.push('');
-      lines.push('# Note: Scores should reflect narrative momentum at each story beat.');
-      lines.push('# Aim for scores within the ideal range when appropriate.');
+      lines.push('# Note: After filling in the numbers, return ONLY the "Completed Momentum Scores" block so it can be pasted back into Obsidian.');
       
       const template = lines.join('\n');
       await navigator.clipboard.writeText(template);
       
       new Notice('✓ Template copied! Paste into your AI and have it fill in the scores.');
+
+      if (missingRangeBeats.length > 0) {
+        this.showMetadataWarning('Range', missingRangeBeats);
+      }
+      if (this.includeBeatDescriptions && missingDescriptionBeats.length > 0) {
+        this.showMetadataWarning('Description', missingDescriptionBeats);
+      }
     } catch (error) {
       console.error('[Gossamer] Failed to copy template:', error);
       new Notice('Failed to copy template to clipboard.');
@@ -702,6 +770,25 @@ export class GossamerScoreModal extends Modal {
       console.error('[Gossamer] Failed to delete all scores:', error);
       new Notice('Failed to delete all scores. Check console for details.');
     }
+  }
+
+  private showMetadataWarning(field: string, beats: string[]): void {
+    const preview = beats.slice(0, 3).join(', ');
+    const remainder = beats.length > 3 ? `, +${beats.length - 3} more` : '';
+    new Notice(`Missing ${field} in Beat frontmatter for: ${preview}${remainder}. Update the beat notes to customize the AI template.`);
+  }
+
+  private getActiveAiContextInfo(): { name: string; prompt: string } {
+    const templates = this.plugin.settings.aiContextTemplates || [];
+    const activeId = this.plugin.settings.activeAiContextTemplateId;
+    const active = templates.find(t => t.id === activeId) || templates[0];
+    if (active) {
+      return { name: active.name, prompt: active.prompt };
+    }
+    return {
+      name: 'Generic Editor',
+      prompt: 'Act as a developmental editor evaluating narrative momentum, emotional stakes, and pacing across the manuscript beats.'
+    };
   }
 
   onClose(): void {

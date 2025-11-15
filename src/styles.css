@@ -1472,6 +1472,13 @@
   line-height: 1.5;
 }
 
+.rt-beats-model-info {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-accent);
+  margin: 4px 0 12px 0;
+}
+
 .rt-gossamer-beat-system-info {
   font-weight: 600;
   color: var(--text-accent);
@@ -1774,6 +1781,13 @@
   font-size: 13px;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+.rt-beats-completion-message {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-normal);
 }
 
 /* Status bar item for active beats processing */
@@ -2152,6 +2166,27 @@
   display: flex;
   align-items: center;
   min-height: 40px;
+}
+
+.rt-gossamer-copy-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  margin: -8px 0 10px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.rt-gossamer-copy-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rt-gossamer-copy-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
 }
 
 .rt-gossamer-scores-container {

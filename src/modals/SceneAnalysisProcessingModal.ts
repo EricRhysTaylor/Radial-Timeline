@@ -144,29 +144,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         contentEl.classList.add('rt-beats-modal');
 
         // Info section with active AI provider
-        const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        let modelName = 'Unknown';
-        
-        if (provider === 'anthropic') {
-            const modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
-            // Check more specific versions first
-            if (modelId.includes('sonnet-4-5') || modelId.includes('sonnet-4.5')) modelName = 'Claude Sonnet 4.5';
-            else if (modelId.includes('opus-4-1') || modelId.includes('opus-4.1')) modelName = 'Claude Opus 4.1';
-            else if (modelId.includes('opus-4')) modelName = 'Claude Opus 4';
-            else if (modelId.includes('sonnet-4')) modelName = 'Claude Sonnet 4';
-            else modelName = modelId;
-        } else if (provider === 'gemini') {
-            const modelId = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
-            if (modelId.includes('2.5-pro') || modelId.includes('2-5-pro')) modelName = 'Gemini 2.5 Pro';
-            else if (modelId.includes('2.0-pro') || modelId.includes('2-0-pro')) modelName = 'Gemini 2.0 Pro';
-            else modelName = modelId;
-        } else if (provider === 'openai') {
-            const modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
-            if (modelId.includes('4.1') || modelId.includes('4-1')) modelName = 'GPT-4.1';
-            else if (modelId.includes('4o')) modelName = 'GPT-4o';
-            else if (modelId.includes('o1')) modelName = 'GPT-o1';
-            else modelName = modelId;
-        }
+        const modelName = this.getActiveModelDisplayName();
         
         const infoEl = contentEl.createDiv({ cls: 'rt-beats-info' });
         infoEl.setText(`Select processing mode for scene beats analysis using ${modelName}. This will analyze based on manuscript order all scenes and update their scene beat metadata.`);
@@ -360,17 +338,19 @@ export class SceneAnalysisProcessingModal extends Modal {
             await this.onConfirm(this.selectedMode);
             
             // Show appropriate summary even if the last/only scene finished after an abort request
+            const activeModel = this.getActiveModelDisplayName();
             if (this.abortController && this.abortController.signal.aborted) {
-                this.showCompletionSummary('Processing aborted by user or rate limit');
+                this.showCompletionSummary(`Processing aborted while using ${activeModel}`);
             } else {
-                this.showCompletionSummary('Processing completed successfully!');
+                this.showCompletionSummary(`Successfully processed by ${activeModel}`);
             }
         } catch (error) {
+            const activeModel = this.getActiveModelDisplayName();
             if (!this.abortController.signal.aborted) {
                 this.addError(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
-                this.showCompletionSummary('Processing stopped due to error');
+                this.showCompletionSummary(`Processing stopped due to error while using ${activeModel}`);
             } else {
-                this.showCompletionSummary('Processing aborted by user or rate limit');
+                this.showCompletionSummary(`Processing aborted while using ${activeModel}`);
             }
         } finally {
             this.isProcessing = false;
@@ -384,6 +364,10 @@ export class SceneAnalysisProcessingModal extends Modal {
         const { contentEl, titleEl } = this;
         contentEl.empty();
         titleEl.setText('Processing scene beats analysis...');
+        const modelName = this.getActiveModelDisplayName();
+
+        const modelInfoEl = contentEl.createDiv({ cls: 'rt-beats-model-info' });
+        modelInfoEl.setText(`Model: ${modelName}`);
 
         // Progress bar container
         const progressContainer = contentEl.createDiv({ cls: 'rt-beats-progress-container' });
@@ -400,7 +384,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         
         // Current status (e.g., "Processing scene 15...")
         this.statusTextEl = contentEl.createDiv({ cls: 'rt-beats-status-text' });
-        this.statusTextEl.setText('Initializing...');
+        this.statusTextEl.setText(`Initializing ${modelName}...`);
 
         // Triplet info (prev/current/next) for the current request
         this.tripletTextEl = contentEl.createDiv({ cls: 'rt-beats-triplet-text' });
@@ -455,7 +439,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
         
         if (this.statusTextEl) {
-            this.statusTextEl.setText(`Processing: ${sceneName}`);
+            const modelName = this.getActiveModelDisplayName();
+            this.statusTextEl.setText(`Processing scene by ${modelName}: ${sceneName}`);
         }
     }
 
@@ -525,6 +510,9 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.statusTextEl) {
             this.statusTextEl.setText(summaryText);
         }
+
+        const completionMsgEl = contentEl.createDiv({ cls: 'rt-beats-completion-message' });
+        completionMsgEl.setText(statusMessage);
         
         // Create summary section for error/warning details if present
         const hasIssues = this.errorCount > 0 || this.warningCount > 0;
@@ -640,7 +628,36 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.statusTextEl?.setText('Processing stopped due to error');
         this.abortButtonEl?.setDisabled(true);
     }
+
+    private getActiveModelDisplayName(): string {
+        const provider = this.plugin.settings.defaultAiProvider || 'openai';
+        const normalize = (value: string): string => value.toLowerCase();
+        
+        if (provider === 'anthropic') {
+            const id = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+            const normalized = normalize(id);
+            if (normalized.includes('sonnet-4-5') || normalized.includes('sonnet-4.5')) return 'Claude Sonnet 4.5';
+            if (normalized.includes('sonnet-4')) return 'Claude Sonnet 4';
+            if (normalized.includes('opus-4-1') || normalized.includes('opus-4.1')) return 'Claude Opus 4.1';
+            if (normalized.includes('opus-4')) return 'Claude Opus 4';
+            return id;
+        }
+        
+        if (provider === 'gemini') {
+            const id = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
+            const normalized = normalize(id);
+            if (normalized.includes('2.5-pro') || normalized.includes('2-5-pro')) return 'Gemini 2.5 Pro';
+            if (normalized.includes('2.0-pro') || normalized.includes('2-0-pro')) return 'Gemini 2.0 Pro';
+            return id;
+        }
+        
+        const id = this.plugin.settings.openaiModelId || 'gpt-4.1';
+        const normalized = normalize(id);
+        if (normalized.includes('4.1') || normalized.includes('4-1')) return 'GPT-4.1';
+        if (normalized.includes('4o') || normalized.includes('4-0') || normalized.includes('gpt-4o')) return 'GPT-4o';
+        if (normalized.includes('gpt-o1') || normalized.includes('o1')) return 'GPT-o1';
+        return id;
+    }
 }
 
 export default SceneAnalysisProcessingModal;
-

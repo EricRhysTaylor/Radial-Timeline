@@ -130,7 +130,7 @@ export class AiContextModal extends Modal {
 
         // Info section
         const infoEl = contentEl.createDiv({ cls: 'rt-ai-context-info' });
-        infoEl.setText('Define context for AI LLM analysis. This text prepends all prompts sent to LLM to establish role and context.');
+        infoEl.setText('Define context for AI LLM analysis and Gossamer score generation. This text prepends all prompts sent to LLM to establish role and context and is used for the copy template button to generate Gossamer scores.');
 
         // Template selector section
         const selectorSection = contentEl.createDiv({ cls: 'rt-ai-context-selector-section' });

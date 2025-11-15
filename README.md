@@ -315,8 +315,8 @@ All scene and beat notes use YAML frontmatter. Place this at the very beginning 
 ---
 Class: Scene              # Type: Scene or Beat
 Act: 1                    # Which act (1-3)
-When:                     # Story chronology date (YYYY-MM-DD)
-Duration:                 # How long the scene lasts (e.g., "2 hours", "3 days")
+When:                     # Story chronology date (YYYY-MM-DD 12:34pm)
+Duration:                 # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
 Synopsis:                 # Brief description of what happens in this scene
 Status: Todo              # Scene status (Todo/Working/Complete)
 Subplot: Main Plot        # Single subplot (or use array format below for multiple)
@@ -367,7 +367,7 @@ Gossamer2 Justification:
 ---
 ```
 
-> **Tip**: Beat notes are currently displayed in narrative order using the Act field and filename prefix numbers (e.g., `01 Opening Image.md`). Support for chronological positioning with `When` fields may be added in a future update.
+> **Tip**: Beat notes are currently displayed in narrative order using the Act field and filename prefix numbers (e.g., `1 Opening Image.md`).
 
 **Need more fields?** See the complete [YAML Field Reference](./docs/YAML_REFERENCE.md) for:
 - Standard scene with common metadata (Revision, Book, Words, and more)

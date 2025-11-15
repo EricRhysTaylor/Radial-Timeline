@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem } from '../../utils/beatsSystems';
 import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
+import { AiContextModal } from '../AiContextModal';
 
 export function renderStoryBeatsSection(params: {
     app: App;
@@ -53,6 +54,26 @@ export function renderStoryBeatsSection(params: {
             }));
 
     updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
+
+    const getActiveTemplateName = (): string => {
+        const templates = plugin.settings.aiContextTemplates || [];
+        const activeId = plugin.settings.activeAiContextTemplateId;
+        const active = templates.find(t => t.id === activeId);
+        return active?.name || 'Generic Editor';
+    };
+
+    const contextTemplateSetting = new Settings(containerEl)
+        .setName('AI prompt context template')
+        .setDesc(`Active: ${getActiveTemplateName()}`)
+        .addExtraButton(button => button
+            .setIcon('gear')
+            .setTooltip('Manage context templates for AI prompt generation and Gossamer score generation')
+            .onClick(() => {
+                const modal = new AiContextModal(app, plugin, () => {
+                    contextTemplateSetting.setDesc(`Active: ${getActiveTemplateName()}`);
+                });
+                modal.open();
+            }));
 
     function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
         const descriptions: Record<string, string> = {
@@ -133,5 +154,4 @@ export function renderStoryBeatsSection(params: {
         }
     }
 }
-
 

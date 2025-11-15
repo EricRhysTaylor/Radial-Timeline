@@ -1,7 +1,6 @@
 import { Setting as Settings, Notice } from 'obsidian';
 import type { App, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import { AiContextModal } from '../AiContextModal';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
 import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels } from '../../api/geminiApi';
@@ -39,28 +38,6 @@ export function renderAiSection(params: {
                 params.toggleAiSettingsVisibility(value);
                 plugin.refreshTimelineIfNeeded(null);
             }));
-
-    // AI Prompt Context Template setting
-    const getActiveTemplateName = (): string => {
-        const templates = plugin.settings.aiContextTemplates || [];
-        const activeId = plugin.settings.activeAiContextTemplateId;
-        const active = templates.find(t => t.id === activeId);
-        return active?.name || 'Generic Editor';
-    };
-
-    const contextTemplateSetting = new Settings(containerEl)
-        .setName('AI prompt context template')
-        .setDesc(`Active: ${getActiveTemplateName()}`)
-        .addExtraButton(button => button
-            .setIcon('gear')
-            .setTooltip('Manage context templates')
-            .onClick(() => {
-                const modal = new AiContextModal(app, plugin, () => {
-                    contextTemplateSetting.setDesc(`Active: ${getActiveTemplateName()}`);
-                });
-                modal.open();
-            }));
-    params.addAiRelatedElement(contextTemplateSetting.settingEl);
 
     // Single model picker
     const modelPickerSetting = new Settings(containerEl)
@@ -235,5 +212,4 @@ export function renderAiSection(params: {
     // Set initial visibility state
     params.toggleAiSettingsVisibility(plugin.settings.enableAiSceneAnalysis ?? true);
 }
-
 
