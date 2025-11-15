@@ -178,9 +178,11 @@ export function sortScenesChronologically(scenes: TimelineItem[]): TimelineItem[
         // Parse When fields - handle both Date objects and strings
         const aWhen = a.when instanceof Date ? a.when : parseWhenField(typeof a.when === 'string' ? a.when : '');
         const bWhen = b.when instanceof Date ? b.when : parseWhenField(typeof b.when === 'string' ? b.when : '');
+        const aHasWhen = !!(aWhen && !isNaN(aWhen.getTime()));
+        const bHasWhen = !!(bWhen && !isNaN(bWhen.getTime()));
         
         // If both have When fields, sort by date
-        if (aWhen && bWhen) {
+        if (aHasWhen && bHasWhen && aWhen && bWhen) {
             const timeDiff = aWhen.getTime() - bWhen.getTime();
             if (timeDiff !== 0) return timeDiff;
             
@@ -188,12 +190,16 @@ export function sortScenesChronologically(scenes: TimelineItem[]): TimelineItem[
             return sortByManuscriptOrder(a, b);
         }
         
-        // If only one has When field, the one with When comes first
-        if (aWhen && !bWhen) return -1;
-        if (!aWhen && bWhen) return 1;
+        // If neither has a valid When, fall back to manuscript order
+        if (!aHasWhen && !bHasWhen) {
+            return sortByManuscriptOrder(a, b);
+        }
         
-        // If neither has When field, fall back to manuscript order
-        return sortByManuscriptOrder(a, b);
+        // Scenes missing When should be surfaced earliest (placed at beginning)
+        if (!aHasWhen && bHasWhen) return -1;
+        if (aHasWhen && !bHasWhen) return 1;
+        
+        return 0;
     });
 }
 

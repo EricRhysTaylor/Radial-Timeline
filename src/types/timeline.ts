@@ -30,6 +30,7 @@ export interface TimelineItem {
     "Beat Model"?: string;
     Range?: string;
     "Suggest Placement"?: string;
+    missingWhen?: boolean;
     Gossamer1?: number;
     Gossamer2?: number;
     Gossamer3?: number;

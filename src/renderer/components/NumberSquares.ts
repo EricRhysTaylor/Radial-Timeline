@@ -115,12 +115,17 @@ export function renderNumberSquaresUnified(params: {
     const squareY = textPathRadius * Math.sin(sceneStartAngle);
     
     const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
-    const squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
+    let squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
     let textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
     
     const grade = sceneGrades.get(sceneId);
     if (plugin.settings.enableAiSceneAnalysis && grade) {
       textClasses += ` rt-grade-${grade}`;
+    }
+
+    if (scene.missingWhen) {
+      squareClasses += ' rt-missing-when';
+      textClasses += ' rt-missing-when';
     }
 
     // Store in sceneNumbersMap if provided (Main Plot mode)

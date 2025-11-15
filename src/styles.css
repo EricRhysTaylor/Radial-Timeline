@@ -715,7 +715,7 @@
   fill: #FFFFFF;
 }
 .rt-number-square.rt-selected:not(.rt-scene-is-open) {
-  stroke-width: 2px;
+  stroke-width: 3px;
 }
 
 .rt-number-square.rt-non-selected {
@@ -892,6 +892,15 @@
 }
 .rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
+}
+.rt-number-square.rt-missing-when {
+  fill: var(--rt-color-due) !important;
+  stroke: var(--rt-color-due) !important;
+  stroke-width: 2px;
+}
+.rt-number-text.rt-missing-when {
+  fill: #FFFFFF !important;
+  opacity: 1;
 }
 /* Preserve grade colors for pending edits (higher specificity) */
 .rt-number-text.rt-has-edits.rt-grade-A { fill: #00ff48; }

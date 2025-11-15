@@ -412,6 +412,7 @@ export class GossamerScoreModal extends Modal {
           lines.push(`Template: ${contextTemplateName}`);
         }
         lines.push(contextPrompt.trim());
+        lines.push('Consult the complete manuscript and knowledge base for this project before assigning momentum scores.');
         lines.push('');
       }
       if (this.entries.length === 0) {

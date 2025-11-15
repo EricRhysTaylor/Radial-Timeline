@@ -69,21 +69,26 @@ export class SceneDataService {
                 const metadata = rawMetadata ? normalizeFrontmatterKeys(rawMetadata) : undefined;
                 
                 if (metadata && metadata.Class === "Scene") {
-                // Parse the When field using the centralized parser (single source of truth)
-                const whenStr = metadata.When;
-                
-                let when: Date | undefined;
-                if (typeof whenStr === 'string') {
-                    const parsed = parseWhenField(whenStr);
-                    if (parsed) {
-                        when = parsed;
+                    // Parse the When field using the centralized parser (single source of truth)
+                    const whenStr = metadata.When;
+                    let when: Date | undefined;
+                    if (typeof whenStr === 'string') {
+                        const parsed = parseWhenField(whenStr);
+                        if (parsed) {
+                            when = parsed;
+                        }
+                    } else if (whenStr instanceof Date) {
+                        // Already a Date object
+                        when = whenStr;
                     }
-                } else if (whenStr instanceof Date) {
-                    // Already a Date object
-                    when = whenStr;
-                }
-                
-                if (when && !isNaN(when.getTime())) {
+
+                    const hasValidWhen = when instanceof Date && !isNaN(when.getTime());
+                    const normalizedWhen = hasValidWhen ? when : undefined;
+                    const missingWhen = !hasValidWhen;
+                    const isoDate = hasValidWhen && normalizedWhen
+                        ? normalizedWhen.toISOString().split('T')[0]
+                        : '';
+
                     // Split subplots if provided, otherwise default to "Main Plot"
                     const subplots = metadata.Subplot
                         ? Array.isArray(metadata.Subplot) 
@@ -114,8 +119,9 @@ export class SceneDataService {
                             : (rawCharacter ? [stripWikiLinks(rawCharacter as string)] : undefined);
                         
                         scenes.push({
-                            date: when.toISOString().split('T')[0],
-                            when: when,
+                            date: isoDate,
+                            when: normalizedWhen,
+                            missingWhen,
                             path: file.path,
                             title: metadata.Title as string | undefined ?? file.basename,
                             subplot: subplot,
@@ -145,7 +151,6 @@ export class SceneDataService {
                             "Beats Update": normalizeBooleanValue(beatsUpdate)
                         });
                     }
-                }
                 } else if (metadata && isStoryBeat(metadata.Class)) {
                     // Defer processing of Plot/Beat items until after all scenes are collected
                     const actValue = metadata.Act;

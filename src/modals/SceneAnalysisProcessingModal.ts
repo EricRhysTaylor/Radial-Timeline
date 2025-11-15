@@ -144,10 +144,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         contentEl.classList.add('rt-beats-modal');
 
         // Info section with active AI provider
-        const modelName = this.getActiveModelDisplayName();
-        
         const infoEl = contentEl.createDiv({ cls: 'rt-beats-info' });
-        infoEl.setText(`Select processing mode for scene beats analysis using ${modelName}. This will analyze based on manuscript order all scenes and update their scene beat metadata.`);
+        infoEl.setText('Select how many scenes to process. This will analyze scenes in manuscript order and update their beat metadata.');
 
         // Mode selection
         const modesSection = contentEl.createDiv({ cls: 'rt-beats-modes' });
@@ -338,19 +336,17 @@ export class SceneAnalysisProcessingModal extends Modal {
             await this.onConfirm(this.selectedMode);
             
             // Show appropriate summary even if the last/only scene finished after an abort request
-            const activeModel = this.getActiveModelDisplayName();
             if (this.abortController && this.abortController.signal.aborted) {
-                this.showCompletionSummary(`Processing aborted while using ${activeModel}`);
+                this.showCompletionSummary('Processing aborted');
             } else {
-                this.showCompletionSummary(`Successfully processed by ${activeModel}`);
+                this.showCompletionSummary('Processing completed successfully!');
             }
         } catch (error) {
-            const activeModel = this.getActiveModelDisplayName();
             if (!this.abortController.signal.aborted) {
                 this.addError(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
-                this.showCompletionSummary(`Processing stopped due to error while using ${activeModel}`);
+                this.showCompletionSummary('Processing stopped due to error');
             } else {
-                this.showCompletionSummary(`Processing aborted while using ${activeModel}`);
+                this.showCompletionSummary('Processing aborted');
             }
         } finally {
             this.isProcessing = false;
@@ -384,7 +380,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         
         // Current status (e.g., "Processing scene 15...")
         this.statusTextEl = contentEl.createDiv({ cls: 'rt-beats-status-text' });
-        this.statusTextEl.setText(`Initializing ${modelName}...`);
+        this.statusTextEl.setText('Initializing...');
 
         // Triplet info (prev/current/next) for the current request
         this.tripletTextEl = contentEl.createDiv({ cls: 'rt-beats-triplet-text' });
@@ -439,8 +435,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
         
         if (this.statusTextEl) {
-            const modelName = this.getActiveModelDisplayName();
-            this.statusTextEl.setText(`Processing scene by ${modelName}: ${sceneName}`);
+            this.statusTextEl.setText(`Processing: ${sceneName}`);
         }
     }
 
