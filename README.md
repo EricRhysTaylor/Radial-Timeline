@@ -187,20 +187,20 @@ Chronologue mode is essential for constructing and visualizing the chronological
 **Command**: Gossamer enter momentum scores<br>
 **Settings**: Story beats system
 
-## AI Scene Analysis
+## AI story beats scene analysis (triplets)
 
 - **Scene-by-scene evaluation**: AI analyzes individual scenes in triplets (previous/current/next) to provide story beat assessment and grade evaluation
 - **Multiple ordering options**: Run analysis in manuscript order (Narrative mode) or by subplot order to get different perspectives on narrative scene flow
 
-<div style="text-align: center; margin: 20px 0;">
-  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot-navigation.png" alt="Navigating in Radial Timeline" style="width: 871; max-width: 100%;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Navigating in Radial Timeline</div>
-</div>
-
-
 **Modes**: Narrative mode (key 1), Subplot mode (key 2), Chronologue mode (key 3)<br>
 **Command**: AI scene analysis (manuscript order), AI scene analysis (subplot order)<br>
 **Settings**: AI LLM for scene analysis
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot-beats.png" alt="Story Beats Analysis" style="width: 600; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Story Beats Analysis</div>
+</div>
+
 
 ## Finding & Navigating Scenes
 
