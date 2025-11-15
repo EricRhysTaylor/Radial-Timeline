@@ -40,8 +40,13 @@ export function updateNumberSquareStates(
                 const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
                 
                 // Build new classes
-                const newSquareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
+                let newSquareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
                 let newTextClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
+                
+                if (scene.missingWhen) {
+                    newSquareClasses += ' rt-missing-when';
+                    newTextClasses += ' rt-missing-when';
+                }
                 
                 // Add AI grade if enabled
                 if (plugin.settings.enableAiSceneAnalysis) {

@@ -40,8 +40,10 @@ export function renderGeneralSection(params: {
             text.inputEl.removeClass('rt-setting-input-success');
             text.inputEl.removeClass('rt-setting-input-error');
 
-            if (value.trim()) {
-                const normalized = normalizePath(value.trim());
+            const trimmed = value.trim();
+
+            if (trimmed) {
+                const normalized = normalizePath(trimmed);
                 const isValid = await plugin.validateAndRememberPath(normalized);
                 if (isValid) {
                     plugin.settings.sourcePath = normalized;
@@ -56,9 +58,23 @@ export function renderGeneralSection(params: {
                         text.inputEl.removeClass('rt-setting-input-error');
                     }, 2000);
                 }
+            } else {
+                // Clear the source path, hide suggestions, and refresh the timeline immediately
+                plugin.settings.sourcePath = '';
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+
+                const suggestions = text.inputEl
+                    .closest('.setting-item')
+                    ?.querySelector('.source-path-suggestions');
+                suggestions?.classList.add('hidden');
+
+                text.inputEl.addClass('rt-setting-input-success');
+                window.setTimeout(() => {
+                    text.inputEl.removeClass('rt-setting-input-success');
+                }, 1000);
             }
         });
     });
 }
-
 

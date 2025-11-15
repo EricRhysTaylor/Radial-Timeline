@@ -250,8 +250,12 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     const squareX = textPathRadius * Math.cos(sceneStartAngle);
     const squareY = textPathRadius * Math.sin(sceneStartAngle);
     const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
-    const squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
+    let squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
     let textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
+    if (scene.missingWhen) {
+      squareClasses += ' rt-missing-when';
+      textClasses += ' rt-missing-when';
+    }
     const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
     extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
     const grade = sceneGrades.get(sceneId);

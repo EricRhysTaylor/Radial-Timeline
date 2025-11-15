@@ -836,6 +836,11 @@
   fill: var(--rt-color-due) !important;
 }
 
+.rt-missing-when-text {
+  fill: var(--rt-color-due) !important;
+  font-style: italic;
+}
+
 /* Revisions/Pending edits text styling */
 .rt-revisions-text {
   fill: #C0C0C0 !important;
