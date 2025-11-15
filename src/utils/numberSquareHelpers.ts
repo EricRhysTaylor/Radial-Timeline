@@ -29,16 +29,11 @@ export function generateNumberSquareGroup(
     options?: {
         cornerRadius?: number;
         subplotIndex?: number;
-        customProperties?: Record<string, string>;
     }
 ): string {
     const cornerRadius = options?.cornerRadius ?? 0;
     const radiusAttr = cornerRadius > 0 ? ` rx="${cornerRadius}" ry="${cornerRadius}"` : '';
     const subplotAttr = options?.subplotIndex !== undefined ? ` data-subplot-idx="${options.subplotIndex}"` : '';
-    const customPropEntries = options?.customProperties ? Object.entries(options.customProperties) : [];
-    const dataCustomAttr = customPropEntries.length > 0
-        ? ` data-custom-props="${escapeXml(JSON.stringify(Object.fromEntries(customPropEntries)))}"`
-        : '';
 
     return `
         <g class="number-square-group" transform="translate(${squareX}, ${squareY})">
@@ -50,7 +45,7 @@ export function generateNumberSquareGroup(
                     height="${squareSize.height}" 
                     class="${squareClasses}" 
                     data-scene-id="${escapeXml(sceneId)}"
-                    ${radiusAttr}${subplotAttr}${dataCustomAttr}
+                    ${radiusAttr}${subplotAttr}
                 />
                 <text 
                     x="0" 

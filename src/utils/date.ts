@@ -184,23 +184,23 @@ export function calculateTimeSpan(dates: Date[]): TimeSpanInfo {
     
     // Determine recommended unit based on span
     let recommendedUnit: TimeSpanInfo['recommendedUnit'];
-    if (hours < 6) {
-        // Less than 6 hours - use minutes (good for heists, action sequences, etc.)
+    if (hours <= 3) {
+        // Less than or equal to 3 hours - use minutes (good for heists, action sequences, etc.)
         recommendedUnit = 'minutes';
-    } else if (hours < 48) {
-        // 6-48 hours - use hours
+    } else if (hours <= 48) {
+        // 3-48 hours - use hours
         recommendedUnit = 'hours';
-    } else if (days < 14) {
+    } else if (days <= 14) {
         // 2-14 days - use days
         recommendedUnit = 'days';
-    } else if (weeks < 12) {
-        // 2-12 weeks - use weeks
+    } else if (weeks <= 8) {
+        // 2-8 weeks - use weeks
         recommendedUnit = 'weeks';
-    } else if (months < 24) {
+    } else if (months <= 24) {
         // 2-24 months - use months
         recommendedUnit = 'months';
     } else {
-        // 24+ months - use years
+        // 24+ months - use years, starting at 2 years and up
         recommendedUnit = 'years';
     }
     
@@ -324,6 +324,16 @@ function mapTimeToAngle(timeMs: number, startMs: number, endMs: number): number 
  * Format elapsed time with click-to-cycle units
  * Intelligently drops down to smaller units to avoid fractional numbers
  */
+const ELAPSED_TIME_UNIT_LABELS: Record<string, { singular: string; plural: string }> = {
+    min: { singular: 'minute', plural: 'minutes' },
+    minute: { singular: 'minute', plural: 'minutes' },
+    hour: { singular: 'hour', plural: 'hours' },
+    day: { singular: 'day', plural: 'days' },
+    week: { singular: 'week', plural: 'weeks' },
+    month: { singular: 'month', plural: 'months' },
+    year: { singular: 'year', plural: 'years' },
+};
+
 export function formatElapsedTime(ms: number, clickCount: number = 0): string {
     const minutes = ms / (1000 * 60);
     const hours = minutes / 60;
@@ -332,12 +342,22 @@ export function formatElapsedTime(ms: number, clickCount: number = 0): string {
     const months = days / 30.44;
     const years = days / 365.25;
     
+    const formatUnitLabel = (value: number, unitKey: string): string => {
+        const normalizedKey = unitKey.toLowerCase();
+        const unit = ELAPSED_TIME_UNIT_LABELS[normalizedKey] ?? {
+            singular: unitKey,
+            plural: `${unitKey}s`
+        };
+        const isSingular = Math.abs(Math.abs(value) - 1) < 1e-9;
+        return isSingular ? unit.singular : unit.plural;
+    };
+    
     // Helper to format with appropriate unit, dropping down for better readability
     const formatWithBestUnit = (value: number, mainUnit: string, nextUnit?: string, nextValue?: number): string => {
         // If we have a fractional value less than 1, drop down to next unit if available
         if (value < 1 && nextUnit && nextValue !== undefined) {
             const rounded = Math.round(nextValue);
-            return `${rounded} ${nextUnit}`;
+            return `${rounded} ${formatUnitLabel(rounded, nextUnit)}`;
         }
         
         // If we have a decimal value, check if dropping down gives a whole number
@@ -345,16 +365,17 @@ export function formatElapsedTime(ms: number, clickCount: number = 0): string {
             const rounded = Math.round(nextValue);
             // If the next unit gives a clean whole number, use it
             if (rounded > 0 && Math.abs(nextValue - rounded) < 0.1) {
-                return `${rounded} ${nextUnit}`;
+                return `${rounded} ${formatUnitLabel(rounded, nextUnit)}`;
             }
         }
         
         // Round to 1 decimal place, but show whole numbers without decimal
         const rounded = Math.round(value * 10) / 10;
         if (rounded % 1 === 0) {
-            return `${Math.round(rounded)} ${mainUnit}`;
+            const wholeValue = Math.round(rounded);
+            return `${wholeValue} ${formatUnitLabel(wholeValue, mainUnit)}`;
         }
-        return `${rounded.toFixed(1)} ${mainUnit}`;
+        return `${rounded.toFixed(1)} ${formatUnitLabel(rounded, mainUnit)}`;
     };
     
     // Cycle through units based on click count

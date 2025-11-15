@@ -520,8 +520,7 @@ export function createTimelineSVG(
                 const idx = masterSubplotOrder.indexOf(subplotName);
                 const normalized = idx >= 0 ? (idx % 16) : 0;
                 return {
-                    subplotIndex: normalized,
-                    strokeVar: `var(--rt-subplot-colors-${normalized})`
+                    subplotIndex: normalized
                 };
             }
             : null;
