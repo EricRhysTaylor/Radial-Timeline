@@ -4,7 +4,7 @@
  */
 
 import { requestUrl, App } from 'obsidian';
-import { compareReleaseVersionsDesc } from '../utils/releases';
+import { compareReleaseVersionsDesc, parseReleaseVersion } from '../utils/releases';
 import type { EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, RadialTimelineSettings } from '../types';
 import { ReleaseNotesModal } from '../modals/ReleaseNotesModal';
 import type RadialTimelinePlugin from '../main';
@@ -28,8 +28,8 @@ export class ReleaseNotesService {
         const embedded = this.loadEmbeddedReleaseNotes();
         const cached = this.settings.cachedReleaseNotes ?? null;
 
-        const embeddedLatest = embedded?.latest?.version;
-        const cachedLatest = cached?.latest?.version;
+        const embeddedLatest = this.extractLatestVersion(embedded);
+        const cachedLatest = this.extractLatestVersion(cached);
         const useEmbedded =
             embedded &&
             (!cachedLatest || (embeddedLatest && compareReleaseVersionsDesc(embeddedLatest, cachedLatest) <= 0));
@@ -57,23 +57,23 @@ export class ReleaseNotesService {
     }
 
     getLatestVersion(): string | null {
-        const bundle = this.releaseNotesBundle;
-        if (!bundle) return null;
-        return bundle.latest?.version ?? bundle.major?.version ?? null;
+        const entries = this.getEntries();
+        return entries.length > 0 ? entries[0]!.version : null;
     }
 
     async maybeShowReleaseNotesModal(app: App, plugin: RadialTimelinePlugin): Promise<void> {
-        const bundle = this.requireBundle();
-        const latestVersion = this.getLatestVersion();
+        const entries = this.getEntries();
+        if (entries.length === 0) {
+            throw new Error('Release bundle missing entries');
+        }
+
+        const latestEntry = entries[0]!;
+        const latestVersion = latestEntry.version;
         if (!latestVersion) {
             throw new Error('Release bundle missing latest version');
         }
 
-        const primaryEntry = bundle.latest ?? bundle.major;
-        if (!primaryEntry) {
-            throw new Error('Release bundle missing primary entry');
-        }
-        const latestKey = this.computeEntryKey(primaryEntry);
+        const latestKey = this.computeEntryKey(latestEntry);
 
         const seenVersion = this.settings.lastSeenReleaseNotesVersion ?? '';
         const hasSeen = seenVersion === latestKey || seenVersion === latestVersion;
@@ -84,16 +84,16 @@ export class ReleaseNotesService {
         this.openReleaseNotesModal(app, plugin);
     }
 
-    openReleaseNotesModal(app: App, plugin: RadialTimelinePlugin, force = false): void {
-        const bundle = this.requireBundle();
-        const major = bundle.major ?? bundle.latest;
-        if (!major) {
-            throw new Error('Release bundle missing major entry');
+    openReleaseNotesModal(app: App, plugin: RadialTimelinePlugin): void {
+        const entries = this.getEntries();
+        if (entries.length === 0) {
+            throw new Error('Release bundle missing entries');
         }
-
-        const patches = this.collectReleasePatches(bundle, major);
-        const latestEntry = bundle.latest ?? major;
-        const modal = new ReleaseNotesModal(app, plugin, major, latestEntry, patches);
+        const majorEntry = this.getMajorEntry();
+        if (!majorEntry) {
+            throw new Error('Release bundle missing major release entry');
+        }
+        const modal = new ReleaseNotesModal(app, plugin, entries, majorEntry);
         modal.open();
     }
 
@@ -114,25 +114,25 @@ export class ReleaseNotesService {
         return task;
     }
 
-    collectReleasePatches(bundle: EmbeddedReleaseNotesBundle, major: EmbeddedReleaseNotesEntry): EmbeddedReleaseNotesEntry[] {
-        const patches: EmbeddedReleaseNotesEntry[] = [];
-        const add = (entry: EmbeddedReleaseNotesEntry | null | undefined) => {
-            if (!entry) return;
-            patches.push(entry);
-        };
+    getEntries(): EmbeddedReleaseNotesEntry[] {
+        const bundle = this.releaseNotesBundle;
+        if (!bundle) return [];
+        return this.extractEntries(bundle);
+    }
 
-        const patchSource: EmbeddedReleaseNotesEntry[] = Array.isArray(bundle.patches) ? bundle.patches : [];
-        for (const entry of patchSource) {
-            add(entry);
-        }
+    getMajorVersion(): string | null {
+        if (!this.releaseNotesBundle) return null;
+        if (this.releaseNotesBundle.majorVersion) return this.releaseNotesBundle.majorVersion;
+        if (this.releaseNotesBundle.major?.version) return this.releaseNotesBundle.major.version;
+        const entries = this.extractEntries(this.releaseNotesBundle);
+        const majorEntry = this.resolveMajorEntry(this.releaseNotesBundle, entries);
+        return majorEntry?.version ?? null;
+    }
 
-        // Add latest if it's different from major
-        if (bundle.latest && bundle.latest.version !== major.version) {
-            add(bundle.latest);
-        }
-
-        patches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
-        return patches;
+    getMajorEntry(): EmbeddedReleaseNotesEntry | null {
+        if (!this.releaseNotesBundle) return null;
+        const entries = this.extractEntries(this.releaseNotesBundle);
+        return this.resolveMajorEntry(this.releaseNotesBundle, entries);
     }
 
     private loadEmbeddedReleaseNotes(): EmbeddedReleaseNotesBundle | null {
@@ -224,8 +224,14 @@ export class ReleaseNotesService {
         const patches = Array.isArray(bundleObj.patches)
             ? bundleObj.patches.map(normalizeEntry)
             : undefined;
+        const entries = Array.isArray(bundleObj.entries)
+            ? bundleObj.entries.map(normalizeEntry)
+            : undefined;
+        const majorVersion = typeof bundleObj.majorVersion === 'string' ? bundleObj.majorVersion : undefined;
 
         return {
+            entries,
+            majorVersion,
             major,
             latest,
             patches
@@ -240,5 +246,63 @@ export class ReleaseNotesService {
         }
         const hashHex = (hash >>> 0).toString(16);
         return `${entry.version}|${hashHex}`;
+    }
+
+    private extractLatestVersion(bundle: EmbeddedReleaseNotesBundle | null): string | null {
+        if (!bundle) return null;
+        if (Array.isArray(bundle.entries) && bundle.entries.length > 0) {
+            return bundle.entries[0]?.version ?? null;
+        }
+        return bundle.latest?.version ?? bundle.major?.version ?? null;
+    }
+
+    private extractEntries(bundle: EmbeddedReleaseNotesBundle): EmbeddedReleaseNotesEntry[] {
+        if (Array.isArray(bundle.entries) && bundle.entries.length > 0) {
+            return bundle.entries.map(entry => ({ ...entry }));
+        }
+        const entries: EmbeddedReleaseNotesEntry[] = [];
+        const seen = new Set<string>();
+        const addEntry = (entry: EmbeddedReleaseNotesEntry | null | undefined) => {
+            if (!entry) return;
+            if (seen.has(entry.version)) return;
+            seen.add(entry.version);
+            entries.push(entry);
+        };
+
+        addEntry(bundle.latest);
+
+        const bundlePatches: EmbeddedReleaseNotesEntry[] = Array.isArray(bundle.patches) ? [...bundle.patches] : [];
+        bundlePatches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
+        bundlePatches.forEach(addEntry);
+
+        addEntry(bundle.major);
+
+        if (entries.length === 0 && bundle.major) {
+            entries.push(bundle.major);
+        }
+        if (entries.length === 0 && bundle.latest) {
+            entries.push(bundle.latest);
+        }
+        return entries;
+    }
+
+    private resolveMajorEntry(bundle: EmbeddedReleaseNotesBundle, entries: EmbeddedReleaseNotesEntry[]): EmbeddedReleaseNotesEntry | null {
+        if (entries.length === 0) return null;
+        const desiredVersions: string[] = [];
+        if (bundle.majorVersion) desiredVersions.push(bundle.majorVersion);
+        if (bundle.major?.version) desiredVersions.push(bundle.major.version);
+
+        for (const version of desiredVersions) {
+            const match = entries.find(entry => entry.version === version);
+            if (match) return match;
+        }
+
+        const majorCandidate = entries.find(entry => {
+            const info = parseReleaseVersion(entry.version);
+            return !!info && info.minor === 0 && info.patch === 0;
+        });
+        if (majorCandidate) return majorCandidate;
+
+        return entries[entries.length - 1] ?? entries[0] ?? null;
     }
 }

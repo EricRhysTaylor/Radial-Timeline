@@ -11,6 +11,8 @@ export interface EmbeddedReleaseNotesEntry {
 }
 
 export interface EmbeddedReleaseNotesBundle {
+    entries?: EmbeddedReleaseNotesEntry[];
+    majorVersion?: string | null;
     major?: EmbeddedReleaseNotesEntry | null;
     latest?: EmbeddedReleaseNotesEntry | null;
     patches?: EmbeddedReleaseNotesEntry[];

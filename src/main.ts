@@ -17,7 +17,7 @@ import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { parseWhenField } from './utils/date';
 import { normalizeBooleanValue } from './utils/sceneHelpers';
-import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle } from './types';
+import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
 import { HoverHighlighter } from './services/HoverHighlighter';
@@ -298,6 +298,14 @@ export default class RadialTimelinePlugin extends Plugin {
         return this.releaseNotesService?.getBundle() ?? null;
     }
 
+    public getReleaseNotesEntries(): EmbeddedReleaseNotesEntry[] {
+        return this.releaseNotesService?.getEntries() ?? [];
+    }
+
+    public getReleaseNotesMajorVersion(): string | null {
+        return this.releaseNotesService?.getMajorVersion() ?? null;
+    }
+
     public async markReleaseNotesSeen(version: string): Promise<void> {
         await this.releaseNotesService?.markReleaseNotesSeen(version);
     }
@@ -306,8 +314,8 @@ export default class RadialTimelinePlugin extends Plugin {
         await this.releaseNotesService?.maybeShowReleaseNotesModal(this.app, this);
     }
 
-    public openReleaseNotesModal(force: boolean = false): void {
-        this.releaseNotesService?.openReleaseNotesModal(this.app, this, force);
+    public openReleaseNotesModal(): void {
+        this.releaseNotesService?.openReleaseNotesModal(this.app, this);
     }
 
     async onload() {

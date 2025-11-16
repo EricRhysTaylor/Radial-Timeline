@@ -85,72 +85,90 @@ if (!semver) {
 
 console.log(`📦 Latest release: ${latestVersion}`);
 
-// Fetch latest release details (this will be the "latest" entry)
+// Fetch latest release details (this will be the first entry in the ordered list)
+const releaseCache = new Map();
 const latest = fetchRelease(latestVersion);
 if (!latest) {
     console.error('❌ Failed to fetch latest release');
     process.exit(1);
 }
+releaseCache.set(latestVersion, latest);
 
-// Determine baseline major release for the current major stream (e.g., 4.0.0)
-const targetMajorVersion = `${semver.major}.0.0`;
-let major = fetchRelease(targetMajorVersion);
-if (!major) {
-    const existingMajor = existingBundle?.major?.version === targetMajorVersion
-        ? JSON.parse(JSON.stringify(existingBundle.major))
-        : null;
-    if (existingMajor) {
-        console.warn(`⚠️  Major release ${targetMajorVersion} not found via GitHub, reusing embedded entry.`);
-        major = existingMajor;
-    } else {
-        console.warn(`⚠️  Major release ${targetMajorVersion} not found, falling back to latest`);
-        major = latest;
+const getReleaseDetails = (version) => {
+    if (releaseCache.has(version)) {
+        return releaseCache.get(version);
     }
-}
-console.log(`🔍 Major release entry: ${major.version}`);
-
-// Collect patches and recent releases in this major stream (excluding the chosen major)
-const patches = [];
-const seen = new Set([major.version]);
-
-for (const version of allReleases) {
-    if (version === major.version) continue;
-    if (version === latest.version) continue;
-    const v = parseSemver(version);
-    if (!v) continue;
-    if (v.major !== semver.major) continue;
-    if (v.minor === 0 && v.patch === 0) continue; // Skip X.0.0
-    if (seen.has(version)) continue;
-    
     const release = fetchRelease(version);
     if (release) {
-        patches.push(release);
-        seen.add(version);
+        releaseCache.set(version, release);
+    }
+    return release;
+};
+
+const entries = [];
+const seen = new Set();
+
+for (const version of allReleases) {
+    if (seen.has(version)) continue;
+    const v = parseSemver(version);
+    if (!v || v.major !== semver.major) continue;
+    const release = getReleaseDetails(version);
+    if (!release) continue;
+    entries.push(release);
+    seen.add(version);
+}
+
+if (entries.length === 0) {
+    console.error('❌ Unable to build release notes entries for this major version');
+    process.exit(1);
+}
+
+const targetMajorVersion = `${semver.major}.0.0`;
+let majorEntry = entries.find(entry => entry.version === targetMajorVersion) ?? null;
+
+if (!majorEntry) {
+    const fallbackExistingEntry =
+        (existingBundle?.entries ?? []).find(entry => entry.version === targetMajorVersion) ??
+        (existingBundle?.major?.version === targetMajorVersion ? existingBundle.major : null);
+    if (fallbackExistingEntry) {
+        console.warn(`⚠️  Major release ${targetMajorVersion} not found via GitHub, reusing embedded entry.`);
+        majorEntry = fallbackExistingEntry;
+        if (!entries.some(entry => entry.version === fallbackExistingEntry.version)) {
+            entries.push(fallbackExistingEntry);
+        }
+    } else {
+        console.warn(`⚠️  Major release ${targetMajorVersion} not found via GitHub, using oldest available release.`);
+        majorEntry = entries[entries.length - 1] ?? entries[0] ?? null;
     }
 }
 
-// Sort patches newest first
-patches.sort((a, b) => {
-    const aVer = parseSemver(a.version);
-    const bVer = parseSemver(b.version);
-    if (!aVer || !bVer) return 0;
-    if (aVer.minor !== bVer.minor) return bVer.minor - aVer.minor;
-    return bVer.patch - aVer.patch;
+const majorVersion = majorEntry?.version ?? null;
+if (!majorEntry) {
+    console.warn('⚠️  No major release entry identified. The latest release will be highlighted instead.');
+}
+
+const latestEntry = entries[0] ?? majorEntry ?? null;
+const legacyPatches = entries.filter(entry => {
+    const isMajor = majorEntry && entry.version === majorEntry.version;
+    const isLatest = latestEntry && entry.version === latestEntry.version;
+    return !(isMajor || isLatest);
 });
 
 const bundle = {
-    major,
-    latest,
-    patches: patches.length > 0 ? patches : undefined
+    entries,
+    majorVersion,
+    major: majorEntry ?? null,
+    latest: latestEntry ?? null,
+    patches: legacyPatches.length > 0 ? legacyPatches : undefined
 };
 
 try {
     writeFileSync(BUNDLE_PATH, JSON.stringify(bundle, null, 2));
     console.log(`\n✅ Release notes synced to ${BUNDLE_PATH}`);
-    console.log(`   Major: ${major.version}`);
-    console.log(`   Latest: ${latest.version}`);
-    console.log(`   Patches: ${patches.length}`);
-    console.log('\n💡 Now run: npm run build');
+    console.log(`   Entries: ${entries.length}`);
+    console.log(`   Major Version: ${majorVersion ?? 'n/a'}`);
+    console.log(`   Latest: ${latestEntry?.version ?? 'n/a'}`);
+    console.log('\n💡 Reminder: run "npm run backup" to commit these updated release notes.');
 } catch (err) {
     console.error(`❌ Failed to write bundle: ${err.message}`);
     process.exit(1);
