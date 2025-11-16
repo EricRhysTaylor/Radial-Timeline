@@ -1,4 +1,4 @@
-import { Setting as Settings, Notice } from 'obsidian';
+import { Setting as Settings, Notice, DropdownComponent } from 'obsidian';
 import type { App, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
@@ -43,12 +43,19 @@ export function renderAiSection(params: {
     // Single model picker
     const modelPickerSetting = new Settings(containerEl)
         .setName('Model')
-        .setDesc('Pick preferred model for advanced writing analysis.')
-        .addDropdown(dropdown => {
-            type ModelChoice = {
-                optionId: string;
-                provider: Provider;
-                modelId: string;
+        .setDesc('Pick preferred model for advanced writing analysis.');
+
+    const controlRow = modelPickerSetting.controlEl.createDiv({ cls: 'rt-model-picker-row' });
+    const guidanceEl = controlRow.createDiv({ cls: 'rt-model-guidance' });
+    const dropdownContainer = controlRow.createDiv({ cls: 'rt-model-picker-select' });
+    const dropdownComponent = new DropdownComponent(dropdownContainer);
+    dropdownComponent.selectEl.classList.add('rt-setting-dropdown', 'rt-provider-dropdown');
+
+    {
+        type ModelChoice = {
+            optionId: string;
+            provider: Provider;
+            modelId: string;
                 label: string;
                 tier: ModelTier;
                 guidance: string;
@@ -76,7 +83,7 @@ export function renderAiSection(params: {
                     })));
 
             choices.forEach(opt => {
-                dropdown.addOption(opt.optionId, `${opt.label} (${tierLabel[opt.tier]})`);
+                dropdownComponent.addOption(opt.optionId, `${opt.label} (${tierLabel[opt.tier]})`);
             });
 
             const findDefaultChoice = (): ModelChoice | undefined => {
@@ -95,7 +102,6 @@ export function renderAiSection(params: {
                 );
             };
 
-            const guidanceEl = modelPickerSetting.settingEl.createDiv({ cls: 'rt-model-guidance' });
             const updateGuidance = (choice?: ModelChoice) => {
                 if (choice) {
                     guidanceEl.setText(choice.guidance);
@@ -106,13 +112,13 @@ export function renderAiSection(params: {
 
             const defaultChoice = findDefaultChoice();
             if (defaultChoice) {
-                dropdown.setValue(defaultChoice.optionId);
+                dropdownComponent.setValue(defaultChoice.optionId);
                 updateGuidance(defaultChoice);
             } else {
                 updateGuidance();
             }
 
-            dropdown.onChange(async value => {
+            dropdownComponent.onChange(async value => {
                 const choice = choices.find(c => c.optionId === value);
                 if (!choice) return;
                 plugin.settings.defaultAiProvider = choice.provider;
@@ -123,8 +129,7 @@ export function renderAiSection(params: {
                 params.refreshProviderDimming();
                 updateGuidance(choice);
             });
-            (dropdown as any).selectEl?.classList.add('rt-setting-dropdown', 'rt-provider-dropdown');
-        });
+    }
     params.addAiRelatedElement(modelPickerSetting.settingEl);
 
     // Provider sections

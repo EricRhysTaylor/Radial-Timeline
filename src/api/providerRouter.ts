@@ -27,7 +27,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
   const temp = typeof args.temperature === 'number' ? args.temperature : 0.7;
   if (provider === 'anthropic') {
     const apiKey = plugin.settings.anthropicApiKey || '';
-    const modelId = plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+    const modelId = plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
     const resp: AnthropicApiResponse = await callAnthropicApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max ?? 4000);
     return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
   } else if (provider === 'gemini') {
@@ -42,5 +42,4 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
   }
 }
-
 

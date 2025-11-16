@@ -74,7 +74,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     targetCompletionDate: undefined, // Ensure it's undefined by default
     openaiApiKey: '', // Default to empty string
     anthropicApiKey: '', // <<< ADDED: Default empty string
-    anthropicModelId: 'claude-sonnet-4-20250514', // Default to Sonnet 4 (20250514)
+    anthropicModelId: 'claude-sonnet-4-5-20250929', // Default to Sonnet 4.5 (20250929)
     geminiApiKey: '',
     geminiModelId: 'gemini-2.5-pro', // Default to Gemini 2.5 Pro
     defaultAiProvider: 'openai',
@@ -217,7 +217,7 @@ export default class RadialTimelinePlugin extends Plugin {
 
     private getModelId(): string {
         const provider = this.aiProvider;
-        if (provider === 'anthropic') return this.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+        if (provider === 'anthropic') return this.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
         if (provider === 'gemini') return this.settings.geminiModelId || 'gemini-2.5-pro';
         return this.settings.openaiModelId || 'gpt-4.1';
     }

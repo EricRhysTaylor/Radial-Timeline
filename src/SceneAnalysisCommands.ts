@@ -770,10 +770,10 @@ async function callAiProvider(
                 case 'anthropic':
                     // Canonical Anthropic IDs (2025)
                     if (id === 'claude-opus-4-1' || id === 'claude-4.1-opus' || id === 'claude-opus-4-1@20250805') return 'claude-opus-4-1-20250805';
-                    if (id === 'claude-sonnet-4-1' || id === 'claude-4-sonnet' || id === 'claude-sonnet-4-1@20250805') return 'claude-sonnet-4-20250514';
+                    if (id === 'claude-sonnet-4-1' || id === 'claude-4-sonnet' || id === 'claude-sonnet-4-1@20250805') return 'claude-sonnet-4-5-20250929';
                     // Legacy fallbacks map to latest
                     if (id === 'claude-opus-4-0' || id === 'claude-3-opus-20240229') return 'claude-opus-4-1-20250805';
-                    if (id === 'claude-sonnet-4-0' || id === 'claude-3-7-sonnet-20250219') return 'claude-sonnet-4-20250514';
+                    if (id === 'claude-sonnet-4-0' || id === 'claude-3-7-sonnet-20250219' || id === 'claude-sonnet-4-20250514') return 'claude-sonnet-4-5-20250929';
                     return id;
                 case 'openai':
                     // Use GPT‑4.1 as canonical; map older/placeholder ids
@@ -792,7 +792,7 @@ async function callAiProvider(
 
         if (provider === 'anthropic') {
             apiKey = plugin.settings.anthropicApiKey;
-            modelId = normalizeModelId('anthropic', plugin.settings.anthropicModelId) || 'claude-sonnet-4-20250514';
+            modelId = normalizeModelId('anthropic', plugin.settings.anthropicModelId) || 'claude-sonnet-4-5-20250929';
 
             if (!apiKey || !modelId) {
                 apiErrorMsg = 'Anthropic API key or Model ID not configured in settings.';
@@ -934,7 +934,7 @@ async function callAiProvider(
 
          const currentProvider = provider || plugin.settings.defaultAiProvider || 'unknown';
          if (!modelId) {
-            if (currentProvider === 'anthropic') modelId = plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+            if (currentProvider === 'anthropic') modelId = plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
             else if (currentProvider === 'openai') modelId = 'gpt-4o';
             else if (currentProvider === 'gemini') modelId = plugin.settings.geminiModelId || 'gemini-1.5-pro';
             else modelId = 'unknown';

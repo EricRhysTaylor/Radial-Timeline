@@ -35,13 +35,13 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
             id: 'claude-opus-4-1-20250805',
             label: 'Claude Opus 4.1',
             tier: 'premium',
-            guidance: 'Highest ceiling for nuanced literary analysis; reach for it when hallucination risk must be minimal.',
+            guidance: 'Highest ceiling for nuanced literary analysis; reach for it when you need the most reliable, deeply reasoned feedback.',
         },
         {
-            id: 'claude-sonnet-4-20250514',
-            label: 'Claude Sonnet 4',
+            id: 'claude-sonnet-4-5-20250929',
+            label: 'Claude Sonnet 4.5',
             tier: 'balanced',
-            guidance: 'Best blend of cost and depth. Handles heavy triplets and beat momentum scoring comfortably.',
+            guidance: 'Updated balanced pick. Great for sustained triplet runs and momentum scoring without paying Opus rates.',
         },
         {
             id: 'claude-haiku-4',

@@ -629,7 +629,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         const normalize = (value: string): string => value.toLowerCase();
         
         if (provider === 'anthropic') {
-            const id = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+            const id = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
             const normalized = normalize(id);
             if (normalized.includes('sonnet-4-5') || normalized.includes('sonnet-4.5')) return 'Claude Sonnet 4.5';
             if (normalized.includes('sonnet-4')) return 'Claude Sonnet 4';

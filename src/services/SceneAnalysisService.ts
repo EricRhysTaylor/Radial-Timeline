@@ -116,7 +116,7 @@ export class SceneAnalysisService {
     getActiveModelName(): string {
         const provider = this.plugin.settings.defaultAiProvider || 'openai';
         if (provider === 'anthropic') {
-            const modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-20250514';
+            const modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
             if (modelId.includes('sonnet-4-5') || modelId.includes('sonnet-4.5')) return 'Claude Sonnet 4.5';
             if (modelId.includes('opus-4-1') || modelId.includes('opus-4.1')) return 'Claude Opus 4.1';
             if (modelId.includes('opus-4')) return 'Claude Opus 4';
