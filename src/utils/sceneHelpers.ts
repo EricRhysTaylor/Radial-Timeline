@@ -6,6 +6,8 @@
 import type { TimelineItem } from '../types';
 import { parseWhenField } from './date';
 
+const STATUSES_REQUIRING_WHEN = new Set(['working', 'complete']);
+
 /**
  * Normalize a value to a boolean
  * Handles various input types (boolean, string, number)
@@ -167,6 +169,31 @@ export function buildTextClasses(
     if (isSearchMatch) classes += ' rt-search-result';
     if (hasEdits) classes += ' rt-has-edits';
     return classes;
+}
+
+function normalizeStatusValue(status: TimelineItem['status']): string | null {
+    if (!status) return null;
+    if (Array.isArray(status)) {
+        for (const entry of status) {
+            if (typeof entry === 'string') {
+                const trimmed = entry.trim();
+                if (trimmed) return trimmed;
+            }
+        }
+        return null;
+    }
+    if (typeof status === 'string') {
+        const trimmed = status.trim();
+        return trimmed || null;
+    }
+    return null;
+}
+
+export function shouldDisplayMissingWhenWarning(scene?: TimelineItem): boolean {
+    if (!scene || !scene.missingWhen) return false;
+    const normalizedStatus = normalizeStatusValue(scene.status);
+    if (!normalizedStatus) return false;
+    return STATUSES_REQUIRING_WHEN.has(normalizedStatus.toLowerCase());
 }
 
 /**

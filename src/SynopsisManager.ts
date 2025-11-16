@@ -15,7 +15,7 @@ import {
   SYNOPSIS_INSET
 } from './renderer/layout/LayoutConstants';
 import { adjustBeatLabelsAfterRender } from './renderer/TimelineRenderer';
-import { sortScenes, isBeatNote } from './utils/sceneHelpers';
+import { sortScenes, isBeatNote, shouldDisplayMissingWhenWarning } from './utils/sceneHelpers';
 
 /**
  * Handles generating synopsis SVG/HTML blocks and positioning logic.
@@ -1378,7 +1378,7 @@ export default class SynopsisManager {
   }
 
   private buildMissingWhenMessage(scene: TimelineItem): string | null {
-    if (!scene.missingWhen) return null;
+    if (!shouldDisplayMissingWhenWarning(scene)) return null;
 
     const neighbors = this.getNarrativeNeighbors(scene);
     const previousDate = this.getValidWhen(neighbors?.previous);

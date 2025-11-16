@@ -169,6 +169,10 @@ Chronologue mode is essential for constructing and visualizing the chronological
 4. **Compare elapsed time**: In shift mode, click two scenes to see the elapsed story-time between them with the duration arc. Keep clicking more scenes as needed.
 5. **Analyze time gaps**: Also in shift mode, discontinuities (large time jumps) appear with ∞ symbol—identify gaps that might need bridging scenes.
 
+> **Minimum metadata**: Chronologue only needs a year in the `When` field to place a scene. Year-only (`When: 2045`), year+month (`When: 2045-07`), or textual month+year (`When: July 2045`) all work—missing pieces default to the 1st of that month at noon. Month-only, day-only, or time-only values are ignored and treated as "no When" until you add at least the year.
+
+> **Drafting calmly**: Red "Missing When" number squares only appear once a scene's `Status` is `Working` or `Complete`, so Todo scenes can stay quiet while you're still sketching.
+
 **Why this matters**: Some authors choose to organize scenes in manuscript/narrative order, but Chronologue mode lets you construct and verify the underlying chronological scaffolding without the constraints of the 3 acts or title ordering. You can spot:
 - Pacing issues (too much/too little story time between events)
 - Flashback positioning opportunities

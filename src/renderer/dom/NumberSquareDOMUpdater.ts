@@ -6,7 +6,7 @@
 
 import type { TimelineItem } from '../../types';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
-import { getSceneState, buildSquareClasses, buildTextClasses } from '../../utils/sceneHelpers';
+import { getSceneState, buildSquareClasses, buildTextClasses, shouldDisplayMissingWhenWarning } from '../../utils/sceneHelpers';
 
 /**
  * Updates number square colors and classes without regenerating
@@ -43,7 +43,7 @@ export function updateNumberSquareStates(
                 let newSquareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
                 let newTextClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
                 
-                if (scene.missingWhen) {
+                if (shouldDisplayMissingWhenWarning(scene)) {
                     newSquareClasses += ' rt-missing-when';
                     newTextClasses += ' rt-missing-when';
                 }

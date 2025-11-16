@@ -189,9 +189,20 @@ Supported formats (month and day can be single or double digit):
 - `2024-03-15T14:30:00` or `2024-3-15T14:30:00` (date with time)
 - `2024-03-15 14:30` or `2024-3-15 14:30` (readable date+time)
 - `1812-9-17` (historical dates work too)
+- `March 15 2024` or `15 March 2024` (month names with day + year)
+
+**Minimum requirement:** Include at least the year. Chronologue mode will gracefully infer the missing pieces so you can keep writing:
+
+```yaml
+When: 2045            # Year only → Jan 1, 2045 @ 12:00 PM
+When: 2045-07         # Year + month → Jul 1, 2045 @ 12:00 PM
+When: July 2045       # Month name + year → Jul 1, 2045 @ 12:00 PM
+```
 
 **Invalid examples:**
-- `March 15, 2024` ❌
+- `March` ❌ (needs year)
+- `15th` ❌ (needs month + year)
+- `14:00` ❌ (needs date)
 - `Day 1` ❌
 - `Two weeks later` ❌
 
@@ -199,6 +210,8 @@ Supported formats (month and day can be single or double digit):
 - **Scenes**: Used by Chronologue Mode and "Sort by When date" to arrange scenes chronologically
 - **Beats**: When added to beat notes, allows story beats to be positioned at specific points in the timeline when using chronological sorting
 - **Sorting**: Enable "Sort by When date" (Settings → Advanced) to position both scenes and beats across the full 360° circle based on their `When` dates
+
+> **Note**: Red “Missing When” alerts only appear once a scene’s `Status` moves to `Working` or `Complete`, so you can outline Todo scenes without warnings.
 
 ---
 

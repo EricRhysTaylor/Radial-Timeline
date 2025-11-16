@@ -1,6 +1,6 @@
 import type { TimelineItem } from '../../types';
 import { formatNumber } from '../../utils/svg';
-import { getSceneState, buildSquareClasses, buildTextClasses, extractGradeFromScene, isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers';
+import { getSceneState, buildSquareClasses, buildTextClasses, extractGradeFromScene, isBeatNote, type PluginRendererFacade, shouldDisplayMissingWhenWarning } from '../../utils/sceneHelpers';
 import { getScenePrefixNumber, getNumberSquareSize, parseSceneTitle } from '../../utils/text';
 import { generateNumberSquareGroup, makeSceneId } from '../../utils/numberSquareHelpers';
 
@@ -123,7 +123,7 @@ export function renderNumberSquaresUnified(params: {
       textClasses += ` rt-grade-${grade}`;
     }
 
-    if (scene.missingWhen) {
+    if (shouldDisplayMissingWhenWarning(scene)) {
       squareClasses += ' rt-missing-when';
       textClasses += ' rt-missing-when';
     }
@@ -252,7 +252,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
     let squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
     let textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
-    if (scene.missingWhen) {
+    if (shouldDisplayMissingWhenWarning(scene)) {
       squareClasses += ' rt-missing-when';
       textClasses += ' rt-missing-when';
     }
