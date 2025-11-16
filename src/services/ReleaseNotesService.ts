@@ -32,7 +32,7 @@ export class ReleaseNotesService {
         const cachedLatest = cached?.latest?.version;
         const useEmbedded =
             embedded &&
-            (!cachedLatest || (embeddedLatest && compareReleaseVersionsDesc(embeddedLatest, cachedLatest) < 0));
+            (!cachedLatest || (embeddedLatest && compareReleaseVersionsDesc(embeddedLatest, cachedLatest) <= 0));
 
         if (useEmbedded) {
             this.settings.cachedReleaseNotes = embedded;

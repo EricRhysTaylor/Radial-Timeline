@@ -53,37 +53,43 @@ export function renderReleaseNotesSection({ plugin, containerEl }: ReleaseNotesS
     const headerLink = header.createEl('a', { text: 'Open on GitHub', href: major.url ?? DEFAULT_RELEASES_URL });
     headerLink.setAttr('target', '_blank');
 
-    const previewEl = section.createDiv({ cls: 'rt-settings-release-notes-preview markdown-preview-view' });
-    void MarkdownRenderer.renderMarkdown(major.body, previewEl, '', plugin);
+    // Collect releases so the major entry is visible first, followed by other releases chronologically.
+    const seen = new Set<string>();
+    const orderedItems: { entry: EmbeddedReleaseNotesEntry; kind: 'major' | 'release' | 'patch' }[] = [];
+    const additionalItems: { entry: EmbeddedReleaseNotesEntry; kind: 'release' | 'patch' }[] = [];
 
-    // Collect patches (excluding the major release)
-    const seen = new Set<string>([major.version]);
-    const patches: EmbeddedReleaseNotesEntry[] = [];
-    const addPatch = (entry: EmbeddedReleaseNotesEntry | null | undefined) => {
+    if (major) {
+        seen.add(major.version);
+        orderedItems.push({ entry: major, kind: 'major' });
+    }
+
+    const addAdditionalItem = (entry: EmbeddedReleaseNotesEntry | null | undefined, kind: 'release' | 'patch') => {
         if (!entry) return;
         if (seen.has(entry.version)) return;
         seen.add(entry.version);
-        patches.push(entry);
+        additionalItems.push({ entry, kind });
     };
 
-    // Add patches from bundle
+    addAdditionalItem(bundle.latest, 'release');
     const bundlePatches: EmbeddedReleaseNotesEntry[] = Array.isArray(bundle.patches) ? bundle.patches : [];
-    for (const entry of bundlePatches) {
-        addPatch(entry);
-    }
+    bundlePatches.forEach(entry => addAdditionalItem(entry, 'patch'));
 
-    // Add latest if it's different from major
-    addPatch(bundle.latest);
+    additionalItems.sort((a, b) => compareReleaseVersionsDesc(a.entry.version, b.entry.version));
+    orderedItems.push(...additionalItems);
 
-    patches.sort((a, b) => compareReleaseVersionsDesc(a.version, b.version));
-
-    for (const patchEntry of patches) {
-        const patchInfo = parseReleaseVersion(patchEntry.version);
-        const label = patchInfo ? `Patch ${patchInfo.fullLabel}` : (patchEntry.title || patchEntry.version);
-        const details = section.createEl('details', { cls: 'rt-settings-release-notes-details' });
-        details.createEl('summary', { cls: 'rt-settings-release-notes-summary', text: label });
+    for (const [index, { entry, kind }] of orderedItems.entries()) {
+        const versionInfo = parseReleaseVersion(entry.version);
+        const prefix = kind === 'major' ? 'Major Release' : kind === 'release' ? 'Release' : 'Patch';
+        const label = versionInfo ? `${prefix} ${versionInfo.fullLabel}` : `${prefix} ${entry.title || entry.version}`;
+        const details = section.createEl('details', { cls: 'rt-settings-release-notes-details' }) as HTMLDetailsElement;
+        if (kind === 'major' || index === 0) {
+            details.open = true;
+        }
+        const summaryEl = details.createEl('summary', { cls: 'rt-settings-release-notes-summary' });
+        const date = formatPublishedDate(entry.publishedAt);
+        summaryEl.setText(date ? `${label} — ${date}` : label);
         const patchBody = details.createDiv({ cls: 'rt-settings-release-notes-details-body' });
         const patchPreview = patchBody.createDiv({ cls: 'rt-settings-release-notes-preview markdown-preview-view' });
-        void MarkdownRenderer.renderMarkdown(patchEntry.body, patchPreview, '', plugin);
+        void MarkdownRenderer.renderMarkdown(entry.body, patchPreview, '', plugin);
     }
 }

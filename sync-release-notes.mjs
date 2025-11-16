@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync } from "child_process";
-import { writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 
 const BUNDLE_PATH = 'src/data/releaseNotesBundle.json';
 
@@ -51,7 +51,22 @@ function fetchAllReleases() {
     }
 }
 
+function loadExistingBundle() {
+    if (!existsSync(BUNDLE_PATH)) {
+        return null;
+    }
+    try {
+        const raw = readFileSync(BUNDLE_PATH, 'utf8');
+        return JSON.parse(raw);
+    } catch (error) {
+        console.warn(`⚠️  Could not read existing bundle: ${error.message}`);
+        return null;
+    }
+}
+
 console.log('🔄 Syncing release notes from GitHub...\n');
+
+const existingBundle = loadExistingBundle();
 
 // Get all releases
 const allReleases = fetchAllReleases();
@@ -70,33 +85,37 @@ if (!semver) {
 
 console.log(`📦 Latest release: ${latestVersion}`);
 
-// Fetch latest release details (this is always the "latest" entry)
+// Fetch latest release details (this will be the "latest" entry)
 const latest = fetchRelease(latestVersion);
 if (!latest) {
     console.error('❌ Failed to fetch latest release');
     process.exit(1);
 }
 
-// Determine the major release tag (e.g., 4.1.0 for latest 4.1.x build)
-let majorTag = `${semver.major}.${semver.minor}.0`;
-let major = fetchRelease(majorTag);
+// Determine baseline major release for the current major stream (e.g., 4.0.0)
+const targetMajorVersion = `${semver.major}.0.0`;
+let major = fetchRelease(targetMajorVersion);
 if (!major) {
-    console.warn(`⚠️  Major release ${majorTag} not found, falling back to ${semver.major}.0.0`);
-    majorTag = `${semver.major}.0.0`;
-    major = fetchRelease(majorTag);
-}
-if (!major) {
-    console.warn(`⚠️  Major release ${majorTag} not found, using latest as major`);
-    major = latest;
+    const existingMajor = existingBundle?.major?.version === targetMajorVersion
+        ? JSON.parse(JSON.stringify(existingBundle.major))
+        : null;
+    if (existingMajor) {
+        console.warn(`⚠️  Major release ${targetMajorVersion} not found via GitHub, reusing embedded entry.`);
+        major = existingMajor;
+    } else {
+        console.warn(`⚠️  Major release ${targetMajorVersion} not found, falling back to latest`);
+        major = latest;
+    }
 }
 console.log(`🔍 Major release entry: ${major.version}`);
 
-// Collect all patches in this major version (excluding X.0.0)
+// Collect patches and recent releases in this major stream (excluding the chosen major)
 const patches = [];
 const seen = new Set([major.version]);
 
 for (const version of allReleases) {
     if (version === major.version) continue;
+    if (version === latest.version) continue;
     const v = parseSemver(version);
     if (!v) continue;
     if (v.major !== semver.major) continue;

@@ -76,10 +76,12 @@ export class ReleaseNotesModal extends Modal {
         const label = info ? `${prefix} ${info.fullLabel}` : `${prefix} ${entry.version}`;
         const details = bodyHost.createEl('details', { cls: 'rt-release-notes-details' });
         const summaryEl = details.createEl('summary', { cls: 'rt-release-notes-details-summary' });
-        summaryEl.createSpan({ text: label, cls: 'rt-release-notes-details-summary-label' });
-        if (entry.publishedAt) {
-            this.attachDate(summaryEl, entry.publishedAt);
-        }
+        const date = entry.publishedAt ? new Date(entry.publishedAt) : null;
+        const dateText = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : null;
+        summaryEl.createSpan({
+            text: dateText ? `${label} — ${dateText}` : label,
+            cls: 'rt-release-notes-details-summary-label'
+        });
         const entryBody = details.createDiv({ cls: 'rt-release-notes-modal-body markdown-preview-view' });
         await MarkdownRenderer.renderMarkdown(entry.body, entryBody, '', this.plugin);
     }

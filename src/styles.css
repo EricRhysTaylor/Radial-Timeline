@@ -1303,7 +1303,12 @@
 }
 
 .rt-release-notes-modal.modal {
-    width: min(90vw, 1200px);
+    width: min(66vw, 960px);
+    max-height: 90vh;
+}
+.rt-release-notes-modal .modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .rt-release-notes-modal-body {
