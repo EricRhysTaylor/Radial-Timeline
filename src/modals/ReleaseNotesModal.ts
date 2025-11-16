@@ -11,13 +11,15 @@ import { DEFAULT_RELEASES_URL, parseReleaseVersion } from '../utils/releases';
 
 export class ReleaseNotesModal extends Modal {
     private readonly major: EmbeddedReleaseNotesEntry;
+    private readonly latest: EmbeddedReleaseNotesEntry;
     private readonly patches: EmbeddedReleaseNotesEntry[];
     private readonly plugin: RadialTimelinePlugin;
 
-    constructor(app: App, plugin: RadialTimelinePlugin, major: EmbeddedReleaseNotesEntry, patches: EmbeddedReleaseNotesEntry[]) {
+    constructor(app: App, plugin: RadialTimelinePlugin, major: EmbeddedReleaseNotesEntry, latest: EmbeddedReleaseNotesEntry, patches: EmbeddedReleaseNotesEntry[]) {
         super(app);
         this.plugin = plugin;
         this.major = major;
+        this.latest = latest;
         this.patches = patches;
     }
 
@@ -31,16 +33,7 @@ export class ReleaseNotesModal extends Modal {
         titleEl.setText(modalHeading);
 
         const metaEl = contentEl.createDiv({ cls: 'rt-release-notes-modal-meta' });
-        if (this.major.publishedAt) {
-            try {
-                const date = new Date(this.major.publishedAt);
-                if (!Number.isNaN(date.getTime())) {
-                    metaEl.createSpan({ text: date.toLocaleDateString() });
-                }
-            } catch {
-                // Ignore malformed dates
-            }
-        }
+        this.attachDate(metaEl, this.major.publishedAt);
         const releaseUrl = this.major.url ?? DEFAULT_RELEASES_URL;
         const link = metaEl.createEl('a', { text: 'View on GitHub', href: releaseUrl });
         link.setAttr('target', '_blank');
@@ -49,14 +42,12 @@ export class ReleaseNotesModal extends Modal {
         const majorBody = bodyHost.createDiv({ cls: 'rt-release-notes-modal-body markdown-preview-view' });
         await MarkdownRenderer.renderMarkdown(this.major.body, majorBody, '', this.plugin);
 
+        if (this.latest.version !== this.major.version) {
+            await this.renderEntry(bodyHost, this.latest, 'Release');
+        }
+
         for (const patch of this.patches) {
-            const patchInfo = parseReleaseVersion(patch.version);
-            const details = bodyHost.createEl('details', { cls: 'rt-release-notes-details' });
-            const label = patchInfo ? `Patch ${patchInfo.fullLabel}` : (patch.title || patch.version);
-            const summaryEl = details.createEl('summary', { text: label });
-            summaryEl.classList.add('rt-release-notes-details-summary');
-            const patchBody = details.createDiv({ cls: 'rt-release-notes-modal-body markdown-preview-view' });
-            await MarkdownRenderer.renderMarkdown(patch.body, patchBody, '', this.plugin);
+            await this.renderEntry(bodyHost, patch, 'Patch');
         }
 
         const footerEl = contentEl.createDiv({ cls: 'rt-release-notes-modal-footer' });
@@ -66,7 +57,30 @@ export class ReleaseNotesModal extends Modal {
 
     onClose(): void {
         this.contentEl.empty();
-        const versionToMark = this.patches[0]?.version ?? this.major.version;
-        void this.plugin.markReleaseNotesSeen(versionToMark);
+    }
+
+    private attachDate(target: HTMLElement, isoDate: string | undefined): void {
+        if (!isoDate) return;
+        try {
+            const date = new Date(isoDate);
+            if (!Number.isNaN(date.getTime())) {
+                target.createSpan({ text: date.toLocaleDateString() });
+            }
+        } catch {
+            // ignore
+        }
+    }
+
+    private async renderEntry(bodyHost: HTMLElement, entry: EmbeddedReleaseNotesEntry, prefix: string): Promise<void> {
+        const info = parseReleaseVersion(entry.version);
+        const label = info ? `${prefix} ${info.fullLabel}` : `${prefix} ${entry.version}`;
+        const details = bodyHost.createEl('details', { cls: 'rt-release-notes-details' });
+        const summaryEl = details.createEl('summary', { cls: 'rt-release-notes-details-summary' });
+        summaryEl.createSpan({ text: label, cls: 'rt-release-notes-details-summary-label' });
+        if (entry.publishedAt) {
+            this.attachDate(summaryEl, entry.publishedAt);
+        }
+        const entryBody = details.createDiv({ cls: 'rt-release-notes-modal-body markdown-preview-view' });
+        await MarkdownRenderer.renderMarkdown(entry.body, entryBody, '', this.plugin);
     }
 }

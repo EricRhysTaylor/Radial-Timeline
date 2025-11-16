@@ -994,6 +994,7 @@
   font-size: 13px;
   color: var(--text-muted);
   flex: 1;
+  font-style: italic;
 }
 
 /* Fix alignment of extra buttons (like gear icon) with setting item text */
@@ -1322,6 +1323,16 @@
     cursor: pointer;
     font-weight: 600;
     margin-bottom: 6px;
+}
+
+.rt-release-notes-details-summary-label {
+    margin-right: 6px;
+}
+
+.rt-release-notes-details-summary-date {
+    font-weight: 400;
+    font-size: 0.9em;
+    color: var(--text-muted);
 }
 
 .rt-release-notes-details-summary {

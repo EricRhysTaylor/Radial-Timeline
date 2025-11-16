@@ -69,28 +69,34 @@ if (!semver) {
 }
 
 console.log(`📦 Latest release: ${latestVersion}`);
-console.log(`🔍 Looking for major version: ${semver.major}.0.0`);
 
-// Fetch latest
+// Fetch latest release details (this is always the "latest" entry)
 const latest = fetchRelease(latestVersion);
 if (!latest) {
     console.error('❌ Failed to fetch latest release');
     process.exit(1);
 }
 
-// Find major release (X.0.0)
-const majorTag = `${semver.major}.0.0`;
+// Determine the major release tag (e.g., 4.1.0 for latest 4.1.x build)
+let majorTag = `${semver.major}.${semver.minor}.0`;
 let major = fetchRelease(majorTag);
+if (!major) {
+    console.warn(`⚠️  Major release ${majorTag} not found, falling back to ${semver.major}.0.0`);
+    majorTag = `${semver.major}.0.0`;
+    major = fetchRelease(majorTag);
+}
 if (!major) {
     console.warn(`⚠️  Major release ${majorTag} not found, using latest as major`);
     major = latest;
 }
+console.log(`🔍 Major release entry: ${major.version}`);
 
 // Collect all patches in this major version (excluding X.0.0)
 const patches = [];
 const seen = new Set([major.version]);
 
 for (const version of allReleases) {
+    if (version === major.version) continue;
     const v = parseSemver(version);
     if (!v) continue;
     if (v.major !== semver.major) continue;
@@ -130,4 +136,3 @@ try {
     console.error(`❌ Failed to write bundle: ${err.message}`);
     process.exit(1);
 }
-

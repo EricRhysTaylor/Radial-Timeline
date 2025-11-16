@@ -7,6 +7,7 @@ export interface CuratedModel {
     label: string;
     tier: ModelTier;
     guidance: string;
+    link?: string;
 }
 
 export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
@@ -15,13 +16,7 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
             id: 'gpt-5.1-2025-11-13',
             label: 'GPT-5.1 (Nov 2025 build)',
             tier: 'premium',
-            guidance: 'Use for the most demanding manuscript-scale analysis. Highest reasoning depth and context budget available from OpenAI.',
-        },
-        {
-            id: 'gpt-4.1',
-            label: 'GPT-4.1',
-            tier: 'balanced',
-            guidance: 'Still a deep reasoning model with broad availability. Use when you want a reliable fallback that can handle heavy triplet runs.',
+            guidance: 'Deep-think powerhouse from OpenAI—best when you need maximum technical rigor across massive manuscripts. [FYI](https://platform.openai.com/docs/models#gpt-5-1)',
         },
     ],
     anthropic: [
@@ -29,13 +24,7 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
             id: 'claude-sonnet-4-5-20250929',
             label: 'Claude Sonnet 4.5',
             tier: 'premium',
-            guidance: 'Latest Anthropic flagship for creative work—best choice when you need polished triplet reports and professional-quality narrative feedback on the first try.',
-        },
-        {
-            id: 'claude-opus-4-1-20250805',
-            label: 'Claude Opus 4.1',
-            tier: 'balanced',
-            guidance: 'Still excellent for deep analysis, but use this when you want slightly lower cost while maintaining long-context reasoning.',
+            guidance: 'Anthropic’s creative specialist—excellent narrative instincts and polished first-draft feedback for writers. [FYI](https://docs.anthropic.com/en/docs/about-claude/models#claude-sonnet-45)',
         },
     ],
     gemini: [
@@ -43,13 +32,7 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
             id: 'models/gemini-2.5-pro',
             label: 'Gemini 2.5 Pro',
             tier: 'premium',
-            guidance: 'Use for the most demanding beat momentum and range analyses—best accuracy and longest context from Gemini.',
-        },
-        {
-            id: 'gemini-2.0-flash-exp',
-            label: 'Gemini 2.0 Flash Experimental',
-            tier: 'balanced',
-            guidance: 'Fastest thinking-capable Gemini model—great when you want lower latency but still need reasoning headroom.',
+            guidance: 'Google’s momentum analyst—huge context window and strong beat-level analytics for structural planning. [FYI](https://ai.google.dev/gemini-api/docs/models/gemini#gemini-25-pro)',
         },
     ],
 };

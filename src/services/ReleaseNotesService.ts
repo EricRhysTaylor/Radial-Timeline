@@ -27,7 +27,20 @@ export class ReleaseNotesService {
     initializeFromEmbedded(): void {
         const embedded = this.loadEmbeddedReleaseNotes();
         const cached = this.settings.cachedReleaseNotes ?? null;
-        this.releaseNotesBundle = cached ?? embedded ?? null;
+
+        const embeddedLatest = embedded?.latest?.version;
+        const cachedLatest = cached?.latest?.version;
+        const useEmbedded =
+            embedded &&
+            (!cachedLatest || (embeddedLatest && compareReleaseVersionsDesc(embeddedLatest, cachedLatest) < 0));
+
+        if (useEmbedded) {
+            this.settings.cachedReleaseNotes = embedded;
+            void this.saveSettings();
+            this.releaseNotesBundle = embedded;
+        } else {
+            this.releaseNotesBundle = cached ?? embedded ?? null;
+        }
         this.releaseModalShownThisSession = false;
     }
 
@@ -56,11 +69,18 @@ export class ReleaseNotesService {
             throw new Error('Release bundle missing latest version');
         }
 
+        const primaryEntry = bundle.latest ?? bundle.major;
+        if (!primaryEntry) {
+            throw new Error('Release bundle missing primary entry');
+        }
+        const latestKey = this.computeEntryKey(primaryEntry);
+
         const seenVersion = this.settings.lastSeenReleaseNotesVersion ?? '';
-        if (seenVersion === latestVersion || this.releaseModalShownThisSession) return;
+        const hasSeen = seenVersion === latestKey || seenVersion === latestVersion;
+        if (hasSeen || this.releaseModalShownThisSession) return;
 
         this.releaseModalShownThisSession = true;
-        await this.markReleaseNotesSeen(latestVersion);
+        await this.markReleaseNotesSeen(latestKey);
         this.openReleaseNotesModal(app, plugin);
     }
 
@@ -72,13 +92,14 @@ export class ReleaseNotesService {
         }
 
         const patches = this.collectReleasePatches(bundle, major);
-        const modal = new ReleaseNotesModal(app, plugin, major, patches);
+        const latestEntry = bundle.latest ?? major;
+        const modal = new ReleaseNotesModal(app, plugin, major, latestEntry, patches);
         modal.open();
     }
 
-    async markReleaseNotesSeen(version: string): Promise<void> {
-        if (this.settings.lastSeenReleaseNotesVersion === version) return;
-        this.settings.lastSeenReleaseNotesVersion = version;
+    async markReleaseNotesSeen(versionKey: string): Promise<void> {
+        if (this.settings.lastSeenReleaseNotesVersion === versionKey) return;
+        this.settings.lastSeenReleaseNotesVersion = versionKey;
         await this.saveSettings();
     }
 
@@ -209,5 +230,15 @@ export class ReleaseNotesService {
             latest,
             patches
         };
+    }
+
+    private computeEntryKey(entry: EmbeddedReleaseNotesEntry): string {
+        const signature = `${entry.version}|${entry.title}|${entry.body}|${entry.publishedAt ?? ''}`;
+        let hash = 0;
+        for (let i = 0; i < signature.length; i++) {
+            hash = (hash * 31 + signature.charCodeAt(i)) | 0;
+        }
+        const hashHex = (hash >>> 0).toString(16);
+        return `${entry.version}|${hashHex}`;
     }
 }

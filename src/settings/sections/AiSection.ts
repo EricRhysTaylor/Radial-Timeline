@@ -83,7 +83,7 @@ export function renderAiSection(params: {
                     })));
 
             choices.forEach(opt => {
-                dropdownComponent.addOption(opt.optionId, `${opt.label} (${tierLabel[opt.tier]})`);
+            dropdownComponent.addOption(opt.optionId, `${opt.label} (${tierLabel[opt.tier]})`);
             });
 
             const findDefaultChoice = (): ModelChoice | undefined => {
@@ -103,10 +103,22 @@ export function renderAiSection(params: {
             };
 
             const updateGuidance = (choice?: ModelChoice) => {
-                if (choice) {
-                    guidanceEl.setText(choice.guidance);
-                } else {
+                guidanceEl.empty();
+                if (!choice) {
                     guidanceEl.setText('Select a model to see guidance on when to use it.');
+                    return;
+                }
+                // Link or plain text
+                const match = choice.guidance.match(/\[FYI\]\((https?:\/\/[^\s)]+)\)/i);
+                const summary = match ? choice.guidance.replace(match[0], '').trim() : choice.guidance;
+                const text = document.createElement('span');
+                text.textContent = summary;
+                guidanceEl.appendChild(text);
+                if (match) {
+                    guidanceEl.appendChild(document.createTextNode(' '));
+                    const anchor = guidanceEl.createEl('a', { text: 'FYI', href: match[1] });
+                    anchor.target = '_blank';
+                    anchor.rel = 'noopener';
                 }
             };
 
