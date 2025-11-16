@@ -116,9 +116,26 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     
     // Calculate the actual auto threshold based on current scenes
     // Uses single source of truth helper to ensure this matches the renderer's calculation
-    const calculateAutoThreshold = (): { display: string; days: number | null } => {
+    const getScenesForThreshold = async (): Promise<TimelineItem[]> => {
+        if (Array.isArray(plugin.lastSceneData) && plugin.lastSceneData.length > 0) {
+            return plugin.lastSceneData;
+        }
         try {
-            const scenes = plugin.lastSceneData || [];
+            const fetched = await plugin.getSceneData();
+            if (Array.isArray(fetched) && fetched.length > 0) {
+                plugin.lastSceneData = fetched;
+                return fetched;
+            }
+            return [];
+        } catch (err) {
+            console.error('[Settings] Failed to load scenes for discontinuity threshold:', err);
+            return [];
+        }
+    };
+
+    const calculateAutoThreshold = async (): Promise<{ display: string; days: number | null }> => {
+        try {
+            const scenes = await getScenesForThreshold();
             
             // Use single source of truth helper
             const thresholdMs = calculateAutoDiscontinuityThreshold(scenes);
@@ -155,8 +172,8 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     let discontinuityText: any; // SAFE: any type used for Obsidian TextComponent reference (library limitation)
 
     // Calculate threshold dynamically when settings are displayed
-    const updateDescriptionAndPlaceholder = () => {
-        const autoThreshold = calculateAutoThreshold();
+    const updateDescriptionAndPlaceholder = async () => {
+        const autoThreshold = await calculateAutoThreshold();
         discontinuitySetting.setDesc(`In shift mode, the ∞ symbol marks large time gaps between scenes. By default, this is auto-calculated as 3× the median gap between scenes. Current auto value: ${autoThreshold.display}. You can override this with a custom gap threshold (e.g., "4 days", "1 week", "30 minutes").`);
         if (discontinuityText) {
             const currentValue = plugin.settings.discontinuityThreshold || '';
@@ -168,14 +185,20 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
     };
 
     // Calculate immediately
-    updateDescriptionAndPlaceholder();
+    void updateDescriptionAndPlaceholder();
 
     discontinuitySetting.addText(text => {
         discontinuityText = text;
         const currentValue = plugin.settings.discontinuityThreshold || '';
-        const autoThreshold = calculateAutoThreshold();
-        text.setPlaceholder(`${autoThreshold.display} (auto)`)
+        text.setPlaceholder('Calculating…')
             .setValue(currentValue);
+        
+        void calculateAutoThreshold().then(autoThreshold => {
+            text.setPlaceholder(`${autoThreshold.display} (auto)`);
+            if (!currentValue) {
+                text.setValue('');
+            }
+        });
         
         // Validate on blur (when user clicks out)
         text.inputEl.addEventListener('blur', async () => {

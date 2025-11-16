@@ -64,6 +64,32 @@ export interface TimeLabelInfo {
  * @param when - Date string from scene metadata
  * @returns Date object in local time, or null if invalid
  */
+const MONTH_NAME_MAP: Record<string, number> = {
+    january: 0, jan: 0,
+    february: 1, feb: 1,
+    march: 2, mar: 2,
+    april: 3, apr: 3,
+    may: 4,
+    june: 5, jun: 5,
+    july: 6, jul: 6,
+    august: 7, aug: 7,
+    september: 8, sept: 8, sep: 8,
+    october: 9, oct: 9,
+    november: 10, nov: 10,
+    december: 11, dec: 11,
+};
+
+function parseMonthName(value: string): number | null {
+    if (!value) return null;
+    const key = value.toLowerCase().replace('.', '');
+    return key in MONTH_NAME_MAP ? MONTH_NAME_MAP[key] : null;
+}
+
+function createLocalDate(year: number, monthIndex: number, day: number, hour = 12, minute = 0, second = 0): Date | null {
+    const date = new Date(year, monthIndex, day, hour, minute, second, 0);
+    return isNaN(date.getTime()) ? null : date;
+}
+
 export function parseWhenField(when: string): Date | null {
     if (!when || typeof when !== 'string') return null;
     
@@ -149,7 +175,48 @@ export function parseWhenField(when: string): Date | null {
         const date = new Date(year, month, day, hour, minute, 0, 0); // Local time
         return isNaN(date.getTime()) ? null : date;
     }
-    
+    const yearMonthMatch = /^(\d{4})-(\d{1,2})$/.exec(trimmed);
+    if (yearMonthMatch) {
+        const year = parseInt(yearMonthMatch[1], 10);
+        const month = parseInt(yearMonthMatch[2], 10) - 1;
+        return createLocalDate(year, month, 1);
+    }
+
+    const yearOnlyMatch = /^(\d{4})$/.exec(trimmed);
+    if (yearOnlyMatch) {
+        const year = parseInt(yearOnlyMatch[1], 10);
+        return createLocalDate(year, 0, 1);
+    }
+
+    const monthYearMatch = /^([A-Za-z]+)\s*,?\s*(\d{4})$/.exec(trimmed);
+    if (monthYearMatch) {
+        const month = parseMonthName(monthYearMatch[1]);
+        const year = parseInt(monthYearMatch[2], 10);
+        if (month !== null) {
+            return createLocalDate(year, month, 1);
+        }
+    }
+
+    const monthDayYearMatch = /^([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,)?\s+(\d{4})$/.exec(trimmed);
+    if (monthDayYearMatch) {
+        const month = parseMonthName(monthDayYearMatch[1]);
+        const day = parseInt(monthDayYearMatch[2], 10);
+        const year = parseInt(monthDayYearMatch[3], 10);
+        if (month !== null) {
+            return createLocalDate(year, month, day);
+        }
+    }
+
+    const dayMonthYearMatch = /^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)(?:,)?\s+(\d{4})$/.exec(trimmed);
+    if (dayMonthYearMatch) {
+        const day = parseInt(dayMonthYearMatch[1], 10);
+        const month = parseMonthName(dayMonthYearMatch[2]);
+        const year = parseInt(dayMonthYearMatch[3], 10);
+        if (month !== null) {
+            return createLocalDate(year, month, day);
+        }
+    }
+
     return null;
 }
 

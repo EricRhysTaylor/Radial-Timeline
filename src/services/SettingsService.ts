@@ -1,6 +1,7 @@
 import { normalizePath, TFolder } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { DEFAULT_SETTINGS } from '../main';
+import type { AiContextTemplate } from '../types/settings';
 
 export class SettingsService {
     constructor(private plugin: RadialTimelinePlugin) {}
@@ -39,7 +40,16 @@ export class SettingsService {
                 if (id === 'gpt-5' || id === 'o3' || id === 'gpt-4o') return 'gpt-4.1';
                 return id;
             }
-            if (id !== 'gemini-2.5-pro') return 'gemini-2.5-pro';
+            if (prov === 'gemini') {
+                const trimmed = id.trim();
+                const aliasMap: Record<string, string> = {
+                    'gemini-ultra': 'gemini-2.5-pro',
+                    'gemini-creative': 'gemini-2.5-pro',
+                    'gemini-1.0-pro': 'gemini-2.5-pro',
+                    'gemini-1.5-pro': 'gemini-2.5-pro',
+                };
+                return aliasMap[trimmed] ?? trimmed;
+            }
             return id;
         };
 
@@ -54,16 +64,19 @@ export class SettingsService {
         let migrated = false;
         const oldBuiltInIds = new Set(['generic-editor', 'ya-biopunk-scifi', 'adult-thriller', 'adult-romance']);
 
+        const cloneBuiltInTemplates = (): AiContextTemplate[] =>
+            (DEFAULT_SETTINGS.aiContextTemplates ?? []).map(template => ({ ...template }));
+
         if (!settings.aiContextTemplates || settings.aiContextTemplates.length === 0) {
-            settings.aiContextTemplates = DEFAULT_SETTINGS.aiContextTemplates;
+            settings.aiContextTemplates = cloneBuiltInTemplates();
             migrated = true;
         } else {
-            const builtInTemplates = DEFAULT_SETTINGS.aiContextTemplates ?? [];
+            const builtInTemplates = cloneBuiltInTemplates();
             settings.aiContextTemplates = settings.aiContextTemplates.filter(template => !template.isBuiltIn || !oldBuiltInIds.has(template.id));
             const existingIds = new Set(settings.aiContextTemplates.map(t => t.id));
             for (const builtIn of builtInTemplates) {
                 if (!existingIds.has(builtIn.id)) {
-                    settings.aiContextTemplates.push(builtIn);
+                    settings.aiContextTemplates.push({ ...builtIn });
                     migrated = true;
                 }
             }

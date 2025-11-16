@@ -4,6 +4,7 @@ import type RadialTimelinePlugin from '../../main';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
 import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels } from '../../api/geminiApi';
+import { CURATED_MODELS, CuratedModel, ModelTier } from '../../data/aiModels';
 
 type Provider = 'anthropic' | 'gemini' | 'openai';
 
@@ -44,39 +45,83 @@ export function renderAiSection(params: {
         .setName('Model')
         .setDesc('Pick preferred model for advanced writing analysis.')
         .addDropdown(dropdown => {
-            type ModelChoice = { id: string; label: string; provider: Provider; model: string };
-            const choices: ModelChoice[] = [
-                { id: 'anthropic:claude-sonnet-4-5', label: 'Anthropic — Sonnet 4.5', provider: 'anthropic', model: 'claude-sonnet-4-5-20250929' },
-                { id: 'anthropic:claude-sonnet-4', label: 'Anthropic — Sonnet 4', provider: 'anthropic', model: 'claude-sonnet-4-20250514' },
-                { id: 'anthropic:claude-opus-4-1', label: 'Anthropic — Opus 4.1', provider: 'anthropic', model: 'claude-opus-4-1-20250805' },
-                { id: 'gemini:gemini-2.5-pro', label: 'Gemini — Gemini 2.5 Pro', provider: 'gemini', model: 'gemini-2.5-pro' },
-                { id: 'openai:gpt-4.1', label: 'OpenAI — GPT‑4.1', provider: 'openai', model: 'gpt-4.1' },
-            ];
-            choices.forEach(opt => dropdown.addOption(opt.id, opt.label));
+            type ModelChoice = {
+                optionId: string;
+                provider: Provider;
+                modelId: string;
+                label: string;
+                tier: ModelTier;
+                guidance: string;
+            };
+            const tierLabel: Record<ModelTier, string> = {
+                premium: 'Premium',
+                balanced: 'Balanced',
+                budget: 'Budget',
+            };
+            const providerLabel: Record<Provider, string> = {
+                anthropic: 'Anthropic',
+                gemini: 'Gemini',
+                openai: 'OpenAI',
+            };
 
-            const currentProvider = (plugin.settings.defaultAiProvider || 'openai') as Provider;
-            let currentId: string | undefined;
-            if (currentProvider === 'anthropic') {
-                const id = plugin.settings.anthropicModelId;
-                currentId = choices.find(c => c.provider === 'anthropic' && c.model === id)?.id || 'anthropic:claude-sonnet-4';
-            } else if (currentProvider === 'gemini') {
-                const id = plugin.settings.geminiModelId;
-                currentId = choices.find(c => c.provider === 'gemini' && c.model === id)?.id || 'gemini:gemini-2.5-pro';
+            const choices: ModelChoice[] = (Object.entries(CURATED_MODELS) as Array<[Provider, CuratedModel[]]>)
+                .flatMap(([provider, models]) =>
+                    models.map(model => ({
+                        optionId: `${provider}:${model.id}`,
+                        provider,
+                        modelId: model.id,
+                        label: `${providerLabel[provider]} — ${model.label}`,
+                        tier: model.tier,
+                        guidance: model.guidance,
+                    })));
+
+            choices.forEach(opt => {
+                dropdown.addOption(opt.optionId, `${opt.label} (${tierLabel[opt.tier]})`);
+            });
+
+            const findDefaultChoice = (): ModelChoice | undefined => {
+                const provider = (plugin.settings.defaultAiProvider || 'openai') as Provider;
+                const modelId =
+                    provider === 'anthropic'
+                        ? plugin.settings.anthropicModelId
+                        : provider === 'gemini'
+                            ? plugin.settings.geminiModelId
+                            : plugin.settings.openaiModelId;
+
+                return (
+                    choices.find(choice => choice.provider === provider && choice.modelId === modelId) ||
+                    choices.find(choice => choice.provider === provider) ||
+                    choices[0]
+                );
+            };
+
+            const guidanceEl = modelPickerSetting.settingEl.createDiv({ cls: 'rt-model-guidance' });
+            const updateGuidance = (choice?: ModelChoice) => {
+                if (choice) {
+                    guidanceEl.setText(choice.guidance);
+                } else {
+                    guidanceEl.setText('Select a model to see guidance on when to use it.');
+                }
+            };
+
+            const defaultChoice = findDefaultChoice();
+            if (defaultChoice) {
+                dropdown.setValue(defaultChoice.optionId);
+                updateGuidance(defaultChoice);
             } else {
-                const id = plugin.settings.openaiModelId;
-                currentId = choices.find(c => c.provider === 'openai' && c.model === id)?.id || 'openai:gpt-4.1';
+                updateGuidance();
             }
-            dropdown.setValue(currentId);
 
             dropdown.onChange(async value => {
-                const choice = choices.find(c => c.id === value);
+                const choice = choices.find(c => c.optionId === value);
                 if (!choice) return;
                 plugin.settings.defaultAiProvider = choice.provider;
-                if (choice.provider === 'anthropic') plugin.settings.anthropicModelId = choice.model;
-                if (choice.provider === 'gemini') plugin.settings.geminiModelId = choice.model;
-                if (choice.provider === 'openai') plugin.settings.openaiModelId = choice.model;
+                if (choice.provider === 'anthropic') plugin.settings.anthropicModelId = choice.modelId;
+                if (choice.provider === 'gemini') plugin.settings.geminiModelId = choice.modelId;
+                if (choice.provider === 'openai') plugin.settings.openaiModelId = choice.modelId;
                 await plugin.saveSettings();
                 params.refreshProviderDimming();
+                updateGuidance(choice);
             });
             (dropdown as any).selectEl?.classList.add('rt-setting-dropdown', 'rt-provider-dropdown');
         });
@@ -212,4 +257,3 @@ export function renderAiSection(params: {
     // Set initial visibility state
     params.toggleAiSettingsVisibility(plugin.settings.enableAiSceneAnalysis ?? true);
 }
-

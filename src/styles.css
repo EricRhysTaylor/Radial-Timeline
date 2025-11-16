@@ -980,6 +980,11 @@
 .rt-provider-section.dimmed {
   opacity: 0.55;
 }
+.rt-model-guidance {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
 
 /* Fix alignment of extra buttons (like gear icon) with setting item text */
 .setting-item {
