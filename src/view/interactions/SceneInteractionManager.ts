@@ -34,6 +34,7 @@ export class SceneInteractionManager {
     private currentSynopsis: Element | null = null;
     private currentSceneId: string | null = null;
     private rafId: number | null = null;
+    private registerFn: ((fn: () => void) => void) | null = null;
     
     // Original state storage for reset
     private originalAngles = new Map<string, { start: number; end: number }>();
@@ -47,6 +48,7 @@ export class SceneInteractionManager {
     
     constructor(view: RadialTimelineView, svg: SVGSVGElement) {
         this.svg = svg;
+        this.registerFn = typeof (view as any).register === 'function' ? (view.register as any).bind(view) : null;
         
         // Create reusable text measurement element
         this.measurementText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -54,14 +56,12 @@ export class SceneInteractionManager {
         svg.appendChild(this.measurementText);
         
         // Register cleanup for animation frames
-        if (view.register) {
-            view.register(() => {
-                if (this.rafId !== null) {
-                    cancelAnimationFrame(this.rafId);
-                    this.rafId = null;
-                }
-            });
-        }
+        this.registerCleanup(() => {
+            if (this.rafId !== null) {
+                cancelAnimationFrame(this.rafId);
+                this.rafId = null;
+            }
+        });
     }
     
     /**
@@ -154,7 +154,7 @@ export class SceneInteractionManager {
     onMouseMove(e: MouseEvent): void {
         if (this.rafId !== null) return;
         
-        this.rafId = window.requestAnimationFrame(() => {
+        const rafId = window.requestAnimationFrame(() => {
             this.rafId = null;
             
             const view = this.getView();
@@ -168,6 +168,8 @@ export class SceneInteractionManager {
                 this.currentSceneId
             );
         });
+        this.rafId = rafId;
+        this.registerCleanup(() => cancelAnimationFrame(rafId));
     }
     
     /**
@@ -185,6 +187,11 @@ export class SceneInteractionManager {
         
         this.resetAngularRedistribution();
         this.clearSelection();
+
+        this.cleanupCallbacks.forEach(fn => {
+            try { fn(); } catch { /* ignore */ }
+        });
+        this.cleanupCallbacks = [];
     }
     
     // ========================================================================
@@ -451,5 +458,17 @@ export class SceneInteractionManager {
                 }
             }
         });
+    }
+
+    private registerCleanup(fn: () => void): void {
+        if (this.registerFn) {
+            try {
+                this.registerFn(fn);
+                return;
+            } catch {
+                // fall through to manual queue
+            }
+        }
+        this.cleanupCallbacks.push(fn);
     }
 }

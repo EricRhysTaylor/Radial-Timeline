@@ -200,8 +200,7 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             }
         });
         
-        // Validate on blur (when user clicks out)
-        text.inputEl.addEventListener('blur', async () => {
+        const handleBlur = async () => {
             const trimmed = text.getValue().trim();
             
             // Clear validation state
@@ -234,6 +233,10 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             window.setTimeout(() => {
                 text.inputEl.removeClass('rt-setting-input-success');
             }, 1000);
+        };
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => {
+            void handleBlur();
         });
     });
 

@@ -41,12 +41,12 @@ export function renderGeneralSection(params: {
             text.inputEl.removeClass('rt-setting-input-error');
 
             const trimmed = value.trim();
+            const normalizedValue = trimmed ? normalizePath(trimmed) : '';
 
             if (trimmed) {
-                const normalized = normalizePath(trimmed);
-                const isValid = await plugin.validateAndRememberPath(normalized);
+                const isValid = await plugin.validateAndRememberPath(normalizedValue);
                 if (isValid) {
-                    plugin.settings.sourcePath = normalized;
+                    plugin.settings.sourcePath = normalizedValue;
                     await plugin.saveSettings();
                     text.inputEl.addClass('rt-setting-input-success');
                     window.setTimeout(() => {
@@ -60,7 +60,7 @@ export function renderGeneralSection(params: {
                 }
             } else {
                 // Clear the source path, hide suggestions, and refresh the timeline immediately
-                plugin.settings.sourcePath = '';
+                plugin.settings.sourcePath = normalizedValue;
                 await plugin.saveSettings();
                 plugin.refreshTimelineIfNeeded(null);
 
@@ -77,4 +77,3 @@ export function renderGeneralSection(params: {
         });
     });
 }
-

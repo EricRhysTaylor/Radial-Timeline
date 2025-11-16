@@ -86,7 +86,6 @@ function buildFallbackSvg(
             if (!doc.querySelector('parsererror')) {
                 const svgDoc = doc.documentElement;
                 const elementNodes = Array.from(svgDoc.querySelectorAll('*'));
-                const rafIds: number[] = [];
 
                 const processNodes = (nodes: Element[], startIdx: number, callback: () => void) => {
                     const CHUNK_SIZE = 100;
@@ -100,7 +99,7 @@ function buildFallbackSvg(
                     }
                     if (endIdx < nodes.length) {
                         const rafId = window.requestAnimationFrame(() => processNodes(nodes, endIdx, callback));
-                        rafIds.push(rafId);
+                        registerCleanup(() => cancelAnimationFrame(rafId));
                     } else {
                         callback();
                     }
@@ -131,9 +130,6 @@ function buildFallbackSvg(
                     container.appendChild(wrapInFragment(fallbackSvg));
                 }
 
-                registerCleanup(() => {
-                    rafIds.forEach(id => cancelAnimationFrame(id));
-                });
                 return fallbackSvg;
             }
         }

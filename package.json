@@ -18,7 +18,8 @@
 		"standards": "node scripts/compliance-check.mjs && node code-quality-check.mjs src/main.ts && node check-css-duplicates.mjs",
 		"scripts": "node show-scripts.mjs",
 		"sync-yaml": "node scripts/sync-yaml-to-wiki.mjs",
-		"sync-release-notes": "node sync-release-notes.mjs"
+		"sync-release-notes": "node sync-release-notes.mjs",
+		"update-models": "node scripts/update-ai-models.mjs"
 	},
 	"keywords": [
 		"obsidian",

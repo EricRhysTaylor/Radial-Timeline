@@ -12,62 +12,44 @@ export interface CuratedModel {
 export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     openai: [
         {
+            id: 'gpt-5.1-2025-11-13',
+            label: 'GPT-5.1 (Nov 2025 build)',
+            tier: 'premium',
+            guidance: 'Use for the most demanding manuscript-scale analysis. Highest reasoning depth and context budget available from OpenAI.',
+        },
+        {
             id: 'gpt-4.1',
             label: 'GPT-4.1',
-            tier: 'premium',
-            guidance: 'Use when you need the deepest reasoning for manuscript-wide triplet analysis or full beat diagnostics.',
-        },
-        {
-            id: 'o4-mini',
-            label: 'o4 Mini',
             tier: 'balanced',
-            guidance: 'Great default for daily scene triplet work: strong reasoning with better latency and cost.',
-        },
-        {
-            id: 'gpt-4o-mini',
-            label: 'gpt-4o mini',
-            tier: 'budget',
-            guidance: 'Cheapest thinking-capable model—ideal for quick rechecks or outline brainstorming passes.',
+            guidance: 'Still a deep reasoning model with broad availability. Use when you want a reliable fallback that can handle heavy triplet runs.',
         },
     ],
     anthropic: [
         {
-            id: 'claude-opus-4-1-20250805',
-            label: 'Claude Opus 4.1',
-            tier: 'premium',
-            guidance: 'Highest ceiling for nuanced literary analysis; reach for it when you need the most reliable, deeply reasoned feedback.',
-        },
-        {
             id: 'claude-sonnet-4-5-20250929',
             label: 'Claude Sonnet 4.5',
-            tier: 'balanced',
-            guidance: 'Updated balanced pick. Great for sustained triplet runs and momentum scoring without paying Opus rates.',
+            tier: 'premium',
+            guidance: 'Latest Anthropic flagship for creative work—best choice when you need polished triplet reports and professional-quality narrative feedback on the first try.',
         },
         {
-            id: 'claude-haiku-4',
-            label: 'Claude Haiku 4',
-            tier: 'budget',
-            guidance: 'Fast, inexpensive option for iterative spot checks once you already have trusted output.',
+            id: 'claude-opus-4-1-20250805',
+            label: 'Claude Opus 4.1',
+            tier: 'balanced',
+            guidance: 'Still excellent for deep analysis, but use this when you want slightly lower cost while maintaining long-context reasoning.',
         },
     ],
     gemini: [
         {
-            id: 'gemini-2.5-pro',
+            id: 'models/gemini-2.5-pro',
             label: 'Gemini 2.5 Pro',
             tier: 'premium',
-            guidance: 'Use for the most demanding beat momentum and range analyses—best accuracy across large manuscripts.',
+            guidance: 'Use for the most demanding beat momentum and range analyses—best accuracy and longest context from Gemini.',
         },
         {
             id: 'gemini-2.0-flash-exp',
-            label: 'Gemini 2.0 Flash Exp',
+            label: 'Gemini 2.0 Flash Experimental',
             tier: 'balanced',
-            guidance: 'Excellent reasoning at a lower price point. Ideal for repeated scene triplets throughout the week.',
-        },
-        {
-            id: 'gemini-1.5-flash',
-            label: 'Gemini 1.5 Flash',
-            tier: 'budget',
-            guidance: 'Perfect for rapid sanity checks or lightweight passes when experimenting with prompts.',
+            guidance: 'Fastest thinking-capable Gemini model—great when you want lower latency but still need reasoning headroom.',
         },
     ],
 };
