@@ -3,7 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { GlobalPovMode } from '../../types/settings';
 
 const POV_MODE_OPTIONS: Record<GlobalPovMode, string> = {
-    off: 'Off — legacy (first listed character, “pov” superscript)',
+    off: 'Legacy (first listed character, “pov” superscript)',
     first: 'First-person voice (¹ marker on characters)',
     second: 'Second-person voice (You² label)',
     third: 'Third-person limited (³ marker on characters)',
@@ -21,10 +21,15 @@ export function renderPovSection(params: {
         .setName('Point of view')
         .setHeading();
 
-    const currentMode = plugin.settings.globalPovMode ?? 'off';
+    const storedMode = plugin.settings.globalPovMode;
+    const currentMode: GlobalPovMode = storedMode && storedMode in POV_MODE_OPTIONS ? storedMode : 'off';
+    if (storedMode !== currentMode) {
+        plugin.settings.globalPovMode = currentMode;
+        void plugin.saveSettings();
+    }
     new ObsidianSetting(containerEl)
-        .setName('Global POV override')
-        .setDesc('Optional. Leave Off for legacy behavior. Choose a mode to apply whenever a scene omits the POV keyword (per-scene values like "pov: first" always win).')
+        .setName('Global POV')
+        .setDesc('Optional. Choose a mode to apply whenever a scene omits the POV field (per-scene values like "pov: first" always win).')
         .addDropdown(dropdown => {
             (Object.keys(POV_MODE_OPTIONS) as GlobalPovMode[]).forEach((key) => {
                 dropdown.addOption(key, POV_MODE_OPTIONS[key]);

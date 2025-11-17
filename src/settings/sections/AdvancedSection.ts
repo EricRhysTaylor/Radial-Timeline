@@ -58,7 +58,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 }
                 
                 if (count > 0) {
-                    new Notice(`Reset ${count} subplot dominance preference${count === 1 ? '' : 's'}.`);
+                    new Notice(`Cleared saved colors for ${count} multi-subplot scene${count === 1 ? '' : 's'}.`);
                 } else {
                     new Notice('No subplot dominance preferences to reset.');
                 }

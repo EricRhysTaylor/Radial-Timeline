@@ -248,25 +248,24 @@ export class RadialTimelineView extends ItemView {
             hasChanged = true;
         } else {
             // Check if any files were added or removed
-            const addedFiles = [];
-            const removedFiles = [];
-            
             for (const path of previousOpenFiles) {
                 if (!this.openScenePaths.has(path)) {
-                    removedFiles.push(path);
                     hasChanged = true;
+                    break;
                 }
             }
-            
+            if (!hasChanged) {
                 for (const path of this.openScenePaths) {
                     if (!previousOpenFiles.has(path)) {
-                    addedFiles.push(path);
                         hasChanged = true;
+                        break;
+                    }
                 }
             }
-            
-            // Track file changes (removed diagnostic logs)
-                    }
+        }
+
+        // Keep the plugin-level tracking in sync so rerenders know which scenes are open
+        this.plugin.openScenePaths = new Set(this.openScenePaths);
         
         // Update the UI if something changed
         if (hasChanged) {
