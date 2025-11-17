@@ -169,7 +169,6 @@ export class SceneInteractionManager {
             );
         });
         this.rafId = rafId;
-        this.registerCleanup(() => cancelAnimationFrame(rafId));
     }
     
     /**

@@ -441,6 +441,12 @@
   opacity: 1 !important; /* Fully opaque for prominence */
 }
 
+/* Story beat slices in all modes (except Gossamer) - base state with gray fill */
+.rt-scene-group.beats .rt-scene-path,
+.rt-scene-group[data-item-type="Beat"] .rt-scene-path {
+  fill: #f5f5f5; /* Subtle gray shade for beat slices in normal state */
+}
+
 /* Story beat slices in Gossamer mode - base state */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats .rt-scene-path,
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"] .rt-scene-path {

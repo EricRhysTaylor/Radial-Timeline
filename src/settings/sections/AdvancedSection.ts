@@ -39,7 +39,32 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 });
         });
 
-    // 3. Scene ordering by When date (DISABLED/GRAYED OUT)
+    // 3. Reset subplot color dominance
+    new Settings(containerEl)
+        .setName('Reset subplot color dominance')
+        .setDesc('Clear all saved subplot color dominance preferences for scenes that appear in multiple subplots. This resets to the default ordering (outermost to innermost rings based on subplot scene population).')
+        .addButton(button => button
+            .setButtonText('Reset to default')
+            .setWarning()
+            .onClick(async () => {
+                const count = Object.keys(plugin.settings.dominantSubplots || {}).length;
+                plugin.settings.dominantSubplots = {};
+                await plugin.saveSettings();
+                
+                // Refresh timeline to show reset
+                const timelineView = app.workspace.getLeavesOfType('radial-timeline')?.[0]?.view;
+                if (timelineView && 'refreshTimeline' in timelineView && typeof timelineView.refreshTimeline === 'function') {
+                    timelineView.refreshTimeline();
+                }
+                
+                if (count > 0) {
+                    new Notice(`Reset ${count} subplot dominance preference${count === 1 ? '' : 's'}.`);
+                } else {
+                    new Notice('No subplot dominance preferences to reset.');
+                }
+            }));
+
+    // 4. Scene ordering by When date (DISABLED/GRAYED OUT)
     const sortSetting = new Settings(containerEl)
         .setName('Scene ordering based on When date')
         .setDesc('Coming someday maybe not sure yet: Sort scenes chronologically by When date instead of manuscript order. This feature is currently in development and will be available in a future update.')

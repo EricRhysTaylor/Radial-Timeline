@@ -4,7 +4,7 @@
 
 import type { EmbeddedReleaseNotesBundle } from './releaseNotes';
 
-export type PovMarkerLabel = 'POV' | '1PV' | '2PV' | '3PO' | '3PL' | 'OBJ';
+export type PovMarkerLabel = '1' | '2' | '3' | '0';
 
 export type GlobalPovMode = 'off' | 'first' | 'second' | 'third' | 'omni' | 'objective';
 

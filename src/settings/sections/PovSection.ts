@@ -4,10 +4,10 @@ import type { GlobalPovMode } from '../../types/settings';
 
 const POV_MODE_OPTIONS: Record<GlobalPovMode, string> = {
     off: 'Off — legacy (first listed character, “pov” superscript)',
-    first: 'First — first-person voice (¹ marker on carriers)',
-    second: 'Second — second-person voice (You² synthetic marker)',
-    third: 'Third — third-person limited (³ marker on carriers)',
-    omni: 'Omni — omniscient narrator (Omni³ label)',
+    first: 'First-person voice (¹ marker on characters)',
+    second: 'Second-person voice (You² label)',
+    third: 'Third-person limited (³ marker on characters)',
+    omni: 'Omni narrator (Omni³ label)',
     objective: 'Objective — camera-eye narrator (Narrator° label)'
 };
 
@@ -40,10 +40,6 @@ export function renderPovSection(params: {
         });
 
     new ObsidianSetting(containerEl)
-        .setName('Scene-level overrides')
-        .setDesc('Set `pov:` in YAML to one keyword: `first`, `second`, `third`, `omni`, `objective`, or a highlight count like `two`, `four`, or `count`. Any numeric value highlights that many leading characters.');
-
-    new ObsidianSetting(containerEl)
-        .setName('Multiple POV markers')
-        .setDesc('Count keywords (`pov: two`, `pov: 4`, `pov: count`) highlight that many leading characters. Highlights never exceed the number of characters listed.');
+        .setName('Scene-level overrides & multiple POV markers')
+        .setDesc('Set `Pov:` in YAML to one keyword: `first`, `second`, `third`, `omni`, `objective`, or a highlight count such as `two`, `four`, `count`, or `all`. Any numeric value is also accepted, and highlights never exceed the number of listed characters.');
 }

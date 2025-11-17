@@ -325,6 +325,7 @@ Synopsis:                 # Brief description of what happens in this scene
 Status: Todo              # Scene status (Todo/Working/Complete)
 Subplot: Main Plot        # Single subplot (or use array format below for multiple)
 Character:                # Characters in the scene (use array format below for multiple)
+POV:                      # blank, first, you, third, omni, narrator, two, all, count
 Place:                    # Location where scene takes place (use array format for multiple)
 Due:                      # Target completion date (YYYY-MM-DD)
 Publish Stage: Zero       # Revision stage (Zero/Author/House/Press)
@@ -352,17 +353,13 @@ Place:
 ```
 > **Note**: Use of brackets denotes a link to a character or place file (optional).
 
-> **POV Options**: Add `POV` to a scene when you need something other than "first character = POV". Examples:
-> - `POV: 1PV: Mara` or `POV: Mara (1PV)` – attach the 1PV marker to Mara.
-> - `POV: 3PoV` – display an omniscient label before the character list.
-> - `POV:` as a YAML list for multiple markers:
->   ```yaml
->   POV:
->     - 3PoL: Kara
->     - 3PoL: Dex
->   ```
-> - `POV: none` – suppress markers entirely for that scene.
-> Leave the field blank to keep legacy behavior (first listed character gets the superscript). Use **Settings → Point of view** only if you want a project-wide narration mode to apply whenever the YAML leaves POV blank.
+> **POV keywords**: Set `pov:` to one word. Supported modes: `first`, `second`, `third`, `omni`, `objective`. Examples:
+> - `pov: first` — first listed character gets a `¹` marker.
+> - `pov: second` / `pov: you` — inserts `You²` ahead of the cast.
+> - `pov: omni` — shows `Omni³` to signal an omniscient narrator.
+> - `pov: objective` — shows `Narrator°` for camera-eye scenes.
+> Need to highlight multiple carriers? Use counts: `pov: two`, `pov: 4`, `pov: count`, or `pov: all`. Numeric values highlight that many leading characters using the active mode (global default if no mode keyword is specified). Counts never exceed the number of names under `Character:`.
+> Leave `pov:` blank to stick with the global default (first listed character, legacy marker).
 
 ## Standard Beat
 

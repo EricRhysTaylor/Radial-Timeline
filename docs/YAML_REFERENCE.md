@@ -464,17 +464,12 @@ Example custom fields:
 - `Total Time`: Writing/production time in hours
 - `Words`: Scene word count
 - `Support Files`: Attachments, references, research notes
-- `POV`: Optional point-of-view override. Accepts a string or YAML list. Supported acronyms: `1PV` (first-person), `2PV` (second-person), `3PoL` (third-person limited), `3PoV` (third-person omniscient), plus the legacy `POV` tag. Combine labels with characters using either `Label: Character` or `Character (Label)` syntax. Examples:
-  - `POV: 3PoV` → Inserts an omniscient label before the character list.
-  - `POV: 1PV: Mara` → Marks Mara with the 1PV superscript.
-  - `POV:` + YAML list for multiple markers:
-    ```yaml
-    POV:
-      - 3PoL: Kara
-      - 3PoL: Dex
-    ```
-  - `POV: none` (or `POV: npc`) → Suppress POV markers for that scene.
-  If the field is omitted entirely, the hover synopsis highlights the first listed character unless a global POV mode is selected in settings.
+- `POV`: Optional point-of-view keyword. Provide a single word:
+  - `first`, `second`, `third`, `omni`, or `objective` — override the global narration mode.
+  - `second` / `you` inserts `You²`; `omni` inserts `Omni³`; `objective` inserts `Narrator°`; first/third attach `¹`/`³` to the first listed character.
+  - Counts (`two`, `4`, `count`, `all`, etc.) highlight that many leading characters using the current mode (global default if no mode keyword appears). Counts are clamped to the number of names under `Character:`.
+  - Any positive integer works (`pov: 5`). Use `pov: count`/`pov: all` to highlight everyone.
+  If the field is omitted entirely, the global setting applies (default: first listed character, `¹`).
 - `Tone`: Scene mood or atmosphere
 
 ---

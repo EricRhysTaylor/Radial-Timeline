@@ -13,6 +13,7 @@ const MODE_KEYWORDS: Record<string, EffectiveMode> = {
     '1st': 'first',
     second: 'second',
     '2nd': 'second',
+    you: 'second',
     third: 'third',
     '3rd': 'third',
     limited: 'third',
@@ -39,12 +40,12 @@ const COUNT_WORDS: Record<string, number> = {
 };
 
 const MODE_CONFIG: Record<EffectiveMode, { label: PovMarkerLabel; usesCharacters: boolean; syntheticText?: string }> = {
-    first: { label: '1PV', usesCharacters: true },
-    third: { label: '3PL', usesCharacters: true },
-    legacy: { label: 'POV', usesCharacters: true },
-    second: { label: '2PV', usesCharacters: false, syntheticText: 'You' },
-    omni: { label: '3PO', usesCharacters: false, syntheticText: 'Omni' },
-    objective: { label: 'OBJ', usesCharacters: false, syntheticText: 'Narrator' }
+    first: { label: '1', usesCharacters: true },
+    third: { label: '3', usesCharacters: true },
+    legacy: { label: '1', usesCharacters: true },
+    second: { label: '2', usesCharacters: false, syntheticText: 'You' },
+    omni: { label: '3', usesCharacters: false, syntheticText: 'Omni' },
+    objective: { label: '0', usesCharacters: false, syntheticText: 'Narrator' }
 };
 
 interface PovInterpretation {
