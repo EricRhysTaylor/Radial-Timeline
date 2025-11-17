@@ -291,7 +291,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Colors section
         renderColorsSection(containerEl, this.plugin);
         
-        renderReleaseNotesSection({ plugin: this.plugin, containerEl });
+        void renderReleaseNotesSection({ plugin: this.plugin, containerEl });
         
         renderReadmeSection({ app: this.app, containerEl, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
     }

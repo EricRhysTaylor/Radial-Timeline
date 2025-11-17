@@ -58,3 +58,14 @@ export function compareReleaseVersionsDesc(aVersion: string, bVersion: string): 
     const bPatch = b.patch ?? 0;
     return bPatch - aPatch;
 }
+
+export function formatPublishedDate(value: string | undefined): string | null {
+    if (!value) return null;
+    try {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return null;
+        return date.toLocaleDateString();
+    } catch {
+        return null;
+    }
+}
