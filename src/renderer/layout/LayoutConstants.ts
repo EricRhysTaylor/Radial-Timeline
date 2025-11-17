@@ -139,10 +139,10 @@ export const MODE_TITLE_POS_X = 555;
 export const MODE_TITLE_POS_Y = -766;
 
 /** Horizontal position for book title text */
-export const BOOK_TITLE_POS_X = 555;
+export const BOOK_TITLE_POS_X = 558;
 
 /** Vertical position for book title text */
-export const BOOK_TITLE_POS_Y = -780;
+export const BOOK_TITLE_POS_Y = -784;
 
 /** Horizontal position for chronologue shift button */
 export const SHIFT_BUTTON_POS_X = -700;
