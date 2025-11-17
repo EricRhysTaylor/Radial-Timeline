@@ -29,18 +29,5 @@ export async function renderReleaseNotesSection({ plugin, containerEl }: Release
     const majorVersion = plugin.getReleaseNotesMajorVersion();
     const majorEntry = (majorVersion ? entries.find(entry => entry.version === majorVersion) : null) ?? entries[entries.length - 1] ?? entries[0];
 
-    const versionInfo = parseReleaseVersion(majorEntry.version);
-    const header = section.createDiv({ cls: 'rt-settings-release-notes-header' });
-    header.createEl('strong', { text: versionInfo ? `Radial Timeline ${versionInfo.majorLabel}` : (majorEntry.title || majorEntry.version) });
-
-    const dateLabel = formatPublishedDate(majorEntry.publishedAt);
-    if (dateLabel) {
-        header.createSpan({ text: dateLabel });
-    }
-
-    const headerLink = header.createEl('a', { text: 'Open on GitHub', href: majorEntry.url ?? DEFAULT_RELEASES_URL });
-    headerLink.setAttr('target', '_blank');
-
-    const previewContainer = section.createDiv({ cls: 'rt-settings-release-notes-preview' });
-    await renderReleaseNotesList(previewContainer, entries, majorEntry, plugin, 'rt-settings-release-notes');
+    await renderReleaseNotesList(section, entries, majorEntry, plugin, 'rt-settings-release-notes');
 }

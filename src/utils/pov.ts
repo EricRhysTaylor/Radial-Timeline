@@ -2,148 +2,101 @@ import type { TimelineItem } from '../types';
 import type { GlobalPovMode, PovMarkerLabel } from '../types/settings';
 
 export interface ResolvedPov {
-    leadingLabels: string[];
-    characterMarkers: Array<{ index: number; label: string }>;
+    syntheticEntries: Array<{ text: string; label: PovMarkerLabel }>;
+    characterMarkers: Array<{ index: number; label: PovMarkerLabel }>;
 }
 
-type PovEntry = string;
+type EffectiveMode = 'first' | 'second' | 'third' | 'omni' | 'objective' | 'legacy';
 
-const LABEL_MAP: Record<string, PovMarkerLabel> = {
-    'pov': 'POV',
-    'first': '1PV',
-    '1pv': '1PV',
-    'second': '2PV',
-    '2pv': '2PV',
-    'third': '3PoV',
-    '3pov': '3PoV',
-    '3po': '3PoV',
-    'omniscient': '3PoV',
-    '3pol': '3PoL',
-    'limited': '3PoL'
+const MODE_KEYWORDS: Record<string, EffectiveMode> = {
+    first: 'first',
+    '1st': 'first',
+    second: 'second',
+    '2nd': 'second',
+    third: 'third',
+    '3rd': 'third',
+    limited: 'third',
+    omni: 'omni',
+    omniscient: 'omni',
+    objective: 'objective',
+    narrator: 'objective',
+    legacy: 'legacy',
+    pov: 'legacy'
 };
 
-const CLEAR_MARKERS = new Set(['none', 'npc', 'off', 'hide']);
+const COUNT_WORDS: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    dozen: 12
+};
 
-interface ParsedEntryLabel {
-    type: 'label';
-    label: string;
+const MODE_CONFIG: Record<EffectiveMode, { label: PovMarkerLabel; usesCharacters: boolean; syntheticText?: string }> = {
+    first: { label: '1PV', usesCharacters: true },
+    third: { label: '3PL', usesCharacters: true },
+    legacy: { label: 'POV', usesCharacters: true },
+    second: { label: '2PV', usesCharacters: false, syntheticText: 'You' },
+    omni: { label: '3PO', usesCharacters: false, syntheticText: 'Omni' },
+    objective: { label: 'OBJ', usesCharacters: false, syntheticText: 'Narrator' }
+};
+
+interface PovInterpretation {
+    modeOverride?: EffectiveMode;
+    countOverride?: number;
 }
 
-interface ParsedEntryCharacter {
-    type: 'character';
-    label?: string;
-    character: string;
+function interpretKeyword(raw: unknown): PovInterpretation {
+    if (typeof raw !== 'string') return {};
+    const trimmed = raw.trim().toLowerCase();
+    if (!trimmed) return {};
+
+    const firstToken = trimmed.split(/\s+/)[0];
+    const mappedMode = MODE_KEYWORDS[firstToken];
+    if (mappedMode) {
+        return { modeOverride: mappedMode };
+    }
+
+    if (trimmed === 'count' || trimmed === 'all') {
+        return { countOverride: Number.POSITIVE_INFINITY };
+    }
+
+    const wordCount = COUNT_WORDS[trimmed];
+    if (wordCount) {
+        return { countOverride: wordCount };
+    }
+
+    const numeric = Number(trimmed);
+    if (!Number.isNaN(numeric) && numeric > 0) {
+        return { countOverride: numeric };
+    }
+
+    return {};
 }
 
-interface ParsedEntryNone {
-    type: 'none';
+function normalizeGlobalMode(mode: GlobalPovMode | undefined): EffectiveMode {
+    if (!mode || mode === 'off') return 'legacy';
+    if (mode === 'first' || mode === 'second' || mode === 'third' || mode === 'omni' || mode === 'objective') {
+        return mode;
+    }
+    return 'legacy';
 }
 
-type ParsedEntry = ParsedEntryLabel | ParsedEntryCharacter | ParsedEntryNone;
-
-function normalizeEntries(raw: string | string[] | undefined): PovEntry[] {
-    if (!raw) return [];
-    const base: string[] = Array.isArray(raw) ? raw : [raw];
-    const entries: PovEntry[] = [];
-    base.forEach(value => {
-        if (value === undefined || value === null) return;
-        const str = typeof value === 'string' ? value : String(value);
-        str.split(/\r?\n|;/).forEach(part => {
-            const trimmed = part.trim();
-            if (trimmed.length > 0) {
-                entries.push(trimmed);
-            }
-        });
-    });
-    return entries;
-}
-
-function canonicalizeLabel(raw: string | undefined): string | undefined {
-    if (!raw) return undefined;
-    const trimmed = raw.trim();
-    if (!trimmed) return undefined;
-    const mapped = LABEL_MAP[trimmed.toLowerCase()];
-    return mapped || trimmed;
-}
-
-function parseEntry(entry: string): ParsedEntry | null {
-    const lowered = entry.trim().toLowerCase();
-    if (CLEAR_MARKERS.has(lowered)) {
-        return { type: 'none' };
+function determineHighlightCount(countOverride: number | undefined, characterCount: number): number {
+    if (characterCount <= 0) return 0;
+    if (countOverride === undefined) {
+        return 1;
     }
-
-    const parenMatch = entry.match(/^(.*)\(([^)]+)\)$/);
-    if (parenMatch) {
-        const charCandidate = parenMatch[1]?.trim();
-        const labelCandidate = canonicalizeLabel(parenMatch[2]);
-        if (labelCandidate && charCandidate) {
-            return { type: 'character', character: charCandidate, label: labelCandidate };
-        }
-        if (labelCandidate) {
-            return { type: 'label', label: labelCandidate };
-        }
+    if (!Number.isFinite(countOverride)) {
+        return characterCount;
     }
-
-    const colonParts = entry.split(':').map(part => part.trim()).filter(Boolean);
-    if (colonParts.length === 0) {
-        return null;
-    }
-
-    if (colonParts.length === 1) {
-        const label = canonicalizeLabel(colonParts[0]);
-        if (label) {
-            return { type: 'label', label };
-        }
-        return { type: 'character', character: colonParts[0] };
-    }
-
-    const first = colonParts[0];
-    const rest = colonParts.slice(1).join(':');
-    const firstLabel = canonicalizeLabel(first);
-    const restLabel = canonicalizeLabel(rest);
-
-    if (firstLabel && rest) {
-        return { type: 'character', character: rest, label: firstLabel };
-    }
-
-    if (firstLabel && !rest) {
-        return { type: 'label', label: firstLabel };
-    }
-
-    if (!firstLabel && restLabel) {
-        return { type: 'character', character: first, label: restLabel };
-    }
-
-    return { type: 'character', character: entry };
-}
-
-function findCharacterIndex(characters: string[], target: string | undefined): number {
-    if (!target) return -1;
-    const normalizedTarget = target.trim().toLowerCase();
-    if (!normalizedTarget) return -1;
-    return characters.findIndex(char => char.trim().toLowerCase() === normalizedTarget);
-}
-
-function applyFallback(
-    characters: string[],
-    globalMode: GlobalPovMode | undefined
-): ResolvedPov {
-    const leadingLabels: string[] = [];
-    const characterMarkers: Array<{ index: number; label: string }> = [];
-
-    if (globalMode && globalMode !== 'off') {
-        if (globalMode === '3PoV' || characters.length === 0) {
-            leadingLabels.push(globalMode);
-        } else {
-            characterMarkers.push({ index: 0, label: globalMode });
-        }
-        return { leadingLabels, characterMarkers };
-    }
-
-    if (characters.length > 0) {
-        characterMarkers.push({ index: 0, label: 'POV' });
-    }
-    return { leadingLabels, characterMarkers };
+    return Math.max(1, Math.min(characterCount, Math.floor(countOverride)));
 }
 
 export function resolveScenePov(
@@ -151,43 +104,25 @@ export function resolveScenePov(
     options: { globalMode?: GlobalPovMode }
 ): ResolvedPov {
     const characters = scene.Character || [];
-    const entries = normalizeEntries(scene.pov);
-    const leadingLabels: string[] = [];
-    const characterMarkers = new Map<number, string>();
-    let hasExplicitClear = false;
+    const { modeOverride, countOverride } = interpretKeyword(scene.pov);
+    const effectiveMode = modeOverride ?? normalizeGlobalMode(options.globalMode);
+    const config = MODE_CONFIG[effectiveMode];
 
-    entries.forEach(entry => {
-        const parsed = parseEntry(entry);
-        if (!parsed) return;
-        if (parsed.type === 'none') {
-            hasExplicitClear = true;
-            return;
+    const syntheticEntries: Array<{ text: string; label: PovMarkerLabel }> = [];
+    const characterMarkers: Array<{ index: number; label: PovMarkerLabel }> = [];
+
+    if (!config.usesCharacters) {
+        if (config.syntheticText) {
+            syntheticEntries.push({ text: config.syntheticText, label: config.label });
         }
-
-        if (parsed.type === 'label') {
-            leadingLabels.push(parsed.label);
-            return;
-        }
-
-        const index = findCharacterIndex(characters, parsed.character);
-        if (index >= 0) {
-            characterMarkers.set(index, parsed.label ?? 'POV');
-        } else if (parsed.label) {
-            leadingLabels.push(parsed.label);
-        }
-    });
-
-    if (hasExplicitClear) {
-        return { leadingLabels: [], characterMarkers: [] };
+        return { syntheticEntries, characterMarkers };
     }
 
-    if (characterMarkers.size === 0 && leadingLabels.length === 0) {
-        return applyFallback(characters, options.globalMode);
+    const highlightCount = determineHighlightCount(countOverride, characters.length);
+    for (let i = 0; i < highlightCount; i++) {
+        if (i >= characters.length) break;
+        characterMarkers.push({ index: i, label: config.label });
     }
 
-    const markerList = Array.from(characterMarkers.entries())
-        .sort((a, b) => a[0] - b[0])
-        .map(([index, label]) => ({ index, label }));
-
-    return { leadingLabels, characterMarkers: markerList };
+    return { syntheticEntries, characterMarkers };
 }

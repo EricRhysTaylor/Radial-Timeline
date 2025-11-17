@@ -92,9 +92,7 @@ export class SearchService {
 
         this.plugin.getSceneData().then(scenes => {
             scenes.forEach(scene => {
-                const povText = Array.isArray(scene.pov)
-                    ? scene.pov.join(', ')
-                    : scene.pov;
+                const povText = scene.pov ? String(scene.pov) : '';
                 const textFields: (string | undefined)[] = [
                     scene.title,
                     scene.synopsis,
@@ -125,4 +123,3 @@ export class SearchService {
         timelineViews.forEach(view => view.refreshTimeline());
     }
 }
-

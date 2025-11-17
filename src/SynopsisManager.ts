@@ -498,10 +498,21 @@ export default class SynopsisManager {
             const color = '#666666';
             let baselineRaised = false;
 
-            const labelOnlyMatch = trimmedChar.match(/^>povlabel=([^<]+)<$/i);
-            const isLabelToken = !!labelOnlyMatch;
-            if (labelOnlyMatch) {
-              const povLabel = labelOnlyMatch[1]?.trim() || 'POV';
+            const markerMatch = trimmedChar.match(/>pov(?:=([^<]+))<$/i);
+            const povLabel = markerMatch ? (markerMatch[1]?.trim() || 'POV') : undefined;
+            const cleanedText = markerMatch
+              ? trimmedChar.replace(/\s*>pov(?:=[^<]+)?<\s*/i, '').trim()
+              : trimmedChar;
+            
+            if (cleanedText) {
+              const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+              tspan.setAttribute("data-item-type", "character");
+              tspan.style.setProperty('--rt-dynamic-color', color);
+              tspan.textContent = cleanedText;
+              characterTextElement.appendChild(tspan);
+            }
+
+            if (povLabel) {
               const povTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
               povTspan.setAttribute("class", "rt-pov-marker");
               povTspan.setAttribute("dy", "-8px");
@@ -509,30 +520,6 @@ export default class SynopsisManager {
               povTspan.textContent = povLabel;
               characterTextElement.appendChild(povTspan);
               baselineRaised = true;
-            } else {
-              const markerMatch = trimmedChar.match(/>pov(?:=([^<]+))<$/i);
-              const povLabel = markerMatch ? (markerMatch[1]?.trim() || 'POV') : undefined;
-              const cleanedText = markerMatch
-                ? trimmedChar.replace(/\s*>pov(?:=[^<]+)?<\s*/i, '').trim()
-                : trimmedChar;
-              
-              if (cleanedText) {
-                const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
-                tspan.setAttribute("data-item-type", "character");
-                tspan.style.setProperty('--rt-dynamic-color', color);
-                tspan.textContent = cleanedText;
-                characterTextElement.appendChild(tspan);
-              }
-
-              if (povLabel) {
-                const povTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
-                povTspan.setAttribute("class", "rt-pov-marker");
-                povTspan.setAttribute("dy", "-8px");
-                povTspan.style.setProperty('--rt-dynamic-color', color);
-                povTspan.textContent = povLabel;
-                characterTextElement.appendChild(povTspan);
-                baselineRaised = true;
-              }
             }
 
             // Add comma after this character (if not the last one)
@@ -542,7 +529,7 @@ export default class SynopsisManager {
               if (baselineRaised) {
                 comma.setAttribute("dy", "8px");
               }
-              comma.textContent = isLabelToken ? " " : ", ";
+              comma.textContent = ", ";
               characterTextElement.appendChild(comma);
             } else if (baselineRaised) {
               const resetTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;

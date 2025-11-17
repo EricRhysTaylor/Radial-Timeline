@@ -3,11 +3,12 @@ import type RadialTimelinePlugin from '../../main';
 import type { GlobalPovMode } from '../../types/settings';
 
 const POV_MODE_OPTIONS: Record<GlobalPovMode, string> = {
-    off: 'Off — use the first listed character (legacy)',
-    '1PV': '1PV — First-person voice (attach to POV character)',
-    '2PV': '2PV — Second-person voice',
-    '3PoL': '3PoL — Third-person limited (attach to POV character)',
-    '3PoV': '3PoV — Third-person omniscient (label only)'
+    off: 'Off — legacy (first listed character, “pov” superscript)',
+    first: 'First — first-person voice (¹ marker on carriers)',
+    second: 'Second — second-person voice (You² synthetic marker)',
+    third: 'Third — third-person limited (³ marker on carriers)',
+    omni: 'Omni — omniscient narrator (Omni³ label)',
+    objective: 'Objective — camera-eye narrator (Narrator° label)'
 };
 
 export function renderPovSection(params: {
@@ -23,7 +24,7 @@ export function renderPovSection(params: {
     const currentMode = plugin.settings.globalPovMode ?? 'off';
     new ObsidianSetting(containerEl)
         .setName('Global POV override')
-        .setDesc('Optional. Leave Off to keep marking the first listed character. Pick a mode to apply whenever a scene omits the POV frontmatter (scene-level POV still wins).')
+        .setDesc('Optional. Leave Off for legacy behavior. Choose a mode to apply whenever a scene omits the POV keyword (per-scene values like "pov: first" always win).')
         .addDropdown(dropdown => {
             (Object.keys(POV_MODE_OPTIONS) as GlobalPovMode[]).forEach((key) => {
                 dropdown.addOption(key, POV_MODE_OPTIONS[key]);
@@ -33,15 +34,16 @@ export function renderPovSection(params: {
                 const next = (value as GlobalPovMode) || 'off';
                 plugin.settings.globalPovMode = next;
                 await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
+                const debounce = plugin.settings.metadataRefreshDebounceMs ?? 10000;
+                plugin.refreshTimelineIfNeeded(null, debounce);
             });
         });
 
     new ObsidianSetting(containerEl)
         .setName('Scene-level overrides')
-        .setDesc('Add a `POV` field to any scene to override the markers. Examples: `POV: 3PoL: Kara`, `POV: 3PoV`, or YAML lists for multiple characters. Use `POV: none` to suppress the marker.');
+        .setDesc('Set `pov:` in YAML to one keyword: `first`, `second`, `third`, `omni`, `objective`, or a highlight count like `two`, `four`, or `count`. Any numeric value highlights that many leading characters.');
 
     new ObsidianSetting(containerEl)
         .setName('Multiple POV markers')
-        .setDesc('When a scene lists multiple `POV` entries (e.g., YAML array), each matching character receives its own superscript. Omniscient entries display as a leading label before the character list.');
+        .setDesc('Count keywords (`pov: two`, `pov: 4`, `pov: count`) highlight that many leading characters. Highlights never exceed the number of characters listed.');
 }

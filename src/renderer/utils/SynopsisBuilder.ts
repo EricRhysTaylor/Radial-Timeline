@@ -37,9 +37,9 @@ export function buildSynopsisElement(
             globalMode: plugin.settings.globalPovMode
         });
 
-        const formattedCharacters: string[] = [];
-        povInfo.leadingLabels.forEach(label => {
-            formattedCharacters.push(`>povlabel=${label}<`);
+        const formattedEntries: string[] = [];
+        povInfo.syntheticEntries.forEach(entry => {
+            formattedEntries.push(`${entry.text} >pov=${entry.label}<`);
         });
 
         const markerMap = new Map<number, string>();
@@ -50,13 +50,13 @@ export function buildSynopsisElement(
         characters.forEach((char: string, index: number) => {
             const label = markerMap.get(index);
             if (label) {
-                formattedCharacters.push(`${char} >pov=${label}<`);
+                formattedEntries.push(`${char} >pov=${label}<`);
             } else {
-                formattedCharacters.push(char);
+                formattedEntries.push(char);
             }
         });
 
-        const rawCharacters = formattedCharacters.filter(str => !!str && str.trim().length > 0).join(', ');
+        const rawCharacters = formattedEntries.filter(str => !!str && str.trim().length > 0).join(', ');
         if (rawCharacters) {
             contentLines.push(rawCharacters);
         }

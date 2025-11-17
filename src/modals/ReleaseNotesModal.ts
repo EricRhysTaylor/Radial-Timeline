@@ -27,18 +27,7 @@ export class ReleaseNotesModal extends Modal {
         this.modalEl.addClass('rt-release-notes-modal');
         contentEl.empty();
 
-        const versionInfo = parseReleaseVersion(this.majorEntry.version);
-        const modalHeading = versionInfo ? `Radial Timeline ${versionInfo.majorLabel}` : (this.majorEntry.title || 'What\'s New');
-        titleEl.setText(modalHeading);
-
-        const metaEl = contentEl.createDiv({ cls: 'rt-release-notes-modal-meta' });
-        const dateLabel = formatPublishedDate(this.majorEntry.publishedAt);
-        if (dateLabel) {
-            metaEl.createSpan({ text: dateLabel });
-        }
-        const releaseUrl = this.majorEntry.url ?? DEFAULT_RELEASES_URL;
-        const link = metaEl.createEl('a', { text: 'View on GitHub', href: releaseUrl });
-        link.setAttr('target', '_blank');
+        titleEl.setText("What's New");
 
         const bodyHost = contentEl.createDiv();
         await renderReleaseNotesList(bodyHost, this.entries, this.majorEntry, this.plugin, 'rt-release-notes-modal');

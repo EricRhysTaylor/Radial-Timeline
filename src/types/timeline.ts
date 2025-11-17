@@ -8,7 +8,7 @@ export interface TimelineItem {
     path?: string;
     subplot?: string;
     act?: string;
-    pov?: string | string[];
+    pov?: string;
     location?: string;
     number?: number;
     synopsis?: string;

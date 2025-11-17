@@ -18,18 +18,16 @@ export async function renderReleaseNotesList(
     plugin: RadialTimelinePlugin,
     cssPrefix: string
 ): Promise<void> {
-    // Render major entry body
-    const majorBody = containerEl.createDiv({ cls: `${cssPrefix}-body markdown-preview-view` });
-    await MarkdownRenderer.renderMarkdown(majorEntry.body, majorBody, '', plugin);
-
-    // Render other entries as collapsible details, skipping the major entry
+    // Render all entries as collapsible details, with major entry expanded
     for (const entry of entries) {
-        if (entry.version === majorEntry.version) {
-            continue;
-        }
-
         const versionLabel = parseReleaseVersion(entry.version)?.fullLabel ?? (entry.title || entry.version);
         const details = containerEl.createEl('details', { cls: `${cssPrefix}-details` }) as HTMLDetailsElement;
+        
+        // Expand the major release
+        if (entry.version === majorEntry.version) {
+            details.open = true;
+        }
+        
         const summaryEl = details.createEl('summary', { cls: `${cssPrefix}-details-summary` });
         const dateText = formatPublishedDate(entry.publishedAt);
         summaryEl.createSpan({

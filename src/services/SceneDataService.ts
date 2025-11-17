@@ -119,17 +119,26 @@ export class SceneDataService {
                             : (rawCharacter ? [stripWikiLinks(rawCharacter as string)] : undefined);
                         
                         const rawPov = metadata.POV;
-                        let povField: string | string[] | undefined;
+                        let povField: string | undefined;
                         if (Array.isArray(rawPov)) {
-                            const normalized = (rawPov as unknown[])
-                                .map(value => typeof value === 'string' ? value : String(value ?? ''))
-                                .map(value => value.trim())
-                                .filter(value => value.length > 0);
-                            if (normalized.length > 0) {
-                                povField = normalized;
+                            for (const entry of rawPov) {
+                                const candidate = typeof entry === 'string' ? entry : entry !== undefined && entry !== null ? String(entry) : '';
+                                const trimmed = candidate.trim();
+                                if (trimmed.length > 0) {
+                                    povField = trimmed;
+                                    break;
+                                }
+                            }
+                        } else if (typeof rawPov === 'string') {
+                            const trimmed = rawPov.trim();
+                            if (trimmed.length > 0) {
+                                povField = trimmed;
                             }
                         } else if (rawPov !== undefined && rawPov !== null) {
-                            povField = String(rawPov);
+                            const converted = String(rawPov).trim();
+                            if (converted.length > 0) {
+                                povField = converted;
+                            }
                         }
 
                         scenes.push({

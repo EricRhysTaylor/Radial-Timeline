@@ -127,16 +127,16 @@ export const ANGULAR_GAP_PX = 16;
 // =============================================================================
 
 /** Horizontal position for book title text */
-export const BOOK_TITLE_POS_X = 556;
+export const BOOK_TITLE_POS_X = 568;
 
 /** Vertical position for book title text */
 export const BOOK_TITLE_POS_Y = -784;
 
 /** Horizontal position for mode title text */
-export const MODE_TITLE_POS_X = 555;
+export const MODE_TITLE_POS_X = 567;
 
 /** Vertical position for mode title text */
-export const MODE_TITLE_POS_Y = -766;
+export const MODE_TITLE_POS_Y = -762;
 
 /** Horizontal center position for mode selector buttons */
 export const MODE_SELECTOR_POS_X = 658;

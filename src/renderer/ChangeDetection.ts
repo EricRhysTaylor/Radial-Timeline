@@ -51,6 +51,7 @@ export interface TimelineSnapshot {
     publishStageColorsHash: string;
     subplotColorsHash: string;
     dominantSubplotsHash: string;
+    povMode: string;
     
     // Gossamer
     gossamerRunExists: boolean;
@@ -98,6 +99,7 @@ export function createSnapshot(
                 // Pending Edits affects number square color (gray)
                 s.pendingEdits || '',
                 s.Description || '',
+                stringifyPovForHash(s.pov),
                 // Range field (rendered in Gossamer mode)
                 s.Range || '',
                 (s.Character || []).length,
@@ -172,6 +174,7 @@ export function createSnapshot(
         publishStageColorsHash,
         subplotColorsHash,
         dominantSubplotsHash,
+        povMode: settings.globalPovMode ?? 'off',
         gossamerRunExists: !!gossamerRun,
         gossamerRunHash,
         timestamp: Date.now()
@@ -225,7 +228,8 @@ export function detectChanges(
         prev.chronologueDurationCap !== current.chronologueDurationCap ||
         prev.discontinuityThreshold !== current.discontinuityThreshold ||
         prev.publishStageColorsHash !== current.publishStageColorsHash ||
-        prev.subplotColorsHash !== current.subplotColorsHash) {
+        prev.subplotColorsHash !== current.subplotColorsHash ||
+        prev.povMode !== current.povMode) {
         changeTypes.add(ChangeType.SETTINGS);
     }
     
@@ -282,6 +286,10 @@ function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
         if (!b.has(item)) return false;
     }
     return true;
+}
+
+function stringifyPovForHash(pov: TimelineItem['pov']): string {
+    return typeof pov === 'string' ? pov : '';
 }
 
 /**

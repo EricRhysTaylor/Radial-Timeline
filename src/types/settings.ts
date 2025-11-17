@@ -4,9 +4,11 @@
 
 import type { EmbeddedReleaseNotesBundle } from './releaseNotes';
 
-export type PovMarkerLabel = 'POV' | '1PV' | '2PV' | '3PoV' | '3PoL';
+export type PovMarkerLabel = 'POV' | '1PV' | '2PV' | '3PO' | '3PL' | 'OBJ';
 
-export type GlobalPovMode = 'off' | '1PV' | '2PV' | '3PoV' | '3PoL';
+export type GlobalPovMode = 'off' | 'first' | 'second' | 'third' | 'omni' | 'objective';
+
+export type ScenePovKeyword = 'first' | 'second' | 'third' | 'omni' | 'objective' | 'one' | 'two' | 'three' | 'count';
 
 export interface AiContextTemplate {
     id: string;
