@@ -126,11 +126,11 @@ export const ANGULAR_GAP_PX = 16;
 // UI CONTROLS POSITIONING
 // =============================================================================
 
-/** Horizontal center position for mode selector buttons */
-export const MODE_SELECTOR_POS_X = 658;
+/** Horizontal position for book title text */
+export const BOOK_TITLE_POS_X = 556;
 
-/** Vertical position for mode selector buttons */
-export const MODE_SELECTOR_POS_Y = -750;
+/** Vertical position for book title text */
+export const BOOK_TITLE_POS_Y = -784;
 
 /** Horizontal position for mode title text */
 export const MODE_TITLE_POS_X = 555;
@@ -138,11 +138,11 @@ export const MODE_TITLE_POS_X = 555;
 /** Vertical position for mode title text */
 export const MODE_TITLE_POS_Y = -766;
 
-/** Horizontal position for book title text */
-export const BOOK_TITLE_POS_X = 558;
+/** Horizontal center position for mode selector buttons */
+export const MODE_SELECTOR_POS_X = 658;
 
-/** Vertical position for book title text */
-export const BOOK_TITLE_POS_Y = -784;
+/** Vertical position for mode selector buttons */
+export const MODE_SELECTOR_POS_Y = -750;
 
 /** Horizontal position for chronologue shift button */
 export const SHIFT_BUTTON_POS_X = -700;
