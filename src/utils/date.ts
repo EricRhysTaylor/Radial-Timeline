@@ -389,10 +389,18 @@ function mapTimeToAngle(timeMs: number, startMs: number, endMs: number): number 
 
 /**
  * Format elapsed time with click-to-cycle units
- * Intelligently drops down to smaller units to avoid fractional numbers
+ * Intelligently degrades fractional spans into smaller units (e.g., 4 months + 3 days)
  */
+const MS_PER_SECOND = 1000;
+const MS_PER_MINUTE = 60 * MS_PER_SECOND;
+const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+const MS_PER_DAY = 24 * MS_PER_HOUR;
+const MS_PER_WEEK = 7 * MS_PER_DAY;
+const MS_PER_MONTH = 30.44 * MS_PER_DAY; // Average month
+const MS_PER_YEAR = 365.25 * MS_PER_DAY; // Average year
+
 const ELAPSED_TIME_UNIT_LABELS: Record<string, { singular: string; plural: string }> = {
-    min: { singular: 'minute', plural: 'minutes' },
+    second: { singular: 'second', plural: 'seconds' },
     minute: { singular: 'minute', plural: 'minutes' },
     hour: { singular: 'hour', plural: 'hours' },
     day: { singular: 'day', plural: 'days' },
@@ -401,82 +409,159 @@ const ELAPSED_TIME_UNIT_LABELS: Record<string, { singular: string; plural: strin
     year: { singular: 'year', plural: 'years' },
 };
 
-export function formatElapsedTime(ms: number, clickCount: number = 0): string {
-    const minutes = ms / (1000 * 60);
-    const hours = minutes / 60;
-    const days = hours / 24;
-    const weeks = days / 7;
-    const months = days / 30.44;
-    const years = days / 365.25;
-    
-    const formatUnitLabel = (value: number, unitKey: string): string => {
-        const normalizedKey = unitKey.toLowerCase();
-        const unit = ELAPSED_TIME_UNIT_LABELS[normalizedKey] ?? {
-            singular: unitKey,
-            plural: `${unitKey}s`
+type ElapsedDisplayUnit = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
+
+const ELAPSED_UNIT_SEQUENCE: Record<ElapsedDisplayUnit, { ms: number; next?: ElapsedDisplayUnit }> = {
+    year: { ms: MS_PER_YEAR, next: 'month' },
+    month: { ms: MS_PER_MONTH, next: 'day' },
+    week: { ms: MS_PER_WEEK, next: 'day' },
+    day: { ms: MS_PER_DAY, next: 'hour' },
+    hour: { ms: MS_PER_HOUR, next: 'minute' },
+    minute: { ms: MS_PER_MINUTE, next: 'second' },
+    second: { ms: MS_PER_SECOND },
+};
+
+function formatUnitLabel(value: number, unitKey: ElapsedDisplayUnit): string {
+    const unit = ELAPSED_TIME_UNIT_LABELS[unitKey] ?? {
+        singular: unitKey,
+        plural: `${unitKey}s`
+    };
+    const isSingular = Math.abs(Math.abs(value) - 1) < 1e-9;
+    return isSingular ? unit.singular : unit.plural;
+}
+
+interface ElapsedPrimaryPart {
+    text: string;
+    remainderMs: number;
+    usedUnit: ElapsedDisplayUnit;
+}
+
+function buildPrimaryComponent(ms: number, requestedUnit: ElapsedDisplayUnit): ElapsedPrimaryPart {
+    const unitDef = ELAPSED_UNIT_SEQUENCE[requestedUnit];
+    if (!unitDef || ms <= 0) {
+        return {
+            text: `0 ${formatUnitLabel(0, requestedUnit)}`,
+            remainderMs: 0,
+            usedUnit: requestedUnit
         };
-        const isSingular = Math.abs(Math.abs(value) - 1) < 1e-9;
-        return isSingular ? unit.singular : unit.plural;
-    };
-    
-    // Helper to format with appropriate unit, dropping down for better readability
-    const formatWithBestUnit = (value: number, mainUnit: string, nextUnit?: string, nextValue?: number): string => {
-        // If we have a fractional value less than 1, drop down to next unit if available
-        if (value < 1 && nextUnit && nextValue !== undefined) {
-            const rounded = Math.round(nextValue);
-            return `${rounded} ${formatUnitLabel(rounded, nextUnit)}`;
-        }
-        
-        // If we have a decimal value, check if dropping down gives a whole number
-        if (value < 10 && value % 1 !== 0 && nextUnit && nextValue !== undefined) {
-            const rounded = Math.round(nextValue);
-            // If the next unit gives a clean whole number, use it
-            if (rounded > 0 && Math.abs(nextValue - rounded) < 0.1) {
-                return `${rounded} ${formatUnitLabel(rounded, nextUnit)}`;
-            }
-        }
-        
-        // Round to 1 decimal place, but show whole numbers without decimal
-        const rounded = Math.round(value * 10) / 10;
-        if (rounded % 1 === 0) {
-            const wholeValue = Math.round(rounded);
-            return `${wholeValue} ${formatUnitLabel(wholeValue, mainUnit)}`;
-        }
-        return `${rounded.toFixed(1)} ${formatUnitLabel(rounded, mainUnit)}`;
-    };
-    
-    // Cycle through units based on click count
-    const unitIndex = clickCount % 5;
-    
-    switch (unitIndex) {
-        case 0: // Default - auto-select best unit with intelligent drop-down
-            if (hours < 24) {
-                // For times under 24 hours, consider minutes
-                return formatWithBestUnit(hours, 'hour', 'min', minutes);
-            } else if (days < 7) {
-                // For times under 7 days, consider hours
-                return formatWithBestUnit(days, 'day', 'hour', hours);
-            } else if (weeks < 8) {
-                // For times under 8 weeks, consider days
-                return formatWithBestUnit(weeks, 'week', 'day', days);
-            } else if (months < 24) {
-                // For times under 24 months, consider weeks
-                return formatWithBestUnit(months, 'month', 'week', weeks);
-            } else {
-                // For long spans, consider months
-                return formatWithBestUnit(years, 'year', 'month', months);
-            }
-        case 1: // Hours (can drop to minutes)
-            return formatWithBestUnit(hours, 'hour', 'min', minutes);
-        case 2: // Days (can drop to hours)
-            return formatWithBestUnit(days, 'day', 'hour', hours);
-        case 3: // Weeks (can drop to days)
-            return formatWithBestUnit(weeks, 'week', 'day', days);
-        case 4: // Months (can drop to weeks)
-            return formatWithBestUnit(months, 'month', 'week', weeks);
-        default:
-            return formatWithBestUnit(years, 'year', 'month', months);
     }
+
+    const wholeValue = Math.floor(ms / unitDef.ms);
+    if (wholeValue <= 0) {
+        if (unitDef.next) {
+            return buildPrimaryComponent(ms, unitDef.next);
+        }
+        const secondsValue = Math.max(1, Math.round(ms / MS_PER_SECOND));
+        return {
+            text: `${secondsValue} ${formatUnitLabel(secondsValue, 'second')}`,
+            remainderMs: 0,
+            usedUnit: 'second'
+        };
+    }
+
+    const consumed = wholeValue * unitDef.ms;
+    return {
+        text: `${wholeValue} ${formatUnitLabel(wholeValue, requestedUnit)}`,
+        remainderMs: Math.max(0, ms - consumed),
+        usedUnit: requestedUnit
+    };
+}
+
+function buildSecondaryComponent(remainderMs: number, startUnit?: ElapsedDisplayUnit): { text: string; usedUnit: ElapsedDisplayUnit } | null {
+    if (!startUnit || remainderMs <= 0) return null;
+    const unitDef = ELAPSED_UNIT_SEQUENCE[startUnit];
+    if (!unitDef) return null;
+
+    const wholeValue = Math.floor(remainderMs / unitDef.ms);
+    if (wholeValue > 0) {
+        return {
+            text: `${wholeValue} ${formatUnitLabel(wholeValue, startUnit)}`,
+            usedUnit: startUnit
+        };
+    }
+    if (unitDef.next) {
+        return buildSecondaryComponent(remainderMs, unitDef.next);
+    }
+
+    const secondsValue = Math.round(remainderMs / MS_PER_SECOND);
+    if (secondsValue > 0) {
+        return {
+            text: `${secondsValue} ${formatUnitLabel(secondsValue, 'second')}`,
+            usedUnit: 'second'
+        };
+    }
+    return null;
+}
+
+function formatCompositeDuration(ms: number, primaryUnit: ElapsedDisplayUnit): string {
+    const positiveMs = Math.max(0, ms);
+    const primary = buildPrimaryComponent(positiveMs, primaryUnit);
+    const parts = [primary.text];
+
+    const nextUnit = ELAPSED_UNIT_SEQUENCE[primary.usedUnit]?.next;
+    const secondary = buildSecondaryComponent(primary.remainderMs, nextUnit);
+    if (secondary) {
+        parts.push(secondary.text);
+    }
+
+    return parts.join(' + ');
+}
+
+function pickAutoElapsedUnit(ms: number): ElapsedDisplayUnit {
+    if (ms < MS_PER_MINUTE) {
+        return 'second';
+    }
+    if (ms < MS_PER_HOUR) {
+        return 'minute';
+    }
+    if (ms < MS_PER_DAY) {
+        return 'hour';
+    }
+    if (ms < MS_PER_WEEK) {
+        return 'day';
+    }
+    if (ms < MS_PER_WEEK * 8) {
+        return 'week';
+    }
+    if (ms < MS_PER_MONTH * 24) {
+        return 'month';
+    }
+    return 'year';
+}
+
+export function formatElapsedTime(ms: number, clickCount: number = 0): string {
+    if (!Number.isFinite(ms)) {
+        return '0 minutes';
+    }
+
+    const safeMs = Math.max(0, Math.abs(ms));
+    if (safeMs === 0) {
+        return '0 minutes';
+    }
+
+    const unitIndex = ((clickCount % 5) + 5) % 5;
+    let unit: ElapsedDisplayUnit;
+
+    switch (unitIndex) {
+        case 0:
+            unit = pickAutoElapsedUnit(safeMs);
+            break;
+        case 1:
+            unit = 'hour';
+            break;
+        case 2:
+            unit = 'day';
+            break;
+        case 3:
+            unit = 'week';
+            break;
+        case 4:
+        default:
+            unit = 'month';
+            break;
+    }
+
+    return formatCompositeDuration(safeMs, unit);
 }
 
 export function dateToAngle(date: Date): number {
@@ -506,14 +591,6 @@ export function isOverdueDateString(dueString?: string, today: Date = new Date()
   if (dueMonth > todayM) return false;
   return dueDay < todayD; // strictly before today
 }
-
-const MS_PER_SECOND = 1000;
-const MS_PER_MINUTE = 60 * MS_PER_SECOND;
-const MS_PER_HOUR = 60 * MS_PER_MINUTE;
-const MS_PER_DAY = 24 * MS_PER_HOUR;
-const MS_PER_WEEK = 7 * MS_PER_DAY;
-const MS_PER_MONTH = 30.44 * MS_PER_DAY; // Average month
-const MS_PER_YEAR = 365.25 * MS_PER_DAY; // Average year
 
 interface DurationUnitDefinition {
     key: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years';
