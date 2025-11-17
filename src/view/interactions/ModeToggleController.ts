@@ -2,12 +2,20 @@ import { resetGossamerModeState } from '../../GossamerCommands';
 import type { ModeManager } from '../../modes/ModeManager';
 import { TimelineMode } from '../../modes/ModeDefinition';
 import { getToggleableModes } from '../../modes/ModeRegistry';
+import {
+    MODE_SELECTOR_POS_X,
+    MODE_SELECTOR_POS_Y,
+    MODE_TITLE_POS_X,
+    MODE_TITLE_POS_Y,
+    BOOK_TITLE_POS_X,
+    BOOK_TITLE_POS_Y
+} from '../../renderer/layout/LayoutConstants';
 
 interface ModeToggleView {
     currentMode?: string;
     getModeManager?: () => ModeManager | undefined;
     plugin: {
-        settings: { currentMode?: string };
+        settings: { currentMode?: string; sourcePath?: string };
         saveSettings: () => Promise<void>;
         refreshTimelineIfNeeded: (file: unknown) => void;
     };
@@ -25,10 +33,6 @@ function buildModeOptions() {
 }
 
 const MODE_OPTIONS = buildModeOptions();
-
-// Positioning constants (adjustable values)
-const POS_X = 658; // Horizontal center position
-const POS_Y = -750; // Vertical position (200px from top)
 
 // Base SVG dimensions (source viewBox size - original path coordinates)
 const ICON_BASE_WIDTH = 92; // Original width for SVG path
@@ -87,7 +91,7 @@ function createActiveDocumentShape(): string {
 /**
  * Create the mode selector grid element
  */
-function createModeSelectorGrid(): SVGGElement {
+function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
     const grid = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     grid.setAttribute('class', 'rt-mode-selector-grid');
     grid.setAttribute('id', 'mode-selector');
@@ -95,7 +99,7 @@ function createModeSelectorGrid(): SVGGElement {
     // Initial positioning with inactive gaps (will be adjusted in updateState)
     const spacePerIcon = INACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_INACTIVE;
     const totalWidth = MODE_OPTIONS.length * INACTIVE_VISUAL_WIDTH + (MODE_OPTIONS.length - 1) * ICON_VISUAL_GAP_INACTIVE;
-    const startX = POS_X - totalWidth / 2 + INACTIVE_VISUAL_WIDTH / 2;
+    const startX = MODE_SELECTOR_POS_X - totalWidth / 2 + INACTIVE_VISUAL_WIDTH / 2;
     
     MODE_OPTIONS.forEach((mode, index) => {
         const x = startX + index * spacePerIcon;
@@ -104,7 +108,7 @@ function createModeSelectorGrid(): SVGGElement {
         const optionGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         optionGroup.setAttribute('class', 'rt-mode-option');
         optionGroup.setAttribute('data-mode', mode.id);
-        optionGroup.setAttribute('transform', `translate(${x}, ${POS_Y})`);
+        optionGroup.setAttribute('transform', `translate(${x}, ${MODE_SELECTOR_POS_Y})`);
         
         // Create inner group for hover scaling (CSS transform will apply here)
         const innerGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -140,11 +144,33 @@ function createModeSelectorGrid(): SVGGElement {
         grid.appendChild(optionGroup);
     });
     
+    // Extract book title from sourcePath (last folder name)
+    const sourcePath = view.plugin.settings.sourcePath || '';
+    let bookTitle = '';
+    if (sourcePath) {
+        const parts = sourcePath.split('/').filter(p => p.length > 0);
+        bookTitle = parts.length > 0 ? parts[parts.length - 1] : '';
+    }
+    
+    // Add book title text above the mode title (10px higher)
+    if (bookTitle) {
+        const bookTitleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        bookTitleText.setAttribute('class', 'rt-book-title-text');
+        bookTitleText.setAttribute('x', String(BOOK_TITLE_POS_X));
+        bookTitleText.setAttribute('y', String(BOOK_TITLE_POS_Y));
+        bookTitleText.setAttribute('text-anchor', 'start');
+        bookTitleText.setAttribute('dominant-baseline', 'baseline');
+        bookTitleText.setAttribute('id', 'book-title');
+        bookTitleText.textContent = bookTitle;
+        
+        grid.appendChild(bookTitleText);
+    }
+    
     // Add mode title text above the first icon
     const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     titleText.setAttribute('class', 'rt-mode-title-text');
-    titleText.setAttribute('x', String(startX));
-    titleText.setAttribute('y', String(POS_Y - 30));
+    titleText.setAttribute('x', String(MODE_TITLE_POS_X));
+    titleText.setAttribute('y', String(MODE_TITLE_POS_Y));
     titleText.setAttribute('text-anchor', 'start');
     titleText.setAttribute('dominant-baseline', 'baseline');
     titleText.setAttribute('id', 'mode-title');
@@ -191,7 +217,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
     const activeIndex = MODE_OPTIONS.findIndex(m => m.id === currentMode);
     
     // Calculate positions with different gaps
-    let x = POS_X;
+    let x = MODE_SELECTOR_POS_X;
     const positions: number[] = [];
     
     for (let i = 0; i < MODE_OPTIONS.length; i++) {
@@ -211,7 +237,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
     
     // Center the group
     const totalWidth = positions[positions.length - 1] + INACTIVE_VISUAL_WIDTH - positions[0];
-    const offset = POS_X - (positions[0] + positions[positions.length - 1]) / 2;
+    const offset = MODE_SELECTOR_POS_X - (positions[0] + positions[positions.length - 1]) / 2;
     
     MODE_OPTIONS.forEach((mode, index) => {
         const modeElement = modeSelector.querySelector(`[data-mode="${mode.id}"]`);
@@ -225,7 +251,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         
         if (mode.id === currentMode) {
             // Active mode - no scale transform, use native active size path
-            modeElement.setAttribute('transform', `translate(${finalX}, ${POS_Y})`);
+            modeElement.setAttribute('transform', `translate(${finalX}, ${MODE_SELECTOR_POS_Y})`);
             modeElement.classList.add('rt-mode-current');
             bg.classList.add('rt-active');
             text.classList.add('rt-active');
@@ -243,7 +269,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             }
         } else {
             // Inactive mode - no scale transform, use native inactive size path
-            modeElement.setAttribute('transform', `translate(${finalX}, ${POS_Y})`);
+            modeElement.setAttribute('transform', `translate(${finalX}, ${MODE_SELECTOR_POS_Y})`);
             modeElement.classList.remove('rt-mode-current');
             bg.classList.remove('rt-active');
             text.classList.remove('rt-active');
@@ -262,16 +288,10 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         }
     });
     
-    // Update mode title text position and content
+    // Update mode title text content only (position stays fixed)
     const titleText = modeSelector.querySelector('#mode-title') as SVGTextElement;
-    if (titleText) {
-        if (activeIndex >= 0) {
-            titleText.textContent = MODE_OPTIONS[activeIndex].label;
-        }
-        // Position the title above the first icon (index 0)
-        const firstIconX = positions[0] + offset;
-        titleText.setAttribute('x', String(firstIconX));
-        titleText.setAttribute('y', String(POS_Y - 30));
+    if (titleText && activeIndex >= 0) {
+        titleText.textContent = MODE_OPTIONS[activeIndex].label;
     }
 }
 
@@ -281,7 +301,7 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
 export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGElement): void {
     
     // Create mode selector grid
-    const modeSelector = createModeSelectorGrid();
+    const modeSelector = createModeSelectorGrid(view);
     svg.appendChild(modeSelector);
     
     // Update initial state

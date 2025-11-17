@@ -122,3 +122,31 @@ export const PADDING_RENDER_PX = 24;
 /** Gap used when checking beat label overlaps (px) */
 export const ANGULAR_GAP_PX = 16;
 
+// =============================================================================
+// UI CONTROLS POSITIONING
+// =============================================================================
+
+/** Horizontal center position for mode selector buttons */
+export const MODE_SELECTOR_POS_X = 658;
+
+/** Vertical position for mode selector buttons */
+export const MODE_SELECTOR_POS_Y = -750;
+
+/** Horizontal position for mode title text */
+export const MODE_TITLE_POS_X = 555;
+
+/** Vertical position for mode title text */
+export const MODE_TITLE_POS_Y = -766;
+
+/** Horizontal position for book title text */
+export const BOOK_TITLE_POS_X = 555;
+
+/** Vertical position for book title text */
+export const BOOK_TITLE_POS_Y = -780;
+
+/** Horizontal position for chronologue shift button */
+export const SHIFT_BUTTON_POS_X = -700;
+
+/** Vertical position for chronologue shift button */
+export const SHIFT_BUTTON_POS_Y = -750;
+

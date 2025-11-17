@@ -129,6 +129,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     activeAiContextTemplateId: 'commercial_genre',
     beatSystem: 'Save The Cat', // Default beat system
     dominantSubplots: {}, // Default: empty map, will use outermost subplot for scenes in multiple subplots
+    globalPovMode: 'off',
     lastSeenReleaseNotesVersion: '',
     cachedReleaseNotes: null,
     releaseNotesLastFetched: undefined

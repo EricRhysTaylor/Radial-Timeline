@@ -713,7 +713,6 @@
   fill: var(--rt-dynamic-color, var(--text-muted)) !important; /* Use character color, fallback to muted */
   font-size: 12px !important; /* Smaller than default 18px metadata text */
   font-weight: 500;
-  text-transform: lowercase;
 }
 
 /* Command palette search modal styling */

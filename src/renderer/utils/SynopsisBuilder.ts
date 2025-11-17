@@ -2,6 +2,7 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote } from '../../utils/sceneHelpers';
 import { splitIntoBalancedLines } from '../../utils/text';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
+import { resolveScenePov } from '../../utils/pov';
 
 export function buildSynopsisElement(
     plugin: PluginRendererFacade,
@@ -32,10 +33,33 @@ export function buildSynopsisElement(
     if (!isBeatNote(scene)) {
         contentLines.push(orderedSubplots.join(', '));
         const characters = scene.Character || [];
-        const rawCharacters = characters.length > 0
-            ? characters.map((char: string, index: number) => index === 0 ? `${char} >pov<` : char).join(', ')
-            : '';
-        contentLines.push(rawCharacters);
+        const povInfo = resolveScenePov(scene, {
+            globalMode: plugin.settings.globalPovMode
+        });
+
+        const formattedCharacters: string[] = [];
+        povInfo.leadingLabels.forEach(label => {
+            formattedCharacters.push(`>povlabel=${label}<`);
+        });
+
+        const markerMap = new Map<number, string>();
+        povInfo.characterMarkers.forEach(marker => {
+            markerMap.set(marker.index, marker.label);
+        });
+
+        characters.forEach((char: string, index: number) => {
+            const label = markerMap.get(index);
+            if (label) {
+                formattedCharacters.push(`${char} >pov=${label}<`);
+            } else {
+                formattedCharacters.push(char);
+            }
+        });
+
+        const rawCharacters = formattedCharacters.filter(str => !!str && str.trim().length > 0).join(', ');
+        if (rawCharacters) {
+            contentLines.push(rawCharacters);
+        }
     }
 
     const filtered = contentLines.filter(line => line && line.trim() !== '\u00A0');

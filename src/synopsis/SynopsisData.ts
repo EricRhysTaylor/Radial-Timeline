@@ -6,7 +6,7 @@ export interface SynopsisScene {
   path?: string;
   subplot?: string;
   act?: string;
-  pov?: string;
+  pov?: string | string[];
   location?: string;
   number?: number;
   synopsis?: string;
@@ -64,5 +64,4 @@ export function isOverdueAndIncomplete(scene: SynopsisScene, today: Date = new D
   const isComplete = normalizedStatus === 'complete' || normalizedStatus === 'done';
   return isOverdue && !isComplete;
 }
-
 

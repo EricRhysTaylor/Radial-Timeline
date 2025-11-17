@@ -118,6 +118,20 @@ export class SceneDataService {
                             ? (rawCharacter as string[]).map(c => stripWikiLinks(c))
                             : (rawCharacter ? [stripWikiLinks(rawCharacter as string)] : undefined);
                         
+                        const rawPov = metadata.POV;
+                        let povField: string | string[] | undefined;
+                        if (Array.isArray(rawPov)) {
+                            const normalized = (rawPov as unknown[])
+                                .map(value => typeof value === 'string' ? value : String(value ?? ''))
+                                .map(value => value.trim())
+                                .filter(value => value.length > 0);
+                            if (normalized.length > 0) {
+                                povField = normalized;
+                            }
+                        } else if (rawPov !== undefined && rawPov !== null) {
+                            povField = String(rawPov);
+                        }
+
                         scenes.push({
                             date: isoDate,
                             when: normalizedWhen,
@@ -127,7 +141,7 @@ export class SceneDataService {
                             subplot: subplot,
                             act: String(validActNumber),
                             actNumber: validActNumber,
-                            pov: metadata.POV as string | undefined,
+                            pov: povField,
                             location: metadata.Place as string | undefined,
                             Character: characterList,
                             synopsis: metadata.Synopsis as string | undefined,

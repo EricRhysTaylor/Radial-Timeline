@@ -4,6 +4,10 @@
 
 import type { EmbeddedReleaseNotesBundle } from './releaseNotes';
 
+export type PovMarkerLabel = 'POV' | '1PV' | '2PV' | '3PoV' | '3PoL';
+
+export type GlobalPovMode = 'off' | '1PV' | '2PV' | '3PoV' | '3PoL';
+
 export interface AiContextTemplate {
     id: string;
     name: string;
@@ -44,6 +48,7 @@ export interface RadialTimelineSettings {
     activeAiContextTemplateId?: string;
     beatSystem?: string;
     dominantSubplots?: Record<string, string>;
+    globalPovMode?: GlobalPovMode;
     _isResuming?: boolean;
     _resumingMode?: 'flagged' | 'unprocessed' | 'force-all';
     lastSeenReleaseNotesVersion?: string;

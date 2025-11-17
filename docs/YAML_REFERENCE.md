@@ -464,7 +464,17 @@ Example custom fields:
 - `Total Time`: Writing/production time in hours
 - `Words`: Scene word count
 - `Support Files`: Attachments, references, research notes
-- `POV`: Point of view character
+- `POV`: Optional point-of-view override. Accepts a string or YAML list. Supported acronyms: `1PV` (first-person), `2PV` (second-person), `3PoL` (third-person limited), `3PoV` (third-person omniscient), plus the legacy `POV` tag. Combine labels with characters using either `Label: Character` or `Character (Label)` syntax. Examples:
+  - `POV: 3PoV` → Inserts an omniscient label before the character list.
+  - `POV: 1PV: Mara` → Marks Mara with the 1PV superscript.
+  - `POV:` + YAML list for multiple markers:
+    ```yaml
+    POV:
+      - 3PoL: Kara
+      - 3PoL: Dex
+    ```
+  - `POV: none` (or `POV: npc`) → Suppress POV markers for that scene.
+  If the field is omitted entirely, the hover synopsis highlights the first listed character unless a global POV mode is selected in settings.
 - `Tone`: Scene mood or atmosphere
 
 ---

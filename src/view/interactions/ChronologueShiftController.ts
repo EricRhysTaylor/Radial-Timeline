@@ -7,7 +7,12 @@
 import type { TimelineItem } from '../../types';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
-import { ELAPSED_ARC_RADIUS, ELAPSED_TICK_LENGTH } from '../../renderer/layout/LayoutConstants';
+import {
+    ELAPSED_ARC_RADIUS,
+    ELAPSED_TICK_LENGTH,
+    SHIFT_BUTTON_POS_X,
+    SHIFT_BUTTON_POS_Y
+} from '../../renderer/layout/LayoutConstants';
 
 // Base SVG dimensions (source viewBox size)
 const SHIFT_BUTTON_BASE_WIDTH = 133; // Base width from SVG path
@@ -20,10 +25,6 @@ const SHIFT_BUTTON_ACTIVE_WIDTH = 128; // Target width when active (20% larger)
 // Calculate scale factors (scaling UP from base size)
 const SHIFT_BUTTON_BASE_SCALE = SHIFT_BUTTON_INACTIVE_WIDTH / SHIFT_BUTTON_BASE_WIDTH; // ~0.797 - inactive
 const SHIFT_BUTTON_ACTIVE_SCALE = SHIFT_BUTTON_ACTIVE_WIDTH / SHIFT_BUTTON_BASE_WIDTH; // ~0.962 - active
-
-// Shift button positioning constants
-const SHIFT_BUTTON_POS_Y = -750; // Same y-axis as mode pages
-const SHIFT_BUTTON_POS_X = -700; // Left side position
 
 const ELAPSED_ARC_STROKE_WIDTH = 3;
 

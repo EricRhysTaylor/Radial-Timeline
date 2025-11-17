@@ -92,13 +92,16 @@ export class SearchService {
 
         this.plugin.getSceneData().then(scenes => {
             scenes.forEach(scene => {
+                const povText = Array.isArray(scene.pov)
+                    ? scene.pov.join(', ')
+                    : scene.pov;
                 const textFields: (string | undefined)[] = [
                     scene.title,
                     scene.synopsis,
                     ...(scene.Character || []),
                     scene.subplot,
                     scene.location,
-                    scene.pov,
+                    povText,
                     scene.Duration
                 ];
                 const textMatched = textFields.some(f => containsWholePhrase(f, term, false));
@@ -122,5 +125,4 @@ export class SearchService {
         timelineViews.forEach(view => view.refreshTimeline());
     }
 }
-
 

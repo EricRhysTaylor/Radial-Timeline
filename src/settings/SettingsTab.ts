@@ -30,6 +30,7 @@ import { renderReadmeSection } from './sections/ReadmeSection';
 import { renderAdvancedSection } from './sections/AdvancedSection';
 import { renderAiSection } from './sections/AiSection';
 import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
+import { renderPovSection } from './sections/PovSection';
 
 declare const EMBEDDED_README_CONTENT: string;
 
@@ -261,6 +262,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // 2. Publication and Progress section (target date, show estimate, zero draft mode)
         renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl });
+
+        // POV section (global defaults + YAML guidance)
+        renderPovSection({ plugin: this.plugin, containerEl });
 
         // 3. Chronologue Mode settings (duration cap, discontinuity threshold)
         renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl });

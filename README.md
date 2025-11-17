@@ -352,7 +352,17 @@ Place:
 ```
 > **Note**: Use of brackets denotes a link to a character or place file (optional).
 
-> **POV Convention**: The first character listed in the `Character` field is considered the point-of-view (POV) character for the scene.
+> **POV Options**: Add `POV` to a scene when you need something other than "first character = POV". Examples:
+> - `POV: 1PV: Mara` or `POV: Mara (1PV)` – attach the 1PV marker to Mara.
+> - `POV: 3PoV` – display an omniscient label before the character list.
+> - `POV:` as a YAML list for multiple markers:
+>   ```yaml
+>   POV:
+>     - 3PoL: Kara
+>     - 3PoL: Dex
+>   ```
+> - `POV: none` – suppress markers entirely for that scene.
+> Leave the field blank to keep legacy behavior (first listed character gets the superscript). Use **Settings → Point of view** only if you want a project-wide narration mode to apply whenever the YAML leaves POV blank.
 
 ## Standard Beat
 

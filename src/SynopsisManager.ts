@@ -485,7 +485,7 @@ export default class SynopsisManager {
          // Calculate character Y based on subplot position plus standard line height
         const characterY = subplotStartY + lineHeight; 
         const characterList = decodedMetadataItems[1].split(', ').filter((c: string) => c.trim().length > 0);
-        
+
         if (characterList.length > 0) {
           const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
           characterTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
@@ -495,43 +495,58 @@ export default class SynopsisManager {
           // Format each character with its own color
           characterList.forEach((character: string, j: number) => {
             const trimmedChar = character.trim();
-            
-            // Check if this character has a >pov< marker
-            const hasPovMarker = trimmedChar.includes('>pov<');
-            const characterText = hasPovMarker ? trimmedChar.replace(' >pov<', '') : trimmedChar;
-            
-            // Use synopsis text color (gray) for consistency
             const color = '#666666';
-            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
-            tspan.setAttribute("data-item-type", "character");
-            tspan.style.setProperty('--rt-dynamic-color', color);
-            tspan.textContent = characterText;
-            characterTextElement.appendChild(tspan);
-            
-            // If this character has a >pov< marker, add it as a superscript
-            if (hasPovMarker) {
+            let baselineRaised = false;
+
+            const labelOnlyMatch = trimmedChar.match(/^>povlabel=([^<]+)<$/i);
+            const isLabelToken = !!labelOnlyMatch;
+            if (labelOnlyMatch) {
+              const povLabel = labelOnlyMatch[1]?.trim() || 'POV';
               const povTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
               povTspan.setAttribute("class", "rt-pov-marker");
-              povTspan.setAttribute("dy", "-8px"); // Raise it up like an exponent (fixed px units)
-              povTspan.style.setProperty('--rt-dynamic-color', color); // Use same color as character
-              povTspan.textContent = "pov";
+              povTspan.setAttribute("dy", "-8px");
+              povTspan.style.setProperty('--rt-dynamic-color', color);
+              povTspan.textContent = povLabel;
               characterTextElement.appendChild(povTspan);
+              baselineRaised = true;
+            } else {
+              const markerMatch = trimmedChar.match(/>pov(?:=([^<]+))<$/i);
+              const povLabel = markerMatch ? (markerMatch[1]?.trim() || 'POV') : undefined;
+              const cleanedText = markerMatch
+                ? trimmedChar.replace(/\s*>pov(?:=[^<]+)?<\s*/i, '').trim()
+                : trimmedChar;
+              
+              if (cleanedText) {
+                const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+                tspan.setAttribute("data-item-type", "character");
+                tspan.style.setProperty('--rt-dynamic-color', color);
+                tspan.textContent = cleanedText;
+                characterTextElement.appendChild(tspan);
+              }
+
+              if (povLabel) {
+                const povTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+                povTspan.setAttribute("class", "rt-pov-marker");
+                povTspan.setAttribute("dy", "-8px");
+                povTspan.style.setProperty('--rt-dynamic-color', color);
+                povTspan.textContent = povLabel;
+                characterTextElement.appendChild(povTspan);
+                baselineRaised = true;
+              }
             }
-            
+
             // Add comma after this character (if not the last one)
             if (j < characterList.length - 1) {
               const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
               comma.setAttribute("fill", "var(--text-muted)");
-              // If we just added a pov marker, reset the baseline with the comma
-              if (hasPovMarker) {
-                comma.setAttribute("dy", "8px"); // Return to baseline (fixed px units)
+              if (baselineRaised) {
+                comma.setAttribute("dy", "8px");
               }
-              comma.textContent = ", ";
+              comma.textContent = isLabelToken ? " " : ", ";
               characterTextElement.appendChild(comma);
-            } else if (hasPovMarker) {
-              // If this is the last character and has pov marker, add empty tspan to reset baseline
+            } else if (baselineRaised) {
               const resetTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
-              resetTspan.setAttribute("dy", "8px"); // Return to baseline (fixed px units)
+              resetTspan.setAttribute("dy", "8px");
               resetTspan.textContent = "";
               characterTextElement.appendChild(resetTspan);
             }

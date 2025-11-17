@@ -4,6 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 import type { TimelineItem } from '../types';
+import type { GlobalPovMode } from '../types/settings';
 import { parseWhenField } from './date';
 
 const STATUSES_REQUIRING_WHEN = new Set(['working', 'complete']);
@@ -79,6 +80,7 @@ export interface PluginRendererFacade {
         chronologueDurationCapSelection?: string;
         dominantSubplots?: Record<string, string>;
         discontinuityThreshold?: string;
+        globalPovMode?: GlobalPovMode;
     };
     searchActive: boolean;
     searchResults: Set<string>;
