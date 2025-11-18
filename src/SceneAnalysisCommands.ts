@@ -2159,7 +2159,7 @@ export async function createTemplateScene(
             Subplot: ['Main Plot', 'Romance Arc'],
             Character: ['Protagonist', 'Mentor'],
             Place: '',
-            POV: 'first # first | second | third | omni | objective | two | count | all',
+            POV: 'first',
             Due: isoDate,
             'Publish Stage': 'Zero',
             Revision: 0,
@@ -2169,7 +2169,9 @@ export async function createTemplateScene(
         } as Record<string, unknown>;
 
         const body = '\nWrite your scene here. Fill in Character and Subplot fields as needed. Use array format for multiple items.';
-        const content = `---\n${stringifyYaml(frontmatter)}---\n${body}\n`;
+        let yamlContent = stringifyYaml(frontmatter);
+        yamlContent = yamlContent.replace(/^POV: (.+)$/m, 'POV: $1 # first | second | third | omni | objective | two | count | all');
+        const content = `---\n${yamlContent}---\n${body}\n`;
 
         await vault.create(targetPath, content);
         new Notice(`Created template scene: ${targetPath}`);
