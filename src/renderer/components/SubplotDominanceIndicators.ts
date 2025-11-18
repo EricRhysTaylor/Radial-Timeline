@@ -145,8 +145,6 @@ export function renderSubplotDominanceIndicators(params: {
     const iconAngle = -Math.PI / 2; // 12 o'clock position baseline
     const radialX = Math.cos(iconAngle);
     const radialY = Math.sin(iconAngle);
-    const iconPath = 'M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z';
-    const iconViewBox = 18;
     let svg = '<g class="rt-subplot-dominance-flags">';
 
     masterSubplotOrder.forEach((subplotName, offset) => {
@@ -158,33 +156,53 @@ export function renderSubplotDominanceIndicators(params: {
         const ringWidth = ringWidths[ring];
         if (innerR === undefined || ringWidth === undefined) return;
 
-        const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-        const radialInset = clamp(ringWidth * 0.2, 4, 12);
-        const iconRadius = innerR + radialInset;
-        const iconX = iconRadius * radialX;
-        const iconY = iconRadius * radialY;
-        const tangentX = -radialY;
-        const tangentY = radialX;
+        // Use a constant radial inset to ensure consistent positioning across rings
+        const radialInset = 8;
+        const iconRadius = Math.round(innerR + radialInset);
+        
+        // At 12 o'clock: radialX≈0, radialY≈-1, tangentX≈1, tangentY≈0
+        // Force to exact integers to avoid floating point errors
+        const iconX = Math.round(iconRadius * radialX);
+        const iconY = Math.round(iconRadius * radialY);
+        const tangentX = Math.round(-radialY);
+        const tangentY = Math.round(radialX);
         const tangentOffsetPx = 10;
-        const iconTranslatedX = iconX + tangentX * tangentOffsetPx;
-        const iconTranslatedY = iconY + tangentY * tangentOffsetPx;
-        const iconPixelSize = clamp(ringWidth * 0.55, 8, 18);
-        const scale = iconPixelSize / iconViewBox;
-        const rotationDeg = (iconAngle * 180) / Math.PI + 180; // flip to yield orientation
+        
+        // Right triangle: vertical left side, horizontal bottom, 45° diagonal (page corner)
+        // Vertices: (0,0) top-left, (0,8) bottom-left, (8,8) bottom-right
+        const path = `M 0 0 L 0 8 L 8 8 Z`;
+        
         const fillColor = state.hasHiddenSharedScenes ? 'var(--rt-color-due)' : 'var(--rt-color-press)';
         const cssClass = state.hasHiddenSharedScenes ? 'is-hidden' : 'is-shown';
+        
+        // Center the triangle: centering offset to be subtracted
+        const centerX = 4;
+        const centerY = 4;
+        
+        // Calculate final position - all values are now exact integers
+        const finalX = iconX + tangentX * tangentOffsetPx - centerX;
+        const finalY = iconY + tangentY * tangentOffsetPx - centerY;
+        
+        console.log(`Triangle ${subplotName} (ring ${ring}):`, {
+            innerR,
+            iconRadius,
+            iconX,
+            iconY,
+            tangentX,
+            tangentY,
+            finalX,
+            finalY,
+            isIntegerX: Number.isInteger(finalX),
+            isIntegerY: Number.isInteger(finalY),
+            path
+        });
 
         svg += `
             <g class="rt-subplot-dominance-flag ${cssClass}"
                data-subplot-name="${escapeXml(subplotName)}"
                data-has-hidden="${state.hasHiddenSharedScenes ? 'true' : 'false'}"
-               transform="
-                    translate(${formatNumber(iconTranslatedX)} ${formatNumber(iconTranslatedY)})
-                    rotate(${formatNumber(rotationDeg)})
-                    scale(${formatNumber(scale)})
-                    translate(-12 -12)
-               ">
-                <path d="${iconPath}" fill="${fillColor}" stroke="none" />
+               transform="translate(${finalX} ${finalY})">
+                <path d="${path}" fill="${fillColor}" shape-rendering="crispEdges" />
             </g>
         `;
     });
