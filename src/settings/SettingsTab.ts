@@ -251,7 +251,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Fetch and display member count
         this.fetchPatreonMemberCount().then(count => {
             if (count !== null) {
-                memberBadge.setText(`${count}+ members`);
+                memberBadge.setText(`${count} members and growing fast!`);
             } else {
                 memberBadge.setText('Growing community!');
             }

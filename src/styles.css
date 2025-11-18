@@ -687,13 +687,12 @@
 
 .rt-subplot-dominance-flag {
   pointer-events: none;
+}
+
+.rt-subplot-dominance-flag path {
   shape-rendering: geometricPrecision;
   vector-effect: non-scaling-stroke;
   stroke-linejoin: round;
-}
-
-.rt-subplot-dominance-flag.is-hidden {
-  fill: #ffffff;
 }
 
 .rt-number-text {

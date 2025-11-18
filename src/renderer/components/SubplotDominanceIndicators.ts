@@ -142,11 +142,11 @@ export function renderSubplotDominanceIndicators(params: {
     if (masterSubplotOrder.length === 0) return '';
 
     const totalRings = masterSubplotOrder.length;
-    const radialAngle = -Math.PI / 2;
-    const radialX = Math.cos(radialAngle);
-    const radialY = Math.sin(radialAngle);
-    const tangentX = -radialY;
-    const tangentY = radialX;
+    const iconAngle = (3 * Math.PI) / 4; // bottom-left quadrant
+    const radialX = Math.cos(iconAngle);
+    const radialY = Math.sin(iconAngle);
+    const iconPath = 'M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z';
+    const iconViewBox = 24;
     let svg = '<g class="rt-subplot-dominance-flags">';
 
     masterSubplotOrder.forEach((subplotName, offset) => {
@@ -159,25 +159,29 @@ export function renderSubplotDominanceIndicators(params: {
         if (innerR === undefined || ringWidth === undefined) return;
 
         const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-        const baseInset = clamp(ringWidth * 0.08, 2, 6);
-        const baseLength = clamp(ringWidth * 0.2, 3, 8);
-        const tipOffset = clamp(ringWidth * 0.25, 4, 10);
+        const radialInset = clamp(ringWidth * 0.25, 6, 14);
+        const iconRadius = innerR + radialInset;
+        const iconX = iconRadius * radialX;
+        const iconY = iconRadius * radialY;
+        const iconPixelSize = clamp(ringWidth * 0.55, 8, 18);
+        const scale = iconPixelSize / iconViewBox;
+        const rotationDeg = (iconAngle * 180) / Math.PI + 90;
+        const fillColor = state.hasHiddenSharedScenes ? 'var(--rt-color-due)' : 'var(--rt-color-press)';
+        const cssClass = state.hasHiddenSharedScenes ? 'is-hidden' : 'is-shown';
 
-        const baseInnerRadius = innerR + baseInset;
-        const baseOuterRadius = baseInnerRadius + baseLength;
-
-        const baseInnerX = baseInnerRadius * radialX;
-        const baseInnerY = baseInnerRadius * radialY;
-        const baseOuterX = baseOuterRadius * radialX;
-        const baseOuterY = baseOuterRadius * radialY;
-        const tipX = baseOuterX + tangentX * tipOffset;
-               const tipY = baseOuterY + tangentY * tipOffset;
-
-        const color = subplotColorFor(subplotName);
-        const fillColor = state.hasHiddenSharedScenes ? '#FFFFFF' : color;
-        const flagPath = `M ${formatNumber(baseInnerX)} ${formatNumber(baseInnerY)} L ${formatNumber(baseOuterX)} ${formatNumber(baseOuterY)} L ${formatNumber(tipX)} ${formatNumber(tipY)} Z`;
-
-        svg += `<path class="rt-subplot-dominance-flag${state.hasHiddenSharedScenes ? ' is-hidden' : ' is-shown'}" d="${flagPath}" fill="${fillColor}" stroke="${color}" stroke-width="1" data-subplot-name="${escapeXml(subplotName)}" data-has-hidden="${state.hasHiddenSharedScenes ? 'true' : 'false'}" />`;
+        svg += `
+            <g class="rt-subplot-dominance-flag ${cssClass}"
+               data-subplot-name="${escapeXml(subplotName)}"
+               data-has-hidden="${state.hasHiddenSharedScenes ? 'true' : 'false'}"
+               transform="
+                    translate(${formatNumber(iconX)} ${formatNumber(iconY)})
+                    rotate(${formatNumber(rotationDeg)})
+                    scale(${formatNumber(scale)})
+                    translate(-12 -12)
+               ">
+                <path d="${iconPath}" fill="${fillColor}" stroke="none" />
+            </g>
+        `;
     });
 
     svg += '</g>';
