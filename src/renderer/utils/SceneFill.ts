@@ -8,10 +8,16 @@ export function getFillForScene(
     scene: TimelineItem,
     publishStageColors: Record<string, string>,
     subplotColorResolver?: (subplot: string) => string,
-    isOuterAllScenes?: boolean
+    isOuterAllScenes?: boolean,
+    forceSubplotColor?: boolean
 ): string {
     if (isBeatNote(scene)) {
         return '#FFFFFF';
+    }
+
+    const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+    if (forceSubplotColor && subplotColorResolver) {
+        return subplotColorResolver(subplotName);
     }
 
     const statusList = Array.isArray(scene.status) ? scene.status : [scene.status];
@@ -20,7 +26,6 @@ export function getFillForScene(
     if (!norm) return `url(#plaidTodo${publishStage})`;
     if (norm === 'Completed') {
         if (isOuterAllScenes && subplotColorResolver) {
-            const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
             return subplotColorResolver(subplotName);
         }
         const stageColor = publishStageColors[publishStage as keyof typeof publishStageColors] || publishStageColors.Zero;

@@ -3474,9 +3474,13 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
    SUBPLOT DOMINANCE FLAGS (TRIANGLES) BEHAVIOR
    ============================================ */
 
-/* Default shown state - uses press color */
+/* Default shown state - uses darker/saturated version of subplot color */
 .rt-subplot-dominance-flag.is-shown path {
-  fill: var(--rt-color-press);
+  /* Fallback */
+  fill: var(--flag-color);
+  /* Modern browsers: darken and saturate for better visibility */
+  fill: color-mix(in srgb, var(--flag-color), black 20%);
+  filter: saturate(1.5);
 }
 
 /* Hidden state - uses same gray as non-selected number squares */

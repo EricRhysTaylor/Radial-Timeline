@@ -542,6 +542,7 @@ export function createTimelineSVG(
             const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
             return computed || '#EFBDEB';
         };
+        const forceSubplotFillColors = currentMode === 'narrative' || currentMode === 'chronologue';
 
         // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
         let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
@@ -910,20 +911,6 @@ export function createTimelineSVG(
         // Target completion tick/marker
         svg += renderTargetDateTick({ plugin, progressRadius, dateToAngle });
 
-        // Resolver for subplot CSS color variables (Ring 1 = outermost = subplotColors[0])
-        const subplotCssColor = (name: string): string => {
-            const idx = masterSubplotOrder.indexOf(name);
-            if (idx < 0) return '#EFBDEB'; // fallback for not found
-            
-            // Map subplot index to settings array - outermost ring (Ring 1) uses subplotColors[0]
-            const colorIdx = idx % 16; // Direct order: outermost (idx=0) = Ring 1 = subplotColors[0]
-            const varName = `--rt-subplot-colors-${colorIdx}`;
-            const root = document.documentElement;
-            const computed = getComputedStyle(root).getPropertyValue(varName).trim();
-            return computed || '#EFBDEB';
-        };
-
-
 
         // Synopses at end to be above all other elements
         const synopsesElements: SVGGElement[] = [];
@@ -1164,7 +1151,7 @@ export function createTimelineSVG(
                         // Scene titles: fixed inset from the top (outer) boundary of the cell
                         const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
 
-                        const color = getFillForScene(scene, PUBLISH_STAGE_COLORS, subplotColorFor, true);
+                        const color = getFillForScene(scene, PUBLISH_STAGE_COLORS, subplotColorFor, true, forceSubplotFillColors);
                         const arcPath = sceneArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
                         const sceneId = makeSceneId(act, ring, idx, true, true);
                         
@@ -1324,47 +1311,14 @@ export function createTimelineSVG(
                             // Scene titles: fixed inset from the top (outer) boundary of the cell
                             const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
             
-                            // Determine the color of a scene based on its status and due date
-                            const color = (() => {
-                                const statusList = Array.isArray(scene.status) ? scene.status : [scene.status];
-                                const norm = normalizeStatus(statusList[0]);
-                                
-                                // Get the publish stage for pattern selection
-                                const publishStage = scene["Publish Stage"] || 'Zero';
-                                
-                                // If status is empty/undefined/null, treat it as "Todo" with plaid pattern
-                                if (!norm) {
-                                    return `url(#plaidTodo${publishStage})`;
-                                }
-                                
-                                if (norm === 'Completed') {
-                                    // In narrative mode, tint inner-ring scenes (non–Main Plot) by subplot color
-                                    if (isAllScenesMode) {
-                                        const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-                                        if (subplotName !== 'Main Plot') {
-                                            return subplotCssColor(subplotName);
-                                        }
-                                    }
-                                    const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
-                                    return stageColor;
-                                }
-                                
-                                // Check due date before checking working/todo
-                                if (scene.due && isOverdueDateString(scene.due)) {
-                                    return STATUS_COLORS.Due; // Return Due color if overdue
-                                }
-                                
-                                // If not overdue (or no due date), check for working/todo status
-                                if (norm === 'Working') {
-                                    return `url(#plaidWorking${publishStage})`;
-                                }
-                                if (norm === 'Todo') {
-                                    return `url(#plaidTodo${publishStage})`;
-                                }
-                                
-                                // Fallback to other status colors or Todo
-                                return STATUS_COLORS[statusList[0] as keyof typeof STATUS_COLORS] || STATUS_COLORS.Todo;
-                            })();
+                            // Determine the color of a scene based on current mode + status
+                            const color = getFillForScene(
+                                scene,
+                                PUBLISH_STAGE_COLORS,
+                                subplotColorFor,
+                                isAllScenesMode,
+                                forceSubplotFillColors
+                            );
             
                         
                             // Construct the arc path for the scene
