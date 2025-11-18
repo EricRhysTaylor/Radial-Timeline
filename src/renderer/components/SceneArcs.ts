@@ -1,7 +1,36 @@
-import type { TimelineItem } from '../../types';
 import { formatNumber } from '../../utils/svg';
 
+const TAU = Math.PI * 2;
+const FULL_CIRCLE_EPSILON = 0.0001;
+
 export function sceneArcPath(innerR: number, outerR: number, startAngle: number, endAngle: number): string {
+  const span = Math.abs(endAngle - startAngle);
+  const isFullCircle = span >= (TAU - FULL_CIRCLE_EPSILON);
+
+  if (isFullCircle) {
+    const midAngle = startAngle + (endAngle - startAngle) / 2;
+    const innerStartX = formatNumber(innerR * Math.cos(startAngle));
+    const innerStartY = formatNumber(innerR * Math.sin(startAngle));
+    const outerStartX = formatNumber(outerR * Math.cos(startAngle));
+    const outerStartY = formatNumber(outerR * Math.sin(startAngle));
+    const outerMidX = formatNumber(outerR * Math.cos(midAngle));
+    const outerMidY = formatNumber(outerR * Math.sin(midAngle));
+    const innerMidX = formatNumber(innerR * Math.cos(midAngle));
+    const innerMidY = formatNumber(innerR * Math.sin(midAngle));
+    const outerRadius = formatNumber(outerR);
+    const innerRadius = formatNumber(innerR);
+
+    return `
+    M ${innerStartX} ${innerStartY}
+    L ${outerStartX} ${outerStartY}
+    A ${outerRadius} ${outerRadius} 0 1 1 ${outerMidX} ${outerMidY}
+    A ${outerRadius} ${outerRadius} 0 1 1 ${outerStartX} ${outerStartY}
+    L ${innerStartX} ${innerStartY}
+    A ${innerRadius} ${innerRadius} 0 1 0 ${innerMidX} ${innerMidY}
+    A ${innerRadius} ${innerRadius} 0 1 0 ${innerStartX} ${innerStartY}
+  `;
+  }
+
   return `
     M ${formatNumber(innerR * Math.cos(startAngle))} ${formatNumber(innerR * Math.sin(startAngle))}
     L ${formatNumber(outerR * Math.cos(startAngle))} ${formatNumber(outerR * Math.sin(startAngle))}
@@ -15,4 +44,3 @@ export function renderVoidCellPath(innerR: number, outerR: number, startAngle: n
   const path = sceneArcPath(innerR, outerR, startAngle, endAngle);
   return `<path d="${path}" class="rt-void-cell"/>`;
 }
-
