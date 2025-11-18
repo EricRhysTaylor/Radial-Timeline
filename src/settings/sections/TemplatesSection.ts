@@ -42,7 +42,7 @@ export function renderStoryBeatsSection(params: {
     storyStructureInfo.style.paddingLeft = '0';
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
 
-    // Create template notes button
+    // Create template beat note button
     const templateSetting = new Settings(containerEl)
         .setName('Create story beat template notes')
         .setDesc('Generate template beat notes based on the selected story structure system including YAML frontmatter and body summary.')

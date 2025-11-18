@@ -487,6 +487,8 @@ export default class SynopsisManager {
         const characterList = decodedMetadataItems[1].split(', ').filter((c: string) => c.trim().length > 0);
 
         if (characterList.length > 0) {
+          const CHARACTER_COLOR_DEFAULT = '#666666';
+          const CHARACTER_COLOR_POV = '#000000';
           const characterTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
           characterTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
           characterTextElement.setAttribute("x", "0");
@@ -495,7 +497,6 @@ export default class SynopsisManager {
           // Format each character with its own color
           characterList.forEach((character: string, j: number) => {
             const trimmedChar = character.trim();
-            const color = '#666666';
             let baselineRaised = false;
 
             const markerMatch = trimmedChar.match(/>pov(?:=([^<]+))<$/i);
@@ -503,6 +504,7 @@ export default class SynopsisManager {
             const cleanedText = markerMatch
               ? trimmedChar.replace(/\s*>pov(?:=[^<]+)?<\s*/i, '').trim()
               : trimmedChar;
+            const color = povLabel ? CHARACTER_COLOR_POV : CHARACTER_COLOR_DEFAULT;
             
             if (cleanedText) {
               const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;

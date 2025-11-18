@@ -109,12 +109,12 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing e
 **Get your first timeline in 3 steps:**
 
 1. **Install the plugin**: Settings → Community plugins → Browse → "Radial Timeline"
-2. **Create your first scene**: Use command palette (`Cmd/Ctrl + P`) → "Radial Timeline: Create template note"
+2. **Create your first scene**: Use command palette (`Cmd/Ctrl + P`) → "Radial Timeline: Create template scene note"
 3. **Open the timeline**: Click the timeline ribbon icon or use command palette → "Radial Timeline: Open timeline view"
 
 That's it! Your first scene appears on the timeline. Create more scenes by:
 - Duplicating the template scene
-- Using command palette → "Create template note"
+- Using command palette → "Create template scene note"
 - Use Obsidian's core templates plugin
 
 **Optional - Insert story beats**: Consider inserting story beats for your chosen system such as the 15-beat Save the Cat by going to Settings → Radial Timeline → Create Templates.
@@ -144,7 +144,7 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 - **Subplot Tracking**: Each ring represents a different subplot—see how plot threads interweave
 - **Beat Templates**: Generate complete story beat sets like Save the Cat using Settings → Story beat system
 
-**Command**: Create template note<br>
+**Command**: Create template scene note<br>
 **Settings**: Story beat system
 
 ## Tracking Progress

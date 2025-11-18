@@ -57,7 +57,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'create-template-scene',
-            name: 'Create template note',
+            name: 'Create template scene note',
             callback: async () => createTemplateScene(this.plugin, this.app.vault)
         });
 
