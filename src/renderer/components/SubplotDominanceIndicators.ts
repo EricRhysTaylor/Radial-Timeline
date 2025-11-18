@@ -172,7 +172,6 @@ export function renderSubplotDominanceIndicators(params: {
         // Vertices: (0,0) top-left, (0,8) bottom-left, (8,8) bottom-right
         const path = `M 0 0 L 0 8 L 8 8 Z`;
         
-        const fillColor = state.hasHiddenSharedScenes ? 'var(--rt-color-due)' : 'var(--rt-color-press)';
         const cssClass = state.hasHiddenSharedScenes ? 'is-hidden' : 'is-shown';
         
         // Center the triangle: centering offset to be subtracted
@@ -188,7 +187,7 @@ export function renderSubplotDominanceIndicators(params: {
                data-subplot-name="${escapeXml(subplotName)}"
                data-has-hidden="${state.hasHiddenSharedScenes ? 'true' : 'false'}"
                transform="translate(${finalX} ${finalY})">
-                <path d="${path}" fill="${fillColor}" />
+                <path d="${path}" />
             </g>
         `;
     });
