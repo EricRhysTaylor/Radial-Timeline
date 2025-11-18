@@ -182,20 +182,6 @@ export function renderSubplotDominanceIndicators(params: {
         // Calculate final position - all values are now exact integers
         const finalX = iconX + tangentX * tangentOffsetPx - centerX;
         const finalY = iconY + tangentY * tangentOffsetPx - centerY;
-        
-        console.log(`Triangle ${subplotName} (ring ${ring}):`, {
-            innerR,
-            iconRadius,
-            iconX,
-            iconY,
-            tangentX,
-            tangentY,
-            finalX,
-            finalY,
-            isIntegerX: Number.isInteger(finalX),
-            isIntegerY: Number.isInteger(finalY),
-            path
-        });
 
         svg += `
             <g class="rt-subplot-dominance-flag ${cssClass}"
