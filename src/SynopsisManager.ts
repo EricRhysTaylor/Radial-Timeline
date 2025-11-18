@@ -510,6 +510,9 @@ export default class SynopsisManager {
               const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
               tspan.setAttribute("data-item-type", "character");
               tspan.style.setProperty('--rt-dynamic-color', color);
+              if (povLabel) {
+                tspan.classList.add('rt-pov-character');
+              }
               tspan.textContent = cleanedText;
               characterTextElement.appendChild(tspan);
             }

@@ -753,6 +753,10 @@
   paint-order: stroke;
 }
 
+.rt-info-text.rt-metadata-text tspan.rt-pov-character {
+  font-weight: 700;
+}
+
 /* POV marker styling - superscript after first character name */
 .rt-info-text.rt-metadata-text tspan.rt-pov-marker {
   fill: var(--rt-dynamic-color, var(--text-muted)) !important; /* Use character color, fallback to muted */
