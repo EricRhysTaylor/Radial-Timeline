@@ -142,11 +142,11 @@ export function renderSubplotDominanceIndicators(params: {
     if (masterSubplotOrder.length === 0) return '';
 
     const totalRings = masterSubplotOrder.length;
-    const iconAngle = (3 * Math.PI) / 4; // bottom-left quadrant
+    const iconAngle = -Math.PI / 2; // 12 o'clock position baseline
     const radialX = Math.cos(iconAngle);
     const radialY = Math.sin(iconAngle);
     const iconPath = 'M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z';
-    const iconViewBox = 24;
+    const iconViewBox = 18;
     let svg = '<g class="rt-subplot-dominance-flags">';
 
     masterSubplotOrder.forEach((subplotName, offset) => {
@@ -159,13 +159,18 @@ export function renderSubplotDominanceIndicators(params: {
         if (innerR === undefined || ringWidth === undefined) return;
 
         const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-        const radialInset = clamp(ringWidth * 0.25, 6, 14);
+        const radialInset = clamp(ringWidth * 0.2, 4, 12);
         const iconRadius = innerR + radialInset;
         const iconX = iconRadius * radialX;
         const iconY = iconRadius * radialY;
+        const tangentX = -radialY;
+        const tangentY = radialX;
+        const tangentOffsetPx = 10;
+        const iconTranslatedX = iconX + tangentX * tangentOffsetPx;
+        const iconTranslatedY = iconY + tangentY * tangentOffsetPx;
         const iconPixelSize = clamp(ringWidth * 0.55, 8, 18);
         const scale = iconPixelSize / iconViewBox;
-        const rotationDeg = (iconAngle * 180) / Math.PI + 90;
+        const rotationDeg = (iconAngle * 180) / Math.PI + 180; // flip to yield orientation
         const fillColor = state.hasHiddenSharedScenes ? 'var(--rt-color-due)' : 'var(--rt-color-press)';
         const cssClass = state.hasHiddenSharedScenes ? 'is-hidden' : 'is-shown';
 
@@ -174,7 +179,7 @@ export function renderSubplotDominanceIndicators(params: {
                data-subplot-name="${escapeXml(subplotName)}"
                data-has-hidden="${state.hasHiddenSharedScenes ? 'true' : 'false'}"
                transform="
-                    translate(${formatNumber(iconX)} ${formatNumber(iconY)})
+                    translate(${formatNumber(iconTranslatedX)} ${formatNumber(iconTranslatedY)})
                     rotate(${formatNumber(rotationDeg)})
                     scale(${formatNumber(scale)})
                     translate(-12 -12)
