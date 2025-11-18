@@ -57,6 +57,7 @@ import { estimatePixelsFromTitle } from './utils/LabelMetrics';
 import { renderCenterGrid } from './components/Grid';
 import { renderMonthLabelDefs } from './components/Months';
 import { renderSubplotLabels } from './components/SubplotLabels';
+import { renderSubplotDominanceIndicators, computeSubplotDominanceStates, resolveDominantScene, type SubplotDominanceState } from './components/SubplotDominanceIndicators';
 import { renderDefs, renderProgressRingGradients } from './components/Defs';
 import { renderEstimatedDateElements, renderEstimationArc } from './components/Progress';
 import { sceneArcPath, renderVoidCellPath } from './components/SceneArcs';
@@ -97,18 +98,6 @@ const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
 type BeatLabelAdjustState = { retryId?: number; signature?: string; success?: boolean; lastAbortSignature?: string };
 const beatLabelAdjustState = new WeakMap<HTMLElement, BeatLabelAdjustState>();
 
-interface SubplotDominanceState {
-    hasSharedOverlap: boolean;
-    hasHiddenSharedScenes: boolean;
-}
-
-interface DominantSceneResolution {
-    scene: TimelineItem;
-    dominantSubplot: string;
-    storedPreference?: string;
-    preferenceMatched: boolean;
-}
-
 interface PrecomputedRenderValues {
     scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } };
     masterSubplotOrder: string[];
@@ -120,72 +109,6 @@ interface PrecomputedRenderValues {
     lineInnerRadius: number;
     maxStageColor: string;
     subplotDominanceStates: Map<string, SubplotDominanceState>;
-}
-
-function normalizeSubplotName(name?: string | null): string {
-    if (name && name.trim().length > 0) {
-        return name.trim();
-    }
-    return 'Main Plot';
-}
-
-function resolveDominantScene(params: {
-    scenePath?: string;
-    candidateScenes: TimelineItem[];
-    masterSubplotOrder: string[];
-    dominantSubplots?: Record<string, string>;
-}): DominantSceneResolution {
-    const { scenePath, candidateScenes, masterSubplotOrder, dominantSubplots } = params;
-    if (!candidateScenes.length) {
-        throw new Error('resolveDominantScene requires at least one candidate scene');
-    }
-
-    const selectFallback = (): { scene: TimelineItem; subplot: string } => {
-        let fallbackScene = candidateScenes[0];
-        let fallbackSubplot = normalizeSubplotName(fallbackScene.subplot);
-        let bestIndex = masterSubplotOrder.indexOf(fallbackSubplot);
-        if (bestIndex === -1) bestIndex = Infinity;
-
-        candidateScenes.forEach(scene => {
-            const subplotName = normalizeSubplotName(scene.subplot);
-            const idx = masterSubplotOrder.indexOf(subplotName);
-            if (idx !== -1 && idx < bestIndex) {
-                fallbackScene = scene;
-                fallbackSubplot = subplotName;
-                bestIndex = idx;
-            }
-        });
-
-        return { scene: fallbackScene, subplot: fallbackSubplot };
-    };
-
-    const storedPreference = scenePath && dominantSubplots ? dominantSubplots[scenePath] : undefined;
-    if (storedPreference) {
-        const matchedScene = candidateScenes.find(scene => normalizeSubplotName(scene.subplot) === storedPreference);
-        if (matchedScene) {
-            return {
-                scene: matchedScene,
-                dominantSubplot: storedPreference,
-                storedPreference,
-                preferenceMatched: true
-            };
-        }
-
-        const fallback = selectFallback();
-        return {
-            scene: fallback.scene,
-            dominantSubplot: fallback.subplot,
-            storedPreference,
-            preferenceMatched: false
-        };
-    }
-
-    const fallback = selectFallback();
-    return {
-        scene: fallback.scene,
-        dominantSubplot: fallback.subplot,
-        preferenceMatched: false
-    };
 }
 
 function getLabelSignature(container: HTMLElement): string {
@@ -307,51 +230,13 @@ function computeCacheableValues(
     
     const masterSubplotOrder = subplotCounts.map(item => item.subplot);
 
-    // 5. Precompute subplot dominance indicator states
-    const subplotDominanceStates = new Map<string, SubplotDominanceState>();
-    masterSubplotOrder.forEach(subplot => {
-        subplotDominanceStates.set(subplot, {
-            hasSharedOverlap: false,
-            hasHiddenSharedScenes: false
-        });
-    });
-
-    const scenesGroupedByPath = new Map<string, TimelineItem[]>();
-    scenes.forEach(scene => {
-        if (!scene.path) return;
-        if (!scenesGroupedByPath.has(scene.path)) {
-            scenesGroupedByPath.set(scene.path, []);
-        }
-        scenesGroupedByPath.get(scene.path)!.push(scene);
-    });
-
-    scenesGroupedByPath.forEach((items, path) => {
-        const uniqueSubplots = Array.from(
-            new Set(items.map(scene => normalizeSubplotName(scene.subplot)))
-        );
-        if (uniqueSubplots.length <= 1) return;
-
-        const { dominantSubplot } = resolveDominantScene({
-            scenePath: path,
-            candidateScenes: items,
-            masterSubplotOrder,
-            dominantSubplots: plugin.settings.dominantSubplots
-        });
-
-        uniqueSubplots.forEach(subplotName => {
-            const existing = subplotDominanceStates.get(subplotName) || {
-                hasSharedOverlap: false,
-                hasHiddenSharedScenes: false
-            };
-            existing.hasSharedOverlap = true;
-            if (subplotName !== dominantSubplot) {
-                existing.hasHiddenSharedScenes = true;
-            }
-            subplotDominanceStates.set(subplotName, existing);
-        });
+    const subplotDominanceStates = computeSubplotDominanceStates({
+        scenes,
+        masterSubplotOrder,
+        dominantSubplots: plugin.settings.dominantSubplots
     });
     
-    // 6. Compute ring geometry
+    // 5. Compute ring geometry
     const subplotOuterRadius = isChronologueMode 
         ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
         : isSubplotMode 
@@ -387,57 +272,6 @@ function computeCacheableValues(
     };
 }
 
-function renderSubplotDominanceIndicators(params: {
-    masterSubplotOrder: string[];
-    ringStartRadii: number[];
-    ringWidths: number[];
-    subplotStates: Map<string, SubplotDominanceState>;
-    subplotColorFor: (subplotName: string) => string;
-}): string {
-    const { masterSubplotOrder, ringStartRadii, ringWidths, subplotStates, subplotColorFor } = params;
-    if (masterSubplotOrder.length === 0) return '';
-
-    const totalRings = masterSubplotOrder.length;
-    const indicatorAngle = -Math.PI / 2 + 0.035; // Slight offset to stay clear of the act border
-    let svg = '<g class="rt-subplot-dominance-flags">';
-
-    masterSubplotOrder.forEach((subplotName, offset) => {
-        const state = subplotStates.get(subplotName);
-        if (!state || !state.hasSharedOverlap) return;
-
-        const ring = totalRings - offset - 1;
-        const innerR = ringStartRadii[ring];
-        const ringWidth = ringWidths[ring];
-        if (innerR === undefined || ringWidth === undefined) return;
-
-        const radialX = Math.cos(indicatorAngle);
-        const radialY = Math.sin(indicatorAngle);
-        const tangentX = -radialY;
-        const tangentY = radialX;
-
-        const baseRadius = innerR + ringWidth * 0.18;
-        const apexRadius = innerR + ringWidth * 0.75;
-        const baseHalfWidth = Math.max(ringWidth * 0.16, 8);
-
-        const baseCenterX = baseRadius * radialX;
-        const baseCenterY = baseRadius * radialY;
-        const baseLeftX = baseCenterX - tangentX * baseHalfWidth;
-        const baseLeftY = baseCenterY - tangentY * baseHalfWidth;
-        const baseRightX = baseCenterX + tangentX * baseHalfWidth;
-        const baseRightY = baseCenterY + tangentY * baseHalfWidth;
-        const apexX = apexRadius * radialX;
-        const apexY = apexRadius * radialY;
-
-        const color = subplotColorFor(subplotName);
-        const fillColor = state.hasHiddenSharedScenes ? '#FFFFFF' : color;
-        const flagPath = `M ${formatNumber(baseLeftX)} ${formatNumber(baseLeftY)} L ${formatNumber(baseRightX)} ${formatNumber(baseRightY)} L ${formatNumber(apexX)} ${formatNumber(apexY)} Z`;
-
-        svg += `<path class="rt-subplot-dominance-flag${state.hasHiddenSharedScenes ? ' is-hidden' : ' is-shown'}" d="${flagPath}" fill="${fillColor}" stroke="${color}" stroke-width="1" data-subplot-name="${escapeXml(subplotName)}" data-has-hidden="${state.hasHiddenSharedScenes ? 'true' : 'false'}" />`;
-    });
-
-    svg += '</g>';
-    return svg;
-}
 
 /**
  * Measures and adjusts plot label positions after SVG is rendered

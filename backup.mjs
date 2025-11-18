@@ -9,6 +9,24 @@ function safeRun(cmd) {
   try { return run(cmd); } catch (e) { return ''; }
 }
 
+// Update Patreon member count before backup (non-blocking)
+async function updatePatreonStats() {
+  if (!process.env.PATREON_ACCESS_TOKEN) {
+    console.log('[backup] Skipping Patreon update (PATREON_ACCESS_TOKEN not set)');
+    return;
+  }
+  
+  try {
+    console.log('[backup] Fetching latest Patreon member count...');
+    execSync('node update-patreon-count.mjs', { stdio: 'inherit' });
+  } catch (error) {
+    console.warn('[backup] ⚠️  Patreon update failed (continuing with backup)');
+  }
+}
+
+// Run Patreon update before backup
+await updatePatreonStats();
+
 try {
   // Ensure we are in a git repo
   run('git rev-parse --is-inside-work-tree');

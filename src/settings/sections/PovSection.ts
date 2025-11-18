@@ -29,7 +29,7 @@ export function renderPovSection(params: {
     }
     new ObsidianSetting(containerEl)
         .setName('Global POV')
-        .setDesc('Optional. Choose a mode to apply whenever a scene omits the POV field (per-scene values like "pov: first" always win).')
+        .setDesc('Optional. Choose a default mode to apply. Scene level POV: will override this global setting.')
         .addDropdown(dropdown => {
             (Object.keys(POV_MODE_OPTIONS) as GlobalPovMode[]).forEach((key) => {
                 dropdown.addOption(key, POV_MODE_OPTIONS[key]);
@@ -46,5 +46,5 @@ export function renderPovSection(params: {
 
     new ObsidianSetting(containerEl)
         .setName('Scene level YAML overrides')
-        .setDesc('Values you can use for POV: first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the POV. If two, for example, then the first two characters in Character YAML list will get a POV mark.');
+        .setDesc('Values you can use for `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the global POV. If two, for example, then the first two characters in `Character:` YAML list will get a POV mark.');
 }

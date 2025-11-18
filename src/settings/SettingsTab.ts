@@ -14,6 +14,7 @@ import {
   ColorComponent,
   TFolder,
   normalizePath,
+  requestUrl,
 } from 'obsidian';
 import { FolderSuggest } from './FolderSuggest';
 import { renderGeneralSection } from './sections/GeneralSection';
@@ -238,13 +239,44 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         svg.appendChild(path);
         
         patreonButton.appendChild(svg);
-        patreonButton.appendText('Join on Patreon');
+        
+        // Add button text with member count
+        const buttonText = patreonButton.createSpan({ cls: 'rt-patreon-button-text' });
+        buttonText.appendText('Join on Patreon');
+        
+        // Add member count badge - will be populated async
+        const memberBadge = patreonButton.createSpan({ cls: 'rt-patreon-member-count' });
+        memberBadge.appendText('Loading...');
+        
+        // Fetch and display member count
+        this.fetchPatreonMemberCount().then(count => {
+            if (count !== null) {
+                memberBadge.setText(`${count}+ members`);
+            } else {
+                memberBadge.setText('Growing community!');
+            }
+        });
         
         // SAFE: addEventListener in PluginSettingTab - cleaned up when settings are closed
         patreonButton.addEventListener('click', (e: MouseEvent) => {
             e.preventDefault();
             window.open('https://www.patreon.com/c/EricRhysTaylor', '_blank');
         });
+    }
+
+    private async fetchPatreonMemberCount(): Promise<number | null> {
+        const url = 'https://raw.githubusercontent.com/ericrhystaylor/radial-timeline/master/src/data/patreonStats.json';
+        try {
+            const response = await requestUrl({ url, method: 'GET' });
+            if (response.status !== 200) {
+                return null;
+            }
+            const data = response.json ?? JSON.parse(response.text);
+            return data.memberCount ?? null;
+        } catch (error) {
+            console.warn('Unable to fetch Patreon member count:', error);
+            return null;
+        }
     }
 
     display(): void {

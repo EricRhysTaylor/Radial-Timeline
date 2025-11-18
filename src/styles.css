@@ -3111,8 +3111,15 @@
 
 .rt-patreon-button svg {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+}
+
+.rt-patreon-member-count {
+  font-size: 12px;
+  font-weight: 500;
+  padding-left: 8px;
+  margin-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  opacity: 0.9;
 }
 
 /* Chronologue Mode Styles */

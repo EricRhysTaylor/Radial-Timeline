@@ -19,7 +19,8 @@
 		"scripts": "node show-scripts.mjs",
 		"sync-yaml": "node scripts/sync-yaml-to-wiki.mjs",
 		"sync-release-notes": "node sync-release-notes.mjs",
-		"update-models": "node scripts/update-ai-models.mjs"
+		"update-models": "node scripts/update-ai-models.mjs",
+		"update-patreon": "node update-patreon-count.mjs"
 	},
 	"keywords": [
 		"obsidian",
