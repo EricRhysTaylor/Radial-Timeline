@@ -188,7 +188,7 @@ export function renderSubplotDominanceIndicators(params: {
                data-subplot-name="${escapeXml(subplotName)}"
                data-has-hidden="${state.hasHiddenSharedScenes ? 'true' : 'false'}"
                transform="translate(${finalX} ${finalY})">
-                <path d="${path}" fill="${fillColor}" shape-rendering="crispEdges" />
+                <path d="${path}" fill="${fillColor}" />
             </g>
         `;
     });
