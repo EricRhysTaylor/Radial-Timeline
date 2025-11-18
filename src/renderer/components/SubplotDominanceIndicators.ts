@@ -176,7 +176,7 @@ export function renderSubplotDominanceIndicators(params: {
         const cssClass = state.hasHiddenSharedScenes ? 'is-hidden' : 'is-shown';
         
         // Center the triangle: centering offset to be subtracted
-        const centerX = -5;
+        const centerX = 40;
         const centerY = 0;
         
         // Calculate final position - all values are now exact integers
