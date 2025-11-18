@@ -10,6 +10,39 @@ import type { EmbeddedReleaseNotesEntry } from '../types';
 import { DEFAULT_RELEASES_URL, parseReleaseVersion } from '../utils/releases';
 import { formatPublishedDate, renderReleaseNotesList } from '../utils/releaseNotesRenderer';
 
+const HERO_PREVIEW_LIMIT = 260;
+
+// Use the first non-heading block of markdown as a lightweight hero preview.
+function buildHeroPreview(body?: string): string | null {
+    if (!body) {
+        return null;
+    }
+
+    const candidate = body
+        .split(/\n{2,}/)
+        .map(block => block.trim())
+        .find(block => block.length > 0 && !/^#+\s+/.test(block));
+
+    if (!candidate) {
+        return null;
+    }
+
+    const sanitized = candidate
+        .replace(/!\[[^\]]*]\([^)]*\)/g, '')
+        .replace(/\[(.*?)\]\([^)]*\)/g, '$1')
+        .replace(/^[>*\-\d.]+\s+/gm, '')
+        .replace(/[*_`]/g, '')
+        .trim();
+
+    if (!sanitized) {
+        return null;
+    }
+
+    return sanitized.length > HERO_PREVIEW_LIMIT
+        ? `${sanitized.slice(0, HERO_PREVIEW_LIMIT - 1).trimEnd()}…`
+        : sanitized;
+}
+
 export class ReleaseNotesModal extends Modal {
     private readonly entries: EmbeddedReleaseNotesEntry[];
     private readonly majorEntry: EmbeddedReleaseNotesEntry;
@@ -29,7 +62,39 @@ export class ReleaseNotesModal extends Modal {
 
         titleEl.setText("What's New");
 
-        const bodyHost = contentEl.createDiv();
+        const versionLabel = parseReleaseVersion(this.majorEntry.version)?.fullLabel ?? this.majorEntry.version;
+        const releaseDate = formatPublishedDate(this.majorEntry.publishedAt);
+
+        const heroEl = contentEl.createDiv({ cls: 'rt-release-notes-hero' });
+        heroEl.createSpan({ text: 'Featured release', cls: 'rt-release-notes-hero-badge' });
+        heroEl.createEl('h3', { text: this.majorEntry.title || versionLabel, cls: 'rt-release-notes-hero-title' });
+
+        const heroMetaEl = heroEl.createDiv({ cls: 'rt-release-notes-hero-meta' });
+        heroMetaEl.createSpan({ text: versionLabel, cls: 'rt-release-notes-hero-version' });
+        if (releaseDate) {
+            heroMetaEl.createSpan({ text: releaseDate, cls: 'rt-release-notes-hero-date' });
+        }
+
+        const heroPreview = buildHeroPreview(this.majorEntry.body);
+        if (heroPreview) {
+            heroEl.createEl('p', { text: heroPreview, cls: 'rt-release-notes-hero-description' });
+        }
+
+        const releaseUrl = this.majorEntry.url ?? DEFAULT_RELEASES_URL;
+        const heroActions = heroEl.createDiv({ cls: 'rt-release-notes-hero-actions' });
+        const changelogLink = heroActions.createEl('a', {
+            text: 'View full changelog',
+            cls: 'rt-release-notes-hero-link',
+            href: releaseUrl
+        });
+        changelogLink.setAttr('target', '_blank');
+        changelogLink.setAttr('rel', 'noopener');
+        heroActions.createSpan({
+            text: 'Scroll to explore the rest of the updates',
+            cls: 'rt-release-notes-hero-hint'
+        });
+
+        const bodyHost = contentEl.createDiv({ cls: 'rt-release-notes-modal-body' });
         await renderReleaseNotesList(bodyHost, this.entries, this.majorEntry, this.plugin, 'rt-release-notes-modal');
 
         const footerEl = contentEl.createDiv({ cls: 'rt-release-notes-modal-footer' });

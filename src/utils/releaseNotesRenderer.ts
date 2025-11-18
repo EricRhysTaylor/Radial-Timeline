@@ -28,14 +28,36 @@ export async function renderReleaseNotesList(
             details.open = true;
         }
         
+        if (entry.version === majorEntry.version) {
+            details.addClass(`${cssPrefix}-details-major`);
+        }
+
         const summaryEl = details.createEl('summary', { cls: `${cssPrefix}-details-summary` });
-        const dateText = formatPublishedDate(entry.publishedAt);
         summaryEl.createSpan({
-            text: dateText ? `${versionLabel} — ${dateText}` : versionLabel,
+            text: versionLabel,
             cls: `${cssPrefix}-details-summary-label`
         });
-        const entryBody = details.createDiv({ cls: `${cssPrefix}-body markdown-preview-view` });
+
+        const dateText = formatPublishedDate(entry.publishedAt);
+        if (dateText) {
+            summaryEl.createSpan({
+                text: '•',
+                cls: `${cssPrefix}-details-summary-divider`
+            });
+            summaryEl.createSpan({
+                text: dateText,
+                cls: `${cssPrefix}-details-summary-date`
+            });
+        }
+
+        if (entry.version === majorEntry.version) {
+            summaryEl.createSpan({
+                text: 'Featured',
+                cls: `${cssPrefix}-details-summary-badge`
+            });
+        }
+
+        const entryBody = details.createDiv({ cls: `${cssPrefix}-details-body markdown-preview-view` });
         await MarkdownRenderer.renderMarkdown(entry.body, entryBody, '', plugin);
     }
 }
-

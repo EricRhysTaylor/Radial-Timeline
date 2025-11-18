@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "version": "4.2.0",
+      "title": "4.2.0",
+      "body": "## What's Changed\r\n\r\n- Added comprehensive POV settings and scene yaml overrides for all types of pov\r\n- Added Book Title via settings source path above Control Buttons.\r\n- Adjusted AI models.\r\n- Added intelligent duration time unites so we get 4 months + 2 days instead of 4.2 months\r\n- Added handling for missing When date and time for yaml.\r\n",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.2.0",
+      "publishedAt": "2025-11-18T00:56:16Z"
+    },
+    {
       "version": "4.1.1",
       "title": "4.1.1",
       "body": "## What's Changed\r\n\r\n- fix release-notes cache so major release version entry stays correct",
@@ -45,13 +52,20 @@
     "publishedAt": "2025-11-05T20:39:14Z"
   },
   "latest": {
-    "version": "4.1.1",
-    "title": "4.1.1",
-    "body": "## What's Changed\r\n\r\n- fix release-notes cache so major release version entry stays correct",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.1.1",
-    "publishedAt": "2025-11-16T03:37:17Z"
+    "version": "4.2.0",
+    "title": "4.2.0",
+    "body": "## What's Changed\r\n\r\n- Added comprehensive POV settings and scene yaml overrides for all types of pov\r\n- Added Book Title via settings source path above Control Buttons.\r\n- Adjusted AI models.\r\n- Added intelligent duration time unites so we get 4 months + 2 days instead of 4.2 months\r\n- Added handling for missing When date and time for yaml.\r\n",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.2.0",
+    "publishedAt": "2025-11-18T00:56:16Z"
   },
   "patches": [
+    {
+      "version": "4.1.1",
+      "title": "4.1.1",
+      "body": "## What's Changed\r\n\r\n- fix release-notes cache so major release version entry stays correct",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.1.1",
+      "publishedAt": "2025-11-16T03:37:17Z"
+    },
     {
       "version": "4.1.0",
       "title": "4.1.0",

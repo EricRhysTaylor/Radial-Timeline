@@ -136,7 +136,7 @@ export const BOOK_TITLE_POS_Y = -784;
 export const MODE_TITLE_POS_X = 567;
 
 /** Vertical position for mode title text */
-export const MODE_TITLE_POS_Y = -762;
+export const MODE_TITLE_POS_Y = -761;
 
 /** Horizontal center position for mode selector buttons */
 export const MODE_SELECTOR_POS_X = 658;
