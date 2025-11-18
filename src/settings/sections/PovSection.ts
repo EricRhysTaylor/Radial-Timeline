@@ -45,6 +45,6 @@ export function renderPovSection(params: {
         });
 
     new ObsidianSetting(containerEl)
-        .setName('Scene-level overrides & multiple POV markers')
-        .setDesc('Set `POV:` in YAML to: `first`, `second`, `third`, `omni`, `objective`, or a number such as `two`, `four`, `count`, or `all` if more than one `character:` is carrying the POV.');
+        .setName('Scene level YAML overrides')
+        .setDesc('Values you can use for POV: first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the POV. If two, for example, then the first two characters in Character YAML list will get a POV mark.');
 }

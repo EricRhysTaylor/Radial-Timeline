@@ -681,6 +681,21 @@
 .rt-number-square[data-subplot-idx="14"] { --rt-number-stroke-color: var(--rt-subplot-colors-14); }
 .rt-number-square[data-subplot-idx="15"] { --rt-number-stroke-color: var(--rt-subplot-colors-15); }
 
+.rt-subplot-dominance-flags {
+  pointer-events: none;
+}
+
+.rt-subplot-dominance-flag {
+  pointer-events: none;
+  shape-rendering: geometricPrecision;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+
+.rt-subplot-dominance-flag.is-hidden {
+  fill: #ffffff;
+}
+
 .rt-number-text {
   fill: #000000;
   pointer-events: none;
