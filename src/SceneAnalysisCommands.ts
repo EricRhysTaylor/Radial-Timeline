@@ -2159,13 +2159,12 @@ export async function createTemplateScene(
             Subplot: ['Main Plot', 'Romance Arc'],
             Character: ['Protagonist', 'Mentor'],
             Place: '',
-            POV: 'first', // first | second | third | omni | objective | two | count | all',
+            POV: 'first # first | second | third | omni | objective | two | count | all',
             Due: isoDate,
             'Publish Stage': 'Zero',
             Revision: 0,
             'Pending Edits': '',
             Words: 0,
-            Book: '',
             'Beats Update': ''
         } as Record<string, unknown>;
 
