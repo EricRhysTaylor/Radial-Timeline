@@ -177,7 +177,7 @@ export function renderSubplotDominanceIndicators(params: {
         
         // Center the triangle: centering offset to be subtracted
         const centerX = 9;
-        const centerY = 1;
+        const centerY = 0;
         
         // Calculate final position - all values are now exact integers
         const finalX = iconX + tangentX * tangentOffsetPx - centerX;
