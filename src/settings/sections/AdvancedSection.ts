@@ -51,11 +51,8 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 plugin.settings.dominantSubplots = {};
                 await plugin.saveSettings();
                 
-                // Refresh timeline to show reset
-                const timelineView = app.workspace.getLeavesOfType('radial-timeline')?.[0]?.view;
-                if (timelineView && 'refreshTimeline' in timelineView && typeof timelineView.refreshTimeline === 'function') {
-                    timelineView.refreshTimeline();
-                }
+                // Refresh timeline using debounced method
+                plugin.refreshTimelineIfNeeded(null);
                 
                 if (count > 0) {
                     new Notice(`Cleared saved colors for ${count} multi-subplot scene${count === 1 ? '' : 's'}.`);

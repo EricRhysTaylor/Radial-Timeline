@@ -46,5 +46,5 @@ export function renderPovSection(params: {
 
     new ObsidianSetting(containerEl)
         .setName('Scene-level overrides & multiple POV markers')
-        .setDesc('Set `Pov:` in YAML to one keyword: `first`, `second`, `third`, `omni`, `objective`, or a highlight count such as `two`, `four`, `count`, or `all`. Any numeric value is also accepted, and highlights never exceed the number of listed characters.');
+        .setDesc('Set `POV:` in YAML to: `first`, `second`, `third`, `omni`, `objective`, or a number such as `two`, `four`, `count`, or `all` if more than one `character:` is carrying the POV.');
 }
