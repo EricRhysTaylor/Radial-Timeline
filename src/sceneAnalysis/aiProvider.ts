@@ -1,0 +1,380 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ */
+
+import { Notice, type Vault } from 'obsidian';
+import type RadialTimelinePlugin from '../main';
+import { callAnthropicApi } from '../api/anthropicApi';
+import { callOpenAiApi } from '../api/openaiApi';
+import { callGeminiApi } from '../api/geminiApi';
+import { getSceneAnalysisJsonSchema } from '../ai/prompts/sceneAnalysis';
+import type { AiProviderResponse, ApiRequestData } from './types';
+
+async function logApiInteractionToFile(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    provider: 'openai' | 'anthropic' | 'gemini',
+    modelId: string,
+    requestData: unknown,
+    responseData: unknown,
+    subplotName: string | null,
+    commandContext: string,
+    sceneName?: string,
+    tripletInfo?: { prev: string; current: string; next: string }
+): Promise<void> {
+    if (!plugin.settings.logApiInteractions) {
+        return;
+    }
+
+    const logFolder = 'AI';
+    const timestamp = new Date().toLocaleString(undefined, {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: true, timeZoneName: 'short'
+    } as Intl.DateTimeFormatOptions)
+    .replace(/\//g, '-')
+    .replace(/(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)\s*([A-Z]{3,})/g, 'at $1.$2.$3 $4 $5')
+    .replace(/[\s,]+/g, ' ')
+    .trim();
+
+    const friendlyModelForFilename = (() => {
+        const mid = (modelId || '').toLowerCase();
+        if (provider === 'anthropic') {
+            if (mid.includes('sonnet-4-5') || mid.includes('sonnet-4.5')) return 'Claude Sonnet 4.5';
+            if (mid.includes('opus-4-1') || mid.includes('opus-4.1')) return 'Claude Opus 4.1';
+            if (mid.includes('sonnet-4')) return 'Claude Sonnet 4';
+            if (mid.includes('opus-4')) return 'Claude Opus 4';
+        } else if (provider === 'gemini') {
+            if (mid.includes('2.5-pro') || mid.includes('2-5-pro')) return 'Gemini 2.5 Pro';
+        } else if (provider === 'openai') {
+            if (mid.includes('gpt-4.1') || mid.includes('gpt-4-1')) return 'GPT-4.1';
+        }
+        return modelId;
+    })();
+
+    let fileName: string;
+    if (sceneName) {
+        const cleanSceneName = sceneName.replace(/[<>:"/\\|?*]/g, '').trim();
+        fileName = `${cleanSceneName} — ${friendlyModelForFilename} — ${timestamp}.md`;
+    } else {
+        fileName = `${provider}-log-${timestamp}.md`;
+    }
+
+    const filePath = `${logFolder}/${fileName}`;
+    const isObject = (data: unknown): data is Record<string, unknown> => {
+        return typeof data === 'object' && data !== null;
+    };
+
+    const safeRequestData = isObject(requestData) ? requestData as ApiRequestData : null;
+    const requestJson = JSON.stringify(requestData, null, 2);
+    const responseJson = JSON.stringify(responseData, null, 2);
+
+    let usageString = '**Usage:** N/A';
+    try {
+        if (responseData && typeof responseData === 'object') {
+            const rd = responseData as Record<string, unknown>;
+            if (provider === 'openai' && 'usage' in rd) {
+                const u = (rd as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage;
+                if (u && (typeof u.prompt_tokens === 'number' || typeof u.completion_tokens === 'number')) {
+                    usageString = `**Usage (OpenAI):** prompt=${u.prompt_tokens ?? 'n/a'}, output=${u.completion_tokens ?? 'n/a'}`;
+                }
+            } else if (provider === 'anthropic' && 'usage' in rd) {
+                const u = (rd as { usage?: { input_tokens?: number; output_tokens?: number } }).usage;
+                if (u && (typeof u.input_tokens === 'number' || typeof u.output_tokens === 'number')) {
+                    usageString = `**Usage (Anthropic):** input=${u.input_tokens ?? 'n/a'}, output=${u.output_tokens ?? 'n/a'}`;
+                }
+            } else if (provider === 'gemini' && 'usageMetadata' in rd) {
+                const u = (rd as { usageMetadata?: { totalTokenCount?: number; promptTokenCount?: number; candidatesTokenCount?: number } }).usageMetadata;
+                usageString = `**Usage (Gemini):** total=${u?.totalTokenCount ?? 'n/a'}, prompt=${u?.promptTokenCount ?? 'n/a'}, output=${u?.candidatesTokenCount ?? 'n/a'}`;
+            }
+        }
+    } catch {}
+
+    let outcomeSection = '## Outcome\n\n';
+    if (responseData && typeof responseData === 'object') {
+        const responseAsRecord = responseData as Record<string, unknown>;
+        if (responseAsRecord.error) {
+            outcomeSection += `**Status:** Failed\n`;
+            const errObj = responseAsRecord.error as Record<string, unknown>;
+            outcomeSection += `**Error Type:** ${String(errObj?.type ?? 'Unknown')}\n`;
+            outcomeSection += `**Message:** ${String(errObj?.message ?? 'No message provided')}\n`;
+            if (typeof errObj?.status !== 'undefined') {
+                outcomeSection += `**Status Code:** ${String(errObj.status)}\n`;
+            }
+            outcomeSection += '\n';
+        } else {
+            let success = false;
+            let contentForCheck: string | undefined | null = null;
+            if (provider === 'openai') {
+                const choices = responseAsRecord.choices as unknown;
+                if (Array.isArray(choices) && choices[0] && typeof choices[0] === 'object') {
+                    const msg = (choices[0] as Record<string, unknown>).message as Record<string, unknown> | undefined;
+                    const content = msg?.content as string | undefined;
+                    contentForCheck = content;
+                }
+                success = !!contentForCheck;
+            } else if (provider === 'anthropic') {
+                const contentArr = responseAsRecord.content as unknown;
+                if (Array.isArray(contentArr) && contentArr[0] && typeof contentArr[0] === 'object') {
+                    const text = (contentArr[0] as Record<string, unknown>).text as string | undefined;
+                    contentForCheck = text ?? (responseData as { content?: string }).content;
+                }
+                success = !!contentForCheck;
+            } else if (provider === 'gemini') {
+                const candidates = responseAsRecord.candidates as unknown;
+                if (Array.isArray(candidates) && candidates[0] && typeof candidates[0] === 'object') {
+                    const content = (candidates[0] as Record<string, unknown>).content as Record<string, unknown> | undefined;
+                    const parts = content?.parts as Array<{ text?: string }>;
+                    contentForCheck = parts?.map(p => p.text).filter(Boolean).join('\n');
+                }
+                success = !!contentForCheck;
+            }
+
+            outcomeSection += `**Status:** ${success ? 'Success' : 'Failure'}\n`;
+            if (success) {
+                outcomeSection += `**Tokens returned:** ${contentForCheck?.length ?? 0}\n\n`;
+            } else {
+                outcomeSection += `**Details:** Model returned no content.\n\n`;
+            }
+        }
+    }
+
+    let subplotSection = '';
+    if (subplotName) {
+        subplotSection = `\n**Subplot:** ${subplotName}\n`;
+    }
+
+    const tripletSection = tripletInfo
+        ? `\n**Context Triplet:**\n- Prev: ${tripletInfo.prev}\n- Current: ${tripletInfo.current}\n- Next: ${tripletInfo.next}\n`
+        : '';
+
+    const fileContent = `# AI Log — ${new Date().toLocaleString()}\n\n` +
+        `**Provider:** ${provider}\n` +
+        `**Model:** ${modelId}\n` +
+        `**Scene:** ${sceneName ?? 'N/A'}\n` +
+        `**Command:** ${commandContext}\n` +
+        subplotSection +
+        `\n**Prompt:**\n\`\`\`\n${typeof safeRequestData?.messages?.[0]?.content === 'string' ? safeRequestData?.messages?.[0]?.content : ''}\n\`\`\`\n` +
+        tripletSection +
+        `\n${usageString}\n` +
+        outcomeSection +
+        `\n## Raw Request\n\`\`\`json\n${requestJson}\n\`\`\`\n` +
+        `\n## Raw Response\n\`\`\`json\n${responseJson}\n\`\`\`\n`;
+
+    try {
+        const folderExists = vault.getAbstractFileByPath(logFolder);
+        if (!folderExists) {
+            await vault.createFolder(logFolder);
+        }
+        const existing = vault.getAbstractFileByPath(filePath);
+        if (existing) {
+            await vault.modify(existing as any, fileContent.trim());
+        } else {
+            await vault.create(filePath, fileContent.trim());
+        }
+    } catch (error) {
+        console.error(`[BeatsCommands] Error logging API interaction to file ${filePath}:`, error);
+        new Notice(`Failed to write AI log to ${filePath}. Check console.`);
+    }
+}
+
+async function retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelayMs: number = 5000
+): Promise<T> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            return await fn();
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const isRateLimitError = errorMessage.toLowerCase().includes('rate limit') ||
+                errorMessage.toLowerCase().includes('overloaded') ||
+                errorMessage.toLowerCase().includes('too many requests');
+
+            if (isRateLimitError && attempt < maxRetries) {
+                const delayMs = baseDelayMs * Math.pow(2, attempt);
+                new Notice(`Rate limit reached. Waiting ${delayMs / 1000}s before retry (${attempt + 1}/${maxRetries})...`, 3000);
+                await new Promise(resolve => window.setTimeout(resolve, delayMs));
+                continue;
+            }
+
+            throw error;
+        }
+    }
+    throw new Error('Retry logic exhausted without success');
+}
+
+export async function callAiProvider(
+    plugin: RadialTimelinePlugin,
+    vault: Vault,
+    userPrompt: string,
+    subplotName: string | null,
+    commandContext: string,
+    sceneName?: string,
+    tripletInfo?: { prev: string; current: string; next: string }
+): Promise<AiProviderResponse> {
+    const provider = plugin.settings.defaultAiProvider || 'openai';
+    let apiKey: string | undefined;
+    let modelId: string | undefined;
+    let requestBodyForLog: object | null = null;
+    let responseDataForLog: unknown;
+    let result: string | null = null;
+    let apiErrorMsg: string | undefined;
+
+    try {
+        const normalizeModelId = (prov: string, id: string | undefined): string | undefined => {
+            if (!id) return id;
+            switch (prov) {
+                case 'anthropic':
+                    if (id === 'claude-opus-4-1' || id === 'claude-4.1-opus' || id === 'claude-opus-4-1@20250805') return 'claude-opus-4-1-20250805';
+                    if (id === 'claude-sonnet-4-1' || id === 'claude-4-sonnet' || id === 'claude-sonnet-4-1@20250805') return 'claude-sonnet-4-5-20250929';
+                    if (id === 'claude-opus-4-0' || id === 'claude-3-opus-20240229') return 'claude-opus-4-1-20250805';
+                    if (id === 'claude-sonnet-4-0' || id === 'claude-3-7-sonnet-20250219' || id === 'claude-sonnet-4-20250514') return 'claude-sonnet-4-5-20250929';
+                    return id;
+                case 'openai':
+                    if (id === 'gpt-5' || id === 'o3' || id === 'gpt-4o') return 'gpt-4.1';
+                    if (id === 'gpt-4.1') return 'gpt-4.1';
+                    return id;
+                case 'gemini':
+                    if (id === 'gemini-2.5-pro') return 'gemini-2.5-pro';
+                    if (id === 'gemini-ultra' || id === 'gemini-creative' || id === 'gemini-1.0-pro' || id === 'gemini-1.5-pro') return 'gemini-2.5-pro';
+                    return id;
+                default:
+                    return id;
+            }
+        };
+
+        const jsonSchema = getSceneAnalysisJsonSchema();
+        const systemPrompt: string | null = null;
+
+        if (provider === 'anthropic') {
+            apiKey = plugin.settings.anthropicApiKey;
+            modelId = normalizeModelId('anthropic', plugin.settings.anthropicModelId) || 'claude-sonnet-4-5-20250929';
+
+            if (!apiKey || !modelId) {
+                apiErrorMsg = 'Anthropic API key or Model ID not configured in settings.';
+                responseDataForLog = { error: { message: apiErrorMsg, type: 'plugin_config_error' } };
+                throw new Error(apiErrorMsg);
+            }
+
+            requestBodyForLog = {
+                model: modelId,
+                system: systemPrompt || undefined,
+                userPrompt,
+                max_tokens: 4000
+            };
+
+            const apiResponse = await retryWithBackoff(() =>
+                callAnthropicApi(apiKey!, modelId!, systemPrompt, userPrompt, 4000)
+            );
+
+            responseDataForLog = apiResponse.responseData;
+            if (!apiResponse.success || !apiResponse.content) {
+                apiErrorMsg = apiResponse.error ?? 'Anthropic API returned no content.';
+                throw new Error(apiErrorMsg);
+            }
+            result = apiResponse.content;
+        } else if (provider === 'openai') {
+            apiKey = plugin.settings.openaiApiKey;
+            modelId = normalizeModelId('openai', plugin.settings.openaiModelId) || 'gpt-4o';
+
+            if (!apiKey || !modelId) {
+                apiErrorMsg = 'OpenAI API key or Model ID not configured in settings.';
+                responseDataForLog = { error: { message: apiErrorMsg, type: 'plugin_config_error' } };
+                throw new Error(apiErrorMsg);
+            }
+
+            requestBodyForLog = {
+                model: modelId,
+                messages: [
+                    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: 0.1,
+                max_tokens: 2000,
+                response_format: { type: 'json_object' }
+            };
+
+            const apiResponse = await retryWithBackoff(() =>
+                callOpenAiApi(apiKey!, modelId!, systemPrompt, userPrompt, 2000, 0.1, true)
+            );
+
+            responseDataForLog = apiResponse.responseData;
+            if (!apiResponse.success || !apiResponse.content) {
+                apiErrorMsg = apiResponse.error ?? 'OpenAI API returned no content.';
+                throw new Error(apiErrorMsg);
+            }
+            result = apiResponse.content;
+        } else if (provider === 'gemini') {
+            apiKey = plugin.settings.geminiApiKey;
+            modelId = normalizeModelId('gemini', plugin.settings.geminiModelId) || 'gemini-2.5-pro';
+
+            if (!apiKey || !modelId) {
+                apiErrorMsg = 'Gemini API key or Model ID not configured in settings.';
+                responseDataForLog = { error: { message: apiErrorMsg, type: 'plugin_config_error' } };
+                throw new Error(apiErrorMsg);
+            }
+
+            requestBodyForLog = {
+                system_instruction: systemPrompt || undefined,
+                userPrompt,
+                temperature: 0.2,
+                maxOutputTokens: 4000,
+                response_schema: jsonSchema
+            };
+
+            const apiResponse = await retryWithBackoff(() =>
+                callGeminiApi(apiKey!, modelId!, systemPrompt, userPrompt, 4000, 0.2, jsonSchema, true)
+            );
+
+            responseDataForLog = apiResponse.responseData;
+            if (!apiResponse.success || !apiResponse.content) {
+                apiErrorMsg = apiResponse.error ?? 'Gemini API returned no content.';
+                throw new Error(apiErrorMsg);
+            }
+            result = apiResponse.content;
+        } else {
+            throw new Error(`Unsupported AI provider: ${provider}`);
+        }
+
+        await logApiInteractionToFile(
+            plugin,
+            vault,
+            provider,
+            modelId,
+            requestBodyForLog,
+            responseDataForLog,
+            subplotName,
+            commandContext,
+            sceneName,
+            tripletInfo
+        );
+
+        return { result, modelIdUsed: modelId };
+    } catch (error) {
+        if (apiErrorMsg) {
+            new Notice(apiErrorMsg);
+        } else {
+            console.error(`[API][BeatsCommands][callAiProvider] Error during ${provider} API call:`, error);
+            new Notice(`Error calling ${provider} API. See console for details.`);
+        }
+
+        await logApiInteractionToFile(
+            plugin,
+            vault,
+            provider,
+            modelId || 'unknown',
+            requestBodyForLog,
+            responseDataForLog,
+            subplotName,
+            commandContext,
+            sceneName,
+            tripletInfo
+        );
+
+        return { result: null, modelIdUsed: modelId || null };
+    }
+}
