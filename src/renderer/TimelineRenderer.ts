@@ -7,7 +7,7 @@
 import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
 import type { TimelineItem } from '../types';
 import { formatNumber, escapeXml } from '../utils/svg';
-import { dateToAngle, isOverdueDateString, generateChronologicalTicks, calculateTimeSpan, durationSelectionToMs, parseDurationDetail, type ChronologicalTickInfo } from '../utils/date';
+import { dateToAngle, isOverdueDateString } from '../utils/date';
 import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
 import { 
     extractGradeFromScene, 
@@ -21,7 +21,9 @@ import {
 } from '../utils/sceneHelpers';
 import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
 import { normalizeBeatName } from '../utils/gossamer';
+import { buildChronologueOuterLabels, renderChronologueOverlays, renderOuterLabelTexts, renderChronologueOuterTicks } from './utils/Chronologue';
 import { getMostAdvancedStageColor } from '../utils/colour';
+import { computeCacheableValues, type PrecomputedRenderValues } from './utils/Precompute';
 import { renderGossamerLayer } from './gossamerLayer';
 import { computeRingGeometry } from './layout/Rings';
 import { arcPath } from './layout/Paths';
@@ -72,8 +74,8 @@ import { renderBeatGroup } from './components/Beats';
 import { renderMonthSpokesAndInnerLabels, renderGossamerMonthSpokes } from './components/MonthSpokes';
 import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
 import { shouldRenderStoryBeats, shouldShowSubplotRings, shouldShowAllScenesInOuterRing, shouldShowInnerRingContent, getSubplotLabelText } from './modules/ModeRenderingHelpers';
-import { renderChronologueTimelineArc, renderChronologicalBackboneArc, collectChronologueSceneEntries, type ChronologueSceneEntry } from './components/ChronologueTimeline';
-import { buildSynopsisElement } from './utils/SynopsisBuilder';
+import { collectChronologueSceneEntries, type ChronologueSceneEntry } from './components/ChronologueTimeline';
+import { appendSynopsisElementForScene } from './utils/SynopsisBuilder';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -93,174 +95,6 @@ const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
   Due: 'Due — tasks or scenes with a past-due date',
   Completed: 'Completed — tasks or scenes finished'
 };
-
-interface PrecomputedRenderValues {
-    scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } };
-    masterSubplotOrder: string[];
-    totalPlotNotes: number;
-    plotIndexByKey: Map<string, number>;
-    plotsBySubplot: Map<string, TimelineItem[]>;
-    ringWidths: number[];
-    ringStartRadii: number[];
-    lineInnerRadius: number;
-    maxStageColor: string;
-    subplotDominanceStates: Map<string, SubplotDominanceState>;
-}
-
-// --- Small helpers ---
-/**
- * Compute expensive values that are reused throughout render generation.
- * These values depend on scene data and settings, but not on dynamic state (time, open files, etc.).
- */
-function computeCacheableValues(
-    plugin: PluginRendererFacade,
-    scenes: TimelineItem[]
-): PrecomputedRenderValues {
-    const stopPrecompute = startPerfSegment(plugin, 'timeline.precompute');
-    
-    // Determine mode and sorting
-    const currentMode = (plugin.settings as any).currentMode || 'narrative';
-    const isChronologueMode = currentMode === 'chronologue';
-    const isSubplotMode = currentMode === 'subplot';
-    const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
-    const forceChronological = isChronologueMode;
-    
-    // 1. Collect all unique subplots
-    const allSubplotsSet = new Set<string>();
-    scenes.forEach(scene => {
-        const key = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-        allSubplotsSet.add(key);
-    });
-    const allSubplots = Array.from(allSubplotsSet);
-    const NUM_RINGS = allSubplots.length;
-    
-    // 2. Precompute plot note indexes and grouping
-    const shouldShowBeats = shouldRenderStoryBeats(plugin);
-    const allScenesPlotNotes = shouldShowBeats ? scenes.filter(s => isBeatNote(s)) : [];
-    const totalPlotNotes = allScenesPlotNotes.length;
-    const plotIndexByKey = new Map<string, number>();
-    allScenesPlotNotes.forEach((p, i) => plotIndexByKey.set(`${String(p.title || '')}::${String(p.actNumber ?? '')}`, i));
-    const plotsBySubplot = new Map<string, TimelineItem[]>();
-    allScenesPlotNotes.forEach(p => {
-        const key = String(p.subplot || '');
-        const arr = plotsBySubplot.get(key) || [];
-        arr.push(p);
-        plotsBySubplot.set(key, arr);
-    });
-    
-    // 3. Group scenes by Act and Subplot
-    const scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } } = {};
-    
-    if (sortByWhen) {
-        // When date sorting: Use single "act" (act 0) for full 360° circle
-        scenesByActAndSubplot[0] = {};
-        
-        scenes.forEach(scene => {
-            const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-            
-            if (!scenesByActAndSubplot[0][subplot]) {
-                scenesByActAndSubplot[0][subplot] = [];
-            }
-            
-            scenesByActAndSubplot[0][subplot].push(scene);
-        });
-        
-        // Sort by When date (chronologically)
-        Object.keys(scenesByActAndSubplot[0]).forEach(subplot => {
-            scenesByActAndSubplot[0][subplot] = sortScenes(scenesByActAndSubplot[0][subplot], true, forceChronological);
-        });
-        
-    } else {
-        // Manuscript order: Group by Act AND Subplot (3 Act zones)
-        for (let act = 0; act < NUM_ACTS; act++) {
-            scenesByActAndSubplot[act] = {};
-        }
-        
-        scenes.forEach(scene => {
-            const act = scene.actNumber !== undefined ? scene.actNumber - 1 : 0;
-            const validAct = (act >= 0 && act < NUM_ACTS) ? act : 0;
-            const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-            
-            if (!scenesByActAndSubplot[validAct][subplot]) {
-                scenesByActAndSubplot[validAct][subplot] = [];
-            }
-            
-            scenesByActAndSubplot[validAct][subplot].push(scene);
-        });
-        
-        // Sort by manuscript order (filename prefix)
-        for (let act = 0; act < NUM_ACTS; act++) {
-            Object.keys(scenesByActAndSubplot[act] || {}).forEach(subplot => {
-                scenesByActAndSubplot[act][subplot] = sortScenes(scenesByActAndSubplot[act][subplot], false, false);
-            });
-        }
-    }
-    
-    // 4. Create master subplot order
-    const allSubplotsMap = new Map<string, number>();
-    const actsToCheck = sortByWhen ? 1 : NUM_ACTS;
-    
-    for (let actIndex = 0; actIndex < actsToCheck; actIndex++) {
-        Object.entries(scenesByActAndSubplot[actIndex] || {}).forEach(([subplot, scenes]) => {
-            allSubplotsMap.set(subplot, (allSubplotsMap.get(subplot) || 0) + scenes.length);
-        });
-    }
-    
-    const subplotCounts = Array.from(allSubplotsMap.entries()).map(([subplot, count]) => ({
-        subplot,
-        count
-    }));
-    
-    subplotCounts.sort((a, b) => {
-        if (a.subplot === "Main Plot" || !a.subplot) return -1;
-        if (b.subplot === "Main Plot" || !b.subplot) return 1;
-        return b.count - a.count;
-    });
-    
-    const masterSubplotOrder = subplotCounts.map(item => item.subplot);
-
-    const subplotDominanceStates = computeSubplotDominanceStates({
-        scenes,
-        masterSubplotOrder,
-        dominantSubplots: plugin.settings.dominantSubplots
-    });
-    
-    // 5. Compute ring geometry
-    const subplotOuterRadius = isChronologueMode 
-        ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
-        : isSubplotMode 
-        ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
-        : SUBPLOT_OUTER_RADIUS_STANDARD;
-    
-    const ringGeo = computeRingGeometry({
-        size: SVG_SIZE,
-        innerRadius: INNER_RADIUS,
-        subplotOuterRadius,
-        outerRadius: MONTH_LABEL_RADIUS,
-        numRings: NUM_RINGS,
-        monthTickTerminal: 0,
-        monthTextInset: 0,
-    });
-    
-    // 7. Get max stage color
-    const maxStageColor = getMostAdvancedStageColor(scenes, plugin.settings.publishStageColors);
-    
-    stopPrecompute();
-    
-    return {
-        scenesByActAndSubplot,
-        masterSubplotOrder,
-        totalPlotNotes,
-        plotIndexByKey,
-        plotsBySubplot,
-        ringWidths: ringGeo.ringWidths,
-        ringStartRadii: ringGeo.ringStartRadii,
-        lineInnerRadius: ringGeo.lineInnerRadius,
-        maxStageColor,
-        subplotDominanceStates
-    };
-}
-
 
 export function createTimelineSVG(
   plugin: PluginRendererFacade,
@@ -349,91 +183,18 @@ export function createTimelineSVG(
             ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
             : SUBPLOT_OUTER_RADIUS_STANDARD;
         
-        // Define the months and their angles (or chronological ticks in Chronologue mode)
-        // INNER months always use standard calendar (for year progress ring)
-        // OUTER labels use chronological ticks in Chronologue mode
         const standardMonths = Array.from({ length: 12 }, (_, i) => {
-            const angle = (i / 12) * 2 * Math.PI - Math.PI / 2; // Adjust so January is at the top
+            const angle = (i / 12) * 2 * Math.PI - Math.PI / 2;
             const name = new Date(2000, i).toLocaleString('en-US', { month: 'long' });
             const shortName = new Date(2000, i).toLocaleString('en-US', { month: 'short' }).slice(0, 3);
             return { name, shortName, angle };
         });
-        
-        // Inner months are ALWAYS standard calendar months (for year progress)
         const months = standardMonths;
-        
-        // Outer labels can be different in Chronologue mode
+
         let outerLabels: { name: string; shortName: string; angle: number; isMajor?: boolean; isFirst?: boolean; isLast?: boolean; sceneIndex?: number }[];
-        
         if (isChronologueMode) {
-            const stopChronoLabels = startPerfSegment(plugin, 'timeline.chronologue-labels');
-            // In Chronologue mode, we need to align ticks to actual scene positions
-            // Build the EXACT same scene list that's used for outer ring rendering
-            const startAngle = -Math.PI / 2; // Top of circle
-            const endAngle = (3 * Math.PI) / 2; // Full circle
-            
-            // Build combined array exactly like outer ring does (act 0 for chronologue mode)
-            const seenPaths = new Set<string>();
-            const combined: TimelineItem[] = [];
-            
-            scenes.forEach(s => {
-                // In chronologue mode, SKIP beats entirely - only scenes
-                if (isBeatNote(s)) {
-                    return; // Beats never appear in Chronologue mode
-                }
-                
-                // Scenes: deduplicate by path or title+when
-                const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
-                if (!seenPaths.has(key)) {
-                    seenPaths.add(key);
-                    combined.push(s);
-                }
-            });
-            
-            // Sort the combined array exactly like outer ring rendering does
-            const sortByWhen = true; // Chronologue mode always sorts by When
-            const forceChronological = true; // Chronologue mode forces chronological
-            const sortedCombined = sortScenes(combined, sortByWhen, forceChronological);
-            
-            // No need to filter beats - they were never added to combined
-            const sortedScenes = sortedCombined;
-            
-            // Calculate time span for intelligent labeling
-            const validDates = sortedScenes
-                .map(s => s.when)
-                .filter((when): when is Date => when instanceof Date && !isNaN(when.getTime()));
-            const timeSpan = validDates.length > 0 ? calculateTimeSpan(validDates) : undefined;
-            
-            // Compute equal-spaced positions for scenes (matching what computePositions will do)
-            // Pass both start angles and angular size to align ticks to scene beginnings
-            const sceneStartAngles: number[] = [];
-            let sceneAngularSize = 0;
-            if (sortedScenes.length > 0) {
-                const totalAngularSpace = endAngle - startAngle;
-                sceneAngularSize = totalAngularSpace / sortedScenes.length;
-                
-                sortedScenes.forEach((_, idx) => {
-                    // Start angle of each scene (beginning of its angular slice)
-                    const sceneStartAngle = startAngle + (idx * sceneAngularSize);
-                    sceneStartAngles.push(sceneStartAngle);
-                });
-            }
-            
-            // Generate chronological ticks aligned to scene starts with intelligent labels
-            const chronoTicks = generateChronologicalTicks(sortedScenes, sceneStartAngles, sceneAngularSize, timeSpan);
-            
-            outerLabels = chronoTicks.map(tick => ({
-                name: tick.name,
-                shortName: tick.shortName,
-                angle: tick.angle,
-                isMajor: tick.isMajor,
-                isFirst: tick.isFirst,
-                isLast: tick.isLast,
-                sceneIndex: tick.sceneIndex
-            }));
-            stopChronoLabels();
+            outerLabels = buildChronologueOuterLabels(plugin, scenes);
         } else {
-            // Use standard calendar months for outer labels too
             outerLabels = standardMonths;
         }
     
@@ -494,46 +255,13 @@ export function createTimelineSVG(
         // Store boundary labels (first/last) to render on top later in chronologue mode
         let boundaryLabelsHtml = '';
 
-        //outer months Labels
-        outerLabels.forEach(({ shortName, isFirst, isLast }, index) => {
-            const pathId = `monthLabelPath-${index}`;
-            
-            // Only apply past month dimming in non-chronologue modes
-            // In chronologue mode, all labels should be bright (not based on calendar months)
-            const isPastMonth = !isChronologueMode && index < currentMonthIndex;
-            
-            // Special formatting for first and last labels (beginning/ending dates)
-            let labelClass = 'rt-month-label-outer';
-            if (isFirst) {
-                labelClass = 'rt-month-label-outer rt-date-boundary rt-date-first';
-            } else if (isLast) {
-                labelClass = 'rt-month-label-outer rt-date-boundary rt-date-last';
-            }
-            
-            // For boundary labels with two lines, split on newline and create tspans
-            let labelContent = shortName;
-            if ((isFirst || isLast) && shortName.includes('\n')) {
-                const lines = shortName.split('\n');
-                labelContent = lines.map((line, i) => 
-                    `<tspan x="0" dy="${i === 0 ? 0 : '0.9em'}">${line}</tspan>`
-                ).join('');
-            }
-            
-            const labelHtml = `
-                <text class="${labelClass}" ${isPastMonth ? 'opacity="0.5"' : ''}>
-                    <textPath href="#${pathId}" startOffset="0" text-anchor="start">
-                        ${labelContent}
-                    </textPath>
-                </text>
-            `;
-            
-            // In chronologue mode, save boundary labels to render on top later
-            if (isChronologueMode && (isFirst || isLast)) {
-                boundaryLabelsHtml += labelHtml;
-            } else {
-                svg += labelHtml;
-            }
+        const outerLabelRender = renderOuterLabelTexts({
+            outerLabels,
+            isChronologueMode,
+            currentMonthIndex
         });
+        svg += outerLabelRender.labelsSvg;
+        boundaryLabelsHtml = outerLabelRender.boundaryLabelsHtml;
 
         // --- Draw Act labels early (below story beat labels) into rotatable group later ---
 
@@ -637,43 +365,15 @@ export function createTimelineSVG(
         }
 
         // Add outer chronological tick marks in Chronologue mode
-        if (isChronologueMode && outerLabels.length > 0) {
-            svg += '<g class="rt-chronological-outer-ticks">';
-            outerLabels.forEach(({ angle, isMajor, shortName, isFirst, isLast, sceneIndex }) => {
-                // Ticks should align with the label radius for perfect alignment
-                const tickStart = monthTickStart; // Use explicit constant
-                
-                // Build data attributes for tick identification
-                const dataAttrs = sceneIndex !== undefined ? ` data-scene-index="${sceneIndex}"` : '';
-                
-                // Act-style boundary markers for major ticks (first/last scenes)
-                // Subtle minor marks for intermediate scenes
-                if (isMajor) {
-                    // MAJOR TICK: Act-style boundary line (extends outward with solid line)
-                    const tickEnd = monthTickEnd; // Use explicit constant
-                    const x1 = formatNumber(tickStart * Math.cos(angle));
-                    const y1 = formatNumber(tickStart * Math.sin(angle));
-                    const x2 = formatNumber(tickEnd * Math.cos(angle));
-                    const y2 = formatNumber(tickEnd * Math.sin(angle));
-                    
-                    // Add boundary classes for first/last ticks to match label colors
-                    const boundaryClass = isFirst ? ' rt-date-first' : (isLast ? ' rt-date-last' : '');
-                    
-                    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
-                        class="rt-chronological-tick rt-chronological-tick-major${boundaryClass}"${dataAttrs}/>`;
-                } else if (shortName === '') {
-                    // MINOR TICK: Small dotted mark (no label)
-                    const tickEnd = (monthTickStart + monthTickEnd) / 2; // Midpoint for minor ticks
-                    const x1 = formatNumber(tickStart * Math.cos(angle));
-                    const y1 = formatNumber(tickStart * Math.sin(angle));
-                    const x2 = formatNumber(tickEnd * Math.cos(angle));
-                    const y2 = formatNumber(tickEnd * Math.sin(angle));
-                    
-                    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
-                        class="rt-chronological-tick rt-chronological-tick-minor"${dataAttrs}/>`;
-                }
+        if (isChronologueMode) {
+            const ticksSvg = renderChronologueOuterTicks({
+                outerLabels,
+                monthTickStart,
+                monthTickEnd
             });
-            svg += '</g>';
+            if (ticksSvg) {
+                svg += ticksSvg;
+            }
         }
 
 
@@ -725,29 +425,15 @@ export function createTimelineSVG(
             // Extract grade from 2beats using helper function
             extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
             
-            // Skip content generation for placeholder scenes
-            if (!scene.title) {
-                return;
-            }
-            
-            // Build ordered subplot to show with synopsis
-            const allSceneSubplots = scenes.filter(s => s.path === scene.path).map(s => s.subplot).filter((s): s is string => s !== undefined);
-            const sceneSubplot = scene.subplot || 'Main Plot';
-            const orderedSubplots = [sceneSubplot, ...allSceneSubplots.filter(s => s !== sceneSubplot)];
-
-            const synopsisElement = buildSynopsisElement(
+            appendSynopsisElementForScene({
                 plugin,
                 scene,
                 sceneId,
                 maxTextWidth,
-                orderedSubplots,
-                (name) => {
-                    const idx = masterSubplotOrder.indexOf(name);
-                    if (idx < 0) return 0;
-                    return idx % 16; // Direct order: outermost (idx=0) = Ring 1 = subplotColors[0]
-                }
-            );
-            synopsesElements.push(synopsisElement);
+                masterSubplotOrder,
+                scenes,
+                targets: synopsesElements
+            });
         });
 
         // Open rotatable container – scenes and act labels/borders only
@@ -930,27 +616,15 @@ export function createTimelineSVG(
                         const sceneId = makeSceneId(act, ring, idx, true, true);
                         
                         // --- Create synopsis for OUTER ring item using matching ID ---
-                        try {
-                            const allSceneSubplots = scenes.filter(s => s.path === scene.path).map(s => s.subplot).filter((s): s is string => s !== undefined);
-                            const sceneSubplot = scene.subplot || 'Main Plot';
-                            const orderedSubplots = [sceneSubplot, ...allSceneSubplots.filter(s => s !== sceneSubplot)];
-                            const synopsisElOuter = buildSynopsisElement(
-                                plugin,
-                                scene,
-                                sceneId,
-                                maxTextWidth,
-                                orderedSubplots,
-                                (name) => {
-                                    const idx = masterSubplotOrder.indexOf(name);
-                                    if (idx < 0) return 0;
-                                    return idx % 16; // Direct order: outermost (idx=0) = Ring 1 = subplotColors[0]
-                                }
-                            );
-                            // If this is a Plot note, append Gossamer info if available
-                            synopsesElements.push(synopsisElOuter);
-                        } catch (error) {
-                            console.warn('Failed to build synopsis for scene:', scene.path, error);
-                        }
+                        appendSynopsisElementForScene({
+                            plugin,
+                            scene,
+                            sceneId,
+                            maxTextWidth,
+                            masterSubplotOrder,
+                            scenes,
+                            targets: synopsesElements
+                        });
                         let sceneClasses = 'rt-scene-path';
                         if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += ' rt-scene-is-open';
                         const dyOffset = 0; // keep scene titles exactly on the midline path
@@ -1721,54 +1395,21 @@ export function createTimelineSVG(
 
         // Add Chronologue mode arcs
         if (isChronologueMode) {
-            const stopChronoOverlays = startPerfSegment(plugin, 'timeline.chronologue-overlays');
-            const durationCapMs = durationSelectionToMs(plugin.settings.chronologueDurationCapSelection);
-            const chronologueTimelineArc = renderChronologueTimelineArc(
-                scenes, 
-                subplotOuterRadius,  // Use subplot outer radius for arcs
+            svg += renderChronologueOverlays(
+                plugin,
+                scenes,
+                subplotOuterRadius,
                 manuscriptOrderPositions,
-                durationCapMs,
-                CHRONOLOGUE_DURATION_ARC_RADIUS,  // Pass the absolute radius constant
-                chronologueSceneEntries
-            );
-            if (chronologueTimelineArc) {
-                svg += chronologueTimelineArc;
-            }
-            // Arc 1: Chronological backbone with discontinuity symbols
-            // Calculate outer ring radii for precise discontinuity marker placement
-            const outerRingIndex = NUM_RINGS - 1;
-            const outerRingInnerR = ringStartRadii[outerRingIndex];
-            const outerRingOuterR = outerRingInnerR + ringWidths[outerRingIndex];
-            
-            // Parse custom discontinuity threshold from settings if provided
-            let customThresholdMs: number | undefined = undefined;
-            if (plugin.settings.discontinuityThreshold) {
-                const parsed = parseDurationDetail(plugin.settings.discontinuityThreshold);
-                if (parsed) {
-                    customThresholdMs = parsed.ms;
-                }
-            }
-            
-            svg += renderChronologicalBackboneArc(
-                scenes, 
-                outerRingInnerR, 
-                outerRingOuterR, 
-                3, 
-                manuscriptOrderPositions, 
+                ringStartRadii,
+                ringWidths,
                 chronologueSceneEntries,
-                customThresholdMs
+                CHRONOLOGUE_DURATION_ARC_RADIUS
             );
-            // Arc 3: Shift mode elapsed time (conditionally rendered when shift mode active)
-            // Note: This would need shift mode state to be passed in - placeholder for future enhancement
-            // if (shiftModeActive && selectedScenes.length === 2) {
-            //     svg += renderElapsedTimeArc(selectedScenes[0], selectedScenes[1], outerRadius);
-            // }
-            
+
             // Render boundary date labels on top of chronologue arcs
             if (boundaryLabelsHtml) {
                 svg += boundaryLabelsHtml;
             }
-            stopChronoOverlays();
         }
 
         // Add JavaScript to handle synopsis visibility

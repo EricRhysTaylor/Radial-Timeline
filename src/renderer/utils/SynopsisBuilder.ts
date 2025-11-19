@@ -1,7 +1,6 @@
 import type { TimelineItem } from '../../types';
-import { isBeatNote } from '../../utils/sceneHelpers';
+import { isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers';
 import { splitIntoBalancedLines } from '../../utils/text';
-import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 import { resolveScenePov } from '../../utils/pov';
 
 export function buildSynopsisElement(
@@ -64,4 +63,53 @@ export function buildSynopsisElement(
 
     const filtered = contentLines.filter(line => line && line.trim() !== '\u00A0');
     return plugin.synopsisManager.generateElement(scene, filtered, sceneId, subplotIndexResolver);
+}
+
+type SynopsisAppendOptions = {
+    plugin: PluginRendererFacade;
+    scene: TimelineItem;
+    sceneId: string;
+    maxTextWidth: number;
+    masterSubplotOrder: string[];
+    scenes: TimelineItem[];
+    targets: SVGGElement[];
+};
+
+export function appendSynopsisElementForScene({
+    plugin,
+    scene,
+    sceneId,
+    maxTextWidth,
+    masterSubplotOrder,
+    scenes,
+    targets
+}: SynopsisAppendOptions): void {
+    if (!scene.title) {
+        return;
+    }
+
+    const allSceneSubplots = scenes
+        .filter(s => s.path === scene.path)
+        .map(s => s.subplot)
+        .filter((s): s is string => s !== undefined);
+    const sceneSubplot = scene.subplot || 'Main Plot';
+    const orderedSubplots = [sceneSubplot, ...allSceneSubplots.filter(s => s !== sceneSubplot)];
+
+    try {
+        const synopsisElement = buildSynopsisElement(
+            plugin,
+            scene,
+            sceneId,
+            maxTextWidth,
+            orderedSubplots,
+            name => {
+                const idx = masterSubplotOrder.indexOf(name);
+                if (idx < 0) return 0;
+                return idx % 16;
+            }
+        );
+        targets.push(synopsisElement);
+    } catch (error) {
+        console.warn('Failed to build synopsis for scene:', scene.path, error);
+    }
 }
