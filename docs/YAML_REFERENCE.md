@@ -211,7 +211,7 @@ When: July 2045       # Month name + year → Jul 1, 2045 @ 12:00 PM
 - **Beats**: When added to beat notes, allows story beats to be positioned at specific points in the timeline when using chronological sorting
 - **Sorting**: Enable "Sort by When date" (Settings → Advanced) to position both scenes and beats across the full 360° circle based on their `When` dates
 
-> **Note**: Red “Missing When” alerts only appear once a scene’s `Status` moves to `Working` or `Complete`, so you can outline Todo scenes without warnings.
+> **Note**: Red “Missing When” alerts only appear once a scene’s `Status` moves to `Working` or `Complete`, so you can outline Todo scenes without warnings. Additionally, hovering over a scene with a missing date will show the dates of the previous and next scenes in narrative order to provide helpful context for placement.
 
 ---
 

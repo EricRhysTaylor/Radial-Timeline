@@ -171,7 +171,7 @@ Chronologue mode is essential for constructing and visualizing the chronological
 
 > **Minimum metadata**: Chronologue only needs a year in the `When` field to place a scene. Year-only (`When: 2045`), year+month (`When: 2045-07`), or textual month+year (`When: July 2045`) all work—missing pieces default to the 1st of that month at noon. Month-only, day-only, or time-only values are ignored and treated as "no When" until you add at least the year.
 
-> **Drafting calmly**: Red "Missing When" number squares only appear once a scene's `Status` is `Working` or `Complete`, so Todo scenes can stay quiet while you're still sketching.
+> **Drafting calmly**: Red "Missing When" number squares only appear once a scene's `Status` is `Working` or `Complete`, so Todo scenes can stay quiet while you're still sketching. When a date is missing, the hover tooltip displays the dates of the immediately preceding and following scenes (in narrative order) to help you pinpoint the correct timing.
 
 **Why this matters**: Some authors choose to organize scenes in manuscript/narrative order, but Chronologue mode lets you construct and verify the underlying chronological scaffolding without the constraints of the 3 acts or title ordering. You can spot:
 - Pacing issues (too much/too little story time between events)
@@ -225,7 +225,9 @@ Chronologue mode is essential for constructing and visualizing the chronological
 ## View modes via primary navigation
 
 ## Narrative Mode (keyboard 1)
-Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order) and **Author time** (completion progress). **Tip** For scenes in more than one subplot, click on the scene to make that subplot dominant in the color styling of the narrative mode outer ring.
+Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order) and **Author time** (completion progress). 
+
+**Tip** For scenes in more than one subplot, click on the scene to make that subplot dominant in the color styling of the narrative and chronologue modes outer ring. A folded corner effect at the beginning of the subplot ring visually indicates which subplot is currently dominant as follows: gray not dominant, hued means dominant and absence means that subplot does not have scenes in more than one subplot.
 
 ## Subplot Mode (keyboard 2)
 Shows Main Plot subplot in the outer ring with publish stage coloring, other subplots in their respective inner rings. Removes story beats for a cleaner view. Structured around the **3-act model** with scenes distributed across three acts (120° per act). Simplified view emphasizing **Publishing time** (revision stages) and completion readiness. Perfect for tracking manuscript progress through Zero → Author → House → Press stages.
