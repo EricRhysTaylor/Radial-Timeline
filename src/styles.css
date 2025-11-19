@@ -3489,6 +3489,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 /* Hide triangles in most modes - only show in base narrative view */
+.radial-timeline-svg[data-mode="subplot"] .rt-subplot-dominance-flag, /* Main Plot mode */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-subplot-dominance-flag,
 .radial-timeline-svg[data-shift-mode="active"] .rt-subplot-dominance-flag,
 .radial-timeline-svg.scene-hover .rt-subplot-dominance-flag {

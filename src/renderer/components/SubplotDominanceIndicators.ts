@@ -144,7 +144,7 @@ export function renderSubplotDominanceIndicators(params: {
     // Constants for triangle size and positioning
     const TRIANGLE_SIZE = 11;  // Triangle width and height in pixels
     const RADIAL_INSET = 11;   // Distance y-axis from bottom ring edge
-    const TANGENT_OFFSET = 10; // Offset along the tangent (to the right at 12 o'clock)
+    const TANGENT_OFFSET = 10.7; // Offset along the tangent (to the right at 12 o'clock)
     const CENTER_OFFSET_X = 10; // Centering offset X
     const CENTER_OFFSET_Y = 0;  // Centering offset Y
     
