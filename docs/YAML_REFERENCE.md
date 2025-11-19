@@ -274,7 +274,7 @@ Place:
 
 Workflow status: `Todo`, `Working`, or `Complete`
 
-Determines scene color coding in the timeline.
+Determines scene color coding in Subplot Mode (Todo/Working/Complete/Overdue patterns).
 
 ---
 

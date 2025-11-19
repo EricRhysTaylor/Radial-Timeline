@@ -15,7 +15,8 @@ import { updateSceneColors, updateSceneOpenClasses, updateSceneSearchHighlights 
 import { updateNumberSquareStates, updateNumberSquareGrades } from '../renderer/dom/NumberSquareDOMUpdater';
 import { updateSynopsisText, updateSynopsisVisibility } from '../renderer/dom/SynopsisDOMUpdater';
 import { updateSubplotLabels, updateSubplotLabelVisibility } from '../renderer/dom/SubplotLabelDOMUpdater';
-import { createTimelineSVG as buildTimelineSVG, adjustBeatLabelsAfterRender } from '../renderer/TimelineRenderer';
+import { createTimelineSVG as buildTimelineSVG } from '../renderer/TimelineRenderer';
+import { adjustBeatLabelsAfterRender } from '../renderer/dom/BeatLabelAdjuster';
 
 export class RendererService {
     private app: App;

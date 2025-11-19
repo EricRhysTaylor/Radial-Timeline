@@ -149,7 +149,7 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 
 ## Tracking Progress
 
-- **Status Colors**: Scenes color-coded by status (Todo = plaid, Working = pink, Overdue = red, Complete = publish stage or subplot color customizable in settings)
+- **Status Colors**: In **Subplot Mode**, scenes are color-coded by status (Todo = plaid, Working = pink, Overdue = red, Complete = publish stage color customizable in settings). In Narrative and Chronologue modes, scenes display their subplot color.
 - **Completion Estimates**: Plugin calculates target completion date based on your recent writing pace
 - **Publishing Stages**: Track manuscript through Zero → Author → House → Press
 - **Subplot Mode**: Switch to subplot mode (navigation top right via page icon or keyboard 2) for simplified view emphasizing publication progress as well as individual subplots
@@ -225,12 +225,12 @@ Chronologue mode is essential for constructing and visualizing the chronological
 ## View modes via primary navigation
 
 ## Narrative Mode (keyboard 1)
-Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order) and **Author time** (completion progress). 
+Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order). 
 
 **Tip** For scenes in more than one subplot, click on the scene to make that subplot dominant in the color styling of the narrative and chronologue modes outer ring. A folded corner effect at the beginning of the subplot ring visually indicates which subplot is currently dominant as follows: gray not dominant, hued means dominant and absence means that subplot does not have scenes in more than one subplot.
 
 ## Subplot Mode (keyboard 2)
-Shows Main Plot subplot in the outer ring with publish stage coloring, other subplots in their respective inner rings. Removes story beats for a cleaner view. Structured around the **3-act model** with scenes distributed across three acts (120° per act). Simplified view emphasizing **Publishing time** (revision stages) and completion readiness. Perfect for tracking manuscript progress through Zero → Author → House → Press stages.
+Shows Main Plot subplot in the outer ring with publish stage and status coloring (Todo/Working/Complete/Overdue), other subplots in their respective inner rings. Removes story beats for a cleaner view. Structured around the **3-act model** with scenes distributed across three acts (120° per act). Simplified view emphasizing **Author time** (writing status) and **Publishing time** (revision stages) and completion readiness. Perfect for tracking manuscript progress through Zero → Author → House → Press stages.
 
 ## Chronologue Mode (keyboard 3)
 Displays scenes in chronological story order based on `When` field. **Removes the 3-act structure** entirely—scenes are positioned across the full 360° circle based solely on when they occur in your story's timeline. Perfect for mystery/thriller writers or anyone mapping **Chronological time** (event sequences in story-world) while also arranging for narrative order to maximize suspense.

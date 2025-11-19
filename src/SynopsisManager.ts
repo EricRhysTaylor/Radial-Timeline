@@ -14,7 +14,7 @@ import {
   SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
   SYNOPSIS_INSET
 } from './renderer/layout/LayoutConstants';
-import { adjustBeatLabelsAfterRender } from './renderer/TimelineRenderer';
+import { adjustBeatLabelsAfterRender } from './renderer/dom/BeatLabelAdjuster';
 import { sortScenes, isBeatNote, shouldDisplayMissingWhenWarning } from './utils/sceneHelpers';
 
 /**
