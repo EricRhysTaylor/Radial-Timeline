@@ -24,7 +24,6 @@ import { normalizeBeatName } from '../utils/gossamer';
 import { buildChronologueOuterLabels, renderChronologueOverlays, renderOuterLabelTexts, renderChronologueOuterTicks } from './utils/Chronologue';
 import { getMostAdvancedStageColor } from '../utils/colour';
 import { computeCacheableValues, type PrecomputedRenderValues } from './utils/Precompute';
-import { renderGossamerLayer } from './gossamerLayer';
 import { computeRingGeometry } from './layout/Rings';
 import { arcPath } from './layout/Paths';
 import {
@@ -71,11 +70,12 @@ import { renderProgressRing } from './components/ProgressRing';
 import { serializeSynopsesToString } from './components/Synopses';
 import { renderSceneGroup } from './components/Scenes';
 import { renderBeatGroup } from './components/Beats';
-import { renderMonthSpokesAndInnerLabels, renderGossamerMonthSpokes } from './components/MonthSpokes';
+import { renderMonthSpokesAndInnerLabels } from './components/MonthSpokes';
 import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
 import { shouldRenderStoryBeats, shouldShowSubplotRings, shouldShowAllScenesInOuterRing, shouldShowInnerRingContent, getSubplotLabelText } from './modules/ModeRenderingHelpers';
 import { collectChronologueSceneEntries, type ChronologueSceneEntry } from './components/ChronologueTimeline';
 import { appendSynopsisElementForScene } from './utils/SynopsisBuilder';
+import { renderGossamerOverlay, type StageColorMap } from './utils/Gossamer';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -208,7 +208,7 @@ export function createTimelineSVG(
         }
 
         // Access the publishStageColors from settings
-        const PUBLISH_STAGE_COLORS = plugin.settings.publishStageColors;
+        const PUBLISH_STAGE_COLORS = plugin.settings.publishStageColors as StageColorMap;
 
         // Begin defs act
         svg += `<defs>`;
@@ -1297,74 +1297,15 @@ export function createTimelineSVG(
         const synopsisHTML = serializeSynopsesToString(synopsesElements);
 
         // --- Gossamer momentum layer ---
-        {
-            // Only render Gossamer layer if we're in Gossamer mode
-            // Check if any view is in gossamer mode
-            // SAFE: any type used for accessing app property on PluginRendererFacade
-            const views = (plugin as any).app.workspace.getLeavesOfType('radial-timeline');
-            const isGossamerMode = views.some((leaf: { view: { currentMode?: string } }) => {
-                const view = leaf.view as { currentMode?: string };
-                const mode = view?.currentMode;
-                return mode === 'gossamer';
-            });
-
-            if (isGossamerMode) {
-                // Map 0–100 to a band that aligns with darker grid lines: use innerRadius for 0 and actualOuterRadius for 100
-                const polar = { innerRadius, outerRadius: actualOuterRadius };
-                // Calculate the inner radius of the outer ring (where plot slices begin)
-                const outerRingInnerRadius = ringStartRadii[NUM_RINGS - 1];
-                const run = (plugin as any)._gossamerLastRun || null;
-
-                // Collect actual angles from rendered beat slices (set during outer ring rendering loop above)
-                const anglesByBeat = (plugin as any)._beatAngles || new Map<string, number>();
-
-                // Map beat names to their Beat note paths to enable dot click/open
-                const beatPathByName = new Map<string, string>();
-                scenes.forEach(s => {
-                    if (!isBeatNote(s) || !s.title || !s.path) return;
-                    const titleWithoutNumber = s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
-                    beatPathByName.set(titleWithoutNumber, s.path);
-                });
-
-                // Map beat names to their publish stage colors for gossamer dots and spokes
-                const publishStageColorByBeat = new Map<string, string>();
-                scenes.forEach(s => {
-                    if (!isBeatNote(s) || !s.title) return;
-                    const titleWithoutNumber = s.title.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
-                    const publishStage = s['Publish Stage'] || 'Zero';
-                    const stageColor = PUBLISH_STAGE_COLORS[publishStage as keyof typeof PUBLISH_STAGE_COLORS] || PUBLISH_STAGE_COLORS.Zero;
-                    publishStageColorByBeat.set(titleWithoutNumber, stageColor);
-                });
-
-                // Collect beat slice geometry from rendered beat slices (set during outer ring rendering)
-                const beatSlicesByName = (plugin as any)._beatSlices || new Map();
-
-                // Render month/act spokes BEFORE gossamer layer so they appear on top of scenes but behind gossamer plots
-                svg += renderGossamerMonthSpokes({ innerRadius, outerRadius: actualOuterRadius });
-
-                // Get historical runs and min/max band from plugin
-                const historicalRuns = (plugin as any)._gossamerHistoricalRuns || [];
-                const minMax = (plugin as any)._gossamerMinMax || null;
-                const hasAnyScores = (plugin as any)._gossamerHasAnyScores || false;
-
-                // Render gossamer layer with all runs and band AFTER spokes so plots appear on top
-                const layer = renderGossamerLayer(
-                    scenes,
-                    run,
-                    polar,
-                    anglesByBeat.size ? anglesByBeat : undefined,
-                    beatPathByName,
-                    historicalRuns, // Historical runs (Gossamer2-5)
-                    minMax, // Min/max band
-                    outerRingInnerRadius,
-                    publishStageColorByBeat,
-                    beatSlicesByName,
-                    plugin.settings.publishStageColors,
-                    hasAnyScores // Flag to control whether to show red zeros for missing scores
-                );
-                if (layer) svg += layer;
-            }
-        }
+        svg += renderGossamerOverlay({
+            plugin,
+            scenes,
+            innerRadius,
+            actualOuterRadius,
+            ringStartRadii,
+            numRings: NUM_RINGS,
+            publishStageColors: PUBLISH_STAGE_COLORS
+        });
 
         // Add synopses LAST so they appear on top of everything (including gossamer plots)
         svg += synopsisHTML;
