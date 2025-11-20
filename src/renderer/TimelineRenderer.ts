@@ -59,8 +59,8 @@ import { renderCenterGrid } from './components/Grid';
 import { renderMonthLabelDefs } from './components/Months';
 import { renderSubplotLabels } from './components/SubplotLabels';
 import { renderSubplotDominanceIndicators, computeSubplotDominanceStates, resolveDominantScene, type SubplotDominanceState } from './components/SubplotDominanceIndicators';
-import { renderDefs, renderProgressRingGradients } from './components/Defs';
-import { renderEstimatedDateElements, renderEstimationArc } from './components/Progress';
+import { renderDefs } from './components/Defs';
+import { renderEstimatedDateElements } from './components/Progress';
 import { sceneArcPath, renderVoidCellPath } from './components/SceneArcs';
 import { renderBeatSlice } from './components/BeatSlices';
 import { renderActBorders } from './components/Acts';
@@ -70,12 +70,15 @@ import { renderProgressRing } from './components/ProgressRing';
 import { serializeSynopsesToString } from './components/Synopses';
 import { renderSceneGroup } from './components/Scenes';
 import { renderBeatGroup } from './components/Beats';
-import { renderMonthSpokesAndInnerLabels } from './components/MonthSpokes';
+import { renderCalendarSpokesLayer } from './utils/MonthSpokes';
 import { renderOuterRingNumberSquares, renderInnerRingsNumberSquaresAllScenes, renderNumberSquaresStandard } from './components/NumberSquares';
 import { shouldRenderStoryBeats, shouldShowSubplotRings, shouldShowAllScenesInOuterRing, shouldShowInnerRingContent, getSubplotLabelText } from './modules/ModeRenderingHelpers';
 import { collectChronologueSceneEntries, type ChronologueSceneEntry } from './components/ChronologueTimeline';
 import { appendSynopsisElementForScene } from './utils/SynopsisBuilder';
 import { renderGossamerOverlay, type StageColorMap } from './utils/Gossamer';
+import { renderRotationToggle } from './utils/RotationToggle';
+import type { CompletionEstimate } from './utils/Estimation';
+import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -276,93 +279,30 @@ export function createTimelineSVG(
 
         // Create progress ring
         const progressRadius = lineInnerRadius + 15;
+        const estimateResult: CompletionEstimate | null = plugin.settings.showEstimate === false
+            ? null
+            : plugin.calculateCompletionEstimate(scenes);
         const circumference = 2 * Math.PI * progressRadius;
         // const progressLength = circumference * yearProgress; // No longer needed for arc calc
         const currentYearStartAngle = -Math.PI / 2; // Start at 12 o'clock
         const currentYearEndAngle = currentYearStartAngle + (2 * Math.PI * yearProgress);
 
         // Define rainbow gradients for the segments
-        svg += renderProgressRingGradients();
-
-        // Add the base purple circle (provides background for entire ring)
-        svg += `
-            <circle
-                cx="0"
-                cy="0"
-                r="${progressRadius}"
-                class="progress-ring-base"
-            />
-        `;
-
-         // --- Draw Estimation Arc --- START ---
-         const estimateResult = plugin.settings.showEstimate === false ? null : plugin.calculateCompletionEstimate(scenes);
-
-         // --- TEMPORARY DEBUG OVERRIDE FOR QUADRANT TESTING --- START ---
-         // Uncomment ONE of the following lines to force the estimated date for testing positioning.
-         // Remember to remove or comment out this block when done testing!
-
-         // --- Quadrant Midpoints ---
-         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 1, 15); // Feb 15 (Quadrant 4 - Top Right)
-         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 4, 15); // May 15 (Quadrant 1 - Bottom Right)
-         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 7, 15); // Aug 15 (Quadrant 2 - Bottom Left)
-         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 10, 15); // Nov 15 (Quadrant 3 - Top Left)
-
-         // --- Cardinal Directions ---
-         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 0, 1);  // Jan 1 (Top, -90 deg)
-         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 3, 1);  // Apr 1 (Right, 0 deg)
-         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 6, 1);  // Jul 1 (Bottom, 90 deg)
-         // const estimatedCompletionDate = new Date(new Date().getFullYear() + 1, 9, 1);  // Oct 1 (Left, 180 deg)
-         // --- TEMPORARY DEBUG OVERRIDE FOR QUADRANT TESTING --- END ---
-
-         // Only proceed if estimate calculation was successful
-         if (estimateResult) {
-             // Use estimateResult.date instead of estimatedCompletionDate
-             const estimatedCompletionDate = estimateResult.date;
-
-             if (estimatedCompletionDate) {
-                 const startAngle = -Math.PI/2; // 12 o'clock position
-                 
-                 const estimatedYear = estimatedCompletionDate.getFullYear();
-                 const estimatedMonth = estimatedCompletionDate.getMonth();
-                 const estimatedDay = estimatedCompletionDate.getDate();
-                 
-                 const estimatedDaysInMonth = new Date(estimatedYear, estimatedMonth + 1, 0).getDate();
-                 const now = new Date(); // Need current time for diff calculations
-                 const yearsDiff = estimatedCompletionDate.getFullYear() - now.getFullYear();
-
-                 // Note: Red circles removed - year indicators now shown in date label instead
-                 
-                if (yearsDiff <= 0) {
-                    svg += renderEstimationArc({ estimateDate: estimatedCompletionDate, progressRadius });
-                }
-             }
-         }
-         // --- Draw Estimation Arc --- END ---
+        svg += renderProgressRingBaseLayer({
+            progressRadius,
+            estimateResult
+        });
 
          
         // Month spokes and inner labels (always calendar months)
-        // - Inner calendar spokes: always rendered (short spokes around inner labels)
-        // - Outer spokes: only for non-Chronologue modes (from subplotOuterRadius to outer edge)
-        if (!isChronologueMode) {
-            svg += renderMonthSpokesAndInnerLabels({
-                months,
-                lineInnerRadius,
-                lineOuterRadius: monthTickEnd,
-                currentMonthIndex,
-                includeIntermediateSpokes: true,
-                outerSpokeInnerRadius: subplotOuterRadius  // Add outer spokes from edge of inner rings
-            });
-        } else {
-            // In Chronologue mode, only render inner calendar spokes and labels (no outer spokes)
-            svg += renderMonthSpokesAndInnerLabels({
-                months,
-                lineInnerRadius,
-                lineOuterRadius: monthTickEnd,  // Not used since we don't render outer spokes
-                currentMonthIndex,
-                includeIntermediateSpokes: false
-                // No outerSpokeInnerRadius - only inner calendar spokes
-            });
-        }
+        svg += renderCalendarSpokesLayer({
+            months,
+            lineInnerRadius,
+            monthTickEnd,
+            currentMonthIndex,
+            subplotOuterRadius,
+            isChronologueMode
+        });
 
         // Add outer chronological tick marks in Chronologue mode
         if (isChronologueMode) {
@@ -1315,28 +1255,11 @@ export function createTimelineSVG(
 
         // Add rotation toggle control (non-rotating UI), positioned above top edge (Act 2 marker vicinity)
         // Place the button near the Act 2 label (start of Act 2 boundary) and slightly outside along local y-axis
-        const act2BaseAngle = (1 * 2 * Math.PI) / NUM_ACTS - Math.PI / 2; // Act 2 start (π/6 ≈ 30°)
-        const act2Angle = act2BaseAngle; // use exact axis angle; no label offset
-        const arrowRadius = actualOuterRadius + 46; // +3px further outward along local y-axis
-        // Fine-tune: adjust to a net -0.225° from the axis
-        const arrowAngleAdjust = -(0.60 * Math.PI) / 180; // -0.225° in radians total
-        const arrowAngle = act2Angle + arrowAngleAdjust;
-        const arrowX = formatNumber(arrowRadius * Math.cos(arrowAngle));
-        const arrowY = formatNumber(arrowRadius * Math.sin(arrowAngle));
-        const arrowRotateDeg = (act2BaseAngle + Math.PI / 2) * 180 / Math.PI - 90; // rotate CCW 90° from radial alignment
-        svg += `
-            <g id="rotation-toggle" class="rotation-toggle" transform="translate(${arrowX}, ${arrowY}) rotate(${formatNumber(arrowRotateDeg)})">
-                <use id="rotation-arrow-up" class="arrow-icon" href="#icon-arrow-up-from-line" x="-14.4" y="-14.4" width="26" height="26" />
-                <use id="rotation-arrow-down" class="arrow-icon is-hidden" href="#icon-arrow-down-from-line" x="-14.4" y="-14.4" width="26" height="26" />
-                <rect x="-18" y="-18" width="36" height="36" fill="transparent" pointer-events="all">
-                    <title>Rotate timeline</title>
-                </rect>
-            </g>
-        `;
+        svg += renderRotationToggle({ numActs: NUM_ACTS, actualOuterRadius });
 
         // Add Chronologue mode arcs
         if (isChronologueMode) {
-            svg += renderChronologueOverlays(
+            svg += renderChronologueOverlays({
                 plugin,
                 scenes,
                 subplotOuterRadius,
@@ -1344,8 +1267,8 @@ export function createTimelineSVG(
                 ringStartRadii,
                 ringWidths,
                 chronologueSceneEntries,
-                CHRONOLOGUE_DURATION_ARC_RADIUS
-            );
+                durationArcRadius: CHRONOLOGUE_DURATION_ARC_RADIUS
+            });
 
             // Render boundary date labels on top of chronologue arcs
             if (boundaryLabelsHtml) {

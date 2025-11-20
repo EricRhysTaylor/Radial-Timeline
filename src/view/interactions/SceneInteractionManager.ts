@@ -56,7 +56,7 @@ export class SceneInteractionManager {
         svg.appendChild(this.measurementText);
         
         // Register cleanup for animation frames
-        this.registerCleanup(() => {
+        this.register(() => {
             if (this.rafId !== null) {
                 cancelAnimationFrame(this.rafId);
                 this.rafId = null;
@@ -168,6 +168,7 @@ export class SceneInteractionManager {
                 this.currentSceneId
             );
         });
+        this.register(() => cancelAnimationFrame(rafId));
         this.rafId = rafId;
     }
     
@@ -459,7 +460,7 @@ export class SceneInteractionManager {
         });
     }
 
-    private registerCleanup(fn: () => void): void {
+    private register(fn: () => void): void {
         if (this.registerFn) {
             try {
                 this.registerFn(fn);

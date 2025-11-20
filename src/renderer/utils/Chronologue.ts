@@ -80,16 +80,27 @@ export function buildChronologueOuterLabels(
     return outerLabels;
 }
 
-export function renderChronologueOverlays(
-    plugin: PluginRendererFacade,
-    scenes: TimelineItem[],
-    subplotOuterRadius: number,
-    manuscriptOrderPositions: Map<string, { startAngle: number; endAngle: number }> | undefined,
-    ringStartRadii: number[],
-    ringWidths: number[],
-    chronologueSceneEntries?: ChronologueSceneEntry[],
-    durationArcRadius: number = 0
-): string {
+export type ChronologueOverlayOptions = {
+    plugin: PluginRendererFacade;
+    scenes: TimelineItem[];
+    subplotOuterRadius: number;
+    manuscriptOrderPositions?: Map<string, { startAngle: number; endAngle: number }>;
+    ringStartRadii: number[];
+    ringWidths: number[];
+    chronologueSceneEntries?: ChronologueSceneEntry[];
+    durationArcRadius?: number;
+};
+
+export function renderChronologueOverlays({
+    plugin,
+    scenes,
+    subplotOuterRadius,
+    manuscriptOrderPositions,
+    ringStartRadii,
+    ringWidths,
+    chronologueSceneEntries,
+    durationArcRadius = 0
+}: ChronologueOverlayOptions): string {
     const stopChronoOverlays = startPerfSegment(plugin, 'timeline.chronologue-overlays');
     let svg = '';
 

@@ -87,7 +87,7 @@ function buildFallbackSvg(
                 const svgDoc = doc.documentElement;
                 const elementNodes = Array.from(svgDoc.querySelectorAll('*'));
 
-                let pendingRaf: number | null = null;
+                let pendingTimeout: number | null = null;
                 const processNodes = (nodes: Element[], startIdx: number, callback: () => void) => {
                     const CHUNK_SIZE = 100;
                     const endIdx = Math.min(startIdx + CHUNK_SIZE, nodes.length);
@@ -99,10 +99,12 @@ function buildFallbackSvg(
                         fallbackSvg.appendChild(newElement);
                     }
                     if (endIdx < nodes.length) {
-                        pendingRaf = window.requestAnimationFrame(() => {
-                            pendingRaf = null;
+                        const timeoutId = window.setTimeout(() => {
+                            pendingTimeout = null;
                             processNodes(nodes, endIdx, callback);
-                        });
+                        }, 0);
+                        pendingTimeout = timeoutId;
+                        registerCleanup(() => window.clearTimeout(timeoutId));
                     } else {
                         callback();
                     }
@@ -120,14 +122,11 @@ function buildFallbackSvg(
 
                     container.appendChild(wrapInFragment(fallbackSvg));
 
-                    registerCleanup(() => {
-                        if (pendingRaf !== null) {
-                            cancelAnimationFrame(pendingRaf);
-                            pendingRaf = null;
-                        }
-                    });
-
                     processNodes(elementNodes, 0, () => {
+                        if (pendingTimeout !== null) {
+                            window.clearTimeout(pendingTimeout);
+                            pendingTimeout = null;
+                        }
                         loadingText.remove();
                     });
                 } else {
