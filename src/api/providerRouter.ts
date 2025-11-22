@@ -2,9 +2,12 @@
  * Unified provider router
  */
 import type RadialTimelinePlugin from '../main';
+import { DEFAULT_SETTINGS } from '../main';
 import { callOpenAiApi, OpenAiApiResponse } from './openaiApi';
 import { callAnthropicApi, AnthropicApiResponse } from './anthropicApi';
 import { callGeminiApi, GeminiApiResponse } from './geminiApi';
+
+const DEFAULT_GEMINI_MODEL_ID = DEFAULT_SETTINGS.geminiModelId || 'gemini-3-pro-preview';
 
 export interface ProviderCallArgs {
   userPrompt: string;
@@ -32,7 +35,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
   } else if (provider === 'gemini') {
     const apiKey = plugin.settings.geminiApiKey || '';
-    const modelId = plugin.settings.geminiModelId || 'gemini-2.5-pro';
+    const modelId = plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
     const resp: GeminiApiResponse = await callGeminiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max, temp);
     return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
   } else {
@@ -42,4 +45,3 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
   }
 }
-

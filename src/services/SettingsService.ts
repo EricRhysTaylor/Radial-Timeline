@@ -29,6 +29,7 @@ export class SettingsService {
     }
 
     normalizeModelIds(): void {
+        const defaultGeminiModel = DEFAULT_SETTINGS.geminiModelId || 'gemini-3-pro-preview';
         const normalize = (prov: 'anthropic' | 'openai' | 'gemini', id: string | undefined): string => {
             if (!id) return id as unknown as string;
             if (prov === 'anthropic') {
@@ -46,13 +47,18 @@ export class SettingsService {
                 if (trimmed.startsWith('models/')) {
                     trimmed = trimmed.slice(7);
                 }
-                const aliasMap: Record<string, string> = {
-                    'gemini-ultra': 'gemini-2.5-pro',
-                    'gemini-creative': 'gemini-2.5-pro',
-                    'gemini-1.0-pro': 'gemini-2.5-pro',
-                    'gemini-1.5-pro': 'gemini-2.5-pro',
-                };
-                return aliasMap[trimmed] ?? trimmed;
+                const legacyGeminiIds = new Set([
+                    'gemini-ultra',
+                    'gemini-creative',
+                    'gemini-1.0-pro',
+                    'gemini-1.5-pro',
+                    'gemini-2.5-pro',
+                    'gemini-2.0-flash-exp'
+                ]);
+                if (legacyGeminiIds.has(trimmed)) {
+                    return defaultGeminiModel;
+                }
+                return trimmed;
             }
             return id;
         };

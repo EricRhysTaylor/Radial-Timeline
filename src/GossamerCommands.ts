@@ -2,6 +2,7 @@
  * Gossamer Commands and State - Manual Score Entry
  */
 import type RadialTimelinePlugin from './main';
+import { DEFAULT_SETTINGS } from './main';
 import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, appendGossamerScore, extractBeatOrder } from './utils/gossamer';
 import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
@@ -10,6 +11,10 @@ import { TimelineMode } from './modes/ModeDefinition';
 import { assembleManuscript, type AssembledManuscript, type SceneContent } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { callGeminiApi } from './api/geminiApi';
+
+const DEFAULT_GEMINI_MODEL_ID = DEFAULT_SETTINGS.geminiModelId || 'gemini-3-pro-preview';
+const resolveGeminiModelId = (plugin: RadialTimelinePlugin): string =>
+  plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
 
 // Helper to find Beat note by beat title (prefers Beat over Plot)
 function findBeatNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile | null {
@@ -607,10 +612,12 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     // Call Gemini API
     modal.setStatus('Sending manuscript to Gemini API for momentum analysis...');
     modal.apiCallStarted();
-    
+
+    const geminiModelId = resolveGeminiModelId(plugin);
+
     const result = await callGeminiApi(
       plugin.settings.geminiApiKey,
-      plugin.settings.geminiModelId || 'gemini-2.0-flash-exp',
+      geminiModelId,
       null, // No system prompt - instructions in user prompt
       prompt,
       4000, // Default max tokens for response
@@ -711,7 +718,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
           minute: '2-digit',
           hour12: true
         });
-        const modelId = plugin.settings.geminiModelId || 'gemini-2.0-flash-exp';
+        const modelId = resolveGeminiModelId(plugin);
         fm['Gossamer Last Updated'] = `${timestamp} by ${modelId}`;
       });
       
@@ -734,7 +741,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       ``,
       `**Date:** ${timestamp}`,
       `**Beat System:** ${beatSystem}`,
-      `**Model:** ${plugin.settings.geminiModelId || 'gemini-2.0-flash-exp'}`,
+      `**Model:** ${resolveGeminiModelId(plugin)}`,
       `**Manuscript:** ${manuscript.totalScenes} scenes, ${manuscript.totalWords.toLocaleString()} words`,
       `**Beats Updated:** ${updateCount} of ${analysis.beats.length}`,
       ``,
@@ -916,7 +923,7 @@ async function createFailureDiagnosticReport(
     ``,
     `**Date:** ${timestamp}`,
     `**Beat System:** ${beatSystem}`,
-    `**Model:** ${plugin.settings.geminiModelId || 'gemini-2.0-flash-exp'}`,
+    `**Model:** ${resolveGeminiModelId(plugin)}`,
     `**Error:** ${errorMessage}`,
     ``,
     `---`,
@@ -1012,7 +1019,7 @@ async function createGossamerProcessingLog(
     `## API Details`,
     ``,
     `- **Provider:** Gemini (Google)`,
-    `- **Model:** ${plugin.settings.geminiModelId || 'gemini-2.0-flash-exp'}`,
+    `- **Model:** ${resolveGeminiModelId(plugin)}`,
     `- **Temperature:** 0.7`,
     `- **Max Output Tokens:** 8000`,
     ``,
@@ -1101,6 +1108,3 @@ async function createGossamerProcessingLog(
 
   await plugin.app.vault.create(logPath, logLines.join('\n'));
 }
-
-
-

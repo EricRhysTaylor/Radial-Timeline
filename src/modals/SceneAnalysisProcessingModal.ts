@@ -662,32 +662,16 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private getActiveModelDisplayName(): string {
         const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        const normalize = (value: string): string => value.toLowerCase();
         
         if (provider === 'anthropic') {
-            const id = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
-            const normalized = normalize(id);
-            if (normalized.includes('sonnet-4-5') || normalized.includes('sonnet-4.5')) return 'Claude Sonnet 4.5';
-            if (normalized.includes('sonnet-4')) return 'Claude Sonnet 4';
-            if (normalized.includes('opus-4-1') || normalized.includes('opus-4.1')) return 'Claude Opus 4.1';
-            if (normalized.includes('opus-4')) return 'Claude Opus 4';
-            return id;
+            return this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
         }
         
         if (provider === 'gemini') {
-            const id = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
-            const normalized = normalize(id);
-            if (normalized.includes('2.5-pro') || normalized.includes('2-5-pro')) return 'Gemini 2.5 Pro';
-            if (normalized.includes('2.0-pro') || normalized.includes('2-0-pro')) return 'Gemini 2.0 Pro';
-            return id;
+            return this.plugin.settings.geminiModelId || 'gemini-3-pro-preview';
         }
         
-        const id = this.plugin.settings.openaiModelId || 'gpt-4.1';
-        const normalized = normalize(id);
-        if (normalized.includes('4.1') || normalized.includes('4-1')) return 'GPT-4.1';
-        if (normalized.includes('4o') || normalized.includes('4-0') || normalized.includes('gpt-4o')) return 'GPT-4o';
-        if (normalized.includes('gpt-o1') || normalized.includes('o1')) return 'GPT-o1';
-        return id;
+        return this.plugin.settings.openaiModelId || 'gpt-4o';
     }
 }
 

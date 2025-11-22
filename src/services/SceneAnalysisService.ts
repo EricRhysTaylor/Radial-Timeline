@@ -117,24 +117,14 @@ export class SceneAnalysisService {
         const provider = this.plugin.settings.defaultAiProvider || 'openai';
         if (provider === 'anthropic') {
             const modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
-            if (modelId.includes('sonnet-4-5') || modelId.includes('sonnet-4.5')) return 'Claude Sonnet 4.5';
-            if (modelId.includes('opus-4-1') || modelId.includes('opus-4.1')) return 'Claude Opus 4.1';
-            if (modelId.includes('opus-4')) return 'Claude Opus 4';
-            if (modelId.includes('sonnet-4')) return 'Claude Sonnet 4';
+            // Just show the raw model ID, or maybe minimal formatting
             return modelId;
         }
         if (provider === 'gemini') {
             const modelId = this.plugin.settings.geminiModelId || 'gemini-3-pro-preview';
-            if (modelId.includes('3-pro')) return 'Gemini 3 Pro Preview';
-            if (modelId.includes('2.5-pro') || modelId.includes('2-5-pro')) return 'Gemini 2.5 Pro';
-            if (modelId.includes('2.0-pro') || modelId.includes('2-0-pro')) return 'Gemini 2.0 Pro';
             return modelId;
         }
         const modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
-        if (modelId.includes('5.1')) return 'GPT-5.1';
-        if (modelId.includes('4.1') || modelId.includes('4-1')) return 'GPT-4.1';
-        if (modelId.includes('4o')) return 'GPT-4o';
-        if (modelId.includes('o1')) return 'GPT-o1';
         return modelId;
     }
 

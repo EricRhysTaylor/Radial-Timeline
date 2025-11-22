@@ -3,12 +3,15 @@
  * Separate from Gossamer - focuses on optimal structural beat positioning
  */
 import type RadialTimelinePlugin from './main';
+import { DEFAULT_SETTINGS } from './main';
 import { Notice, TFile } from 'obsidian';
 import { BeatPlacementModal, type ManuscriptInfo } from './modals/BeatPlacementModal';
 import { assembleManuscript } from './utils/manuscript';
 import { buildBeatPlacementPrompt, getBeatPlacementJsonSchema, type BeatPlacementInfo } from './ai/prompts/beatPlacement';
 import { callGeminiApi, type GeminiApiResponse } from './api/geminiApi';
 import { extractBeatOrder } from './utils/gossamer';
+
+const DEFAULT_GEMINI_MODEL_ID = DEFAULT_SETTINGS.geminiModelId || 'gemini-3-pro-preview';
 
 /**
  * Register Beat Placement Optimization command
@@ -106,11 +109,13 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
         throw new Error('Gemini API key not configured. Please set it in plugin settings.');
       }
 
+      const geminiModelId = plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
+
       // Call Gemini API
       modal.setStatus('Analyzing beat placement with Gemini...');
       result = await callGeminiApi(
         plugin.settings.geminiApiKey,
-        plugin.settings.geminiModelId || 'gemini-2.0-flash-exp',
+        geminiModelId,
         null, // systemPrompt
         prompt, // userPrompt
         8000, // maxTokens - match Gossamer (accounts for thinking tokens + output)
@@ -231,8 +236,7 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
             minute: '2-digit',
             hour12: true
           });
-          const modelId = plugin.settings.geminiModelId || 'gemini-2.0-flash-exp';
-          fm['Placement Last Analyzed'] = `${timestamp} by ${modelId}`;
+          fm['Placement Last Analyzed'] = `${timestamp} by ${geminiModelId}`;
         });
         
         updateCount++;
@@ -254,7 +258,7 @@ async function runBeatPlacementOptimization(plugin: RadialTimelinePlugin): Promi
         ``,
         `**Date:** ${timestamp}`,
         `**Beat System:** ${beatSystem}`,
-        `**Model:** ${plugin.settings.geminiModelId || 'gemini-2.0-flash-exp'}`,
+        `**Model:** ${geminiModelId}`,
         `**Manuscript:** ${manuscript.totalScenes} scenes, ${manuscript.totalWords.toLocaleString()} words`,
         `**Beats Analyzed:** ${updateCount} of ${analysis.beats.length}`,
         ``,

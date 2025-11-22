@@ -26,22 +26,8 @@ export async function logExchange(plugin: RadialTimelinePlugin, vault: Vault, pa
   } as Intl.DateTimeFormatOptions);
   const ts = localStamp.replace(/[\\/:,]/g, '-').replace(/\s+/g, ' ').trim();
   
-  // Get friendly model name for filename
-  const friendlyModelForFilename = (() => {
-    const mid = (payload.modelId || '').toLowerCase();
-    const provider = payload.provider.toLowerCase();
-    if (provider === 'anthropic') {
-      if (mid.includes('sonnet-4-5') || mid.includes('sonnet-4.5')) return 'Claude Sonnet 4.5';
-      if (mid.includes('opus-4-1') || mid.includes('opus-4.1')) return 'Claude Opus 4.1';
-      if (mid.includes('sonnet-4')) return 'Claude Sonnet 4';
-      if (mid.includes('opus-4')) return 'Claude Opus 4';
-    } else if (provider === 'gemini') {
-      if (mid.includes('2.5-pro') || mid.includes('2-5-pro')) return 'Gemini 2.5 Pro';
-    } else if (provider === 'openai') {
-      if (mid.includes('gpt-4.1') || mid.includes('gpt-4-1')) return 'GPT-4.1';
-    }
-    return payload.modelId;
-  })();
+  // Get model ID for filename
+  const friendlyModelForFilename = payload.modelId || 'unknown-model';
   
   // Format: "Process Type — Model — Timestamp"
   const processType = payload.prefix === 'Gossamer' ? 'Gossamer Analysis' : 'Scene Processed';

@@ -6,11 +6,14 @@
 
 import { Notice, type Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { DEFAULT_SETTINGS } from '../main';
 import { callAnthropicApi } from '../api/anthropicApi';
 import { callOpenAiApi } from '../api/openaiApi';
 import { callGeminiApi } from '../api/geminiApi';
 import { getSceneAnalysisJsonSchema } from '../ai/prompts/sceneAnalysis';
 import type { AiProviderResponse, ApiRequestData } from './types';
+
+const DEFAULT_GEMINI_MODEL_ID = DEFAULT_SETTINGS.geminiModelId || 'gemini-3-pro-preview';
 
 async function logApiInteractionToFile(
     plugin: RadialTimelinePlugin,
@@ -47,7 +50,8 @@ async function logApiInteractionToFile(
             if (mid.includes('sonnet-4')) return 'Claude Sonnet 4';
             if (mid.includes('opus-4')) return 'Claude Opus 4';
         } else if (provider === 'gemini') {
-            if (mid.includes('2.5-pro') || mid.includes('2-5-pro')) return 'Gemini 2.5 Pro';
+            if (mid.includes('3-pro')) return 'Gemini 3 Pro';
+            if (mid.includes('2.5-pro') || mid.includes('2-5-pro')) return 'Gemini Legacy';
         } else if (provider === 'openai') {
             if (mid.includes('gpt-4.1') || mid.includes('gpt-4-1')) return 'GPT-4.1';
         }
@@ -248,10 +252,19 @@ export async function callAiProvider(
                     if (id === 'gpt-5' || id === 'o3' || id === 'gpt-4o') return 'gpt-4.1';
                     if (id === 'gpt-4.1') return 'gpt-4.1';
                     return id;
-                case 'gemini':
-                    if (id === 'gemini-2.5-pro') return 'gemini-2.5-pro';
-                    if (id === 'gemini-ultra' || id === 'gemini-creative' || id === 'gemini-1.0-pro' || id === 'gemini-1.5-pro') return 'gemini-2.5-pro';
-                    return id;
+                case 'gemini': {
+                    const cleaned = id.trim().replace(/^models\//, '');
+                    const legacyIds = new Set([
+                        'gemini-2.5-pro',
+                        'gemini-2.0-flash-exp',
+                        'gemini-ultra',
+                        'gemini-creative',
+                        'gemini-1.0-pro',
+                        'gemini-1.5-pro'
+                    ]);
+                    if (legacyIds.has(cleaned)) return DEFAULT_GEMINI_MODEL_ID;
+                    return cleaned;
+                }
                 default:
                     return id;
             }
@@ -320,7 +333,7 @@ export async function callAiProvider(
             result = apiResponse.content;
         } else if (provider === 'gemini') {
             apiKey = plugin.settings.geminiApiKey;
-            modelId = normalizeModelId('gemini', plugin.settings.geminiModelId) || 'gemini-2.5-pro';
+            modelId = normalizeModelId('gemini', plugin.settings.geminiModelId) || DEFAULT_GEMINI_MODEL_ID;
 
             if (!apiKey || !modelId) {
                 apiErrorMsg = 'Gemini API key or Model ID not configured in settings.';
