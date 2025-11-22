@@ -88,6 +88,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     enableHoverDebugLogging: false,
     sortByWhenDate: false, // Default: manuscript order (backward compatible)
     chronologueDurationCapSelection: 'auto',
+    readabilityScale: 'normal',
     aiContextTemplates: [
         {
             id: "commercial_genre",

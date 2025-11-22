@@ -216,7 +216,7 @@ export function renderSceneTitleComponents(
  * Splits arbitrary text into roughly balanced lines that fit typical SVG label widths.
  * Preserves <tspan> markup by falling back to the original string.
  */
-export function splitIntoBalancedLines(text: string, maxWidth: number): string[] {
+export function splitIntoBalancedLines(text: string, maxWidth: number, fontScale: number = 1): string[] {
   if (!text) return [''];
 
   if (text.includes('<tspan')) {
@@ -226,19 +226,19 @@ export function splitIntoBalancedLines(text: string, maxWidth: number): string[]
     const textElement = doc.querySelector('text');
     if (!textElement) return [text];
     const plainText = textElement.textContent || '';
-    const plainLines = splitPlainTextIntoLines(plainText, maxWidth);
+    const plainLines = splitPlainTextIntoLines(plainText, maxWidth, fontScale);
     return plainLines.length <= 1 ? [text] : [text];
   }
 
-  return splitPlainTextIntoLines(text, maxWidth);
+  return splitPlainTextIntoLines(text, maxWidth, fontScale);
 }
 
-function splitPlainTextIntoLines(text: string, maxWidth: number): string[] {
+function splitPlainTextIntoLines(text: string, maxWidth: number, fontScale: number): string[] {
   const words = text.split(/\s+/);
   const lines: string[] = [];
   let currentLine = '';
   let currentWidth = 0;
-  const approxCharWidth = 8;
+  const approxCharWidth = 8 * (fontScale || 1);
   const maxCharsPerLine = Math.max(10, Math.round((maxWidth || 400) / approxCharWidth)) || 50;
 
   for (const word of words) {
@@ -307,20 +307,20 @@ export function getScenePrefixNumber(title: string | undefined | null, sceneNumb
   return m ? m[1] : null;
 }
 
-export function getNumberSquareSize(num: string): { width: number; height: number } {
-  const height = 18;
+export function getNumberSquareSize(num: string, scale: number = 1): { width: number; height: number } {
+  const height = 18 * scale;
   if (num.includes('.')) {
     return {
-      width: num.length <= 3 ? 24 :
-             num.length <= 4 ? 32 :
-             36,
+      width: num.length <= 3 ? 24 * scale :
+             num.length <= 4 ? 32 * scale :
+             36 * scale,
       height
     };
   }
   return {
-    width: num.length === 1 ? 20 :
-           num.length === 2 ? 24 :
-           28,
+    width: num.length === 1 ? 20 * scale :
+           num.length === 2 ? 24 * scale :
+           28 * scale,
     height
   };
 }

@@ -19,6 +19,21 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 await plugin.saveSettings();
             }));
 
+    // 1b. Timeline readability scale
+    new Settings(containerEl)
+        .setName('Readability size')
+        .setDesc('Choose a curated font sizing profile for timeline text. Large is tuned for low-res or low-vision viewing; Normal matches the current high-DPI layout.')
+        .addDropdown(drop => {
+            drop.addOption('normal', 'Normal (default)');
+            drop.addOption('large', 'Large');
+            drop.setValue(plugin.settings.readabilityScale ?? 'normal');
+            drop.onChange(async (value) => {
+                plugin.settings.readabilityScale = value as any;
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            });
+        });
+
     // 2. Metadata refresh debounce
     new Settings(containerEl)
         .setName('Metadata refresh debounce (ms)')

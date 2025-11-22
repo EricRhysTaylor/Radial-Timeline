@@ -10,6 +10,8 @@ export type GlobalPovMode = 'off' | 'first' | 'second' | 'third' | 'omni' | 'obj
 
 export type ScenePovKeyword = 'first' | 'second' | 'third' | 'omni' | 'objective' | 'one' | 'two' | 'three' | 'count';
 
+export type ReadabilityScale = 'normal' | 'large';
+
 export interface AiContextTemplate {
     id: string;
     name: string;
@@ -51,6 +53,7 @@ export interface RadialTimelineSettings {
     beatSystem?: string;
     dominantSubplots?: Record<string, string>;
     globalPovMode?: GlobalPovMode;
+    readabilityScale?: ReadabilityScale;
     _isResuming?: boolean;
     _resumingMode?: 'flagged' | 'unprocessed' | 'force-all';
     lastSeenReleaseNotesVersion?: string;

@@ -2,6 +2,7 @@ import type { TimelineItem } from '../../types';
 import { isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers';
 import { splitIntoBalancedLines } from '../../utils/text';
 import { resolveScenePov } from '../../utils/pov';
+import { getReadabilityMultiplier } from '../../utils/readability';
 
 export function buildSynopsisElement(
     plugin: PluginRendererFacade,
@@ -11,12 +12,13 @@ export function buildSynopsisElement(
     orderedSubplots: string[],
     subplotIndexResolver?: (name: string) => number
 ): SVGGElement {
+    const fontScale = getReadabilityMultiplier(plugin.settings as any);
     const contentLines = [
         scene.title || '',
         ...(isBeatNote(scene) && scene.Description
-            ? splitIntoBalancedLines(scene.Description, maxTextWidth)
+            ? splitIntoBalancedLines(scene.Description, maxTextWidth, fontScale)
             : scene.synopsis
-            ? splitIntoBalancedLines(scene.synopsis, maxTextWidth)
+            ? splitIntoBalancedLines(scene.synopsis, maxTextWidth, fontScale)
             : [])
     ];
 

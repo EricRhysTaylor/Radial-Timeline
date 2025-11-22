@@ -8,7 +8,7 @@ import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_
 import type { TimelineItem } from '../types';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString } from '../utils/date';
-import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber, getNumberSquareSize } from '../utils/text';
+import { parseSceneTitle, normalizeStatus, parseSceneTitleComponents, getScenePrefixNumber } from '../utils/text';
 import { 
     extractGradeFromScene, 
     getSceneState, 
@@ -79,6 +79,7 @@ import { renderGossamerOverlay, type StageColorMap } from './utils/Gossamer';
 import { renderRotationToggle } from './utils/RotationToggle';
 import type { CompletionEstimate } from './utils/Estimation';
 import { renderProgressRingBaseLayer } from './utils/ProgressRing';
+import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -111,7 +112,10 @@ export function createTimelineSVG(
         const chronologueDateRadius = CHRONOLOGUE_DATE_RADIUS;
         const monthTickStart = MONTH_TICK_START;
         const monthTickEnd = MONTH_TICK_END;
-        const maxTextWidth = MAX_TEXT_WIDTH;
+        const readabilityScale = getReadabilityScale(plugin.settings as any);
+        const fontScale = getReadabilityMultiplier(plugin.settings as any);
+        const maxTextWidth = MAX_TEXT_WIDTH * fontScale;
+        const readabilityClass = `rt-font-scale-${readabilityScale}`;
         
         // Synopses are hidden by CSS until hover - no need to log anything
         
@@ -157,7 +161,7 @@ export function createTimelineSVG(
 
         // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
         let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
-                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg" 
+                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" 
                        preserveAspectRatio="xMidYMid meet">`;
         
 
@@ -202,7 +206,7 @@ export function createTimelineSVG(
         }
     
         // **Include the `<style>` code here**
-        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg" ${isChronologueMode ? 'data-chronologue-mode="true"' : ''} preserveAspectRatio="xMidYMid meet">`;
+        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" ${isChronologueMode ? 'data-chronologue-mode="true"' : ''} preserveAspectRatio="xMidYMid meet">`;
         
 
         // After radii are known, compute global stacking map (outer-ring narrative only)
@@ -581,7 +585,12 @@ export function createTimelineSVG(
                         })();
                         
                         // Initial rendering uses a generous estimate - will be adjusted after DOM insertion
-                        const estimatedWidth = estimatePixelsFromTitle(rawTitleFull, BEAT_FONT_PX, ESTIMATE_FUDGE_RENDER, PADDING_RENDER_PX);
+                        const estimatedWidth = estimatePixelsFromTitle(
+                            rawTitleFull,
+                            BEAT_FONT_PX * fontScale,
+                            ESTIMATE_FUDGE_RENDER,
+                            PADDING_RENDER_PX * fontScale
+                        );
                         const labelStartAngle = sceneStartAngle;
                         const labelEndAngle = sceneStartAngle + (estimatedWidth / beatTextRadius);
                         const desiredAngleArc = labelEndAngle - labelStartAngle;
