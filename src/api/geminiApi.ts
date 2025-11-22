@@ -45,7 +45,9 @@ export async function callGeminiApi(
     return { success: false, content: null, responseData: { error: { message: 'Gemini model ID not configured.' } }, error: 'Gemini model ID not configured.' };
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  // Handle potential "models/" prefix in the modelId to prevent double prefixing
+  const cleanModelId = modelId.startsWith('models/') ? modelId.slice(7) : modelId;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cleanModelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   type GeminiRequest = {
     contents: { role: 'user'; parts: { text: string }[] }[];

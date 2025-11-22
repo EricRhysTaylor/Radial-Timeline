@@ -13,10 +13,10 @@ export interface CuratedModel {
 export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     openai: [
         {
-            id: 'gpt-5.1-2025-11-13',
-            label: 'GPT-5.1 (Nov 2025 build)',
+            id: 'gpt-5.1-chat-latest',
+            label: 'GPT-5.1 (Latest)',
             tier: 'premium',
-            guidance: 'Deep-think powerhouse from OpenAI—best when you need maximum technical rigor across massive manuscripts. [FYI](https://platform.openai.com/docs/models#gpt-5-1)',
+            guidance: 'OpenAI’s flagship model. Best-in-class reasoning and instruction following for complex narrative analysis. [FYI](https://platform.openai.com/docs/models)',
         },
     ],
     anthropic: [
@@ -29,10 +29,10 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     ],
     gemini: [
         {
-            id: 'models/gemini-2.5-pro',
-            label: 'Gemini 2.5 Pro',
+            id: 'gemini-3-pro-preview',
+            label: 'Gemini 3 Pro Preview',
             tier: 'premium',
-            guidance: 'Google’s momentum analyst—huge context window and strong beat-level analytics for structural planning. [FYI](https://ai.google.dev/gemini-api/docs/models/gemini#gemini-25-pro)',
+            guidance: 'Google’s latest reasoning engine—massive context and advanced problem solving for complex narrative analysis.',
         },
     ],
 };

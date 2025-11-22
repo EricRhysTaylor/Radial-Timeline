@@ -124,12 +124,14 @@ export class SceneAnalysisService {
             return modelId;
         }
         if (provider === 'gemini') {
-            const modelId = this.plugin.settings.geminiModelId || 'gemini-2.5-pro';
+            const modelId = this.plugin.settings.geminiModelId || 'gemini-3-pro-preview';
+            if (modelId.includes('3-pro')) return 'Gemini 3 Pro Preview';
             if (modelId.includes('2.5-pro') || modelId.includes('2-5-pro')) return 'Gemini 2.5 Pro';
             if (modelId.includes('2.0-pro') || modelId.includes('2-0-pro')) return 'Gemini 2.0 Pro';
             return modelId;
         }
         const modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
+        if (modelId.includes('5.1')) return 'GPT-5.1';
         if (modelId.includes('4.1') || modelId.includes('4-1')) return 'GPT-4.1';
         if (modelId.includes('4o')) return 'GPT-4o';
         if (modelId.includes('o1')) return 'GPT-o1';
@@ -181,7 +183,8 @@ class SubplotPickerModal extends Modal {
         titleEl.setText('Select subplot for pulse processing');
         const modelName = this.service.getActiveModelName();
         const infoEl = contentEl.createDiv({ cls: 'rt-subplot-picker-info' });
-        infoEl.createEl('p', { text: `Process pulse using ${modelName}` });
+        infoEl.createEl('p', { text: `Process pulse using ${modelName}. This will analyze scenes in the subplot "${this.selectedSubplot}" and update their pulse metadata.` });
+        infoEl.createEl('p', { text: 'Requires scenes with "Review Update: Yes" and Status: Working or Complete.', cls: 'rt-subplot-picker-hint' });
 
         const selectContainer = contentEl.createDiv({ cls: 'rt-subplot-picker-select' });
         selectContainer.createEl('label', { text: 'Select subplot:', cls: 'rt-subplot-picker-label' });

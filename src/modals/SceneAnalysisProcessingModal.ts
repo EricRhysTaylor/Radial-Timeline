@@ -490,30 +490,64 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.progressBarEl.addClass('rt-progress-complete');  // Stops infinite animation
         }
         
-        // Update status message with comprehensive summary
+        // Determine overall success/failure state
         const successCount = Math.max(0, this.processedCount - this.errorCount);
-        let summaryText = `${successCount} scene${successCount !== 1 ? 's' : ''} processed successfully`;
+        const hasErrors = this.errorCount > 0;
+        const hasWarnings = this.warningCount > 0;
+        const isTotalFailure = successCount === 0 && hasErrors;
+
+        // 1. Clear previous content areas to avoid duplication
+        if (this.progressTextEl) this.progressTextEl.empty();
+        if (this.statusTextEl) this.statusTextEl.empty();
+        if (this.tripletTextEl) this.tripletTextEl.remove(); // Remove triplet info (no longer relevant)
         
-        if (this.errorCount > 0) {
-            summaryText += `, ${this.errorCount} error${this.errorCount !== 1 ? 's' : ''}`;
+        // Hide "live" error list if it exists, we will show a consolidated summary instead
+        if (this.errorListEl) {
+            this.errorListEl.addClass('rt-hidden');
+            this.errorListEl.empty(); // Clear it so we don't double up content
         }
-        
-        if (this.warningCount > 0) {
-            summaryText += `, ${this.warningCount} skipped`;
+
+        // 2. Construct summary text
+        let summaryText = '';
+        if (isTotalFailure) {
+            summaryText = `Processing failed: ${this.errorCount} error${this.errorCount !== 1 ? 's' : ''}.`;
+        } else {
+            summaryText = `${successCount} scene${successCount !== 1 ? 's' : ''} processed successfully`;
+            if (hasErrors) summaryText += `, ${this.errorCount} error${this.errorCount !== 1 ? 's' : ''}`;
+            if (hasWarnings) summaryText += `, ${this.warningCount} skipped`;
         }
         
         if (this.statusTextEl) {
             this.statusTextEl.setText(summaryText);
+            if (isTotalFailure) this.statusTextEl.addClass('rt-error-text');
         }
 
-        const completionMsgEl = contentEl.createDiv({ cls: 'rt-beats-completion-message' });
-        completionMsgEl.setText(statusMessage);
+        // Update the completion message element (or create it if missing)
+        let completionMsgEl = contentEl.querySelector('.rt-beats-completion-message') as HTMLElement;
+        if (!completionMsgEl) {
+            completionMsgEl = contentEl.createDiv({ cls: 'rt-beats-completion-message' });
+        }
         
-        // Create summary section for error/warning details if present
-        const hasIssues = this.errorCount > 0 || this.warningCount > 0;
+        // Use a more accurate message based on outcome
+        if (isTotalFailure) {
+            completionMsgEl.setText('Processing failed.');
+            completionMsgEl.addClass('rt-error-text');
+        } else if (hasErrors) {
+            completionMsgEl.setText('Processing complete (with errors).');
+            completionMsgEl.addClass('rt-warning-text');
+        } else {
+            completionMsgEl.setText('Processing completed successfully!');
+            completionMsgEl.removeClass('rt-error-text', 'rt-warning-text');
+        }
+        
+        // 3. Create consolidated details section
+        const hasIssues = hasErrors || hasWarnings;
         const remainingScenes = this.totalCount - this.processedCount;
         
-        // Show error/warning details if present
+        // Remove any existing summary container to prevent duplicates if called multiple times
+        const existingSummary = contentEl.querySelector('.rt-beats-summary');
+        if (existingSummary) existingSummary.remove();
+
         if (hasIssues) {
             const summaryContainer = contentEl.createDiv({ cls: 'rt-beats-summary' });
             summaryContainer.createEl('h3', { text: 'Details', cls: 'rt-beats-summary-title' });
@@ -521,15 +555,15 @@ export class SceneAnalysisProcessingModal extends Modal {
             const summaryStats = summaryContainer.createDiv({ cls: 'rt-beats-summary-stats' });
             
             // Error count
-            if (this.errorCount > 0) {
+            if (hasErrors) {
                 summaryStats.createDiv({ 
                     cls: 'rt-beats-summary-row rt-beats-summary-error',
                     text: `Errors: ${this.errorCount}`
                 });
             }
             
-            // Warning count (informational, doesn't affect success count)
-            if (this.warningCount > 0) {
+            // Warning count
+            if (hasWarnings) {
                 summaryStats.createDiv({ 
                     cls: 'rt-beats-summary-row rt-beats-summary-warning',
                     text: `Warnings: ${this.warningCount} (scenes skipped due to validation)`
@@ -537,18 +571,21 @@ export class SceneAnalysisProcessingModal extends Modal {
             }
         }
         
-        // Add tip about resuming (top-level, not nested) - only if there are actually scenes remaining
+        // Add tip about resuming (top-level, not nested)
+        // Remove existing tips first
+        contentEl.querySelectorAll('.rt-beats-summary-tip').forEach(el => el.remove());
+
         if (remainingScenes > 0) {
             const tipEl = contentEl.createDiv({ cls: 'rt-beats-summary-tip' });
             tipEl.createEl('strong', { text: 'Tip: ' });
             if (this.resumeCommandId || this.subplotName) {
-                tipEl.appendText('Click Resume to complete all scenes not updated today. Scenes already processed today will be skipped automatically.');
+                tipEl.appendText('Click Resume to complete all scenes not updated today.');
             } else {
-                tipEl.appendText('Run the command again in "Unprocessed" mode to process remaining or failed scenes. Already-processed scenes will be skipped automatically.');
+                tipEl.appendText('Run the command again in "Unprocessed" mode to retry.');
             }
         }
         
-        // Add note about AI logs if logging is enabled (top-level, not nested)
+        // Add note about AI logs
         if (this.plugin.settings.logApiInteractions) {
             const logNoteEl = contentEl.createDiv({ cls: 'rt-beats-summary-tip' });
             logNoteEl.createEl('strong', { text: 'Note: ' });
@@ -559,8 +596,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.actionButtonContainer) {
             this.actionButtonContainer.empty();
             
-            // Show Resume button only if there are actually scenes remaining (not just errors)
-            // Errors like "No flagged scenes found" are fatal, not resumable
+            // Show Resume button only if there are actually scenes remaining
             if (remainingScenes > 0 && (this.resumeCommandId || this.subplotName)) {
                 new ButtonComponent(this.actionButtonContainer)
                     .setButtonText(`Resume (${remainingScenes} remaining)`)

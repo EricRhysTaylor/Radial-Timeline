@@ -76,9 +76,9 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     anthropicApiKey: '', // <<< ADDED: Default empty string
     anthropicModelId: 'claude-sonnet-4-5-20250929', // Default to Sonnet 4.5 (20250929)
     geminiApiKey: '',
-    geminiModelId: 'gemini-2.5-pro', // Default to Gemini 2.5 Pro
+    geminiModelId: 'gemini-3-pro-preview', // Default to Gemini 3 Pro Preview
     defaultAiProvider: 'openai',
-    openaiModelId: 'gpt-4.1', // Default to GPT-4.1
+    openaiModelId: 'gpt-5.1-chat-latest', // Default to GPT-5.1
     enableAiSceneAnalysis: true,
     enableZeroDraftMode: false,
     metadataRefreshDebounceMs: 10000,
@@ -220,8 +220,8 @@ export default class RadialTimelinePlugin extends Plugin {
     private getModelId(): string {
         const provider = this.aiProvider;
         if (provider === 'anthropic') return this.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
-        if (provider === 'gemini') return this.settings.geminiModelId || 'gemini-2.5-pro';
-        return this.settings.openaiModelId || 'gpt-4.1';
+        if (provider === 'gemini') return this.settings.geminiModelId || 'gemini-3-pro-preview';
+        return this.settings.openaiModelId || 'gpt-5.1-chat-latest';
     }
     
     /**

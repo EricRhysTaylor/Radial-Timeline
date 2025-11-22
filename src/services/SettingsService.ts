@@ -41,7 +41,11 @@ export class SettingsService {
                 return id;
             }
             if (prov === 'gemini') {
-                const trimmed = id.trim();
+                let trimmed = id.trim();
+                // Strip 'models/' prefix if present
+                if (trimmed.startsWith('models/')) {
+                    trimmed = trimmed.slice(7);
+                }
                 const aliasMap: Record<string, string> = {
                     'gemini-ultra': 'gemini-2.5-pro',
                     'gemini-creative': 'gemini-2.5-pro',

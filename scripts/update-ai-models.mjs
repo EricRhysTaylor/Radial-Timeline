@@ -52,7 +52,7 @@ async function fetchAnthropicModels(apiKey) {
     return (data.data ?? []).map(model => ({
         id: model.id,
         display_name: model.display_name,
-        updated_at: model.updated_at,
+        created_at: model.created_at,
         type: model.type,
     }));
 }
@@ -66,6 +66,7 @@ async function fetchGeminiModels(apiKey) {
         `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`
     );
     return (data.models ?? []).map(model => ({
+        id: model.name.startsWith('models/') ? model.name.slice(7) : model.name,
         name: model.name,
         displayName: model.displayName,
         description: model.description,
@@ -81,15 +82,29 @@ async function main() {
         fetchGeminiModels(process.env.GEMINI_API_KEY),
     ]);
 
+    // Sort models latest to oldest
+    const sortedAnthropic = anthropic.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA; // Descending
+    });
+
+    const sortedOpenai = openai.sort((a, b) => {
+        return (b.created || 0) - (a.created || 0); // Descending
+    });
+
+    // Gemini doesn't expose a created date in this endpoint, so we can't reliably sort by date.
+    // We'll rely on the API's order or keep it as is.
+    
     const payload = {
         generatedAt: new Date().toISOString(),
         summary: {
-            anthropic: anthropic.length,
-            openai: openai.length,
+            anthropic: sortedAnthropic.length,
+            openai: sortedOpenai.length,
             gemini: gemini.length,
         },
-        anthropic,
-        openai,
+        anthropic: sortedAnthropic,
+        openai: sortedOpenai,
         gemini,
     };
 
