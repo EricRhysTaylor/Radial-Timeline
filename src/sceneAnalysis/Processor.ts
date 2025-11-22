@@ -43,7 +43,13 @@ export async function processWithModal(
 
     const processableScenes = allScenes.filter(scene => {
         if (mode === 'flagged') {
-            const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate ?? scene.frontmatter?.['Beats Update'];
+            const beatsUpdateFlag = 
+                scene.frontmatter?.['Review Update'] ?? 
+                scene.frontmatter?.ReviewUpdate ?? 
+                scene.frontmatter?.reviewupdate ?? 
+                scene.frontmatter?.beatsupdate ?? 
+                scene.frontmatter?.BeatsUpdate ?? 
+                scene.frontmatter?.['Beats Update'];
             return normalizeBooleanValue(beatsUpdateFlag);
         }
         return hasProcessableContent(scene.frontmatter);
@@ -55,7 +61,13 @@ export async function processWithModal(
     let processedCount = 0;
     let totalToProcess = 0;
     for (const triplet of triplets) {
-        const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate ?? triplet.current.frontmatter?.['Beats Update'];
+        const beatsUpdateFlag = 
+            triplet.current.frontmatter?.['Review Update'] ?? 
+            triplet.current.frontmatter?.ReviewUpdate ?? 
+            triplet.current.frontmatter?.reviewupdate ?? 
+            triplet.current.frontmatter?.beatsupdate ?? 
+            triplet.current.frontmatter?.BeatsUpdate ?? 
+            triplet.current.frontmatter?.['Beats Update'];
         const isFlagged = normalizeBooleanValue(beatsUpdateFlag);
 
         if (mode === 'flagged') {
@@ -85,7 +97,13 @@ export async function processWithModal(
             throw new Error('Processing aborted by user');
         }
 
-        const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.BeatsUpdate ?? triplet.current.frontmatter?.['Beats Update'];
+        const beatsUpdateFlag = 
+            triplet.current.frontmatter?.['Review Update'] ?? 
+            triplet.current.frontmatter?.ReviewUpdate ?? 
+            triplet.current.frontmatter?.reviewupdate ?? 
+            triplet.current.frontmatter?.beatsupdate ?? 
+            triplet.current.frontmatter?.BeatsUpdate ?? 
+            triplet.current.frontmatter?.['Beats Update'];
         const isFlagged = normalizeBooleanValue(beatsUpdateFlag);
 
         let shouldProcess = false;
@@ -114,8 +132,8 @@ export async function processWithModal(
             modal.setTripletInfo(prevNum, currentNum, nextNum);
         }
 
-        const contextPrompt = getActiveContextPrompt(plugin);
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+        // Use default context for scene analysis to avoid blending with story beat templates
+        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
@@ -186,9 +204,15 @@ export async function processBySubplotOrder(
             const scenes = scenesBySubplot[subplotName];
             scenes.sort(compareScenesByOrder);
             const validScenes = scenes.filter(scene => {
-                const beatsUpdate = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate || scene.frontmatter?.['Beats Update'];
+                const beatsUpdate = 
+                    scene.frontmatter?.['Review Update'] ?? 
+                    scene.frontmatter?.ReviewUpdate ?? 
+                    scene.frontmatter?.reviewupdate ?? 
+                    scene.frontmatter?.beatsupdate ?? 
+                    scene.frontmatter?.BeatsUpdate ?? 
+                    scene.frontmatter?.['Beats Update'];
                 if (normalizeBooleanValue(beatsUpdate) && !hasProcessableContent(scene.frontmatter)) {
-                    const msg = `Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has Beats Update: Yes/True but Status is not working/complete. Skipping.`;
+                    const msg = `Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has Review Update: Yes/True but Status is not working/complete. Skipping.`;
                     new Notice(msg, 6000);
                 }
                 return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(beatsUpdate);
@@ -206,12 +230,24 @@ export async function processBySubplotOrder(
             const processableContentScenes = orderedScenes.filter(scene => hasProcessableContent(scene.frontmatter));
             const flaggedInOrder = orderedScenes.filter(s =>
                 hasProcessableContent(s.frontmatter) &&
-                normalizeBooleanValue(s.frontmatter?.beatsupdate || s.frontmatter?.BeatsUpdate || s.frontmatter?.['Beats Update'])
+                normalizeBooleanValue(
+                    s.frontmatter?.['Review Update'] ?? 
+                    s.frontmatter?.ReviewUpdate ?? 
+                    s.frontmatter?.reviewupdate ?? 
+                    s.frontmatter?.beatsupdate ?? 
+                    s.frontmatter?.BeatsUpdate ?? 
+                    s.frontmatter?.['Beats Update']
+                )
             );
             const triplets = buildTripletsByIndex(processableContentScenes, flaggedInOrder, (s) => s.file.path);
 
             for (const triplet of triplets) {
-                const beatsUpdateFlag = triplet.current.frontmatter?.beatsupdate ?? triplet.current.frontmatter?.['Beats Update'];
+                const beatsUpdateFlag = 
+                    triplet.current.frontmatter?.['Review Update'] ?? 
+                    triplet.current.frontmatter?.ReviewUpdate ?? 
+                    triplet.current.frontmatter?.reviewupdate ?? 
+                    triplet.current.frontmatter?.beatsupdate ?? 
+                    triplet.current.frontmatter?.['Beats Update'];
                 if (!normalizeBooleanValue(beatsUpdateFlag)) {
                     continue;
                 }
@@ -281,12 +317,18 @@ export async function processSubplotWithModal(
     filtered.sort(compareScenesByOrder);
 
     const validScenes = filtered.filter(scene => {
-        const beatsUpdate = scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate || scene.frontmatter?.['Beats Update'];
+        const beatsUpdate = 
+            scene.frontmatter?.['Review Update'] ?? 
+            scene.frontmatter?.ReviewUpdate ?? 
+            scene.frontmatter?.reviewupdate ?? 
+            scene.frontmatter?.beatsupdate ?? 
+            scene.frontmatter?.BeatsUpdate ?? 
+            scene.frontmatter?.['Beats Update'];
         return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(beatsUpdate);
     });
 
     if (validScenes.length === 0) {
-        throw new Error(`No flagged scenes (Beats Update: Yes/True/1) with content found for "${subplotName}".`);
+        throw new Error(`No flagged scenes (Review Update: Yes/True/1) with content found for "${subplotName}".`);
     }
 
     const triplets = buildTripletsByIndex(validScenes, validScenes, (s) => s.file.path);
@@ -326,11 +368,13 @@ export async function processSubplotWithModal(
             modal.setTripletInfo(prevNum, currentNum, nextNum);
         }
 
-        const contextPrompt = getActiveContextPrompt(plugin);
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+        // Use default context for scene analysis to avoid blending with story beat templates
+        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
+
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
         const runAi = createAiRunner(plugin, vault, callAiProvider);
+        // Use subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog
         const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog);
 
         if (aiResult.result) {
@@ -419,8 +463,8 @@ export async function processEntireSubplotWithModalInternal(
             modal.setTripletInfo(prevNum, currentNum, nextNum);
         }
 
-        const contextPrompt = getActiveContextPrompt(plugin);
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+        // Use default context for scene analysis to avoid blending with story beat templates
+        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };

@@ -78,7 +78,9 @@ export async function callGeminiApi(
   }
   // Disable thinking mode if requested (for 2.5-pro models)
   if (disableThinking) {
-    body.generationConfig.thinkingConfig = { mode: "NONE" };
+    // Only set thinking_config if explicitly required, otherwise don't send it at all
+    // Some models (like 2.5-pro or non-thinking models) might reject unknown fields
+    // body.generationConfig.thinkingConfig = { mode: "NONE" };
   }
   // Enable JSON mode if schema provided
   if (jsonSchema) {

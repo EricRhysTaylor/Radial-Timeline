@@ -29,7 +29,10 @@ export async function updateSceneAnalysis(
       } as Intl.DateTimeFormatOptions);
       fmObj['Beats Last Updated'] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
 
-      if (Object.prototype.hasOwnProperty.call(fmObj, 'beatsupdate')) fmObj['beatsupdate'] = false;
+      if (Object.prototype.hasOwnProperty.call(fmObj, 'Review Update')) fmObj['Review Update'] = false;
+      else if (Object.prototype.hasOwnProperty.call(fmObj, 'ReviewUpdate')) fmObj['ReviewUpdate'] = false;
+      else if (Object.prototype.hasOwnProperty.call(fmObj, 'reviewupdate')) fmObj['reviewupdate'] = false;
+      else if (Object.prototype.hasOwnProperty.call(fmObj, 'beatsupdate')) fmObj['beatsupdate'] = false;
       else fmObj['Beats Update'] = false;
 
       const b1 = parsedAnalysis['previousSceneAnalysis']?.trim();

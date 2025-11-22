@@ -18,7 +18,7 @@ export class SceneAnalysisService {
     private registerManuscriptCommand(): void {
         this.plugin.addCommand({
             id: 'update-beats-manuscript-order',
-            name: 'Scene Analysis (manuscript order)',
+            name: 'Scene Pulse Analysis (manuscript order)',
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
@@ -39,7 +39,7 @@ export class SceneAnalysisService {
     private registerSubplotCommand(): void {
         this.plugin.addCommand({
             id: 'update-beats-choose-subplot',
-            name: 'Scene Analysis (subplot order)',
+            name: 'Scene Pulse Analysis (subplot order)',
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
@@ -178,10 +178,10 @@ class SubplotPickerModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl } = this;
-        titleEl.setText('Select subplot for beats processing');
+        titleEl.setText('Select subplot for pulse processing');
         const modelName = this.service.getActiveModelName();
         const infoEl = contentEl.createDiv({ cls: 'rt-subplot-picker-info' });
-        infoEl.createEl('p', { text: `Process beats using ${modelName}` });
+        infoEl.createEl('p', { text: `Process pulse using ${modelName}` });
 
         const selectContainer = contentEl.createDiv({ cls: 'rt-subplot-picker-select' });
         selectContainer.createEl('label', { text: 'Select subplot:', cls: 'rt-subplot-picker-label' });
@@ -200,7 +200,7 @@ class SubplotPickerModal extends Modal {
 
         const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
         new ButtonComponent(buttonRow)
-            .setButtonText('Process beats')
+            .setButtonText('Process pulse')
             .setCta()
             .onClick(async () => {
                 this.close();
@@ -216,7 +216,7 @@ class SubplotPickerModal extends Modal {
             });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Purge all beats')
+            .setButtonText('Purge all pulse')
             .setWarning()
             .onClick(async () => {
                 try {

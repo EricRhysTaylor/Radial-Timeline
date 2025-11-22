@@ -86,11 +86,11 @@ export function buildSceneAnalysisPrompt(
     },
     {
       "scene": "${currentNum}",
-      "title": "Beat title",
+      "title": "Pulse point title",
       "grade": "+" or "-" or "?",
       "comment": "Concise editorial comment (max 10 words)"
     }
-    // ... 3-5 more beats
+    // ... 3-5 more pulse points
   ]
 }
 
@@ -119,20 +119,20 @@ ${currentBody || 'N/A'}
     },
     {
       "scene": "${currentNum}",
-      "title": "Beat title",
+      "title": "Pulse point title",
       "grade": "+" or "-" or "?",
       "comment": "Editorial comment (max 10 words)"
     }
-    // ... 3-5 more beats
+    // ... 3-5 more pulse points
   ],
   "nextSceneAnalysis": [
     {
       "scene": "${nextNum}",
-      "title": "Beat title",
+      "title": "Pulse point title",
       "grade": "+" or "-" or "?",
       "comment": "Editorial comment (max 10 words)"
     }
-    // ... 3-5 more beats analyzing next scene
+    // ... 3-5 more pulse points analyzing next scene
   ]
 }
 
@@ -157,11 +157,11 @@ ${nextBody ?? 'N/A'}
   "previousSceneAnalysis": [
     {
       "scene": "${prevNum}",
-      "title": "Beat title",
+      "title": "Pulse point title",
       "grade": "+" or "-" or "?",
       "comment": "Editorial comment (max 10 words)"
     }
-    // ... 3-5 more beats analyzing previous scene
+    // ... 3-5 more pulse points analyzing previous scene
   ],
   "currentSceneAnalysis": [
     {
@@ -172,11 +172,11 @@ ${nextBody ?? 'N/A'}
     },
     {
       "scene": "${currentNum}",
-      "title": "Beat title",
+      "title": "Pulse point title",
       "grade": "+" or "-" or "?",
       "comment": "Editorial comment (max 10 words)"
     }
-    // ... 3-5 more beats
+    // ... 3-5 more pulse points
   ]
 }
 
@@ -193,17 +193,17 @@ ${currentBody || 'N/A'}
 `;
   }
 
-  return `${contextPrefix}For each of the three scenes below, generate concise narrative beats from the perspective of the middle scene (${currentNum}), showing connections between previous (${prevNum}) and next (${nextNum}) scenes. Return ONLY valid JSON matching this structure:
+  return `${contextPrefix}For each of the three scenes below, generate concise narrative pulse points from the perspective of the middle scene (${currentNum}), showing connections between previous (${prevNum}) and next (${nextNum}) scenes. Return ONLY valid JSON matching this structure:
 
 {
   "previousSceneAnalysis": [
     {
       "scene": "${prevNum}",
-      "title": "Beat title",
+      "title": "Pulse point title",
       "grade": "+" or "-" or "?",
       "comment": "Editorial comment (max 10 words)"
     }
-    // ... 3-5 more beats analyzing how previous scene sets up current
+    // ... 3-5 more pulse points analyzing how previous scene sets up current
   ],
   "currentSceneAnalysis": [
     {
@@ -214,20 +214,20 @@ ${currentBody || 'N/A'}
     },
     {
       "scene": "${currentNum}",
-      "title": "Beat title",
+      "title": "Pulse point title",
       "grade": "+" or "-" or "?",
       "comment": "Editorial comment (max 10 words)"
     }
-    // ... 3-5 more beats analyzing current scene
+    // ... 3-5 more pulse points analyzing current scene
   ],
   "nextSceneAnalysis": [
     {
       "scene": "${nextNum}",
-      "title": "Beat title",
+      "title": "Pulse point title",
       "grade": "+" or "-" or "?",
       "comment": "Editorial comment (max 10 words)"
     }
-    // ... 3-5 more beats analyzing how next scene builds on current
+    // ... 3-5 more pulse points analyzing how next scene builds on current
   ]
 }
 

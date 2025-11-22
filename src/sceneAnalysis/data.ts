@@ -173,7 +173,13 @@ export async function calculateSceneCount(
 
     const processableScenes = allScenes.filter(scene => {
         if (mode === 'flagged') {
-            const beatsUpdateFlag = scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate ?? scene.frontmatter?.['Beats Update'];
+            const beatsUpdateFlag = 
+                scene.frontmatter?.['Review Update'] ?? 
+                scene.frontmatter?.ReviewUpdate ?? 
+                scene.frontmatter?.reviewupdate ?? 
+                scene.frontmatter?.beatsupdate ?? 
+                scene.frontmatter?.BeatsUpdate ?? 
+                scene.frontmatter?.['Beats Update'];
             return normalizeBooleanValue(beatsUpdateFlag) && hasProcessableContent(scene.frontmatter);
         }
         return hasProcessableContent(scene.frontmatter);
@@ -214,7 +220,14 @@ export async function calculateFlaggedCount(
     const allScenes = await getAllSceneData(plugin, vault);
     allScenes.sort(compareScenesByOrder);
     const isFlagged = (scene: SceneData) =>
-        normalizeBooleanValue(scene.frontmatter?.beatsupdate ?? scene.frontmatter?.BeatsUpdate ?? scene.frontmatter?.['Beats Update']);
+        normalizeBooleanValue(
+            scene.frontmatter?.['Review Update'] ?? 
+            scene.frontmatter?.ReviewUpdate ?? 
+            scene.frontmatter?.reviewupdate ?? 
+            scene.frontmatter?.beatsupdate ?? 
+            scene.frontmatter?.BeatsUpdate ?? 
+            scene.frontmatter?.['Beats Update']
+        );
 
     if (mode === 'flagged') {
         return allScenes.filter(isFlagged).length;

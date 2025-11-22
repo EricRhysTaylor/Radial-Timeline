@@ -104,7 +104,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl } = this;
-        titleEl.setText('Scene beats analysis');
+        titleEl.setText('Scene Pulse Analysis');
         
         // If we're already processing (reopening), show progress view
         if (this.isProcessing) {
@@ -145,7 +145,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Info section with active AI provider
         const infoEl = contentEl.createDiv({ cls: 'rt-beats-info' });
-        infoEl.setText('Select how many scenes to process. This will analyze scenes in manuscript order and update their beat metadata.');
+        infoEl.setText('Select how many scenes to process. This will analyze scenes in manuscript order and update their pulse metadata.');
 
         // Mode selection
         const modesSection = contentEl.createDiv({ cls: 'rt-beats-modes' });
@@ -155,7 +155,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             modesSection,
             'flagged',
             'Process flagged scenes (Recommended)',
-            'Processes scenes with Beats Update: Yes and Status: Working or Complete. Use when you\'ve revised scenes and want to update their beats.',
+            'Processes scenes with Review Update: Yes (or Beats Update: Yes) and Status: Working or Complete. Use when you\'ve revised scenes and want to update their pulse.',
             true
         );
         
@@ -164,7 +164,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             modesSection,
             'unprocessed',
             'Process unprocessed scenes',
-            'Processes scenes with Status: Complete or Working that don\'t have beats yet. Perfect for resuming after interruptions. Ignores Beats Update flag.',
+            'Processes scenes with Status: Complete or Working that don\'t have pulse yet. Perfect for resuming after interruptions. Ignores Review Update flag.',
             false
         );
         
@@ -173,7 +173,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             modesSection,
             'force-all',
             'Reprocess ALL scenes',
-            'Reprocesses ALL scenes with Status: Complete or Working, even if they already have beats. Use when changing AI templates or doing complete reanalysis. WARNING: May be expensive!',
+            'Reprocesses ALL scenes with Status: Complete or Working, even if they already have pulse. Use when changing AI templates or doing complete reanalysis. WARNING: May be expensive!',
             false
         );
 
@@ -258,7 +258,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             });
         
         new ButtonComponent(buttonRow)
-            .setButtonText('Purge all beats')
+            .setButtonText('Purge all pulse')
             .setWarning()
             .onClick(async () => {
                 try {
@@ -359,7 +359,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     private showProgressView(): void {
         const { contentEl, titleEl } = this;
         contentEl.empty();
-        titleEl.setText('Processing scene beats analysis...');
+        titleEl.setText('Processing scene pulse analysis...');
         const modelName = this.getActiveModelDisplayName();
 
         const modelInfoEl = contentEl.createDiv({ cls: 'rt-beats-model-info' });

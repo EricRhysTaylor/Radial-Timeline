@@ -150,13 +150,23 @@ async function logApiInteractionToFile(
         ? `\n**Context Triplet:**\n- Prev: ${tripletInfo.prev}\n- Current: ${tripletInfo.current}\n- Next: ${tripletInfo.next}\n`
         : '';
 
+    let promptContent = '';
+    if (safeRequestData) {
+        if (typeof (safeRequestData as any).userPrompt === 'string') {
+            promptContent = (safeRequestData as any).userPrompt;
+        } else if (Array.isArray(safeRequestData.messages) && safeRequestData.messages[0] && typeof safeRequestData.messages[safeRequestData.messages.length - 1].content === 'string') {
+            // Get the last message (usually user)
+            promptContent = safeRequestData.messages[safeRequestData.messages.length - 1].content;
+        }
+    }
+
     const fileContent = `# AI Log — ${new Date().toLocaleString()}\n\n` +
         `**Provider:** ${provider}\n` +
         `**Model:** ${modelId}\n` +
         `**Scene:** ${sceneName ?? 'N/A'}\n` +
         `**Command:** ${commandContext}\n` +
         subplotSection +
-        `\n**Prompt:**\n\`\`\`\n${typeof safeRequestData?.messages?.[0]?.content === 'string' ? safeRequestData?.messages?.[0]?.content : ''}\n\`\`\`\n` +
+        `\n**Prompt:**\n\`\`\`\n${promptContent}\n\`\`\`\n` +
         tripletSection +
         `\n${usageString}\n` +
         outcomeSection +
