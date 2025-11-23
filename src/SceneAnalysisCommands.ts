@@ -69,7 +69,7 @@ async function updateSceneFile(
             delete fmObj['2beats'];
             delete fmObj['3beats'];
 
-            // Always record last update timestamp/model in Beats Last Updated.
+            // Always record last update timestamp/model in Pulse Last Updated.
             // Use friendly local time format instead of ISO
             const now = new Date();
             const timestamp = now.toLocaleString(undefined, {
@@ -81,7 +81,7 @@ async function updateSceneFile(
                 hour12: true
             });
             const updatedValue = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
-            fmObj['Beats Last Updated'] = updatedValue;
+            fmObj['Pulse Last Updated'] = updatedValue;
 
             // After a successful update, always set the processing flag to No/False
             const pulseKeys = [

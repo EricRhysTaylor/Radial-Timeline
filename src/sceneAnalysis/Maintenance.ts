@@ -48,7 +48,7 @@ async function updateSceneFile(
                 hour12: true
             });
             const updatedValue = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
-            fmObj['Beats Last Updated'] = updatedValue;
+            fmObj['Pulse Last Updated'] = updatedValue;
 
             const pulseKeys = [
                 'Pulse Update',
@@ -284,11 +284,12 @@ async function purgeScenesBeats(
                 const hadPrevious = fmObj['previousSceneAnalysis'] !== undefined;
                 const hadCurrent = fmObj['currentSceneAnalysis'] !== undefined;
                 const hadNext = fmObj['nextSceneAnalysis'] !== undefined;
-                const hadTimestamp = fmObj['Beats Last Updated'] !== undefined;
+                const hadTimestamp = fmObj['Pulse Last Updated'] !== undefined || fmObj['Beats Last Updated'] !== undefined;
 
                 delete fmObj['previousSceneAnalysis'];
                 delete fmObj['currentSceneAnalysis'];
                 delete fmObj['nextSceneAnalysis'];
+                delete fmObj['Pulse Last Updated'];
                 delete fmObj['Beats Last Updated'];
 
                 if (hadPrevious || hadCurrent || hadNext || hadTimestamp) {
@@ -318,7 +319,7 @@ export async function purgeBeatsByManuscriptOrder(
             `Purge ALL beats from ${allScenes.length} scene${allScenes.length !== 1 ? 's' : ''} in your manuscript?`,
             [
                 'previousSceneAnalysis, currentSceneAnalysis, nextSceneAnalysis fields',
-                'Beats Last Updated timestamps'
+                'Pulse Last Updated timestamps'
             ],
             async () => {
                 const notice = new Notice('Purging beats from all scenes...', 0);
@@ -357,7 +358,7 @@ export async function purgeBeatsBySubplotName(
             `Purge beats from ${filtered.length} scene${filtered.length !== 1 ? 's' : ''} in subplot "${subplotName}"?`,
             [
                 'previousSceneAnalysis, currentSceneAnalysis, nextSceneAnalysis fields',
-                'Beats Last Updated timestamps'
+                'Pulse Last Updated timestamps'
             ],
             async () => {
                 const notice = new Notice(`Purging beats from "${subplotName}"...`, 0);

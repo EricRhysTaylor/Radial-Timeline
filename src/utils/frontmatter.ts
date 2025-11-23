@@ -87,7 +87,8 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>): Record<st
     'beats1': 'beats1',
     'beats2': 'beats2',
     'beats3': 'beats3',
-    'beatslastupdated': 'Beats Last Updated',
+    'beatslastupdated': 'Pulse Last Updated',
+    'pulselastupdated': 'Pulse Last Updated',
   };
   
   // Process each key in the original frontmatter

@@ -25,6 +25,7 @@ export interface TimelineItem {
     "currentSceneAnalysis"?: string;
     "nextSceneAnalysis"?: string;
     "Pulse Update"?: boolean | string;
+    "Pulse Last Updated"?: string;
     "Beats Update"?: boolean | string; // legacy compatibility
     itemType?: "Scene" | "Plot" | "Beat";
     Description?: string;

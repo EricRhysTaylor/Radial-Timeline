@@ -27,7 +27,7 @@ export async function updateSceneAnalysis(
       const timestamp = now.toLocaleString(undefined, {
         year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
       } as Intl.DateTimeFormatOptions);
-      fmObj['Beats Last Updated'] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
+      fmObj['Pulse Last Updated'] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
 
       const pulseKeys = [
         'Pulse Update',
@@ -62,4 +62,3 @@ export async function updateSceneAnalysis(
     return false;
   }
 }
-

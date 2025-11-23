@@ -61,9 +61,17 @@ export function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin):
             throw new Error('LLM returned empty result.');
         }
 
-        const trimmed = gptResult.trim();
+        let trimmed = gptResult.trim();
+        if (trimmed.startsWith('```')) {
+            trimmed = trimmed.replace(/^```[a-zA-Z0-9_-]*\s*/i, '');
+            if (trimmed.endsWith('```')) {
+                trimmed = trimmed.slice(0, -3);
+            }
+            trimmed = trimmed.trim();
+        }
+
         if (trimmed.startsWith('{')) {
-            const jsonResult = parseJsonBeatsResponse(gptResult, plugin);
+            const jsonResult = parseJsonBeatsResponse(trimmed, plugin);
             if (jsonResult) return jsonResult;
         }
 

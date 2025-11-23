@@ -364,7 +364,8 @@ export function createTimelineSVG(
             const filteredScenesForIndex = scenesInActAndSubplot.filter(s => !isBeatNote(s));
             const sceneIndex = filteredScenesForIndex.indexOf(scene);
 
-            const sceneId = makeSceneId(actIndex, ring, sceneIndex, false, false);
+            const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;
+            const sceneId = makeSceneId(actIndex, ring, sceneIndex, false, false, sceneUniqueKey);
             
             // Extract grade from 2beats using helper function
             extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
@@ -497,7 +498,8 @@ export function createTimelineSVG(
                         
                         // Extract grade from 2beats for All Scenes mode using helper
                         const sceneIndex = combined.length - 1; // Current index in combined array
-                        const allScenesSceneId = makeSceneId(act, NUM_RINGS - 1, sceneIndex, true, true);
+                        const uniqueKey = resolution.scene?.path || `${resolution.scene?.title || ''}::${resolution.scene?.number ?? ''}::${resolution.scene?.when ?? ''}`;
+                        const allScenesSceneId = makeSceneId(act, NUM_RINGS - 1, sceneIndex, true, true, uniqueKey);
                         extractGradeFromScene(resolution.scene, allScenesSceneId, sceneGrades, plugin);
                     });
                     
@@ -557,7 +559,8 @@ export function createTimelineSVG(
 
                         const color = getFillForScene(scene, PUBLISH_STAGE_COLORS, subplotColorFor, true, forceSubplotFillColors);
                         const arcPath = sceneArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
-                        const sceneId = makeSceneId(act, ring, idx, true, true);
+                        const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;
+                        const sceneId = makeSceneId(act, ring, idx, true, true, sceneUniqueKey);
                         
                         // --- Create synopsis for OUTER ring item using matching ID ---
                         appendSynopsisElementForScene({
@@ -721,7 +724,8 @@ export function createTimelineSVG(
                             // Construct the arc path for the scene
                             const arcPath = sceneArcPath(innerR, outerR, sceneStartAngle, sceneEndAngle);
             
-                            const sceneId = `scene-path-${act}-${ring}-${idx}`;
+                            const sceneUniqueKey = scene.path || `${scene.title || ''}::${scene.number ?? ''}::${scene.when ?? ''}`;
+                            const sceneId = makeSceneId(act, ring, idx, false, false, sceneUniqueKey);
 
                             // Derive subplot index for matching synopsis color mapping
                             const subplotIdxAttr = (() => {
@@ -795,7 +799,7 @@ export function createTimelineSVG(
                                 const adjustmentRange = maxAdjustment * 2;
                                 const position = totalPlots > 1 ? plotIndex / (totalPlots - 1) : 0.5;
                                 const adjustment = (position * adjustmentRange) - maxAdjustment;
-                                const sceneId = `scene-path-${act}-${ring}-${idx}`;
+                                const sceneId = makeSceneId(act, ring, idx, false, false);
                                 svg += renderBeatSlice({ act, ring, idx, innerR, outerR, startAngle: plotStartAngle, endAngle: plotEndAngle, sceneId, beat: plotNote });
                                 currentAngle += plotAngularWidth;
                             });

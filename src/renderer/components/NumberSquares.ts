@@ -59,13 +59,19 @@ export function renderNumberSquaresUnified(params: {
     let textPathRadius: number;
     let sceneId: string;
 
+    const uniqueKey =
+      scene.path ||
+      (scene.title
+        ? `${scene.title}::${scene.number ?? ''}::${scene.when ?? ''}`
+        : undefined);
+
     if (positions && squareRadius !== undefined && act !== undefined && ringOuter !== undefined) {
       // All Scenes mode: use pre-calculated positions
       const pos = positions.get(idx);
       if (!pos) return;
       sceneStartAngle = pos.startAngle;
       textPathRadius = squareRadius;
-      sceneId = makeSceneId(act, ringOuter, idx, true, true);
+      sceneId = makeSceneId(act, ringOuter, idx, true, true, uniqueKey);
     } else if (NUM_RINGS && masterSubplotOrder && ringStartRadii && ringWidths && scenesByActAndSubplot) {
       // Main Plot mode: calculate positions on-the-fly
       const subplot = scene.subplot || 'Main Plot';
@@ -107,7 +113,7 @@ export function renderNumberSquaresUnified(params: {
       for (let i = 0; i < sceneIndex; i++) currentAngle += sceneAngularSize;
       sceneStartAngle = currentAngle;
       textPathRadius = (ringStartRadii[ring] + (ringStartRadii[ring] + ringWidths[ring])) / 2;
-      sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
+      sceneId = makeSceneId(actIndex, ring, sceneIndex, false, false, uniqueKey);
     } else {
       return; // Invalid parameters
     }
@@ -259,7 +265,10 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
       squareClasses += ' rt-missing-when';
       textClasses += ' rt-missing-when';
     }
-    const sceneId = `scene-path-${actIndex}-${ring}-${sceneIndex}`;
+    const uniqueKey =
+      scene.path ||
+      (scene.title ? `${scene.title}::${scene.number ?? ''}::${scene.when ?? ''}` : undefined);
+    const sceneId = makeSceneId(actIndex, ring, sceneIndex, false, false, uniqueKey);
     extractGradeFromScene(scene, sceneId, sceneGrades, plugin);
     const grade = sceneGrades.get(sceneId);
     if (plugin.settings.enableAiSceneAnalysis && grade) textClasses += ` rt-grade-${grade}`;

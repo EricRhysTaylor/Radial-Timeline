@@ -97,9 +97,9 @@ export function hasProcessableContent(fm: Record<string, unknown> | undefined): 
 function wasProcessedToday(frontmatter: Record<string, unknown> | undefined): boolean {
     if (!frontmatter) return false;
 
-    const beatsLastUpdated = frontmatter['Beats Last Updated'];
-    if (!beatsLastUpdated || typeof beatsLastUpdated !== 'string') return false;
-    const match = beatsLastUpdated.match(/^(.+?)\s+by\s+/);
+    const pulseLastUpdated = (frontmatter['Pulse Last Updated'] ?? frontmatter['Beats Last Updated']) as unknown;
+    if (!pulseLastUpdated || typeof pulseLastUpdated !== 'string') return false;
+    const match = pulseLastUpdated.match(/^(.+?)\s+by\s+/);
     if (!match) return false;
 
     try {
@@ -118,7 +118,7 @@ export function hasBeenProcessedForBeats(
 ): boolean {
     if (!frontmatter) return false;
 
-    const hasTimestamp = !!frontmatter['Beats Last Updated'];
+    const hasTimestamp = !!(frontmatter['Pulse Last Updated'] ?? frontmatter['Beats Last Updated']);
     const hasAnalysis =
         !!frontmatter['previousSceneAnalysis'] ||
         !!frontmatter['currentSceneAnalysis'] ||

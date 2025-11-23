@@ -133,6 +133,7 @@ export class SceneDataService {
                             : undefined;
                         
                         const pulseUpdate = getPulseUpdateFromMetadata(metadata);
+                        const pulseLastUpdated = metadata["Pulse Last Updated"] ?? metadata["Beats Last Updated"];
                         
                         // Parse Character field and strip Obsidian wiki links [[...]]
                         const rawCharacter = metadata.Character;
@@ -193,7 +194,8 @@ export class SceneDataService {
                                 ? (metadata["nextSceneAnalysis"] as string[]).join('\n')
                                 : metadata["nextSceneAnalysis"] as string | undefined,
                             itemType: "Scene",
-                            "Pulse Update": normalizeBooleanValue(pulseUpdate)
+                            "Pulse Update": normalizeBooleanValue(pulseUpdate),
+                            "Pulse Last Updated": typeof pulseLastUpdated === 'string' ? pulseLastUpdated : undefined
                         });
                     }
                 } else if (metadata && isStoryBeat(metadata.Class)) {
