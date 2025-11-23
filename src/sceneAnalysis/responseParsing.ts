@@ -7,26 +7,46 @@
 import type RadialTimelinePlugin from '../main';
 import type { BeatItem, ParsedSceneAnalysis, SceneAnalysisJsonResponse } from './types';
 
+function formatBeatLines(
+    items: BeatItem[] | undefined,
+    section: 'previous' | 'current' | 'next'
+): string {
+    if (!Array.isArray(items) || items.length === 0) return '';
+
+    return items
+        .map((item, index) => {
+            const sceneNumber = typeof item.scene === 'string' ? item.scene.trim() : '';
+            const title = typeof item.title === 'string' ? item.title.trim() : '';
+            const grade = typeof item.grade === 'string' ? item.grade.trim() : '';
+            const comment = typeof item.comment === 'string' ? item.comment.trim() : '';
+
+            let lineCore = '';
+
+            if (section === 'current' && index === 0) {
+                // Scene pulse headline: "<scene> <grade>"
+                lineCore = [sceneNumber, grade.toUpperCase()].filter(Boolean).join(' ').trim();
+            } else {
+                const pieces: string[] = [];
+                if (index === 0 && sceneNumber) pieces.push(sceneNumber);
+                if (title) pieces.push(title);
+                if (grade) pieces.push(grade);
+                lineCore = pieces.join(' ').trim();
+            }
+
+            if (!lineCore && comment) lineCore = comment;
+            const commentSegment = comment ? ` / ${comment}` : '';
+            return `- ${lineCore}${commentSegment}`.trim();
+        })
+        .join('\n');
+}
+
 function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin): ParsedSceneAnalysis | null {
     try {
         const parsed = JSON.parse(jsonResult) as SceneAnalysisJsonResponse;
-        const convertArrayToString = (items?: BeatItem[]): string => {
-            if (!Array.isArray(items) || items.length === 0) return '';
-            return items
-                .map(item => {
-                    const sceneSegment = item.scene ? `${item.scene}` : '';
-                    const titleSegment = item.title ? ` ${item.title}` : '';
-                    const gradeSegment = item.grade ? ` ${item.grade}` : '';
-                    const commentSegment = item.comment ? ` / ${item.comment}` : '';
-                    return `- ${sceneSegment}${titleSegment}${gradeSegment}${commentSegment}`.trim();
-                })
-                .join('\n');
-        };
-
         return {
-            previousSceneAnalysis: convertArrayToString(parsed.previousSceneAnalysis),
-            currentSceneAnalysis: convertArrayToString(parsed.currentSceneAnalysis),
-            nextSceneAnalysis: convertArrayToString(parsed.nextSceneAnalysis)
+            previousSceneAnalysis: formatBeatLines(parsed.previousSceneAnalysis, 'previous'),
+            currentSceneAnalysis: formatBeatLines(parsed.currentSceneAnalysis, 'current'),
+            nextSceneAnalysis: formatBeatLines(parsed.nextSceneAnalysis, 'next')
         };
     } catch (error) {
         console.error('[parseJsonBeatsResponse] Error parsing JSON beats response:', error);
