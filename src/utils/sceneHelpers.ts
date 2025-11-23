@@ -105,12 +105,13 @@ export interface SceneState {
  */
 export function extractGradeFromScene(
     scene: TimelineItem, 
-    sceneId: string, 
+    gradeKey: string | undefined, 
     sceneGrades: Map<string, string>, 
     plugin: PluginRendererFacade
 ): void {
     // Early return if AI features disabled - avoid all string processing
     if (!plugin.settings.enableAiSceneAnalysis) return;
+    if (!gradeKey) return;
     
     const analysisText = scene["currentSceneAnalysis"];
     if (!analysisText) return;
@@ -126,7 +127,7 @@ export function extractGradeFromScene(
         // Updated regex to match "[Number] [GradeLetter] / [Comment]" with optional YAML list marker
         const gradeMatch = firstLine.match(/^-?\s*(?:\d+(?:\.\d+)?\s+)?([ABC])(?![A-Za-z0-9])/i);
         if (gradeMatch && gradeMatch[1]) {
-            sceneGrades.set(sceneId, gradeMatch[1].toUpperCase());
+            sceneGrades.set(gradeKey, gradeMatch[1].toUpperCase());
         }
     } catch (e) {
         // Silently handle errors per plugin guidelines

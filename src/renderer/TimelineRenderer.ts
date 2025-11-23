@@ -1198,6 +1198,15 @@ export function createTimelineSVG(
                 const positions = new Map<number, { startAngle: number; endAngle: number }>();
                 positionsDetailed.forEach((p, i) => positions.set(i, { startAngle: p.startAngle, endAngle: p.endAngle }));
 
+                if (plugin.settings.enableAiSceneAnalysis) {
+                    sortedCombined.forEach((sceneItem, combinedIdx) => {
+                        if (isBeatNote(sceneItem)) return;
+                        const uniqueKey = sceneItem.path || `${sceneItem.title || ''}::${sceneItem.number ?? ''}::${sceneItem.when ?? ''}`;
+                        const combinedSceneId = makeSceneId(act, ringOuter, combinedIdx, true, true, uniqueKey);
+                        extractGradeFromScene(sceneItem, combinedSceneId, sceneGrades, plugin);
+                    });
+                }
+
                 // Draw squares for non-Plot scenes that have a number
                 svg += renderOuterRingNumberSquares({
                     plugin,
