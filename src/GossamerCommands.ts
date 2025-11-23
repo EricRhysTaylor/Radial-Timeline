@@ -2,7 +2,7 @@
  * Gossamer Commands and State - Manual Score Entry
  */
 import type RadialTimelinePlugin from './main';
-import { DEFAULT_SETTINGS } from './main';
+import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { buildRunFromDefault, buildAllGossamerRuns, GossamerRun, normalizeBeatName, appendGossamerScore, extractBeatOrder } from './utils/gossamer';
 import { Notice, TFile, App } from 'obsidian';
 import { GossamerScoreModal } from './modals/GossamerScoreModal';
@@ -11,10 +11,8 @@ import { TimelineMode } from './modes/ModeDefinition';
 import { assembleManuscript, type AssembledManuscript, type SceneContent } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { callGeminiApi } from './api/geminiApi';
-
-const DEFAULT_GEMINI_MODEL_ID = DEFAULT_SETTINGS.geminiModelId || 'gemini-3-pro-preview';
-const resolveGeminiModelId = (plugin: RadialTimelinePlugin): string =>
-  plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
+const resolveGeminiModelId = (plugin?: RadialTimelinePlugin): string =>
+  plugin?.settings?.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
 
 // Helper to find Beat note by beat title (prefers Beat over Plot)
 function findBeatNoteByTitle(files: TFile[], beatTitle: string, app: App): TFile | null {

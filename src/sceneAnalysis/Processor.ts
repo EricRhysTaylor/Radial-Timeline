@@ -265,8 +265,9 @@ export async function processBySubplotOrder(
                 const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
                 const sceneNameForLog = triplet.current.file.basename;
+                const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
                 const runAi = createAiRunner(plugin, vault, callAiProvider);
-                const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog);
+                const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog);
 
                 if (aiResult.result) {
                     const parsedAnalysis = parseGptResult(aiResult.result, plugin);
@@ -331,7 +332,8 @@ export async function processSubplotWithModal(
         throw new Error(`No flagged scenes (Review Update: Yes/True/1) with content found for "${subplotName}".`);
     }
 
-    const triplets = buildTripletsByIndex(validScenes, validScenes, (s) => s.file.path);
+    const contextScenes = filtered.filter(scene => hasProcessableContent(scene.frontmatter));
+    const triplets = buildTripletsByIndex(contextScenes, validScenes, (s) => s.file.path);
     const isResuming = plugin.settings._isResuming || false;
     if (isResuming) {
         plugin.settings._isResuming = false;

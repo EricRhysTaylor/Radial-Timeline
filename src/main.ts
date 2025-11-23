@@ -31,6 +31,7 @@ import type { SceneAnalysisProcessingModal } from './modals/SceneAnalysisProcess
 import { TimelineMetricsService } from './services/TimelineMetricsService';
 import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
 import { SettingsService } from './services/SettingsService';
+import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 
 
 // Declare the variable that will be injected by the build process
@@ -76,7 +77,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     anthropicApiKey: '', // <<< ADDED: Default empty string
     anthropicModelId: 'claude-sonnet-4-5-20250929', // Default to Sonnet 4.5 (20250929)
     geminiApiKey: '',
-    geminiModelId: 'gemini-3-pro-preview', // Default to Gemini 3 Pro Preview
+    geminiModelId: DEFAULT_GEMINI_MODEL_ID, // Default to Gemini 3 Pro Preview
     defaultAiProvider: 'openai',
     openaiModelId: 'gpt-5.1-chat-latest', // Default to GPT-5.1
     enableAiSceneAnalysis: true,
@@ -220,7 +221,7 @@ export default class RadialTimelinePlugin extends Plugin {
     private getModelId(): string {
         const provider = this.aiProvider;
         if (provider === 'anthropic') return this.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
-        if (provider === 'gemini') return this.settings.geminiModelId || 'gemini-3-pro-preview';
+        if (provider === 'gemini') return this.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
         return this.settings.openaiModelId || 'gpt-5.1-chat-latest';
     }
     

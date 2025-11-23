@@ -2,12 +2,10 @@
  * Unified provider router
  */
 import type RadialTimelinePlugin from '../main';
-import { DEFAULT_SETTINGS } from '../main';
+import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { callOpenAiApi, OpenAiApiResponse } from './openaiApi';
 import { callAnthropicApi, AnthropicApiResponse } from './anthropicApi';
 import { callGeminiApi, GeminiApiResponse } from './geminiApi';
-
-const DEFAULT_GEMINI_MODEL_ID = DEFAULT_SETTINGS.geminiModelId || 'gemini-3-pro-preview';
 
 export interface ProviderCallArgs {
   userPrompt: string;

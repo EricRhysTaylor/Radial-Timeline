@@ -32,6 +32,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 await plugin.saveSettings();
                 plugin.refreshTimelineIfNeeded(null);
             });
+            drop.selectEl.style.setProperty('width', 'fit-content', 'important');
         });
 
     // 2. Metadata refresh debounce

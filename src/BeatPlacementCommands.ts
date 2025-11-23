@@ -3,15 +3,13 @@
  * Separate from Gossamer - focuses on optimal structural beat positioning
  */
 import type RadialTimelinePlugin from './main';
-import { DEFAULT_SETTINGS } from './main';
+import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { Notice, TFile } from 'obsidian';
 import { BeatPlacementModal, type ManuscriptInfo } from './modals/BeatPlacementModal';
 import { assembleManuscript } from './utils/manuscript';
 import { buildBeatPlacementPrompt, getBeatPlacementJsonSchema, type BeatPlacementInfo } from './ai/prompts/beatPlacement';
 import { callGeminiApi, type GeminiApiResponse } from './api/geminiApi';
 import { extractBeatOrder } from './utils/gossamer';
-
-const DEFAULT_GEMINI_MODEL_ID = DEFAULT_SETTINGS.geminiModelId || 'gemini-3-pro-preview';
 
 /**
  * Register Beat Placement Optimization command

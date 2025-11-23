@@ -6,14 +6,13 @@
 
 import { Notice, type Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { DEFAULT_SETTINGS } from '../main';
+import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { callAnthropicApi } from '../api/anthropicApi';
 import { callOpenAiApi } from '../api/openaiApi';
 import { callGeminiApi } from '../api/geminiApi';
 import { getSceneAnalysisJsonSchema } from '../ai/prompts/sceneAnalysis';
 import type { AiProviderResponse, ApiRequestData } from './types';
 
-const DEFAULT_GEMINI_MODEL_ID = DEFAULT_SETTINGS.geminiModelId || 'gemini-3-pro-preview';
 
 async function logApiInteractionToFile(
     plugin: RadialTimelinePlugin,

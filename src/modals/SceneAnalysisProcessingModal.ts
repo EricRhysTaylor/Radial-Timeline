@@ -8,6 +8,7 @@
  */
 import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all';
 
@@ -668,7 +669,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
         
         if (provider === 'gemini') {
-            return this.plugin.settings.geminiModelId || 'gemini-3-pro-preview';
+            return this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
         }
         
         return this.plugin.settings.openaiModelId || 'gpt-4o';

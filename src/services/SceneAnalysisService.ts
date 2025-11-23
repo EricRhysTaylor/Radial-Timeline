@@ -6,6 +6,7 @@
 import { App, Modal, Notice, ButtonComponent, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
+import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 
 export class SceneAnalysisService {
     constructor(private plugin: RadialTimelinePlugin) {}
@@ -121,7 +122,7 @@ export class SceneAnalysisService {
             return modelId;
         }
         if (provider === 'gemini') {
-            const modelId = this.plugin.settings.geminiModelId || 'gemini-3-pro-preview';
+            const modelId = this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
             return modelId;
         }
         const modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
@@ -153,6 +154,7 @@ class SubplotPickerModal extends Modal {
     private selectedSubplot: string;
     private statsEl: HTMLElement | null = null;
     private dropdown: DropdownComponent | null = null;
+    private infoTextEl: HTMLParagraphElement | null = null;
     private readonly statsBySubplot: Map<string, { flagged: number; processable: number; total: number }>;
 
     constructor(
@@ -173,7 +175,8 @@ class SubplotPickerModal extends Modal {
         titleEl.setText('Select subplot for pulse processing');
         const modelName = this.service.getActiveModelName();
         const infoEl = contentEl.createDiv({ cls: 'rt-subplot-picker-info' });
-        infoEl.createEl('p', { text: `Process pulse using ${modelName}. This will analyze scenes in the subplot "${this.selectedSubplot}" and update their pulse metadata.` });
+        this.infoTextEl = infoEl.createEl('p');
+        this.updateInfoText(modelName);
         infoEl.createEl('p', { text: 'Requires scenes with "Review Update: Yes" and Status: Working or Complete.', cls: 'rt-subplot-picker-hint' });
 
         const selectContainer = contentEl.createDiv({ cls: 'rt-subplot-picker-select' });
@@ -185,6 +188,7 @@ class SubplotPickerModal extends Modal {
         this.dropdown.setValue(this.selectedSubplot);
         this.dropdown.onChange(value => {
             this.selectedSubplot = value;
+            this.updateInfoText(modelName);
             this.updateStats(value);
         });
 
@@ -232,5 +236,10 @@ class SubplotPickerModal extends Modal {
             throw new Error(`Unknown subplot selection: ${subplotName}`);
         }
         this.statsEl.setText(`${stats.flagged} scene${stats.flagged !== 1 ? 's' : ''} will be processed (${stats.processable} processable, ${stats.total} total)`);
+    }
+
+    private updateInfoText(modelName: string): void {
+        if (!this.infoTextEl) return;
+        this.infoTextEl.setText(`Process pulse using ${modelName}. This will analyze scenes in the subplot "${this.selectedSubplot}" and update their pulse metadata.`);
     }
 }
