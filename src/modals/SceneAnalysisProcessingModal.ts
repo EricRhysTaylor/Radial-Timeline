@@ -156,7 +156,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             modesSection,
             'flagged',
             'Process flagged scenes (Recommended)',
-            'Processes scenes with Review Update: Yes (or Beats Update: Yes) and Status: Working or Complete. Use when you\'ve revised scenes and want to update their pulse.',
+            'Processes scenes with Pulse Update: Yes (legacy Review/Beats Update) and Status: Working or Complete. Use when you\'ve revised scenes and want to update their pulse.',
             true
         );
         
@@ -165,7 +165,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             modesSection,
             'unprocessed',
             'Process unprocessed scenes',
-            'Processes scenes with Status: Complete or Working that don\'t have pulse yet. Perfect for resuming after interruptions. Ignores Review Update flag.',
+            'Processes scenes with Status: Complete or Working that don\'t have pulse yet. Perfect for resuming after interruptions. Ignores Pulse Update flag.',
             false
         );
         

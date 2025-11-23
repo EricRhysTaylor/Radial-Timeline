@@ -335,7 +335,7 @@ Revision:                 # Revision count (leave blank until stage > zero)
 Pending Edits:            # Notes for future revisions (especially for zero draft mode)
 Words:                    # Scene word count
 Book:                     # Book title (appears in timeline tab, defaults to "Book 1")
-Beats Update:             # AI-generated story beat analysis flag
+Pulse Update:             # AI-generated scene pulse analysis flag
 ---
 ```
 

@@ -40,6 +40,18 @@ export function renderAiSection(params: {
                 plugin.refreshTimelineIfNeeded(null);
             }));
 
+    const tripletDisplaySetting = new Settings(containerEl)
+        .setName('Show previous and next scene analysis')
+        .setDesc('When enabled, hover cards include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.showFullTripletAnalysis ?? true)
+            .onChange(async (value) => {
+                plugin.settings.showFullTripletAnalysis = value;
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            }));
+    params.addAiRelatedElement(tripletDisplaySetting.settingEl);
+
     // Single model picker
     const modelPickerSetting = new Settings(containerEl)
         .setName('Model')

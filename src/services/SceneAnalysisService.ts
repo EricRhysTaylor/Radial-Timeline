@@ -89,7 +89,8 @@ export class SceneAnalysisService {
             });
             const validScenes = filtered.filter(scene => {
                 const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
-                return (statusValue === 'Working' || statusValue === 'Complete') && normalizeBooleanValue(scene['Beats Update']);
+                const pulseFlag = scene['Pulse Update'] ?? scene['Beats Update'];
+                return (statusValue === 'Working' || statusValue === 'Complete') && normalizeBooleanValue(pulseFlag);
             });
             const processableScenes = filtered.filter(scene => {
                 const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
@@ -106,7 +107,10 @@ export class SceneAnalysisService {
             const statusValue = Array.isArray(scene.status) ? scene.status[0] : scene.status;
             return statusValue === 'Working' || statusValue === 'Complete';
         });
-        const flaggedCount = processableScenes.filter(scene => normalizeBooleanValue(scene['Beats Update'])).length;
+        const flaggedCount = processableScenes.filter(scene => {
+            const pulseFlag = scene['Pulse Update'] ?? scene['Beats Update'];
+            return normalizeBooleanValue(pulseFlag);
+        }).length;
         return {
             flagged: flaggedCount,
             processable: processableScenes.length,
@@ -177,7 +181,7 @@ class SubplotPickerModal extends Modal {
         const infoEl = contentEl.createDiv({ cls: 'rt-subplot-picker-info' });
         this.infoTextEl = infoEl.createEl('p');
         this.updateInfoText(modelName);
-        infoEl.createEl('p', { text: 'Requires scenes with "Review Update: Yes" and Status: Working or Complete.', cls: 'rt-subplot-picker-hint' });
+        infoEl.createEl('p', { text: 'Requires scenes with "Pulse Update: Yes" (or legacy Review/Beats Update) and Status: Working or Complete.', cls: 'rt-subplot-picker-hint' });
 
         const selectContainer = contentEl.createDiv({ cls: 'rt-subplot-picker-select' });
         selectContainer.createEl('label', { text: 'Select subplot:', cls: 'rt-subplot-picker-label' });

@@ -81,6 +81,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     defaultAiProvider: 'openai',
     openaiModelId: 'gpt-5.1-chat-latest', // Default to GPT-5.1
     enableAiSceneAnalysis: true,
+    showFullTripletAnalysis: true,
     enableZeroDraftMode: false,
     metadataRefreshDebounceMs: 10000,
     showEstimate: true,

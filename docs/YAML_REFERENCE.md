@@ -116,7 +116,7 @@ currentSceneAnalysis:
   - Follow-up + / Ally reveals motive
 nextSceneAnalysis:
   - 14 Setback ? / Plan fails at the last moment New approach needed
-Beats Update: Yes
+Pulse Update: Yes
 ---
 ```
 
@@ -402,10 +402,10 @@ nextSceneAnalysis:
 
 ---
 
-### Beats Update
+### Pulse Update
 **Optional** | Type: String
 
-Set to `Yes` to flag scene for AI beats triplet analysis. Used by Scene Analysis commands.
+Set to `Yes` to flag a scene for AI pulse (triplet) analysis. Legacy `Review Update`/`Beats Update` values are still recognized.
 
 ---
 
@@ -480,5 +480,5 @@ Example custom fields:
 2. **Add fields gradually**: Introduce more fields as your workflow develops
 3. **Use templates**: Create scene/beat templates with your preferred fields
 4. **Link liberally**: Use wiki links for characters, places, and cross-references
-5. **AI beats**: Set `Beats Update: Yes` to include in analysis runs
+5. **AI beats**: Set `Pulse Update: Yes` to include in analysis runs
 6. **Manual line breaks**: Use `[br]` in AI beat text to control hover display wrapping

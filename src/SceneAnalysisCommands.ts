@@ -15,7 +15,8 @@ import {
     getAllSceneData,
     getSubplotNamesFromFM,
     hasBeenProcessedForBeats,
-    hasProcessableContent
+    hasProcessableContent,
+    getPulseUpdateFlag
 } from './sceneAnalysis/data';
 import { callAiProvider } from './sceneAnalysis/aiProvider';
 import { parseGptResult } from './sceneAnalysis/responseParsing';
@@ -83,12 +84,26 @@ async function updateSceneFile(
             fmObj['Beats Last Updated'] = updatedValue;
 
             // After a successful update, always set the processing flag to No/False
-            // If lowercase beatsupdate exists, update it; otherwise use Beats Update
-            if (Object.prototype.hasOwnProperty.call(fmObj, 'beatsupdate')) {
-                fmObj['beatsupdate'] = false; // Use boolean false for consistency
-            } else {
-                // Always set Beats Update=False (canonical form) after processing
-                fmObj['Beats Update'] = false;
+            const pulseKeys = [
+                'Pulse Update',
+                'PulseUpdate',
+                'pulseupdate',
+                'Beats Update',
+                'BeatsUpdate',
+                'beatsupdate',
+                'Review Update',
+                'ReviewUpdate',
+                'reviewupdate'
+            ];
+            let updatedFlag = false;
+            for (const key of pulseKeys) {
+                if (Object.prototype.hasOwnProperty.call(fmObj, key)) {
+                    fmObj[key] = false;
+                    updatedFlag = true;
+                }
+            }
+            if (!updatedFlag) {
+                fmObj['Pulse Update'] = false;
             }
 
             const b1 = parsedAnalysis['previousSceneAnalysis']?.trim();
@@ -242,8 +257,8 @@ export async function processBySubplotNameWithModal(
             const allScenes = await getAllSceneData(plugin, vault);
             const filtered = allScenes.filter(scene => getSubplotNamesFromFM(scene.frontmatter).includes(subplotName));
             const validScenes = filtered.filter(scene => {
-                const beatsUpdate = (scene.frontmatter?.beatsupdate || scene.frontmatter?.BeatsUpdate || scene.frontmatter?.['Beats Update']) as unknown;
-                return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(beatsUpdate);
+                const pulseUpdate = getPulseUpdateFlag(scene.frontmatter);
+                return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(pulseUpdate);
             });
             return validScenes.length;
         } catch (error) {

@@ -29,11 +29,25 @@ export async function updateSceneAnalysis(
       } as Intl.DateTimeFormatOptions);
       fmObj['Beats Last Updated'] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
 
-      if (Object.prototype.hasOwnProperty.call(fmObj, 'Review Update')) fmObj['Review Update'] = false;
-      else if (Object.prototype.hasOwnProperty.call(fmObj, 'ReviewUpdate')) fmObj['ReviewUpdate'] = false;
-      else if (Object.prototype.hasOwnProperty.call(fmObj, 'reviewupdate')) fmObj['reviewupdate'] = false;
-      else if (Object.prototype.hasOwnProperty.call(fmObj, 'beatsupdate')) fmObj['beatsupdate'] = false;
-      else fmObj['Beats Update'] = false;
+      const pulseKeys = [
+        'Pulse Update',
+        'PulseUpdate',
+        'pulseupdate',
+        'Beats Update',
+        'BeatsUpdate',
+        'beatsupdate',
+        'Review Update',
+        'ReviewUpdate',
+        'reviewupdate'
+      ];
+      let updatedFlag = false;
+      for (const key of pulseKeys) {
+        if (Object.prototype.hasOwnProperty.call(fmObj, key)) {
+          fmObj[key] = false;
+          updatedFlag = true;
+        }
+      }
+      if (!updatedFlag) fmObj['Pulse Update'] = false;
 
       const b1 = parsedAnalysis['previousSceneAnalysis']?.trim();
       const b2 = parsedAnalysis['currentSceneAnalysis']?.trim();
@@ -48,5 +62,4 @@ export async function updateSceneAnalysis(
     return false;
   }
 }
-
 

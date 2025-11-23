@@ -50,10 +50,26 @@ async function updateSceneFile(
             const updatedValue = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
             fmObj['Beats Last Updated'] = updatedValue;
 
-            if (Object.prototype.hasOwnProperty.call(fmObj, 'beatsupdate')) {
-                fmObj['beatsupdate'] = false;
-            } else {
-                fmObj['Beats Update'] = false;
+            const pulseKeys = [
+                'Pulse Update',
+                'PulseUpdate',
+                'pulseupdate',
+                'Beats Update',
+                'BeatsUpdate',
+                'beatsupdate',
+                'Review Update',
+                'ReviewUpdate',
+                'reviewupdate'
+            ];
+            let updatedFlag = false;
+            for (const key of pulseKeys) {
+                if (Object.prototype.hasOwnProperty.call(fmObj, key)) {
+                    fmObj[key] = false;
+                    updatedFlag = true;
+                }
+            }
+            if (!updatedFlag) {
+                fmObj['Pulse Update'] = false;
             }
 
             const b1 = parsedAnalysis['previousSceneAnalysis']?.trim();
@@ -103,7 +119,7 @@ export async function testYamlUpdateFormatting(
         Subplot: ['Test Arc'],
         When: '2024-01-01',
         Words: 10,
-        'Beats Update': 'Yes'
+        'Pulse Update': 'Yes'
     };
 
     new Notice(`Starting YAML update test on ${dummyFilePath}...`);
@@ -198,7 +214,7 @@ export async function createTemplateScene(
             Revision: 0,
             'Pending Edits': '',
             Words: 0,
-            'Beats Update': ''
+            'Pulse Update': ''
         } as Record<string, unknown>;
 
         const body = '\nWrite your scene here. Fill in Character and Subplot fields as needed. Use array format for multiple items.';

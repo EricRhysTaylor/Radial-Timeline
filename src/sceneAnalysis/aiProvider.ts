@@ -11,7 +11,8 @@ import { callAnthropicApi } from '../api/anthropicApi';
 import { callOpenAiApi } from '../api/openaiApi';
 import { callGeminiApi } from '../api/geminiApi';
 import { getSceneAnalysisJsonSchema } from '../ai/prompts/sceneAnalysis';
-import type { AiProviderResponse, ApiRequestData } from './types';
+import type { AiProviderResponse, ApiRequestData, ParsedSceneAnalysis } from './types';
+import { parseGptResult } from './responseParsing';
 
 
 async function logApiInteractionToFile(
@@ -24,7 +25,8 @@ async function logApiInteractionToFile(
     subplotName: string | null,
     commandContext: string,
     sceneName?: string,
-    tripletInfo?: { prev: string; current: string; next: string }
+    tripletInfo?: { prev: string; current: string; next: string },
+    analysis?: ParsedSceneAnalysis | null
 ): Promise<void> {
     if (!plugin.settings.logApiInteractions) {
         return;
@@ -163,6 +165,23 @@ async function logApiInteractionToFile(
         }
     }
 
+    const formatAnalysisSection = (header: string, content: string | undefined): string => {
+        if (!content || !content.trim()) return `${header}:\n  - Not available`;
+        const lines = content
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean)
+            .map(line => (line.startsWith('-') ? line : `- ${line}`));
+        return `${header}:\n${lines.map(line => `  ${line}`).join('\n')}`;
+    };
+
+    const structuredAnalysisSection = analysis
+        ? `\n## Scene Analysis\n\n` +
+            `${formatAnalysisSection('previousSceneAnalysis', analysis.previousSceneAnalysis)}\n\n` +
+            `${formatAnalysisSection('currentSceneAnalysis', analysis.currentSceneAnalysis)}\n\n` +
+            `${formatAnalysisSection('nextSceneAnalysis', analysis.nextSceneAnalysis)}\n\n---\n`
+        : '';
+
     const fileContent = `# AI Log — ${new Date().toLocaleString()}\n\n` +
         `**Provider:** ${provider}\n` +
         `**Model:** ${modelId}\n` +
@@ -171,6 +190,7 @@ async function logApiInteractionToFile(
         subplotSection +
         `\n**Prompt:**\n\`\`\`\n${promptContent}\n\`\`\`\n` +
         tripletSection +
+        structuredAnalysisSection +
         `\n${usageString}\n` +
         outcomeSection +
         `\n## Raw Request\n\`\`\`json\n${requestJson}\n\`\`\`\n` +
@@ -362,6 +382,8 @@ export async function callAiProvider(
             throw new Error(`Unsupported AI provider: ${provider}`);
         }
 
+        const parsedForLog = result ? parseGptResult(result, plugin) : null;
+
         await logApiInteractionToFile(
             plugin,
             vault,
@@ -372,7 +394,8 @@ export async function callAiProvider(
             subplotName,
             commandContext,
             sceneName,
-            tripletInfo
+            tripletInfo,
+            parsedForLog
         );
 
         return { result, modelIdUsed: modelId };
@@ -394,7 +417,8 @@ export async function callAiProvider(
             subplotName,
             commandContext,
             sceneName,
-            tripletInfo
+            tripletInfo,
+            null
         );
 
         return { result: null, modelIdUsed: modelId || null };

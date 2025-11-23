@@ -412,8 +412,10 @@ export default class SynopsisManager {
       // Call addSpacer with height 0, and store the returned start position
       let currentMetadataY = addSpacer(synopsisBottomY, 0);
 
+      const showTripletNeighbors = this.plugin.settings.showFullTripletAnalysis ?? true;
+
       // Process previousSceneAnalysis metadata if it exists and AI scene analysis is enabled
-      if (this.plugin.settings.enableAiSceneAnalysis && scene["previousSceneAnalysis"]) {
+      if (this.plugin.settings.enableAiSceneAnalysis && showTripletNeighbors && scene["previousSceneAnalysis"]) {
         const beatsY = currentMetadataY;
         const beatsText = scene["previousSceneAnalysis"] || '';
         const linesAdded = this.formatBeatsText(beatsText, 'previousSceneAnalysis', synopsisTextGroup, beatsY, lineHeight, 0); // Pass 'previousSceneAnalysis'
@@ -437,7 +439,7 @@ export default class SynopsisManager {
       }
       
       // Process nextSceneAnalysis metadata if it exists and AI scene analysis is enabled
-      if (this.plugin.settings.enableAiSceneAnalysis && scene["nextSceneAnalysis"]) {
+      if (this.plugin.settings.enableAiSceneAnalysis && showTripletNeighbors && scene["nextSceneAnalysis"]) {
         const beatsY = currentMetadataY;
         const beatsText = scene["nextSceneAnalysis"] || '';
         const linesAdded = this.formatBeatsText(beatsText, 'nextSceneAnalysis', synopsisTextGroup, beatsY, lineHeight, 0); // Pass 'nextSceneAnalysis'

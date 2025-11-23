@@ -42,6 +42,27 @@ export function getSubplotNamesFromFM(fm: Record<string, unknown>): string[] {
     return [];
 }
 
+export function getPulseUpdateFlag(fm: Record<string, unknown> | undefined): unknown {
+    if (!fm) return undefined;
+    const keys = [
+        'Pulse Update',
+        'PulseUpdate',
+        'pulseupdate',
+        'Beats Update',
+        'BeatsUpdate',
+        'beatsupdate',
+        'Review Update',
+        'ReviewUpdate',
+        'reviewupdate'
+    ];
+    for (const key of keys) {
+        if (Object.prototype.hasOwnProperty.call(fm, key)) {
+            return (fm as Record<string, unknown>)[key];
+        }
+    }
+    return undefined;
+}
+
 function hasWordsContent(fm: Record<string, unknown>): boolean {
     const w1 = fm?.words as unknown;
     const w2 = (fm as Record<string, unknown>)['Words'] as unknown;
@@ -173,14 +194,8 @@ export async function calculateSceneCount(
 
     const processableScenes = allScenes.filter(scene => {
         if (mode === 'flagged') {
-            const beatsUpdateFlag = 
-                scene.frontmatter?.['Review Update'] ?? 
-                scene.frontmatter?.ReviewUpdate ?? 
-                scene.frontmatter?.reviewupdate ?? 
-                scene.frontmatter?.beatsupdate ?? 
-                scene.frontmatter?.BeatsUpdate ?? 
-                scene.frontmatter?.['Beats Update'];
-            return normalizeBooleanValue(beatsUpdateFlag) && hasProcessableContent(scene.frontmatter);
+            const pulseUpdateFlag = getPulseUpdateFlag(scene.frontmatter);
+            return normalizeBooleanValue(pulseUpdateFlag) && hasProcessableContent(scene.frontmatter);
         }
         return hasProcessableContent(scene.frontmatter);
     });
@@ -220,14 +235,7 @@ export async function calculateFlaggedCount(
     const allScenes = await getAllSceneData(plugin, vault);
     allScenes.sort(compareScenesByOrder);
     const isFlagged = (scene: SceneData) =>
-        normalizeBooleanValue(
-            scene.frontmatter?.['Review Update'] ?? 
-            scene.frontmatter?.ReviewUpdate ?? 
-            scene.frontmatter?.reviewupdate ?? 
-            scene.frontmatter?.beatsupdate ?? 
-            scene.frontmatter?.BeatsUpdate ?? 
-            scene.frontmatter?.['Beats Update']
-        );
+        normalizeBooleanValue(getPulseUpdateFlag(scene.frontmatter));
 
     if (mode === 'flagged') {
         return allScenes.filter(isFlagged).length;

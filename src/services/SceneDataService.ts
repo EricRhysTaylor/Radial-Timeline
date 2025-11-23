@@ -29,6 +29,28 @@ export interface RadialTimelineSettings {
     dominantSubplots?: Record<string, string>;
 }
 
+const PULSE_FLAG_METADATA_KEYS = [
+    'Pulse Update',
+    'PulseUpdate',
+    'pulseupdate',
+    'Beats Update',
+    'BeatsUpdate',
+    'beatsupdate',
+    'Review Update',
+    'ReviewUpdate',
+    'reviewupdate'
+];
+
+function getPulseUpdateFromMetadata(metadata: Record<string, unknown> | undefined): unknown {
+    if (!metadata) return undefined;
+    for (const key of PULSE_FLAG_METADATA_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(metadata, key)) {
+            return metadata[key];
+        }
+    }
+    return undefined;
+}
+
 export class SceneDataService {
     private app: App;
     private settings: RadialTimelineSettings;
@@ -110,7 +132,7 @@ export class SceneDataService {
                             ? String(durationValue) 
                             : undefined;
                         
-                        const beatsUpdate = metadata["Beats Update"];
+                        const pulseUpdate = getPulseUpdateFromMetadata(metadata);
                         
                         // Parse Character field and strip Obsidian wiki links [[...]]
                         const rawCharacter = metadata.Character;
@@ -171,7 +193,7 @@ export class SceneDataService {
                                 ? (metadata["nextSceneAnalysis"] as string[]).join('\n')
                                 : metadata["nextSceneAnalysis"] as string | undefined,
                             itemType: "Scene",
-                            "Beats Update": normalizeBooleanValue(beatsUpdate)
+                            "Pulse Update": normalizeBooleanValue(pulseUpdate)
                         });
                     }
                 } else if (metadata && isStoryBeat(metadata.Class)) {

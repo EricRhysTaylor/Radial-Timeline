@@ -15,7 +15,8 @@ import {
     compareScenesByOrder,
     getSubplotNamesFromFM,
     hasBeenProcessedForBeats,
-    hasProcessableContent
+    hasProcessableContent,
+    getPulseUpdateFlag
 } from './data';
 import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import { buildSceneAnalysisPrompt } from '../ai/prompts/sceneAnalysis';
@@ -43,14 +44,8 @@ export async function processWithModal(
 
     const processableScenes = allScenes.filter(scene => {
         if (mode === 'flagged') {
-            const beatsUpdateFlag = 
-                scene.frontmatter?.['Review Update'] ?? 
-                scene.frontmatter?.ReviewUpdate ?? 
-                scene.frontmatter?.reviewupdate ?? 
-                scene.frontmatter?.beatsupdate ?? 
-                scene.frontmatter?.BeatsUpdate ?? 
-                scene.frontmatter?.['Beats Update'];
-            return normalizeBooleanValue(beatsUpdateFlag);
+            const pulseUpdateFlag = getPulseUpdateFlag(scene.frontmatter);
+            return normalizeBooleanValue(pulseUpdateFlag);
         }
         return hasProcessableContent(scene.frontmatter);
     });
@@ -61,14 +56,8 @@ export async function processWithModal(
     let processedCount = 0;
     let totalToProcess = 0;
     for (const triplet of triplets) {
-        const beatsUpdateFlag = 
-            triplet.current.frontmatter?.['Review Update'] ?? 
-            triplet.current.frontmatter?.ReviewUpdate ?? 
-            triplet.current.frontmatter?.reviewupdate ?? 
-            triplet.current.frontmatter?.beatsupdate ?? 
-            triplet.current.frontmatter?.BeatsUpdate ?? 
-            triplet.current.frontmatter?.['Beats Update'];
-        const isFlagged = normalizeBooleanValue(beatsUpdateFlag);
+        const pulseUpdateFlag = getPulseUpdateFlag(triplet.current.frontmatter);
+        const isFlagged = normalizeBooleanValue(pulseUpdateFlag);
 
         if (mode === 'flagged') {
             if (isFlagged) totalToProcess++;
@@ -97,14 +86,8 @@ export async function processWithModal(
             throw new Error('Processing aborted by user');
         }
 
-        const beatsUpdateFlag = 
-            triplet.current.frontmatter?.['Review Update'] ?? 
-            triplet.current.frontmatter?.ReviewUpdate ?? 
-            triplet.current.frontmatter?.reviewupdate ?? 
-            triplet.current.frontmatter?.beatsupdate ?? 
-            triplet.current.frontmatter?.BeatsUpdate ?? 
-            triplet.current.frontmatter?.['Beats Update'];
-        const isFlagged = normalizeBooleanValue(beatsUpdateFlag);
+        const pulseUpdateFlag = getPulseUpdateFlag(triplet.current.frontmatter);
+        const isFlagged = normalizeBooleanValue(pulseUpdateFlag);
 
         let shouldProcess = false;
         if (mode === 'flagged') {
@@ -204,18 +187,12 @@ export async function processBySubplotOrder(
             const scenes = scenesBySubplot[subplotName];
             scenes.sort(compareScenesByOrder);
             const validScenes = scenes.filter(scene => {
-                const beatsUpdate = 
-                    scene.frontmatter?.['Review Update'] ?? 
-                    scene.frontmatter?.ReviewUpdate ?? 
-                    scene.frontmatter?.reviewupdate ?? 
-                    scene.frontmatter?.beatsupdate ?? 
-                    scene.frontmatter?.BeatsUpdate ?? 
-                    scene.frontmatter?.['Beats Update'];
-                if (normalizeBooleanValue(beatsUpdate) && !hasProcessableContent(scene.frontmatter)) {
-                    const msg = `Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has Review Update: Yes/True but Status is not working/complete. Skipping.`;
+                const pulseUpdate = getPulseUpdateFlag(scene.frontmatter);
+                if (normalizeBooleanValue(pulseUpdate) && !hasProcessableContent(scene.frontmatter)) {
+                    const msg = `Scene ${scene.sceneNumber ?? scene.file.basename} (subplot ${subplotName}) has Pulse Update set but Status is not working/complete. Skipping.`;
                     new Notice(msg, 6000);
                 }
-                return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(beatsUpdate);
+                return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(pulseUpdate);
             });
             totalTripletsAcrossSubplots += validScenes.length;
         });
@@ -230,25 +207,13 @@ export async function processBySubplotOrder(
             const processableContentScenes = orderedScenes.filter(scene => hasProcessableContent(scene.frontmatter));
             const flaggedInOrder = orderedScenes.filter(s =>
                 hasProcessableContent(s.frontmatter) &&
-                normalizeBooleanValue(
-                    s.frontmatter?.['Review Update'] ?? 
-                    s.frontmatter?.ReviewUpdate ?? 
-                    s.frontmatter?.reviewupdate ?? 
-                    s.frontmatter?.beatsupdate ?? 
-                    s.frontmatter?.BeatsUpdate ?? 
-                    s.frontmatter?.['Beats Update']
-                )
+                normalizeBooleanValue(getPulseUpdateFlag(s.frontmatter))
             );
             const triplets = buildTripletsByIndex(processableContentScenes, flaggedInOrder, (s) => s.file.path);
 
             for (const triplet of triplets) {
-                const beatsUpdateFlag = 
-                    triplet.current.frontmatter?.['Review Update'] ?? 
-                    triplet.current.frontmatter?.ReviewUpdate ?? 
-                    triplet.current.frontmatter?.reviewupdate ?? 
-                    triplet.current.frontmatter?.beatsupdate ?? 
-                    triplet.current.frontmatter?.['Beats Update'];
-                if (!normalizeBooleanValue(beatsUpdateFlag)) {
+                const pulseUpdateFlag = getPulseUpdateFlag(triplet.current.frontmatter);
+                if (!normalizeBooleanValue(pulseUpdateFlag)) {
                     continue;
                 }
 
@@ -318,18 +283,12 @@ export async function processSubplotWithModal(
     filtered.sort(compareScenesByOrder);
 
     const validScenes = filtered.filter(scene => {
-        const beatsUpdate = 
-            scene.frontmatter?.['Review Update'] ?? 
-            scene.frontmatter?.ReviewUpdate ?? 
-            scene.frontmatter?.reviewupdate ?? 
-            scene.frontmatter?.beatsupdate ?? 
-            scene.frontmatter?.BeatsUpdate ?? 
-            scene.frontmatter?.['Beats Update'];
-        return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(beatsUpdate);
+        const pulseUpdate = getPulseUpdateFlag(scene.frontmatter);
+        return hasProcessableContent(scene.frontmatter) && normalizeBooleanValue(pulseUpdate);
     });
 
     if (validScenes.length === 0) {
-        throw new Error(`No flagged scenes (Review Update: Yes/True/1) with content found for "${subplotName}".`);
+        throw new Error(`No flagged scenes (Pulse Update: Yes/True/1) with content found for "${subplotName}".`);
     }
 
     const contextScenes = filtered.filter(scene => hasProcessableContent(scene.frontmatter));

@@ -45,6 +45,7 @@ export interface RadialTimelineSettings {
     showEstimate?: boolean;
     enableSceneTitleAutoExpand?: boolean;
     enableHoverDebugLogging?: boolean;
+    showFullTripletAnalysis?: boolean;
     sortByWhenDate?: boolean;
     chronologueDurationCapSelection?: string;
     discontinuityThreshold?: string;

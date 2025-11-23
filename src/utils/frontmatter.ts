@@ -10,7 +10,7 @@
  * Canonical key mappings:
  * - class/CLASS/Class → Class
  * - beat model/Beat Model/BEAT MODEL/BeatModel → Beat Model
- * - beats update/Beats Update/BeatsUpdate → Beats Update
+ * - pulse update/Pulse Update/PulseUpdate/Beats Update → Pulse Update
  * - publish stage/Publish Stage/PublishStage → Publish Stage
  * - scene number/Scene Number/SceneNumber → Scene Number
  * - etc.
@@ -24,7 +24,8 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>): Record<st
     'itemtype': 'itemType',
     'plotsystem': 'Plot System',
     'beatmodel': 'Beat Model',
-    'beatsupdate': 'Beats Update',
+    'beatsupdate': 'Pulse Update',
+    'pulseupdate': 'Pulse Update',
     'publishstage': 'Publish Stage',
     'scenenumber': 'Scene Number',
     'subplot': 'Subplot',
