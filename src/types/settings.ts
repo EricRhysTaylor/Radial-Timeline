@@ -60,4 +60,5 @@ export interface RadialTimelineSettings {
     lastSeenReleaseNotesVersion?: string;
     cachedReleaseNotes?: EmbeddedReleaseNotesBundle | null;
     releaseNotesLastFetched?: string;
+    lastUpdateCheck?: string; // ISO date string of last GitHub update check
 }
