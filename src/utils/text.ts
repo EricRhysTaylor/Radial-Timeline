@@ -308,21 +308,31 @@ export function getScenePrefixNumber(title: string | undefined | null, sceneNumb
 }
 
 export function getNumberSquareSize(num: string, scale: number = 1): { width: number; height: number } {
-  const height = 18 * scale;
+  const height = 18 * scale; // 18 is the height of the number square in pixels
+  
+  // Decimal numbers (e.g., "1.2", "13.6", "100.5")
   if (num.includes('.')) {
-    return {
-      width: num.length <= 3 ? 24 * scale :
-             num.length <= 4 ? 32 * scale :
-             36 * scale,
-      height
-    };
+    let width: number;
+    if (num.length <= 3) {
+      width = 30* scale;  // "1.2" (3 chars)
+    } else if (num.length <= 4) {
+      width = 36 * scale;  // "13.6" (4 chars)
+    } else {
+      width = 40 * scale;  // "100.5" (5+ chars)
+    }
+    return { width, height };
   }
-  return {
-    width: num.length === 1 ? 20 * scale :
-           num.length === 2 ? 24 * scale :
-           28 * scale,
-    height
-  };
+  
+  // Whole numbers (e.g., "1", "42", "100")
+  let width: number;
+  if (num.length === 1) {
+    width = 20 * scale;  // "1" to "9"
+  } else if (num.length === 2) {
+    width = 24 * scale;  // "10" to "99"
+  } else {
+    width = 32 * scale;  // "100" to "999+"
+  }
+  return { width, height };
 }
 
 /**
