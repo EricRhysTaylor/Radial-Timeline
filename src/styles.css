@@ -43,6 +43,9 @@
   --rt-font-scale: 1;
   --rt-synopsis-font-scale: var(--rt-font-scale);
   --rt-number-font-scale: 1;
+  --rt-synopsis-line-height: 24px;
+  --rt-pulse-line-height: 8px;
+  --rt-synopsis-metadata-line-height: 24px;
 
   /* Settings UI sizing */
   --rt-settings-select-width: 240px; /* consistent width for dropdowns */
@@ -126,6 +129,9 @@
   margin: 0;
   background-color: transparent;
   font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --rt-synopsis-line-height: 24px;
+  --rt-pulse-line-height: 8px;
+  --rt-synopsis-metadata-line-height: 24px;
 }
 .rt-loading-message,
 .rt-error-message {

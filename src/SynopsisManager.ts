@@ -274,9 +274,14 @@ export default class SynopsisManager {
       return resolveCssVariable(index);
     };
     
-    // Scale line height with readability so larger glyphs maintain breathing room
-    const lineHeight = 24 * fontScale;
-    const pulseLineHeight = Math.max(16 * fontScale, lineHeight * 0.7); // tighter spacing for AI pulses
+    const root = document.documentElement;
+    const layoutScope = document.querySelector('.radial-timeline-svg') || document.querySelector('.radial-timeline-container');
+    const styleSource = layoutScope ? getComputedStyle(layoutScope) : getComputedStyle(root);
+    const synopsisLineHeight = parseFloat(styleSource.getPropertyValue('--rt-synopsis-line-height')) || 24;
+    const pulseLineHeightRaw = parseFloat(styleSource.getPropertyValue('--rt-pulse-line-height'));
+    const metadataLineHeight = parseFloat(styleSource.getPropertyValue('--rt-synopsis-metadata-line-height')) || synopsisLineHeight;
+    const lineHeight = synopsisLineHeight * fontScale;
+    const pulseLineHeight = (pulseLineHeightRaw > 0 ? pulseLineHeightRaw : synopsisLineHeight * 0.4) * fontScale;
     
     // Create the main container group
     const containerGroup = createSynopsisContainer(sceneId, scene.path);
@@ -316,7 +321,7 @@ export default class SynopsisManager {
     let extraLineCount = 0;
 
     const appendInfoLine = (className: string, text: string) => {
-      const y = (1 + extraLineCount) * lineHeight;
+      const y = (1 + extraLineCount) * metadataLineHeight;
       synopsisTextGroup.appendChild(createText(0, y, className, text));
       extraLineCount += 1;
     };
@@ -339,7 +344,7 @@ export default class SynopsisManager {
       const maxWidth = 500 * fontScale; // Match timeline synopsis width
       const lines = splitIntoBalancedLines(pendingEdits, maxWidth, fontScale);
       for (let i = 0; i < lines.length; i++) {
-        const y = (1 + extraLineCount) * lineHeight + (i * lineHeight);
+        const y = (1 + extraLineCount) * metadataLineHeight + (i * metadataLineHeight);
         const text = `${i === 0 ? 'Revisions: ' : ''}${lines[i]}`;
         synopsisTextGroup.appendChild(createText(0, y, 'rt-info-text rt-title-text-secondary rt-revisions-text', text));
       }

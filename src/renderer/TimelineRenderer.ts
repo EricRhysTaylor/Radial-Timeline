@@ -100,6 +100,12 @@ const STATUS_HEADER_TOOLTIPS: Record<string, string> = {
   Completed: 'Completed — tasks or scenes finished'
 };
 
+function computeSceneTitleInset(fontScale: number): number {
+  if (!Number.isFinite(fontScale) || fontScale <= 1) return SCENE_TITLE_INSET;
+  const extraInset = (fontScale - 1) * 18;
+  return SCENE_TITLE_INSET + extraInset;
+}
+
 export function createTimelineSVG(
   plugin: PluginRendererFacade,
   scenes: TimelineItem[],
@@ -116,6 +122,7 @@ export function createTimelineSVG(
         const fontScale = getReadabilityMultiplier(plugin.settings as any);
         const maxTextWidth = MAX_TEXT_WIDTH * fontScale;
         const readabilityClass = `rt-font-scale-${readabilityScale}`;
+        const sceneTitleInset = computeSceneTitleInset(fontScale);
         
         // Synopses are hidden by CSS until hover - no need to log anything
         
@@ -555,7 +562,7 @@ export function createTimelineSVG(
                         }
                         
                         // Scene titles: fixed inset from the top (outer) boundary of the cell
-                        const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
+                        const textPathRadius = Math.max(innerR, outerR - sceneTitleInset);
 
                         const color = getFillForScene(scene, PUBLISH_STAGE_COLORS, subplotColorFor, true, forceSubplotFillColors);
                         const arcPath = sceneArcPath(innerR, effectiveOuterR, sceneStartAngle, sceneEndAngle);
@@ -618,7 +625,7 @@ export function createTimelineSVG(
                         })();
 
                         svg += `
-                        ${renderSceneGroup({ scene, act, ring, idx, innerR, outerR: effectiveOuterR, startAngle: sceneStartAngle, endAngle: sceneEndAngle, subplotIdxAttr })}
+                        ${renderSceneGroup({ scene, act, ring, idx, innerR, outerR: effectiveOuterR, startAngle: sceneStartAngle, endAngle: sceneEndAngle, subplotIdxAttr, titleInset: sceneTitleInset })}
                             <path id="${sceneId}"
                                   d="${arcPath}" 
                                   fill="${color}" 
@@ -709,7 +716,7 @@ export function createTimelineSVG(
                             const sceneStartAngle = position.startAngle;
                             const sceneEndAngle = position.endAngle;
                             // Scene titles: fixed inset from the top (outer) boundary of the cell
-                            const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
+                                const textPathRadius = Math.max(innerR, outerR - sceneTitleInset);
             
                             // Determine the color of a scene based on current mode + status
                             const color = getFillForScene(
@@ -746,7 +753,7 @@ export function createTimelineSVG(
                             // (No story beat labels rendered in inner rings)
             
                             svg += `
-                            ${renderSceneGroup({ scene, act, ring, idx, innerR, outerR, startAngle: sceneStartAngle, endAngle: sceneEndAngle, subplotIdxAttr })}
+                            ${renderSceneGroup({ scene, act, ring, idx, innerR, outerR, startAngle: sceneStartAngle, endAngle: sceneEndAngle, subplotIdxAttr, titleInset: sceneTitleInset })}
                                 <path id="${sceneId}"
                                       d="${arcPath}" 
                                       fill="${color}" 

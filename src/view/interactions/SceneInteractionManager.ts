@@ -308,7 +308,9 @@ export class SceneInteractionManager {
             // Reset text path
             const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
             if (textPath) {
-                const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
+                const insetAttr = group.getAttribute('data-title-inset');
+                const titleInset = insetAttr ? Number(insetAttr) : SCENE_TITLE_INSET;
+                const textPathRadius = Math.max(innerR, outerR - titleInset);
                 textPath.setAttribute('d', buildTextPath(textPathRadius, angles.start, angles.end));
             }
             
@@ -440,7 +442,9 @@ export class SceneInteractionManager {
             // Update text path
             const textPath = group.querySelector('path[id^="textPath-"]') as SVGPathElement;
             if (textPath) {
-                const textPathRadius = Math.max(innerR, outerR - SCENE_TITLE_INSET);
+                const insetAttr = group.getAttribute('data-title-inset');
+                const titleInset = insetAttr ? Number(insetAttr) : SCENE_TITLE_INSET;
+                const textPathRadius = Math.max(innerR, outerR - titleInset);
                 textPath.setAttribute('d', buildTextPath(textPathRadius, result.newStartAngle, result.newEndAngle));
             }
             

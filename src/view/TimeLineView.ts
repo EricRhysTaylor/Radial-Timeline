@@ -31,7 +31,7 @@ export const TIMELINE_VIEW_TYPE = "radial-timeline";
 export const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline";
 
 // CONSTANTS: Scene expansion constants
-const HOVER_EXPAND_FACTOR = 1.1; // expansion multiplier when text doesn't fit
+const HOVER_EXPAND_FACTOR = 1.05; // expansion multiplier when text doesn't fit
 
 // SceneNumberInfo now imported from constants
 

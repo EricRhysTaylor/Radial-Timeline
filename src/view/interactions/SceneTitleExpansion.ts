@@ -13,7 +13,7 @@
  * Separated from DOM manipulation to enable unit testing and reuse.
  */
 
-export const HOVER_EXPAND_FACTOR = 1.1;
+export const HOVER_EXPAND_FACTOR = 1.05;
 export const SCENE_TITLE_INSET = 22;
 export const TEXTPATH_START_NUDGE_RAD = 0.02;
 export const TEXTPATH_START_OFFSET_PX = 4;
@@ -174,4 +174,3 @@ export function buildTextPath(
     
     return `M ${formatNumber(radius * Math.cos(textStart))} ${formatNumber(radius * Math.sin(textStart))} A ${formatNumber(radius)} ${formatNumber(radius)} 0 ${largeArcFlag} 1 ${formatNumber(radius * Math.cos(endAngle))} ${formatNumber(radius * Math.sin(endAngle))}`;
 }
-
