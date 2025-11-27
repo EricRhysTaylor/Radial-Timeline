@@ -274,14 +274,12 @@ export default class SynopsisManager {
       return resolveCssVariable(index);
     };
     
-    const root = document.documentElement;
-    const layoutScope = document.querySelector('.radial-timeline-svg') || document.querySelector('.radial-timeline-container');
-    const styleSource = layoutScope ? getComputedStyle(layoutScope) : getComputedStyle(root);
-    const synopsisLineHeight = parseFloat(styleSource.getPropertyValue('--rt-synopsis-line-height')) || 24;
+    const styleSource = getComputedStyle(document.documentElement);
+    const synopsisLineHeight = parseFloat(styleSource.getPropertyValue('--rt-synopsis-line-height'));
     const pulseLineHeightRaw = parseFloat(styleSource.getPropertyValue('--rt-pulse-line-height'));
-    const metadataLineHeight = parseFloat(styleSource.getPropertyValue('--rt-synopsis-metadata-line-height')) || synopsisLineHeight;
+    const metadataLineHeight = parseFloat(styleSource.getPropertyValue('--rt-synopsis-metadata-line-height'));
     const lineHeight = synopsisLineHeight * fontScale;
-    const pulseLineHeight = (pulseLineHeightRaw > 0 ? pulseLineHeightRaw : synopsisLineHeight * 0.4) * fontScale;
+    const pulseLineHeight = pulseLineHeightRaw * fontScale;
     
     // Create the main container group
     const containerGroup = createSynopsisContainer(sceneId, scene.path);
@@ -757,6 +755,11 @@ export default class SynopsisManager {
     const scorePreGap = 46 * fontScale; // Manual gap before the Gossamer score line; adjust as needed
     const metadataSpacing = 14 * fontScale; // Default horizontal gap between title and metadata block
     
+    // Get pulse line height from CSS for beats text
+    const styleSource = getComputedStyle(document.documentElement);
+    const pulseLineHeightRaw = parseFloat(styleSource.getPropertyValue('--rt-pulse-line-height'));
+    const pulseLineHeight = pulseLineHeightRaw * fontScale;
+    
     // Calculate starting y-position from synopsis position
     const synopsisTransform = (synopsis as SVGElement).getAttribute('transform') || '';
     const translateMatch = synopsisTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
@@ -790,8 +793,10 @@ export default class SynopsisManager {
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
         const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
+        const isBeatsText = currentEl.classList.contains('beats-text');
         const prevEl = textRows[rowIndex - 1][0];
         const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
+        const isPrevLineBeats = prevEl.classList.contains('beats-text');
 
         if (rowIndex === 1) {
           // Always use title spacing right after the title line
@@ -799,6 +804,9 @@ export default class SynopsisManager {
         } else if (isGossamerLine && isPrevLineSynopsis) {
           // Fixed manual gap before the Gossamer score line
           yOffset += scorePreGap;
+        } else if (isBeatsText || isPrevLineBeats) {
+          // Use pulse line height for beats/analysis text
+          yOffset += pulseLineHeight;
         } else {
           // Default spacing between regular synopsis/metadata lines
           yOffset += synopsisLineHeight;
