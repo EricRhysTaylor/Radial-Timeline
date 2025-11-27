@@ -161,7 +161,7 @@ export function createTimelineSVG(
 
         // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
         let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
-                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" 
+                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" data-font-scale="${readabilityScale}"
                        preserveAspectRatio="xMidYMid meet">`;
         
 
@@ -206,7 +206,7 @@ export function createTimelineSVG(
         }
     
         // **Include the `<style>` code here**
-        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" ${isChronologueMode ? 'data-chronologue-mode="true"' : ''} preserveAspectRatio="xMidYMid meet">`;
+        svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" data-font-scale="${readabilityScale}" ${isChronologueMode ? 'data-chronologue-mode="true"' : ''} preserveAspectRatio="xMidYMid meet">`;
         
 
         // After radii are known, compute global stacking map (outer-ring narrative only)

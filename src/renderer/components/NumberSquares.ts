@@ -48,7 +48,7 @@ export function renderNumberSquaresUnified(params: {
 
   let svg = '<g class="rt-number-squares">';
   const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
-  const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.5 : 1; // pad more aggressively when font grows
+  const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.75 : 1; // pad more aggressively when font grows
 
   scenes.forEach((scene, idx) => {
     if (isBeatNote(scene)) return;
@@ -203,7 +203,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
 }): string {
   const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, enableSubplotColors = false, resolveSubplotVisual } = params;
   const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
-  const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.5 : 1;
+  const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.75 : 1;
   
   // Check if using When date sorting
   const currentMode = (plugin.settings as any).currentMode || 'narrative';

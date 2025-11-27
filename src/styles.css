@@ -42,6 +42,7 @@
   /* Readability controls */
   --rt-font-scale: 1;
   --rt-synopsis-font-scale: var(--rt-font-scale);
+  --rt-number-font-scale: 1;
 
   /* Settings UI sizing */
   --rt-settings-select-width: 240px; /* consistent width for dropdowns */
@@ -89,14 +90,18 @@
 }
 
 /* Readability scale presets (applied to the SVG root) */
-.rt-font-scale-normal {
+.rt-font-scale-normal,
+.radial-timeline-svg[data-font-scale="normal"] {
   --rt-font-scale: 1;
   --rt-synopsis-font-scale: 1;
+  --rt-number-font-scale: 1;
 }
 
-.rt-font-scale-large {
+.rt-font-scale-large,
+.radial-timeline-svg[data-font-scale="large"] {
   --rt-font-scale: 1.4;
   --rt-synopsis-font-scale: 1.4;
+  --rt-number-font-scale: 1.15;
 }
 
 /* Stage-specific fill should be applied to the bold title tspans, not the parent text.
@@ -212,7 +217,7 @@
 }
 .radial-timeline-container .rt-storybeat-title {
   fill: var(--text-normal);
-  font-size: calc(12px * var(--rt-font-scale, 1));
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -584,7 +589,7 @@
   pointer-events: none;
   text-anchor: middle;
   dominant-baseline: middle;
-  font-size: calc(20px * var(--rt-font-scale, 1));
+  font-size: 20px;
   font-weight: 700;
   /* fill: var(--text-normal); */ /* Color is now set dynamically in SVG */
 }
@@ -713,7 +718,7 @@
 .rt-number-text {
   fill: #000000;
   pointer-events: none;
-  font-size: calc(16px * var(--rt-font-scale, 1));
+  font-size: calc(16px * var(--rt-number-font-scale, 1));
 }
 /* AI grade text colors - scoped to plugin (no !important so non-selected can override) */
 .rt-number-text.rt-grade-A { fill: #00ff48; }
