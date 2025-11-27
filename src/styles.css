@@ -95,8 +95,8 @@
 }
 
 .rt-font-scale-large {
-  --rt-font-scale: 1.2;
-  --rt-synopsis-font-scale: 1.2;
+  --rt-font-scale: 2;
+  --rt-synopsis-font-scale: 2;
 }
 
 /* Stage-specific fill should be applied to the bold title tspans, not the parent text.

@@ -2,7 +2,7 @@ import type { RadialTimelineSettings, ReadabilityScale } from '../types';
 
 const SCALE_MAP: Record<ReadabilityScale, number> = {
   normal: 1,
-  large: 1.2
+  large: 2
 };
 
 export function getReadabilityScale(options?: { readabilityScale?: ReadabilityScale }): ReadabilityScale {

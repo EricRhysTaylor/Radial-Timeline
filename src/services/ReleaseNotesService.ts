@@ -3,7 +3,7 @@
  * Handles embedded/remote release notes management, caching, and state.
  */
 
-import { requestUrl, App, Notice } from 'obsidian';
+import { requestUrl, App } from 'obsidian';
 import { compareReleaseVersionsDesc, parseReleaseVersion } from '../utils/releases';
 import type { EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, RadialTimelineSettings } from '../types';
 import { ReleaseNotesModal } from '../modals/ReleaseNotesModal';
@@ -18,65 +18,8 @@ export class ReleaseNotesService {
 
     constructor(
         private settings: RadialTimelineSettings,
-        private saveSettings: () => Promise<void>,
-        private currentPluginVersion: string
+        private saveSettings: () => Promise<void>
     ) {}
-
-    async checkForUpdates() {
-        try {
-            // Check at most once every 12 hours
-            const now = Date.now();
-            const lastCheck = this.settings.lastUpdateCheck ? new Date(this.settings.lastUpdateCheck).getTime() : 0;
-            if (now - lastCheck < 1000 * 60 * 60 * 12) {
-                return;
-            }
-
-            // Fetch latest release tag from GitHub
-            const response = await fetch('https://api.github.com/repos/EricRhysTaylor/Radial-Timeline/releases/latest');
-            if (!response.ok) return;
-            
-            const data = await response.json();
-            const latestVersion = data.tag_name; // e.g., "4.2.0" or "v4.2.0"
-            
-            if (!latestVersion) return;
-
-            // Clean versions (remove 'v' prefix)
-            const currentVer = this.currentPluginVersion;
-            const cleanLatest = latestVersion.replace(/^v/, '');
-            
-            // Simple comparison (assumes strict semver x.y.z)
-            if (cleanLatest !== currentVer) {
-                // Check if latest is actually newer (basic semver check)
-                const v1parts = currentVer.split('.').map(Number);
-                const v2parts = cleanLatest.split('.').map(Number);
-                
-                let isNewer = false;
-                for (let i = 0; i < 3; i++) {
-                    const v1 = v1parts[i] || 0;
-                    const v2 = v2parts[i] || 0;
-                    if (v2 > v1) {
-                        isNewer = true;
-                        break;
-                    }
-                    if (v2 < v1) break;
-                }
-
-                if (isNewer) {
-                    new Notice(
-                        `Radial Timeline update available!\n\nv${cleanLatest} is out (you have v${currentVer}).\nPlease go to Settings > Community Plugins to update.`, 
-                        10000
-                    );
-                }
-            }
-
-            // Update last check time
-            this.settings.lastUpdateCheck = new Date().toISOString();
-            await this.saveSettings();
-
-        } catch (e) {
-            console.log("Failed to check for updates:", e);
-        }
-    }
 
     /**
      * Initialize service state by merging embedded release notes with cached settings.

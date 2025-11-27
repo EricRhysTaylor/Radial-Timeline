@@ -135,8 +135,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     globalPovMode: 'off',
     lastSeenReleaseNotesVersion: '',
     cachedReleaseNotes: null,
-    releaseNotesLastFetched: undefined,
-    lastUpdateCheck: undefined
+    releaseNotesLastFetched: undefined
 };
 
 // STATUS_COLORS now imported from constants
@@ -326,13 +325,9 @@ export default class RadialTimelinePlugin extends Plugin {
     async onload() {
         this.settingsService = new SettingsService(this);
         await this.loadSettings();
-
-        this.releaseNotesService = new ReleaseNotesService(this.settings, () => this.saveSettings(), this.manifest.version);
+        this.releaseNotesService = new ReleaseNotesService(this.settings, () => this.saveSettings());
         this.releaseNotesService.initializeFromEmbedded();
         void this.releaseNotesService.ensureReleaseNotesFresh(false);
-        
-        // Check for updates in background
-        void this.releaseNotesService.checkForUpdates();
 
         // Migration: Convert old field names to new field names
         await migrateSceneAnalysisFields(this);
