@@ -95,8 +95,8 @@
 }
 
 .rt-font-scale-large {
-  --rt-font-scale: 2;
-  --rt-synopsis-font-scale: 2;
+  --rt-font-scale: 1.4;
+  --rt-synopsis-font-scale: 1.4;
 }
 
 /* Stage-specific fill should be applied to the bold title tspans, not the parent text.
@@ -819,7 +819,7 @@
 }
 /*Synopsis Title*/
 .rt-title-text-main {
-  font-size: calc(36px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  font-size: 36px;
   font-weight: 700;
   --title-color: var(--text-normal);
   /* No parent fill; child tspans own their colors via custom properties */
@@ -828,7 +828,7 @@
 /* This styles the separate text element containing date/time and duration */
 /* Positioned to the right of the main scene title */
 .rt-title-date-time {
-  font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  font-size: 14px;
   font-weight: 400;
   font-style: normal !important;
 }
@@ -840,7 +840,7 @@
 /* Date and Duration tspans - small gray text */
 .rt-title-date-time tspan {
   fill: #888888 !important;
-  font-size: calc(16px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1))) !important;
+  font-size: 16px !important;
   font-weight: 400;
 }
 

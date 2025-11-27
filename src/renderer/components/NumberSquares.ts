@@ -2,8 +2,8 @@ import type { TimelineItem } from '../../types';
 import { formatNumber } from '../../utils/svg';
 import { getSceneState, buildSquareClasses, buildTextClasses, extractGradeFromScene, isBeatNote, type PluginRendererFacade, shouldDisplayMissingWhenWarning } from '../../utils/sceneHelpers';
 import { getScenePrefixNumber, getNumberSquareSize, parseSceneTitle } from '../../utils/text';
-import { generateNumberSquareGroup, makeSceneId } from '../../utils/numberSquareHelpers';
 import { getReadabilityMultiplier } from '../../utils/readability';
+import { generateNumberSquareGroup, makeSceneId } from '../../utils/numberSquareHelpers';
 
 /**
  * Unified number square rendering function
@@ -47,7 +47,8 @@ export function renderNumberSquaresUnified(params: {
   } = params;
 
   let svg = '<g class="rt-number-squares">';
-  const fontScale = getReadabilityMultiplier(plugin.settings as any);
+  const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
+  const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.5 : 1; // pad more aggressively when font grows
 
   scenes.forEach((scene, idx) => {
     if (isBeatNote(scene)) return;
@@ -118,7 +119,7 @@ export function renderNumberSquaresUnified(params: {
       return; // Invalid parameters
     }
 
-    const squareSize = getNumberSquareSize(number, fontScale);
+    const squareSize = getNumberSquareSize(number, squareScale);
     const squareX = textPathRadius * Math.cos(sceneStartAngle);
     const squareY = textPathRadius * Math.sin(sceneStartAngle);
     
@@ -201,7 +202,8 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
 }): string {
   const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, enableSubplotColors = false, resolveSubplotVisual } = params;
-  const fontScale = getReadabilityMultiplier(plugin.settings as any);
+  const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
+  const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.5 : 1;
   
   // Check if using When date sorting
   const currentMode = (plugin.settings as any).currentMode || 'narrative';
@@ -255,7 +257,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     for (let i = 0; i < sceneIndex; i++) currentAngle += sceneAngularSize;
     const sceneStartAngle = currentAngle;
     const textPathRadius = (innerR + outerR) / 2;
-    const squareSize = getNumberSquareSize(number, fontScale);
+    const squareSize = getNumberSquareSize(number, squareScale);
     const squareX = textPathRadius * Math.cos(sceneStartAngle);
     const squareY = textPathRadius * Math.sin(sceneStartAngle);
     const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);

@@ -106,7 +106,6 @@ export default class SynopsisManager {
    * Returns a metadata text element if date/duration exist, otherwise null
    */
   private addTitleContent(titleContent: string, titleTextElement: SVGTextElement, titleColor: string, sceneNumber?: number | null, sceneDate?: string, sceneDuration?: string): SVGTextElement | null {
-    const fontScale = this.getReadabilityScale();
     if (titleContent.includes('<tspan')) {
       
       // For pre-formatted HTML with tspans, parse safely
@@ -182,7 +181,7 @@ export default class SynopsisManager {
         metadataElement.setAttribute("y", "0"); // Same baseline as title, layout handled later
         metadataElement.setAttribute("text-anchor", "start");
         metadataElement.setAttribute("data-metadata-block", "true");
-        metadataElement.setAttribute("data-column-gap", `${8 * fontScale}px`); // default gap in px
+        metadataElement.setAttribute("data-column-gap", `8px`); // default gap in px
         
         // Row 1: Date/time (at baseline, same as title)
         if (titleParts.date) {
@@ -190,7 +189,7 @@ export default class SynopsisManager {
           dateTspan.setAttribute('class', 'rt-date-text');
           dateTspan.setAttribute('data-item-type', 'date');
           dateTspan.setAttribute('data-column-role', 'date');
-          dateTspan.setAttribute('dy', `${-16 * fontScale}px`); // Lift slightly so smaller text sits with title cap height
+          dateTspan.setAttribute('dy', `-16px`); // Lift slightly so smaller text sits with title cap height
           dateTspan.textContent = titleParts.date;
           metadataElement.appendChild(dateTspan);
         }
@@ -202,7 +201,7 @@ export default class SynopsisManager {
           durationTspan.setAttribute('data-item-type', 'duration');
           durationTspan.setAttribute('data-column-role', 'duration');
           durationTspan.setAttribute('x', '0'); // Will be positioned in layout step
-          durationTspan.setAttribute('dy', titleParts.date ? `${16 * fontScale}px` : '0'); // New line only if date exists
+          durationTspan.setAttribute('dy', titleParts.date ? `16px` : '0'); // New line only if date exists
           durationTspan.textContent = titleParts.duration;
           metadataElement.appendChild(durationTspan);
         }
@@ -275,8 +274,9 @@ export default class SynopsisManager {
       return resolveCssVariable(index);
     };
     
-    // Set the line height
+    // Scale line height with readability so larger glyphs maintain breathing room
     const lineHeight = 24 * fontScale;
+    const pulseLineHeight = Math.max(16 * fontScale, lineHeight * 0.7); // tighter spacing for AI pulses
     
     // Create the main container group
     const containerGroup = createSynopsisContainer(sceneId, scene.path);
@@ -418,8 +418,8 @@ export default class SynopsisManager {
       if (this.plugin.settings.enableAiSceneAnalysis && showTripletNeighbors && scene["previousSceneAnalysis"]) {
         const beatsY = currentMetadataY;
         const beatsText = scene["previousSceneAnalysis"] || '';
-        const linesAdded = this.formatBeatsText(beatsText, 'previousSceneAnalysis', synopsisTextGroup, beatsY, lineHeight, 0); // Pass 'previousSceneAnalysis'
-        currentMetadataY = beatsY + (linesAdded * lineHeight);
+        const linesAdded = this.formatBeatsText(beatsText, 'previousSceneAnalysis', synopsisTextGroup, beatsY, pulseLineHeight, 0); // Pass 'previousSceneAnalysis'
+        currentMetadataY = beatsY + (linesAdded * pulseLineHeight);
         if (linesAdded > 0) {
           // Call addSpacer with height 0, update starting point for next block
           currentMetadataY = addSpacer(currentMetadataY, 0);
@@ -430,8 +430,8 @@ export default class SynopsisManager {
       if (this.plugin.settings.enableAiSceneAnalysis && scene["currentSceneAnalysis"]) {
         const beatsY = currentMetadataY;
         const beatsText = scene["currentSceneAnalysis"] || '';
-        const linesAdded = this.formatBeatsText(beatsText, 'currentSceneAnalysis', synopsisTextGroup, beatsY, lineHeight, 0); // Pass 'currentSceneAnalysis'
-        currentMetadataY = beatsY + (linesAdded * lineHeight);
+        const linesAdded = this.formatBeatsText(beatsText, 'currentSceneAnalysis', synopsisTextGroup, beatsY, pulseLineHeight, 0); // Pass 'currentSceneAnalysis'
+        currentMetadataY = beatsY + (linesAdded * pulseLineHeight);
         if (linesAdded > 0) {
            // Call addSpacer with height 0, update starting point for next block
           currentMetadataY = addSpacer(currentMetadataY, 0);
@@ -442,8 +442,8 @@ export default class SynopsisManager {
       if (this.plugin.settings.enableAiSceneAnalysis && showTripletNeighbors && scene["nextSceneAnalysis"]) {
         const beatsY = currentMetadataY;
         const beatsText = scene["nextSceneAnalysis"] || '';
-        const linesAdded = this.formatBeatsText(beatsText, 'nextSceneAnalysis', synopsisTextGroup, beatsY, lineHeight, 0); // Pass 'nextSceneAnalysis'
-        currentMetadataY = beatsY + (linesAdded * lineHeight);
+        const linesAdded = this.formatBeatsText(beatsText, 'nextSceneAnalysis', synopsisTextGroup, beatsY, pulseLineHeight, 0); // Pass 'nextSceneAnalysis'
+        currentMetadataY = beatsY + (linesAdded * pulseLineHeight);
         if (linesAdded > 0) {
           // Call addSpacer with height 0, update starting point for next block
           currentMetadataY = addSpacer(currentMetadataY, 0);
@@ -746,7 +746,7 @@ export default class SynopsisManager {
     (synopsisTextGroup as SVGElement).removeAttribute('transform');
     
     const fontScale = this.getReadabilityScale();
-    // Circle parameters
+    // Circle parameters scale with readability to avoid overlaps
     const titleLineHeight = 32 * fontScale; // Increased spacing for title/date line
     const synopsisLineHeight = 22 * fontScale; // Reduced spacing for synopsis text
     const scorePreGap = 46 * fontScale; // Manual gap before the Gossamer score line; adjust as needed
@@ -817,7 +817,7 @@ export default class SynopsisManager {
       let anchorAbsoluteX = circleX * direction;
 
       if (isTopHalf) {
-        const inset = this.computeTopHalfInset(primaryEl, rowIndex, fontScale);
+        const inset = this.computeTopHalfInset(primaryEl, rowIndex);
         const magnitude = Math.abs(anchorAbsoluteX) - inset;
         if (magnitude < 0) {
           throw new Error(`Inset ${inset} for row ${rowIndex} exceeds available radius.`);
@@ -844,7 +844,7 @@ export default class SynopsisManager {
     });
   }
 
-  private computeTopHalfInset(textElement: SVGTextElement | null, rowIndex: number, fontScale: number): number {
+  private computeTopHalfInset(textElement: SVGTextElement | null, rowIndex: number): number {
     if (!textElement) {
       return SynopsisManager.TOP_HALF_BASE_INSET;
     }
@@ -870,13 +870,13 @@ export default class SynopsisManager {
         `[Synopsis] Falling back to base inset for row ${rowIndex}; element has no measurable font size or height.`,
         textElement
       );
-      return SynopsisManager.TOP_HALF_BASE_INSET * fontScale;
+      return SynopsisManager.TOP_HALF_BASE_INSET;
     }
 
     const ratio = rowIndex === 0 ? 0.9 : 0.6;
     const scaled = referenceSize * ratio;
-    const minInset = SynopsisManager.TOP_HALF_MIN_INSET * fontScale;
-    const maxInset = SynopsisManager.TOP_HALF_MAX_INSET * fontScale;
+    const minInset = SynopsisManager.TOP_HALF_MIN_INSET;
+    const maxInset = SynopsisManager.TOP_HALF_MAX_INSET;
     return Math.max(
       minInset,
       Math.min(maxInset, scaled)
