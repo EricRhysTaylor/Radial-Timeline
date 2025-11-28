@@ -5,6 +5,7 @@
  */
 import { escapeRegExp } from './regex';
 import { escapeXml } from './svg';
+import { getNumberSquareWidthFromCache } from '../renderer/utils/FontMetricsCache';
 
 // Decode basic HTML entities. If string already contains <tspan> markup we leave it untouched so SVG formatting is preserved.
 export function decodeHtmlEntities(text: string): string {
@@ -310,28 +311,8 @@ export function getScenePrefixNumber(title: string | undefined | null, sceneNumb
 export function getNumberSquareSize(num: string, scale: number = 1): { width: number; height: number } {
   const height = 18 * scale; // 18 is the height of the number square in pixels
   
-  // Decimal numbers (e.g., "1.2", "13.6", "100.5")
-  if (num.includes('.')) {
-    let width: number;
-    if (num.length <= 3) {
-      width = 30* scale;  // "1.2" (3 chars)
-    } else if (num.length <= 4) {
-      width = 36 * scale;  // "13.6" (4 chars)
-    } else {
-      width = 40 * scale;  // "100.5" (5+ chars)
-    }
-    return { width, height };
-  }
-  
-  // Whole numbers (e.g., "1", "42", "100")
-  let width: number;
-  if (num.length === 1) {
-    width = 20 * scale;  // "1" to "9"
-  } else if (num.length === 2) {
-    width = 24 * scale;  // "10" to "99"
-  } else {
-    width = 32 * scale;  // "100" to "999+"
-  }
+  // Use cached font metrics for accurate width measurement
+  const width = getNumberSquareWidthFromCache(num, scale);
   return { width, height };
 }
 
