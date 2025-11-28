@@ -122,6 +122,9 @@ export const PADDING_RENDER_PX = 24;
 /** Gap used when checking beat label overlaps (px) */
 export const ANGULAR_GAP_PX = 16;
 
+/** Extra breathing room between beat labels when they stack (px) */
+export const BEAT_LABEL_BREATHING_ROOM_PX = 10;
+
 // =============================================================================
 // UI CONTROLS POSITIONING
 // =============================================================================

@@ -5,6 +5,7 @@
  */
 
 import { formatNumber } from '../../utils/svg';
+import { BEAT_LABEL_BREATHING_ROOM_PX } from '../layout/LayoutConstants';
 
 type BeatLabelAdjustState = { retryId?: number; signature?: string; success?: boolean; lastAbortSignature?: string };
 const beatLabelAdjustState = new WeakMap<HTMLElement, BeatLabelAdjustState>();
@@ -29,7 +30,7 @@ export function adjustBeatLabelsAfterRender(container: HTMLElement, attempt: num
     const SPACE_BEFORE_DASH = 6;
     const SPACE_AFTER_DASH = 4;
     const TEXT_START_OFFSET = 2;
-    const EXTRA_BREATHING_ROOM = 16;
+    const EXTRA_BREATHING_ROOM = BEAT_LABEL_BREATHING_ROOM_PX;
 
     interface LabelData {
         element: SVGTextElement;
