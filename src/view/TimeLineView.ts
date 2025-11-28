@@ -26,7 +26,6 @@ import {
     ChangeType 
 } from '../renderer/ChangeDetection';
 import { clearFontMetricsCaches } from '../renderer/utils/FontMetricsCache';
-import { startZoomPolling, stopZoomPolling } from '../utils/readability';
 
 // Duplicate of constants defined in main for now. We can consolidate later.
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
@@ -464,12 +463,21 @@ export class RadialTimelineView extends ItemView {
             })
         );
 
-        // Poll for zoom changes (handles Cmd+/-, menu zoom, and Settings > Appearance > Zoom slider)
-        startZoomPolling(() => {
-            clearFontMetricsCaches(); // Clear cached measurements for new zoom
-            this.refreshTimeline();
-        });
-        this.register(() => stopZoomPolling());
+        // Listen for Obsidian/Electron zoom changes via webFrame API
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { webFrame } = (window as any).require('electron');
+            if (webFrame?.on) {
+                const zoomHandler = () => {
+                    clearFontMetricsCaches();
+                    this.refreshTimeline();
+                };
+                webFrame.on('zoom-factor-changed', zoomHandler);
+                this.register(() => webFrame.removeListener('zoom-factor-changed', zoomHandler));
+            }
+        } catch {
+            // Electron API not available - zoom detection disabled
+        }
 
         // Frontmatter values to track changes only to YAML frontmatter with debounce every 5 seconds.
         this.registerEvent(
