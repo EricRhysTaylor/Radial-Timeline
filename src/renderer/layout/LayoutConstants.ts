@@ -126,6 +126,40 @@ export const ANGULAR_GAP_PX = 16;
 export const BEAT_LABEL_BREATHING_ROOM_PX = 10;
 
 // =============================================================================
+// READABILITY SCALING
+// =============================================================================
+// All base values below are multiplied by the readability scale factor.
+// Adjust these to tune the Normal and Large size presets.
+
+/** Scale multipliers for readability presets */
+export const READABILITY_SCALES = {
+  normal: 1.0,   // 100% - baseline size
+  large: 1.4    // 140% - for low-res or low-vision viewing
+} as const;
+
+// --- Number Squares ---
+
+/** Base font size for number square text (px) */
+export const NUMBER_SQUARE_FONT_SIZE_PX = 13;
+
+/** Base height of number squares (px) */
+export const NUMBER_SQUARE_HEIGHT_PX = 16;
+
+/** Total horizontal padding inside number squares (px) - split evenly left/right */
+export const NUMBER_SQUARE_PADDING_PX = 6;
+
+/** Letter spacing for number square text (em) */
+export const NUMBER_SQUARE_LETTER_SPACING_EM = 0.03;
+
+// --- Beat Labels ---
+
+/** Base font size for beat labels (px) - must match .rt-storybeat-title in CSS */
+export const BEAT_LABEL_FONT_SIZE_PX = 12;
+
+/** Letter spacing for beat labels (em) */
+export const BEAT_LABEL_LETTER_SPACING_EM = 0.07;
+
+// =============================================================================
 // UI CONTROLS POSITIONING
 // =============================================================================
 

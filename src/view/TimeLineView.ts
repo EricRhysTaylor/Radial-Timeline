@@ -463,22 +463,6 @@ export class RadialTimelineView extends ItemView {
             })
         );
 
-        // Listen for Obsidian/Electron zoom changes via webFrame API
-        try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { webFrame } = (window as any).require('electron');
-            if (webFrame?.on) {
-                const zoomHandler = () => {
-                    clearFontMetricsCaches();
-                    this.refreshTimeline();
-                };
-                webFrame.on('zoom-factor-changed', zoomHandler);
-                this.register(() => webFrame.removeListener('zoom-factor-changed', zoomHandler));
-            }
-        } catch {
-            // Electron API not available - zoom detection disabled
-        }
-
         // Frontmatter values to track changes only to YAML frontmatter with debounce every 5 seconds.
         this.registerEvent(
             this.app.metadataCache.on('changed', (file) => {

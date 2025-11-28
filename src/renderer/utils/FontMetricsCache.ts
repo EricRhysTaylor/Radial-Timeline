@@ -10,7 +10,17 @@
  * Instead of using em-based heuristics that may not match actual rendering,
  * this cache measures real text widths once when first needed,
  * then provides accurate estimates for all subsequent renders.
+ * 
+ * Base sizes are defined in LayoutConstants.ts under READABILITY SCALING section.
  */
+
+import {
+    NUMBER_SQUARE_FONT_SIZE_PX,
+    NUMBER_SQUARE_PADDING_PX,
+    NUMBER_SQUARE_LETTER_SPACING_EM,
+    BEAT_LABEL_FONT_SIZE_PX,
+    BEAT_LABEL_LETTER_SPACING_EM
+} from '../layout/LayoutConstants';
 
 export interface FontMetricsCacheConfig {
     fontFamily: string;
@@ -49,9 +59,9 @@ export function ensureBeatLabelCache(fontScale: number = 1): void {
 
     const config: FontMetricsCacheConfig = {
         fontFamily: "'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-        fontSize: 12 * fontScale,
+        fontSize: BEAT_LABEL_FONT_SIZE_PX * fontScale,
         fontWeight: 500,
-        letterSpacing: '0.07em',
+        letterSpacing: `${BEAT_LABEL_LETTER_SPACING_EM}em`,
         textTransform: 'uppercase'
     };
 
@@ -60,7 +70,7 @@ export function ensureBeatLabelCache(fontScale: number = 1): void {
 
 /**
  * Initialize the number square metrics cache.
- * Always measures at base font size (13px) - scaling is applied when retrieving widths.
+ * Always measures at base font size - scaling is applied when retrieving widths.
  */
 export function ensureNumberSquareCache(fontScale: number = 1): void {
     // Only need to measure once at base scale
@@ -70,9 +80,9 @@ export function ensureNumberSquareCache(fontScale: number = 1): void {
 
     const config: FontMetricsCacheConfig = {
         fontFamily: "'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-        fontSize: 13, // Number squares use 13px base - scaling applied at retrieval time
+        fontSize: NUMBER_SQUARE_FONT_SIZE_PX,
         fontWeight: 'normal',
-        letterSpacing: '0.03em'
+        letterSpacing: `${NUMBER_SQUARE_LETTER_SPACING_EM}em`
     };
 
     numberSquareCache = measureWithTemporarySvg(config, '0123456789.');
@@ -201,9 +211,8 @@ export function getNumberSquareWidthFromCache(num: string, scale: number = 1): n
         }
     }
 
-    // Add padding (4px on each side at base scale), then scale everything
-    const PADDING = 8;
-    return (width + PADDING) * scale;
+    // Add padding, then scale everything
+    return (width + NUMBER_SQUARE_PADDING_PX) * scale;
 }
 
 /**
