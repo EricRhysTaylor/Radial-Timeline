@@ -157,9 +157,11 @@
 }
 
 /* Measurement text node used only for width measurement; keep off-layout and invisible */
+/* Note: font-size uses the computed value directly - do NOT multiply by --rt-font-scale
+   because the computed style passed in already includes the scale factor */
 .rt-measure-text {
   font-family: var(--rt-measurement-font-family, sans-serif);
-  font-size: calc(var(--rt-measurement-font-size, 18px) * var(--rt-font-scale, 1));
+  font-size: var(--rt-measurement-font-size, 18px);
   visibility: hidden;
   position: absolute;
   pointer-events: none;

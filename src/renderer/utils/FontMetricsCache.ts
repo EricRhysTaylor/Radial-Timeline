@@ -60,17 +60,17 @@ export function ensureBeatLabelCache(fontScale: number = 1): void {
 
 /**
  * Initialize the number square metrics cache.
+ * Always measures at base font size (13px) - scaling is applied when retrieving widths.
  */
 export function ensureNumberSquareCache(fontScale: number = 1): void {
-    if (numberSquareCache && currentFontScale === fontScale) {
+    // Only need to measure once at base scale
+    if (numberSquareCache) {
         return;
     }
 
-    currentFontScale = fontScale;
-
     const config: FontMetricsCacheConfig = {
         fontFamily: "'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-        fontSize: 13 * fontScale, // Number squares use 13px base
+        fontSize: 13, // Number squares use 13px base - scaling applied at retrieval time
         fontWeight: 'normal',
         letterSpacing: '0.03em'
     };
@@ -170,9 +170,13 @@ export function estimateBeatLabelWidth(title: string, fontPx: number, paddingPx:
 /**
  * Get number square width using cached measurements.
  * Automatically initializes cache if needed.
+ * 
+ * The cache measures at base font size (13px), then we scale the result.
+ * This ensures consistent proportions across all scale factors.
  */
 export function getNumberSquareWidthFromCache(num: string, scale: number = 1): number {
-    ensureNumberSquareCache(scale);
+    // Always measure at base scale (1) for consistent character proportions
+    ensureNumberSquareCache(1);
 
     if (!numberSquareCache) {
         // Fallback to old heuristic
@@ -186,7 +190,7 @@ export function getNumberSquareWidthFromCache(num: string, scale: number = 1): n
         return 32 * scale;
     }
 
-    // Use cached measurements
+    // Use cached measurements (measured at base 13px)
     let width = 0;
     for (const char of num) {
         const charWidth = numberSquareCache.charWidths.get(char);
@@ -197,7 +201,7 @@ export function getNumberSquareWidthFromCache(num: string, scale: number = 1): n
         }
     }
 
-    // Add padding (4px on each side)
+    // Add padding (4px on each side at base scale), then scale everything
     const PADDING = 8;
     return (width + PADDING) * scale;
 }

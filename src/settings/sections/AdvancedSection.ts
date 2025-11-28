@@ -1,5 +1,6 @@
 import { App, Setting as Settings, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
+import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 
 export function renderAdvancedSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
@@ -30,6 +31,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
             drop.onChange(async (value) => {
                 plugin.settings.readabilityScale = value as any;
                 await plugin.saveSettings();
+                clearFontMetricsCaches(); // Clear cached measurements for new scale
                 plugin.refreshTimelineIfNeeded(null);
             });
             drop.selectEl.style.setProperty('width', 'fit-content', 'important');
