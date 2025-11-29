@@ -1,18 +1,19 @@
 import { App, Setting as Settings, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
+import { t } from '../../i18n';
 
 export function renderAdvancedSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
 
     new Settings(containerEl)
-        .setName('Advanced')
+        .setName(t('settings.advanced.heading'))
         .setHeading();
 
     // 1. Auto-expand clipped scene titles
     new Settings(containerEl)
-        .setName('Auto-expand clipped scene titles')
-        .setDesc('When hovering over a scene, automatically expand it if the title text is clipped. Disable this if you prefer to quickly slide through scenes and read titles from the synopsis instead.')
+        .setName(t('settings.advanced.autoExpand.name'))
+        .setDesc(t('settings.advanced.autoExpand.desc'))
         .addToggle(toggle => toggle
             .setValue(plugin.settings.enableSceneTitleAutoExpand ?? true)
             .onChange(async (value) => {
@@ -22,11 +23,11 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
 
     // 1b. Timeline readability scale
     new Settings(containerEl)
-        .setName('Readability size')
-        .setDesc('Choose a curated font sizing profile for timeline text. Large is tuned for low-res or low-vision viewing; Normal matches the current high-DPI layout.')
+        .setName(t('settings.advanced.readability.name'))
+        .setDesc(t('settings.advanced.readability.desc'))
         .addDropdown(drop => {
-            drop.addOption('normal', 'Normal');
-            drop.addOption('large', 'Large');
+            drop.addOption('normal', t('settings.advanced.readability.normal'));
+            drop.addOption('large', t('settings.advanced.readability.large'));
             drop.setValue(plugin.settings.readabilityScale ?? 'normal');
             drop.onChange(async (value) => {
                 plugin.settings.readabilityScale = value as any;
@@ -39,16 +40,16 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
 
     // 2. Metadata refresh debounce
     new Settings(containerEl)
-        .setName('Metadata refresh debounce (ms)')
-        .setDesc('Delay before refreshing the timeline after YAML frontmatter changes. Increase if your vault is large and updates feel too frequent.')
+        .setName(t('settings.advanced.debounce.name'))
+        .setDesc(t('settings.advanced.debounce.desc'))
         .addText(text => {
             const current = String(plugin.settings.metadataRefreshDebounceMs ?? 10000);
-            text.setPlaceholder('e.g., 10000')
+            text.setPlaceholder(t('settings.advanced.debounce.placeholder'))
                 .setValue(current)
                 .onChange(async (value) => {
                     const n = Number(value.trim());
                     if (!Number.isFinite(n) || n < 0) {
-                        new Notice('Please enter a non-negative number.');
+                        new Notice(t('settings.advanced.debounce.error'));
                         text.setValue(String(plugin.settings.metadataRefreshDebounceMs ?? 10000));
                         return;
                     }
@@ -59,10 +60,10 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
 
     // 3. Reset subplot color dominance
     new Settings(containerEl)
-        .setName('Reset subplot color dominance')
-        .setDesc('Clear all saved subplot color dominance preferences for scenes that appear in multiple subplots. This resets to the default ordering (outermost to innermost rings based on subplot scene population).')
+        .setName(t('settings.advanced.resetSubplotColors.name'))
+        .setDesc(t('settings.advanced.resetSubplotColors.desc'))
         .addButton(button => button
-            .setButtonText('Reset to default')
+            .setButtonText(t('settings.advanced.resetSubplotColors.button'))
             .setWarning()
             .onClick(async () => {
                 const count = Object.keys(plugin.settings.dominantSubplots || {}).length;
@@ -73,16 +74,16 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 plugin.refreshTimelineIfNeeded(null);
                 
                 if (count > 0) {
-                    new Notice(`Cleared saved colors for ${count} multi-subplot scene${count === 1 ? '' : 's'}.`);
+                    new Notice(t('settings.advanced.resetSubplotColors.clearedNotice', { count: String(count) }));
                 } else {
-                    new Notice('No subplot dominance preferences to reset.');
+                    new Notice(t('settings.advanced.resetSubplotColors.nothingToReset'));
                 }
             }));
 
     // 4. Scene ordering by When date (DISABLED/GRAYED OUT)
     const sortSetting = new Settings(containerEl)
-        .setName('Scene ordering based on When date')
-        .setDesc('Coming someday maybe not sure yet: Sort scenes chronologically by When date instead of manuscript order for all modes.')
+        .setName(t('settings.advanced.sceneOrdering.name'))
+        .setDesc(t('settings.advanced.sceneOrdering.desc'))
         .addToggle(toggle => toggle
             .setValue(false)
             .setDisabled(true) // Make toggle inoperative

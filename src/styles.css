@@ -44,7 +44,7 @@
   --rt-synopsis-font-scale: var(--rt-font-scale);
   --rt-number-font-scale: 1;
   --rt-synopsis-line-height: 24px;
-  --rt-pulse-line-height: 19px;
+  --rt-pulse-line-height: 18px;
   --rt-synopsis-metadata-line-height: 24px;
 
   /* Settings UI sizing */
@@ -135,13 +135,13 @@
   transition: fill 0.2s ease;
 }
 
-/* Version color: Green when up-to-date (no update available) */
+/* Version color: Default muted when up-to-date (no update available) */
 .rt-update-none .rt-version-text {
-  fill: #4ade80;  /* Bright green */
+  fill: var(--text-muted);
 }
 
 .rt-update-none:hover .rt-version-text {
-  fill: #22c55e;  /* Slightly brighter on hover */
+  fill: var(--text-normal);
 }
 
 /* Version color: Orange when minor/patch update available */
@@ -162,16 +162,28 @@
   fill: #ef4444;  /* Brighter red on hover */
 }
 
-.rt-version-alert-icon {
+/* Bug icon (shown when no update available) */
+.rt-version-bug-icon {
   fill: none;
+  stroke: var(--text-muted);
   stroke-width: 1.5px;
-  opacity: 0;
-  transition: opacity 0.3s ease, stroke 0.2s ease;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, stroke 0.2s ease;
   cursor: pointer;
 }
 
-.rt-version-indicator.rt-has-update .rt-version-alert-icon {
+.rt-version-bug-icon:hover {
   opacity: 1;
+  stroke: var(--text-normal);
+}
+
+/* Alert icon (shown when update available) */
+.rt-version-alert-icon {
+  fill: none;
+  stroke-width: 1.5px;
+  opacity: 1;
+  transition: opacity 0.3s ease, stroke 0.2s ease;
+  cursor: pointer;
   animation: rt-version-pulse 2s ease-in-out infinite;
 }
 
@@ -862,6 +874,7 @@
   stroke: var(--rt-number-stroke-color, var(--scene-color, #705DCF));
 }
 .rt-number-square.rt-scene-is-open.rt-selected {
+  stroke: var(--rt-number-stroke-color, var(--scene-color, #705DCF));
   stroke-width: 3px;
   fill: #FFFFFF;
 }
@@ -1006,7 +1019,6 @@
 }
 .rt-number-square.rt-scene-is-open {
   fill: var(--interactive-accent, #705DCF);
-  stroke: none;
 }
 .rt-number-text.rt-scene-is-open {
   font-weight: normal;

@@ -1173,6 +1173,9 @@ export function createTimelineSVG(
                 const seenPlotKeys = new Set<string>();
                 const combined: TimelineItem[] = [];
 
+                // Group scenes by path first to apply dominant subplot resolution
+                const scenesByPathForSquares = new Map<string, TimelineItem[]>();
+                
                 scenes.forEach(s => {
                     // When using When date sorting, include all scenes (ignore Act)
                     // When using manuscript order, filter by Act
@@ -1190,11 +1193,31 @@ export function createTimelineSVG(
                         seenPlotKeys.add(pKey);
                         combined.push(s);
                     } else {
+                        // Group scenes by path for dominant subplot resolution
                         const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
-                        if (seenPaths.has(key)) return;
-                        seenPaths.add(key);
-                        combined.push(s);
+                        if (!scenesByPathForSquares.has(key)) {
+                            scenesByPathForSquares.set(key, []);
+                        }
+                        scenesByPathForSquares.get(key)!.push(s);
                     }
+                });
+                
+                // Now process grouped scenes, selecting the appropriate one for each path
+                // This matches the logic used in the main slice rendering
+                scenesByPathForSquares.forEach((scenesForPath, pathKey) => {
+                    if (seenPaths.has(pathKey)) return;
+                    seenPaths.add(pathKey);
+                    
+                    // Select which Scene object to use based on dominant subplot preference
+                    const scenePath = scenesForPath[0].path;
+                    const resolution = resolveDominantScene({
+                        scenePath,
+                        candidateScenes: scenesForPath,
+                        masterSubplotOrder,
+                        dominantSubplots: plugin.settings.dominantSubplots
+                    });
+                    
+                    combined.push(resolution.scene);
                 });
                 
                 // CRITICAL: Sort the combined array the same way as main rendering does
