@@ -162,6 +162,16 @@
   fill: #ef4444;  /* Brighter red on hover */
 }
 
+/* "NEW RELEASE" text animation when update available */
+.rt-has-update .rt-version-text {
+  animation: rt-new-release-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rt-new-release-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 /* Bug icon (shown when no update available) */
 .rt-version-bug-icon {
   fill: none;

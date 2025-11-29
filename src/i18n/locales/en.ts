@@ -146,7 +146,7 @@ export const en: TranslationKeys = {
             heading: 'Point of view',
             global: {
                 name: 'Global POV',
-                desc: 'Optional. Choose a default mode to apply. Scene level POV: will override this global setting.',
+                desc: 'Choose a default mode to apply. Scene level POV will override this global setting.',
             },
             yamlOverrides: {
                 name: 'Scene level YAML overrides',

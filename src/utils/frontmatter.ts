@@ -39,7 +39,6 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>): Record<st
     'range': 'Range',
     'words': 'Words',
     'totaltime': 'Total Time',
-    'book': 'Book',
     'supportfiles': 'Support Files',
     'due': 'Due',
     'pendingedits': 'Pending Edits',

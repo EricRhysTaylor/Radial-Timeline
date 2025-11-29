@@ -7,8 +7,7 @@
 import { formatNumber } from '../../utils/svg';
 import { 
     VERSION_INDICATOR_POS_X, 
-    VERSION_INDICATOR_POS_Y,
-    VERSION_ALERT_OFFSET_X
+    VERSION_INDICATOR_POS_Y
 } from '../layout/LayoutConstants';
 
 /**
@@ -88,21 +87,22 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
         groupClasses.push('rt-has-update');
     }
     
-    // Version text with pixel font
-    const versionText = version;
+    // Version text: show "NEW RELEASE" when update available, otherwise show version
+    const versionText = hasUpdate ? 'NEW RELEASE' : version;
     
     // Icon positioned below the version text (centered roughly)
-    const iconX = 12; // Offset to roughly center under version text
+    // Adjust position based on text width
+    const iconX = hasUpdate ? 36 : 12; // Center under longer "NEW RELEASE" text
     const iconY = 6;  // Below the text baseline
     
     // Tooltip for version text area
     const versionTooltip = hasUpdate && latestVersion
-        ? `Version ${version} • Update available: ${latestVersion}`
+        ? `Current: ${version} → New: ${latestVersion}\nClick to update`
         : `Version ${version}`;
     
     // Tooltip for icon
     const iconTooltip = hasUpdate
-        ? `Click to update to ${latestVersion}`
+        ? `Update to ${latestVersion}`
         : 'Please report any bugs you encounter here.';
     
     // Choose icon based on update state

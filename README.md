@@ -41,8 +41,8 @@ Radial Timeline™ arranges your scenes by act, subplot, narrative or chronologi
 Radial Timeline™ captures and visualizes all 4 critical timelines, revealing everything you need to know as your manuscript evolves from the nucleus of an idea to the final polished novel.
 
 **Narrative time**: the sequence you reveal events to readers.<br>
-**Chronological time**: when events happen in your story's world. (can be the same as Narrative)<br>
-**Author time**: your real-world writing progress toward completion.<br>
+**Chronological time**: when events happen in your story's world.<br>
+**Author time**: your real-world writing progress toward completion from Todo to Complete.<br>
 **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
 
 <hr>
@@ -334,7 +334,6 @@ Publish Stage: Zero       # Revision stage (Zero/Author/House/Press)
 Revision:                 # Revision count (leave blank until stage > zero)
 Pending Edits:            # Notes for future revisions (especially for zero draft mode)
 Words:                    # Scene word count
-Book:                     # Book title (appears in timeline tab, defaults to "Book 1")
 Pulse Update:             # AI-generated scene pulse analysis flag
 ---
 ```

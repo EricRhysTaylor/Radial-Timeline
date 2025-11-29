@@ -60,7 +60,6 @@ Character:
 Status: Todo
 Publish Stage: Zero
 Due: 2025-01-31
-Book: Book 1 A New Beginning
 ---
 ```
 
@@ -105,7 +104,6 @@ Internal:     # How do the character change? (e.g., from trusting → suspicious
 # Optional tracking
 Total Time: 0.0     # Writing/production time spent (hours in decimal)
 Words: 0
-Book: Book 1 A New Beginning
 Support Files:
 
 # AI-Generated Beats (triplets)

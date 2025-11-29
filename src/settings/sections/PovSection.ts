@@ -29,7 +29,7 @@ export function renderPovSection(params: {
     }
     new ObsidianSetting(containerEl)
         .setName('Global POV')
-        .setDesc('Optional. Choose a default mode to apply. Scene level POV: will override this global setting.')
+        .setDesc('Choose a default mode to apply. Scene level POV will override this global setting.')
         .addDropdown(dropdown => {
             (Object.keys(POV_MODE_OPTIONS) as GlobalPovMode[]).forEach((key) => {
                 dropdown.addOption(key, POV_MODE_OPTIONS[key]);

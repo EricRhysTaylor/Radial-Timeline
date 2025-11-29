@@ -58,9 +58,6 @@ export class RadialTimelineView extends ItemView {
     // Store rotation state to persist across timeline refreshes
     private rotationState: boolean = false;
     
-    // Cache book title for display in tab
-    private cachedBookTitle: string | undefined = undefined;
-    
     // Mode system
     private _currentMode: string = 'narrative'; // TimelineMode enum value
     private modeManager?: ModeManager; // Centralized mode management
@@ -127,9 +124,15 @@ export class RadialTimelineView extends ItemView {
     }
     
     getDisplayText(): string {
-        // Use cached book title if available
-        if (this.cachedBookTitle && this.cachedBookTitle.trim()) {
-            return `Radial Timeline: ${this.cachedBookTitle.trim()}`;
+        // Use source path folder name if enabled in settings
+        if (this.plugin.settings.showSourcePathAsTitle !== false) {
+            const sourcePath = this.plugin.settings.sourcePath || '';
+            if (sourcePath) {
+                const parts = sourcePath.split('/').filter(p => p.length > 0);
+                if (parts.length > 0) {
+                    return `Radial Timeline: ${parts[parts.length - 1]}`;
+                }
+            }
         }
         
         return TIMELINE_VIEW_DISPLAY_TEXT;
@@ -308,12 +311,6 @@ export class RadialTimelineView extends ItemView {
                 this.sceneData = sceneData;
                 // Expose last scene data on plugin for selective services that need it
                 this.plugin.lastSceneData = sceneData;
-                
-                // Cache book title for display (getDisplayText() will use it when called)
-                const bookTitle = sceneData.find(scene => scene.Book)?.Book;
-                if (bookTitle) {
-                    this.cachedBookTitle = bookTitle;
-                }
                 
                 // Create snapshot of current state
                 const currentSnapshot = createSnapshot(
