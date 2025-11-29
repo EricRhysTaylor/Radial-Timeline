@@ -4,7 +4,7 @@ import type RadialTimelinePlugin from '../../main';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
 import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels } from '../../api/geminiApi';
-import { CURATED_MODELS, CuratedModel, ModelTier } from '../../data/aiModels';
+import { CURATED_MODELS, CuratedModel } from '../../data/aiModels';
 
 type Provider = 'anthropic' | 'gemini' | 'openai';
 
@@ -68,91 +68,84 @@ export function renderAiSection(params: {
             optionId: string;
             provider: Provider;
             modelId: string;
-                label: string;
-                tier: ModelTier;
-                guidance: string;
-            };
-            const tierLabel: Record<ModelTier, string> = {
-                premium: 'Premium',
-                balanced: 'Balanced',
-                budget: 'Budget',
-            };
-            const providerLabel: Record<Provider, string> = {
-                anthropic: 'Anthropic',
-                gemini: 'Gemini',
-                openai: 'OpenAI',
-            };
+            label: string;
+            guidance: string;
+        };
+        const providerLabel: Record<Provider, string> = {
+            anthropic: 'Anthropic',
+            gemini: 'Gemini',
+            openai: 'OpenAI',
+        };
 
-            const choices: ModelChoice[] = (Object.entries(CURATED_MODELS) as Array<[Provider, CuratedModel[]]>)
-                .flatMap(([provider, models]) =>
-                    models.map(model => ({
-                        optionId: `${provider}:${model.id}`,
-                        provider,
-                        modelId: model.id,
-                        label: `${providerLabel[provider]} — ${model.label}`,
-                        tier: model.tier,
-                        guidance: model.guidance,
-                    })));
+        const choices: ModelChoice[] = (Object.entries(CURATED_MODELS) as Array<[Provider, CuratedModel[]]>)
+            .flatMap(([provider, models]) =>
+                models.map(model => ({
+                    optionId: `${provider}:${model.id}`,
+                    provider,
+                    modelId: model.id,
+                    label: `${providerLabel[provider]} — ${model.label}`,
+                    guidance: model.guidance,
+                })));
 
-            choices.forEach(opt => {
-            dropdownComponent.addOption(opt.optionId, `${opt.label} (${tierLabel[opt.tier]})`);
-            });
+        choices.forEach(opt => {
+            dropdownComponent.addOption(opt.optionId, opt.label);
+        });
 
-            const findDefaultChoice = (): ModelChoice | undefined => {
-                const provider = (plugin.settings.defaultAiProvider || 'openai') as Provider;
-                const modelId =
-                    provider === 'anthropic'
-                        ? plugin.settings.anthropicModelId
-                        : provider === 'gemini'
-                            ? plugin.settings.geminiModelId
-                            : plugin.settings.openaiModelId;
+        const findDefaultChoice = (): ModelChoice | undefined => {
+            const provider = (plugin.settings.defaultAiProvider || 'openai') as Provider;
+            const modelId =
+                provider === 'anthropic'
+                    ? plugin.settings.anthropicModelId
+                    : provider === 'gemini'
+                        ? plugin.settings.geminiModelId
+                        : plugin.settings.openaiModelId;
 
-                return (
-                    choices.find(choice => choice.provider === provider && choice.modelId === modelId) ||
-                    choices.find(choice => choice.provider === provider) ||
-                    choices[0]
-                );
-            };
+            return (
+                choices.find(choice => choice.provider === provider && choice.modelId === modelId) ||
+                choices.find(choice => choice.provider === provider) ||
+                choices[0]
+            );
+        };
 
-            const updateGuidance = (choice?: ModelChoice) => {
-                guidanceEl.empty();
-                if (!choice) {
-                    guidanceEl.setText('Select a model to see guidance on when to use it.');
-                    return;
-                }
-                // Link or plain text
-                const match = choice.guidance.match(/\[FYI\]\((https?:\/\/[^\s)]+)\)/i);
-                const summary = match ? choice.guidance.replace(match[0], '').trim() : choice.guidance;
-                const text = document.createElement('span');
-                text.textContent = summary;
-                guidanceEl.appendChild(text);
-                if (match) {
-                    guidanceEl.appendChild(document.createTextNode(' '));
-                    const anchor = guidanceEl.createEl('a', { text: 'FYI', href: match[1] });
-                    anchor.target = '_blank';
-                    anchor.rel = 'noopener';
-                }
-            };
-
-            const defaultChoice = findDefaultChoice();
-            if (defaultChoice) {
-                dropdownComponent.setValue(defaultChoice.optionId);
-                updateGuidance(defaultChoice);
-            } else {
-                updateGuidance();
+        const updateGuidance = (choice?: ModelChoice) => {
+            guidanceEl.empty();
+            if (!choice) {
+                guidanceEl.setText('Select a model to see guidance on when to use it.');
+                return;
             }
+            // Link or plain text
+            const match = choice.guidance.match(/\[FYI\]\((https?:\/\/[^\s)]+)\)/i);
+            const summary = match ? choice.guidance.replace(match[0], '').trim() : choice.guidance;
+            const text = document.createElement('span');
+            text.textContent = summary;
+            guidanceEl.appendChild(text);
+            if (match) {
+                guidanceEl.appendChild(document.createTextNode(' '));
+                const anchor = guidanceEl.createEl('a', { text: 'FYI', href: match[1] });
+                anchor.target = '_blank';
+                anchor.rel = 'noopener';
+            }
+        };
 
-            dropdownComponent.onChange(async value => {
-                const choice = choices.find(c => c.optionId === value);
-                if (!choice) return;
-                plugin.settings.defaultAiProvider = choice.provider;
-                if (choice.provider === 'anthropic') plugin.settings.anthropicModelId = choice.modelId;
-                if (choice.provider === 'gemini') plugin.settings.geminiModelId = choice.modelId;
-                if (choice.provider === 'openai') plugin.settings.openaiModelId = choice.modelId;
-                await plugin.saveSettings();
-                params.refreshProviderDimming();
-                updateGuidance(choice);
-            });
+        const defaultChoice = findDefaultChoice();
+        if (defaultChoice) {
+            dropdownComponent.setValue(defaultChoice.optionId);
+            updateGuidance(defaultChoice);
+        } else {
+            updateGuidance();
+        }
+
+        dropdownComponent.onChange(async value => {
+            const choice = choices.find(c => c.optionId === value);
+            if (!choice) return;
+            plugin.settings.defaultAiProvider = choice.provider;
+            if (choice.provider === 'anthropic') plugin.settings.anthropicModelId = choice.modelId;
+            if (choice.provider === 'gemini') plugin.settings.geminiModelId = choice.modelId;
+            if (choice.provider === 'openai') plugin.settings.openaiModelId = choice.modelId;
+            await plugin.saveSettings();
+            params.refreshProviderDimming();
+            updateGuidance(choice);
+        });
     }
     params.addAiRelatedElement(modelPickerSetting.settingEl);
 

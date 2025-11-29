@@ -25,7 +25,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
         .setName('Readability size')
         .setDesc('Choose a curated font sizing profile for timeline text. Large is tuned for low-res or low-vision viewing; Normal matches the current high-DPI layout.')
         .addDropdown(drop => {
-            drop.addOption('normal', 'Normal (default)');
+            drop.addOption('normal', 'Normal');
             drop.addOption('large', 'Large');
             drop.setValue(plugin.settings.readabilityScale ?? 'normal');
             drop.onChange(async (value) => {

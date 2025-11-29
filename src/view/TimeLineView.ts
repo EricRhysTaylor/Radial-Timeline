@@ -13,7 +13,7 @@ import ZeroDraftModal from '../modals/ZeroDraftModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
 import { renderSvgFromString } from '../utils/svgDom';
 import { openOrRevealFile } from '../utils/fileUtils';
-import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt, setupModeToggleController } from './interactions';
+import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt, setupModeToggleController, setupVersionIndicatorController } from './interactions';
 import { isShiftModeActive } from './interactions/ChronologueShiftController';
 import { RendererService } from '../services/RendererService';
 import { ModeManager, createModeManager } from '../modes/ModeManager';
@@ -670,6 +670,9 @@ export class RadialTimelineView extends ItemView {
 
                 // Attach mode toggle behavior
                 setupModeToggleController(this, svgElement as unknown as SVGSVGElement);
+
+                // Attach version indicator click behavior
+                setupVersionIndicatorController(this, svgElement as unknown as SVGSVGElement);
 
                 // Adjust story beat labels after render
                 const adjustLabels = () => this.rendererService?.adjustBeatLabelsAfterRender(timelineContainer);

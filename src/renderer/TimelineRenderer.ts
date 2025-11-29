@@ -77,9 +77,11 @@ import { collectChronologueSceneEntries, type ChronologueSceneEntry } from './co
 import { appendSynopsisElementForScene } from './utils/SynopsisBuilder';
 import { renderGossamerOverlay, type StageColorMap } from './utils/Gossamer';
 import { renderRotationToggle } from './utils/RotationToggle';
+import { renderVersionIndicator } from './components/VersionIndicator';
 import type { CompletionEstimate } from './utils/Estimation';
 import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
+import { getVersionCheckService } from '../services/VersionCheckService';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -1285,6 +1287,19 @@ export function createTimelineSVG(
         // Add rotation toggle control (non-rotating UI), positioned above top edge (Act 2 marker vicinity)
         // Place the button near the Act 2 label (start of Act 2 boundary) and slightly outside along local y-axis
         svg += renderRotationToggle({ numActs: NUM_ACTS, actualOuterRadius });
+
+        // Add version indicator (bottom-right corner)
+        try {
+            const versionService = getVersionCheckService();
+            svg += renderVersionIndicator({
+                version: versionService.getCurrentVersion(),
+                hasUpdate: versionService.isUpdateAvailable(),
+                latestVersion: versionService.getLatestVersion() || undefined
+            });
+        } catch {
+            // Version service not initialized yet - render without update info
+            // Will be updated on next render after version check completes
+        }
 
         // Add Chronologue mode arcs
         if (isChronologueMode) {

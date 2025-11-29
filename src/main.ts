@@ -32,6 +32,7 @@ import { TimelineMetricsService } from './services/TimelineMetricsService';
 import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
 import { SettingsService } from './services/SettingsService';
 import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
+import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
 
 
 // Declare the variable that will be injected by the build process
@@ -389,6 +390,18 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // Setup hover listeners
         new HoverHighlighter(this.app, this, this.sceneHighlighter).register();
+
+        // Initialize version check service and check for updates in background
+        const versionService = initVersionCheckService(this.manifest.version);
+        // Check for updates asynchronously (don't block plugin load)
+        versionService.checkForUpdates().then(hasUpdate => {
+            if (hasUpdate) {
+                // Refresh timeline to show update indicator
+                this.refreshTimelineIfNeeded(null);
+            }
+        }).catch(() => {
+            // Silently ignore version check errors
+        });
 
         // Initial status bar update (placeholder for future stats)
         // this.statusBarService.update(...);

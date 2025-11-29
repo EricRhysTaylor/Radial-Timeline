@@ -194,15 +194,15 @@ export const SHIFT_BUTTON_POS_X = -700;
 export const SHIFT_BUTTON_POS_Y = -750;
 
 // =============================================================================
-// VERSION INDICATOR POSITIONING (bottom-right corner)
+// VERSION INDICATOR POSITIONING (bottom-left edge)
 // =============================================================================
 
-/** Horizontal position for version indicator (right side, mirroring book title) */
-export const VERSION_INDICATOR_POS_X = 568;
+/** Horizontal position for version indicator (left edge) */
+export const VERSION_INDICATOR_POS_X = -780;
 
 /** Vertical position for version indicator (bottom, positive Y in SVG coords) */
-export const VERSION_INDICATOR_POS_Y = 784;
+export const VERSION_INDICATOR_POS_Y = 734;
 
 /** Horizontal offset for update alert icon from version text */
-export const VERSION_ALERT_OFFSET_X = 16;
+export const VERSION_ALERT_OFFSET_X = 8;
 

@@ -434,20 +434,21 @@ The visualizations are built using pure SVG and javascript, offering a lightweig
 
 ## Acknowledgements
 
-This project stands on the shoulders of many generous teachers, tools, and storytellers:
+This project was inspired by many online innovators and visionaries in the technical and design fields:
 
 - d3.js at [d3js.org](https://d3js.org) for pioneering data-driven, SVG-based visualization patterns that informed the radial layout, scales, and interaction patterns used here, even though the plugin implements them in plain SVG and javascript within the DOM of Obsidian.
 - Save the Cat! Writes a Novel (2018), Jessica Brody — a practical articulation of the Save the Cat beats used by many authors. [Save the Cat](https://www.jessicabrody.com/books/non-fiction/save-cat-writes-novel/about/).
 - The Story Grid, Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow; helpful for systematically evaluating arcs across scenes. [storygrid.com](https://storygrid.com).
 - The Obsidian community for a thriving plugin ecosystem and thoughtful feature development and implementation. [obsidian.md](https://obsidian.md).
 - The W3C SVG specification and countless browser engineers for making vector graphics on the web dependable. [w3.org/Graphics/SVG](https://www.w3.org/Graphics/SVG/).
-- 04 Font (OUTFONT) by Yoji Oshimoto — a beautiful Japanese freeware font. © 1998–2003 Yoji Oshimoto. [04.jp.org](http://www.04.jp.org/)
+- 04 Font by Yuji Oshimoto — a beautiful Japanese freeware font. © 1998–2003 Yuji Oshimoto. [04.jp.org](http://www.04.jp.org/)
+  <br>このフォントはフリーウェアです。非営利目的での配布、譲渡、転載は自由ですが、作者の許可なく販売したり、営利目的の製品に添付する事は固く禁じさせて頂きます。なお、このフォントを使用していかなる損害についても作者は責任を負わないものとします。御意見、御感想などよろしければメールください。
 
 <hr>
 
 ## Feedback and support
 
-Please see the Github Wiki for documentation at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/wiki"  target="_blank" rel="noopener">Github Radial Timeline Wiki</a>. Also check out the Discussions group at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/discussions" target="_blank" rel="noopener">Discussions</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">Github Repository Issues page</a>. If you find the radial timeline plugin useful and would like to support continued development, please consider joining my <a href="https://www.patreon.com/c/EricRhysTaylor" target="_blank" rel="noopener">Patreon</a> or just buying me a coffee:
+Please see the Github Wiki for documentation at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/wiki"  target="_blank" rel="noopener">Github Radial Timeline Wiki</a>. Also check out the Discussions group at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/discussions" target="_blank" rel="noopener">Discussions</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">Github Repository Issues page</a>. If you find the radial timeline plugin useful and would like to encourage continued development, please consider joining my <a href="https://www.patreon.com/c/EricRhysTaylor" target="_blank" rel="noopener">Patreon</a> or just buying me a coffee:
 
 <a href="https://www.buymeacoffee.com/ericrhysTaylor" target="_blank" rel="noopener">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="buy me a coffee" style="width: 150px;"></a>
