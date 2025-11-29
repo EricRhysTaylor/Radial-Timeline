@@ -19,6 +19,7 @@ import { computeRingGeometry } from '../layout/Rings';
 import { getMostAdvancedStageColor } from '../../utils/colour';
 import { startPerfSegment } from '../utils/Performance';
 import { computeSubplotDominanceStates, type SubplotDominanceState } from '../components/SubplotDominanceIndicators';
+import { getReadabilityScale } from '../../utils/readability';
 
 export interface PrecomputedRenderValues {
     scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } };
@@ -42,6 +43,7 @@ export function computeCacheableValues(
     const currentMode = (plugin.settings as any).currentMode || 'narrative';
     const isChronologueMode = currentMode === 'chronologue';
     const isSubplotMode = currentMode === 'subplot';
+    const readabilityScale = getReadabilityScale(plugin.settings as any);
     const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
     const forceChronological = isChronologueMode;
 
@@ -132,7 +134,7 @@ export function computeCacheableValues(
         ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
         : isSubplotMode
         ? SUBPLOT_OUTER_RADIUS_MAINPLOT
-        : SUBPLOT_OUTER_RADIUS_STANDARD;
+        : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 
     const ringGeo = computeRingGeometry({
         size: SVG_SIZE,

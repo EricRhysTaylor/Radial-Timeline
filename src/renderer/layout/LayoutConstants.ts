@@ -24,8 +24,11 @@ export const INNER_RADIUS = 200;
 /** Where subplot rings end in Main Plot mode (more room since beats hidden) */
 export const SUBPLOT_OUTER_RADIUS_MAINPLOT = 778;
 
-/** Where subplot rings end in All Scenes and Gossamer modes */
-export const SUBPLOT_OUTER_RADIUS_STANDARD = 766;
+/** Where subplot rings end in Narrative and Gossamer modes - by readability size */
+export const SUBPLOT_OUTER_RADIUS_STANDARD = {
+  normal: 766,
+  large: 754
+} as const;
 
 /** Where subplot rings end in Chronologue mode (smaller for time details) */
 export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;
@@ -72,8 +75,11 @@ export const SCENE_TITLE_INSET = 22;
 /** Pixels inward from subplot outer radius for synopsis text positioning */
 export const SYNOPSIS_INSET = 0;
 
-/** Inset from outer scene edge for story beat labels */
-export const BEAT_TITLE_INSET = -3;
+/** Fixed radius for story beat label text path (independent of subplot outer radius) */
+export const BEAT_TEXT_RADIUS = {
+  normal: 769,
+  large: 765
+} as const;
 
 /** Small start nudge for text paths (radians) */
 export const TEXTPATH_START_NUDGE_RAD = 0.02;
@@ -134,7 +140,7 @@ export const BEAT_LABEL_BREATHING_ROOM_PX = 10;
 /** Scale multipliers for readability presets */
 export const READABILITY_SCALES = {
   normal: 1.0,   // 100% - baseline size
-  large: 1.4    // 140% - for low-res or low-vision viewing
+  large: 1.3    // 140% - for low-res or low-vision viewing
 } as const;
 
 // --- Number Squares ---

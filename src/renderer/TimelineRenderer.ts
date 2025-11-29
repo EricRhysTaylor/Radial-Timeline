@@ -42,7 +42,7 @@ import {
     ELAPSED_TICK_LENGTH,
     SCENE_TITLE_INSET,
     SYNOPSIS_INSET,
-    BEAT_TITLE_INSET,
+    BEAT_TEXT_RADIUS,
     TEXTPATH_START_NUDGE_RAD,
     MAX_TEXT_WIDTH,
     PLOT_PIXEL_WIDTH,
@@ -190,12 +190,15 @@ export function createTimelineSVG(
             ? collectChronologueSceneEntries(scenes)
             : undefined;
         
-        // Use appropriate subplot outer radius based on mode (needed for ring rendering)
+        // Use appropriate subplot outer radius based on mode and readability scale
         const subplotOuterRadius = isChronologueMode 
             ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
             : isSubplotMode 
             ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
-            : SUBPLOT_OUTER_RADIUS_STANDARD;
+            : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
+        
+        // Fixed beat text radius based on readability scale (independent of subplot outer radius)
+        const beatTextRadius = BEAT_TEXT_RADIUS[readabilityScale];
         
         const standardMonths = Array.from({ length: 12 }, (_, i) => {
             const angle = (i / 12) * 2 * Math.PI - Math.PI / 2;
@@ -532,8 +535,7 @@ export function createTimelineSVG(
 
                     // Stacking removed
 
-                    // Story beat labels will be measured and adjusted after SVG is rendered
-                    const beatTextRadius = outerR - BEAT_TITLE_INSET;
+                    // Story beat labels use fixed radius (defined at top of function)
 
                     sortedCombined.forEach((scene, idx) => {
                             const { number, text } = parseSceneTitle(scene.title || '', scene.number);
@@ -583,9 +585,7 @@ export function createTimelineSVG(
                         if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += ' rt-scene-is-open';
                         const dyOffset = 0; // keep scene titles exactly on the midline path
 
-                        // Use a single y-axis (radius) for all story beat labels; no outward stacking
-                        // Story beat titles are inset a fixed amount from the outer scene edge
-                        const beatTextRadius = outerR - BEAT_TITLE_INSET;
+                        // Use fixed radius for all story beat labels (defined at top of function)
 
                         // Strip numeric prefix for beat titles
                         const rawTitleFull = (() => {

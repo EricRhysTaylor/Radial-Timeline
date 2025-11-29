@@ -16,7 +16,7 @@ import {
 } from './renderer/layout/LayoutConstants';
 import { adjustBeatLabelsAfterRender } from './renderer/dom/BeatLabelAdjuster';
 import { sortScenes, isBeatNote, shouldDisplayMissingWhenWarning } from './utils/sceneHelpers';
-import { getReadabilityMultiplier } from './utils/readability';
+import { getReadabilityMultiplier, getReadabilityScale } from './utils/readability';
 
 /**
  * Handles generating synopsis SVG/HTML blocks and positioning logic.
@@ -598,12 +598,13 @@ export default class SynopsisManager {
     const currentMode = (this.plugin.settings as any).currentMode || 'narrative';
     const isChronologueMode = currentMode === 'chronologue';
     const isSubplotMode = currentMode === 'subplot';
+    const readabilityScale = getReadabilityScale(this.plugin.settings);
 
     const subplotOuterRadius = isChronologueMode 
         ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
         : isSubplotMode 
         ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
-        : SUBPLOT_OUTER_RADIUS_STANDARD;
+        : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 
     const adjustedRadius = subplotOuterRadius - SYNOPSIS_INSET;
 
