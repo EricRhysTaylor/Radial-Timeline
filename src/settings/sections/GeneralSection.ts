@@ -1,5 +1,5 @@
 import type { App, TextComponent } from 'obsidian';
-import { Setting as ObsidianSetting, normalizePath, Notice } from 'obsidian';
+import { Setting as ObsidianSetting, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 
 export function renderGeneralSection(params: {
@@ -76,4 +76,18 @@ export function renderGeneralSection(params: {
             }
         });
     });
+
+    // --- Show Source Path as Title ---
+    new ObsidianSetting(containerEl)
+        .setName('Show source path as title')
+        .setDesc('Display the source folder name as the title of your work. When off, displays "Work in Progress" instead.')
+        .addToggle(toggle => {
+            toggle
+                .setValue(plugin.settings.showSourcePathAsTitle !== false)
+                .onChange(async (value) => {
+                    plugin.settings.showSourcePathAsTitle = value;
+                    await plugin.saveSettings();
+                    plugin.refreshTimelineIfNeeded(null);
+                });
+        });
 }

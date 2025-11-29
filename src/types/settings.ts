@@ -21,6 +21,7 @@ export interface AiContextTemplate {
 
 export interface RadialTimelineSettings {
     sourcePath: string;
+    showSourcePathAsTitle?: boolean;
     validFolderPaths: string[];
     publishStageColors: {
         Zero: string;

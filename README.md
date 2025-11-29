@@ -441,6 +441,7 @@ This project stands on the shoulders of many generous teachers, tools, and story
 - The Story Grid, Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow; helpful for systematically evaluating arcs across scenes. [storygrid.com](https://storygrid.com).
 - The Obsidian community for a thriving plugin ecosystem and thoughtful feature development and implementation. [obsidian.md](https://obsidian.md).
 - The W3C SVG specification and countless browser engineers for making vector graphics on the web dependable. [w3.org/Graphics/SVG](https://www.w3.org/Graphics/SVG/).
+- 04 Font (OUTFONT) by Yoji Oshimoto — a beautiful Japanese freeware font. © 1998–2003 Yoji Oshimoto. [04.jp.org](http://www.04.jp.org/)
 
 <hr>
 

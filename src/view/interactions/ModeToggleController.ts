@@ -15,7 +15,7 @@ interface ModeToggleView {
     currentMode?: string;
     getModeManager?: () => ModeManager | undefined;
     plugin: {
-        settings: { currentMode?: string; sourcePath?: string };
+        settings: { currentMode?: string; sourcePath?: string; showSourcePathAsTitle?: boolean };
         saveSettings: () => Promise<void>;
         refreshTimelineIfNeeded: (file: unknown) => void;
     };
@@ -144,12 +144,15 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         grid.appendChild(optionGroup);
     });
     
-    // Extract book title from sourcePath (last folder name)
-    const sourcePath = view.plugin.settings.sourcePath || '';
-    let bookTitle = '';
-    if (sourcePath) {
-        const parts = sourcePath.split('/').filter(p => p.length > 0);
-        bookTitle = parts.length > 0 ? parts[parts.length - 1] : '';
+    // Determine book title based on setting
+    const showSourcePathAsTitle = view.plugin.settings.showSourcePathAsTitle !== false;
+    let bookTitle = 'Work in Progress';
+    if (showSourcePathAsTitle) {
+        const sourcePath = view.plugin.settings.sourcePath || '';
+        if (sourcePath) {
+            const parts = sourcePath.split('/').filter(p => p.length > 0);
+            bookTitle = parts.length > 0 ? parts[parts.length - 1] : 'Work in Progress';
+        }
     }
     
     // Add book title text above the mode title (10px higher)

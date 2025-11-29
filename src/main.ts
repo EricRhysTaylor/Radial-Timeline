@@ -45,6 +45,7 @@ const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline"; // Sentence case per guide
 
 export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     sourcePath: '',
+    showSourcePathAsTitle: true, // Default: show source path as title of the work
     validFolderPaths: [], // <<< ADDED: Default empty array for folder path history
     publishStageColors: {
         Zero: '#9E70CF',   // Purple (Stage Zero)

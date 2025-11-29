@@ -27,7 +27,7 @@ export const SUBPLOT_OUTER_RADIUS_MAINPLOT = 778;
 /** Where subplot rings end in Narrative and Gossamer modes - by readability size */
 export const SUBPLOT_OUTER_RADIUS_STANDARD = {
   normal: 766,
-  large: 754
+  large: 762
 } as const;
 
 /** Where subplot rings end in Chronologue mode (smaller for time details) */
@@ -149,10 +149,10 @@ export const READABILITY_SCALES = {
 export const NUMBER_SQUARE_FONT_SIZE_PX = 13;
 
 /** Base height of number squares (px) */
-export const NUMBER_SQUARE_HEIGHT_PX = 16;
+export const NUMBER_SQUARE_HEIGHT_PX = 18;
 
 /** Total horizontal padding inside number squares (px) - split evenly left/right */
-export const NUMBER_SQUARE_PADDING_PX = 6;
+export const NUMBER_SQUARE_PADDING_PX = 7;
 
 /** Letter spacing for number square text (em) */
 export const NUMBER_SQUARE_LETTER_SPACING_EM = 0.03;
@@ -192,4 +192,17 @@ export const SHIFT_BUTTON_POS_X = -700;
 
 /** Vertical position for chronologue shift button */
 export const SHIFT_BUTTON_POS_Y = -750;
+
+// =============================================================================
+// VERSION INDICATOR POSITIONING (bottom-right corner)
+// =============================================================================
+
+/** Horizontal position for version indicator (right side, mirroring book title) */
+export const VERSION_INDICATOR_POS_X = 568;
+
+/** Vertical position for version indicator (bottom, positive Y in SVG coords) */
+export const VERSION_INDICATOR_POS_Y = 784;
+
+/** Horizontal offset for update alert icon from version text */
+export const VERSION_ALERT_OFFSET_X = 16;
 
