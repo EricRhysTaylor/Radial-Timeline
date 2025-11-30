@@ -715,10 +715,24 @@ export default class SynopsisManager {
   
   /**
    * Position text elements along an arc
+   * 
+   * TEXT POSITIONING ON THE RADIAL ARC:
+   * Each row's X position is calculated using Pythagorean theorem to place it
+   * exactly on the circle at that Y coordinate: circleX = sqrt(r² - y²)
+   * 
+   * This works identically for both top and bottom halves of the timeline.
+   * The text-anchor property (start/end) determines which edge of the text
+   * aligns with the calculated arc position.
+   * 
+   * MINIMAL INSET FOR TEXT OVERHANG:
+   * SVG text extends above its baseline (ascenders, cap height). We measure
+   * the actual rendered text height via getBBox() and use a fraction of it
+   * as the inset. This automatically scales with:
+   * - Font size (title vs body vs beats)
+   * - Readability scale (normal vs large)
+   * - Font metrics (different fonts/localizations)
    */
-  private static readonly TOP_HALF_BASE_INSET = 18;
-  private static readonly TOP_HALF_MIN_INSET = 10;
-  private static readonly TOP_HALF_MAX_INSET = 48;
+  private static readonly TEXT_HEIGHT_INSET_RATIO = 0.35;
 
   private positionTextElements(
     synopsis: Element,
@@ -790,6 +804,10 @@ export default class SynopsisManager {
     textRows.forEach((rowElements, rowIndex) => {
       const primaryEl = rowElements[0] ?? null;
 
+      // Track which line height is used for this row (needed for inset scaling)
+      // Row 0 (title) uses titleLineHeight; others determined by content type
+      let currentRowLineHeight = rowIndex === 0 ? titleLineHeight : synopsisLineHeight;
+      
       // Calculate absolute position for this row with variable line heights
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
@@ -802,56 +820,50 @@ export default class SynopsisManager {
         if (rowIndex === 1) {
           // Always use title spacing right after the title line
           yOffset += titleLineHeight;
+          currentRowLineHeight = titleLineHeight;
         } else if (isGossamerLine && isPrevLineSynopsis) {
           // Fixed manual gap before the Gossamer score line
           yOffset += scorePreGap;
+          currentRowLineHeight = scorePreGap;
         } else if (isBeatsText || isPrevLineBeats) {
           // Use pulse line height for beats/analysis text
           yOffset += pulseLineHeight;
+          currentRowLineHeight = pulseLineHeight;
         } else {
           // Default spacing between regular synopsis/metadata lines
           yOffset += synopsisLineHeight;
+          currentRowLineHeight = synopsisLineHeight;
         }
       }
       
-      // Display Y is always baseY + yOffset (where text actually renders)
-      const displayY = baseY + yOffset;
+      let anchorY = baseY + yOffset;
       
-      // For circle X calculation, we need different behavior for top vs bottom half:
-      // - Bottom half: as yOffset increases, Y moves away from center → circleX shrinks (curves inward) ✓
-      // - Top half: as yOffset increases, Y moves toward center → circleX grows (curves outward) ✗
-      // Fix: For top half, calculate X as if Y is moving away from center (mirror bottom half behavior)
-      const circleCalcY = isTopHalf ? (baseY - yOffset) : displayY;
-      
-      // Clamp display position for bounds checking
-      let anchorY = displayY;
       if (Math.abs(anchorY) >= radius) {
+        // Clamp rows that extend beyond the circle; they'll hug the perimeter instead of crashing
         anchorY = Math.sign(anchorY) * (radius - 1);
       }
-      
-      // Clamp circle calculation Y as well
-      let clampedCircleY = circleCalcY;
-      if (Math.abs(clampedCircleY) >= radius) {
-        clampedCircleY = Math.sign(clampedCircleY) * (radius - 1);
-      }
 
-      const radiusDiff = radius * radius - clampedCircleY * clampedCircleY;
+      const radiusDiff = radius * radius - anchorY * anchorY;
       if (radiusDiff < 0) {
         throw new Error(`Cannot resolve anchor for row ${rowIndex}; negative radius difference computed.`);
       }
 
       const circleX = Math.sqrt(radiusDiff);
       const direction = isRightAligned ? 1 : -1;
-      let anchorAbsoluteX = circleX * direction;
-
-      if (isTopHalf) {
-        const inset = this.computeTopHalfInset(primaryEl, rowIndex);
-        const magnitude = Math.abs(anchorAbsoluteX) - inset;
-        if (magnitude < 0) {
-          throw new Error(`Inset ${inset} for row ${rowIndex} exceeds available radius.`);
+      
+      // Top half only: measure actual text height and use a fraction as inset
+      // Bottom half needs no adjustment - the baseline alignment works correctly there
+      let inset = 0;
+      if (isTopHalf && primaryEl) {
+        try {
+          const bbox = primaryEl.getBBox();
+          inset = bbox.height * SynopsisManager.TEXT_HEIGHT_INSET_RATIO;
+        } catch {
+          // Fallback if getBBox fails (element not yet rendered)
+          inset = currentRowLineHeight * 0.2;
         }
-        anchorAbsoluteX = magnitude * direction;
       }
+      const anchorAbsoluteX = (circleX - inset) * direction;
 
       const anchorX = anchorAbsoluteX - baseX;
       
@@ -870,45 +882,6 @@ export default class SynopsisManager {
       );
 
     });
-  }
-
-  private computeTopHalfInset(textElement: SVGTextElement | null, rowIndex: number): number {
-    if (!textElement) {
-      return SynopsisManager.TOP_HALF_BASE_INSET;
-    }
-
-    const style = window.getComputedStyle(textElement);
-    const fontSize = style?.fontSize ? parseFloat(style.fontSize) : Number.NaN;
-
-    let referenceSize = Number.isFinite(fontSize) && fontSize > 0 ? fontSize : Number.NaN;
-
-    if (!Number.isFinite(referenceSize) || referenceSize <= 0) {
-      try {
-        const box = textElement.getBBox();
-        if (box && Number.isFinite(box.height) && box.height > 0) {
-          referenceSize = box.height;
-        }
-      } catch (error) {
-        console.warn('[Synopsis] Failed to read bbox height for inset calculation:', error);
-      }
-    }
-
-    if (!Number.isFinite(referenceSize) || referenceSize <= 0) {
-      console.warn(
-        `[Synopsis] Falling back to base inset for row ${rowIndex}; element has no measurable font size or height.`,
-        textElement
-      );
-      return SynopsisManager.TOP_HALF_BASE_INSET;
-    }
-
-    const ratio = rowIndex === 0 ? 0.9 : 0.6;
-    const scaled = referenceSize * ratio;
-    const minInset = SynopsisManager.TOP_HALF_MIN_INSET;
-    const maxInset = SynopsisManager.TOP_HALF_MAX_INSET;
-    return Math.max(
-      minInset,
-      Math.min(maxInset, scaled)
-    );
   }
 
   private measureRowLayout(rowElements: SVGTextElement[], defaultGap: number): { primaryWidth: number; metadataWidth: number; gap: number } {

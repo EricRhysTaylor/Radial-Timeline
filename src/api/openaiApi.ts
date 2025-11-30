@@ -59,14 +59,25 @@ export async function callOpenAiApi(
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
     messages.push({ role: 'user', content: userPrompt });
 
+    // Newer OpenAI models (gpt-4o, o1, o3, etc.) use max_completion_tokens instead of max_tokens
+    const usesMaxCompletionTokens = /^(gpt-4o|o1|o3)/i.test(modelId);
+    
     const requestBody: {
         model: string;
         messages: { role: string; content: string }[];
         temperature: number;
         max_tokens?: number;
+        max_completion_tokens?: number;
         response_format?: { type: string };
     } = { model: modelId, messages, temperature };
-    if (maxTokens !== null) requestBody.max_tokens = maxTokens;
+    
+    if (maxTokens !== null) {
+        if (usesMaxCompletionTokens) {
+            requestBody.max_completion_tokens = maxTokens;
+        } else {
+            requestBody.max_tokens = maxTokens;
+        }
+    }
     // Enable JSON mode if requested
     if (enableJsonMode) {
         requestBody.response_format = { type: 'json_object' };
