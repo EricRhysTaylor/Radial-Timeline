@@ -12,10 +12,10 @@ import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all';
 
-type RulerMarkerElement = {
-    root: HTMLElement;
-    valueEl: HTMLElement;
-    labelEl: HTMLElement;
+export type SceneQueueItem = {
+    id: string;
+    label: string;
+    detail?: string;
 };
 
 /**
@@ -83,13 +83,12 @@ export class SceneAnalysisProcessingModal extends Modal {
     private errorListEl?: HTMLElement;
     private abortButtonEl?: ButtonComponent;
     private actionButtonContainer?: HTMLElement;
-    private rulerTrackEl?: HTMLElement;
-    private rulerMarkers?: {
-        prev: RulerMarkerElement;
-        current: RulerMarkerElement;
-        next: RulerMarkerElement;
-    };
-    private rulerStep: number = 0;
+    private queueScrollEl?: HTMLElement;
+    private queueTrackEl?: HTMLElement;
+    private queueNoteEl?: HTMLElement;
+    private queueItems: HTMLElement[] = [];
+    private queueData: SceneQueueItem[] = [];
+    private queueActiveId?: string;
     
     // Statistics
     private processedCount: number = 0;
@@ -118,7 +117,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl } = this;
-        titleEl.setText(this.getProcessingTitle());
+        titleEl.setText('');
         
         // If we're already processing (reopening), show progress view
         if (this.isProcessing) {
@@ -202,34 +201,102 @@ export class SceneAnalysisProcessingModal extends Modal {
         });
         return hero;
     }
-
-    private createRulerMarker(track: HTMLElement, label: string, extraClass: string): RulerMarkerElement {
-        const marker = track.createDiv({ cls: `rt-beats-ruler-marker ${extraClass}` });
-        const valueEl = marker.createSpan({ cls: 'rt-beats-ruler-value', text: '--' });
-        const labelEl = marker.createSpan({ cls: 'rt-beats-ruler-label', text: label });
-        return { root: marker, valueEl, labelEl };
+    
+    public setProcessingQueue(queue: SceneQueueItem[]): void {
+        this.queueData = queue.slice();
+        this.totalCount = queue.length;
+        if (this.isProcessing && this.progressTextEl && queue.length > 0 && this.processedCount === 0) {
+            this.progressTextEl.setText(`0 / ${queue.length} scenes (0%)`);
+        }
+        this.renderQueueItems();
     }
 
-    private formatSceneValue(value?: string | null): string | null {
-        if (!value) return null;
-        const trimmed = value.trim();
-        if (!trimmed || trimmed.toUpperCase() === 'N/A') return null;
-        if (/^\d+$/.test(trimmed)) return `#${trimmed}`;
-        return trimmed;
+    private renderQueueItems(): void {
+        if (!this.queueTrackEl) return;
+        this.queueTrackEl.empty();
+        this.queueItems = [];
+
+        if (this.queueData.length === 0) {
+            this.queueTrackEl.createSpan({ cls: 'rt-beats-ruler-empty', text: 'Queue builds once eligible scenes are found...' });
+            return;
+        }
+
+        for (const item of this.queueData) {
+            const entry = this.queueTrackEl.createDiv({ cls: 'rt-beats-ruler-item' });
+            entry.setAttr('data-queue-id', item.id);
+            entry.createSpan({ cls: 'rt-beats-ruler-value', text: item.label });
+            if (item.detail) {
+                entry.createSpan({ cls: 'rt-beats-ruler-label', text: item.detail });
+            }
+            this.queueItems.push(entry);
+        }
+
+        this.updateQueueHighlight();
     }
 
-    private updateRulerMarker(marker: RulerMarkerElement | undefined, value: string, fallback: string): void {
-        if (!marker) return;
-        const formatted = this.formatSceneValue(value);
-        marker.valueEl.setText(formatted ?? fallback);
-        marker.root.toggleClass('rt-beats-ruler-marker--ghost', !formatted);
+    private updateQueueHighlight(activeId?: string): void {
+        if (activeId) {
+            this.queueActiveId = activeId;
+        }
+        if (!this.queueTrackEl || !this.queueScrollEl) return;
+
+        const activeIndex = this.queueActiveId
+            ? this.queueData.findIndex(item => item.id === this.queueActiveId)
+            : -1;
+
+        this.queueItems.forEach((itemEl, index) => {
+            itemEl.toggleClass('rt-is-active', index === activeIndex);
+            itemEl.toggleClass('rt-is-complete', activeIndex !== -1 && index < activeIndex);
+        });
+
+        if (activeIndex >= 0) {
+            const activeEl = this.queueItems[activeIndex];
+            const container = this.queueScrollEl;
+            if (activeEl && container) {
+                const target = Math.max(0, activeEl.offsetLeft - (container.clientWidth / 2 - activeEl.clientWidth / 2));
+                container.scrollTo({ left: target, behavior: 'smooth' });
+            }
+        }
+    }
+
+    private setTripletNote(prevNum: string, currentNum: string, nextNum: string): void {
+        if (!this.queueNoteEl) return;
+        this.queueNoteEl.empty();
+
+        const boundaryLabel = this.subplotName ? 'subplot' : 'manuscript';
+        const chips = [
+            { label: 'Previous', value: prevNum, fallback: `Start of ${boundaryLabel}` },
+            { label: 'Current', value: currentNum, fallback: 'Unnumbered scene' },
+            { label: 'Next', value: nextNum, fallback: `End of ${boundaryLabel}` }
+        ];
+
+        for (const chip of chips) {
+            const chipEl = this.queueNoteEl.createSpan({ cls: 'rt-beats-ruler-chip' });
+            chipEl.createSpan({ cls: 'rt-beats-ruler-chip-label', text: chip.label });
+            chipEl.createSpan({ cls: 'rt-beats-ruler-chip-value', text: this.formatTripletValue(chip.value, chip.fallback) });
+        }
+    }
+
+    private formatTripletValue(value: string, fallback: string): string {
+        const normalized = value?.trim();
+        if (!normalized || normalized === 'N/A') {
+            return fallback;
+        }
+        return normalized.startsWith('#') ? normalized : `#${normalized}`;
+    }
+
+    private findQueueIdForScene(value: string): string | undefined {
+        if (!value) return undefined;
+        const cleaned = value.replace(/^#/, '').trim();
+        const found = this.queueData.find(item => item.label.replace(/^#/, '').trim() === cleaned);
+        return found?.id;
     }
 
     private showConfirmationView(): void {
         const { contentEl, modalEl, titleEl } = this;
         contentEl.empty();
         this.ensureModalShell();
-        titleEl.setText(this.getProcessingTitle());
+        titleEl.setText('');
         
         // Set modal width using Obsidian's approach
         if (modalEl) {
@@ -420,6 +487,9 @@ export class SceneAnalysisProcessingModal extends Modal {
     private async startProcessing(): Promise<void> {
         this.isProcessing = true;
         this.abortController = new AbortController();
+        this.processedCount = 0;
+        this.errorCount = 0;
+        this.warningCount = 0;
         
         // Notify plugin that processing has started
         this.plugin.activeBeatsModal = this;
@@ -456,17 +526,11 @@ export class SceneAnalysisProcessingModal extends Modal {
         const { contentEl, titleEl } = this;
         contentEl.empty();
         this.ensureModalShell();
-        titleEl.setText(this.getProcessingTitle());
+        titleEl.setText('');
         this.renderProcessingHero(contentEl, { trackStatus: true });
 
-        // Reset ruler tracking state every time the progress view is rendered
-        this.rulerStep = 0;
-        this.rulerTrackEl = undefined;
-        this.rulerMarkers = undefined;
-
-        const layoutEl = contentEl.createDiv({ cls: 'rt-beats-progress-body' });
-        const progressColumn = layoutEl.createDiv({ cls: 'rt-beats-progress-column' });
-        const progressCard = progressColumn.createDiv({ cls: 'rt-beats-progress-card rt-beats-glass-card' });
+        const bodyEl = contentEl.createDiv({ cls: 'rt-beats-progress-body' });
+        const progressCard = bodyEl.createDiv({ cls: 'rt-beats-progress-card rt-beats-glass-card' });
 
         const progressContainer = progressCard.createDiv({ cls: 'rt-beats-progress-container' });
         const progressBg = progressContainer.createDiv({ cls: 'rt-beats-progress-bg' });
@@ -479,24 +543,17 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.statusTextEl = progressCard.createDiv({ cls: 'rt-beats-status-text' });
         this.statusTextEl.setText('Initializing pipeline...');
 
-        this.errorListEl = progressColumn.createDiv({ cls: 'rt-beats-error-list rt-beats-glass-card rt-hidden' });
+        const rulerBlock = progressCard.createDiv({ cls: 'rt-beats-ruler-block' });
+        rulerBlock.createDiv({ cls: 'rt-beats-ruler-title', text: 'Scene queue' });
+        this.queueScrollEl = rulerBlock.createDiv({ cls: 'rt-beats-ruler-scroll' });
+        this.queueTrackEl = this.queueScrollEl.createDiv({ cls: 'rt-beats-ruler-track' });
+        this.queueItems = [];
+        this.queueActiveId = undefined;
+        this.renderQueueItems();
+        this.queueNoteEl = rulerBlock.createDiv({ cls: 'rt-beats-ruler-note' });
+        this.queueNoteEl.setText('Triplets animate as the AI advances - starts, endings, and missing scenes handled automatically.');
 
-        const timelineColumn = layoutEl.createDiv({ cls: 'rt-beats-progress-column' });
-        const rulerCard = timelineColumn.createDiv({ cls: 'rt-beats-ruler-card rt-beats-glass-card' });
-        rulerCard.createDiv({ cls: 'rt-beats-ruler-title', text: 'Scene triplet in focus' });
-
-        const ruler = rulerCard.createDiv({ cls: 'rt-beats-ruler' });
-        this.rulerTrackEl = ruler.createDiv({ cls: 'rt-beats-ruler-track' });
-        this.rulerTrackEl.style.setProperty('--ruler-offset', '0px');
-        this.rulerMarkers = {
-            prev: this.createRulerMarker(this.rulerTrackEl, 'Previous', 'is-prev'),
-            current: this.createRulerMarker(this.rulerTrackEl, 'Current', 'is-current'),
-            next: this.createRulerMarker(this.rulerTrackEl, 'Next', 'is-next')
-        };
-        rulerCard.createDiv({
-            cls: 'rt-beats-ruler-note',
-            text: 'Triplets animate as the AI advances - starts, endings, and missing scenes are handled automatically.'
-        });
+        this.errorListEl = bodyEl.createDiv({ cls: 'rt-beats-error-list rt-beats-glass-card rt-hidden' });
 
         this.actionButtonContainer = contentEl.createDiv({ cls: 'rt-beats-actions' });
         this.abortButtonEl = new ButtonComponent(this.actionButtonContainer)
@@ -568,19 +625,20 @@ export class SceneAnalysisProcessingModal extends Modal {
         errorItem.setText(message);
     }
     
-    public setTripletInfo(prevNum: string, currentNum: string, nextNum: string): void {
-        if (!this.rulerMarkers || !this.rulerTrackEl) return;
-        const contextLabel = this.subplotName ? 'subplot' : 'manuscript';
-        const startLabel = `Start of ${contextLabel}`;
-        const endLabel = `End of ${contextLabel}`;
-
-        this.updateRulerMarker(this.rulerMarkers.prev, prevNum, startLabel);
-        this.updateRulerMarker(this.rulerMarkers.current, currentNum, 'Unnumbered scene');
-        this.updateRulerMarker(this.rulerMarkers.next, nextNum, endLabel);
-
-        this.rulerStep += 1;
-        const offsetPx = this.rulerStep * 18;
-        this.rulerTrackEl.style.setProperty('--ruler-offset', `${offsetPx}px`);
+    public setTripletInfo(prevNum: string, currentNum: string, nextNum: string, queueId?: string, sceneLabel?: string): void {
+        this.setTripletNote(prevNum, currentNum, nextNum);
+        if (this.queueData.length > 0) {
+            const targetId = queueId ?? this.findQueueIdForScene(currentNum);
+            this.updateQueueHighlight(targetId);
+        }
+        if (sceneLabel) {
+            if (this.heroStatusEl) {
+                this.heroStatusEl.setText(`Processing ${sceneLabel}`);
+            }
+            if (this.statusTextEl) {
+                this.statusTextEl.setText(`Processing: ${sceneLabel}`);
+            }
+        }
     }
     
     public addWarning(message: string): void {
@@ -602,7 +660,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private showCompletionSummary(statusMessage: string): void {
         const { contentEl, titleEl } = this;
-        titleEl.setText(this.getProcessingTitle());
+        titleEl.setText('');
 
         if (this.progressBarEl) {
             this.progressBarEl.style.setProperty('--progress-width', '100%');
@@ -612,6 +670,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         const successCount = Math.max(0, this.processedCount);
         const hasErrors = this.errorCount > 0;
         const hasWarnings = this.warningCount > 0;
+        const hasIssues = hasErrors || hasWarnings;
         const remainingScenes = Math.max(0, this.totalCount - this.processedCount);
 
         const progressSummary = this.totalCount > 0
@@ -642,12 +701,15 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.heroStatusEl.setText(statusMessage);
         }
 
+        if (this.queueNoteEl && !hasIssues && successCount === this.totalCount) {
+            this.queueNoteEl.setText('All queued scenes have been processed.');
+        }
+
         if (this.errorListEl) {
             this.errorListEl.addClass('rt-hidden');
             this.errorListEl.empty();
         }
 
-        const hasIssues = hasErrors || hasWarnings;
         contentEl.querySelectorAll('.rt-beats-summary').forEach(el => el.remove());
         if (hasIssues) {
             const summaryContainer = contentEl.createDiv({ cls: 'rt-beats-summary rt-beats-glass-card' });

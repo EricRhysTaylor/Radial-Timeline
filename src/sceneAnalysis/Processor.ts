@@ -6,7 +6,7 @@
 
 import { Notice, type Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import type { SceneAnalysisProcessingModal, ProcessingMode } from '../modals/SceneAnalysisProcessingModal';
+import type { SceneAnalysisProcessingModal, ProcessingMode, SceneQueueItem } from '../modals/SceneAnalysisProcessingModal';
 import { buildTripletsByIndex } from './TripletBuilder';
 import { updateSceneAnalysis } from './FileUpdater';
 import { createAiRunner } from './RequestRunner';
@@ -23,6 +23,17 @@ import { buildSceneAnalysisPrompt } from '../ai/prompts/sceneAnalysis';
 import { parseGptResult } from './responseParsing';
 import { callAiProvider } from './aiProvider';
 import type { SceneData } from './types';
+
+function buildQueueItem(scene: SceneData): SceneQueueItem {
+    const hasNumber = typeof scene.sceneNumber === 'number' && !Number.isNaN(scene.sceneNumber);
+    const label = hasNumber ? `#${scene.sceneNumber}` : scene.file.basename;
+    const detail = hasNumber ? scene.file.basename : undefined;
+    return {
+        id: scene.file.path,
+        label,
+        detail
+    };
+}
 
 export async function processWithModal(
     plugin: RadialTimelinePlugin,
@@ -53,43 +64,11 @@ export async function processWithModal(
     const processableContentScenes = allScenes.filter(scene => hasProcessableContent(scene.frontmatter));
     const triplets = buildTripletsByIndex(processableContentScenes, processableScenes, (s) => s.file.path);
 
-    let processedCount = 0;
-    let totalToProcess = 0;
-    for (const triplet of triplets) {
+    const tasks = triplets.map(triplet => {
         const pulseUpdateFlag = getPulseUpdateFlag(triplet.current.frontmatter);
         const isFlagged = normalizeBooleanValue(pulseUpdateFlag);
-
-        if (mode === 'flagged') {
-            if (isFlagged) totalToProcess++;
-        } else if (mode === 'force-all') {
-            if (isResuming) {
-                if (!hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true })) {
-                    totalToProcess++;
-                }
-            } else {
-                totalToProcess++;
-            }
-        } else if (mode === 'unprocessed') {
-            if (isResuming) {
-                if (!hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true })) {
-                    totalToProcess++;
-                }
-            } else if (!hasBeenProcessedForBeats(triplet.current.frontmatter)) {
-                totalToProcess++;
-            }
-        }
-    }
-
-    for (const triplet of triplets) {
-        if (modal.isAborted()) {
-            await plugin.saveSettings();
-            throw new Error('Processing aborted by user');
-        }
-
-        const pulseUpdateFlag = getPulseUpdateFlag(triplet.current.frontmatter);
-        const isFlagged = normalizeBooleanValue(pulseUpdateFlag);
-
         let shouldProcess = false;
+
         if (mode === 'flagged') {
             shouldProcess = isFlagged;
         } else if (mode === 'force-all') {
@@ -102,6 +81,25 @@ export async function processWithModal(
                 : !hasBeenProcessedForBeats(triplet.current.frontmatter);
         }
 
+        return { triplet, shouldProcess };
+    });
+
+    const queueItems = tasks
+        .filter(task => task.shouldProcess)
+        .map(task => buildQueueItem(task.triplet.current));
+    if (modal && typeof modal.setProcessingQueue === 'function') {
+        modal.setProcessingQueue(queueItems);
+    }
+
+    const totalToProcess = queueItems.length;
+    let processedCount = 0;
+
+    for (const { triplet, shouldProcess } of tasks) {
+        if (modal.isAborted()) {
+            await plugin.saveSettings();
+            throw new Error('Processing aborted by user');
+        }
+
         if (!shouldProcess) continue;
 
         const prevBody = triplet.prev ? triplet.prev.body : null;
@@ -112,7 +110,7 @@ export async function processWithModal(
         const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
         if (modal && typeof modal.setTripletInfo === 'function') {
-            modal.setTripletInfo(prevNum, currentNum, nextNum);
+            modal.setTripletInfo(prevNum, currentNum, nextNum, triplet.current.file.path, triplet.current.file.basename);
         }
 
         // Use default context for scene analysis to avoid blending with story beat templates
@@ -299,24 +297,29 @@ export async function processSubplotWithModal(
         await plugin.saveSettings();
     }
 
-    let total = triplets.length;
-    if (isResuming) {
-        total = triplets.filter(t => !hasBeenProcessedForBeats(t.current.frontmatter, { todayOnly: true })).length;
+    const subplotTasks = triplets.map(triplet => {
+        const alreadyProcessed = hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true });
+        const shouldProcess = isResuming ? !alreadyProcessed : true;
+        return { triplet, shouldProcess };
+    });
+    const queueItems = subplotTasks
+        .filter(task => task.shouldProcess)
+        .map(task => buildQueueItem(task.triplet.current));
+    if (modal && typeof modal.setProcessingQueue === 'function') {
+        modal.setProcessingQueue(queueItems);
     }
+    const total = queueItems.length;
     let processedCount = 0;
 
-    for (const triplet of triplets) {
+    for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
             await plugin.saveSettings();
             throw new Error('Processing aborted by user');
         }
 
-        if (isResuming && hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true })) {
-            continue;
-        }
+        if (!shouldProcess) continue;
 
         const sceneName = triplet.current.file.basename;
-        modal.updateProgress(processedCount + 1, total, sceneName);
 
         const prevBody = triplet.prev ? triplet.prev.body : null;
         const currentBody = triplet.current.body;
@@ -326,7 +329,7 @@ export async function processSubplotWithModal(
         const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
         if (modal && typeof modal.setTripletInfo === 'function') {
-            modal.setTripletInfo(prevNum, currentNum, nextNum);
+            modal.setTripletInfo(prevNum, currentNum, nextNum, triplet.current.file.path, sceneName);
         }
 
         // Use default context for scene analysis to avoid blending with story beat templates
@@ -347,6 +350,7 @@ export async function processSubplotWithModal(
                 const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
                 if (success) {
                     processedCount++;
+                    modal.updateProgress(processedCount, total, sceneName);
                 } else {
                     modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
                 }
@@ -392,26 +396,29 @@ export async function processEntireSubplotWithModalInternal(
         triplets.push({ prev: prevScene, current: currentScene, next: nextScene });
     }
 
-    let total: number;
-    if (isResuming) {
-        total = triplets.filter(t => !hasBeenProcessedForBeats(t.current.frontmatter, { todayOnly: true })).length;
-    } else {
-        total = triplets.length;
+    const subplotTasks = triplets.map(triplet => {
+        const alreadyProcessed = hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true });
+        const shouldProcess = isResuming ? !alreadyProcessed : true;
+        return { triplet, shouldProcess };
+    });
+    const queueItems = subplotTasks
+        .filter(task => task.shouldProcess)
+        .map(task => buildQueueItem(task.triplet.current));
+    if (modal && typeof modal.setProcessingQueue === 'function') {
+        modal.setProcessingQueue(queueItems);
     }
+    const total = queueItems.length;
     let processedCount = 0;
 
-    for (const triplet of triplets) {
+    for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
             await plugin.saveSettings();
             throw new Error('Processing aborted by user');
         }
 
-        if (isResuming && hasBeenProcessedForBeats(triplet.current.frontmatter, { todayOnly: true })) {
-            continue;
-        }
+        if (!shouldProcess) continue;
 
         const sceneName = triplet.current.file.basename;
-        modal.updateProgress(processedCount + 1, total, sceneName);
 
         const prevBody = triplet.prev ? triplet.prev.body : null;
         const currentBody = triplet.current.body;
@@ -421,7 +428,7 @@ export async function processEntireSubplotWithModalInternal(
         const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
         if (modal && typeof modal.setTripletInfo === 'function') {
-            modal.setTripletInfo(prevNum, currentNum, nextNum);
+            modal.setTripletInfo(prevNum, currentNum, nextNum, triplet.current.file.path, sceneName);
         }
 
         // Use default context for scene analysis to avoid blending with story beat templates
@@ -441,6 +448,7 @@ export async function processEntireSubplotWithModalInternal(
                 const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
                 if (success) {
                     processedCount++;
+                    modal.updateProgress(processedCount, total, sceneName);
                 } else {
                     modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
                 }

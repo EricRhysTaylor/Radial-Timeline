@@ -195,7 +195,7 @@ export async function processEntireSubplotWithModal(
     modal.onOpen = function() {
         // Show the modal first
         const { contentEl, titleEl } = this;
-        titleEl.setText(`Processing entire subplot: ${subplotName}`);
+        titleEl.setText('');
         
         // Show progress view immediately (skip confirmation)
         this.showProgressView();
@@ -284,7 +284,7 @@ export async function processBySubplotNameWithModal(
     modal.onOpen = function() {
         // Show the modal first
         const { contentEl, titleEl } = this;
-        titleEl.setText(`Processing subplot: ${subplotName}`);
+        titleEl.setText('');
         
         // Show progress view immediately (skip confirmation)
         this.showProgressView();
