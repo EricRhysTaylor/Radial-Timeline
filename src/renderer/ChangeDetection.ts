@@ -43,7 +43,6 @@ export interface TimelineSnapshot {
     
     // Settings that affect rendering
     sortByWhen: boolean;
-    showEstimate: boolean;
     aiEnabled: boolean;
     targetDate: string | undefined;
     chronologueDurationCap: string | undefined;
@@ -166,7 +165,6 @@ export function createSnapshot(
         currentMonth: now.getMonth(),
         currentDate: now.toISOString().split('T')[0],
         sortByWhen: settings.sortByWhenDate ?? false,
-        showEstimate: settings.showEstimate ?? true,
         aiEnabled: settings.enableAiSceneAnalysis ?? false,
         targetDate: settings.targetCompletionDate,
         chronologueDurationCap: settings.chronologueDurationCapSelection,
@@ -222,7 +220,6 @@ export function detectChanges(
     
     // Detect settings changes (excluding dominant subplots - handled separately)
     if (prev.sortByWhen !== current.sortByWhen || 
-        prev.showEstimate !== current.showEstimate ||
         prev.aiEnabled !== current.aiEnabled ||
         prev.targetDate !== current.targetDate ||
         prev.chronologueDurationCap !== current.chronologueDurationCap ||

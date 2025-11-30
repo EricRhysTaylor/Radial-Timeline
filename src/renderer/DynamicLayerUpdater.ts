@@ -110,7 +110,7 @@ export function updateEstimationElements(
         oldEstimation.forEach(el => el.remove());
         
         // Calculate new estimation
-        const estimateResult = plugin.settings.showEstimate === false ? null : plugin.calculateCompletionEstimate(scenes);
+        const estimateResult = plugin.calculateCompletionEstimate(scenes);
         if (!estimateResult) return true; // No estimation to show
         
         // Find timeline-root group

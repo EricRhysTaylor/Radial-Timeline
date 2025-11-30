@@ -40,9 +40,33 @@ function formatBeatLines(
         .join('\n');
 }
 
+function sanitizeJsonControlCharacters(input: string): string {
+    // Replace unescaped control characters (except common whitespace) with spaces so JSON.parse succeeds.
+    return input.replace(/[\u0000-\u001F]/g, char => {
+        if (char === '\n' || char === '\r' || char === '\t') {
+            return char;
+        }
+        return ' ';
+    });
+}
+
 function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin): ParsedSceneAnalysis | null {
     try {
-        const parsed = JSON.parse(jsonResult) as SceneAnalysisJsonResponse;
+        let parsed: SceneAnalysisJsonResponse;
+        try {
+            parsed = JSON.parse(jsonResult) as SceneAnalysisJsonResponse;
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                const sanitized = sanitizeJsonControlCharacters(jsonResult);
+                if (sanitized !== jsonResult) {
+                    parsed = JSON.parse(sanitized) as SceneAnalysisJsonResponse;
+                } else {
+                    throw error;
+                }
+            } else {
+                throw error;
+            }
+        }
         return {
             previousSceneAnalysis: formatBeatLines(parsed.previousSceneAnalysis, 'previous'),
             currentSceneAnalysis: formatBeatLines(parsed.currentSceneAnalysis, 'current'),

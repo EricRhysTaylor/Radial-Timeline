@@ -159,6 +159,11 @@ class SubplotPickerModal extends Modal {
     private statsEl: HTMLElement | null = null;
     private dropdown: DropdownComponent | null = null;
     private infoTextEl: HTMLParagraphElement | null = null;
+    private heroStats?: {
+        flagged: HTMLElement;
+        processable: HTMLElement;
+        total: HTMLElement;
+    };
     private readonly statsBySubplot: Map<string, { flagged: number; processable: number; total: number }>;
 
     constructor(
@@ -175,17 +180,44 @@ class SubplotPickerModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl, titleEl } = this;
-        titleEl.setText('Select subplot for pulse processing');
-        const modelName = this.service.getActiveModelName();
-        const infoEl = contentEl.createDiv({ cls: 'rt-subplot-picker-info' });
-        this.infoTextEl = infoEl.createEl('p');
-        this.updateInfoText(modelName);
-        infoEl.createEl('p', { text: 'Requires scenes with "Pulse Update: Yes" (or legacy Review/Beats Update) and Status: Working or Complete.', cls: 'rt-subplot-picker-hint' });
+        const { contentEl, modalEl, titleEl } = this;
+        titleEl.setText('');
+        contentEl.empty();
+        if (modalEl) {
+            modalEl.classList.add('rt-beats-modal-shell');
+        }
+        contentEl.addClass('rt-beats-modal');
+        contentEl.addClass('rt-subplot-picker-modal');
 
-        const selectContainer = contentEl.createDiv({ cls: 'rt-subplot-picker-select' });
-        selectContainer.createEl('label', { text: 'Select subplot:', cls: 'rt-subplot-picker-label' });
-        this.dropdown = new DropdownComponent(selectContainer);
+        const modelName = this.service.getActiveModelName();
+        const hero = contentEl.createDiv({ cls: 'rt-beats-progress-hero' });
+        hero.createSpan({ text: 'AI pulse run', cls: 'rt-beats-hero-badge' });
+        hero.createEl('h2', { text: 'Process subplot scenes', cls: 'rt-beats-progress-heading' });
+        hero.createDiv({ cls: 'rt-beats-progress-subtitle', text: 'Choose a subplot and run pulse updates just for that arc.' });
+
+        const heroMeta = hero.createDiv({ cls: 'rt-beats-progress-meta' });
+        heroMeta.createSpan({ text: `Model: ${modelName}`, cls: 'rt-beats-hero-meta-item' });
+        const heroStats = hero.createDiv({ cls: 'rt-subplot-picker-hero-stats' });
+        this.heroStats = {
+            flagged: this.createHeroStat(heroStats, 'Flagged scenes'),
+            processable: this.createHeroStat(heroStats, 'Processable scenes'),
+            total: this.createHeroStat(heroStats, 'Total scenes')
+        };
+
+        const grid = contentEl.createDiv({ cls: 'rt-subplot-picker-grid' });
+
+        const infoCard = grid.createDiv({ cls: 'rt-subplot-picker-card rt-beats-glass-card' });
+        this.infoTextEl = infoCard.createEl('p', { cls: 'rt-subplot-picker-info' });
+        this.updateInfoText(modelName);
+        infoCard.createEl('p', {
+            text: 'Scenes must have Pulse Update = Yes (or legacy Review/Beats Update) and Status of Working or Complete.',
+            cls: 'rt-subplot-picker-hint'
+        });
+
+        const formCard = grid.createDiv({ cls: 'rt-subplot-picker-card rt-beats-glass-card' });
+        const selectContainer = formCard.createDiv({ cls: 'rt-subplot-picker-select' });
+        selectContainer.createEl('label', { text: 'Pick a subplot to process', cls: 'rt-subplot-picker-label' });
+        this.dropdown = new DropdownComponent(selectContainer.createDiv({ cls: 'rt-subplot-picker-dropdown' }));
         this.options.forEach((option, index) => {
             this.dropdown?.addOption(option.name, `${index + 1}. ${option.name}`);
         });
@@ -196,7 +228,7 @@ class SubplotPickerModal extends Modal {
             this.updateStats(value);
         });
 
-        this.statsEl = contentEl.createDiv({ cls: 'rt-subplot-picker-stats' });
+        this.statsEl = formCard.createDiv({ cls: 'rt-subplot-picker-stats' });
         this.updateStats(this.selectedSubplot);
 
         const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
@@ -233,13 +265,31 @@ class SubplotPickerModal extends Modal {
             .onClick(() => this.close());
     }
 
+    private createHeroStat(container: HTMLElement, label: string): HTMLElement {
+        const stat = container.createDiv({ cls: 'rt-subplot-picker-hero-stat' });
+        stat.createSpan({ cls: 'rt-subplot-picker-hero-label', text: label });
+        return stat.createSpan({ cls: 'rt-subplot-picker-hero-value', text: '—' });
+    }
+
     private updateStats(subplotName: string): void {
         if (!this.statsEl) return;
         const stats = this.statsBySubplot.get(subplotName);
         if (!stats) {
             throw new Error(`Unknown subplot selection: ${subplotName}`);
         }
-        this.statsEl.setText(`${stats.flagged} scene${stats.flagged !== 1 ? 's' : ''} will be processed (${stats.processable} processable, ${stats.total} total)`);
+        this.statsEl.empty();
+        const list = this.statsEl.createDiv({ cls: 'rt-subplot-picker-stats-grid' });
+        list.createDiv({ cls: 'rt-subplot-picker-stat', text: `${stats.flagged} flagged scenes` });
+        list.createDiv({ cls: 'rt-subplot-picker-stat', text: `${stats.processable} processable` });
+        list.createDiv({ cls: 'rt-subplot-picker-stat', text: `${stats.total} total scenes` });
+        const summary = this.statsEl.createDiv({ cls: 'rt-subplot-picker-summary' });
+        summary.setText('Only flagged scenes with processable metadata are sent to the AI.');
+
+        if (this.heroStats) {
+            this.heroStats.flagged.setText(String(stats.flagged));
+            this.heroStats.processable.setText(String(stats.processable));
+            this.heroStats.total.setText(String(stats.total));
+        }
     }
 
     private updateInfoText(modelName: string): void {

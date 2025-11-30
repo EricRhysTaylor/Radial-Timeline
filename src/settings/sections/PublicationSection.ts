@@ -46,18 +46,6 @@ export function renderPublicationSection(params: {
                 });
         });
 
-    // --- Show estimated completion date ---
-    new ObsidianSetting(containerEl)
-        .setName('Show estimated completion date')
-        .setDesc('Toggle the estimation date label near the progress ring.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.showEstimate ?? true)
-            .onChange(async (value) => {
-                plugin.settings.showEstimate = value;
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-            }));
-
     // --- Zero draft mode toggle ---
     new ObsidianSetting(containerEl)
         .setName('Zero draft mode')

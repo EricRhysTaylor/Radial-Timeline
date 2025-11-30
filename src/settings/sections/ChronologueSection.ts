@@ -79,9 +79,9 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
             plugin.refreshTimelineIfNeeded(null); // Uses default debounce delay
         });
         // Set fixed width for dropdown (override CSS with important)
-        dropdown.selectEl.style.setProperty('width', '160px', 'important');
-        dropdown.selectEl.style.setProperty('min-width', '160px', 'important');
-        dropdown.selectEl.style.setProperty('max-width', '160px', 'important');
+        dropdown.selectEl.style.setProperty('width', '250px', 'important');
+        dropdown.selectEl.style.setProperty('min-width', '250px', 'important');
+        dropdown.selectEl.style.setProperty('max-width', '250px', 'important');
     });
 
     collectDurationCapOptions(plugin)

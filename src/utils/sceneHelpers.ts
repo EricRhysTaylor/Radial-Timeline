@@ -76,7 +76,6 @@ export interface PluginRendererFacade {
         subplotColors: string[];
         targetCompletionDate?: string;
         enableAiSceneAnalysis: boolean;
-        showEstimate?: boolean;
         chronologueDurationCapSelection?: string;
         dominantSubplots?: Record<string, string>;
         discontinuityThreshold?: string;

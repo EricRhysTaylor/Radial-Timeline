@@ -334,7 +334,7 @@ export class RendererService {
         // Estimated date/arc if available
         let estimationHtml = '';
         try {
-            if ((view.plugin.settings.showEstimate ?? true) && typeof view.plugin.calculateCompletionEstimate === 'function') {
+            if (typeof view.plugin.calculateCompletionEstimate === 'function') {
                 const scenes: TimelineItem[] = (view as any).sceneData || (view.plugin as any).lastSceneData || [];
                 const estimateResult = view.plugin.calculateCompletionEstimate(scenes);
                 if (estimateResult) {

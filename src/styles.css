@@ -2398,48 +2398,112 @@
   color: var(--text-error, var(--color-red, #ff6b6b));
 }
 
-/* Subplot Picker Modal Styles */
-.rt-subplot-picker-info {
-  margin-bottom: 20px;
+/* Subplot Picker Modal */
+.rt-subplot-picker-modal {
+  gap: 18px;
 }
 
-.rt-subplot-picker-info p {
+.rt-subplot-picker-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.rt-subplot-picker-hero-stat {
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rt-subplot-picker-hero-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rt-subplot-picker-hero-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.rt-subplot-picker-grid {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 860px) {
+  .rt-subplot-picker-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.rt-subplot-picker-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rt-subplot-picker-info {
   margin: 0;
   color: var(--text-normal);
-  font-size: 14px;
+  font-size: 0.95rem;
   line-height: 1.5;
+}
+
+.rt-subplot-picker-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .rt-subplot-picker-label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: var(--text-normal);
-  font-weight: 500;
-  font-size: 13px;
+  font-weight: 600;
+  font-size: 0.85rem;
 }
 
 .rt-subplot-picker-select {
-  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.rt-subplot-picker-select .dropdown {
+.rt-subplot-picker-dropdown .dropdown {
   width: 100%;
-  font-size: 14px;
+  font-size: 0.95rem;
 }
 
 .rt-subplot-picker-stats {
-  padding: 12px;
-  margin-bottom: 20px;
-  background-color: var(--background-secondary);
-  border-radius: 6px;
-  border-left: 3px solid var(--interactive-accent);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 14px;
+}
+
+.rt-subplot-picker-stats-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.rt-subplot-picker-stat {
+  font-size: 0.85rem;
+  color: var(--text-normal);
+}
+
+.rt-subplot-picker-summary {
+  margin-top: 10px;
+  font-size: 0.78rem;
   color: var(--text-muted);
-  font-size: 13px;
-  text-align: center;
-  min-height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* Status bar item for active beats processing */

@@ -43,7 +43,6 @@ export interface RadialTimelineSettings {
     enableAiSceneAnalysis: boolean;
     enableZeroDraftMode?: boolean;
     metadataRefreshDebounceMs?: number;
-    showEstimate?: boolean;
     enableSceneTitleAutoExpand?: boolean;
     enableHoverDebugLogging?: boolean;
     showFullTripletAnalysis?: boolean;

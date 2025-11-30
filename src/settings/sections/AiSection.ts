@@ -216,7 +216,7 @@ export function renderAiSection(params: {
         .setDesc((() => {
             const frag = document.createDocumentFragment();
             const span = document.createElement('span');
-            span.textContent = 'Your OpenAI API key for using ChatGPT AI features.';
+            span.textContent = 'Your OpenAI API key for using ChatGPT AI features. ';
             const link = document.createElement('a');
             link.href = 'https://platform.openai.com';
             link.textContent = 'Get key';

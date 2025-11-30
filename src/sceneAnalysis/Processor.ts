@@ -144,6 +144,7 @@ export async function processWithModal(
     }
 
     await plugin.saveSettings();
+    plugin.refreshTimelineIfNeeded(null);
 }
 
 export async function processBySubplotOrder(
@@ -363,6 +364,7 @@ export async function processSubplotWithModal(
     }
 
     await plugin.saveSettings();
+    plugin.refreshTimelineIfNeeded(null);
 }
 
 export async function processEntireSubplotWithModalInternal(
@@ -461,6 +463,7 @@ export async function processEntireSubplotWithModalInternal(
     }
 
     await plugin.saveSettings();
+    plugin.refreshTimelineIfNeeded(null);
 }
 
 export function getActiveContextPrompt(plugin: RadialTimelinePlugin): string | undefined {

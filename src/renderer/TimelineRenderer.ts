@@ -295,9 +295,7 @@ export function createTimelineSVG(
 
         // Create progress ring
         const progressRadius = lineInnerRadius + 15;
-        const estimateResult: CompletionEstimate | null = plugin.settings.showEstimate === false
-            ? null
-            : plugin.calculateCompletionEstimate(scenes);
+        const estimateResult: CompletionEstimate | null = plugin.calculateCompletionEstimate(scenes);
         const circumference = 2 * Math.PI * progressRadius;
         // const progressLength = circumference * yearProgress; // No longer needed for arc calc
         const currentYearStartAngle = -Math.PI / 2; // Start at 12 o'clock

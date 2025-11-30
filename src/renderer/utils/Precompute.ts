@@ -119,7 +119,8 @@ export function computeCacheableValues(
     subplotCounts.sort((a, b) => {
         if (a.subplot === 'Main Plot' || !a.subplot) return -1;
         if (b.subplot === 'Main Plot' || !b.subplot) return 1;
-        return b.count - a.count;
+        if (a.count !== b.count) return b.count - a.count;
+        return a.subplot.localeCompare(b.subplot);
     });
 
     const masterSubplotOrder = subplotCounts.map(item => item.subplot);

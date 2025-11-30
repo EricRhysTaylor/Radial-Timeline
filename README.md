@@ -243,6 +243,7 @@ Displays scenes in chronological story order based on `When` field. **Removes th
   <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot-discontinuity.png" alt="Discontinuity infinity symbols in Chronologue Mode" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Discontinuity infinity symbols in Chronologue Mode</div>
 </div>
+
 - **Smart duration labels**: Time-period-appropriate formatting (hours/days/weeks/months/years)
 - **Dynamic duration arc cap**: Chronologue mode proportionally scales scene durations up to a selected maximum (Settings → Advanced)
 
@@ -250,6 +251,7 @@ Displays scenes in chronological story order based on `When` field. **Removes th
   <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot-duration.png" alt="Duration Marks in Chronologue Mode (red, orange and normal)" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Duration Marks in Chronologue Mode (red, orange and normal)</div>
 </div>
+
 **Tip**: Use shift mode's decluttered wireframe view to analyze your story's temporal structure and identify chronological discontinuities that may need bridging scenes.
 
 
@@ -285,7 +287,6 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 
 **Publication and progress:**
 - **Target completion date**: Optional target (YYYY-MM-DD). Marker appears on outer ring.
-- **Show estimated completion date**: Toggle visibility of the completion date estimate label near the progress ring.
 - **Zero draft mode**: Prevents edits to completed zero-draft scenes
 
 **Chronologue mode settings:**
@@ -352,9 +353,12 @@ Place:
   - "Forest"
   - Planet Nine
 ```
-> **Note**: Use of brackets denotes a link to a character or place file (optional).
+<Br>
 
-> **POV keywords**: Set `pov:` to one word. Supported modes: `first`, `second`, `third`, `omni`, `objective`. Examples:
+**Note**: Use of brackets denotes a link to a character or place file (optional).
+
+**POV keywords**: Set `pov:` to one word. Supported modes: `first`, `second`, `third`, `omni`, `objective`. <br>
+Examples:
 > - `pov: first` — first listed character gets a `¹` marker.
 > - `pov: second` / `pov: you` — inserts `You²` ahead of the cast.
 > - `pov: omni` — shows `Omni³` to signal an omniscient narrator.
@@ -379,7 +383,9 @@ Gossamer2 Justification:
 ---
 ```
 
-> **Tip**: Beat notes are currently displayed in narrative order using the Act field and filename prefix numbers (e.g., `1 Opening Image.md`).
+<Br>
+
+**Tip**: Beat notes are currently displayed in narrative order using the Act field and filename prefix numbers (e.g., `1 Opening Image.md`).
 
 **Need more fields?** See the complete [YAML Field Reference](./docs/YAML_REFERENCE.md) for:
 - Standard scene with common metadata (Revision, Book, Words, and more)
