@@ -135,7 +135,8 @@ export class RadialTimelineView extends ItemView {
             }
         }
         
-        return TIMELINE_VIEW_DISPLAY_TEXT;
+        // When toggle is off, show "Work in Progress" to protect the real title
+        return 'Radial Timeline: Work in Progress';
     }
     
     getIcon(): string {

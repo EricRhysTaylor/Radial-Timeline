@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "version": "4.3.0",
+      "title": "4.3.0",
+      "body": "## What's New in 4.3.0\r\n\r\n### Features\r\n- Added **Report Bug** button in settings\r\n- Added **Update Plugin** button for easy updates\r\n- Added **version number** display on timeline\r\n- Added **Release Alert** notification when new version is available\r\n- Added **Localization framework** (i18n support)\r\n- Added **Working Title** setting to protect book title in screenshots/videos\r\n- Added **Regular and Large text size** options for accessibility\r\n\r\n### Improvements\r\n- Refreshed **Subplot and Manuscript Order modals** with updated styling\r\n- Restyled **AI Analysis modals** for better UX\r\n- Enlarged **Save the Cat beats text** from 12px to 13px for readability\r\n- Adjusted **Synopsis indentation** in upper half of timeline\r\n- Improved **AI Pulse Analysis** across all 3 providers (OpenAI, Anthropic, Gemini)\r\n- Scene **number square text** now properly colored based on Grade (A/B/C)\r\n- Migrated to **cache system** for beat label and number square text spacing\r\n\r\n### Fixes\r\n- Renamed internal CSS classes from `beats-text` to `pulse-text` for consistency\r\n\r\n### Changes\r\n- Removed `Book:` YAML field requirement—now uses Source folder name as title",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.3.0",
+      "publishedAt": "2025-11-30T12:06:40Z"
+    },
+    {
       "version": "4.2.0",
       "title": "4.2.0",
       "body": "## What's Changed\r\n\r\n- Added comprehensive POV settings and scene yaml overrides for all types of pov\r\n- Added Book Title via settings source path above Control Buttons.\r\n- Adjusted AI models.\r\n- Added intelligent duration time unites so we get 4 months + 2 days instead of 4.2 months\r\n- Added handling for missing When date and time for yaml.\r\n",
@@ -52,13 +59,20 @@
     "publishedAt": "2025-11-05T20:39:14Z"
   },
   "latest": {
-    "version": "4.2.0",
-    "title": "4.2.0",
-    "body": "## What's Changed\r\n\r\n- Added comprehensive POV settings and scene yaml overrides for all types of pov\r\n- Added Book Title via settings source path above Control Buttons.\r\n- Adjusted AI models.\r\n- Added intelligent duration time unites so we get 4 months + 2 days instead of 4.2 months\r\n- Added handling for missing When date and time for yaml.\r\n",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.2.0",
-    "publishedAt": "2025-11-18T00:56:16Z"
+    "version": "4.3.0",
+    "title": "4.3.0",
+    "body": "## What's New in 4.3.0\r\n\r\n### Features\r\n- Added **Report Bug** button in settings\r\n- Added **Update Plugin** button for easy updates\r\n- Added **version number** display on timeline\r\n- Added **Release Alert** notification when new version is available\r\n- Added **Localization framework** (i18n support)\r\n- Added **Working Title** setting to protect book title in screenshots/videos\r\n- Added **Regular and Large text size** options for accessibility\r\n\r\n### Improvements\r\n- Refreshed **Subplot and Manuscript Order modals** with updated styling\r\n- Restyled **AI Analysis modals** for better UX\r\n- Enlarged **Save the Cat beats text** from 12px to 13px for readability\r\n- Adjusted **Synopsis indentation** in upper half of timeline\r\n- Improved **AI Pulse Analysis** across all 3 providers (OpenAI, Anthropic, Gemini)\r\n- Scene **number square text** now properly colored based on Grade (A/B/C)\r\n- Migrated to **cache system** for beat label and number square text spacing\r\n\r\n### Fixes\r\n- Renamed internal CSS classes from `beats-text` to `pulse-text` for consistency\r\n\r\n### Changes\r\n- Removed `Book:` YAML field requirement—now uses Source folder name as title",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.3.0",
+    "publishedAt": "2025-11-30T12:06:40Z"
   },
   "patches": [
+    {
+      "version": "4.2.0",
+      "title": "4.2.0",
+      "body": "## What's Changed\r\n\r\n- Added comprehensive POV settings and scene yaml overrides for all types of pov\r\n- Added Book Title via settings source path above Control Buttons.\r\n- Adjusted AI models.\r\n- Added intelligent duration time unites so we get 4 months + 2 days instead of 4.2 months\r\n- Added handling for missing When date and time for yaml.\r\n",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.2.0",
+      "publishedAt": "2025-11-18T00:56:16Z"
+    },
     {
       "version": "4.1.1",
       "title": "4.1.1",
