@@ -814,14 +814,28 @@ export default class SynopsisManager {
         }
       }
       
-      let anchorY = baseY + yOffset;
+      // Display Y is always baseY + yOffset (where text actually renders)
+      const displayY = baseY + yOffset;
       
+      // For circle X calculation, we need different behavior for top vs bottom half:
+      // - Bottom half: as yOffset increases, Y moves away from center → circleX shrinks (curves inward) ✓
+      // - Top half: as yOffset increases, Y moves toward center → circleX grows (curves outward) ✗
+      // Fix: For top half, calculate X as if Y is moving away from center (mirror bottom half behavior)
+      const circleCalcY = isTopHalf ? (baseY - yOffset) : displayY;
+      
+      // Clamp display position for bounds checking
+      let anchorY = displayY;
       if (Math.abs(anchorY) >= radius) {
-        // Clamp rows that extend beyond the circle; they’ll hug the perimeter instead of crashing
         anchorY = Math.sign(anchorY) * (radius - 1);
       }
+      
+      // Clamp circle calculation Y as well
+      let clampedCircleY = circleCalcY;
+      if (Math.abs(clampedCircleY) >= radius) {
+        clampedCircleY = Math.sign(clampedCircleY) * (radius - 1);
+      }
 
-      const radiusDiff = radius * radius - anchorY * anchorY;
+      const radiusDiff = radius * radius - clampedCircleY * clampedCircleY;
       if (radiusDiff < 0) {
         throw new Error(`Cannot resolve anchor for row ${rowIndex}; negative radius difference computed.`);
       }
