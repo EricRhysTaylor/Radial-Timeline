@@ -812,10 +812,10 @@ export default class SynopsisManager {
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
         const isGossamerLine = currentEl.classList.contains('rt-gossamer-score-line');
-        const isBeatsText = currentEl.classList.contains('beats-text');
+        const isBeatsText = currentEl.classList.contains('pulse-text');
         const prevEl = textRows[rowIndex - 1][0];
         const isPrevLineSynopsis = prevEl.classList.contains('rt-title-text-secondary');
-        const isPrevLineBeats = prevEl.classList.contains('beats-text');
+        const isPrevLineBeats = prevEl.classList.contains('pulse-text');
 
         if (rowIndex === 1) {
           // Always use title spacing right after the title line
@@ -1246,8 +1246,8 @@ export default class SynopsisManager {
       // --- Revised Splitting and Formatting Logic --- 
       let titleText = rawContent; // Default: whole line is title
       let commentText = '';     // Default: no comment
-      let titleClass = 'beats-text-neutral'; // Default class
-      let commentClass = 'beats-text'; // Default comment class
+      let titleClass = 'pulse-text-neutral'; // Default class
+      let commentClass = 'pulse-text'; // Default comment class
       let signDetected: string | null = null; // Store the detected sign (+, -, ?)
       let useSlashSeparator = false; // Flag to control adding " / "
       let detectedGrade: string | null = null; // Declare detectedGrade here
@@ -1261,8 +1261,8 @@ export default class SynopsisManager {
         titleText = gradeWrapMatch[1];
         rawContent = titleText;
         // Apply grade formatting to wrapped grade segments
-        titleClass = 'beats-text-grade'; 
-        commentClass = 'beats-text-grade';
+        titleClass = 'pulse-text-grade'; 
+        commentClass = 'pulse-text-grade';
         
         // Find the grade from the first line for border logic
         if (lines.length > 0) {
@@ -1306,10 +1306,10 @@ export default class SynopsisManager {
 
           // 2. Determine Title CSS Class based on the detected sign
           if (signDetected === '+') {
-            titleClass = 'beats-text-positive';
+            titleClass = 'pulse-text-positive';
           } else if (signDetected === '-') {
-            titleClass = 'beats-text-negative';
-          } // Otherwise remains 'beats-text-neutral'
+            titleClass = 'pulse-text-negative';
+          } // Otherwise remains 'pulse-text-neutral'
         }
       }
       
@@ -1324,8 +1324,8 @@ export default class SynopsisManager {
           if (gradeLetterMatch && gradeLetterMatch[1]) {
             detectedGrade = gradeLetterMatch[1].toUpperCase();
           }
-          titleClass = 'beats-text-grade'; 
-          commentClass = 'beats-text-grade';
+          titleClass = 'pulse-text-grade'; 
+          commentClass = 'pulse-text-grade';
         }
       }
 
@@ -1338,7 +1338,7 @@ export default class SynopsisManager {
       // First visual line: title seg 0 plus optional comment seg 0 with slash
       const makeLine = (titlePart: string | null, commentPart: string | null) => {
         const lineText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        lineText.setAttribute("class", "beats-text");
+        lineText.setAttribute("class", "pulse-text");
         lineText.setAttribute("x", "0");
         lineText.setAttribute("y", String(currentY));
         lineText.setAttribute("text-anchor", "start");

@@ -210,7 +210,7 @@ class SubplotPickerModal extends Modal {
         this.infoTextEl = infoCard.createEl('p', { cls: 'rt-subplot-picker-info' });
         this.updateInfoText(modelName);
         infoCard.createEl('p', {
-            text: 'Scenes must have Pulse Update = Yes (or legacy Review/Beats Update) and Status of Working or Complete.',
+            text: 'Only scenes with Pulse Update enabled and a status of Working or Complete are eligible.',
             cls: 'rt-subplot-picker-hint'
         });
 
@@ -278,12 +278,12 @@ class SubplotPickerModal extends Modal {
             throw new Error(`Unknown subplot selection: ${subplotName}`);
         }
         this.statsEl.empty();
-        const list = this.statsEl.createDiv({ cls: 'rt-subplot-picker-stats-grid' });
-        list.createDiv({ cls: 'rt-subplot-picker-stat', text: `${stats.flagged} flagged scenes` });
-        list.createDiv({ cls: 'rt-subplot-picker-stat', text: `${stats.processable} processable` });
-        list.createDiv({ cls: 'rt-subplot-picker-stat', text: `${stats.total} total scenes` });
-        const summary = this.statsEl.createDiv({ cls: 'rt-subplot-picker-summary' });
-        summary.setText('Only flagged scenes with processable metadata are sent to the AI.');
+        const summaryLine = `${stats.flagged} flagged • ${stats.processable} processable • ${stats.total} total`;
+        this.statsEl.createDiv({ cls: 'rt-subplot-picker-stats-line', text: summaryLine });
+        this.statsEl.createDiv({
+            cls: 'rt-subplot-picker-summary',
+            text: 'Flagged scenes with processable metadata are sent to the AI.'
+        });
 
         if (this.heroStats) {
             this.heroStats.flagged.setText(String(stats.flagged));
@@ -294,6 +294,6 @@ class SubplotPickerModal extends Modal {
 
     private updateInfoText(modelName: string): void {
         if (!this.infoTextEl) return;
-        this.infoTextEl.setText(`Process pulse using ${modelName}. This will analyze scenes in the subplot "${this.selectedSubplot}" and update their pulse metadata.`);
+        this.infoTextEl.setText(`Process pulse using ${modelName} for the subplot "${this.selectedSubplot}".`);
     }
 }

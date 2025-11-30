@@ -349,7 +349,7 @@
 }
 .radial-timeline-container .rt-storybeat-title {
   fill: var(--text-normal);
-  font-size: calc(12px * var(--rt-font-scale, 1));
+  font-size: calc(13px * var(--rt-font-scale, 1));
   font-weight: 500;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -2256,7 +2256,8 @@
 }
 
 .rt-beats-ruler-item {
-  min-width: 72px;
+  min-width: 120px;
+  max-width: 160px;
   padding: 10px 12px;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2435,7 +2436,8 @@
 
 .rt-subplot-picker-grid {
   display: grid;
-  gap: 16px;
+  gap: 20px;
+  padding-top: 10px;
 }
 
 @media (min-width: 860px) {
@@ -2448,6 +2450,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 22px 24px;
 }
 
 .rt-subplot-picker-info {
@@ -2486,17 +2489,15 @@
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
-  padding: 14px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.rt-subplot-picker-stats-grid {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-}
-
-.rt-subplot-picker-stat {
-  font-size: 0.85rem;
+.rt-subplot-picker-stats-line {
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--text-normal);
 }
 
@@ -3200,8 +3201,8 @@
     cursor: pointer;
 }
 
-/* Beat text styles */
-.beats-text {
+/* Pulse text styles */
+.pulse-text {
   font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
   font-weight: normal;
   text-transform: none;
@@ -3210,25 +3211,25 @@
   text-transform: uppercase;
 }
 
-.beats-text-grade {
+.pulse-text-grade {
   font-size: calc(16px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
   fill: var(--rt-max-publish-stage-color); /* Darker green for better visibility */
   font-weight: bold;
 }
 
-.beats-text-positive {
+.pulse-text-positive {
   font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
   fill: #2B9348; /* Darker green for better visibility */
   font-weight: bold;
 }
 
-.beats-text-negative {
+.pulse-text-negative {
   font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
   fill: #D62828; /* Darker red for better visibility */
   font-weight: bold;
 }
 
-.beats-text-neutral {
+.pulse-text-neutral {
   font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
   fill: #000000; /* Solid black */
   font-weight: bold;
