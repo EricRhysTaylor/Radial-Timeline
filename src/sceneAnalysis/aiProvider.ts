@@ -331,17 +331,12 @@ export async function callAiProvider(
 
             requestBodyForLog = {
                 model: modelId,
-                messages: [
-                    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-                    { role: 'user', content: userPrompt }
-                ],
-                temperature: 0.1,
-                max_tokens: 2000,
-                response_format: { type: 'json_object' }
+                messages: [{ role: 'user', content: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt }],
+                max_completion_tokens: 2000
             };
 
             const apiResponse = await retryWithBackoff(() =>
-                callOpenAiApi(apiKey!, modelId!, systemPrompt, userPrompt, 2000, 0.1, true)
+                callOpenAiApi(apiKey!, modelId!, systemPrompt, userPrompt, 2000)
             );
 
             responseDataForLog = apiResponse.responseData;

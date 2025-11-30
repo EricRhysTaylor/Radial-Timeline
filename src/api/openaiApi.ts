@@ -43,9 +43,7 @@ export async function callOpenAiApi(
     modelId: string,
     systemPrompt: string | null,
     userPrompt: string,
-    maxTokens: number | null = 4000,
-    temperature: number = 0.7,
-    enableJsonMode: boolean = false  // Enable JSON mode for structured output
+    maxTokens: number | null = 4000
 ): Promise<OpenAiApiResponse> {
     const apiUrl = 'https://api.openai.com/v1/chat/completions';
     if (!apiKey) {
@@ -55,32 +53,18 @@ export async function callOpenAiApi(
         return { success: false, content: null, responseData: { error: { message: 'Model ID not configured.', type: 'plugin_error'} }, error: 'OpenAI Model ID not configured.' };
     }
 
-    const messages = [] as { role: string; content: string }[];
-    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-    messages.push({ role: 'user', content: userPrompt });
+    // Prepend system prompt to user message (reasoning models don't support system role)
+    const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt;
+    const messages = [{ role: 'user', content: fullPrompt }];
 
-    // Newer OpenAI models (gpt-4o, o1, o3, etc.) use max_completion_tokens instead of max_tokens
-    const usesMaxCompletionTokens = /^(gpt-4o|o1|o3)/i.test(modelId);
-    
     const requestBody: {
         model: string;
         messages: { role: string; content: string }[];
-        temperature: number;
-        max_tokens?: number;
         max_completion_tokens?: number;
-        response_format?: { type: string };
-    } = { model: modelId, messages, temperature };
+    } = { model: modelId, messages };
     
     if (maxTokens !== null) {
-        if (usesMaxCompletionTokens) {
-            requestBody.max_completion_tokens = maxTokens;
-        } else {
-            requestBody.max_tokens = maxTokens;
-        }
-    }
-    // Enable JSON mode if requested
-    if (enableJsonMode) {
-        requestBody.response_format = { type: 'json_object' };
+        requestBody.max_completion_tokens = maxTokens;
     }
 
     let responseData: unknown;

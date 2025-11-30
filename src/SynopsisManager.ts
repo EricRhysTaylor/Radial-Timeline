@@ -851,17 +851,16 @@ export default class SynopsisManager {
       const circleX = Math.sqrt(radiusDiff);
       const direction = isRightAligned ? 1 : -1;
       
-      // Top half only: measure actual text height and use a fraction as inset
+      // Top half only: inset based on font size to compensate for text above baseline
       // Bottom half needs no adjustment - the baseline alignment works correctly there
+      // Title and first synopsis line need more inset; later rows need less
       let inset = 0;
       if (isTopHalf && primaryEl) {
-        try {
-          const bbox = primaryEl.getBBox();
-          inset = bbox.height * SynopsisManager.TEXT_HEIGHT_INSET_RATIO;
-        } catch {
-          // Fallback if getBBox fails (element not yet rendered)
-          inset = currentRowLineHeight * 0.2;
-        }
+        const style = window.getComputedStyle(primaryEl);
+        const fontSize = parseFloat(style.fontSize) || 16;
+        // Rows 0-1 (title, first synopsis) need more inset; others use base ratio
+        const ratio = rowIndex <= 1 ? 0.5 : SynopsisManager.TEXT_HEIGHT_INSET_RATIO;
+        inset = fontSize * ratio;
       }
       const anchorAbsoluteX = (circleX - inset) * direction;
 

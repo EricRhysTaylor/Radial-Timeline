@@ -12,6 +12,12 @@ import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all';
 
+type RulerMarkerElement = {
+    root: HTMLElement;
+    valueEl: HTMLElement;
+    labelEl: HTMLElement;
+};
+
 /**
  * Simple confirmation modal that matches Obsidian theme
  */
@@ -73,10 +79,17 @@ export class SceneAnalysisProcessingModal extends Modal {
     private progressBarEl?: HTMLElement;
     private progressTextEl?: HTMLElement;
     private statusTextEl?: HTMLElement;
-    private tripletTextEl?: HTMLElement;
+    private heroStatusEl?: HTMLElement;
     private errorListEl?: HTMLElement;
     private abortButtonEl?: ButtonComponent;
     private actionButtonContainer?: HTMLElement;
+    private rulerTrackEl?: HTMLElement;
+    private rulerMarkers?: {
+        prev: RulerMarkerElement;
+        current: RulerMarkerElement;
+        next: RulerMarkerElement;
+    };
+    private rulerStep: number = 0;
     
     // Statistics
     private processedCount: number = 0;
@@ -105,7 +118,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl } = this;
-        titleEl.setText('Scene Pulse Analysis');
+        titleEl.setText(this.getProcessingTitle());
         
         // If we're already processing (reopening), show progress view
         if (this.isProcessing) {
@@ -132,24 +145,106 @@ export class SceneAnalysisProcessingModal extends Modal {
         super.close();
     }
 
+    private ensureModalShell(): void {
+        if (this.modalEl && !this.modalEl.classList.contains('rt-beats-modal-shell')) {
+            this.modalEl.classList.add('rt-beats-modal-shell');
+        }
+        this.contentEl.classList.add('rt-beats-modal');
+    }
+
+    private getProcessingTitle(): string {
+        if (this.subplotName) {
+            return this.isEntireSubplot
+                ? `Processing entire subplot: ${this.subplotName}`
+                : `Processing subplot: ${this.subplotName}`;
+        }
+        return 'Scene pulse analysis';
+    }
+
+    private getModeLabel(mode: ProcessingMode): string {
+        if (mode === 'unprocessed') {
+            return 'Scenes missing pulse metadata';
+        }
+        if (mode === 'force-all') {
+            return 'Reprocessing every completed scene';
+        }
+        return 'Flagged scenes in manuscript order';
+    }
+
+    private getProcessingSubtitle(): string {
+        if (this.subplotName) {
+            return this.isEntireSubplot
+                ? `Analyzing every scene in subplot "${this.subplotName}"`
+                : `Analyzing flagged scenes in subplot "${this.subplotName}"`;
+        }
+        return this.getModeLabel(this.selectedMode);
+    }
+
+    private renderProcessingHero(parent: HTMLElement, options?: { trackStatus?: boolean; subtitle?: string }): HTMLElement {
+        const hero = parent.createDiv({ cls: 'rt-beats-progress-hero' });
+        hero.createSpan({ text: 'AI pulse run', cls: 'rt-beats-hero-badge' });
+        hero.createEl('h2', { text: this.getProcessingTitle(), cls: 'rt-beats-progress-heading' });
+        const subtitleText = options?.subtitle ?? this.getProcessingSubtitle();
+        const subtitleEl = hero.createDiv({ cls: 'rt-beats-progress-subtitle' });
+        subtitleEl.setText(subtitleText);
+        if (options?.trackStatus) {
+            this.heroStatusEl = subtitleEl;
+        } else {
+            this.heroStatusEl = undefined;
+        }
+        const metaEl = hero.createDiv({ cls: 'rt-beats-progress-meta' });
+        metaEl.createSpan({ text: `Model: ${this.getActiveModelDisplayName()}`, cls: 'rt-beats-hero-meta-item' });
+        metaEl.createSpan({
+            text: this.subplotName
+                ? (this.isEntireSubplot ? 'Entire subplot batch' : 'Flagged subplot scenes')
+                : this.getModeLabel(this.selectedMode),
+            cls: 'rt-beats-hero-meta-item'
+        });
+        return hero;
+    }
+
+    private createRulerMarker(track: HTMLElement, label: string, extraClass: string): RulerMarkerElement {
+        const marker = track.createDiv({ cls: `rt-beats-ruler-marker ${extraClass}` });
+        const valueEl = marker.createSpan({ cls: 'rt-beats-ruler-value', text: '--' });
+        const labelEl = marker.createSpan({ cls: 'rt-beats-ruler-label', text: label });
+        return { root: marker, valueEl, labelEl };
+    }
+
+    private formatSceneValue(value?: string | null): string | null {
+        if (!value) return null;
+        const trimmed = value.trim();
+        if (!trimmed || trimmed.toUpperCase() === 'N/A') return null;
+        if (/^\d+$/.test(trimmed)) return `#${trimmed}`;
+        return trimmed;
+    }
+
+    private updateRulerMarker(marker: RulerMarkerElement | undefined, value: string, fallback: string): void {
+        if (!marker) return;
+        const formatted = this.formatSceneValue(value);
+        marker.valueEl.setText(formatted ?? fallback);
+        marker.root.toggleClass('rt-beats-ruler-marker--ghost', !formatted);
+    }
+
     private showConfirmationView(): void {
-        const { contentEl, modalEl } = this;
+        const { contentEl, modalEl, titleEl } = this;
         contentEl.empty();
+        this.ensureModalShell();
+        titleEl.setText(this.getProcessingTitle());
         
         // Set modal width using Obsidian's approach
         if (modalEl) {
-            modalEl.style.width = '700px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         
-        contentEl.classList.add('rt-beats-modal');
+        this.renderProcessingHero(contentEl);
 
         // Info section with active AI provider
-        const infoEl = contentEl.createDiv({ cls: 'rt-beats-info' });
-        infoEl.setText('Select how many scenes to process. This will analyze scenes in manuscript order and update their pulse metadata.');
+        const infoEl = contentEl.createDiv({ cls: 'rt-beats-info rt-beats-glass-card' });
+        infoEl.setText('Select how many scenes to process. This run analyzes scenes in manuscript order and refreshes their pulse metadata.');
 
         // Mode selection
-        const modesSection = contentEl.createDiv({ cls: 'rt-beats-modes' });
+        const modesSection = contentEl.createDiv({ cls: 'rt-beats-modes rt-beats-glass-card' });
         
         // Mode 1: Process Flagged Scenes (Recommended)
         const mode1 = this.createModeOption(
@@ -179,7 +274,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         );
 
         // Scene count display
-        const countSection = contentEl.createDiv({ cls: 'rt-beats-count' });
+        const countSection = contentEl.createDiv({ cls: 'rt-beats-count rt-beats-glass-card' });
         const countEl = countSection.createDiv({ cls: 'rt-beats-count-number' });
         
         // Show loading state initially
@@ -360,37 +455,49 @@ export class SceneAnalysisProcessingModal extends Modal {
     private showProgressView(): void {
         const { contentEl, titleEl } = this;
         contentEl.empty();
-        titleEl.setText('Processing scene pulse analysis...');
-        const modelName = this.getActiveModelDisplayName();
+        this.ensureModalShell();
+        titleEl.setText(this.getProcessingTitle());
+        this.renderProcessingHero(contentEl, { trackStatus: true });
 
-        const modelInfoEl = contentEl.createDiv({ cls: 'rt-beats-model-info' });
-        modelInfoEl.setText(`Model: ${modelName}`);
+        // Reset ruler tracking state every time the progress view is rendered
+        this.rulerStep = 0;
+        this.rulerTrackEl = undefined;
+        this.rulerMarkers = undefined;
 
-        // Progress bar container
-        const progressContainer = contentEl.createDiv({ cls: 'rt-beats-progress-container' });
-        
-        // Progress bar background
+        const layoutEl = contentEl.createDiv({ cls: 'rt-beats-progress-body' });
+        const progressColumn = layoutEl.createDiv({ cls: 'rt-beats-progress-column' });
+        const progressCard = progressColumn.createDiv({ cls: 'rt-beats-progress-card rt-beats-glass-card' });
+
+        const progressContainer = progressCard.createDiv({ cls: 'rt-beats-progress-container' });
         const progressBg = progressContainer.createDiv({ cls: 'rt-beats-progress-bg' });
         this.progressBarEl = progressBg.createDiv({ cls: 'rt-beats-progress-bar' });
-        // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
         this.progressBarEl.style.setProperty('--progress-width', '0%');
-        
-        // Progress text (e.g., "5 / 20 scenes")
-        this.progressTextEl = progressContainer.createDiv({ cls: 'rt-beats-progress-text' });
-        this.progressTextEl.setText('Starting...');
-        
-        // Current status (e.g., "Processing scene 15...")
-        this.statusTextEl = contentEl.createDiv({ cls: 'rt-beats-status-text' });
-        this.statusTextEl.setText('Initializing...');
 
-        // Triplet info (prev/current/next) for the current request
-        this.tripletTextEl = contentEl.createDiv({ cls: 'rt-beats-triplet-text' });
-        this.tripletTextEl.setText('Triplet: prev=N/A, current=N/A, next=N/A');
-        
-        // Error list (hidden by default)
-        this.errorListEl = contentEl.createDiv({ cls: 'rt-beats-error-list rt-hidden' });
-        
-        // Abort button (store container reference for later replacement with Close button)
+        this.progressTextEl = progressCard.createDiv({ cls: 'rt-beats-progress-text' });
+        this.progressTextEl.setText('Waiting for first scene...');
+
+        this.statusTextEl = progressCard.createDiv({ cls: 'rt-beats-status-text' });
+        this.statusTextEl.setText('Initializing pipeline...');
+
+        this.errorListEl = progressColumn.createDiv({ cls: 'rt-beats-error-list rt-beats-glass-card rt-hidden' });
+
+        const timelineColumn = layoutEl.createDiv({ cls: 'rt-beats-progress-column' });
+        const rulerCard = timelineColumn.createDiv({ cls: 'rt-beats-ruler-card rt-beats-glass-card' });
+        rulerCard.createDiv({ cls: 'rt-beats-ruler-title', text: 'Scene triplet in focus' });
+
+        const ruler = rulerCard.createDiv({ cls: 'rt-beats-ruler' });
+        this.rulerTrackEl = ruler.createDiv({ cls: 'rt-beats-ruler-track' });
+        this.rulerTrackEl.style.setProperty('--ruler-offset', '0px');
+        this.rulerMarkers = {
+            prev: this.createRulerMarker(this.rulerTrackEl, 'Previous', 'is-prev'),
+            current: this.createRulerMarker(this.rulerTrackEl, 'Current', 'is-current'),
+            next: this.createRulerMarker(this.rulerTrackEl, 'Next', 'is-next')
+        };
+        rulerCard.createDiv({
+            cls: 'rt-beats-ruler-note',
+            text: 'Triplets animate as the AI advances - starts, endings, and missing scenes are handled automatically.'
+        });
+
         this.actionButtonContainer = contentEl.createDiv({ cls: 'rt-beats-actions' });
         this.abortButtonEl = new ButtonComponent(this.actionButtonContainer)
             .setButtonText('Abort processing')
@@ -438,6 +545,10 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.statusTextEl) {
             this.statusTextEl.setText(`Processing: ${sceneName}`);
         }
+
+        if (this.heroStatusEl) {
+            this.heroStatusEl.setText(`Processing ${sceneName}`);
+        }
     }
 
     public addError(message: string): void {
@@ -458,8 +569,18 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
     
     public setTripletInfo(prevNum: string, currentNum: string, nextNum: string): void {
-        if (!this.tripletTextEl) return;
-        this.tripletTextEl.setText(`Triplet: prev=${prevNum || 'N/A'}, current=${currentNum || 'N/A'}, next=${nextNum || 'N/A'}`);
+        if (!this.rulerMarkers || !this.rulerTrackEl) return;
+        const contextLabel = this.subplotName ? 'subplot' : 'manuscript';
+        const startLabel = `Start of ${contextLabel}`;
+        const endLabel = `End of ${contextLabel}`;
+
+        this.updateRulerMarker(this.rulerMarkers.prev, prevNum, startLabel);
+        this.updateRulerMarker(this.rulerMarkers.current, currentNum, 'Unnumbered scene');
+        this.updateRulerMarker(this.rulerMarkers.next, nextNum, endLabel);
+
+        this.rulerStep += 1;
+        const offsetPx = this.rulerStep * 18;
+        this.rulerTrackEl.style.setProperty('--ruler-offset', `${offsetPx}px`);
     }
     
     public addWarning(message: string): void {
@@ -481,152 +602,111 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private showCompletionSummary(statusMessage: string): void {
         const { contentEl, titleEl } = this;
-        
-        // Update title
-        titleEl.setText('Processing complete');
-        
-        // Keep progress bar at 100% and stop animation to save CPU
+        titleEl.setText(this.getProcessingTitle());
+
         if (this.progressBarEl) {
             this.progressBarEl.style.setProperty('--progress-width', '100%');
-            this.progressBarEl.addClass('rt-progress-complete');  // Stops infinite animation
+            this.progressBarEl.addClass('rt-progress-complete');
         }
-        
-        // Determine overall success/failure state
-        const successCount = Math.max(0, this.processedCount - this.errorCount);
+
+        const successCount = Math.max(0, this.processedCount);
         const hasErrors = this.errorCount > 0;
         const hasWarnings = this.warningCount > 0;
-        const isTotalFailure = successCount === 0 && hasErrors;
+        const remainingScenes = Math.max(0, this.totalCount - this.processedCount);
 
-        // 1. Clear previous content areas to avoid duplication
-        if (this.progressTextEl) this.progressTextEl.empty();
-        if (this.statusTextEl) this.statusTextEl.empty();
-        if (this.tripletTextEl) this.tripletTextEl.remove(); // Remove triplet info (no longer relevant)
-        
-        // Hide "live" error list if it exists, we will show a consolidated summary instead
+        const progressSummary = this.totalCount > 0
+            ? `${successCount} / ${this.totalCount} scenes updated`
+            : `${successCount} scene${successCount === 1 ? '' : 's'} updated`;
+        if (this.progressTextEl) {
+            this.progressTextEl.setText(progressSummary);
+        }
+
+        const statusParts: string[] = [];
+        if (hasErrors) statusParts.push(`${this.errorCount} failed`);
+        if (hasWarnings) statusParts.push(`${this.warningCount} skipped`);
+        if (!statusParts.length) statusParts.push('All scenes processed successfully');
+
+        if (this.statusTextEl) {
+            this.statusTextEl.setText(statusParts.join(' | '));
+            this.statusTextEl.removeClass('rt-error-text', 'rt-warning-text', 'rt-success-text');
+            if (hasErrors && successCount === 0) {
+                this.statusTextEl.addClass('rt-error-text');
+            } else if (hasErrors || hasWarnings) {
+                this.statusTextEl.addClass('rt-warning-text');
+            } else {
+                this.statusTextEl.addClass('rt-success-text');
+            }
+        }
+
+        if (this.heroStatusEl) {
+            this.heroStatusEl.setText(statusMessage);
+        }
+
         if (this.errorListEl) {
             this.errorListEl.addClass('rt-hidden');
-            this.errorListEl.empty(); // Clear it so we don't double up content
+            this.errorListEl.empty();
         }
 
-        // 2. Construct summary text
-        let summaryText = '';
-        if (isTotalFailure) {
-            summaryText = `Processing failed: ${this.errorCount} error${this.errorCount !== 1 ? 's' : ''}.`;
-        } else {
-            summaryText = `${successCount} scene${successCount !== 1 ? 's' : ''} processed successfully`;
-            if (hasErrors) summaryText += `, ${this.errorCount} error${this.errorCount !== 1 ? 's' : ''}`;
-            if (hasWarnings) summaryText += `, ${this.warningCount} skipped`;
-        }
-        
-        if (this.statusTextEl) {
-            this.statusTextEl.setText(summaryText);
-            if (isTotalFailure) this.statusTextEl.addClass('rt-error-text');
-        }
-
-        // Update the completion message element (or create it if missing)
-        let completionMsgEl = contentEl.querySelector('.rt-beats-completion-message') as HTMLElement;
-        if (!completionMsgEl) {
-            completionMsgEl = contentEl.createDiv({ cls: 'rt-beats-completion-message' });
-        }
-        
-        // Use a more accurate message based on outcome
-        if (isTotalFailure) {
-            completionMsgEl.setText('Processing failed.');
-            completionMsgEl.addClass('rt-error-text');
-        } else if (hasErrors) {
-            completionMsgEl.setText('Processing complete (with errors).');
-            completionMsgEl.addClass('rt-warning-text');
-        } else {
-            completionMsgEl.setText('Processing completed successfully!');
-            completionMsgEl.removeClass('rt-error-text', 'rt-warning-text');
-        }
-        
-        // 3. Create consolidated details section
         const hasIssues = hasErrors || hasWarnings;
-        const remainingScenes = this.totalCount - this.processedCount;
-        
-        // Remove any existing summary container to prevent duplicates if called multiple times
-        const existingSummary = contentEl.querySelector('.rt-beats-summary');
-        if (existingSummary) existingSummary.remove();
-
+        contentEl.querySelectorAll('.rt-beats-summary').forEach(el => el.remove());
         if (hasIssues) {
-            const summaryContainer = contentEl.createDiv({ cls: 'rt-beats-summary' });
-            summaryContainer.createEl('h3', { text: 'Details', cls: 'rt-beats-summary-title' });
-            
+            const summaryContainer = contentEl.createDiv({ cls: 'rt-beats-summary rt-beats-glass-card' });
+            summaryContainer.createEl('h3', { text: 'Processing details', cls: 'rt-beats-summary-title' });
             const summaryStats = summaryContainer.createDiv({ cls: 'rt-beats-summary-stats' });
-            
-            // Error count
             if (hasErrors) {
-                summaryStats.createDiv({ 
+                summaryStats.createDiv({
                     cls: 'rt-beats-summary-row rt-beats-summary-error',
                     text: `Errors: ${this.errorCount}`
                 });
             }
-            
-            // Warning count
             if (hasWarnings) {
-                summaryStats.createDiv({ 
+                summaryStats.createDiv({
                     cls: 'rt-beats-summary-row rt-beats-summary-warning',
-                    text: `Warnings: ${this.warningCount} (scenes skipped due to validation)`
+                    text: `Warnings: ${this.warningCount} (skipped due to validation)`
                 });
             }
         }
-        
-        // Add tip about resuming (top-level, not nested)
-        // Remove existing tips first
-        contentEl.querySelectorAll('.rt-beats-summary-tip').forEach(el => el.remove());
 
+        contentEl.querySelectorAll('.rt-beats-summary-tip').forEach(el => el.remove());
         if (remainingScenes > 0) {
             const tipEl = contentEl.createDiv({ cls: 'rt-beats-summary-tip' });
-            tipEl.createEl('strong', { text: 'Tip: ' });
+            tipEl.createEl('strong', { text: 'Resume hint: ' });
             if (this.resumeCommandId || this.subplotName) {
-                tipEl.appendText('Click Resume to complete all scenes not updated today.');
+                tipEl.appendText('Use Resume to finish scenes not updated today.');
             } else {
-                tipEl.appendText('Run the command again in "Unprocessed" mode to retry.');
+                tipEl.appendText('Run the command in "Unprocessed" mode to retry missed scenes.');
             }
         }
-        
-        // Add note about AI logs
+
         if (this.plugin.settings.logApiInteractions) {
             const logNoteEl = contentEl.createDiv({ cls: 'rt-beats-summary-tip' });
-            logNoteEl.createEl('strong', { text: 'Note: ' });
-            logNoteEl.appendText('Detailed AI interaction logs have been saved to the AI folder for review.');
+            logNoteEl.createEl('strong', { text: 'Logs: ' });
+            logNoteEl.appendText('Detailed AI interaction logs were saved to the AI folder.');
         }
-        
-        // Replace abort button with action buttons
+
         if (this.actionButtonContainer) {
             this.actionButtonContainer.empty();
-            
-            // Show Resume button only if there are actually scenes remaining
             if (remainingScenes > 0 && (this.resumeCommandId || this.subplotName)) {
                 new ButtonComponent(this.actionButtonContainer)
                     .setButtonText(`Resume (${remainingScenes} remaining)`)
                     .setCta()
                     .onClick(async () => {
                         this.close();
-                        
-                        // For subplot processing, call the function directly with the stored subplot name
+
                         if (this.subplotName) {
-                            const subplotName = this.subplotName; // Capture in closure
-                            const isEntireSubplot = this.isEntireSubplot; // Capture in closure
+                            const subplotName = this.subplotName;
+                            const isEntireSubplot = this.isEntireSubplot;
                             window.setTimeout(async () => {
                                 const { processBySubplotNameWithModal, processEntireSubplotWithModal } = await import('../SceneAnalysisCommands');
-                                // Use the appropriate function based on whether this is entire subplot or flagged
                                 if (isEntireSubplot) {
-                                    // Resume entire subplot: pass isResuming=true
                                     await processEntireSubplotWithModal(this.plugin, this.plugin.app.vault, subplotName, true);
                                 } else {
-                                    // Flagged subplot processing: flag tracking handles resume
                                     await processBySubplotNameWithModal(this.plugin, this.plugin.app.vault, subplotName);
                                 }
                             }, 100);
-                        }
-                        // For manuscript processing, set resume flag and trigger the command
-                        else if (this.resumeCommandId) {
-                            // Set the resume flag in settings
+                        } else if (this.resumeCommandId) {
                             this.plugin.settings._isResuming = true;
                             await this.plugin.saveSettings();
-                            
                             window.setTimeout(() => {
                                 // @ts-ignore - accessing app commands
                                 this.app.commands.executeCommandById(this.resumeCommandId);
@@ -634,7 +714,7 @@ export class SceneAnalysisProcessingModal extends Modal {
                         }
                     });
             }
-            
+
             new ButtonComponent(this.actionButtonContainer)
                 .setButtonText('Close')
                 .onClick(() => this.close());

@@ -39,7 +39,7 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
   } else {
     const apiKey = plugin.settings.openaiApiKey || '';
     const modelId = plugin.settings.openaiModelId || 'gpt-4.1';
-    const resp: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max, temp);
+    const resp: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max);
     return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
   }
 }
