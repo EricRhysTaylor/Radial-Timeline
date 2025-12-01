@@ -353,7 +353,6 @@ Place:
   - "Forest"
   - Planet Nine
 ```
-<Br>
 
 **Note**: Use of brackets denotes a link to a character or place file (optional).
 
@@ -382,8 +381,6 @@ Gossamer2: 21                 # Second run (most recent in this example)
 Gossamer2 Justification: 
 ---
 ```
-
-<Br>
 
 **Tip**: Beat notes are currently displayed in narrative order using the Act field and filename prefix numbers (e.g., `1 Opening Image.md`).
 

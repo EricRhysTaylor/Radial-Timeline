@@ -154,6 +154,8 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
             bookTitle = parts.length > 0 ? parts[parts.length - 1] : 'Work in Progress';
         }
     }
+    // Convert to title case
+    bookTitle = bookTitle.replace(/\b\w/g, c => c.toUpperCase());
     
     // Add book title text above the mode title (10px higher)
     if (bookTitle) {

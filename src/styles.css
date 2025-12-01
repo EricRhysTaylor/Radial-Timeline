@@ -3646,16 +3646,15 @@
 
 }
 
-/* Book title text above the mode title */
+/* Book title text above the mode title - uses Obsidian's text font setting */
 .rt-book-title-text {
   pointer-events: none;
   text-anchor: start;
   dominant-baseline: baseline;
-  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-text);
   font-size: 20px;
-  font-weight: 900;
+  font-weight: bold;
   letter-spacing: 0.02em;
-  text-transform: uppercase;
   fill: var(--text-normal);
 }
 
