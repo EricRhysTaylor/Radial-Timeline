@@ -3653,7 +3653,7 @@
   dominant-baseline: baseline;
   font-family: var(--font-text);
   font-size: 20px;
-  font-weight: bold;
+  font-weight: var(--inline-title-weight);
   letter-spacing: 0.02em;
   fill: var(--text-normal);
 }
