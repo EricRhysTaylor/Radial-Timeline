@@ -99,10 +99,10 @@ export function normalizeBeatName(name: string): string {
  * Generic builder that can construct runs from any GossamerId field.
  */
 export function buildRunFromGossamerField(
-  scenes: { itemType?: string; subplot?: string; title?: string; [key: string]: unknown }[] | undefined, // SAFE: any type used for dynamic Gossamer1-5 field access
+  scenes: { itemType?: string; subplot?: string; title?: string; [key: string]: unknown }[] | undefined,
   fieldName: string,
   selectedBeatModel?: string,
-  includeZeroScores: boolean = true // For current run, default missing to 0; for historical, skip missing
+  includeZeroScores: boolean = true
 ): GossamerRun {
   let beats: GossamerBeat[];
   
@@ -117,12 +117,33 @@ export function buildRunFromGossamerField(
       meta: { label: fieldName, date: new Date().toISOString() },
     };
   }
+
+  // If 'Gossamer1' is requested, check if we should be using a dynamically determined latest run instead.
+  // We only do this "smart" redirect if we are asking for the default/current run (often passed as 'Gossamer1')
+  // and we want to ensure we actually get the LATEST data if the user has tracked multiple runs.
+  let actualField = fieldName;
+  if (fieldName === 'Gossamer1') {
+    // Try to find the max run index from ANY scene to know what "current" really means
+    let maxIndex = 1;
+    scenes.forEach(s => {
+      for (let i = 30; i >= 1; i--) {
+        if (s[`Gossamer${i}`] !== undefined) {
+          maxIndex = Math.max(maxIndex, i);
+          break; // Found max for this scene
+        }
+      }
+    });
+    // If we found a higher index, use that as "Current"
+    // BUT: Historical view logic (buildAllGossamerRuns) calls this iteratively for 1..30.
+    // We must be careful not to break historical loading.
+    // Actually, `buildAllGossamerRuns` calls this with specific field names (Gossamer1, Gossamer2...).
+    // Only `buildRunFromDefault` calls it with 'Gossamer1'.
+    // So, we should change `buildRunFromDefault` instead of changing this low-level function.
+  }
   
   // Filter Beat notes by Beat Model only if explicitly specified and not empty
-  // Support both 'Beat' (new standard) and 'Plot' (legacy)
   let plotNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
   
-  // Use centralized filtering helper (single source of truth)
   if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotNotes.some(p => p["Beat Model"])) {
     plotNotes = filterBeatsBySystem(plotNotes, selectedBeatModel);
   }
@@ -141,7 +162,7 @@ export function buildRunFromGossamerField(
     };
   }
   
-  // Sort by numeric prefix and keep original titles
+  // Sort by numeric prefix
   plotNotes.sort((a, b) => {
     const aMatch = (a.title || '').match(/^(\d+(?:\.\d+)?)/);
     const bMatch = (b.title || '').match(/^(\d+(?:\.\d+)?)/);
@@ -150,7 +171,6 @@ export function buildRunFromGossamerField(
     return aNum - bNum;
   });
   
-  // Build beats array directly from beat notes
   const incompleteBeats: string[] = [];
   beats = plotNotes.map((plotNote) => {
     const beatTitle = (plotNote.title || '').replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
@@ -184,9 +204,9 @@ export function buildRunFromGossamerField(
       const parsed = parseRange(rangeValue);
       if (parsed) {
         range = parsed;
-        
-        // Check if score is outside ideal range (only for current run with actual scores)
-        if (parsedScore !== undefined && fieldName === 'Gossamer1') {
+        // Check if score is outside ideal range
+        // Only flag if we actually have a score
+        if (parsedScore !== undefined) {
           isOutOfRange = !isScoreInRange(parsedScore, range);
         }
       }
@@ -202,7 +222,7 @@ export function buildRunFromGossamerField(
         isOutOfRange
       };
     } else if (includeZeroScores) {
-      // For current run (Gossamer1), default missing to 0 with red dot
+      // For current run, default missing to 0 with red dot
       incompleteBeats.push(beatTitle);
       return {
         beat: beatTitle,
@@ -210,10 +230,10 @@ export function buildRunFromGossamerField(
         notes: `No ${fieldName} score in frontmatter - defaulting to 0.`,
         status: 'outlineOnly' as const,
         range,
-        isOutOfRange: false // Missing scores aren't counted as out-of-range
+        isOutOfRange: false
       };
     } else {
-      // For historical runs, mark as missing (will be skipped in rendering)
+      // For historical runs, mark as missing
       return {
         beat: beatTitle,
         score: 0,
@@ -221,9 +241,8 @@ export function buildRunFromGossamerField(
         status: 'missing' as const,
       };
     }
-  }).filter(beat => beat.status !== 'missing'); // Remove missing beats from historical runs
+  }).filter(beat => beat.status !== 'missing');
   
-  // Count how many beats have scores
   const presentCount = beats.filter(b => b.status === 'present').length;
   
   return {
@@ -236,7 +255,7 @@ export function buildRunFromGossamerField(
       incompleteBeats,
     },
     meta: { 
-      label: fieldName === 'Gossamer1' ? 'Score' : fieldName,
+      label: fieldName.startsWith('Gossamer') ? `Run ${fieldName.replace('Gossamer', '')}` : fieldName,
       date: new Date().toISOString(),
       model: selectedBeatModel 
     },
@@ -245,11 +264,94 @@ export function buildRunFromGossamerField(
 
 /**
  * Build a run from actual Beat notes in the vault.
- * Uses whatever Beat notes the author created, filtered by Beat Model.
- * Missing Gossamer1 scores default to 0 (red dot).
+ * This represents the "Current" state - which is the LATEST available score for each beat.
+ * Unlike historical runs (which look at specific fields like Gossamer1), this logic
+ * finds the highest numbered Gossamer field (e.g. Gossamer5) for EACH beat individually.
+ * This ensures "Current" always shows the most recent analysis.
  */
-export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Beat Model"?: string }[], selectedBeatModel?: string): GossamerRun {
-  return buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true);
+export function buildRunFromDefault(scenes?: { itemType?: string; subplot?: string; title?: string; Gossamer1?: number; "Beat Model"?: string; [key: string]: unknown }[], selectedBeatModel?: string): GossamerRun {
+  if (!scenes) return buildRunFromGossamerField(scenes, 'Gossamer1', selectedBeatModel, true);
+
+  // We need to construct a "Virtual" run composed of the latest scores
+  // First, let's reuse the logic to filter and sort notes
+  let plotNotes = scenes.filter(s => s.itemType === 'Beat' || s.itemType === 'Plot');
+  if (selectedBeatModel && selectedBeatModel.trim() !== '' && plotNotes.some(p => p["Beat Model"])) {
+    plotNotes = filterBeatsBySystem(plotNotes, selectedBeatModel);
+  }
+  
+  plotNotes.sort((a, b) => {
+    const aMatch = (a.title || '').match(/^(\d+(?:\.\d+)?)/);
+    const bMatch = (b.title || '').match(/^(\d+(?:\.\d+)?)/);
+    const aNum = aMatch ? parseFloat(aMatch[1]) : 0;
+    const bNum = bMatch ? parseFloat(bMatch[1]) : 0;
+    return aNum - bNum;
+  });
+
+  const beats: GossamerBeat[] = plotNotes.map(note => {
+    const beatTitle = (note.title || '').replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
+    
+    // Find the latest score
+    let latestScore: number | undefined = undefined;
+    let latestRunIndex = 0;
+    
+    // Check Gossamer1 through Gossamer30
+    for (let i = 30; i >= 1; i--) {
+      const val = note[`Gossamer${i}`];
+      if (val !== undefined && val !== null && typeof val === 'number') {
+        latestScore = val;
+        latestRunIndex = i;
+        break;
+      }
+    }
+    
+    // Range logic
+    let range: { min: number; max: number } | undefined = undefined;
+    let isOutOfRange = false;
+    const rangeValue = note.Range;
+    if (typeof rangeValue === 'string') {
+      const parsed = parseRange(rangeValue);
+      if (parsed) {
+        range = parsed;
+        if (latestScore !== undefined) {
+          isOutOfRange = !isScoreInRange(latestScore, range);
+        }
+      }
+    }
+
+    if (latestScore !== undefined) {
+      return {
+        beat: beatTitle,
+        score: latestScore,
+        notes: `Latest score from Gossamer${latestRunIndex}`,
+        status: 'present',
+        range,
+        isOutOfRange
+      };
+    } else {
+      return {
+        beat: beatTitle,
+        score: 0,
+        notes: 'No scores found',
+        status: 'outlineOnly',
+        range,
+        isOutOfRange: false
+      };
+    }
+  });
+
+  return {
+    beats,
+    overall: {
+      summary: `Current View: Showing latest scores (up to Gossamer30).`,
+      refinements: [],
+      incompleteBeats: []
+    },
+    meta: {
+      label: 'Latest Run',
+      date: new Date().toISOString(),
+      model: selectedBeatModel
+    }
+  };
 }
 
 /**

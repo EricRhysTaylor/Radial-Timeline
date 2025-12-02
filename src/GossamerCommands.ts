@@ -558,9 +558,11 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
           beatName: (beat.title || 'Unknown Beat').replace(/^\d+(?:\.\d+)?\s+/, ''),
           beatNumber: index + 1,
           idealRange: rangeValue,
-          previousScore: typeof beatData.Gossamer1 === 'number' ? beatData.Gossamer1 : undefined,
-          previousJustification: typeof beatData['Gossamer1 Justification'] === 'string' 
-            ? beatData['Gossamer1 Justification'] 
+          previousScore: typeof beatData[beatData.GossamerLatestRun ? `Gossamer${beatData.GossamerLatestRun}` : 'Gossamer1'] === 'number' 
+            ? beatData[beatData.GossamerLatestRun ? `Gossamer${beatData.GossamerLatestRun}` : 'Gossamer1'] 
+            : undefined,
+          previousJustification: typeof beatData[beatData.GossamerLatestRun ? `Gossamer${beatData.GossamerLatestRun} Justification` : 'Gossamer1 Justification'] === 'string' 
+            ? beatData[beatData.GossamerLatestRun ? `Gossamer${beatData.GossamerLatestRun} Justification` : 'Gossamer1 Justification']
             : undefined
         };
       });
@@ -874,7 +876,8 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     // Check if any beats have previous justifications (for iterative refinement)
     const beatsWithPreviousAnalysis = plotBeats.filter(beat => {
       const beatData = beat as any;
-      return typeof beatData['Gossamer1 Justification'] === 'string' && beatData['Gossamer1 Justification'].trim().length > 0;
+      const latestRun = beatData.GossamerLatestRun || 1;
+      return typeof beatData[`Gossamer${latestRun} Justification`] === 'string';
     }).length;
     
     const manuscriptInfo: ManuscriptInfo = {

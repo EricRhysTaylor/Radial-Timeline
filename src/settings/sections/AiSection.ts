@@ -210,6 +210,23 @@ export function renderAiSection(params: {
                 params.scheduleKeyValidation('gemini');
             }));
 
+    // Gemini Recommendation Note
+    const geminiInfo = new Settings(geminiSection)
+        .setDesc((() => {
+            const frag = document.createDocumentFragment();
+            frag.createEl('strong', { text: 'Recommendation: ' });
+            frag.createSpan({ text: 'Use Gemini 1.5 Pro (or newer) for its massive context window (up to 2M tokens) and Context Caching capabilities. This allows you to load your entire manuscript into a cached session, enabling faster, cheaper, and more continuous analysis across multiple queries without re-uploading the full text each time.' });
+            return frag;
+        })());
+    // Style the info box to look like a note
+    geminiInfo.settingEl.addClass('rt-setting-info-box');
+    // SAFE: CSS class used for layout reset
+    geminiInfo.settingEl.addClass('rt-reset-margin-padding');
+    // SAFE: CSS class used for text color
+    geminiInfo.settingEl.addClass('rt-text-muted');
+    geminiInfo.settingEl.querySelector('.setting-item-info')?.setAttribute('style', 'margin: 0; width: 100%;');
+    geminiInfo.settingEl.querySelector('.setting-item-control')?.remove(); // Remove the control side
+
     // OpenAI API Key
     new Settings(openaiSection)
         .setName('OpenAI API key')

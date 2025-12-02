@@ -36,7 +36,8 @@ export async function callGeminiApi(
   maxTokens: number | null = 4000,
   temperature: number = 0.7,
   jsonSchema?: Record<string, unknown>,  // Optional JSON schema for structured output
-  disableThinking: boolean = false  // Disable extended thinking mode (for 2.5-pro models)
+  disableThinking: boolean = false,  // Disable extended thinking mode (for 2.5-pro models)
+  cachedContentName?: string // Optional: name of cached content resource (e.g. "cachedContents/...")
 ): Promise<GeminiApiResponse> {
   if (!apiKey) {
     return { success: false, content: null, responseData: { error: { message: 'Gemini API key not configured.' } }, error: 'Gemini API key not configured.' };
@@ -59,6 +60,7 @@ export async function callGeminiApi(
       thinkingConfig?: { mode: string };
     };
     systemInstruction?: { parts: { text: string }[] };
+    cachedContent?: string;
   };
   const body: GeminiRequest = {
     contents: [
@@ -71,6 +73,9 @@ export async function callGeminiApi(
       temperature,
     },
   };
+  if (cachedContentName) {
+    body.cachedContent = cachedContentName;
+  }
   if (systemPrompt) {
     // v1beta accepts systemInstruction as top-level
     body.systemInstruction = { parts: [{ text: systemPrompt }] };
@@ -158,6 +163,57 @@ export async function callGeminiApi(
     responseData = { error: { message: msg } };
     return { success: false, content: null, responseData, error: msg };
   }
+}
+
+/**
+ * Create a cached content resource for Gemini
+ * @param apiKey Gemini API key
+ * @param modelId Model ID to associate with cache (e.g. "gemini-1.5-pro-001")
+ * @param content Full text content to cache
+ * @param ttlSeconds Time to live in seconds (default 3600 = 1 hour)
+ * @returns Name of the cached content resource (e.g. "cachedContents/123...")
+ */
+export async function createGeminiCache(
+  apiKey: string,
+  modelId: string,
+  content: string,
+  ttlSeconds: number = 3600
+): Promise<string> {
+  if (!apiKey) throw new Error('Gemini API key is required to create cache.');
+  
+  const cleanModelId = modelId.startsWith('models/') ? modelId.slice(7) : modelId;
+  const url = `https://generativelanguage.googleapis.com/v1beta/cachedContents?key=${encodeURIComponent(apiKey)}`;
+  
+  const body = {
+    model: `models/${cleanModelId}`,
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: content }]
+      }
+    ],
+    ttl: `${ttlSeconds}s`
+  };
+
+  const resp = await requestUrl({
+    url,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    throw: false
+  });
+
+  if (resp.status >= 400) {
+    const err = resp.json as GeminiErrorResponse;
+    throw new Error(err?.error?.message ?? `Failed to create cache (${resp.status})`);
+  }
+
+  const data = resp.json as { name: string };
+  if (!data.name) {
+    throw new Error('Cache creation response missing name field');
+  }
+  
+  return data.name;
 }
 
 // --- fetch models ---

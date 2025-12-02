@@ -3991,3 +3991,13 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   line-height: 1.4;
   padding-left: 26px; /* Align with checkbox text */
 }
+
+/* Utility classes for settings */
+.rt-reset-margin-padding {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.rt-text-muted {
+  color: var(--text-muted) !important;
+}
