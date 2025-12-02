@@ -345,7 +345,7 @@
   fill: white;
   opacity: 1;
   font-size: calc(18px * var(--rt-font-scale, 1));
-  pointer-events: none;
+  pointer-events: none; 
 }
 .radial-timeline-container .rt-storybeat-title {
   fill: var(--text-normal);

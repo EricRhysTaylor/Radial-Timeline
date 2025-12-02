@@ -173,25 +173,25 @@ export const BEAT_LABEL_LETTER_SPACING_EM = 0.07;
 export const BOOK_TITLE_POS_X = 568;
 
 /** Vertical position for book title text */
-export const BOOK_TITLE_POS_Y = -784;
+export const BOOK_TITLE_POS_Y = -780;
 
 /** Horizontal position for mode title text */
 export const MODE_TITLE_POS_X = 567;
 
 /** Vertical position for mode title text */
-export const MODE_TITLE_POS_Y = -761;
+export const MODE_TITLE_POS_Y = -755;
 
 /** Horizontal center position for mode selector buttons */
 export const MODE_SELECTOR_POS_X = 658;
 
 /** Vertical position for mode selector buttons */
-export const MODE_SELECTOR_POS_Y = -750;
+export const MODE_SELECTOR_POS_Y = -740;
 
 /** Horizontal position for chronologue shift button */
 export const SHIFT_BUTTON_POS_X = -700;
 
 /** Vertical position for chronologue shift button */
-export const SHIFT_BUTTON_POS_Y = -750;
+export const SHIFT_BUTTON_POS_Y = -740;
 
 // =============================================================================
 // VERSION INDICATOR POSITIONING (bottom-left edge)
