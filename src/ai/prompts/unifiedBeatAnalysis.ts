@@ -90,75 +90,31 @@ export function buildUnifiedBeatAnalysisPrompt(
   beats: UnifiedBeatInfo[],
   beatSystem: string
 ): string {
-  
-  const hasPreviousAnalysis = beats.some(b => b.previousScore !== undefined);
-  
-  // Build beat list
   const beatList = beats
     .map((b, i) => {
-      let line = `${i + 1}. ${b.beatName} (ideal momentum: ${b.idealRange})`;
-      
-      // Add previous score info for comparison
-      if (b.previousScore !== undefined) {
-        line += `\n   Previous Score: ${b.previousScore}/100`;
-        if (b.previousJustification) {
-          line += `\n   Previous Justification: "${b.previousJustification}"`;
-        }
+      const parts = [
+        `${i + 1}. ${b.beatName}`,
+        `ideal range: ${b.idealRange}`
+      ];
+      if (typeof b.previousScore === 'number') {
+        parts.push(`previous score: ${b.previousScore}`);
       }
-      
-      return line;
+      if (b.previousJustification) {
+        parts.push(`previous note: ${b.previousJustification}`);
+      }
+      return parts.join(' | ');
     })
     .join('\n');
 
-  const previousAnalysisSection = hasPreviousAnalysis ? `
-ITERATIVE REFINEMENT:
-Previous scores are shown above. Compare and adjust based on deeper understanding.
+  const prompt = `Beat system: ${beatSystem}
 
-` : '';
-
-  const prompt = `You are analyzing narrative momentum in a manuscript using the ${beatSystem} beat system.
-
-BEAT STRUCTURE:
+Story beats (oldest history first):
 ${beatList}
 
-MOMENTUM SCALE (0-100):
-- 0-20: Quiet, establishing, low tension
-- 21-40: Building, complications emerging
-- 41-60: Rising stakes, conflict developing
-- 61-80: High tension, major conflicts
-- 81-100: Peak tension, climactic moments
+Score momentum (0-100) for each listed beat, include a short justification, and set isWithinRange by comparing to the ideal range. Respond strictly in the JSON schema that accompanies this prompt.
 
-${previousAnalysisSection}YOUR TASK:
-Use the table of contents to locate each beat. Read the manuscript and score the narrative momentum at each story beat.
-
-- Assign momentum score (0-100) for tension/stakes at each beat
-- Provide brief justification (one sentence)
-- Consider: tension level, stakes, emotional intensity
-
-Return ONLY valid JSON (no markdown, no preamble):
-
-{
-  "beats": [
-    {
-      "beatName": "Opening Image",
-      "momentumScore": 15,
-      "idealRange": "0-20",
-      "isWithinRange": true,
-      "justification": "Establishes quiet status quo before inciting incident"
-    }
-    // ... for each beat
-  ],
-  "overallAssessment": {
-    "summary": "Brief assessment of overall momentum arc",
-    "strengths": ["Strength 1", "Strength 2"],
-    "improvements": ["Improvement 1", "Improvement 2"]
-  }
-}
-
-MANUSCRIPT:
-
+Manuscript text (table of contents followed by scenes):
 ${manuscriptText}`;
 
   return prompt;
 }
-

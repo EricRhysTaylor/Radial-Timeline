@@ -620,7 +620,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       geminiModelId,
       null, // No system prompt - instructions in user prompt
       prompt,
-      4000, // Default max tokens for response
+      9000, // Allow larger JSON output
       0.7, // Temperature
       schema
     );

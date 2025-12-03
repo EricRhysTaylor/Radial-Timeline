@@ -1,16 +1,17 @@
 /*
  * Gossamer Score Entry Modal - Manual entry of beat momentum scores
  */
-import { Modal, App, ButtonComponent, Notice, TextComponent } from 'obsidian';
+import { Modal, App, ButtonComponent, Notice, TextComponent, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
-import { normalizeBeatName } from '../utils/gossamer';
+import { normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
 
 interface ScoreHistoryItem {
   index: number;
   value: number;
+  justification?: string;
 }
 
 interface BeatScoreEntry {
@@ -18,6 +19,7 @@ interface BeatScoreEntry {
   beatName: string; // Normalized name for matching
   currentScore?: number; // Latest score (highest Gossamer#)
   currentIndex?: number;
+  currentJustification?: string;
   history: ScoreHistoryItem[]; // Older scores with their Gossamer numbers
   newScore?: number; // User-entered score
   inputEl?: TextComponent;
@@ -25,6 +27,7 @@ interface BeatScoreEntry {
   scoreDisplayEl?: HTMLElement; // Reference to the scores display element
   range?: string; // Ideal range from beat note (e.g., "0-20", "60-70")
   description?: string; // Beat description from YAML
+  beatPath?: string;
 }
 
 export class GossamerScoreModal extends Modal {
@@ -41,6 +44,39 @@ export class GossamerScoreModal extends Modal {
     super(app);
     this.plugin = plugin;
     this.plotBeats = plotBeats;
+  }
+
+  private async normalizeAllScores(): Promise<void> {
+    const beatsToNormalize = this.plotBeats.filter(beat => beat.path);
+    let changedCount = 0;
+
+    for (const beat of beatsToNormalize) {
+      if (!beat.path) continue;
+      const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
+      if (!file || !(file instanceof TFile)) continue;
+
+      await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
+        const fm = yaml as Record<string, any>;
+        const { normalized, changed } = normalizeGossamerHistory(fm);
+        if (changed) {
+          changedCount++;
+          for (let i = 1; i <= 40; i++) {
+            delete fm[`Gossamer${i}`];
+            delete fm[`Gossamer${i} Justification`];
+          }
+          Object.assign(fm, normalized);
+        }
+      });
+    }
+
+    if (changedCount > 0) {
+      new Notice(`Normalized Gossamer scores in ${changedCount} beat${changedCount === 1 ? '' : 's'}.`);
+      this.close();
+      const refreshed = new GossamerScoreModal(this.app, this.plugin, this.plotBeats);
+      refreshed.open();
+    } else {
+      new Notice('No fragmented scores detected.');
+    }
   }
 
   // Helper to create Lucide circle-x SVG icon
@@ -164,7 +200,7 @@ export class GossamerScoreModal extends Modal {
     //   );
     // }
 
-    // Scores container housed inside a glass card like the AI pulse modals
+    // Scrollable list of beat scores
     const scoresContainer = contentEl.createDiv('rt-gossamer-scores-container');
 
     // Build entries from plot beats
@@ -196,6 +232,10 @@ export class GossamerScoreModal extends Modal {
       entry.inputEl = new TextComponent(inputContainer);
       entry.inputEl.inputEl.addClass('rt-gossamer-score-input');
       entry.inputEl.setPlaceholder('0-100');
+      if (entry.currentJustification) {
+        const currentNote = inputContainer.createDiv('rt-gossamer-current-justification');
+        currentNote.setText(`Latest note: ${entry.currentJustification}`);
+      }
 
       // Validate on input
       entry.inputEl.onChange((value) => {
@@ -220,7 +260,7 @@ export class GossamerScoreModal extends Modal {
       const renderScores = () => {
         existingScoresEl.empty();
         
-        const createScoreCard = (gossamerNum: number, score: number) => {
+        const createScoreCard = (gossamerNum: number, score: number, justification?: string) => {
           const scoreContainer = existingScoresEl.createDiv();
           scoreContainer.addClass('rt-gossamer-score-item-container');
           scoreContainer.setAttribute('data-gossamer-num', gossamerNum.toString());
@@ -239,6 +279,12 @@ export class GossamerScoreModal extends Modal {
             text: `${score}`,
             cls: 'rt-gossamer-score-value'
           });
+          if (justification) {
+            textColumn.createSpan({
+              text: justification,
+              cls: 'rt-gossamer-score-justification'
+            });
+          }
           
           scoreContainer.addEventListener('click', () => {
             entry.scoresToDelete.add(gossamerNum);
@@ -256,13 +302,13 @@ export class GossamerScoreModal extends Modal {
         // Existing scores oldest → newest
         entry.history.forEach(item => {
           if (entry.scoresToDelete.has(item.index)) return;
-          createScoreCard(item.index, item.value);
+          createScoreCard(item.index, item.value, item.justification);
         });
 
         if (entry.currentScore !== undefined &&
             entry.currentIndex !== undefined &&
             !entry.scoresToDelete.has(entry.currentIndex)) {
-          createScoreCard(entry.currentIndex, entry.currentScore);
+          createScoreCard(entry.currentIndex, entry.currentScore, entry.currentJustification);
         }
         
         // Add count indicator if there are many scores
@@ -300,6 +346,13 @@ export class GossamerScoreModal extends Modal {
       .setButtonText('Paste scores')
       .onClick(async () => {
         await this.pasteFromClipboard();
+      });
+
+    new ButtonComponent(buttonContainer)
+      .setButtonText('Normalize history')
+      .setTooltip('Remove gaps and orphaned notes from Gossamer runs')
+      .onClick(async () => {
+        await this.normalizeAllScores();
       });
 
     new ButtonComponent(buttonContainer)
@@ -346,6 +399,7 @@ export class GossamerScoreModal extends Modal {
       const entry: BeatScoreEntry = {
         beatTitle: beat.title,
         beatName: normalizeBeatName(beat.title),
+        beatPath: beat.path,
         history: [],
         scoresToDelete: new Set<number>()
       };
@@ -362,6 +416,7 @@ export class GossamerScoreModal extends Modal {
         }
 
         const scores: ScoreHistoryItem[] = [];
+        let hasAnyScores = false;
         for (let i = 1; i <= 30; i++) {
           const key = `Gossamer${i}`;
           const value = fm[key];
@@ -374,14 +429,26 @@ export class GossamerScoreModal extends Modal {
           }
 
           if (numeric !== undefined) {
+            hasAnyScores = true;
+            const justificationKey = `Gossamer${i} Justification`;
+            const justificationValue = fm[justificationKey];
             scores.push({ index: i, value: numeric });
+            if (typeof justificationValue === 'string' && justificationValue.trim().length > 0) {
+              scores[scores.length - 1].justification = justificationValue;
+            }
+          } else {
+            const orphanJustKey = `Gossamer${i} Justification`;
+            if (typeof fm[orphanJustKey] === 'string') {
+              // Remove orphaned justification entries (handled during cleanup)
+            }
           }
         }
 
-        if (scores.length > 0) {
+        if (hasAnyScores && scores.length > 0) {
           const latest = scores[scores.length - 1];
           entry.currentScore = latest.value;
           entry.currentIndex = latest.index;
+          entry.currentJustification = latest.justification;
           entry.history = scores.slice(0, -1);
         }
       }

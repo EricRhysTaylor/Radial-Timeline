@@ -567,6 +567,53 @@ export function shiftGossamerHistory(frontmatter: Record<string, any>): Record<s
   return updated;
 }
 
+export function normalizeGossamerHistory(frontmatter: Record<string, any>): {
+  normalized: Record<string, any>;
+  changed: boolean;
+} {
+  const maxHistory = 30;
+  const normalized: Record<string, any> = {};
+  type Entry = { score: number; justification?: string; originalIndex: number };
+  const entries: Entry[] = [];
+  let hasOrphanJustification = false;
+
+  for (let i = 1; i <= maxHistory; i++) {
+    const scoreKey = `Gossamer${i}`;
+    const justKey = `Gossamer${i} Justification`;
+    const rawScore = frontmatter[scoreKey];
+    let numeric: number | undefined;
+    if (typeof rawScore === 'number') {
+      numeric = rawScore;
+    } else if (typeof rawScore === 'string') {
+      const parsed = parseInt(rawScore);
+      if (!Number.isNaN(parsed)) numeric = parsed;
+    }
+    if (numeric !== undefined) {
+      const entry: Entry = { score: numeric, originalIndex: i };
+      const justification = frontmatter[justKey];
+      if (typeof justification === 'string' && justification.trim().length > 0) {
+        entry.justification = justification;
+      }
+      entries.push(entry);
+    } else if (typeof frontmatter[justKey] === 'string' && frontmatter[justKey].trim().length > 0) {
+      hasOrphanJustification = true;
+    }
+  }
+
+  const needsRenumber = entries.some((entry, idx) => entry.originalIndex !== idx + 1);
+  const changed = needsRenumber || hasOrphanJustification;
+
+  entries.forEach((entry, idx) => {
+    const key = `Gossamer${idx + 1}`;
+    normalized[key] = entry.score;
+    if (entry.justification) {
+      normalized[`${key} Justification`] = entry.justification;
+    }
+  });
+
+  return { normalized, changed };
+}
+
 export function appendGossamerScore(
   frontmatter: Record<string, any>,
   maxHistory: number = 30
