@@ -75,9 +75,11 @@ export class GossamerScoreModal extends Modal {
     if (modalEl) {
       modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.classList.add('rt-beats-modal-shell');
     }
     
     contentEl.addClass('rt-gossamer-score-modal');
+    contentEl.addClass('rt-beats-modal');
 
     // Use settings as source of truth for beat system
     const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
@@ -117,10 +119,17 @@ export class GossamerScoreModal extends Modal {
     // NOTE: Temporarily disabled - metadata cache not refreshing Range field
     // const rangeValidation = validateBeatRanges(filteredBeats, settingsSystem);
 
-    // Title with plot system name
+    // Title with plot system name rendered in hero card
     const titleText = `Gossamer momentum scores — ${settingsSystem}`;
-    const titleEl = contentEl.createEl('h2', { text: titleText });
-    titleEl.addClass('rt-gossamer-score-title');
+    const heroEl = contentEl.createDiv({ cls: 'rt-beats-progress-hero rt-gossamer-score-hero' });
+    heroEl.createSpan({ text: 'Gossamer momentum', cls: 'rt-beats-hero-badge' });
+    heroEl.createEl('h2', { text: titleText, cls: 'rt-beats-progress-heading' });
+    const heroSubtitle = heroEl.createDiv({ cls: 'rt-beats-progress-subtitle rt-gossamer-score-subtitle' });
+    heroSubtitle.setText('Enter momentum scores (0-100) for each beat. Previous scores will be saved as history.');
+    const heroMeta = heroEl.createDiv({ cls: 'rt-beats-progress-meta' });
+    heroMeta.createSpan({ text: `Beat system: ${settingsSystem}`, cls: 'rt-beats-hero-meta-item' });
+    heroMeta.createSpan({ text: `Beats detected: ${actualCount}`, cls: 'rt-beats-hero-meta-item' });
+    heroMeta.createSpan({ text: 'History depth: 30 runs', cls: 'rt-beats-hero-meta-item' });
 
     // Show warning if no beats match
     if (actualCount === 0) {
@@ -152,26 +161,10 @@ export class GossamerScoreModal extends Modal {
     //   );
     // }
 
-    // Header section with border
-    const headerSection = contentEl.createDiv('rt-gossamer-score-header');
-    
-    // Subtitle
-    const subtitleEl = headerSection.createEl('p', {
-      text: 'Enter momentum scores (0-100) for each beat. Previous scores will be saved as history.'
-    });
-    subtitleEl.addClass('rt-gossamer-score-subtitle');
-
-    const copyOptions = headerSection.createDiv('rt-gossamer-copy-options');
-    const toggleLabel = copyOptions.createEl('label', { cls: 'rt-gossamer-copy-toggle' });
-    const toggleInput = toggleLabel.createEl('input', { type: 'checkbox' });
-    toggleInput.checked = this.includeBeatDescriptions;
-    toggleInput.addEventListener('change', () => {
-      this.includeBeatDescriptions = toggleInput.checked;
-    });
-    toggleLabel.appendText('Include beat descriptions when copying template');
-
-    // Scores container
-    const scoresContainer = contentEl.createDiv('rt-gossamer-scores-container');
+    // Scores container housed inside a glass card like the AI pulse modals
+    const scoresCard = contentEl.createDiv('rt-gossamer-scores-card');
+    scoresCard.addClass('rt-beats-glass-card');
+    const scoresContainer = scoresCard.createDiv('rt-gossamer-scores-container');
 
     // Build entries from plot beats
     this.buildEntries();
@@ -194,11 +187,12 @@ export class GossamerScoreModal extends Modal {
         rangeEl.addClass('rt-gossamer-beat-range');
       }
 
-      // New score input (to the right)
-      const inputLabel = firstRow.createSpan({ text: 'New Score: ' });
+      // New score input (in its own stack for better layout)
+      const inputContainer = firstRow.createDiv('rt-gossamer-input-container');
+      const inputLabel = inputContainer.createSpan({ text: 'Enter new score' });
       inputLabel.addClass('rt-gossamer-input-label');
 
-      entry.inputEl = new TextComponent(firstRow);
+      entry.inputEl = new TextComponent(inputContainer);
       entry.inputEl.inputEl.addClass('rt-gossamer-score-input');
       entry.inputEl.setPlaceholder('0-100');
 
@@ -225,55 +219,46 @@ export class GossamerScoreModal extends Modal {
       const renderScores = () => {
         existingScoresEl.empty();
         
+        const createScoreCard = (gossamerNum: number, score: number) => {
+          const scoreContainer = existingScoresEl.createDiv();
+          scoreContainer.addClass('rt-gossamer-score-item-container');
+          scoreContainer.setAttribute('data-gossamer-num', gossamerNum.toString());
+          
+          const iconColumn = scoreContainer.createDiv();
+          iconColumn.addClass('rt-gossamer-icon-column');
+          iconColumn.appendChild(this.createCircleXIcon());
+          
+          const textColumn = scoreContainer.createDiv();
+          textColumn.addClass('rt-gossamer-text-column');
+          textColumn.createSpan({
+            text: `G${gossamerNum}`,
+            cls: 'rt-gossamer-score-label'
+          });
+          textColumn.createSpan({
+            text: `${score}`,
+            cls: 'rt-gossamer-score-value'
+          });
+          
+          scoreContainer.addEventListener('click', () => {
+            entry.scoresToDelete.add(gossamerNum);
+            renderScores();
+          });
+        };
+        
         // Count total scores to display
         const totalScores = (entry.currentScore !== undefined && !entry.scoresToDelete.has(1) ? 1 : 0) + 
                            entry.history.filter((_, idx) => !entry.scoresToDelete.has(idx + 2)).length;
         
         // Current score (Gossamer1)
         if (entry.currentScore !== undefined && !entry.scoresToDelete.has(1)) {
-          const scoreContainer = existingScoresEl.createDiv();
-          scoreContainer.addClass('rt-gossamer-score-item-container');
-          
-          // Icon column
-          const iconColumn = scoreContainer.createDiv();
-          iconColumn.addClass('rt-gossamer-icon-column');
-          iconColumn.appendChild(this.createCircleXIcon());
-          
-          // Text column
-          const textColumn = scoreContainer.createDiv();
-          textColumn.addClass('rt-gossamer-text-column');
-          textColumn.textContent = `G1:${entry.currentScore}`;
-          
-          // Click handler for the entire container
-          scoreContainer.addEventListener('click', () => {
-            entry.scoresToDelete.add(1);
-            renderScores();
-          });
+          createScoreCard(1, entry.currentScore);
         }
         
         // History scores (Gossamer2, Gossamer3, etc.)
         entry.history.forEach((score, idx) => {
           const gossamerNum = idx + 2;
           if (entry.scoresToDelete.has(gossamerNum)) return;
-          
-          const scoreContainer = existingScoresEl.createDiv();
-          scoreContainer.addClass('rt-gossamer-score-item-container');
-          
-          // Icon column
-          const iconColumn = scoreContainer.createDiv();
-          iconColumn.addClass('rt-gossamer-icon-column');
-          iconColumn.appendChild(this.createCircleXIcon());
-          
-          // Text column
-          const textColumn = scoreContainer.createDiv();
-          textColumn.addClass('rt-gossamer-text-column');
-          textColumn.textContent = `G${gossamerNum}:${score}`;
-          
-          // Click handler for the entire container
-          scoreContainer.addEventListener('click', () => {
-            entry.scoresToDelete.add(gossamerNum);
-            renderScores();
-          });
+          createScoreCard(gossamerNum, score);
         });
         
         // Add count indicator if there are many scores
@@ -291,21 +276,33 @@ export class GossamerScoreModal extends Modal {
 
     // Buttons
     const buttonContainer = contentEl.createDiv('rt-gossamer-score-buttons');
+    buttonContainer.addClass('rt-beats-glass-card');
 
-    new ButtonComponent(buttonContainer)
+    const leftButtons = buttonContainer.createDiv('rt-gossamer-score-buttons-left');
+    const copyGroup = leftButtons.createDiv('rt-gossamer-copy-group');
+
+    new ButtonComponent(copyGroup)
       .setButtonText('Copy template for AI')
       .setTooltip('Copy beat names in AI-ready format')
       .onClick(async () => {
         await this.copyTemplateForAI();
       });
 
-    new ButtonComponent(buttonContainer)
+    const toggleLabel = copyGroup.createEl('label', { cls: 'rt-gossamer-copy-toggle' });
+    const toggleInput = toggleLabel.createEl('input', { type: 'checkbox' });
+    toggleInput.checked = this.includeBeatDescriptions;
+    toggleInput.addEventListener('change', () => {
+      this.includeBeatDescriptions = toggleInput.checked;
+    });
+    toggleLabel.createSpan({ text: 'Include beat descriptions when copying template' });
+
+    new ButtonComponent(leftButtons)
       .setButtonText('Paste from clipboard')
       .onClick(async () => {
         await this.pasteFromClipboard();
       });
 
-    new ButtonComponent(buttonContainer)
+    new ButtonComponent(leftButtons)
       .setButtonText('Delete scores')
       .setWarning()
       .onClick(async () => {

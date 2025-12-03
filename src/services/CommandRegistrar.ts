@@ -6,7 +6,7 @@
 import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { assembleManuscript } from '../utils/manuscript';
-import { openGossamerScoreEntry } from '../GossamerCommands';
+import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { createTemplateScene } from '../SceneAnalysisCommands';
 
 export class CommandRegistrar {
@@ -50,6 +50,19 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
+            id: 'gossamer-run-save-the-cat-analysis',
+            name: 'Run Save the Cat beats analysis (Gemini)',
+            callback: async () => {
+                try {
+                    await runGossamerAiAnalysis(this.plugin);
+                } catch (e) {
+                    new Notice('Failed to run Save the Cat beats analysis.');
+                    console.error(e);
+                }
+            }
+        });
+
+        this.plugin.addCommand({
             id: 'gossamer-generate-manuscript',
             name: 'Generate manuscript',
             callback: async () => this.generateManuscript()
@@ -82,10 +95,12 @@ export class CommandRegistrar {
                 new Notice('Manuscript is empty. Check that your scene files have content.');
                 return;
             }
+            const orderLabel = sortOrder?.toLowerCase().startsWith('chrono') ? 'Chronological' : 'Narrative';
             const now = new Date();
             const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-            const timeStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/:/g, '.');
-            const manuscriptPath = `AI/Manuscript ${dateStr} ${timeStr} PTD.md`;
+            const timeDisplayStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+            const timeFileStr = timeDisplayStr.replace(/:/g, '.');
+            const manuscriptPath = `AI/Manuscript ${orderLabel} ${dateStr} ${timeFileStr}.md`;
             try {
                 await this.app.vault.createFolder('AI');
             } catch {}
