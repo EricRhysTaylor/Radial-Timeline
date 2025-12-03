@@ -120,14 +120,12 @@ export class GossamerScoreModal extends Modal {
     // const rangeValidation = validateBeatRanges(filteredBeats, settingsSystem);
 
     // Title with plot system name rendered in hero card
-    const titleText = `Gossamer momentum scores — ${settingsSystem}`;
     const heroEl = contentEl.createDiv({ cls: 'rt-beats-progress-hero rt-gossamer-score-hero' });
     heroEl.createSpan({ text: 'Gossamer momentum', cls: 'rt-beats-hero-badge' });
-    heroEl.createEl('h2', { text: titleText, cls: 'rt-beats-progress-heading' });
+    heroEl.createDiv({ text: `${settingsSystem} Beat System`, cls: 'rt-gossamer-hero-system' });
     const heroSubtitle = heroEl.createDiv({ cls: 'rt-beats-progress-subtitle rt-gossamer-score-subtitle' });
     heroSubtitle.setText('Enter momentum scores (0-100) for each beat. Previous scores will be saved as history.');
     const heroMeta = heroEl.createDiv({ cls: 'rt-beats-progress-meta' });
-    heroMeta.createSpan({ text: `Beat system: ${settingsSystem}`, cls: 'rt-beats-hero-meta-item' });
     heroMeta.createSpan({ text: `Beats detected: ${actualCount}`, cls: 'rt-beats-hero-meta-item' });
     heroMeta.createSpan({ text: 'History depth: 30 runs', cls: 'rt-beats-hero-meta-item' });
 
@@ -278,8 +276,8 @@ export class GossamerScoreModal extends Modal {
     const buttonContainer = contentEl.createDiv('rt-gossamer-score-buttons');
     buttonContainer.addClass('rt-beats-glass-card');
 
-    const leftButtons = buttonContainer.createDiv('rt-gossamer-score-buttons-left');
-    const copyGroup = leftButtons.createDiv('rt-gossamer-copy-group');
+    const copyRow = buttonContainer.createDiv('rt-gossamer-copy-row');
+    const copyGroup = copyRow.createDiv('rt-gossamer-copy-group');
 
     new ButtonComponent(copyGroup)
       .setButtonText('Copy template for AI')
@@ -296,30 +294,29 @@ export class GossamerScoreModal extends Modal {
     });
     toggleLabel.createSpan({ text: 'Include beat descriptions when copying template' });
 
-    new ButtonComponent(leftButtons)
+    const actionRow = buttonContainer.createDiv('rt-gossamer-action-row');
+
+    new ButtonComponent(actionRow)
       .setButtonText('Paste from clipboard')
       .onClick(async () => {
         await this.pasteFromClipboard();
       });
 
-    new ButtonComponent(leftButtons)
+    new ButtonComponent(actionRow)
       .setButtonText('Delete scores')
       .setWarning()
       .onClick(async () => {
         await this.deleteAllScores();
       });
 
-    // Right-side button group
-    const rightButtons = buttonContainer.createDiv('rt-gossamer-score-buttons-right');
-
-    new ButtonComponent(rightButtons)
+    new ButtonComponent(actionRow)
       .setButtonText('Save scores')
       .setCta()
       .onClick(async () => {
         await this.saveScores();
       });
 
-    new ButtonComponent(rightButtons)
+    new ButtonComponent(actionRow)
       .setButtonText('Cancel')
       .onClick(() => {
         this.close();
