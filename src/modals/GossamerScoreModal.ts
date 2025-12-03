@@ -8,11 +8,17 @@ import { normalizeBeatName } from '../utils/gossamer';
 import { parseScoresFromClipboard } from '../GossamerCommands';
 import { getPlotSystem } from '../utils/beatsSystems';
 
+interface ScoreHistoryItem {
+  index: number;
+  value: number;
+}
+
 interface BeatScoreEntry {
   beatTitle: string; // Full title like "1 Opening Image" or "5 Theme Stated 5%"
   beatName: string; // Normalized name for matching
-  currentScore?: number; // Gossamer1 if it exists
-  history: number[]; // Gossamer2, Gossamer3, etc.
+  currentScore?: number; // Latest score (highest Gossamer#)
+  currentIndex?: number;
+  history: ScoreHistoryItem[]; // Older scores with their Gossamer numbers
   newScore?: number; // User-entered score
   inputEl?: TextComponent;
   scoresToDelete: Set<number>; // Track which Gossamer fields to delete (1, 2, 3, etc.)
@@ -120,14 +126,13 @@ export class GossamerScoreModal extends Modal {
     // const rangeValidation = validateBeatRanges(filteredBeats, settingsSystem);
 
     // Title with plot system name rendered in hero card
-    const heroEl = contentEl.createDiv({ cls: 'rt-beats-progress-hero rt-gossamer-score-hero' });
-    heroEl.createSpan({ text: 'Gossamer momentum', cls: 'rt-beats-hero-badge' });
-    heroEl.createDiv({ text: `${settingsSystem} Beat System`, cls: 'rt-gossamer-hero-system' });
-    const heroSubtitle = heroEl.createDiv({ cls: 'rt-beats-progress-subtitle rt-gossamer-score-subtitle' });
+    const headerEl = contentEl.createDiv({ cls: 'rt-gossamer-simple-header' });
+    headerEl.createSpan({ text: 'Gossamer momentum', cls: 'rt-gossamer-simple-badge' });
+    headerEl.createDiv({ text: `${settingsSystem} Beat System`, cls: 'rt-gossamer-hero-system' });
+    const heroSubtitle = headerEl.createDiv({ cls: 'rt-gossamer-score-subtitle' });
     heroSubtitle.setText('Enter momentum scores (0-100) for each beat. Previous scores will be saved as history.');
-    const heroMeta = heroEl.createDiv({ cls: 'rt-beats-progress-meta' });
-    heroMeta.createSpan({ text: `Beats detected: ${actualCount}`, cls: 'rt-beats-hero-meta-item' });
-    heroMeta.createSpan({ text: 'History depth: 30 runs', cls: 'rt-beats-hero-meta-item' });
+    const heroMeta = headerEl.createDiv({ cls: 'rt-gossamer-simple-meta' });
+    heroMeta.createSpan({ text: `Beats detected: ${actualCount}` });
 
     // Show warning if no beats match
     if (actualCount === 0) {
@@ -160,9 +165,7 @@ export class GossamerScoreModal extends Modal {
     // }
 
     // Scores container housed inside a glass card like the AI pulse modals
-    const scoresCard = contentEl.createDiv('rt-gossamer-scores-card');
-    scoresCard.addClass('rt-beats-glass-card');
-    const scoresContainer = scoresCard.createDiv('rt-gossamer-scores-container');
+    const scoresContainer = contentEl.createDiv('rt-gossamer-scores-container');
 
     // Build entries from plot beats
     this.buildEntries();
@@ -244,20 +247,23 @@ export class GossamerScoreModal extends Modal {
         };
         
         // Count total scores to display
-        const totalScores = (entry.currentScore !== undefined && !entry.scoresToDelete.has(1) ? 1 : 0) + 
-                           entry.history.filter((_, idx) => !entry.scoresToDelete.has(idx + 2)).length;
+        const totalScores =
+          (entry.currentScore !== undefined &&
+           entry.currentIndex !== undefined &&
+           !entry.scoresToDelete.has(entry.currentIndex) ? 1 : 0) +
+          entry.history.filter(item => !entry.scoresToDelete.has(item.index)).length;
         
-        // Current score (Gossamer1)
-        if (entry.currentScore !== undefined && !entry.scoresToDelete.has(1)) {
-          createScoreCard(1, entry.currentScore);
-        }
-        
-        // History scores (Gossamer2, Gossamer3, etc.)
-        entry.history.forEach((score, idx) => {
-          const gossamerNum = idx + 2;
-          if (entry.scoresToDelete.has(gossamerNum)) return;
-          createScoreCard(gossamerNum, score);
+        // Existing scores oldest → newest
+        entry.history.forEach(item => {
+          if (entry.scoresToDelete.has(item.index)) return;
+          createScoreCard(item.index, item.value);
         });
+
+        if (entry.currentScore !== undefined &&
+            entry.currentIndex !== undefined &&
+            !entry.scoresToDelete.has(entry.currentIndex)) {
+          createScoreCard(entry.currentIndex, entry.currentScore);
+        }
         
         // Add count indicator if there are many scores
         if (totalScores > 10) {
@@ -297,7 +303,7 @@ export class GossamerScoreModal extends Modal {
     const actionRow = buttonContainer.createDiv('rt-gossamer-action-row');
 
     new ButtonComponent(actionRow)
-      .setButtonText('Paste from clipboard')
+      .setButtonText('Paste scores')
       .onClick(async () => {
         await this.pasteFromClipboard();
       });
@@ -360,28 +366,29 @@ export class GossamerScoreModal extends Modal {
         } else if (typeof fm.description === 'string') {
           entry.description = fm.description;
         }
-        
-        // Get current score (handle both string and number)
-        if (typeof fm.Gossamer1 === 'number') {
-          entry.currentScore = fm.Gossamer1;
-        } else if (typeof fm.Gossamer1 === 'string') {
-          const parsed = parseInt(fm.Gossamer1);
-          if (!isNaN(parsed)) {
-            entry.currentScore = parsed;
+
+        const scores: ScoreHistoryItem[] = [];
+        for (let i = 1; i <= 30; i++) {
+          const key = `Gossamer${i}`;
+          const value = fm[key];
+          let numeric: number | undefined;
+          if (typeof value === 'number') {
+            numeric = value;
+          } else if (typeof value === 'string') {
+            const parsed = parseInt(value);
+            if (!isNaN(parsed)) numeric = parsed;
+          }
+
+          if (numeric !== undefined) {
+            scores.push({ index: i, value: numeric });
           }
         }
 
-        // Get history (handle both string and number)
-        for (let i = 2; i <= 30; i++) {
-          const key = `Gossamer${i}`;
-          if (typeof fm[key] === 'number') {
-            entry.history.push(fm[key]);
-          } else if (typeof fm[key] === 'string') {
-            const parsed = parseInt(fm[key]);
-            if (!isNaN(parsed)) {
-              entry.history.push(parsed);
-            }
-          }
+        if (scores.length > 0) {
+          const latest = scores[scores.length - 1];
+          entry.currentScore = latest.value;
+          entry.currentIndex = latest.index;
+          entry.history = scores.slice(0, -1);
         }
       }
 

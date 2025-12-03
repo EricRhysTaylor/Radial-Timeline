@@ -2,7 +2,7 @@ import { Notice, TFile, App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { isStoryBeat } from '../utils/sceneHelpers';
-import { shiftGossamerHistory } from '../utils/gossamer';
+import { appendGossamerScore } from '../utils/gossamer';
 
 export class GossamerScoreService {
     constructor(private app: App, private plugin: RadialTimelinePlugin) {}
@@ -40,9 +40,9 @@ export class GossamerScoreService {
             try {
                 await this.app.fileManager.processFrontMatter(file, (yaml) => {
                     const fm = yaml as Record<string, any>;
-                    const shifted = shiftGossamerHistory(fm);
-                    Object.assign(fm, shifted);
-                    fm.Gossamer1 = newScore;
+                    const { nextIndex, updated } = appendGossamerScore(fm);
+                    Object.assign(fm, updated);
+                    fm[`Gossamer${nextIndex}`] = newScore;
                     delete fm.GossamerLocation;
                     delete fm.GossamerNote;
                     delete fm.GossamerRuns;
