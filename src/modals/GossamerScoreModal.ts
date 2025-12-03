@@ -280,19 +280,15 @@ export class GossamerScoreModal extends Modal {
 
     // Buttons
     const buttonContainer = contentEl.createDiv('rt-gossamer-score-buttons');
-    buttonContainer.addClass('rt-beats-glass-card');
 
-    const copyRow = buttonContainer.createDiv('rt-gossamer-copy-row');
-    const copyGroup = copyRow.createDiv('rt-gossamer-copy-group');
-
-    new ButtonComponent(copyGroup)
+    new ButtonComponent(buttonContainer)
       .setButtonText('Copy template for AI')
       .setTooltip('Copy beat names in AI-ready format')
       .onClick(async () => {
         await this.copyTemplateForAI();
       });
 
-    const toggleLabel = copyGroup.createEl('label', { cls: 'rt-gossamer-copy-toggle' });
+    const toggleLabel = buttonContainer.createEl('label', { cls: 'rt-gossamer-copy-toggle' });
     const toggleInput = toggleLabel.createEl('input', { type: 'checkbox' });
     toggleInput.checked = this.includeBeatDescriptions;
     toggleInput.addEventListener('change', () => {
@@ -300,29 +296,27 @@ export class GossamerScoreModal extends Modal {
     });
     toggleLabel.createSpan({ text: 'Include beat descriptions when copying template' });
 
-    const actionRow = buttonContainer.createDiv('rt-gossamer-action-row');
-
-    new ButtonComponent(actionRow)
+    new ButtonComponent(buttonContainer)
       .setButtonText('Paste scores')
       .onClick(async () => {
         await this.pasteFromClipboard();
       });
 
-    new ButtonComponent(actionRow)
-      .setButtonText('Delete scores')
-      .setWarning()
-      .onClick(async () => {
-        await this.deleteAllScores();
-      });
-
-    new ButtonComponent(actionRow)
+    new ButtonComponent(buttonContainer)
       .setButtonText('Save scores')
       .setCta()
       .onClick(async () => {
         await this.saveScores();
       });
 
-    new ButtonComponent(actionRow)
+    new ButtonComponent(buttonContainer)
+      .setButtonText('Delete scores')
+      .setWarning()
+      .onClick(async () => {
+        await this.deleteAllScores();
+      });
+
+    new ButtonComponent(buttonContainer)
       .setButtonText('Cancel')
       .onClick(() => {
         this.close();

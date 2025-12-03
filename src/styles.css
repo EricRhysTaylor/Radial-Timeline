@@ -2948,12 +2948,12 @@
 
 .rt-gossamer-beat-title-container {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 4px;
   min-width: 200px;
   flex-shrink: 0;
   flex: 1;
-  padding-top: 4px;
 }
 
 .rt-gossamer-beat-title {
@@ -2969,7 +2969,7 @@
   font-size: 16px;
   font-weight: normal;
   white-space: nowrap;
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .rt-gossamer-current-score {
@@ -3154,26 +3154,12 @@
   margin: 0;
   padding: 18px 20px;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
   flex-shrink: 0;
   background-color: transparent;
-}
-
-.rt-gossamer-copy-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.rt-gossamer-action-row {
-  display: flex;
-  gap: 12px;
-  align-items: stretch;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  width: 100%;
 }
 
 .rt-gossamer-copy-group {

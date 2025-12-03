@@ -49,14 +49,17 @@ export class CommandRegistrar {
             }
         });
 
+        const beatSystemLabel = this.getBeatSystemDisplayName();
         this.plugin.addCommand({
             id: 'gossamer-run-save-the-cat-analysis',
-            name: 'Run Save the Cat beats analysis (Gemini)',
+            name: `Evaluate narrative using ${beatSystemLabel} story beats`,
             callback: async () => {
+                const currentLabel = this.getBeatSystemDisplayName();
                 try {
+                    new Notice(`Evaluating narrative using ${currentLabel} story beats...`);
                     await runGossamerAiAnalysis(this.plugin);
                 } catch (e) {
-                    new Notice('Failed to run Save the Cat beats analysis.');
+                    new Notice(`Failed to run ${currentLabel} beat analysis.`);
                     console.error(e);
                 }
             }
@@ -79,6 +82,12 @@ export class CommandRegistrar {
             name: 'Open',
             callback: () => this.plugin.activateView()
         });
+    }
+
+    private getBeatSystemDisplayName(): string {
+        const configured = (this.plugin.settings.beatSystem || '').trim();
+        if (!configured) return 'Save The Cat';
+        return configured;
     }
 
     private async generateManuscript(): Promise<void> {
