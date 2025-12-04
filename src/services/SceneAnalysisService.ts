@@ -221,7 +221,7 @@ class SubplotPickerModal extends Modal {
 
         const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
         new ButtonComponent(buttonRow)
-            .setButtonText('Process pulse')
+            .setButtonText('Process flagged scenes')
             .setCta()
             .onClick(async () => {
                 this.close();

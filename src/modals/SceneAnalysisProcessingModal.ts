@@ -224,7 +224,14 @@ export class SceneAnalysisProcessingModal extends Modal {
         for (const item of this.queueData) {
             const entry = this.queueTrackEl.createDiv({ cls: 'rt-pulse-ruler-item' });
             entry.setAttr('data-queue-id', item.id);
-            entry.createSpan({ cls: 'rt-pulse-ruler-value', text: item.label });
+
+            let displayLabel = item.label;
+            // If label is not a scene number (doesn't start with #) and is long, truncate it
+            if (!displayLabel.startsWith('#') && displayLabel.length > 4) {
+                displayLabel = displayLabel.substring(0, 3) + '…';
+            }
+
+            entry.createSpan({ cls: 'rt-pulse-ruler-value', text: displayLabel });
             if (item.detail) {
                 entry.createSpan({ cls: 'rt-pulse-ruler-label', text: item.detail });
             }

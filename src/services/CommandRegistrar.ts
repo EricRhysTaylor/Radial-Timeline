@@ -10,7 +10,7 @@ import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerComman
 import { createTemplateScene } from '../SceneAnalysisCommands';
 
 export class CommandRegistrar {
-    constructor(private plugin: RadialTimelinePlugin, private app: App) {}
+    constructor(private plugin: RadialTimelinePlugin, private app: App) { }
 
     registerAll(): void {
         this.registerRibbon();
@@ -52,16 +52,22 @@ export class CommandRegistrar {
         const beatSystemLabel = this.getBeatSystemDisplayName();
         this.plugin.addCommand({
             id: 'gossamer-run-save-the-cat-analysis',
-            name: `Evaluate narrative using ${beatSystemLabel} story beats`,
-            callback: async () => {
-                const currentLabel = this.getBeatSystemDisplayName();
-                try {
-                    new Notice(`Evaluating narrative using ${currentLabel} story beats...`);
-                    await runGossamerAiAnalysis(this.plugin);
-                } catch (e) {
-                    new Notice(`Failed to run ${currentLabel} beat analysis.`);
-                    console.error(e);
-                }
+            name: `Gossamer AI evaluation using ${beatSystemLabel} story beats`,
+            checkCallback: (checking: boolean) => {
+                if (!this.plugin.settings.enableAiSceneAnalysis) return false;
+                if (checking) return true;
+
+                (async () => {
+                    const currentLabel = this.getBeatSystemDisplayName();
+                    try {
+                        new Notice(`Gossamer AI evaluation using ${currentLabel} story beats...`);
+                        await runGossamerAiAnalysis(this.plugin);
+                    } catch (e) {
+                        new Notice(`Failed to run ${currentLabel} beat analysis.`);
+                        console.error(e);
+                    }
+                })();
+                return true;
             }
         });
 
@@ -112,7 +118,7 @@ export class CommandRegistrar {
             const manuscriptPath = `AI/Manuscript ${orderLabel} ${dateStr} ${timeFileStr}.md`;
             try {
                 await this.app.vault.createFolder('AI');
-            } catch {}
+            } catch { }
             const existing = this.app.vault.getAbstractFileByPath(manuscriptPath);
             if (existing) {
                 new Notice(`File ${manuscriptPath} already exists. Try again in a moment.`);

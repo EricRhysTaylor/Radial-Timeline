@@ -62,18 +62,23 @@ export class GossamerProcessingModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl, modalEl } = this;
-        titleEl.setText('Gossamer gemini momentum analysis');
+        titleEl.setText('');
 
-        // Set modal width
         if (modalEl) {
-            modalEl.style.width = '700px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '90vw';
+            modalEl.classList.add('rt-pulse-modal-shell');
         }
 
-        contentEl.classList.add('rt-gossamer-processing-modal');
+        contentEl.addClass('rt-gossamer-score-modal');
 
         // Show confirmation view first
         this.showConfirmationView();
+    }
+
+    private renderProcessingHero(parent: HTMLElement, subtitle: string): void {
+        const hero = parent.createDiv({ cls: 'rt-pulse-progress-hero' });
+        hero.createSpan({ text: 'AI Momentum Analysis', cls: 'rt-pulse-hero-badge' });
+        hero.createEl('h2', { text: 'Gossamer Gemini', cls: 'rt-pulse-progress-heading' });
+        hero.createDiv({ text: subtitle, cls: 'rt-pulse-progress-subtitle' });
     }
 
     onClose(): void {
@@ -99,22 +104,21 @@ export class GossamerProcessingModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
+        this.renderProcessingHero(contentEl, 'Evaluate narrative momentum at each story beat using Gemini AI. This will pass the entire manuscript to Gemini, with instructions including the ideal beat ranges and context such as the previous score and justification. Gemini will return a score and an updated justification for each beat.');
+
         this.confirmationView = contentEl;
 
+        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
+
         // Info section
-        const infoEl = contentEl.createDiv({ cls: 'rt-pulse-info' });
+        const infoEl = card.createDiv({ cls: 'rt-pulse-info' });
 
         // Beat system info (will be updated when manuscript info is set)
         const beatSystemEl = infoEl.createDiv({ cls: 'rt-gossamer-beat-system-info' });
         beatSystemEl.setText('Gathering manuscript details...');
 
-        infoEl.createDiv({
-            cls: 'rt-gossamer-description',
-            text: 'This will analyze your entire manuscript using Gemini AI to evaluate narrative momentum at each story beat.'
-        });
-
         // Manuscript info section (will be populated by caller)
-        const infoSection = contentEl.createDiv({ cls: 'rt-gossamer-info-section' });
+        const infoSection = card.createDiv({ cls: 'rt-gossamer-info-section' });
         infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-gossamer-section-title' });
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-manuscript-info' });
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
@@ -122,7 +126,7 @@ export class GossamerProcessingModal extends Modal {
         // Check if API key is configured
         if (!this.plugin.settings.geminiApiKey) {
             // Warning section for missing API key
-            const warningEl = contentEl.createDiv({ cls: 'rt-pulse-warning' });
+            const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
             warningEl.setText('⚠️ Gemini API key not configured. Please set your API key in Settings → AI → Gemini API key.');
         }
 
@@ -157,38 +161,40 @@ export class GossamerProcessingModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        // Manuscript info section
-        const infoSection = contentEl.createDiv({ cls: 'rt-gossamer-info-section' });
+        this.renderProcessingHero(contentEl, 'Analyzing manuscript...');
+
+        const bodyEl = contentEl.createDiv({ cls: 'rt-pulse-progress-body' });
+        const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-pulse-glass-card' });
+
+        // Manuscript info section (reusing existing styles but inside the card)
+        const infoSection = progressCard.createDiv({ cls: 'rt-gossamer-info-section' });
         infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-gossamer-section-title' });
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-manuscript-info' });
         this.manuscriptInfoEl.setText('Assembling manuscript...');
 
-        // Progress bar container (using Scene Analysis pattern)
-        const progressContainer = contentEl.createDiv({ cls: 'rt-gossamer-progress-container' });
-
-        // Progress bar background
-        const progressBg = progressContainer.createDiv({ cls: 'rt-gossamer-progress-bg' });
-        this.progressBarEl = progressBg.createDiv({ cls: 'rt-gossamer-progress-bar' });
-        // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
+        // Progress bar container
+        const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });
+        const progressBg = progressContainer.createDiv({ cls: 'rt-pulse-progress-bg' });
+        this.progressBarEl = progressBg.createDiv({ cls: 'rt-pulse-progress-bar' });
         this.progressBarEl.style.setProperty('--progress-width', '0%');
 
         // Status section
-        const statusSection = contentEl.createDiv({ cls: 'rt-gossamer-status-section' });
+        const statusSection = progressCard.createDiv({ cls: 'rt-gossamer-status-section' });
         statusSection.createEl('h3', { text: 'Status', cls: 'rt-gossamer-section-title' });
         this.statusTextEl = statusSection.createDiv({ cls: 'rt-gossamer-status-text' });
         this.statusTextEl.setText(this.currentStatus);
 
         // API status section
-        const apiSection = contentEl.createDiv({ cls: 'rt-gossamer-api-section' });
+        const apiSection = progressCard.createDiv({ cls: 'rt-gossamer-api-section' });
         apiSection.createEl('h3', { text: 'API Activity', cls: 'rt-gossamer-section-title' });
         this.apiStatusEl = apiSection.createDiv({ cls: 'rt-gossamer-api-status' });
         this.apiStatusEl.setText('Waiting to send...');
 
-        // Error section (hidden initially) - use same styling as Scene Analysis
-        this.errorListEl = contentEl.createDiv({ cls: 'rt-pulse-error-list rt-hidden' });
+        // Error section
+        this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-pulse-glass-card rt-hidden' });
 
         // Close button (disabled while processing)
-        const buttonContainer = contentEl.createDiv({ cls: 'rt-gossamer-actions' });
+        const buttonContainer = contentEl.createDiv({ cls: 'rt-pulse-actions' });
         this.closeButtonEl = new ButtonComponent(buttonContainer)
             .setButtonText('Close')
             .setDisabled(true)
@@ -204,32 +210,19 @@ export class GossamerProcessingModal extends Modal {
         if (this.manuscriptInfoEl) {
             this.manuscriptInfoEl.empty();
 
+            // Stats Grid
             const stats = this.manuscriptInfoEl.createDiv({ cls: 'rt-gossamer-stats' });
 
-            stats.createDiv({
-                cls: 'rt-gossamer-stat-row',
-                text: `Beat System: ${info.beatSystem}`
-            });
+            const createStat = (label: string, value: string) => {
+                const item = stats.createDiv({ cls: 'rt-gossamer-stat-item' });
+                item.createDiv({ cls: 'rt-gossamer-stat-label', text: label });
+                item.createDiv({ cls: 'rt-gossamer-stat-value', text: value });
+            };
 
-            stats.createDiv({
-                cls: 'rt-gossamer-stat-row',
-                text: `Scenes: ${info.totalScenes.toLocaleString()}`
-            });
-
-            stats.createDiv({
-                cls: 'rt-gossamer-stat-row',
-                text: `Words: ${info.totalWords.toLocaleString()}`
-            });
-
-            stats.createDiv({
-                cls: 'rt-gossamer-stat-row',
-                text: `Estimated tokens: ~${info.estimatedTokens.toLocaleString()}`
-            });
-
-            stats.createDiv({
-                cls: 'rt-gossamer-stat-row',
-                text: `Story beats: ${info.beatCount}`
-            });
+            createStat('Scenes', info.totalScenes.toLocaleString());
+            createStat('Words', info.totalWords.toLocaleString());
+            createStat('Est. Tokens', `~${info.estimatedTokens.toLocaleString()}`);
+            createStat('Story Beats', info.beatCount.toString());
 
             // Add note if this is iterative refinement with previous analysis
             if (info.hasIterativeContext) {

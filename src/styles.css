@@ -2712,6 +2712,37 @@
   opacity: 0.55;
 }
 
+.rt-pulse-ruler-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.rt-pulse-ruler-chip {
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rt-pulse-ruler-chip-label {
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.rt-pulse-ruler-chip-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
 .rt-beats-ruler-value {
   font-size: 1rem;
   font-weight: 600;
@@ -2963,8 +2994,10 @@
 .rt-gossamer-beat-system-info {
   font-weight: 600;
   color: var(--text-accent);
-  font-size: 14px;
-  margin-bottom: 8px;
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .rt-gossamer-description {
@@ -2989,16 +3022,38 @@
 }
 
 .rt-gossamer-manuscript-info {
-  padding: 12px;
-  background-color: var(--background-secondary);
-  border-radius: 6px;
-  border-left: 4px solid var(--interactive-accent);
+  margin-top: 12px;
 }
 
+
+
 .rt-gossamer-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.rt-gossamer-stat-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+}
+
+.rt-gossamer-stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.rt-gossamer-stat-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-normal);
 }
 
 .rt-gossamer-stat-row {
