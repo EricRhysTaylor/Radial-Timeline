@@ -24,22 +24,22 @@ export type SceneQueueItem = {
 class ConfirmationModal extends Modal {
     private readonly message: string;
     private readonly onConfirm: () => void;
-    
+
     constructor(app: App, message: string, onConfirm: () => void) {
         super(app);
         this.message = message;
         this.onConfirm = onConfirm;
     }
-    
+
     onOpen(): void {
         const { contentEl, titleEl } = this;
         titleEl.setText('Confirm action');
-        
+
         const messageEl = contentEl.createDiv({ cls: 'rt-confirmation-message' });
         messageEl.setText(this.message);
-        
+
         const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
-        
+
         new ButtonComponent(buttonRow)
             .setButtonText('Continue')
             .setCta()
@@ -47,7 +47,7 @@ class ConfirmationModal extends Modal {
                 this.close();
                 this.onConfirm();
             });
-        
+
         new ButtonComponent(buttonRow)
             .setButtonText('Cancel')
             .onClick(() => this.close());
@@ -70,11 +70,11 @@ export class SceneAnalysisProcessingModal extends Modal {
     private readonly resumeCommandId?: string; // Optional command ID to trigger on resume
     private readonly subplotName?: string; // Optional subplot name for resume (subplot processing only)
     private readonly isEntireSubplot?: boolean; // Track if this is "entire subplot" vs "flagged scenes"
-    
+
     private selectedMode: ProcessingMode = 'flagged';
     public isProcessing: boolean = false;
     private abortController: AbortController | null = null;
-    
+
     // Progress tracking
     private progressBarEl?: HTMLElement;
     private progressTextEl?: HTMLElement;
@@ -89,14 +89,14 @@ export class SceneAnalysisProcessingModal extends Modal {
     private queueItems: HTMLElement[] = [];
     private queueData: SceneQueueItem[] = [];
     private queueActiveId?: string;
-    
+
     // Statistics
     private processedCount: number = 0;
     private totalCount: number = 0;
     private errorCount: number = 0;
     private warningCount: number = 0;
     private pendingRafId: number | null = null;
-    
+
     constructor(
         app: App,
         plugin: RadialTimelinePlugin,
@@ -118,7 +118,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     onOpen(): void {
         const { contentEl, titleEl } = this;
         titleEl.setText('');
-        
+
         // If we're already processing (reopening), show progress view
         if (this.isProcessing) {
             this.showProgressView();
@@ -148,7 +148,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.modalEl && !this.modalEl.classList.contains('rt-beats-modal-shell')) {
             this.modalEl.classList.add('rt-beats-modal-shell');
         }
-        this.contentEl.classList.add('rt-beats-modal');
+        this.contentEl.classList.add('rt-gossamer-score-modal');
     }
 
     private getProcessingTitle(): string {
@@ -201,7 +201,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         });
         return hero;
     }
-    
+
     public setProcessingQueue(queue: SceneQueueItem[]): void {
         this.queueData = queue.slice();
         this.totalCount = queue.length;
@@ -297,13 +297,13 @@ export class SceneAnalysisProcessingModal extends Modal {
         contentEl.empty();
         this.ensureModalShell();
         titleEl.setText('');
-        
+
         // Set modal width using Obsidian's approach
         if (modalEl) {
             modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        
+
         this.renderProcessingHero(contentEl);
 
         // Info section with active AI provider
@@ -312,7 +312,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Mode selection
         const modesSection = contentEl.createDiv({ cls: 'rt-beats-modes rt-beats-glass-card' });
-        
+
         // Mode 1: Process Flagged Scenes (Recommended)
         const mode1 = this.createModeOption(
             modesSection,
@@ -321,7 +321,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             'Processes scenes with Pulse Update: Yes (legacy Review/Beats Update) and Status: Working or Complete. Use when you\'ve revised scenes and want to update their pulse.',
             true
         );
-        
+
         // Mode 2: Process Unprocessed
         const mode2 = this.createModeOption(
             modesSection,
@@ -330,7 +330,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             'Processes scenes with Status: Complete or Working that don\'t have pulse yet. Perfect for resuming after interruptions. Ignores Pulse Update flag.',
             false
         );
-        
+
         // Mode 3: Force All
         const mode3 = this.createModeOption(
             modesSection,
@@ -343,28 +343,28 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Scene count display
         const countSection = contentEl.createDiv({ cls: 'rt-beats-count rt-beats-glass-card' });
         const countEl = countSection.createDiv({ cls: 'rt-beats-count-number' });
-        
+
         // Show loading state initially
         countEl.setText('Calculating...');
-        
+
         const updateCount = async () => {
             countEl.empty();
             countEl.setText('Calculating...');
-            
+
             try {
                 const count = await this.getSceneCount(this.selectedMode);
                 // ~6 seconds per scene (1.5s delay + 3-5s API call) = 0.1 minutes
                 const estimatedMinutes = Math.ceil(count * 0.1);
                 countEl.empty();
-                
+
                 const countText = countEl.createDiv({ cls: 'rt-beats-count-text' });
                 countText.createSpan({ text: 'Scenes to process: ', cls: 'rt-beats-label' });
                 countText.createSpan({ text: `${count}`, cls: 'rt-beats-number' });
-                
+
                 const timeText = countEl.createDiv({ cls: 'rt-beats-time-text' });
                 timeText.createSpan({ text: 'Estimated time: ', cls: 'rt-beats-label' });
                 timeText.createSpan({ text: `~${estimatedMinutes} minutes`, cls: 'rt-beats-number' });
-                
+
                 if (count > 50) {
                     const warning = countEl.createDiv({ cls: 'rt-beats-warning' });
                     warning.setText('Large batch processing may take significant time and API costs.');
@@ -374,7 +374,7 @@ export class SceneAnalysisProcessingModal extends Modal {
                 countEl.setText(`Error calculating scene count: ${error instanceof Error ? error.message : String(error)}`);
             }
         };
-        
+
         // Initial count (defer to next frame so modal paints immediately)
         const rafId = requestAnimationFrame(() => {
             updateCount();
@@ -389,7 +389,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Action buttons
         const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
-        
+
         new ButtonComponent(buttonRow)
             .setButtonText('Start processing')
             .setCta()
@@ -400,7 +400,7 @@ export class SceneAnalysisProcessingModal extends Modal {
                         new Notice('No scenes to process with the selected mode.');
                         return;
                     }
-                    
+
                     // Extra confirmation for large batches or aggressive modes
                     if (count > 50 || this.selectedMode === 'force-all' || this.selectedMode === 'unprocessed') {
                         const confirmModal = new ConfirmationModal(
@@ -413,13 +413,13 @@ export class SceneAnalysisProcessingModal extends Modal {
                         confirmModal.open();
                         return;
                     }
-                    
+
                     await this.startProcessing();
                 } catch (error) {
                     new Notice(`Error: ${error instanceof Error ? error.message : String(error)}`);
                 }
             });
-        
+
         new ButtonComponent(buttonRow)
             .setButtonText('Purge all pulse')
             .setWarning()
@@ -427,17 +427,17 @@ export class SceneAnalysisProcessingModal extends Modal {
                 try {
                     // Dynamic import to avoid circular dependency
                     const { purgeBeatsByManuscriptOrder } = await import('../SceneAnalysisCommands');
-                    
+
                     // Close this modal before showing purge confirmation
                     this.close();
-                    
+
                     // Execute purge (it has its own confirmation dialog)
                     await purgeBeatsByManuscriptOrder(this.plugin, this.plugin.app.vault);
                 } catch (error) {
                     new Notice(`Error: ${error instanceof Error ? error.message : String(error)}`);
                 }
             });
-        
+
         new ButtonComponent(buttonRow)
             .setButtonText('Cancel')
             .onClick(() => this.close());
@@ -451,28 +451,28 @@ export class SceneAnalysisProcessingModal extends Modal {
         isDefault: boolean
     ): HTMLInputElement {
         const optionEl = container.createDiv({ cls: 'rt-beats-mode-option' });
-        
-        const radioEl = optionEl.createEl('input', { 
+
+        const radioEl = optionEl.createEl('input', {
             type: 'radio',
             attr: { name: 'processing-mode', value: mode }
         });
         radioEl.checked = isDefault;
         if (isDefault) this.selectedMode = mode;
-        
+
         // Modal classes don't have registerDomEvent, use addEventListener
         radioEl.addEventListener('change', () => {
             if (radioEl.checked) {
                 this.selectedMode = mode;
             }
         });
-        
+
         const labelContainer = optionEl.createDiv({ cls: 'rt-beats-mode-label' });
         const titleEl = labelContainer.createDiv({ cls: 'rt-beats-mode-title' });
         titleEl.setText(title);
-        
+
         const descEl = labelContainer.createDiv({ cls: 'rt-beats-mode-desc' });
         descEl.setText(description);
-        
+
         // Make the entire option clickable
         optionEl.addEventListener('click', () => {
             radioEl.checked = true;
@@ -480,7 +480,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             // Trigger change event to update scene count
             radioEl.dispatchEvent(new Event('change'));
         });
-        
+
         return radioEl;
     }
 
@@ -490,17 +490,17 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.processedCount = 0;
         this.errorCount = 0;
         this.warningCount = 0;
-        
+
         // Notify plugin that processing has started
         this.plugin.activeBeatsModal = this;
         this.plugin.showBeatsStatusBar(0, 0);
-        
+
         // Switch to progress view
         this.showProgressView();
-        
+
         try {
             await this.onConfirm(this.selectedMode);
-            
+
             // Show appropriate summary even if the last/only scene finished after an abort request
             if (this.abortController && this.abortController.signal.aborted) {
                 this.showCompletionSummary('Processing aborted');
@@ -564,7 +564,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private abortProcessing(): void {
         if (!this.abortController) return;
-        
+
         const confirmModal = new ConfirmationModal(
             this.app,
             'Are you sure you want to abort processing? Progress will be saved up to the current scene.',
@@ -580,25 +580,25 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     public updateProgress(current: number, total: number, sceneName: string): void {
         if (!this.isProcessing) return;
-        
+
         // Track statistics
         this.processedCount = current;
         this.totalCount = total;
-        
+
         const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
-        
+
         // Update status bar
         this.plugin.showBeatsStatusBar(current, total);
-        
+
         if (this.progressBarEl) {
             // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
             this.progressBarEl.style.setProperty('--progress-width', `${percentage}%`);
         }
-        
+
         if (this.progressTextEl) {
             this.progressTextEl.setText(`${current} / ${total} scenes (${percentage}%)`);
         }
-        
+
         if (this.statusTextEl) {
             this.statusTextEl.setText(`Processing: ${sceneName}`);
         }
@@ -610,21 +610,21 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     public addError(message: string): void {
         if (!this.errorListEl) return;
-        
+
         // Track error count
         this.errorCount++;
-        
+
         // Show error list if it was hidden
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
             const header = this.errorListEl.createDiv({ cls: 'rt-beats-error-header' });
             header.setText('Errors encountered:');
         }
-        
+
         const errorItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item' });
         errorItem.setText(message);
     }
-    
+
     public setTripletInfo(prevNum: string, currentNum: string, nextNum: string, queueId?: string, sceneLabel?: string): void {
         this.setTripletNote(prevNum, currentNum, nextNum);
         if (this.queueData.length > 0) {
@@ -640,20 +640,20 @@ export class SceneAnalysisProcessingModal extends Modal {
             }
         }
     }
-    
+
     public addWarning(message: string): void {
         if (!this.errorListEl) return;
-        
+
         // Track warning count (doesn't affect success count)
         this.warningCount++;
-        
+
         // Show error list if it was hidden
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
             const header = this.errorListEl.createDiv({ cls: 'rt-beats-error-header' });
             header.setText('Issues encountered:');
         }
-        
+
         const warningItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item rt-beats-warning-item' });
         warningItem.setText(message);
     }
@@ -790,14 +790,14 @@ export class SceneAnalysisProcessingModal extends Modal {
     public getAbortSignal(): AbortSignal | null {
         return this.abortController?.signal ?? null;
     }
-    
+
     /**
      * Programmatically abort processing (e.g., due to rate limiting)
      * Unlike abortProcessing(), this doesn't show a confirmation dialog
      */
     public abort(): void {
         if (!this.abortController) return;
-        
+
         this.abortController.abort();
         this.statusTextEl?.setText('Processing stopped due to error');
         this.abortButtonEl?.setDisabled(true);
@@ -805,15 +805,15 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private getActiveModelDisplayName(): string {
         const provider = this.plugin.settings.defaultAiProvider || 'openai';
-        
+
         if (provider === 'anthropic') {
             return this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
         }
-        
+
         if (provider === 'gemini') {
             return this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
         }
-        
+
         return this.plugin.settings.openaiModelId || 'gpt-4o';
     }
 }

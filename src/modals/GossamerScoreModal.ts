@@ -47,6 +47,9 @@ export class GossamerScoreModal extends Modal {
   }
 
   private async normalizeAllScores(): Promise<void> {
+    const confirmMessage = 'Normalize Gossamer history?\n\nThis reorders all Gossamer scores (G1, G2, etc.) for each beat and removes orphaned justifications. Back up your vault before running cleanup in case you need to restore previous scoring history.';
+    const confirmed = window.confirm(confirmMessage);
+    if (!confirmed) return;
     const beatsToNormalize = this.plotBeats.filter(beat => beat.path);
     let changedCount = 0;
 
