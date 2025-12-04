@@ -47,39 +47,44 @@ export class GossamerScoreModal extends Modal {
   }
 
   private async normalizeAllScores(): Promise<void> {
-    const confirmMessage = 'Normalize Gossamer history?\n\nThis reorders all Gossamer scores (G1, G2, etc.) for each beat and removes orphaned justifications. Back up your vault before running cleanup in case you need to restore previous scoring history.';
-    const confirmed = window.confirm(confirmMessage);
-    if (!confirmed) return;
-    const beatsToNormalize = this.plotBeats.filter(beat => beat.path);
-    let changedCount = 0;
+    const confirmMessage = 'This reorders all Gossamer scores (G1, G2, etc.) for each beat and removes orphaned justifications. Back up your vault before running cleanup in case you need to restore previous scoring history.';
 
-    for (const beat of beatsToNormalize) {
-      if (!beat.path) continue;
-      const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
-      if (!file || !(file instanceof TFile)) continue;
+    new NormalizeConfirmationModal(
+      this.app,
+      confirmMessage,
+      async () => {
+        const beatsToNormalize = this.plotBeats.filter(beat => beat.path);
+        let changedCount = 0;
 
-      await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
-        const fm = yaml as Record<string, any>;
-        const { normalized, changed } = normalizeGossamerHistory(fm);
-        if (changed) {
-          changedCount++;
-          for (let i = 1; i <= 40; i++) {
-            delete fm[`Gossamer${i}`];
-            delete fm[`Gossamer${i} Justification`];
-          }
-          Object.assign(fm, normalized);
+        for (const beat of beatsToNormalize) {
+          if (!beat.path) continue;
+          const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
+          if (!file || !(file instanceof TFile)) continue;
+
+          await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
+            const fm = yaml as Record<string, any>;
+            const { normalized, changed } = normalizeGossamerHistory(fm);
+            if (changed) {
+              changedCount++;
+              for (let i = 1; i <= 40; i++) {
+                delete fm[`Gossamer${i}`];
+                delete fm[`Gossamer${i} Justification`];
+              }
+              Object.assign(fm, normalized);
+            }
+          });
         }
-      });
-    }
 
-    if (changedCount > 0) {
-      new Notice(`Normalized Gossamer scores in ${changedCount} beat${changedCount === 1 ? '' : 's'}.`);
-      this.close();
-      const refreshed = new GossamerScoreModal(this.app, this.plugin, this.plotBeats);
-      refreshed.open();
-    } else {
-      new Notice('No fragmented scores detected.');
-    }
+        if (changedCount > 0) {
+          new Notice(`Normalized Gossamer scores in ${changedCount} beat${changedCount === 1 ? '' : 's'}.`);
+          this.close();
+          const refreshed = new GossamerScoreModal(this.app, this.plugin, this.plotBeats);
+          refreshed.open();
+        } else {
+          new Notice('No fragmented scores detected.');
+        }
+      }
+    ).open();
   }
 
   // Helper to create Lucide circle-x SVG icon
@@ -98,19 +103,26 @@ export class GossamerScoreModal extends Modal {
     circle.setAttribute('cx', '12');
     circle.setAttribute('cy', '12');
     circle.setAttribute('r', '10');
-
-    const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path1.setAttribute('d', 'm15 9-6 6');
-
-    const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path2.setAttribute('d', 'm9 9 6 6');
-
+    circle.setAttribute('stroke-width', '2');
     svg.appendChild(circle);
-    svg.appendChild(path1);
-    svg.appendChild(path2);
+
+    const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line1.setAttribute('x1', '15');
+    line1.setAttribute('y1', '9');
+    line1.setAttribute('x2', '9');
+    line1.setAttribute('y2', '15');
+    svg.appendChild(line1);
+
+    const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line2.setAttribute('x1', '9');
+    line2.setAttribute('y1', '9');
+    line2.setAttribute('x2', '15');
+    line2.setAttribute('y2', '15');
+    svg.appendChild(line2);
 
     return svg;
   }
+
 
   onOpen(): void {
     const { contentEl, modalEl } = this;
@@ -213,32 +225,34 @@ export class GossamerScoreModal extends Modal {
     this.entries.forEach((entry, index) => {
       const entryDiv = scoresContainer.createDiv('rt-gossamer-score-entry');
 
-      // First row: Beat title, range, and new score input
+      // First row: Beat title, justification, and new score input
       const firstRow = entryDiv.createDiv('rt-gossamer-score-row');
 
-      // Left side: Beat title with range
+      // 1. Left side: Beat title with range
       const titleContainer = firstRow.createDiv('rt-gossamer-beat-title-container');
       const beatTitleEl = titleContainer.createEl('span', { text: entry.beatTitle });
       beatTitleEl.addClass('rt-gossamer-beat-title');
 
-      // Add range if available
       if (entry.range) {
         const rangeEl = titleContainer.createEl('span', { text: ` (${entry.range})` });
         rangeEl.addClass('rt-gossamer-beat-range');
       }
 
-      // New score input (in its own stack for better layout)
+      // 2. Middle: Latest justification (if any)
+      const justificationContainer = firstRow.createDiv('rt-gossamer-justification-container');
+      if (entry.currentJustification) {
+        const currentNote = justificationContainer.createDiv('rt-gossamer-current-justification');
+        currentNote.setText(`Latest note: ${entry.currentJustification}`);
+      }
+
+      // 3. Right side: New score input
       const inputContainer = firstRow.createDiv('rt-gossamer-input-container');
-      const inputLabel = inputContainer.createSpan({ text: 'Enter new score' });
+      const inputLabel = inputContainer.createSpan({ text: 'Enter score' });
       inputLabel.addClass('rt-gossamer-input-label');
 
       entry.inputEl = new TextComponent(inputContainer);
       entry.inputEl.inputEl.addClass('rt-gossamer-score-input');
       entry.inputEl.setPlaceholder('0-100');
-      if (entry.currentJustification) {
-        const currentNote = inputContainer.createDiv('rt-gossamer-current-justification');
-        currentNote.setText(`Latest note: ${entry.currentJustification}`);
-      }
 
       // Validate on input
       entry.inputEl.onChange((value) => {
@@ -331,6 +345,12 @@ export class GossamerScoreModal extends Modal {
     const buttonContainer = contentEl.createDiv('rt-gossamer-score-buttons');
 
     new ButtonComponent(buttonContainer)
+      .setButtonText('Paste scores')
+      .onClick(async () => {
+        await this.pasteFromClipboard();
+      });
+
+    new ButtonComponent(buttonContainer)
       .setButtonText('Copy template for AI')
       .setTooltip('Copy beat names in AI-ready format')
       .onClick(async () => {
@@ -344,12 +364,6 @@ export class GossamerScoreModal extends Modal {
       this.includeBeatDescriptions = toggleInput.checked;
     });
     toggleLabel.createSpan({ text: 'Include beat descriptions when copying template' });
-
-    new ButtonComponent(buttonContainer)
-      .setButtonText('Paste scores')
-      .onClick(async () => {
-        await this.pasteFromClipboard();
-      });
 
     new ButtonComponent(buttonContainer)
       .setButtonText('Normalize history')
@@ -718,6 +732,7 @@ export class GossamerScoreModal extends Modal {
           // Delete specified Gossamer fields
           for (const num of gossamerNums) {
             delete fm[`Gossamer${num}`];
+            delete fm[`Gossamer${num} Justification`];
           }
         });
       } catch (error) {
@@ -860,5 +875,52 @@ export class GossamerScoreModal extends Modal {
   onClose(): void {
     const { contentEl } = this;
     contentEl.empty();
+  }
+}
+
+class NormalizeConfirmationModal extends Modal {
+  constructor(
+    app: App,
+    private readonly message: string,
+    private readonly onConfirm: () => void
+  ) {
+    super(app);
+  }
+
+  onOpen(): void {
+    const { contentEl, modalEl, titleEl } = this;
+    titleEl.setText('');
+    contentEl.empty();
+
+    if (modalEl) {
+      modalEl.classList.add('rt-pulse-modal-shell');
+    }
+    contentEl.addClass('rt-gossamer-score-modal');
+
+    const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
+    hero.createSpan({ text: 'Warning', cls: 'rt-pulse-hero-badge' });
+    hero.createEl('h2', { text: 'Normalize Gossamer history?', cls: 'rt-pulse-progress-heading' });
+    hero.createDiv({ cls: 'rt-pulse-progress-subtitle', text: 'This action cannot be undone.' });
+
+    const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
+
+    const messageEl = card.createDiv({ cls: 'rt-purge-message' });
+    messageEl.setText(this.message);
+
+    const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
+    warningEl.createEl('strong', { text: 'Are you sure you want to proceed?' });
+
+    const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+    new ButtonComponent(buttonRow)
+      .setButtonText('Normalize')
+      .setWarning()
+      .onClick(() => {
+        this.close();
+        this.onConfirm();
+      });
+
+    new ButtonComponent(buttonRow)
+      .setButtonText('Cancel')
+      .onClick(() => this.close());
   }
 }

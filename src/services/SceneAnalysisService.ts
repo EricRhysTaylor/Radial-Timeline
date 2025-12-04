@@ -186,8 +186,7 @@ class SubplotPickerModal extends Modal {
         if (modalEl) {
             modalEl.classList.add('rt-pulse-modal-shell');
         }
-        contentEl.addClass('rt-pulse-modal');
-        contentEl.addClass('rt-subplot-picker-modal');
+        contentEl.addClass('rt-gossamer-score-modal');
 
         const modelName = this.service.getActiveModelName();
         const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
@@ -204,17 +203,7 @@ class SubplotPickerModal extends Modal {
             total: this.createHeroStat(heroStats, 'Total scenes')
         };
 
-        const grid = contentEl.createDiv({ cls: 'rt-subplot-picker-grid' });
-
-        const infoCard = grid.createDiv({ cls: 'rt-subplot-picker-card rt-pulse-glass-card' });
-        this.infoTextEl = infoCard.createEl('p', { cls: 'rt-subplot-picker-info' });
-        this.updateInfoText(modelName);
-        infoCard.createEl('p', {
-            text: 'Only scenes with Pulse Update enabled and a status of Working or Complete are eligible.',
-            cls: 'rt-subplot-picker-hint'
-        });
-
-        const formCard = grid.createDiv({ cls: 'rt-subplot-picker-card rt-pulse-glass-card' });
+        const formCard = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
         const selectContainer = formCard.createDiv({ cls: 'rt-subplot-picker-select' });
         selectContainer.createEl('label', { text: 'Pick a subplot to process', cls: 'rt-subplot-picker-label' });
         this.dropdown = new DropdownComponent(selectContainer.createDiv({ cls: 'rt-subplot-picker-dropdown' }));
@@ -224,7 +213,6 @@ class SubplotPickerModal extends Modal {
         this.dropdown.setValue(this.selectedSubplot);
         this.dropdown.onChange(value => {
             this.selectedSubplot = value;
-            this.updateInfoText(modelName);
             this.updateStats(value);
         });
 

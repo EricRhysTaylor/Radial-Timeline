@@ -3,41 +3,53 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
- 
+
 /* Main color variables for the radial timeline */
 :root {
   /* Publish Stage Colors */
-  --rt-color-zero:   #9E70CF;    /* Purple */
-  --rt-color-author: #5E85CF;    /* Blue   */
-  --rt-color-house:  #DA7847;    /* Orange */
-  --rt-color-press:  #6FB971;    /* Green  */
+  --rt-color-zero: #9E70CF;
+  /* Purple */
+  --rt-color-author: #5E85CF;
+  /* Blue   */
+  --rt-color-house: #DA7847;
+  /* Orange */
+  --rt-color-press: #6FB971;
+  /* Green  */
 
   /* Runtime colours – the plugin overwrites these on load */
-  --rt-publishStageColors-Zero:   var(--rt-color-zero);
+  --rt-publishStageColors-Zero: var(--rt-color-zero);
   --rt-publishStageColors-Author: var(--rt-color-author);
-  --rt-publishStageColors-House:  var(--rt-color-house);
-  --rt-publishStageColors-Press:  var(--rt-color-press);
+  --rt-publishStageColors-House: var(--rt-color-house);
+  --rt-publishStageColors-Press: var(--rt-color-press);
   /* most-common stage (used for ACT labels &c.) */
   --rt-max-publish-stage-color: var(--rt-publishStageColors-Zero);
 
   /* Status Colors */
-  --rt-color-due: #d05e5e;      /* Red */
-  --rt-color-empty: #ffffff;    /* becomes gray when transparent added */
-  --rt-color-empty-selected: #EFEFEF; /* Slightly darker gray for selected empty cells */
-  
+  --rt-color-due: #d05e5e;
+  /* Red */
+  --rt-color-empty: #ffffff;
+  /* becomes gray when transparent added */
+  --rt-color-empty-selected: #EFEFEF;
+  /* Slightly darker gray for selected empty cells */
+
   /* Search and UI Colors */
-  --rt-color-search: #ffe374;   /* Yellow for search highlighting */
+  --rt-color-search: #ffe374;
+  /* Yellow for search highlighting */
   /* Search highlight tuning */
-  --rt-search-stroke-width: 3px;      /* default stroke thickness for search outline */
-  --rt-search-stroke-opacity: 1;      /* default stroke opacity for search outline */
-  
+  --rt-search-stroke-width: 3px;
+  /* default stroke thickness for search outline */
+  --rt-search-stroke-opacity: 1;
+  /* default stroke opacity for search outline */
+
   /* Plaid Colors and Opacity */
-  --rt-color-working: #FF69B4;          /* Match pink color for Working in Manuscript Calendar */
-  --rt-color-todo: #cccccc;             /* Light Gray */
+  --rt-color-working: #FF69B4;
+  /* Match pink color for Working in Manuscript Calendar */
+  --rt-color-todo: #cccccc;
+  /* Light Gray */
   --rt-color-plaid-opacity: 1;
   --rt-color-plaid-stroke-opacity: 1;
-    /* Current Stage Color stroke for working pattern set in SVG patterns*/
-    /* Current Stage Color stroke for todo pattern set in SVG patterns*/
+  /* Current Stage Color stroke for working pattern set in SVG patterns*/
+  /* Current Stage Color stroke for todo pattern set in SVG patterns*/
 
   /* Readability controls */
   --rt-font-scale: 1;
@@ -48,30 +60,42 @@
   --rt-synopsis-metadata-line-height: 24px;
 
   /* Settings UI sizing */
-  --rt-settings-select-width: 240px; /* consistent width for dropdowns */
+  --rt-settings-select-width: 240px;
+  /* consistent width for dropdowns */
 
   /* ============================================
      GOSSAMER VISUAL CONFIGURATION
      All gossamer beat system appearance settings in one place
      ============================================ */
   /* Colors */
-  --rt-gossamer-error-color: #ff4444;           /* Missing data / zero scores (red) */
-  --rt-gossamer-default-color: #7a7a7a;         /* Default fallback (gray) */
-  --rt-gossamer-historical-color: #c0c0c0;      /* Historical runs (Gossamer2-5, light gray) */
-  
+  --rt-gossamer-error-color: #ff4444;
+  /* Missing data / zero scores (red) */
+  --rt-gossamer-default-color: #7a7a7a;
+  /* Default fallback (gray) */
+  --rt-gossamer-historical-color: #c0c0c0;
+  /* Historical runs (Gossamer2-5, light gray) */
+
   /* Dot Sizes */
-  --rt-gossamer-dot-current: 7px;               /* Current run (Gossamer1) dot radius */
-  --rt-gossamer-dot-historical: 5px;            /* Historical runs (Gossamer2-5) dot radius */
-  
+  --rt-gossamer-dot-current: 7px;
+  /* Current run (Gossamer1) dot radius */
+  --rt-gossamer-dot-historical: 5px;
+  /* Historical runs (Gossamer2-5) dot radius */
+
   /* Strokes & Lines */
-  --rt-gossamer-line-width: 2px;                /* beat line thickness */
-  --rt-gossamer-line-historical-width: 1.5px;   /* Historical beat line thickness */
-  --rt-gossamer-spoke-width: 1px;               /* Spoke line thickness */
-  --rt-gossamer-spoke-color: var(--rt-max-publish-stage-color); /* Spoke line color - use publish stage color */
-  
+  --rt-gossamer-line-width: 2px;
+  /* beat line thickness */
+  --rt-gossamer-line-historical-width: 1.5px;
+  /* Historical beat line thickness */
+  --rt-gossamer-spoke-width: 1px;
+  /* Spoke line thickness */
+  --rt-gossamer-spoke-color: var(--rt-max-publish-stage-color);
+  /* Spoke line color - use publish stage color */
+
   /* Opacity & Transparency */
-  --rt-gossamer-band-opacity: 0.5;              /* Min/max shading band opacity */
-  --rt-gossamer-line-historical-opacity: 0.6;   /* Historical line opacity */
+  --rt-gossamer-band-opacity: 0.5;
+  /* Min/max shading band opacity */
+  --rt-gossamer-line-historical-opacity: 0.6;
+  /* Historical line opacity */
 
   /* Subplot palette - 16 fixed colors provided */
   --rt-subplot-colors-0: #EFBDEB;
@@ -89,7 +113,8 @@
   --rt-subplot-colors-12: #CEC3C1;
   --rt-subplot-colors-13: #F3D34A;
   --rt-subplot-colors-14: #004777;
-  --rt-subplot-colors-15: #8B4513; /* Ring 16 default (Brown) */
+  --rt-subplot-colors-15: #8B4513;
+  /* Ring 16 default (Brown) */
 }
 
 /* =============================================================================
@@ -127,7 +152,8 @@
 
 .rt-version-text {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 16px;  /* 04b03b at 2x native (8px base) */
+  font-size: 16px;
+  /* 04b03b at 2x native (8px base) */
   text-anchor: start;
   dominant-baseline: baseline;
   letter-spacing: 0;
@@ -146,20 +172,24 @@
 
 /* Version color: Orange when minor/patch update available */
 .rt-update-minor .rt-version-text {
-  fill: #fb923c;  /* Orange */
+  fill: #fb923c;
+  /* Orange */
 }
 
 .rt-update-minor:hover .rt-version-text {
-  fill: #f97316;  /* Brighter orange on hover */
+  fill: #f97316;
+  /* Brighter orange on hover */
 }
 
 /* Version color: Red when major update available */
 .rt-update-major .rt-version-text {
-  fill: #f87171;  /* Red */
+  fill: #f87171;
+  /* Red */
 }
 
 .rt-update-major:hover .rt-version-text {
-  fill: #ef4444;  /* Brighter red on hover */
+  fill: #ef4444;
+  /* Brighter red on hover */
 }
 
 /* "NEW RELEASE" text animation when update available */
@@ -168,8 +198,15 @@
 }
 
 @keyframes rt-new-release-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* Bug icon (shown when no update available) */
@@ -199,7 +236,8 @@
 
 /* Alert icon color matches severity */
 .rt-update-minor .rt-version-alert-icon {
-  stroke: #fb923c;  /* Orange */
+  stroke: #fb923c;
+  /* Orange */
 }
 
 .rt-update-minor:hover .rt-version-alert-icon {
@@ -207,7 +245,8 @@
 }
 
 .rt-update-major .rt-version-alert-icon {
-  stroke: #f87171;  /* Red */
+  stroke: #f87171;
+  /* Red */
 }
 
 .rt-update-major:hover .rt-version-alert-icon {
@@ -215,8 +254,15 @@
 }
 
 @keyframes rt-version-pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Readability scale presets (applied to the SVG root) */
@@ -236,10 +282,21 @@
 
 /* Stage-specific fill should be applied to the bold title tspans, not the parent text.
    This mirrors subplot/character behavior and prevents inheritance issues for the date tspan. */
-.rt-scene-title-bold.rt-title-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)) !important; }
-.rt-scene-title-bold.rt-title-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important; }
-.rt-scene-title-bold.rt-title-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)) !important; }
-.rt-scene-title-bold.rt-title-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)) !important; }
+.rt-scene-title-bold.rt-title-stage-zero {
+  fill: var(--rt-publishStageColors-Zero, var(--rt-color-zero)) !important;
+}
+
+.rt-scene-title-bold.rt-title-stage-author {
+  fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important;
+}
+
+.rt-scene-title-bold.rt-title-stage-house {
+  fill: var(--rt-publishStageColors-House, var(--rt-color-house)) !important;
+}
+
+.rt-scene-title-bold.rt-title-stage-press {
+  fill: var(--rt-publishStageColors-Press, var(--rt-color-press)) !important;
+}
 
 /* styles.css */
 .radial-timeline-container {
@@ -257,6 +314,7 @@
   background-color: transparent;
   font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
+
 .rt-loading-message,
 .rt-error-message {
   padding: 20px;
@@ -264,6 +322,7 @@
   font-size: 1.2em;
   color: var(--text-error);
 }
+
 .radial-timeline-container svg {
   width: 100%;
   height: 100%;
@@ -299,13 +358,16 @@
   stroke: #ffffff;
   stroke-width: 1px;
 }
+
 .radial-timeline-container .rt-scene-act {
   fill-opacity: 0;
 }
+
 .radial-timeline-container .rt-scene-act:hover {
   fill-opacity: 0.3;
   cursor: pointer;
 }
+
 /* Void cells - empty space in timeline */
 .radial-timeline-container .rt-void-cell {
   fill: var(--rt-color-empty);
@@ -314,6 +376,7 @@
   stroke-width: 1;
   cursor: default;
 }
+
 .radial-timeline-container .rt-scene-path.rt-faded {
   opacity: 0.3;
 }
@@ -322,11 +385,13 @@
 .rt-global-fade .rt-scene-path:not(.rt-selected) {
   fill: var(--rt-color-empty-selected) !important;
 }
+
 .rt-global-fade .rt-number-square:not(.rt-selected) {
   fill: #EFEFEF;
   stroke: none;
   stroke-width: 0;
 }
+
 .rt-global-fade .rt-number-text:not(.rt-selected) {
   fill: #FFFFFF;
 }
@@ -334,19 +399,23 @@
 .radial-timeline-container .rt-scene-path.rt-non-selected {
   fill: var(--rt-color-empty-selected) !important;
 }
+
 .radial-timeline-container .rt-scene-path.rt-scene-is-open.rt-non-selected {
   fill: var(--rt-color-empty-selected) !important;
 }
+
 .radial-timeline-container .rt-scene-path.rt-selected {
   filter: saturate(1.2) brightness(1.1);
 }
+
 .radial-timeline-container .rt-scene-title {
   cursor: pointer;
   fill: white;
   opacity: 1;
   font-size: calc(18px * var(--rt-font-scale, 1));
-  pointer-events: none; 
+  pointer-events: none;
 }
+
 .radial-timeline-container .rt-storybeat-title {
   fill: var(--text-normal);
   font-size: calc(13px * var(--rt-font-scale, 1));
@@ -364,9 +433,11 @@
 .rt-scene-group.rt-gossamer-hover .rt-storybeat-title,
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats:hover .rt-storybeat-title,
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"]:hover .rt-storybeat-title {
-  filter: url(#beatTextBg); /* black background halo */
+  filter: url(#beatTextBg);
+  /* black background halo */
   fill: #ffffff !important;
-  font-weight: 700; /* heavier for readability */
+  font-weight: 700;
+  /* heavier for readability */
 }
 
 /* Rotation toggle base styles (timeline only; no animations) */
@@ -382,8 +453,14 @@
   stroke: #ffffff !important;
   fill: none !important;
 }
-.radial-timeline-svg #rotation-toggle .arrow-icon.is-hidden { display: none; }
-.radial-timeline-svg #rotation-toggle { cursor: pointer; }
+
+.radial-timeline-svg #rotation-toggle .arrow-icon.is-hidden {
+  display: none;
+}
+
+.radial-timeline-svg #rotation-toggle {
+  cursor: pointer;
+}
 
 /* Hide rotation toggle in Gossamer mode */
 .radial-timeline-svg[data-gossamer-mode="true"] #rotation-toggle {
@@ -401,11 +478,13 @@
   color: var(--text-normal);
   transition: color 0.2s ease;
 }
+
 .radial-timeline-svg #mode-toggle use {
   color: inherit;
   stroke: currentColor;
   fill: none;
 }
+
 .radial-timeline-svg #mode-toggle:hover use,
 .radial-timeline-svg #mode-toggle.rt-mode-toggle-hover use {
   color: var(--rt-max-publish-stage-color) !important;
@@ -419,7 +498,7 @@
   font-weight: 400;
   text-transform: uppercase;
   transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   pointer-events: none;
 }
 
@@ -428,10 +507,12 @@
   opacity: 1;
   transform: translateX(0);
 }
+
 .radial-timeline-svg .mode-indicator-text.mode-indicator-hidden-left {
   opacity: 0;
   transform: translateX(-80px);
 }
+
 .radial-timeline-svg .mode-indicator-text.mode-indicator-hidden-right {
   opacity: 0;
   transform: translateX(80px);
@@ -448,26 +529,35 @@
 }
 
 /* Gossamer momentum styling */
-.rt-gossamer-layer { pointer-events: none; }
-.rt-gossamer-line { 
-  stroke: var(--rt-max-publish-stage-color); /* Use max publish stage color for connecting line */
-  stroke-width: var(--rt-gossamer-line-width); 
-  fill: none; 
+.rt-gossamer-layer {
+  pointer-events: none;
 }
+
+.rt-gossamer-line {
+  stroke: var(--rt-max-publish-stage-color);
+  /* Use max publish stage color for connecting line */
+  stroke-width: var(--rt-gossamer-line-width);
+  fill: none;
+}
+
 .rt-gossamer-line.rt-gossamer-overlay {
   stroke-width: var(--rt-gossamer-line-historical-width);
   opacity: var(--rt-gossamer-line-historical-opacity);
 }
+
 /* Gossamer dots */
-.rt-gossamer-dot { 
+.rt-gossamer-dot {
   /* fill color and r (radius) set inline via publish stage color */
-  pointer-events: all; 
-  cursor: pointer; 
+  pointer-events: all;
+  cursor: pointer;
   stroke: none;
 }
+
 .rt-gossamer-dot.rt-gossamer-missing-data {
-  fill: var(--rt-gossamer-error-color); /* Red for missing data */
+  fill: var(--rt-gossamer-error-color);
+  /* Red for missing data */
 }
+
 .rt-gossamer-dot.rt-gossamer-missing-data:hover {
   opacity: 1;
   fill: #ff6666 !important;
@@ -479,24 +569,31 @@
   stroke: white;
   stroke-width: 3;
 }
+
 .rt-gossamer-dot-historical {
   stroke-width: 1px;
 }
+
 .rt-gossamer-dot-historical.rt-hover {
   /* Add white stroke outline when Gossamer1 dot or beat slice is hovered */
   stroke: white;
   stroke-width: 3;
 }
-.rt-gossamer-band { 
+
+.rt-gossamer-band {
   /* Band showing min/max spread - color set inline (#f5f5f5) */
   stroke: none;
-  pointer-events: none; /* Don't interfere with hover on dots/slices */
+  pointer-events: none;
+  /* Don't interfere with hover on dots/slices */
 }
-.rt-gossamer-spoke { 
-  stroke: var(--rt-max-publish-stage-color); /* Use publish stage color for spokes */
-  stroke-width: var(--rt-gossamer-spoke-width); 
+
+.rt-gossamer-spoke {
+  stroke: var(--rt-max-publish-stage-color);
+  /* Use publish stage color for spokes */
+  stroke-width: var(--rt-gossamer-spoke-width);
   stroke-dasharray: none;
-  pointer-events: none; /* Spokes don't have their own hover, only respond to dot/slice hover */
+  pointer-events: none;
+  /* Spokes don't have their own hover, only respond to dot/slice hover */
   cursor: default;
 }
 
@@ -559,44 +656,61 @@
 }
 
 .rt-gossamer-range-segment {
-  stroke-width: 6px; /* Thick segment for range deviation */
+  stroke-width: 6px;
+  /* Thick segment for range deviation */
   pointer-events: none;
   cursor: default;
 }
+
 .rt-gossamer-range-segment.rt-in-range {
-  stroke: #00AA00; /* Muted green for scores within ideal range */
+  stroke: #00AA00;
+  /* Muted green for scores within ideal range */
   opacity: 0.8;
 }
+
 .rt-gossamer-range-segment.rt-above-range {
-  stroke: #CC00CC; /* Magenta for scores above range (exciting/strong start!) */
+  stroke: #CC00CC;
+  /* Magenta for scores above range (exciting/strong start!) */
   opacity: 0.8;
 }
+
 .rt-gossamer-range-segment.rt-below-range {
-  stroke: #AA0000; /* Muted red for scores below ideal range (slow/boring) */
+  stroke: #AA0000;
+  /* Muted red for scores below ideal range (slow/boring) */
   opacity: 0.8;
 }
+
 .rt-gossamer-spoke.rt-gossamer-spoke-hover {
-  stroke: white !important; /* Turn white when synchronized with dot/slice hover, override inline styles */
+  stroke: white !important;
+  /* Turn white when synchronized with dot/slice hover, override inline styles */
   stroke-width: 2px;
 }
+
 .rt-gossamer-grid-spoke {
-  stroke: #808080 !important; /* Medium gray for month grid spokes - override theme colors */
+  stroke: #808080 !important;
+  /* Medium gray for month grid spokes - override theme colors */
   stroke-width: 1px !important;
-  stroke-dasharray: 2, 2 !important; /* Dotted lines for months */
+  stroke-dasharray: 2, 2 !important;
+  /* Dotted lines for months */
   opacity: 0.7 !important;
 }
 
 .rt-gossamer-grid-spoke.rt-act-boundary {
-  stroke: var(--text-normal) !important; /* Use theme text color for consistency */
-  stroke-width: 2px !important; /* Same thickness as regular timeline act spokes */
-  stroke-dasharray: none !important; /* Solid lines for acts */
-  opacity: 1 !important; /* Fully opaque for prominence */
+  stroke: var(--text-normal) !important;
+  /* Use theme text color for consistency */
+  stroke-width: 2px !important;
+  /* Same thickness as regular timeline act spokes */
+  stroke-dasharray: none !important;
+  /* Solid lines for acts */
+  opacity: 1 !important;
+  /* Fully opaque for prominence */
 }
 
 /* Story beat slices in all modes (except Gossamer) - base state with gray fill */
 .rt-scene-group.beats .rt-scene-path,
 .rt-scene-group[data-item-type="Beat"] .rt-scene-path {
-  fill: #f5f5f5; /* Subtle gray shade for beat slices in normal state */
+  fill: #f5f5f5;
+  /* Subtle gray shade for beat slices in normal state */
 }
 
 /* Story beat slices in Gossamer mode - base state */
@@ -625,25 +739,32 @@
 
 /* Beat slice outlines in gossamer layer - purely visual, not interactive */
 .rt-gossamer-beat-outline {
-  stroke: var(--rt-max-publish-stage-color); /* Use publish stage color for beat outlines */
+  stroke: var(--rt-max-publish-stage-color);
+  /* Use publish stage color for beat outlines */
   stroke-width: 2px;
   fill: none;
-  pointer-events: none !important; /* Not interactive - fill area handles all hover/click */
+  pointer-events: none !important;
+  /* Not interactive - fill area handles all hover/click */
   cursor: default;
 }
+
 .rt-gossamer-beat-outline:hover,
 .rt-gossamer-beat-outline.rt-hover {
-  stroke: white !important; /* Turn white on hover or synchronized hover */
+  stroke: white !important;
+  /* Turn white on hover or synchronized hover */
   stroke-width: 3px;
 }
+
 .radial-timeline-container .rt-scene-title.rt-faded {
   opacity: 0.2;
 }
+
 .rt-scene-info {
   opacity: 0;
   pointer-events: none !important;
   vector-effect: non-scaling-stroke;
 }
+
 .rt-scene-info text {
   stroke: white;
   stroke-width: 4px;
@@ -658,6 +779,7 @@
   font-size: 16px;
   fill: var(--text-normal);
 }
+
 .radial-timeline-container .rt-month-label-outer {
   pointer-events: none;
   text-anchor: middle;
@@ -717,38 +839,47 @@
 .radial-timeline-container .rt-chronological-tick.rt-date-last {
   stroke: var(--rt-publishStageColors-Press) !important;
 }
+
 .radial-timeline-container .rt-act-label {
   pointer-events: none;
   text-anchor: middle;
   dominant-baseline: middle;
   font-size: 20px;
   font-weight: 700;
-  /* fill: var(--text-normal); */ /* Color is now set dynamically in SVG */
+  /* fill: var(--text-normal); */
+  /* Color is now set dynamically in SVG */
 }
+
 .radial-timeline-container .rt-month-spoke-line {
   stroke: var(--text-normal);
   stroke-width: 1px;
   stroke-dasharray: 2, 2;
   opacity: 1;
 }
+
 .radial-timeline-container .rt-month-spoke-line.rt-month-spoke-intermediate {
   opacity: 1;
 }
+
 .radial-timeline-container .rt-month-spoke-line.rt-act-boundary {
   stroke: var(--text-normal);
   stroke-width: 2px;
   stroke-dasharray: none;
   opacity: 1;
 }
+
 .radial-timeline-container .rt-scene-title-small {
   font-size: calc(9px * var(--rt-font-scale, 1));
 }
+
 .radial-timeline-container .rt-scene-title-medium {
   font-size: calc(16px * var(--rt-font-scale, 1));
 }
+
 .radial-timeline-container .rt-scene-title-large {
   font-size: calc(18px * var(--rt-font-scale, 1));
 }
+
 .rt-status-count {
   font-size: 80%;
   opacity: 1;
@@ -759,38 +890,46 @@
   line-height: 0;
   dominant-baseline: inherit;
 }
+
 .rt-settings-separator {
   margin: 1em 0 2em 0;
   border: none;
   border-top: 1px solid var(--background-modifier-border);
 }
+
 .documentation-container {
   padding: 0 1em;
 }
+
 .documentation-container h1 {
   font-size: 1.8em;
   margin-top: 0.5em;
 }
+
 .documentation-container h2 {
   font-size: 1.5em;
   margin-top: 1.5em;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--background-modifier-border);
 }
+
 .documentation-container h3 {
   font-size: 1.2em;
   margin-top: 1em;
 }
+
 .documentation-container img {
   max-width: 100%;
   border-radius: 5px;
   margin: 1em 0;
 }
+
 .documentation-container code {
   background-color: var(--background-primary);
   padding: 0.2em 0.4em;
   border-radius: 3px;
 }
+
 .documentation-container pre {
   background-color: var(--background-primary);
   padding: 1em;
@@ -803,36 +942,86 @@
   font-size: 16px;
   fill: var(--text-muted);
   font-weight: normal;
-  
-}
-.scene-hover .rt-subplot-text,
-.rt-scene-group:hover .rt-subplot-text { 
-  fill: #ffffff; 
+
 }
 
-.rt-number-square{
+.scene-hover .rt-subplot-text,
+.rt-scene-group:hover .rt-subplot-text {
+  fill: #ffffff;
+}
+
+.rt-number-square {
   pointer-events: none;
   fill: #FFFFFF;
   stroke: none;
   stroke-width: 0;
-  paint-order: stroke fill; /* Draw stroke first, then fill covers inner half = "outside" border */
+  paint-order: stroke fill;
+  /* Draw stroke first, then fill covers inner half = "outside" border */
 }
-.rt-number-square[data-subplot-idx="0"]  { --rt-number-stroke-color: var(--rt-subplot-colors-0); }
-.rt-number-square[data-subplot-idx="1"]  { --rt-number-stroke-color: var(--rt-subplot-colors-1); }
-.rt-number-square[data-subplot-idx="2"]  { --rt-number-stroke-color: var(--rt-subplot-colors-2); }
-.rt-number-square[data-subplot-idx="3"]  { --rt-number-stroke-color: var(--rt-subplot-colors-3); }
-.rt-number-square[data-subplot-idx="4"]  { --rt-number-stroke-color: var(--rt-subplot-colors-4); }
-.rt-number-square[data-subplot-idx="5"]  { --rt-number-stroke-color: var(--rt-subplot-colors-5); }
-.rt-number-square[data-subplot-idx="6"]  { --rt-number-stroke-color: var(--rt-subplot-colors-6); }
-.rt-number-square[data-subplot-idx="7"]  { --rt-number-stroke-color: var(--rt-subplot-colors-7); }
-.rt-number-square[data-subplot-idx="8"]  { --rt-number-stroke-color: var(--rt-subplot-colors-8); }
-.rt-number-square[data-subplot-idx="9"]  { --rt-number-stroke-color: var(--rt-subplot-colors-9); }
-.rt-number-square[data-subplot-idx="10"] { --rt-number-stroke-color: var(--rt-subplot-colors-10); }
-.rt-number-square[data-subplot-idx="11"] { --rt-number-stroke-color: var(--rt-subplot-colors-11); }
-.rt-number-square[data-subplot-idx="12"] { --rt-number-stroke-color: var(--rt-subplot-colors-12); }
-.rt-number-square[data-subplot-idx="13"] { --rt-number-stroke-color: var(--rt-subplot-colors-13); }
-.rt-number-square[data-subplot-idx="14"] { --rt-number-stroke-color: var(--rt-subplot-colors-14); }
-.rt-number-square[data-subplot-idx="15"] { --rt-number-stroke-color: var(--rt-subplot-colors-15); }
+
+.rt-number-square[data-subplot-idx="0"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-0);
+}
+
+.rt-number-square[data-subplot-idx="1"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-1);
+}
+
+.rt-number-square[data-subplot-idx="2"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-2);
+}
+
+.rt-number-square[data-subplot-idx="3"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-3);
+}
+
+.rt-number-square[data-subplot-idx="4"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-4);
+}
+
+.rt-number-square[data-subplot-idx="5"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-5);
+}
+
+.rt-number-square[data-subplot-idx="6"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-6);
+}
+
+.rt-number-square[data-subplot-idx="7"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-7);
+}
+
+.rt-number-square[data-subplot-idx="8"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-8);
+}
+
+.rt-number-square[data-subplot-idx="9"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-9);
+}
+
+.rt-number-square[data-subplot-idx="10"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-10);
+}
+
+.rt-number-square[data-subplot-idx="11"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-11);
+}
+
+.rt-number-square[data-subplot-idx="12"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-12);
+}
+
+.rt-number-square[data-subplot-idx="13"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-13);
+}
+
+.rt-number-square[data-subplot-idx="14"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-14);
+}
+
+.rt-number-square[data-subplot-idx="15"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-15);
+}
 
 .rt-subplot-dominance-flags {
   pointer-events: none;
@@ -853,42 +1042,67 @@
   pointer-events: none;
   font-size: calc(16px * var(--rt-number-font-scale, 1));
 }
+
 /* AI grade text colors - scoped to plugin (no !important so non-selected can override) */
-.rt-number-text.rt-grade-A { fill: #00ff48; }
-.rt-number-text.rt-grade-B { fill: #ffbb00; }
-.rt-number-text.rt-grade-C { fill: #ff0000; }
+.rt-number-text.rt-grade-A {
+  fill: #00ff48;
+}
+
+.rt-number-text.rt-grade-B {
+  fill: #ffbb00;
+}
+
+.rt-number-text.rt-grade-C {
+  fill: #ff0000;
+}
+
 /* Preserve grade colors when scene is open (higher specificity overrides white fill below) */
-.rt-number-text.rt-scene-is-open.rt-grade-A { fill: #00ff48; }
-.rt-number-text.rt-scene-is-open.rt-grade-B { fill: #ffbb00; }
-.rt-number-text.rt-scene-is-open.rt-grade-C { fill: #ff0000; }
+.rt-number-text.rt-scene-is-open.rt-grade-A {
+  fill: #00ff48;
+}
+
+.rt-number-text.rt-scene-is-open.rt-grade-B {
+  fill: #ffbb00;
+}
+
+.rt-number-text.rt-scene-is-open.rt-grade-C {
+  fill: #ff0000;
+}
+
 .rt-number-square.rt-faded,
 .rt-number-text.rt-faded {
   opacity: 1;
 }
+
 .radial-timeline-container .rt-scene-title.rt-selected {
   stroke: #000000;
   stroke-width: 3px;
   paint-order: stroke;
 }
+
 /* Scene is open: non-selected state */
 .rt-number-square.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
   stroke: none;
   stroke-width: 0;
 }
+
 .rt-number-text.rt-scene-is-open.rt-non-selected {
   fill: #FFFFFF !important;
   opacity: 1;
 }
+
 .rt-number-square.rt-selected {
   transform: none;
   stroke: var(--rt-number-stroke-color, var(--scene-color, #705DCF));
 }
+
 .rt-number-square.rt-scene-is-open.rt-selected {
   stroke: var(--rt-number-stroke-color, var(--scene-color, #705DCF));
   stroke-width: 6px;
   fill: var(--interactive-accent, #705DCF);
 }
+
 .rt-number-square.rt-selected:not(.rt-scene-is-open) {
   stroke-width: 6px;
 }
@@ -898,12 +1112,15 @@
   stroke: none;
   stroke-width: 0;
 }
+
 .rt-number-text.rt-selected {
   font-weight: bold;
 }
+
 .rt-number-text.rt-non-selected {
   fill: #FFFFFF;
 }
+
 .rt-search-term {
   fill: inherit;
   stroke: var(--rt-color-search);
@@ -928,8 +1145,10 @@
 
 /* POV marker styling - superscript after first character name */
 .rt-info-text.rt-metadata-text tspan.rt-pov-marker {
-  fill: var(--rt-dynamic-color, var(--text-muted)) !important; /* Use character color, fallback to muted */
-  font-size: calc(12px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1))) !important; /* Smaller than default 18px metadata text */
+  fill: var(--rt-dynamic-color, var(--text-muted)) !important;
+  /* Use character color, fallback to muted */
+  font-size: calc(12px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1))) !important;
+  /* Smaller than default 18px metadata text */
   font-weight: 500;
 }
 
@@ -939,10 +1158,12 @@
   gap: 8px;
   align-items: center;
 }
+
 .radial-timeline-container .search-input {
   width: 600px;
   max-width: 90vw;
 }
+
 .radial-timeline-search .rt-button-container {
   display: flex;
   gap: 8px;
@@ -956,6 +1177,7 @@
   visibility: visible !important;
   display: block !important;
 }
+
 /*Synopsis Title*/
 .rt-title-text-main {
   font-size: 36px;
@@ -963,6 +1185,7 @@
   --title-color: var(--text-normal);
   /* No parent fill; child tspans own their colors via custom properties */
 }
+
 /* Date/Time and Duration mini-block (Column 2 of title row) */
 /* This styles the separate text element containing date/time and duration */
 /* Positioned to the right of the main scene title */
@@ -971,6 +1194,7 @@
   font-weight: 400;
   font-style: normal !important;
 }
+
 /* Title tspans use dynamic color (set on hover) or fallback to max publish stage color */
 .rt-title-text-main tspan[data-item-type=title] {
   fill: var(--rt-dynamic-color, var(--rt-max-publish-stage-color)) !important;
@@ -1028,85 +1252,141 @@
 .rt-scene-info tspan.rt-with-dynamic-fill {
   fill: var(--rt-dynamic-fill-color, inherit) !important;
 }
+
 .rt-number-square.rt-scene-is-open {
   fill: var(--interactive-accent, #705DCF);
 }
+
 .rt-number-text.rt-scene-is-open {
   font-weight: normal;
-  fill: #FFFFFF; /* white for default case; grade colors override via higher specificity */
+  fill: #FFFFFF;
+  /* white for default case; grade colors override via higher specificity */
 }
+
 .rt-number-text.rt-scene-is-open.rt-selected {
-  fill: #FFFFFF; /* white for default case; grade colors override via higher specificity */
+  fill: #FFFFFF;
+  /* white for default case; grade colors override via higher specificity */
   font-weight: bold;
 }
+
 /* Preserve grade colors when scene is open and selected */
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A { fill: #00ff48; }
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B { fill: #ffbb00; }
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C { fill: #ff0000; }
-.rt-number-square.rt-search-result { fill: var(--rt-color-search) !important; }
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A {
+  fill: #00ff48;
+}
+
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B {
+  fill: #ffbb00;
+}
+
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C {
+  fill: #ff0000;
+}
+
+.rt-number-square.rt-search-result {
+  fill: var(--rt-color-search) !important;
+}
+
 .rt-number-square.rt-search-result.rt-non-selected,
 .rt-number-square.rt-search-result.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
 }
+
 .rt-number-text.rt-search-result.rt-non-selected {
   fill: #FFFFFF !important;
 }
+
 .rt-number-text.rt-scene-is-open.rt-search-result.rt-non-selected {
   fill: #FFFFFF !important;
 }
+
 .rt-number-text.rt-scene-is-open.rt-search-result {
   fill: #000000 !important;
 }
+
 /* Search result squares stay yellow unless muted via rt-non-selected */
 .rt-number-square.rt-search-result.rt-selected {
   fill: var(--rt-color-search);
   stroke: #ff9500;
   stroke-width: 2px;
 }
+
 .rt-number-square.rt-has-edits {
-  fill: #C0C0C0; /* Light gray for pending edits */
+  fill: #C0C0C0;
+  /* Light gray for pending edits */
 }
 
-.rt-number-square.rt-has-edits.rt-search-result { fill: var(--rt-color-search) !important; }
-.rt-number-square.rt-has-edits.rt-scene-is-open { fill: var(--interactive-accent, #705DCF); }
+.rt-number-square.rt-has-edits.rt-search-result {
+  fill: var(--rt-color-search) !important;
+}
+
+.rt-number-square.rt-has-edits.rt-scene-is-open {
+  fill: var(--interactive-accent, #705DCF);
+}
+
 .rt-number-square.rt-has-edits.rt-non-selected {
   fill: #EFEFEF !important;
 }
+
 .rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
   fill: #EFEFEF !important;
 }
+
 .rt-number-square.rt-missing-when {
   fill: var(--rt-color-due) !important;
   stroke: var(--rt-color-due) !important;
   stroke-width: 2px;
 }
+
 .rt-number-text.rt-missing-when {
   fill: #FFFFFF !important;
   opacity: 1;
 }
+
 /* Preserve grade colors for pending edits (higher specificity) */
-.rt-number-text.rt-has-edits.rt-grade-A { fill: #00ff48; }
-.rt-number-text.rt-has-edits.rt-grade-B { fill: #ffbb00; }
-.rt-number-text.rt-has-edits.rt-grade-C { fill: #ff0000; }
-.rt-number-text.rt-has-edits.rt-selected,
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected { 
-  font-weight: bold; 
+.rt-number-text.rt-has-edits.rt-grade-A {
+  fill: #00ff48;
 }
+
+.rt-number-text.rt-has-edits.rt-grade-B {
+  fill: #ffbb00;
+}
+
+.rt-number-text.rt-has-edits.rt-grade-C {
+  fill: #ff0000;
+}
+
+.rt-number-text.rt-has-edits.rt-selected,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected {
+  font-weight: bold;
+}
+
 /* Preserve grade colors for pending edits selected state */
 .rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A { fill: #00ff48; }
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A {
+  fill: #00ff48;
+}
+
 .rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B { fill: #ffbb00; }
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B {
+  fill: #ffbb00;
+}
+
 .rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C { fill: #ff0000; }
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C {
+  fill: #ff0000;
+}
 
 /* AI grade colors turn white when non-selected (covers all states: default, open, pending edits) */
 .rt-number-text.rt-non-selected.rt-grade-A,
 .rt-number-text.rt-non-selected.rt-grade-B,
-.rt-number-text.rt-non-selected.rt-grade-C { fill: #FFFFFF !important; }
+.rt-number-text.rt-non-selected.rt-grade-C {
+  fill: #FFFFFF !important;
+}
+
 .rt-clear-search-btn {
   cursor: pointer;
 }
+
 .rt-clear-search-btn:hover {
   transform: scale(1.1);
 }
@@ -1122,10 +1402,21 @@
   opacity: 0.3;
 }
 
-.rt-highlight-rect.rt-stage-zero   { fill: var(--rt-publishStageColors-Zero,   var(--rt-color-zero)); }
-.rt-highlight-rect.rt-stage-author { fill: var(--rt-publishStageColors-Author, var(--rt-color-author)); }
-.rt-highlight-rect.rt-stage-house  { fill: var(--rt-publishStageColors-House,  var(--rt-color-house)); }
-.rt-highlight-rect.rt-stage-press  { fill: var(--rt-publishStageColors-Press,  var(--rt-color-press)); }
+.rt-highlight-rect.rt-stage-zero {
+  fill: var(--rt-publishStageColors-Zero, var(--rt-color-zero));
+}
+
+.rt-highlight-rect.rt-stage-author {
+  fill: var(--rt-publishStageColors-Author, var(--rt-color-author));
+}
+
+.rt-highlight-rect.rt-stage-house {
+  fill: var(--rt-publishStageColors-House, var(--rt-color-house));
+}
+
+.rt-highlight-rect.rt-stage-press {
+  fill: var(--rt-publishStageColors-Press, var(--rt-color-press));
+}
 
 .rt-color-swatch {
   display: inline-block;
@@ -1136,6 +1427,7 @@
   border-radius: 3px;
   margin-left: 8px;
 }
+
 /* Compact grid for color settings (publish stages + subplot palette) */
 .rt-color-grid {
   display: grid;
@@ -1153,19 +1445,25 @@
 }
 
 /* Dim non-selected provider sections in settings */
-.rt-provider-section { transition: opacity 120ms ease; }
+.rt-provider-section {
+  transition: opacity 120ms ease;
+}
+
 .rt-provider-section.dimmed {
   opacity: 0.55;
 }
+
 .rt-model-picker-row {
   display: flex;
   gap: 16px;
   align-items: center;
   width: 100%;
 }
+
 .rt-model-picker-select {
   flex: 0 0 var(--rt-settings-select-width);
 }
+
 .rt-model-guidance {
   margin-top: 0;
   font-size: 13px;
@@ -1189,16 +1487,19 @@
   align-self: center !important;
   margin-top: 0 !important;
 }
+
 @media (max-width: 1100px) {
   .rt-color-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
 @media (max-width: 800px) {
   .rt-color-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
 .rt-color-grid-item {
   display: flex;
   flex-direction: column;
@@ -1208,6 +1509,7 @@
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
 }
+
 .rt-color-grid-label {
   font-size: 12px;
   font-weight: 600;
@@ -1218,6 +1520,7 @@
   padding-bottom: 2px;
   margin-bottom: 2px;
 }
+
 .rt-color-grid-controls {
   display: flex;
   align-items: center;
@@ -1228,12 +1531,14 @@
   justify-content: space-between;
   position: relative;
 }
+
 .rt-color-grid-controls input[type="color"] {
   width: 18px;
   height: 18px;
   padding: 0;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 0; /* crisp square */
+  border-radius: 0;
+  /* crisp square */
   background: transparent;
   -webkit-appearance: none;
   appearance: none;
@@ -1241,6 +1546,7 @@
   box-shadow: none;
   outline: none;
 }
+
 .rt-color-grid-controls .rt-hidden-color-input {
   position: absolute;
   width: 1px;
@@ -1250,6 +1556,7 @@
   top: 20px;
   left: 0;
 }
+
 .rt-color-grid-controls .rt-swatch-trigger {
   width: 24px;
   height: 24px;
@@ -1260,28 +1567,86 @@
 }
 
 /* Stage swatch backgrounds map to CSS variables that the plugin updates */
-.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Zero { background: var(--rt-publishStageColors-Zero); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Author { background: var(--rt-publishStageColors-Author); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-stage-House { background: var(--rt-publishStageColors-House); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Press { background: var(--rt-publishStageColors-Press); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Zero {
+  background: var(--rt-publishStageColors-Zero);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Author {
+  background: var(--rt-publishStageColors-Author);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-stage-House {
+  background: var(--rt-publishStageColors-House);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-stage-Press {
+  background: var(--rt-publishStageColors-Press);
+}
 
 /* Subplot swatches map to subplot color CSS variables */
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-0 { background: var(--rt-subplot-colors-0); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-1 { background: var(--rt-subplot-colors-1); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-2 { background: var(--rt-subplot-colors-2); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-3 { background: var(--rt-subplot-colors-3); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-4 { background: var(--rt-subplot-colors-4); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-5 { background: var(--rt-subplot-colors-5); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-6 { background: var(--rt-subplot-colors-6); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-7 { background: var(--rt-subplot-colors-7); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-8 { background: var(--rt-subplot-colors-8); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-9 { background: var(--rt-subplot-colors-9); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-10 { background: var(--rt-subplot-colors-10); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-11 { background: var(--rt-subplot-colors-11); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-12 { background: var(--rt-subplot-colors-12); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-13 { background: var(--rt-subplot-colors-13); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-14 { background: var(--rt-subplot-colors-14); }
-.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-15 { background: var(--rt-subplot-colors-15); }
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-0 {
+  background: var(--rt-subplot-colors-0);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-1 {
+  background: var(--rt-subplot-colors-1);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-2 {
+  background: var(--rt-subplot-colors-2);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-3 {
+  background: var(--rt-subplot-colors-3);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-4 {
+  background: var(--rt-subplot-colors-4);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-5 {
+  background: var(--rt-subplot-colors-5);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-6 {
+  background: var(--rt-subplot-colors-6);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-7 {
+  background: var(--rt-subplot-colors-7);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-8 {
+  background: var(--rt-subplot-colors-8);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-9 {
+  background: var(--rt-subplot-colors-9);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-10 {
+  background: var(--rt-subplot-colors-10);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-11 {
+  background: var(--rt-subplot-colors-11);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-12 {
+  background: var(--rt-subplot-colors-12);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-13 {
+  background: var(--rt-subplot-colors-13);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-14 {
+  background: var(--rt-subplot-colors-14);
+}
+
+.rt-color-grid-controls .rt-swatch-trigger.rt-subplot-15 {
+  background: var(--rt-subplot-colors-15);
+}
 
 /* Description under color section headers */
 .rt-color-section-desc {
@@ -1289,15 +1654,20 @@
   color: var(--text-muted);
   font-size: 12px;
 }
+
 .rt-color-grid-controls input[type="color"]::-webkit-color-swatch-wrapper {
   padding: 0;
 }
+
 .rt-color-grid-controls input[type="color"]::-webkit-color-swatch {
   border: none;
-  border-radius: 0; /* ensure square inside */
+  border-radius: 0;
+  /* ensure square inside */
 }
+
 .rt-color-grid-controls .rt-hex-input {
-  width: 6em; /* fits #RRGGBB with less space */
+  width: 6em;
+  /* fits #RRGGBB with less space */
   border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
   border-radius: 6px;
@@ -1307,6 +1677,7 @@
   flex-shrink: 1;
   min-width: 5em;
 }
+
 /* Focus state for hex input */
 .rt-color-grid-controls .rt-hex-input:focus {
   border-color: var(--interactive-accent);
@@ -1319,28 +1690,39 @@
   padding-bottom: 6px !important;
   border-bottom: 1px solid var(--background-modifier-border) !important;
 }
+
 .rt-color-grid-controls .setting-item {
   margin: 0;
   width: 100%;
   display: block;
-  padding: 0 !important; /* remove default vertical padding */
-  border: none !important; /* remove all borders */
-  border-top: none !important; /* specifically remove top border */
-  border-bottom: none !important; /* specifically remove bottom border */
-  border-left: none !important; /* specifically remove left border */
-  border-right: none !important; /* specifically remove right border */
+  padding: 0 !important;
+  /* remove default vertical padding */
+  border: none !important;
+  /* remove all borders */
+  border-top: none !important;
+  /* specifically remove top border */
+  border-bottom: none !important;
+  /* specifically remove bottom border */
+  border-left: none !important;
+  /* specifically remove left border */
+  border-right: none !important;
+  /* specifically remove right border */
 }
+
 /* Also neutralize Obsidian's `.setting-item + .setting-item { border-top: ... }` rule */
-.rt-color-grid-controls .setting-item + .setting-item {
+.rt-color-grid-controls .setting-item+.setting-item {
   border-top: none !important;
 }
+
 .rt-color-grid-controls .setting-item-control {
   display: flex;
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 0 !important;   /* remove default padding */
-  margin: 0 !important;    /* remove default margins */
+  padding: 0 !important;
+  /* remove default padding */
+  margin: 0 !important;
+  /* remove default margins */
   justify-content: space-between;
 }
 
@@ -1361,417 +1743,417 @@
 
 /* Search container styles (scoped to plugin container) */
 .radial-timeline-container .search-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Modal-specific search input sizing */
 .radial-timeline-search .search-input {
-    width: 100%;
-    max-width: 100%;
-    flex: 1;
-    margin-bottom: 16px;
+  width: 100%;
+  max-width: 100%;
+  flex: 1;
+  margin-bottom: 16px;
 }
 
 /* Settings visibility utility classes */
 .rt-settings-visible {
-    display: block;
+  display: block;
 }
 
 .rt-settings-hidden {
-    display: none !important;
+  display: none !important;
 }
 
 .rt-settings-release-notes {
-    margin-top: 24px;
+  margin-top: 24px;
 }
 
 .rt-settings-release-summary {
-    margin-bottom: 10px;
-    font-size: 0.95em;
-    color: var(--text-normal);
+  margin-bottom: 10px;
+  font-size: 0.95em;
+  color: var(--text-normal);
 }
 
 .rt-settings-release-notes-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .rt-settings-release-notes-header span {
-    color: var(--text-muted);
-    font-size: 0.9em;
+  color: var(--text-muted);
+  font-size: 0.9em;
 }
 
 .rt-settings-release-notes-preview {
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 8px;
-    padding: 12px;
-    max-height: 260px;
-    overflow-y: auto;
-    margin-top: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 8px;
 }
 
 .rt-settings-release-notes-details {
-    margin-top: 16px;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 12px;
-    background-color: var(--background-secondary);
+  margin-top: 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  background-color: var(--background-secondary);
 }
 
 .rt-settings-release-notes-details summary {
-    cursor: pointer;
-    font-weight: 600;
-    padding: 12px 16px;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 12px 16px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .rt-settings-release-notes-details summary::after {
-    content: '';
-    border-style: solid;
-    border-width: 4px 0 4px 6px;
-    border-color: transparent transparent transparent var(--text-faint);
-    margin-left: auto;
-    transition: transform 0.16s ease;
+  content: '';
+  border-style: solid;
+  border-width: 4px 0 4px 6px;
+  border-color: transparent transparent transparent var(--text-faint);
+  margin-left: auto;
+  transition: transform 0.16s ease;
 }
 
 .rt-settings-release-notes-details summary::marker,
 .rt-settings-release-notes-details summary::-webkit-details-marker {
-    display: none;
+  display: none;
 }
 
 .rt-settings-release-notes-details[open] summary {
-    border-bottom: 1px solid var(--background-modifier-border);
-    margin-bottom: 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 4px;
 }
 
 .rt-settings-release-notes-details[open] summary::after {
-    transform: rotate(90deg);
-    border-color: transparent transparent transparent var(--text-muted);
+  transform: rotate(90deg);
+  border-color: transparent transparent transparent var(--text-muted);
 }
 
 .rt-settings-release-notes-details-summary-divider {
-    color: var(--text-faint);
+  color: var(--text-faint);
 }
 
 .rt-settings-release-notes-details-summary-date {
-    font-weight: 500;
-    font-size: 0.9em;
-    color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.9em;
+  color: var(--text-muted);
 }
 
 .rt-settings-release-notes-details-summary-badge {
-    font-size: 0.7em;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 2px 8px;
-    border-radius: 999px;
-    border: 1px solid var(--background-modifier-border-hover, var(--background-modifier-border));
-    color: var(--text-muted);
-    background: var(--background-primary);
+  font-size: 0.7em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--background-modifier-border-hover, var(--background-modifier-border));
+  color: var(--text-muted);
+  background: var(--background-primary);
 }
 
 .rt-settings-release-notes-details-major {
-    border-color: var(--interactive-accent);
+  border-color: var(--interactive-accent);
 }
 
 .rt-settings-release-notes-details-body.markdown-preview-view {
-    padding: 8px 16px 16px;
-    background: none;
+  padding: 8px 16px 16px;
+  background: none;
 }
 
 .rt-settings-release-notes-details-body .rt-settings-release-notes-preview {
-    margin-top: 12px;
-    padding: 16px;
+  margin-top: 12px;
+  padding: 16px;
 }
 
 .rt-release-notes-modal.modal {
-    width: min(70vw, 980px);
-    max-height: 92vh;
+  width: min(70vw, 980px);
+  max-height: 92vh;
 }
 
 .rt-release-notes-modal .modal-title {
-    font-size: 1.45rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    letter-spacing: 0.01em;
+  font-size: 1.45rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: 0.01em;
 }
 
 .rt-release-notes-modal .modal-content {
-    position: relative;
-    max-height: 92vh;
-    overflow-y: auto;
-    padding: 28px 32px 24px;
-    border-radius: 24px;
-    background-color: var(--background-primary);
-    border: 1px solid var(--background-modifier-border);
-    box-shadow: 0 35px 80px rgba(0, 0, 0, 0.45);
+  position: relative;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 28px 32px 24px;
+  border-radius: 24px;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: 0 35px 80px rgba(0, 0, 0, 0.45);
 }
 
 .rt-release-notes-modal .modal-content::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.12), transparent 60%),
-                radial-gradient(circle at 82% 20%, rgba(255, 153, 0, 0.14), transparent 60%);
-    pointer-events: none;
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.12), transparent 60%),
+    radial-gradient(circle at 82% 20%, rgba(255, 153, 0, 0.14), transparent 60%);
+  pointer-events: none;
 }
 
-.rt-release-notes-modal .modal-content > * {
-    position: relative;
-    z-index: 1;
+.rt-release-notes-modal .modal-content>* {
+  position: relative;
+  z-index: 1;
 }
 
 .rt-release-notes-hero {
-    position: relative;
-    border-radius: 20px;
-    padding: 22px 26px;
-    margin-bottom: 24px;
-    background: linear-gradient(145deg, var(--background-secondary), var(--background-secondary-alt, var(--background-primary)));
-    border: 1px solid var(--background-modifier-border-hover, var(--background-modifier-border));
-    box-shadow: 0 22px 55px rgba(0, 0, 0, 0.35);
-    overflow: hidden;
+  position: relative;
+  border-radius: 20px;
+  padding: 22px 26px;
+  margin-bottom: 24px;
+  background: linear-gradient(145deg, var(--background-secondary), var(--background-secondary-alt, var(--background-primary)));
+  border: 1px solid var(--background-modifier-border-hover, var(--background-modifier-border));
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
 }
 
 .rt-release-notes-hero::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.18), transparent 50%),
-                radial-gradient(circle at 90% 0%, rgba(255, 128, 0, 0.16), transparent 45%);
-    pointer-events: none;
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.18), transparent 50%),
+    radial-gradient(circle at 90% 0%, rgba(255, 128, 0, 0.16), transparent 45%);
+  pointer-events: none;
 }
 
-.rt-release-notes-hero > * {
-    position: relative;
-    z-index: 1;
+.rt-release-notes-hero>* {
+  position: relative;
+  z-index: 1;
 }
 
 .rt-release-notes-hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.65rem;
-    padding: 4px 12px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    background: rgba(255, 255, 255, 0.12);
-    color: var(--text-normal);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.65rem;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-normal);
 }
 
 .rt-release-notes-hero-title {
-    margin: 12px 0 8px;
-    font-size: clamp(1.35rem, 1rem + 1vw, 1.75rem);
-    line-height: 1.3;
-    color: var(--text-normal);
+  margin: 12px 0 8px;
+  font-size: clamp(1.35rem, 1rem + 1vw, 1.75rem);
+  line-height: 1.3;
+  color: var(--text-normal);
 }
 
 .rt-release-notes-hero-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    font-size: 0.95em;
-    color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95em;
+  color: var(--text-muted);
 }
 
 .rt-release-notes-hero-description {
-    margin: 10px 0 0;
-    color: var(--text-muted);
-    line-height: 1.6;
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  line-height: 1.6;
 }
 
 .rt-release-notes-hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    align-items: baseline;
-    margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: baseline;
+  margin-top: 18px;
 }
 
 .rt-release-notes-hero-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 18px;
-    border-radius: 999px;
-    border: 1px solid var(--interactive-accent);
-    color: var(--interactive-accent);
-    text-decoration: none;
-    font-weight: 600;
-    transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.05));
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--interactive-accent);
+  color: var(--interactive-accent);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.05));
 }
 
 .rt-release-notes-hero-link:hover {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent, #fff);
-    box-shadow: 0 16px 35px rgba(0, 0, 0, 0.35);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, #fff);
+  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.35);
 }
 
 .rt-release-notes-hero-hint {
-    font-size: 0.85em;
-    color: var(--text-muted);
+  font-size: 0.85em;
+  color: var(--text-muted);
 }
 
 .rt-release-notes-modal-body {
-    max-height: min(560px, 55vh);
-    overflow-y: auto;
-    padding-right: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+  max-height: min(560px, 55vh);
+  overflow-y: auto;
+  padding-right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .rt-release-notes-modal-body::-webkit-scrollbar {
-    width: 6px;
+  width: 6px;
 }
 
 .rt-release-notes-modal-body::-webkit-scrollbar-thumb {
-    background-color: var(--background-modifier-border);
-    border-radius: 999px;
+  background-color: var(--background-modifier-border);
+  border-radius: 999px;
 }
 
 .rt-release-notes-modal-details {
-    position: relative;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 18px;
-    padding: 18px 22px 16px;
-    background: linear-gradient(155deg, var(--background-secondary), var(--background-secondary-alt, var(--background-primary)));
-    box-shadow: 0 18px 32px rgba(0, 0, 0, 0.28);
-    transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 18px;
+  padding: 18px 22px 16px;
+  background: linear-gradient(155deg, var(--background-secondary), var(--background-secondary-alt, var(--background-primary)));
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.28);
+  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .rt-release-notes-modal-details::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    pointer-events: none;
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  pointer-events: none;
 }
 
 .rt-release-notes-modal-details::after {
-    content: '';
-    position: absolute;
-    inset: 12px 12px auto auto;
-    width: calc(100% - 24px);
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-    opacity: 0;
-    transition: opacity 0.2s ease;
+  content: '';
+  position: absolute;
+  inset: 12px 12px auto auto;
+  width: calc(100% - 24px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .rt-release-notes-modal-details:hover {
-    border-color: var(--interactive-accent);
-    transform: translateY(-2px);
-    box-shadow: 0 24px 40px rgba(0, 0, 0, 0.32);
+  border-color: var(--interactive-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 24px 40px rgba(0, 0, 0, 0.32);
 }
 
 .rt-release-notes-modal-details:hover::after {
-    opacity: 1;
+  opacity: 1;
 }
 
 .rt-release-notes-modal-details-major {
-    border-color: var(--interactive-accent);
-    box-shadow: 0 26px 50px rgba(0, 0, 0, 0.42);
+  border-color: var(--interactive-accent);
+  box-shadow: 0 26px 50px rgba(0, 0, 0, 0.42);
 }
 
 .rt-release-notes-modal-details-major::before {
-    border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .rt-release-notes-modal-details-major::after {
-    opacity: 1;
+  opacity: 1;
 }
 
 .rt-release-notes-modal-details summary {
-    cursor: pointer;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    font-weight: 600;
-    padding-right: 28px;
+  cursor: pointer;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-weight: 600;
+  padding-right: 28px;
 }
 
 .rt-release-notes-modal-details summary::marker,
 .rt-release-notes-modal-details summary::-webkit-details-marker {
-    display: none;
+  display: none;
 }
 
 .rt-release-notes-modal-details summary::after {
-    content: '';
-    border-right: 2px solid var(--text-muted);
-    border-bottom: 2px solid var(--text-muted);
-    width: 8px;
-    height: 8px;
-    transform: rotate(-45deg);
-    margin-left: auto;
-    transition: transform 0.2s ease;
+  content: '';
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  width: 8px;
+  height: 8px;
+  transform: rotate(-45deg);
+  margin-left: auto;
+  transition: transform 0.2s ease;
 }
 
 .rt-release-notes-modal-details[open] summary::after {
-    transform: rotate(45deg);
+  transform: rotate(45deg);
 }
 
 .rt-release-notes-modal-details-summary-label {
-    font-size: 1.05em;
-    letter-spacing: 0.01em;
+  font-size: 1.05em;
+  letter-spacing: 0.01em;
 }
 
 .rt-release-notes-modal-details-summary-divider {
-    color: var(--text-faint);
+  color: var(--text-faint);
 }
 
 .rt-release-notes-modal-details-summary-date {
-    font-size: 0.9em;
-    color: var(--text-muted);
+  font-size: 0.9em;
+  color: var(--text-muted);
 }
 
 .rt-release-notes-modal-details-summary-badge {
-    font-size: 0.7em;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    padding: 3px 10px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: var(--text-normal);
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-normal);
 }
 
 .rt-release-notes-modal-details-body.markdown-preview-view {
-    padding: 14px 0 4px;
-    margin-top: 10px;
-    border-top: 1px solid var(--background-modifier-border);
-    background: none;
+  padding: 14px 0 4px;
+  margin-top: 10px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: none;
 }
 
 .rt-release-notes-modal-details-body.markdown-preview-view p {
-    line-height: 1.6;
+  line-height: 1.6;
 }
 
 .rt-release-notes-modal-footer {
-    margin-top: 28px;
-    padding-top: 16px;
-    border-top: 1px solid var(--background-modifier-border);
-    display: flex;
-    justify-content: flex-end;
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  justify-content: flex-end;
 }
 
 .rt-release-notes-modal-footer button {
-    padding: 8px 20px;
-    border-radius: 999px;
+  padding: 8px 20px;
+  border-radius: 999px;
 }
 
 /* Dynamic subplot/character colors are set inline in TypeScript - no static CSS needed */
@@ -1779,28 +2161,28 @@
 /* Dynamic color elements */
 [data-item-type="subplot"],
 [data-item-type="character"] {
-    stroke: white;
-    stroke-width: 0.07em;
-    paint-order: stroke;
+  stroke: white;
+  stroke-width: 0.07em;
+  paint-order: stroke;
 }
 
 /* SVG interaction elements */
 .radial-timeline-container .svg-interaction {
-    pointer-events: none;
+  pointer-events: none;
 }
 
 /* Layout containers */
 .rt-flex-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 15px;
 }
 
 /* Button styles */
 .rt-action-button {
-    padding: 10px;
-    margin-top: 20px;
+  padding: 10px;
+  margin-top: 20px;
 }
 
 /* Zero draft modal styles */
@@ -1809,24 +2191,34 @@
   min-height: 200px;
   resize: vertical;
 }
+
 .rt-zero-draft-info {
   margin: 6px 0 10px 0;
   color: var(--text-muted);
   font-size: 12px;
 }
+
 .rt-zero-draft-buttons {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
   margin-top: 12px;
 }
+
 .rt-zero-draft-override {
-  background-color: var(--rt-color-due) !important; /* use defined red */
+  background-color: var(--rt-color-due) !important;
+  /* use defined red */
   color: #ffffff !important;
   border-color: var(--rt-color-due) !important;
 }
-.rt-zero-draft-override:hover { filter: brightness(0.9); }
-.rt-zero-draft-override:focus { box-shadow: 0 0 0 2px rgba(208,94,94,0.3); }
+
+.rt-zero-draft-override:hover {
+  filter: brightness(0.9);
+}
+
+.rt-zero-draft-override:focus {
+  box-shadow: 0 0 0 2px rgba(208, 94, 94, 0.3);
+}
 
 /* AI Context Template Modal Styles */
 .rt-ai-context-info {
@@ -1942,11 +2334,11 @@
   position: absolute;
   inset: 0;
   background: radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.12), transparent 55%),
-              radial-gradient(circle at 85% 5%, rgba(247, 176, 92, 0.15), transparent 45%);
+    radial-gradient(circle at 85% 5%, rgba(247, 176, 92, 0.15), transparent 45%);
   pointer-events: none;
 }
 
-.rt-pulse-modal > * {
+.rt-pulse-modal>* {
   position: relative;
   z-index: 1;
 }
@@ -1979,7 +2371,7 @@
   pointer-events: none;
 }
 
-.rt-pulse-progress-hero > * {
+.rt-pulse-progress-hero>* {
   position: relative;
   z-index: 1;
 }
@@ -2004,6 +2396,7 @@
   font-weight: 700;
   background: linear-gradient(to right, #fff, #e0e0e0);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.02em;
 }
@@ -2170,13 +2563,23 @@
 }
 
 @keyframes rt-progress-flow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
 }
 
 @keyframes progress-shine {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .rt-pulse-progress-text {
@@ -2296,6 +2699,13 @@
   transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 2;
+}
+
+.rt-pulse-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
 }
 
 .rt-pulse-ruler-item.rt-is-complete {
@@ -2501,6 +2911,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-bottom: 16px;
 }
 
 .rt-subplot-picker-dropdown .dropdown {
@@ -2636,12 +3047,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2) 50%,
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2) 50%,
+      transparent);
   animation: progress-shine 2s infinite;
 }
 
@@ -2790,12 +3199,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2) 50%,
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2) 50%,
+      transparent);
   animation: progress-shine 2s infinite;
 }
 
@@ -2983,7 +3390,7 @@
   font-weight: 600;
   margin: 0;
   color: var(--text-normal);
-  font-size: 30px;
+  font-size: 20px;
   line-height: 1.2;
 }
 
@@ -3001,6 +3408,21 @@
   margin-bottom: 3px;
 }
 
+.rt-gossamer-justification-container {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rt-gossamer-current-justification {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  font-style: italic;
+}
+
 .rt-gossamer-score-history {
   color: var(--text-muted);
   font-size: 11px;
@@ -3009,10 +3431,10 @@
 }
 
 .rt-gossamer-score-row {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr 2fr 100px;
+  align-items: center;
+  gap: 16px;
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
@@ -3151,7 +3573,7 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
-  min-width: 200px;
+  min-width: 0;
   flex-shrink: 0;
 }
 
@@ -3163,10 +3585,10 @@
 }
 
 .rt-gossamer-score-input {
-  width: 190px;
+  width: 80px;
   flex-shrink: 0;
   min-height: 56px;
-  padding: 10px 18px;
+  padding: 10px 8px;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background-color: rgba(0, 0, 0, 0.4);
@@ -3181,12 +3603,7 @@
   border-color: var(--text-error);
 }
 
-.rt-gossamer-current-justification {
-  margin-top: 6px;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  max-width: 320px;
-}
+
 
 .rt-gossamer-score-buttons {
   margin: 0;
@@ -3238,17 +3655,17 @@
 
 /* Dynamic positioning */
 .radial-timeline-container .dynamic-position {
-    position: absolute;
+  position: absolute;
 }
 
 /* SVG Element Styles */
 .radial-timeline-container .svg-path {
-    display: none;
-    fill: none;
+  display: none;
+  fill: none;
 }
 
 .radial-timeline-container .svg-text {
-    font-weight: bold;
+  font-weight: bold;
 }
 
 /* Title text styles */
@@ -3258,25 +3675,26 @@
 
 /* Grade border styles */
 .radial-timeline-container .grade-border {
-    fill: none;
+  fill: none;
 }
 
 /* Invisible spacer styles */
 .radial-timeline-container .rt-invisible-spacer {
-    opacity: 0;
+  opacity: 0;
 }
 
 /* Button Container Styles */
 .rt-button-container {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    align-items: center; /* Align items vertically */
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  /* Align items vertically */
 }
 
 /* Info container styles */
 .rt-info-container {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 /* Pulse text styles */
@@ -3284,32 +3702,38 @@
   font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
   font-weight: normal;
   text-transform: none;
-  fill: #666666; /* Default color for the <text> element */
-  white-space: nowrap; /* Prevent automatic line wrapping */
+  fill: #666666;
+  /* Default color for the <text> element */
+  white-space: nowrap;
+  /* Prevent automatic line wrapping */
   text-transform: uppercase;
 }
 
 .pulse-text-grade {
   font-size: calc(16px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
-  fill: var(--rt-max-publish-stage-color); /* Darker green for better visibility */
+  fill: var(--rt-max-publish-stage-color);
+  /* Darker green for better visibility */
   font-weight: bold;
 }
 
 .pulse-text-positive {
   font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
-  fill: #2B9348; /* Darker green for better visibility */
+  fill: #2B9348;
+  /* Darker green for better visibility */
   font-weight: bold;
 }
 
 .pulse-text-negative {
   font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
-  fill: #D62828; /* Darker red for better visibility */
+  fill: #D62828;
+  /* Darker red for better visibility */
   font-weight: bold;
 }
 
 .pulse-text-neutral {
   font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
-  fill: #000000; /* Solid black */
+  fill: #000000;
+  /* Solid black */
   font-weight: bold;
 }
 
@@ -3319,143 +3743,161 @@
   pointer-events: none;
 }
 
-  .rt-subplot-ring-label-text {
-      fill: var(--rt-max-publish-stage-color); /* Use max stage color */
-      opacity: .3; /* Corrected opacity back to 30% */
-      font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
-      font-weight: 400; /* Regular weight */
-      font-synthesis: none; /* Prevent faux bold/italic synthesis for single-weight font */
-      letter-spacing: -0.02em; /* tighter tracking */
-      font-size: var(--rt-subplot-font-size);
-      dominant-baseline: central; /* Try central for potentially better vertical centering */
-      text-transform: uppercase;
-      pointer-events: none; /* Ignore mouse events */
-  }
+.rt-subplot-ring-label-text {
+  fill: var(--rt-max-publish-stage-color);
+  /* Use max stage color */
+  opacity: .3;
+  /* Corrected opacity back to 30% */
+  font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
+  font-weight: 400;
+  /* Regular weight */
+  font-synthesis: none;
+  /* Prevent faux bold/italic synthesis for single-weight font */
+  letter-spacing: -0.02em;
+  /* tighter tracking */
+  font-size: var(--rt-subplot-font-size);
+  dominant-baseline: central;
+  /* Try central for potentially better vertical centering */
+  text-transform: uppercase;
+  pointer-events: none;
+  /* Ignore mouse events */
+}
 
 /* Use .non-selected class for faded state (consistent with other elements) */
 .rt-subplot-ring-label-text.rt-non-selected {
-    opacity: .1; /* Corrected opacity back to 30% */
+  opacity: .1;
+  /* Corrected opacity back to 30% */
 }
 
 /* Hide subplot ring labels in Gossamer mode AND on hover */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-subplot-ring-label-text {
-    opacity: 0 !important;
+  opacity: 0 !important;
 }
+
 .radial-timeline-svg.scene-hover .rt-subplot-ring-label-text {
-    opacity: 0 !important;
+  opacity: 0 !important;
 }
 
 /* Hide subplot ring labels in shift mode (top left quadrant) */
 .radial-timeline-svg[data-shift-mode="active"] .rt-subplot-ring-label-text {
-    opacity: 0 !important;
+  opacity: 0 !important;
 }
 
 
 /* Progress Ring Base (thin gray track underneath) */
 .radial-timeline-container .progress-ring-base {
   fill: none;
-  stroke: #000000; /* Purple background to match estimation arc #5e0098*/
-  stroke-width: 10px; /* Base width */
+  stroke: #000000;
+  /* Purple background to match estimation arc #5e0098*/
+  stroke-width: 10px;
+  /* Base width */
 }
 
 /* Year Progress Ring (Rainbow Segments) */
 .radial-timeline-container .progress-ring-fill {
   fill: none;
-  stroke-width: 6px; /* Make rainbow ring thinner */
-  stroke-linecap: round; /* Optional: round ends */
+  stroke-width: 6px;
+  /* Make rainbow ring thinner */
+  stroke-linecap: round;
+  /* Optional: round ends */
 }
 
 .radial-timeline-container .estimation-date-label {
-    font-size: 14px;
-    fill: #ff0000;
-    font-weight: bold;
+  font-size: 14px;
+  fill: #ff0000;
+  font-weight: bold;
 }
 
 .radial-timeline-container .estimated-date-tick {
-    stroke: #ff0000;
-    stroke-width: 2px;
+  stroke: #ff0000;
+  stroke-width: 2px;
 }
 
 .radial-timeline-container .estimated-date-dot {
-    fill: #ff0000;
+  fill: #ff0000;
 }
 
 /* Target Completion Date Marker Styles */
 .radial-timeline-container .target-date-tick {
-    stroke: #00cc00; /* Bright Green */
-    stroke-width: 2px;
+  stroke: #00cc00;
+  /* Bright Green */
+  stroke-width: 2px;
 }
 
 .radial-timeline-container .target-date-marker {
-    fill: none; /* No fill */
-    stroke: #00cc00; /* Bright Green */
-    stroke-width: 2px; /* Outline width */
+  fill: none;
+  /* No fill */
+  stroke: #00cc00;
+  /* Bright Green */
+  stroke-width: 2px;
+  /* Outline width */
 }
 
 /* Styling for the embedded README container in settings */
 .rt-manuscript-readme-container {
-    padding: 0; 
-    margin-top: 15px;
-    margin-bottom: 20px;
+  padding: 0;
+  margin-top: 15px;
+  margin-bottom: 20px;
 }
 
 /* Settings input validation styles */
 .rt-setting-input-success {
-    border-color: #00ff48 !important;
-    background-color: rgba(0, 255, 72, 0.1) !important;
-    box-shadow: 0 0 0 2px rgba(0, 255, 72, 0.2) !important;
+  border-color: #00ff48 !important;
+  background-color: rgba(0, 255, 72, 0.1) !important;
+  box-shadow: 0 0 0 2px rgba(0, 255, 72, 0.2) !important;
 }
 
 .rt-setting-input-error {
-    border-color: #ff4444 !important;
-    background-color: rgba(255, 68, 68, 0.1) !important;
-    box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2) !important;
+  border-color: #ff4444 !important;
+  background-color: rgba(255, 68, 68, 0.1) !important;
+  box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2) !important;
 }
 
 /* Source path autocomplete suggestions */
 .source-path-suggestions {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    border-radius: 4px;
-    margin-top: 2px;
-    min-width: 200px; /* Ensure minimum width */
-    background-color: var(--background-primary);
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    border: 1px solid var(--background-modifier-border);
-    max-height: 200px;
-    overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  margin-top: 2px;
+  min-width: 200px;
+  /* Ensure minimum width */
+  background-color: var(--background-primary);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  border: 1px solid var(--background-modifier-border);
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .source-path-suggestions.hidden {
-    display: none;
+  display: none;
 }
 
 .source-path-suggestions.visible {
-    display: block;
+  display: block;
 }
 
 .source-path-input-container {
-    position: relative;
+  position: relative;
 }
 
 .rt-source-path-suggestion-item {
-    padding: 8px 12px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--background-modifier-border);
-    /* Settings UI can animate hover for better affordance (timeline has no animations) */
-    transition: background-color 0.1s ease;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--background-modifier-border);
+  /* Settings UI can animate hover for better affordance (timeline has no animations) */
+  transition: background-color 0.1s ease;
 }
 
 .rt-source-path-suggestion-item:last-child {
-    border-bottom: none !important;
+  border-bottom: none !important;
 }
 
 .rt-source-path-suggestion-item:hover,
 .rt-source-path-suggestion-item.selected {
-    background-color: var(--background-modifier-hover) !important;
+  background-color: var(--background-modifier-hover) !important;
 }
 
 /* status header hover effect */
@@ -3463,6 +3905,7 @@
   transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
   text-decoration: none;
 }
+
 .status-header:hover .status-header-letter {
   transform: scale(1.05);
   fill: #ffffff;
@@ -3472,7 +3915,8 @@
 /* bottom-left count inside Completed grid cells */
 .radial-timeline-container .grid-completed-count {
   fill: #000000;
-  font-size: 14px; /* doubled size */
+  font-size: 14px;
+  /* doubled size */
   pointer-events: none;
 }
 
@@ -3486,6 +3930,7 @@
   transition: transform 120ms ease, fill 120ms ease, text-decoration-color 120ms ease;
   text-decoration: none;
 }
+
 .stage-header:hover .stage-header-letter {
   transform: scale(1.07);
   fill: #ffffff;
@@ -3597,6 +4042,7 @@
   cursor: pointer;
   gap: 6px;
 }
+
 .rt-patreon-icon {
   margin-right: 6px;
 }
@@ -3686,7 +4132,8 @@
   text-anchor: middle;
   dominant-baseline: middle;
   font-family: 'Lato', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 13px; /* Beat titles are 12px, this is slightly larger */
+  font-size: 13px;
+  /* Beat titles are 12px, this is slightly larger */
   font-weight: normal;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -3712,14 +4159,14 @@
 
 .rt-mode-option .rt-active.rt-mode-acronym-text {
   fill: var(--text-on-accent) !important;
-  font-size: 15px; 
+  font-size: 15px;
   font-weight: 300;
   letter-spacing: 0.1em;
 }
 
 .rt-mode-option .rt-active.rt-mode-number-label {
   fill: var(--text-on-accent) !important;
-  font-size: 15px; 
+  font-size: 15px;
   font-weight: 300;
 
 }
@@ -3810,17 +4257,24 @@
 
 /* Shift mode: Style the number squares and text to match the grayed-out scenes */
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square {
-  fill: var(--interactive-normal) !important; /* Dark gray background */
-  stroke: none !important; /* Remove any borders */
+  fill: var(--interactive-normal) !important;
+  /* Dark gray background */
+  stroke: none !important;
+  /* Remove any borders */
 }
+
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-text {
-  fill: var(--text-muted) !important; /* Dark muted text to match dark theme */
-  opacity: 0.5; /* Dim the text to match the faded scenes */
+  fill: var(--text-muted) !important;
+  /* Dark muted text to match dark theme */
+  opacity: 0.5;
+  /* Dim the text to match the faded scenes */
 }
+
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-scene-is-open:not(.rt-shift-active) {
   fill: var(--interactive-normal) !important;
   stroke: none !important;
 }
+
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-scene-is-open:not(.rt-shift-active) {
   fill: var(--text-muted) !important;
   opacity: 0.5 !important;
@@ -3831,7 +4285,8 @@
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:has(.rt-shift-locked) {
   opacity: 1 !important;
-  transition: none !important; /* Override parent transition for instant hover */
+  transition: none !important;
+  /* Override parent transition for instant hover */
 }
 
 /* Shift mode: Hover/selected scenes get accent color */
@@ -3845,36 +4300,87 @@
 /* Shift mode: A new class, managed by JS, to restore number squares on hover/select */
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active {
   /* Apply subplot color based on data attribute - avoid inline styles */
-  fill: var(--rt-subplot-colors-0); /* Default fallback */
+  fill: var(--rt-subplot-colors-0);
+  /* Default fallback */
 }
 
 /* Apply subplot colors via data attributes - avoids inline style recalc */
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="0"]  { fill: var(--rt-subplot-colors-0) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="1"]  { fill: var(--rt-subplot-colors-1) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="2"]  { fill: var(--rt-subplot-colors-2) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="3"]  { fill: var(--rt-subplot-colors-3) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="4"]  { fill: var(--rt-subplot-colors-4) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="5"]  { fill: var(--rt-subplot-colors-5) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="6"]  { fill: var(--rt-subplot-colors-6) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="7"]  { fill: var(--rt-subplot-colors-7) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="8"]  { fill: var(--rt-subplot-colors-8) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="9"]  { fill: var(--rt-subplot-colors-9) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="10"] { fill: var(--rt-subplot-colors-10) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="11"] { fill: var(--rt-subplot-colors-11) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="12"] { fill: var(--rt-subplot-colors-12) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="13"] { fill: var(--rt-subplot-colors-13) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="14"] { fill: var(--rt-subplot-colors-14) !important; }
-.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="15"] { fill: var(--rt-subplot-colors-15) !important; }
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="0"] {
+  fill: var(--rt-subplot-colors-0) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="1"] {
+  fill: var(--rt-subplot-colors-1) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="2"] {
+  fill: var(--rt-subplot-colors-2) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="3"] {
+  fill: var(--rt-subplot-colors-3) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="4"] {
+  fill: var(--rt-subplot-colors-4) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="5"] {
+  fill: var(--rt-subplot-colors-5) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="6"] {
+  fill: var(--rt-subplot-colors-6) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="7"] {
+  fill: var(--rt-subplot-colors-7) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="8"] {
+  fill: var(--rt-subplot-colors-8) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="9"] {
+  fill: var(--rt-subplot-colors-9) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="10"] {
+  fill: var(--rt-subplot-colors-10) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="11"] {
+  fill: var(--rt-subplot-colors-11) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="12"] {
+  fill: var(--rt-subplot-colors-12) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="13"] {
+  fill: var(--rt-subplot-colors-13) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="14"] {
+  fill: var(--rt-subplot-colors-14) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="15"] {
+  fill: var(--rt-subplot-colors-15) !important;
+}
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
-  fill: #000000 !important; /* Black text */
-  opacity: 1 !important; /* Full opacity when active */
+  fill: #000000 !important;
+  /* Black text */
+  opacity: 1 !important;
+  /* Full opacity when active */
 }
 
 /* Ensure active text wins over grade/non-selected rules */
 .radial-timeline-container .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
   fill: #000000 !important;
-  opacity: 1 !important; /* Full opacity when active */
+  opacity: 1 !important;
+  /* Full opacity when active */
 }
 
 /* Legacy: Keep for backwards compatibility */
@@ -3937,18 +4443,21 @@
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-overlap {
-  stroke: #ff9900; /* Yellow for temporal overlaps */
+  stroke: #ff9900;
+  /* Yellow for temporal overlaps */
   stroke-width: 6px;
   /*stroke-dasharray: 4, 1; /* Dotted pattern: 4px dash, 1px gap */
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-unparseable {
-  stroke: #ff0000; /* Red for unparseable/missing durations (using --rt-color-due red) */
+  stroke: #ff0000;
+  /* Red for unparseable/missing durations (using --rt-color-due red) */
   stroke-width: 6px;
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-ongoing:not(.rt-duration-arc-overlap) {
-  stroke: var(--text-muted); /* Standard color for "ongoing" durations */
+  stroke: var(--text-muted);
+  /* Standard color for "ongoing" durations */
   stroke-width: 6px;
 }
 
@@ -3966,7 +4475,8 @@
   /* Hide discontinuity markers by default (only show in shift mode) */
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, fill 0.2s ease; /* Add transition to base state for both directions */
+  transition: opacity 0.2s ease, fill 0.2s ease;
+  /* Add transition to base state for both directions */
 }
 
 /* Show discontinuity markers when shift mode is active */
@@ -3994,7 +4504,8 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 /* Hide triangles in most modes - only show in base narrative view */
-.radial-timeline-svg[data-mode="subplot"] .rt-subplot-dominance-flag, /* Main Plot mode */
+.radial-timeline-svg[data-mode="subplot"] .rt-subplot-dominance-flag,
+/* Main Plot mode */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-subplot-dominance-flag,
 .radial-timeline-svg[data-shift-mode="active"] .rt-subplot-dominance-flag,
 .radial-timeline-svg.scene-hover .rt-subplot-dominance-flag {
@@ -4013,7 +4524,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 .rt-when-field-warning text {
-  
+
   font-size: 10px;
   font-weight: 600;
   fill: var(--text-error);
@@ -4067,7 +4578,8 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.4;
-  padding-left: 26px; /* Align with checkbox text */
+  padding-left: 26px;
+  /* Align with checkbox text */
 }
 
 /* Utility classes for settings */
