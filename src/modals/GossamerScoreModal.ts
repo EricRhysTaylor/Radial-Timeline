@@ -93,54 +93,54 @@ export class GossamerScoreModal extends Modal {
     svg.setAttribute('stroke-width', '2');
     svg.setAttribute('stroke-linecap', 'round');
     svg.setAttribute('stroke-linejoin', 'round');
-    
+
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', '12');
     circle.setAttribute('cy', '12');
     circle.setAttribute('r', '10');
-    
+
     const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path1.setAttribute('d', 'm15 9-6 6');
-    
+
     const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path2.setAttribute('d', 'm9 9 6 6');
-    
+
     svg.appendChild(circle);
     svg.appendChild(path1);
     svg.appendChild(path2);
-    
+
     return svg;
   }
 
   onOpen(): void {
     const { contentEl, modalEl } = this;
     contentEl.empty();
-    
+
     // Set modal width using Obsidian's approach
     if (modalEl) {
       modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.classList.add('rt-beats-modal-shell');
+      modalEl.classList.add('rt-pulse-modal-shell');
     }
-    
+
     contentEl.addClass('rt-gossamer-score-modal');
-    contentEl.addClass('rt-beats-modal');
+    contentEl.addClass('rt-pulse-modal');
 
     // Use settings as source of truth for beat system
     const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
-    
+
     // Filter beats based on settings (same logic as main.ts getSceneData)
     // Need to read Beat Model from metadata cache since it's not on Scene object
     const filteredBeats = this.plotBeats.filter(beat => {
       if (!beat.path) return false;
-      
+
       const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
       if (!file) return false;
-      
+
       const cache = this.plugin.app.metadataCache.getFileCache(file as any);
       const fm = cache?.frontmatter;
       const beatModel = fm?.["Beat Model"] as string | undefined;
-      
+
       if (settingsSystem === 'Custom') {
         // For Custom, only show beats WITHOUT recognized Beat Models
         const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
@@ -150,12 +150,12 @@ export class GossamerScoreModal extends Modal {
         return beatModel === settingsSystem;
       }
     });
-    
+
     // Use filtered beats for entry building
     this.plotBeats = filteredBeats;
-    
+
     const plotSystemTemplate = getPlotSystem(settingsSystem);
-    
+
     // Validate beat count (only when template exists)
     const actualCount = filteredBeats.length;
     const countMismatch = plotSystemTemplate ? actualCount !== plotSystemTemplate.beatCount : false;
@@ -176,7 +176,7 @@ export class GossamerScoreModal extends Modal {
     // Show warning if no beats match
     if (actualCount === 0) {
       const noBeatsWarning = contentEl.createEl('div', {
-        text: settingsSystem === 'Custom' 
+        text: settingsSystem === 'Custom'
           ? `⚠️ No custom story beats found. Create notes with "Class: Beat" without "Beat Model" field, or change beat system in Settings.`
           : `⚠️ No story beats found with "Beat Model: ${settingsSystem}". Check your beat notes have the correct Beat Model field, or change beat system in Settings.`
       });
@@ -215,12 +215,12 @@ export class GossamerScoreModal extends Modal {
 
       // First row: Beat title, range, and new score input
       const firstRow = entryDiv.createDiv('rt-gossamer-score-row');
-      
+
       // Left side: Beat title with range
       const titleContainer = firstRow.createDiv('rt-gossamer-beat-title-container');
       const beatTitleEl = titleContainer.createEl('span', { text: entry.beatTitle });
       beatTitleEl.addClass('rt-gossamer-beat-title');
-      
+
       // Add range if available
       if (entry.range) {
         const rangeEl = titleContainer.createEl('span', { text: ` (${entry.range})` });
@@ -259,19 +259,19 @@ export class GossamerScoreModal extends Modal {
       const secondRow = entryDiv.createDiv('rt-gossamer-scores-history-row');
       const existingScoresEl = secondRow.createDiv('rt-gossamer-existing-scores-container');
       entry.scoreDisplayEl = existingScoresEl;
-      
+
       const renderScores = () => {
         existingScoresEl.empty();
-        
+
         const createScoreCard = (gossamerNum: number, score: number, justification?: string) => {
           const scoreContainer = existingScoresEl.createDiv();
           scoreContainer.addClass('rt-gossamer-score-item-container');
           scoreContainer.setAttribute('data-gossamer-num', gossamerNum.toString());
-          
+
           const iconColumn = scoreContainer.createDiv();
           iconColumn.addClass('rt-gossamer-icon-column');
           iconColumn.appendChild(this.createCircleXIcon());
-          
+
           const textColumn = scoreContainer.createDiv();
           textColumn.addClass('rt-gossamer-text-column');
           textColumn.createSpan({
@@ -288,20 +288,20 @@ export class GossamerScoreModal extends Modal {
               cls: 'rt-gossamer-score-justification'
             });
           }
-          
+
           scoreContainer.addEventListener('click', () => {
             entry.scoresToDelete.add(gossamerNum);
             renderScores();
           });
         };
-        
+
         // Count total scores to display
         const totalScores =
           (entry.currentScore !== undefined &&
-           entry.currentIndex !== undefined &&
-           !entry.scoresToDelete.has(entry.currentIndex) ? 1 : 0) +
+            entry.currentIndex !== undefined &&
+            !entry.scoresToDelete.has(entry.currentIndex) ? 1 : 0) +
           entry.history.filter(item => !entry.scoresToDelete.has(item.index)).length;
-        
+
         // Existing scores oldest → newest
         entry.history.forEach(item => {
           if (entry.scoresToDelete.has(item.index)) return;
@@ -309,20 +309,20 @@ export class GossamerScoreModal extends Modal {
         });
 
         if (entry.currentScore !== undefined &&
-            entry.currentIndex !== undefined &&
-            !entry.scoresToDelete.has(entry.currentIndex)) {
+          entry.currentIndex !== undefined &&
+          !entry.scoresToDelete.has(entry.currentIndex)) {
           createScoreCard(entry.currentIndex, entry.currentScore, entry.currentJustification);
         }
-        
+
         // Add count indicator if there are many scores
         if (totalScores > 10) {
-          const countSpan = existingScoresEl.createSpan({ 
+          const countSpan = existingScoresEl.createSpan({
             text: `(${totalScores} scores)`,
             cls: 'rt-gossamer-score-count'
           });
         }
       };
-      
+
       renderScores();
     });
 
@@ -533,7 +533,7 @@ export class GossamerScoreModal extends Modal {
       lines.push('');
       lines.push('## Completed Momentum Scores');
       lines.push('');
-      
+
       for (const entry of this.entries) {
         // Include ideal range if available
         if (entry.range) {
@@ -542,13 +542,13 @@ export class GossamerScoreModal extends Modal {
           lines.push(`${entry.beatTitle}: `);
         }
       }
-      
+
       lines.push('');
       lines.push('# Note: After filling in the numbers, return ONLY the "Completed Momentum Scores" block so it can be pasted back into Obsidian.');
-      
+
       const template = lines.join('\n');
       await navigator.clipboard.writeText(template);
-      
+
       new Notice('✓ Template copied! Paste into your AI and have it fill in the scores.');
 
       if (missingRangeBeats.length > 0) {
@@ -567,7 +567,7 @@ export class GossamerScoreModal extends Modal {
     try {
       const clipboard = await navigator.clipboard.readText();
       const parsedScores = parseScoresFromClipboard(clipboard);
-      
+
       if (parsedScores.size === 0) {
         new Notice('No scores found in clipboard. Expected format: "1: 15, 2: 25" or "Beat Name: 42"');
         return;
@@ -575,16 +575,16 @@ export class GossamerScoreModal extends Modal {
 
       // Check if this is positional format (keys start with __position_)
       const isPositionalFormat = Array.from(parsedScores.keys())[0]?.startsWith('__position_');
-      
+
       let matchCount = 0;
-      
+
       if (isPositionalFormat) {
         // Positional format: map by index
         for (let i = 0; i < this.entries.length; i++) {
           const entry = this.entries[i];
           const position = i + 1; // 1-based position
           const score = parsedScores.get(`__position_${position}`);
-          
+
           if (score !== undefined && entry.inputEl) {
             entry.inputEl.setValue(score.toString());
             entry.newScore = score;
@@ -592,7 +592,7 @@ export class GossamerScoreModal extends Modal {
             matchCount++;
           }
         }
-        
+
         // Validate we got all expected scores
         const expectedCount = this.entries.length;
         if (matchCount < expectedCount) {
@@ -604,10 +604,10 @@ export class GossamerScoreModal extends Modal {
         // Named format: match by beat name (case-insensitive)
         for (const entry of this.entries) {
           const normalized = normalizeBeatName(entry.beatName);
-          
+
           // Try exact match first
           let score = parsedScores.get(normalized);
-          
+
           // If no exact match, try case-insensitive search
           if (score === undefined) {
             const normalizedLower = normalized.toLowerCase();
@@ -618,7 +618,7 @@ export class GossamerScoreModal extends Modal {
               }
             }
           }
-          
+
           if (score !== undefined && entry.inputEl) {
             entry.inputEl.setValue(score.toString());
             entry.newScore = score;
@@ -647,7 +647,7 @@ export class GossamerScoreModal extends Modal {
       } else if (entry.inputEl && entry.inputEl.getValue().trim().length > 0) {
         errors.push(`Invalid score for "${entry.beatTitle}"`);
       }
-      
+
       // Track deletions
       if (entry.scoresToDelete.size > 0) {
         deletions.set(entry.beatTitle, entry.scoresToDelete);
@@ -670,12 +670,12 @@ export class GossamerScoreModal extends Modal {
       if (scores.size > 0) {
         await this.plugin.saveGossamerScores(scores);
       }
-      
+
       // Process deletions if there are any
       if (deletions.size > 0) {
         await this.processDeletions(deletions);
       }
-      
+
       const changeCount = scores.size + deletions.size;
       new Notice(`Updated ${changeCount} beat(s).`);
       this.close();
@@ -684,15 +684,15 @@ export class GossamerScoreModal extends Modal {
       new Notice('Failed to save scores. Check console for details.');
     }
   }
-  
+
   private async processDeletions(deletions: Map<string, Set<number>>): Promise<void> {
     // Get files from source path (same as saveGossamerScores)
     const sourcePath = this.plugin.settings.sourcePath || '';
     const allFiles = this.plugin.app.vault.getMarkdownFiles();
-    const files = sourcePath 
+    const files = sourcePath
       ? allFiles.filter(f => f.path.startsWith(sourcePath))
       : allFiles;
-    
+
     for (const [beatTitle, gossamerNums] of deletions) {
       // Find Plot note by title (same logic as saveGossamerScores)
       let file = null;
@@ -706,15 +706,15 @@ export class GossamerScoreModal extends Modal {
           }
         }
       }
-      
+
       if (!file) {
         continue;
       }
-      
+
       try {
         await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
           const fm = yaml as Record<string, any>;
-          
+
           // Delete specified Gossamer fields
           for (const num of gossamerNums) {
             delete fm[`Gossamer${num}`];
@@ -730,15 +730,15 @@ export class GossamerScoreModal extends Modal {
     // First check if there are any scores to delete
     const sourcePath = this.plugin.settings.sourcePath || '';
     const allFiles = this.plugin.app.vault.getMarkdownFiles();
-    const files = sourcePath 
+    const files = sourcePath
       ? allFiles.filter(f => f.path.startsWith(sourcePath))
       : allFiles;
-    
+
     let hasAnyScores = false;
     for (const file of files) {
       const cache = this.plugin.app.metadataCache.getFileCache(file);
       const fm = cache?.frontmatter;
-      
+
       if (fm && (fm.Class === 'Beat' || fm.class === 'Beat')) {
         // Check if this file has any Gossamer scores
         for (let i = 1; i <= 30; i++) {
@@ -750,30 +750,30 @@ export class GossamerScoreModal extends Modal {
         if (hasAnyScores) break;
       }
     }
-    
+
     // If no scores found, show alert and return
     if (!hasAnyScores) {
       new Notice('No Gossamer scores found to delete.');
       return;
     }
-    
+
     // Show confirmation dialog with improved styling
     const confirmed = await new Promise<boolean>((resolve) => {
       const modal = new Modal(this.app);
       modal.titleEl.setText('Delete all Gossamer scores');
-      
+
       const content = modal.contentEl.createDiv();
       content.addClass('rt-gossamer-confirm-content');
-      
+
       // Warning message with proper styling
       const warningEl = content.createEl('div', {
         text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) and their justifications from ALL Beat notes. This action cannot be undone.'
       });
       warningEl.addClass('rt-gossamer-confirm-warning');
-      
+
       // Button container with proper Obsidian styling
       const buttonContainer = content.createDiv('rt-gossamer-confirm-buttons');
-      
+
       new ButtonComponent(buttonContainer)
         .setButtonText('Delete all scores')
         .setWarning()
@@ -781,26 +781,26 @@ export class GossamerScoreModal extends Modal {
           modal.close();
           resolve(true);
         });
-        
+
       new ButtonComponent(buttonContainer)
         .setButtonText('Cancel')
         .onClick(() => {
           modal.close();
           resolve(false);
         });
-        
+
       modal.open();
     });
-    
+
     if (!confirmed) return;
-    
+
     try {
       let deletedCount = 0;
-      
+
       for (const file of files) {
         const cache = this.plugin.app.metadataCache.getFileCache(file);
         const fm = cache?.frontmatter;
-        
+
         if (fm && (fm.Class === 'Beat' || fm.class === 'Beat')) {
           // Check if this file has any Gossamer scores
           let hasGossamerScores = false;
@@ -810,17 +810,17 @@ export class GossamerScoreModal extends Modal {
               break;
             }
           }
-          
+
           if (hasGossamerScores) {
             await this.plugin.app.fileManager.processFrontMatter(file, (yaml) => {
               const frontmatter = yaml as Record<string, any>;
-              
+
               // Delete all Gossamer fields (Gossamer1-30) and their justifications
               for (let i = 1; i <= 30; i++) {
                 delete frontmatter[`Gossamer${i}`];
                 delete frontmatter[`Gossamer${i} Justification`];
               }
-              
+
               // Also delete the Last Updated field
               delete frontmatter['Gossamer Last Updated'];
             });
@@ -828,10 +828,10 @@ export class GossamerScoreModal extends Modal {
           }
         }
       }
-      
+
       new Notice(`✓ Deleted all Gossamer scores and justifications from ${deletedCount} Beat note(s).`);
       this.close(); // Close the modal since all scores are cleared
-      
+
     } catch (error) {
       console.error('[Gossamer] Failed to delete all scores:', error);
       new Notice('Failed to delete all scores. Check console for details.');

@@ -28,12 +28,12 @@ export interface AnalysisOptions {
 export class GossamerProcessingModal extends Modal {
     private readonly plugin: RadialTimelinePlugin;
     private readonly onConfirm: (options: AnalysisOptions) => Promise<void>;
-    
+
     public isProcessing: boolean = false;
     public analysisOptions: AnalysisOptions = {
         requestScores: true
     };
-    
+
     // UI elements
     private confirmationView?: HTMLElement;
     private processingView?: HTMLElement;
@@ -43,13 +43,13 @@ export class GossamerProcessingModal extends Modal {
     private progressBarEl?: HTMLElement;
     private errorListEl?: HTMLElement;
     private closeButtonEl?: ButtonComponent;
-    
+
     // Processing state
     private manuscriptInfo?: ManuscriptInfo;
     private currentStatus: string = 'Initializing...';
     private apiCallStartTime?: number;
     private timerInterval?: number;
-    
+
     constructor(
         app: App,
         plugin: RadialTimelinePlugin,
@@ -63,15 +63,15 @@ export class GossamerProcessingModal extends Modal {
     onOpen(): void {
         const { contentEl, titleEl, modalEl } = this;
         titleEl.setText('Gossamer gemini momentum analysis');
-        
+
         // Set modal width
         if (modalEl) {
             modalEl.style.width = '700px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '90vw';
         }
-        
+
         contentEl.classList.add('rt-gossamer-processing-modal');
-        
+
         // Show confirmation view first
         this.showConfirmationView();
     }
@@ -98,37 +98,37 @@ export class GossamerProcessingModal extends Modal {
     private showConfirmationView(): void {
         const { contentEl } = this;
         contentEl.empty();
-        
+
         this.confirmationView = contentEl;
-        
+
         // Info section
-        const infoEl = contentEl.createDiv({ cls: 'rt-beats-info' });
-        
+        const infoEl = contentEl.createDiv({ cls: 'rt-pulse-info' });
+
         // Beat system info (will be updated when manuscript info is set)
         const beatSystemEl = infoEl.createDiv({ cls: 'rt-gossamer-beat-system-info' });
         beatSystemEl.setText('Gathering manuscript details...');
-        
-        infoEl.createDiv({ 
+
+        infoEl.createDiv({
             cls: 'rt-gossamer-description',
             text: 'This will analyze your entire manuscript using Gemini AI to evaluate narrative momentum at each story beat.'
         });
-        
+
         // Manuscript info section (will be populated by caller)
         const infoSection = contentEl.createDiv({ cls: 'rt-gossamer-info-section' });
         infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-gossamer-section-title' });
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-manuscript-info' });
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
-        
+
         // Check if API key is configured
         if (!this.plugin.settings.geminiApiKey) {
             // Warning section for missing API key
-            const warningEl = contentEl.createDiv({ cls: 'rt-beats-warning' });
+            const warningEl = contentEl.createDiv({ cls: 'rt-pulse-warning' });
             warningEl.setText('⚠️ Gemini API key not configured. Please set your API key in Settings → AI → Gemini API key.');
         }
-        
+
         // Action buttons
-        const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
-        
+        const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+
         new ButtonComponent(buttonRow)
             .setButtonText('Begin Analysis')
             .setCta()
@@ -136,7 +136,7 @@ export class GossamerProcessingModal extends Modal {
             .onClick(async () => {
                 await this.startProcessing();
             });
-        
+
         new ButtonComponent(buttonRow)
             .setButtonText('Cancel')
             .onClick(() => this.close());
@@ -145,7 +145,7 @@ export class GossamerProcessingModal extends Modal {
     private async startProcessing(): Promise<void> {
         this.isProcessing = true;
         this.showProcessingView();
-        
+
         try {
             await this.onConfirm(this.analysisOptions);
         } catch (error) {
@@ -156,37 +156,37 @@ export class GossamerProcessingModal extends Modal {
     private showProcessingView(): void {
         const { contentEl } = this;
         contentEl.empty();
-        
+
         // Manuscript info section
         const infoSection = contentEl.createDiv({ cls: 'rt-gossamer-info-section' });
         infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-gossamer-section-title' });
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-manuscript-info' });
         this.manuscriptInfoEl.setText('Assembling manuscript...');
-        
+
         // Progress bar container (using Scene Analysis pattern)
         const progressContainer = contentEl.createDiv({ cls: 'rt-gossamer-progress-container' });
-        
+
         // Progress bar background
         const progressBg = progressContainer.createDiv({ cls: 'rt-gossamer-progress-bg' });
         this.progressBarEl = progressBg.createDiv({ cls: 'rt-gossamer-progress-bar' });
         // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
         this.progressBarEl.style.setProperty('--progress-width', '0%');
-        
+
         // Status section
         const statusSection = contentEl.createDiv({ cls: 'rt-gossamer-status-section' });
         statusSection.createEl('h3', { text: 'Status', cls: 'rt-gossamer-section-title' });
         this.statusTextEl = statusSection.createDiv({ cls: 'rt-gossamer-status-text' });
         this.statusTextEl.setText(this.currentStatus);
-        
+
         // API status section
         const apiSection = contentEl.createDiv({ cls: 'rt-gossamer-api-section' });
         apiSection.createEl('h3', { text: 'API Activity', cls: 'rt-gossamer-section-title' });
         this.apiStatusEl = apiSection.createDiv({ cls: 'rt-gossamer-api-status' });
         this.apiStatusEl.setText('Waiting to send...');
-        
+
         // Error section (hidden initially) - use same styling as Scene Analysis
-        this.errorListEl = contentEl.createDiv({ cls: 'rt-beats-error-list rt-hidden' });
-        
+        this.errorListEl = contentEl.createDiv({ cls: 'rt-pulse-error-list rt-hidden' });
+
         // Close button (disabled while processing)
         const buttonContainer = contentEl.createDiv({ cls: 'rt-gossamer-actions' });
         this.closeButtonEl = new ButtonComponent(buttonContainer)
@@ -200,46 +200,46 @@ export class GossamerProcessingModal extends Modal {
      */
     public setManuscriptInfo(info: ManuscriptInfo): void {
         this.manuscriptInfo = info;
-        
+
         if (this.manuscriptInfoEl) {
             this.manuscriptInfoEl.empty();
-            
+
             const stats = this.manuscriptInfoEl.createDiv({ cls: 'rt-gossamer-stats' });
-            
-            stats.createDiv({ 
+
+            stats.createDiv({
                 cls: 'rt-gossamer-stat-row',
                 text: `Beat System: ${info.beatSystem}`
             });
-            
-            stats.createDiv({ 
+
+            stats.createDiv({
                 cls: 'rt-gossamer-stat-row',
                 text: `Scenes: ${info.totalScenes.toLocaleString()}`
             });
-            
-            stats.createDiv({ 
+
+            stats.createDiv({
                 cls: 'rt-gossamer-stat-row',
                 text: `Words: ${info.totalWords.toLocaleString()}`
             });
-            
-            stats.createDiv({ 
+
+            stats.createDiv({
                 cls: 'rt-gossamer-stat-row',
                 text: `Estimated tokens: ~${info.estimatedTokens.toLocaleString()}`
             });
-            
-            stats.createDiv({ 
+
+            stats.createDiv({
                 cls: 'rt-gossamer-stat-row',
                 text: `Story beats: ${info.beatCount}`
             });
-            
+
             // Add note if this is iterative refinement with previous analysis
             if (info.hasIterativeContext) {
-                stats.createDiv({ 
+                stats.createDiv({
                     cls: 'rt-gossamer-stat-row rt-gossamer-iterative-note',
                     text: `Iterative refinement: Previous analysis will be sent for comparison`
                 });
             }
         }
-        
+
         // Update the beat system info in confirmation view if it exists
         const beatSystemInfoEl = this.confirmationView?.querySelector('.rt-gossamer-beat-system-info');
         if (beatSystemInfoEl) {
@@ -252,7 +252,7 @@ export class GossamerProcessingModal extends Modal {
      */
     public setStatus(status: string): void {
         this.currentStatus = status;
-        
+
         if (this.statusTextEl) {
             this.statusTextEl.setText(status);
         }
@@ -263,17 +263,17 @@ export class GossamerProcessingModal extends Modal {
      */
     public apiCallStarted(): void {
         this.apiCallStartTime = Date.now();
-        
+
         if (this.apiStatusEl) {
             this.apiStatusEl.empty();
             this.updateTimer();
-            
+
             // SAFE: Modal doesn't have registerInterval; manually cleaned up in onClose()
             this.timerInterval = window.setInterval(() => {
                 this.updateTimer();
             }, 1000);
         }
-        
+
         // Animate progress bar to indicate activity (pulse between 10% and 90%)
         if (this.progressBarEl) {
             this.progressBarEl.addClass('rt-gossamer-progress-active');
@@ -281,20 +281,20 @@ export class GossamerProcessingModal extends Modal {
             this.progressBarEl.style.setProperty('--progress-width', '50%');
         }
     }
-    
+
     /**
      * Update elapsed time display
      */
     private updateTimer(): void {
         if (!this.apiStatusEl || !this.apiCallStartTime) return;
-        
+
         const elapsed = Math.floor((Date.now() - this.apiCallStartTime) / 1000);
         const minutes = Math.floor(elapsed / 60);
         const seconds = elapsed % 60;
-        const timeStr = minutes > 0 
+        const timeStr = minutes > 0
             ? `${minutes}:${seconds.toString().padStart(2, '0')}`
             : `${seconds}s`;
-        
+
         // Different messages based on elapsed time
         let message: string;
         if (elapsed < 30) {
@@ -304,12 +304,12 @@ export class GossamerProcessingModal extends Modal {
         } else {
             message = `Preparing response... ${timeStr}`;
         }
-        
+
         // Estimate: ~30-90 seconds for typical manuscripts
-        const estimate = elapsed < 90 
+        const estimate = elapsed < 90
             ? ' (typically 30-90 seconds)'
             : ' (large manuscript)';
-        
+
         this.apiStatusEl.setText(message + estimate);
     }
 
@@ -322,14 +322,14 @@ export class GossamerProcessingModal extends Modal {
             window.clearInterval(this.timerInterval);
             this.timerInterval = undefined;
         }
-        
+
         const elapsed = this.apiCallStartTime ? ((Date.now() - this.apiCallStartTime) / 1000).toFixed(1) : '?';
-        
+
         if (this.apiStatusEl) {
             this.apiStatusEl.empty();
             this.apiStatusEl.setText(`✓ Response received (${elapsed}s)`);
         }
-        
+
         // Complete the progress bar and pause animation
         if (this.progressBarEl) {
             this.progressBarEl.removeClass('rt-gossamer-progress-active');
@@ -348,12 +348,12 @@ export class GossamerProcessingModal extends Modal {
             window.clearInterval(this.timerInterval);
             this.timerInterval = undefined;
         }
-        
+
         if (this.apiStatusEl) {
             this.apiStatusEl.empty();
             this.apiStatusEl.setText(`✗ API call failed`);
         }
-        
+
         // Reset progress bar
         if (this.progressBarEl) {
             this.progressBarEl.removeClass('rt-gossamer-progress-active');
@@ -361,7 +361,7 @@ export class GossamerProcessingModal extends Modal {
             // SAFE: inline style used for CSS custom property (--progress-width) to enable smooth progress animation
             this.progressBarEl.style.setProperty('--progress-width', '0%');
         }
-        
+
         this.addError(error);
     }
 
@@ -370,14 +370,14 @@ export class GossamerProcessingModal extends Modal {
      */
     public addError(message: string): void {
         if (!this.errorListEl) return;
-        
+
         // Show error section
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
             const header = this.errorListEl.createDiv({ cls: 'rt-beats-error-header' });
             header.setText('Errors encountered:');
         }
-        
+
         const errorItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item' });
         errorItem.setText(message);
     }
@@ -387,11 +387,11 @@ export class GossamerProcessingModal extends Modal {
      */
     public completeProcessing(success: boolean, message: string): void {
         this.isProcessing = false;
-        
+
         if (this.statusTextEl) {
             this.statusTextEl.setText(message);
         }
-        
+
         // Complete the progress bar and pause animation
         if (this.progressBarEl) {
             this.progressBarEl.removeClass('rt-gossamer-progress-active');
@@ -401,7 +401,7 @@ export class GossamerProcessingModal extends Modal {
                 this.progressBarEl.style.setProperty('--progress-width', '100%');
             }
         }
-        
+
         if (this.closeButtonEl) {
             this.closeButtonEl.setDisabled(false);
             if (success) {
@@ -414,12 +414,12 @@ export class GossamerProcessingModal extends Modal {
      * Show rate limit notification
      */
     public showRateLimitWarning(retryAfter?: number): void {
-        const message = retryAfter 
+        const message = retryAfter
             ? `Rate limit reached. Please try again in ${retryAfter} seconds.`
             : 'Rate limit reached. Please try again later.';
-        
+
         this.addError(message);
-        
+
         if (this.apiStatusEl) {
             this.apiStatusEl.setText('⚠️ Rate limited');
         }

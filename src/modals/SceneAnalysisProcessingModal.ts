@@ -145,8 +145,8 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     private ensureModalShell(): void {
-        if (this.modalEl && !this.modalEl.classList.contains('rt-beats-modal-shell')) {
-            this.modalEl.classList.add('rt-beats-modal-shell');
+        if (this.modalEl && !this.modalEl.classList.contains('rt-pulse-modal-shell')) {
+            this.modalEl.classList.add('rt-pulse-modal-shell');
         }
         this.contentEl.classList.add('rt-gossamer-score-modal');
     }
@@ -180,24 +180,24 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     private renderProcessingHero(parent: HTMLElement, options?: { trackStatus?: boolean; subtitle?: string }): HTMLElement {
-        const hero = parent.createDiv({ cls: 'rt-beats-progress-hero' });
-        hero.createSpan({ text: 'AI pulse run', cls: 'rt-beats-hero-badge' });
-        hero.createEl('h2', { text: this.getProcessingTitle(), cls: 'rt-beats-progress-heading' });
+        const hero = parent.createDiv({ cls: 'rt-pulse-progress-hero' });
+        hero.createSpan({ text: 'AI pulse run', cls: 'rt-pulse-hero-badge' });
+        hero.createEl('h2', { text: this.getProcessingTitle(), cls: 'rt-pulse-progress-heading' });
         const subtitleText = options?.subtitle ?? this.getProcessingSubtitle();
-        const subtitleEl = hero.createDiv({ cls: 'rt-beats-progress-subtitle' });
+        const subtitleEl = hero.createDiv({ cls: 'rt-pulse-progress-subtitle' });
         subtitleEl.setText(subtitleText);
         if (options?.trackStatus) {
             this.heroStatusEl = subtitleEl;
         } else {
             this.heroStatusEl = undefined;
         }
-        const metaEl = hero.createDiv({ cls: 'rt-beats-progress-meta' });
-        metaEl.createSpan({ text: `Model: ${this.getActiveModelDisplayName()}`, cls: 'rt-beats-hero-meta-item' });
+        const metaEl = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
+        metaEl.createSpan({ text: `Model: ${this.getActiveModelDisplayName()}`, cls: 'rt-pulse-hero-meta-item' });
         metaEl.createSpan({
             text: this.subplotName
                 ? (this.isEntireSubplot ? 'Entire subplot batch' : 'Flagged subplot scenes')
                 : this.getModeLabel(this.selectedMode),
-            cls: 'rt-beats-hero-meta-item'
+            cls: 'rt-pulse-hero-meta-item'
         });
         return hero;
     }
@@ -217,16 +217,16 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.queueItems = [];
 
         if (this.queueData.length === 0) {
-            this.queueTrackEl.createSpan({ cls: 'rt-beats-ruler-empty', text: 'Queue builds once eligible scenes are found...' });
+            this.queueTrackEl.createSpan({ cls: 'rt-pulse-ruler-empty', text: 'Queue builds once eligible scenes are found...' });
             return;
         }
 
         for (const item of this.queueData) {
-            const entry = this.queueTrackEl.createDiv({ cls: 'rt-beats-ruler-item' });
+            const entry = this.queueTrackEl.createDiv({ cls: 'rt-pulse-ruler-item' });
             entry.setAttr('data-queue-id', item.id);
-            entry.createSpan({ cls: 'rt-beats-ruler-value', text: item.label });
+            entry.createSpan({ cls: 'rt-pulse-ruler-value', text: item.label });
             if (item.detail) {
-                entry.createSpan({ cls: 'rt-beats-ruler-label', text: item.detail });
+                entry.createSpan({ cls: 'rt-pulse-ruler-label', text: item.detail });
             }
             this.queueItems.push(entry);
         }
@@ -271,9 +271,9 @@ export class SceneAnalysisProcessingModal extends Modal {
         ];
 
         for (const chip of chips) {
-            const chipEl = this.queueNoteEl.createSpan({ cls: 'rt-beats-ruler-chip' });
-            chipEl.createSpan({ cls: 'rt-beats-ruler-chip-label', text: chip.label });
-            chipEl.createSpan({ cls: 'rt-beats-ruler-chip-value', text: this.formatTripletValue(chip.value, chip.fallback) });
+            const chipEl = this.queueNoteEl.createSpan({ cls: 'rt-pulse-ruler-chip' });
+            chipEl.createSpan({ cls: 'rt-pulse-ruler-chip-label', text: chip.label });
+            chipEl.createSpan({ cls: 'rt-pulse-ruler-chip-value', text: this.formatTripletValue(chip.value, chip.fallback) });
         }
     }
 
@@ -307,11 +307,11 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.renderProcessingHero(contentEl);
 
         // Info section with active AI provider
-        const infoEl = contentEl.createDiv({ cls: 'rt-beats-info rt-beats-glass-card' });
+        const infoEl = contentEl.createDiv({ cls: 'rt-pulse-info rt-pulse-glass-card' });
         infoEl.setText('Select how many scenes to process. This run analyzes scenes in manuscript order and refreshes their pulse metadata.');
 
         // Mode selection
-        const modesSection = contentEl.createDiv({ cls: 'rt-beats-modes rt-beats-glass-card' });
+        const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes rt-pulse-glass-card' });
 
         // Mode 1: Process Flagged Scenes (Recommended)
         const mode1 = this.createModeOption(
@@ -341,8 +341,8 @@ export class SceneAnalysisProcessingModal extends Modal {
         );
 
         // Scene count display
-        const countSection = contentEl.createDiv({ cls: 'rt-beats-count rt-beats-glass-card' });
-        const countEl = countSection.createDiv({ cls: 'rt-beats-count-number' });
+        const countSection = contentEl.createDiv({ cls: 'rt-pulse-count rt-pulse-glass-card' });
+        const countEl = countSection.createDiv({ cls: 'rt-pulse-count-number' });
 
         // Show loading state initially
         countEl.setText('Calculating...');
@@ -357,16 +357,16 @@ export class SceneAnalysisProcessingModal extends Modal {
                 const estimatedMinutes = Math.ceil(count * 0.1);
                 countEl.empty();
 
-                const countText = countEl.createDiv({ cls: 'rt-beats-count-text' });
-                countText.createSpan({ text: 'Scenes to process: ', cls: 'rt-beats-label' });
-                countText.createSpan({ text: `${count}`, cls: 'rt-beats-number' });
+                const countText = countEl.createDiv({ cls: 'rt-pulse-count-text' });
+                countText.createSpan({ text: 'Scenes to process: ', cls: 'rt-pulse-label' });
+                countText.createSpan({ text: `${count}`, cls: 'rt-pulse-number' });
 
-                const timeText = countEl.createDiv({ cls: 'rt-beats-time-text' });
-                timeText.createSpan({ text: 'Estimated time: ', cls: 'rt-beats-label' });
-                timeText.createSpan({ text: `~${estimatedMinutes} minutes`, cls: 'rt-beats-number' });
+                const timeText = countEl.createDiv({ cls: 'rt-pulse-time-text' });
+                timeText.createSpan({ text: 'Estimated time: ', cls: 'rt-pulse-label' });
+                timeText.createSpan({ text: `~${estimatedMinutes} minutes`, cls: 'rt-pulse-number' });
 
                 if (count > 50) {
-                    const warning = countEl.createDiv({ cls: 'rt-beats-warning' });
+                    const warning = countEl.createDiv({ cls: 'rt-pulse-warning' });
                     warning.setText('Large batch processing may take significant time and API costs.');
                 }
             } catch (error) {
@@ -388,7 +388,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         });
 
         // Action buttons
-        const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Start processing')
@@ -450,7 +450,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         description: string,
         isDefault: boolean
     ): HTMLInputElement {
-        const optionEl = container.createDiv({ cls: 'rt-beats-mode-option' });
+        const optionEl = container.createDiv({ cls: 'rt-pulse-mode-option' });
 
         const radioEl = optionEl.createEl('input', {
             type: 'radio',
@@ -466,11 +466,11 @@ export class SceneAnalysisProcessingModal extends Modal {
             }
         });
 
-        const labelContainer = optionEl.createDiv({ cls: 'rt-beats-mode-label' });
-        const titleEl = labelContainer.createDiv({ cls: 'rt-beats-mode-title' });
+        const labelContainer = optionEl.createDiv({ cls: 'rt-pulse-mode-label' });
+        const titleEl = labelContainer.createDiv({ cls: 'rt-pulse-mode-title' });
         titleEl.setText(title);
 
-        const descEl = labelContainer.createDiv({ cls: 'rt-beats-mode-desc' });
+        const descEl = labelContainer.createDiv({ cls: 'rt-pulse-mode-desc' });
         descEl.setText(description);
 
         // Make the entire option clickable
@@ -529,33 +529,33 @@ export class SceneAnalysisProcessingModal extends Modal {
         titleEl.setText('');
         this.renderProcessingHero(contentEl, { trackStatus: true });
 
-        const bodyEl = contentEl.createDiv({ cls: 'rt-beats-progress-body' });
-        const progressCard = bodyEl.createDiv({ cls: 'rt-beats-progress-card rt-beats-glass-card' });
+        const bodyEl = contentEl.createDiv({ cls: 'rt-pulse-progress-body' });
+        const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-pulse-glass-card' });
 
-        const progressContainer = progressCard.createDiv({ cls: 'rt-beats-progress-container' });
-        const progressBg = progressContainer.createDiv({ cls: 'rt-beats-progress-bg' });
-        this.progressBarEl = progressBg.createDiv({ cls: 'rt-beats-progress-bar' });
+        const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });
+        const progressBg = progressContainer.createDiv({ cls: 'rt-pulse-progress-bg' });
+        this.progressBarEl = progressBg.createDiv({ cls: 'rt-pulse-progress-bar' });
         this.progressBarEl.style.setProperty('--progress-width', '0%');
 
-        this.progressTextEl = progressCard.createDiv({ cls: 'rt-beats-progress-text' });
+        this.progressTextEl = progressCard.createDiv({ cls: 'rt-pulse-progress-text' });
         this.progressTextEl.setText('Waiting for first scene...');
 
-        this.statusTextEl = progressCard.createDiv({ cls: 'rt-beats-status-text' });
+        this.statusTextEl = progressCard.createDiv({ cls: 'rt-pulse-status-text' });
         this.statusTextEl.setText('Initializing pipeline...');
 
-        const rulerBlock = progressCard.createDiv({ cls: 'rt-beats-ruler-block' });
-        rulerBlock.createDiv({ cls: 'rt-beats-ruler-title', text: 'Scene queue' });
-        this.queueScrollEl = rulerBlock.createDiv({ cls: 'rt-beats-ruler-scroll' });
-        this.queueTrackEl = this.queueScrollEl.createDiv({ cls: 'rt-beats-ruler-track' });
+        const rulerBlock = progressCard.createDiv({ cls: 'rt-pulse-ruler-block' });
+        rulerBlock.createDiv({ cls: 'rt-pulse-ruler-title', text: 'Scene queue' });
+        this.queueScrollEl = rulerBlock.createDiv({ cls: 'rt-pulse-ruler-scroll' });
+        this.queueTrackEl = this.queueScrollEl.createDiv({ cls: 'rt-pulse-ruler-track' });
         this.queueItems = [];
         this.queueActiveId = undefined;
         this.renderQueueItems();
-        this.queueNoteEl = rulerBlock.createDiv({ cls: 'rt-beats-ruler-note' });
+        this.queueNoteEl = rulerBlock.createDiv({ cls: 'rt-pulse-ruler-note' });
         this.queueNoteEl.setText('Triplets animate as the AI advances - starts, endings, and missing scenes handled automatically.');
 
-        this.errorListEl = bodyEl.createDiv({ cls: 'rt-beats-error-list rt-beats-glass-card rt-hidden' });
+        this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-pulse-glass-card rt-hidden' });
 
-        this.actionButtonContainer = contentEl.createDiv({ cls: 'rt-beats-actions' });
+        this.actionButtonContainer = contentEl.createDiv({ cls: 'rt-pulse-actions' });
         this.abortButtonEl = new ButtonComponent(this.actionButtonContainer)
             .setButtonText('Abort processing')
             .setWarning()
@@ -617,11 +617,11 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Show error list if it was hidden
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
-            const header = this.errorListEl.createDiv({ cls: 'rt-beats-error-header' });
+            const header = this.errorListEl.createDiv({ cls: 'rt-pulse-error-header' });
             header.setText('Errors encountered:');
         }
 
-        const errorItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item' });
+        const errorItem = this.errorListEl.createDiv({ cls: 'rt-pulse-error-item' });
         errorItem.setText(message);
     }
 
@@ -650,11 +650,11 @@ export class SceneAnalysisProcessingModal extends Modal {
         // Show error list if it was hidden
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
-            const header = this.errorListEl.createDiv({ cls: 'rt-beats-error-header' });
+            const header = this.errorListEl.createDiv({ cls: 'rt-pulse-error-header' });
             header.setText('Issues encountered:');
         }
 
-        const warningItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item rt-beats-warning-item' });
+        const warningItem = this.errorListEl.createDiv({ cls: 'rt-pulse-error-item rt-pulse-warning-item' });
         warningItem.setText(message);
     }
 
@@ -710,28 +710,28 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.errorListEl.empty();
         }
 
-        contentEl.querySelectorAll('.rt-beats-summary').forEach(el => el.remove());
+        contentEl.querySelectorAll('.rt-pulse-summary').forEach(el => el.remove());
         if (hasIssues) {
-            const summaryContainer = contentEl.createDiv({ cls: 'rt-beats-summary rt-beats-glass-card' });
-            summaryContainer.createEl('h3', { text: 'Processing details', cls: 'rt-beats-summary-title' });
-            const summaryStats = summaryContainer.createDiv({ cls: 'rt-beats-summary-stats' });
+            const summaryContainer = contentEl.createDiv({ cls: 'rt-pulse-summary rt-pulse-glass-card' });
+            summaryContainer.createEl('h3', { text: 'Processing details', cls: 'rt-pulse-summary-title' });
+            const summaryStats = summaryContainer.createDiv({ cls: 'rt-pulse-summary-stats' });
             if (hasErrors) {
                 summaryStats.createDiv({
-                    cls: 'rt-beats-summary-row rt-beats-summary-error',
+                    cls: 'rt-pulse-summary-row rt-pulse-summary-error',
                     text: `Errors: ${this.errorCount}`
                 });
             }
             if (hasWarnings) {
                 summaryStats.createDiv({
-                    cls: 'rt-beats-summary-row rt-beats-summary-warning',
+                    cls: 'rt-pulse-summary-row rt-pulse-summary-warning',
                     text: `Warnings: ${this.warningCount} (skipped due to validation)`
                 });
             }
         }
 
-        contentEl.querySelectorAll('.rt-beats-summary-tip').forEach(el => el.remove());
+        contentEl.querySelectorAll('.rt-pulse-summary-tip').forEach(el => el.remove());
         if (remainingScenes > 0) {
-            const tipEl = contentEl.createDiv({ cls: 'rt-beats-summary-tip' });
+            const tipEl = contentEl.createDiv({ cls: 'rt-pulse-summary-tip' });
             tipEl.createEl('strong', { text: 'Resume hint: ' });
             if (this.resumeCommandId || this.subplotName) {
                 tipEl.appendText('Use Resume to finish scenes not updated today.');
@@ -741,7 +741,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         if (this.plugin.settings.logApiInteractions) {
-            const logNoteEl = contentEl.createDiv({ cls: 'rt-beats-summary-tip' });
+            const logNoteEl = contentEl.createDiv({ cls: 'rt-pulse-summary-tip' });
             logNoteEl.createEl('strong', { text: 'Logs: ' });
             logNoteEl.appendText('Detailed AI interaction logs were saved to the AI folder.');
         }

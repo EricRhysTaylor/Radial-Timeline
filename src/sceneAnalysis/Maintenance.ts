@@ -256,7 +256,7 @@ class PurgeConfirmationModal extends Modal {
         const warningEl = contentEl.createDiv({ cls: 'rt-purge-warning' });
         warningEl.createEl('strong', { text: 'This cannot be undone. Continue?' });
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
         new ButtonComponent(buttonRow)
             .setButtonText('Purge beats')
             .setWarning()

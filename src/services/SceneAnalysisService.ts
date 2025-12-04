@@ -9,7 +9,7 @@ import { normalizeBooleanValue } from '../utils/sceneHelpers';
 import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 
 export class SceneAnalysisService {
-    constructor(private plugin: RadialTimelinePlugin) {}
+    constructor(private plugin: RadialTimelinePlugin) { }
 
     registerCommands(): void {
         this.registerManuscriptCommand();
@@ -184,19 +184,19 @@ class SubplotPickerModal extends Modal {
         titleEl.setText('');
         contentEl.empty();
         if (modalEl) {
-            modalEl.classList.add('rt-beats-modal-shell');
+            modalEl.classList.add('rt-pulse-modal-shell');
         }
-        contentEl.addClass('rt-beats-modal');
+        contentEl.addClass('rt-pulse-modal');
         contentEl.addClass('rt-subplot-picker-modal');
 
         const modelName = this.service.getActiveModelName();
-        const hero = contentEl.createDiv({ cls: 'rt-beats-progress-hero' });
-        hero.createSpan({ text: 'AI pulse run', cls: 'rt-beats-hero-badge' });
-        hero.createEl('h2', { text: 'Process subplot scenes', cls: 'rt-beats-progress-heading' });
-        hero.createDiv({ cls: 'rt-beats-progress-subtitle', text: 'Choose a subplot and run pulse updates just for that arc.' });
+        const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
+        hero.createSpan({ text: 'AI pulse run', cls: 'rt-pulse-hero-badge' });
+        hero.createEl('h2', { text: 'Process subplot scenes', cls: 'rt-pulse-progress-heading' });
+        hero.createDiv({ cls: 'rt-pulse-progress-subtitle', text: 'Choose a subplot and run pulse updates just for that arc.' });
 
-        const heroMeta = hero.createDiv({ cls: 'rt-beats-progress-meta' });
-        heroMeta.createSpan({ text: `Model: ${modelName}`, cls: 'rt-beats-hero-meta-item' });
+        const heroMeta = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
+        heroMeta.createSpan({ text: `Model: ${modelName}`, cls: 'rt-pulse-hero-meta-item' });
         const heroStats = hero.createDiv({ cls: 'rt-subplot-picker-hero-stats' });
         this.heroStats = {
             flagged: this.createHeroStat(heroStats, 'Flagged scenes'),
@@ -206,7 +206,7 @@ class SubplotPickerModal extends Modal {
 
         const grid = contentEl.createDiv({ cls: 'rt-subplot-picker-grid' });
 
-        const infoCard = grid.createDiv({ cls: 'rt-subplot-picker-card rt-beats-glass-card' });
+        const infoCard = grid.createDiv({ cls: 'rt-subplot-picker-card rt-pulse-glass-card' });
         this.infoTextEl = infoCard.createEl('p', { cls: 'rt-subplot-picker-info' });
         this.updateInfoText(modelName);
         infoCard.createEl('p', {
@@ -214,7 +214,7 @@ class SubplotPickerModal extends Modal {
             cls: 'rt-subplot-picker-hint'
         });
 
-        const formCard = grid.createDiv({ cls: 'rt-subplot-picker-card rt-beats-glass-card' });
+        const formCard = grid.createDiv({ cls: 'rt-subplot-picker-card rt-pulse-glass-card' });
         const selectContainer = formCard.createDiv({ cls: 'rt-subplot-picker-select' });
         selectContainer.createEl('label', { text: 'Pick a subplot to process', cls: 'rt-subplot-picker-label' });
         this.dropdown = new DropdownComponent(selectContainer.createDiv({ cls: 'rt-subplot-picker-dropdown' }));
@@ -231,7 +231,7 @@ class SubplotPickerModal extends Modal {
         this.statsEl = formCard.createDiv({ cls: 'rt-subplot-picker-stats' });
         this.updateStats(this.selectedSubplot);
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
         new ButtonComponent(buttonRow)
             .setButtonText('Process pulse')
             .setCta()

@@ -3,12 +3,12 @@ import type RadialTimelinePlugin from '../main';
 export class StatusBarService {
     private beatsStatusBarItem: HTMLElement | null = null;
 
-    constructor(private plugin: RadialTimelinePlugin) {}
+    constructor(private plugin: RadialTimelinePlugin) { }
 
     showBeatsStatus(current: number, total: number): void {
         if (!this.beatsStatusBarItem) {
             this.beatsStatusBarItem = this.plugin.addStatusBarItem();
-            this.beatsStatusBarItem.addClass('rt-beats-status-bar');
+            this.beatsStatusBarItem.addClass('rt-pulse-status-bar');
             this.plugin.registerDomEvent(this.beatsStatusBarItem, 'click', () => {
                 if (this.plugin.activeBeatsModal) {
                     this.plugin.activeBeatsModal.open();
