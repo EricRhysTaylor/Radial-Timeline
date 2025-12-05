@@ -38,11 +38,11 @@ Radial Timeline™ arranges your scenes by act, subplot, narrative or chronologi
 
 **After**: One visual map showing every scene, every subplot, every beat color coded and connected to the big picture.
 
-Radial Timeline™ captures and visualizes all 4 critical timelines, revealing everything you need to know as your manuscript evolves from the nucleus of an idea to the final polished novel.
+Radial Timeline™ captures and visualizes all 4 critical timelines, revealing the big picture as your manuscript evolves from the nucleus of an idea to the final polished novel.
 
-**Narrative time**: the sequence you reveal events to readers.<br>
-**Chronological time**: when events happen in your story's world.<br>
-**Author time**: your real-world writing progress toward completion from Todo to Complete.<br>
+**Narrative time**: the sequence you reveal events to readers.
+**Chronological time**: when events happen in your story's world.
+**Author time**: your real-world writing progress toward completion from Todo to Complete.
 **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
 
 <hr>
