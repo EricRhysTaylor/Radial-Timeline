@@ -69,7 +69,18 @@ export class SceneAnalysisService {
         let hasKey = true;
         if (provider === 'anthropic') hasKey = !!this.plugin.settings.anthropicApiKey?.trim();
         else if (provider === 'gemini') hasKey = !!this.plugin.settings.geminiApiKey?.trim();
+        else if (provider === 'local') {
+            // For local, we need at least a Base URL and Model ID
+            const hasUrl = !!this.plugin.settings.localBaseUrl?.trim();
+            const hasModel = !!this.plugin.settings.localModelId?.trim();
+            if (!hasUrl || !hasModel) {
+                new Notice('Local AI provider requires Base URL and Model ID.');
+                return false;
+            }
+            return true;
+        }
         else hasKey = !!this.plugin.settings.openaiApiKey?.trim();
+
         if (!hasKey) {
             const name = provider[0].toUpperCase() + provider.slice(1);
             new Notice(`${name} API key is not set in settings.`);
@@ -128,6 +139,9 @@ export class SceneAnalysisService {
         if (provider === 'gemini') {
             const modelId = this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
             return modelId;
+        }
+        if (provider === 'local') {
+            return this.plugin.settings.localModelId || 'local-model';
         }
         const modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
         return modelId;

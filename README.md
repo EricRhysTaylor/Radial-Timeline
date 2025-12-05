@@ -298,7 +298,8 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 - **Create story beat template notes**: Generate template beat notes with YAML frontmatter
 
 **AI features:**
-- **AI Provider**: Choose Anthropic, Gemini, or OpenAI for scene analysis
+- **AI Provider**: Choose Anthropic, Gemini, OpenAI, or Local/OpenAI Compatible for scene analysis
+- **Local AI Support**: Connect to local LLMs (like Ollama or LM Studio) via the "OpenAI Compatible / Local" provider option
 - **Contextual Prompt**: Customize AI analysis prompts
 - **API Logging**: Track AI interactions in "AI" folder and manuscript generation with table of contents
 

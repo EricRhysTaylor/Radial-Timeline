@@ -43,14 +43,27 @@ export async function callOpenAiApi(
     modelId: string,
     systemPrompt: string | null,
     userPrompt: string,
-    maxTokens: number | null = 4000
+    maxTokens: number | null = 4000,
+    baseUrl?: string
 ): Promise<OpenAiApiResponse> {
-    const apiUrl = 'https://api.openai.com/v1/chat/completions';
-    if (!apiKey) {
-        return { success: false, content: null, responseData: { error: { message: 'API key not configured.', type: 'plugin_error'} }, error: 'OpenAI API key not configured.' };
+    let apiUrl = 'https://api.openai.com/v1/chat/completions';
+    if (baseUrl) {
+        // Ensure we don't double-slash
+        const base = baseUrl.replace(/\/$/, '');
+        // If the user provided a full path ending in /chat/completions, trust it.
+        // Otherwise, append /chat/completions if it looks like a base root.
+        if (base.endsWith('/chat/completions')) {
+            apiUrl = base;
+        } else {
+            apiUrl = `${base}/chat/completions`;
+        }
+    }
+
+    if (!apiKey && !baseUrl) {
+        return { success: false, content: null, responseData: { error: { message: 'API key not configured.', type: 'plugin_error' } }, error: 'OpenAI API key not configured.' };
     }
     if (!modelId) {
-        return { success: false, content: null, responseData: { error: { message: 'Model ID not configured.', type: 'plugin_error'} }, error: 'OpenAI Model ID not configured.' };
+        return { success: false, content: null, responseData: { error: { message: 'Model ID not configured.', type: 'plugin_error' } }, error: 'OpenAI Model ID not configured.' };
     }
 
     // Prepend system prompt to user message (reasoning models don't support system role)
@@ -62,7 +75,7 @@ export async function callOpenAiApi(
         messages: { role: string; content: string }[];
         max_completion_tokens?: number;
     } = { model: modelId, messages };
-    
+
     if (maxTokens !== null) {
         requestBody.max_completion_tokens = maxTokens;
     }

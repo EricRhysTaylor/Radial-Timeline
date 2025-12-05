@@ -6,7 +6,7 @@ import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels } from '../../api/geminiApi';
 import { CURATED_MODELS, CuratedModel } from '../../data/aiModels';
 
-type Provider = 'anthropic' | 'gemini' | 'openai';
+type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
 export function renderAiSection(params: {
     app: App;
@@ -16,7 +16,7 @@ export function renderAiSection(params: {
     toggleAiSettingsVisibility: (show: boolean) => void;
     refreshProviderDimming: () => void;
     scheduleKeyValidation: (provider: Provider) => void;
-    setProviderSections: (sections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement }) => void;
+    setProviderSections: (sections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement; local?: HTMLElement }) => void;
     setKeyInputRef: (provider: Provider, input: HTMLInputElement | undefined) => void;
 }): void {
     const { app, plugin, containerEl } = params;
@@ -75,6 +75,7 @@ export function renderAiSection(params: {
             anthropic: 'Anthropic',
             gemini: 'Gemini',
             openai: 'OpenAI',
+            local: 'Local / OpenAI Compatible'
         };
 
         const choices: ModelChoice[] = (Object.entries(CURATED_MODELS) as Array<[Provider, CuratedModel[]]>)
@@ -87,12 +88,26 @@ export function renderAiSection(params: {
                     guidance: model.guidance,
                 })));
 
+        // Add Local Option
+        choices.push({
+            optionId: 'local:custom',
+            provider: 'local',
+            modelId: 'custom',
+            label: 'OpenAI Compatible / Local',
+            guidance: 'Use a local LLM (like Ollama) or any OpenAI-compatible API. Configure URL and Model ID below.'
+        });
+
         choices.forEach(opt => {
             dropdownComponent.addOption(opt.optionId, opt.label);
         });
 
         const findDefaultChoice = (): ModelChoice | undefined => {
             const provider = (plugin.settings.defaultAiProvider || 'openai') as Provider;
+
+            if (provider === 'local') {
+                return choices.find(c => c.provider === 'local');
+            }
+
             const modelId =
                 provider === 'anthropic'
                     ? plugin.settings.anthropicModelId
@@ -142,6 +157,8 @@ export function renderAiSection(params: {
             if (choice.provider === 'anthropic') plugin.settings.anthropicModelId = choice.modelId;
             if (choice.provider === 'gemini') plugin.settings.geminiModelId = choice.modelId;
             if (choice.provider === 'openai') plugin.settings.openaiModelId = choice.modelId;
+            // Local provider doesn't need to save a specific model ID here as it's custom
+
             await plugin.saveSettings();
             params.refreshProviderDimming();
             updateGuidance(choice);
@@ -259,6 +276,44 @@ export function renderAiSection(params: {
                 } else {
                     params.scheduleKeyValidation('openai');
                 }
+            }));
+
+    // Local / OpenAI Compatible Section
+    const localSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-local' });
+    params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
+    params.addAiRelatedElement(localSection);
+
+    new Settings(localSection)
+        .setName('Base URL')
+        .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
+        .addText(text => text
+            .setPlaceholder('http://localhost:11434/v1')
+            .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1')
+            .onChange(async (value) => {
+                plugin.settings.localBaseUrl = value.trim();
+                await plugin.saveSettings();
+            }));
+
+    new Settings(localSection)
+        .setName('Model ID')
+        .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b", "local-model").')
+        .addText(text => text
+            .setPlaceholder('llama3')
+            .setValue(plugin.settings.localModelId || 'llama3')
+            .onChange(async (value) => {
+                plugin.settings.localModelId = value.trim();
+                await plugin.saveSettings();
+            }));
+
+    new Settings(localSection)
+        .setName('API Key (Optional)')
+        .setDesc('Required by some servers. For local tools like Ollama, this is usually ignored.')
+        .addText(text => text
+            .setPlaceholder('not-needed')
+            .setValue(plugin.settings.localApiKey || '')
+            .onChange(async (value) => {
+                plugin.settings.localApiKey = value.trim();
+                await plugin.saveSettings();
             }));
 
     // Apply provider dimming on first render

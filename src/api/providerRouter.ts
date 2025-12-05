@@ -18,7 +18,7 @@ export interface ProviderResult<T = unknown> {
   success: boolean;
   content: string | null;
   responseData: T;
-  provider: 'openai' | 'anthropic' | 'gemini';
+  provider: 'openai' | 'anthropic' | 'gemini' | 'local';
   modelId: string;
 }
 
@@ -35,6 +35,12 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     const apiKey = plugin.settings.geminiApiKey || '';
     const modelId = plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
     const resp: GeminiApiResponse = await callGeminiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max, temp);
+    return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
+  } else if (provider === 'local') {
+    const apiKey = plugin.settings.localApiKey || '';
+    const modelId = plugin.settings.localModelId || 'llama3';
+    const baseUrl = plugin.settings.localBaseUrl || 'http://localhost:11434/v1';
+    const resp: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max, baseUrl);
     return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
   } else {
     const apiKey = plugin.settings.openaiApiKey || '';

@@ -18,7 +18,7 @@ import { parseGptResult } from './responseParsing';
 async function logApiInteractionToFile(
     plugin: RadialTimelinePlugin,
     vault: Vault,
-    provider: 'openai' | 'anthropic' | 'gemini',
+    provider: 'openai' | 'anthropic' | 'gemini' | 'local',
     modelId: string,
     requestData: unknown,
     responseData: unknown,
@@ -38,10 +38,10 @@ async function logApiInteractionToFile(
         hour: '2-digit', minute: '2-digit', second: '2-digit',
         hour12: true, timeZoneName: 'short'
     } as Intl.DateTimeFormatOptions)
-    .replace(/\//g, '-')
-    .replace(/(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)\s*([A-Z]{3,})/g, 'at $1.$2.$3 $4 $5')
-    .replace(/[\s,]+/g, ' ')
-    .trim();
+        .replace(/\//g, '-')
+        .replace(/(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)\s*([A-Z]{3,})/g, 'at $1.$2.$3 $4 $5')
+        .replace(/[\s,]+/g, ' ')
+        .trim();
 
     const friendlyModelForFilename = (() => {
         const mid = (modelId || '').toLowerCase();
@@ -93,9 +93,14 @@ async function logApiInteractionToFile(
             } else if (provider === 'gemini' && 'usageMetadata' in rd) {
                 const u = (rd as { usageMetadata?: { totalTokenCount?: number; promptTokenCount?: number; candidatesTokenCount?: number } }).usageMetadata;
                 usageString = `**Usage (Gemini):** total=${u?.totalTokenCount ?? 'n/a'}, prompt=${u?.promptTokenCount ?? 'n/a'}, output=${u?.candidatesTokenCount ?? 'n/a'}`;
+            } else if (provider === 'local' && 'usage' in rd) {
+                const u = (rd as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage;
+                if (u && (typeof u.prompt_tokens === 'number' || typeof u.completion_tokens === 'number')) {
+                    usageString = `**Usage (Local):** prompt=${u.prompt_tokens ?? 'n/a'}, output=${u.completion_tokens ?? 'n/a'}`;
+                }
             }
         }
-    } catch {}
+    } catch { }
 
     let outcomeSection = '## Outcome\n\n';
     if (responseData && typeof responseData === 'object') {
@@ -113,6 +118,14 @@ async function logApiInteractionToFile(
             let success = false;
             let contentForCheck: string | undefined | null = null;
             if (provider === 'openai') {
+                const choices = responseAsRecord.choices as unknown;
+                if (Array.isArray(choices) && choices[0] && typeof choices[0] === 'object') {
+                    const msg = (choices[0] as Record<string, unknown>).message as Record<string, unknown> | undefined;
+                    const content = msg?.content as string | undefined;
+                    contentForCheck = content;
+                }
+                success = !!contentForCheck;
+            } else if (provider === 'local') {
                 const choices = responseAsRecord.choices as unknown;
                 if (Array.isArray(choices) && choices[0] && typeof choices[0] === 'object') {
                     const msg = (choices[0] as Record<string, unknown>).message as Record<string, unknown> | undefined;
@@ -177,9 +190,9 @@ async function logApiInteractionToFile(
 
     const structuredAnalysisSection = analysis
         ? `\n## Scene Analysis\n\n` +
-            `${formatAnalysisSection('previousSceneAnalysis', analysis.previousSceneAnalysis)}\n\n` +
-            `${formatAnalysisSection('currentSceneAnalysis', analysis.currentSceneAnalysis)}\n\n` +
-            `${formatAnalysisSection('nextSceneAnalysis', analysis.nextSceneAnalysis)}\n\n---\n`
+        `${formatAnalysisSection('previousSceneAnalysis', analysis.previousSceneAnalysis)}\n\n` +
+        `${formatAnalysisSection('currentSceneAnalysis', analysis.currentSceneAnalysis)}\n\n` +
+        `${formatAnalysisSection('nextSceneAnalysis', analysis.nextSceneAnalysis)}\n\n---\n`
         : '';
 
     const fileContent = `# AI Log — ${new Date().toLocaleString()}\n\n` +
@@ -370,6 +383,33 @@ export async function callAiProvider(
             responseDataForLog = apiResponse.responseData;
             if (!apiResponse.success || !apiResponse.content) {
                 apiErrorMsg = apiResponse.error ?? 'Gemini API returned no content.';
+                throw new Error(apiErrorMsg);
+            }
+            result = apiResponse.content;
+        } else if (provider === 'local') {
+            const localBaseUrl = plugin.settings.localBaseUrl || 'http://localhost:11434/v1';
+            modelId = plugin.settings.localModelId || 'llama3';
+            apiKey = plugin.settings.localApiKey || ''; // Optional for local
+
+            if (!localBaseUrl || !modelId) {
+                apiErrorMsg = 'Local Base URL or Model ID not configured in settings.';
+                responseDataForLog = { error: { message: apiErrorMsg, type: 'plugin_config_error' } };
+                throw new Error(apiErrorMsg);
+            }
+
+            requestBodyForLog = {
+                model: modelId,
+                messages: [{ role: 'user', content: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt }],
+                max_completion_tokens: 2000
+            };
+
+            const apiResponse = await retryWithBackoff(() =>
+                callOpenAiApi(apiKey!, modelId!, systemPrompt, userPrompt, 2000, localBaseUrl)
+            );
+
+            responseDataForLog = apiResponse.responseData;
+            if (!apiResponse.success || !apiResponse.content) {
+                apiErrorMsg = apiResponse.error ?? 'Local API returned no content.';
                 throw new Error(apiErrorMsg);
             }
             result = apiResponse.content;

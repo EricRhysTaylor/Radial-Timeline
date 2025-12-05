@@ -38,7 +38,10 @@ export interface RadialTimelineSettings {
     anthropicModelId?: string;
     geminiApiKey?: string;
     geminiModelId?: string;
-    defaultAiProvider?: 'openai' | 'anthropic' | 'gemini';
+    defaultAiProvider?: 'openai' | 'anthropic' | 'gemini' | 'local';
+    localBaseUrl?: string;
+    localModelId?: string;
+    localApiKey?: string;
     openaiModelId?: string;
     enableAiSceneAnalysis: boolean;
     enableZeroDraftMode?: boolean;

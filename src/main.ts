@@ -136,7 +136,10 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     globalPovMode: 'off',
     lastSeenReleaseNotesVersion: '',
     cachedReleaseNotes: null,
-    releaseNotesLastFetched: undefined
+    releaseNotesLastFetched: undefined,
+    localBaseUrl: 'http://localhost:11434/v1',
+    localModelId: 'llama3',
+    localApiKey: ''
 };
 
 // STATUS_COLORS now imported from constants
@@ -151,21 +154,21 @@ export interface GetSceneDataOptions {
 
 export default class RadialTimelinePlugin extends Plugin {
     settings: RadialTimelineSettings;
-    
+
     // Do not store persistent references to views (per Obsidian guidelines)
 
     // Track open scene paths
     openScenePaths: Set<string> = new Set<string>();
     // Ensure settings tab is only added once per load
     private _settingsTabAdded: boolean = false;
-    
+
     // Search related properties
     searchTerm: string = '';
     searchActive: boolean = false;
     searchResults: Set<string> = new Set<string>();
     private readonly eventBus = new EventTarget();
     private metadataCacheListener: (() => void) | null = null;
-    
+
     // Services
     private timelineService!: TimelineService;
     private sceneDataService!: SceneDataService;
@@ -183,25 +186,25 @@ export default class RadialTimelinePlugin extends Plugin {
     private timelineMetricsService!: TimelineMetricsService;
     private settingsService!: SettingsService;
     public lastSceneData?: TimelineItem[];
-    
+
     // Completion estimate stats
     latestTotalScenes: number = 0;
     latestRemainingScenes: number = 0;
     latestScenesPerWeek: number = 0;
-    
+
     // Add a synopsisManager instance
     public synopsisManager: SynopsisManager;
-    
+
     // Add property to store the latest status counts for completion estimate
     public latestStatusCounts?: Record<string, number>;
-    
-    
+
+
     // Track active scene analysis processing modal and status bar item
     public activeBeatsModal: SceneAnalysisProcessingModal | null = null;
 
     // Helper: get all currently open timeline views
     public getTimelineViews(): RadialTimelineView[] { return this.timelineService.getTimelineViews(); }
-    
+
     // Helper: get the first open timeline view (if any)
     private getFirstTimelineView(): RadialTimelineView | null {
         const list = this.getTimelineViews();
@@ -209,7 +212,7 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     // Settings access helpers
-    private get aiProvider(): 'openai' | 'anthropic' | 'gemini' {
+    private get aiProvider(): 'openai' | 'anthropic' | 'gemini' | 'local' {
         return this.settings.defaultAiProvider || 'openai';
     }
 
@@ -226,7 +229,7 @@ export default class RadialTimelinePlugin extends Plugin {
         if (provider === 'gemini') return this.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
         return this.settings.openaiModelId || 'gpt-5.1-chat-latest';
     }
-    
+
     /**
      * Position and curve the text elements in the SVG
      * @param container The container element with the SVG
@@ -235,13 +238,13 @@ export default class RadialTimelinePlugin extends Plugin {
         // Find all text elements inside the container
         const textElements = container.querySelectorAll('text');
         if (!textElements.length) return;
-    
+
         // Apply the curvature to each text element
         textElements.forEach((textEl) => {
             try {
                 // Create a curved path effect for this text
                 const pathId = `path-${Math.random().toString(36).substring(2, 9)}`;
-                
+
                 // Create a curved path element
                 const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 pathElement.setAttribute('id', pathId);
@@ -249,10 +252,10 @@ export default class RadialTimelinePlugin extends Plugin {
 
                 // Use CSS class instead of inline style
                 pathElement.classList.add('svg-path');
-                
+
                 // Add the path to the container before the text
                 textEl.parentNode?.insertBefore(pathElement, textEl);
-                
+
                 // Link the text to the path
                 textEl.setAttribute('path', `url(#${pathId})`);
                 textEl.setAttribute('pathLength', '1');
@@ -262,16 +265,16 @@ export default class RadialTimelinePlugin extends Plugin {
             }
         });
     }
-    
+
 
     private processHighlightedContent(fragment: DocumentFragment): Node[] {
         // Create a temporary container using Obsidian's createEl
         const container = document.createElement('div');
         container.appendChild(fragment.cloneNode(true));
-        
+
         // Extract all nodes from the container
         const resultNodes: Node[] = [];
-        
+
         // Process each child node
         Array.from(container.childNodes).forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
@@ -284,18 +287,18 @@ export default class RadialTimelinePlugin extends Plugin {
                 const element = node as Element;
                 if (element.tagName.toLowerCase() === 'tspan') {
                     const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                    
+
                     // Copy attributes
                     Array.from(element.attributes).forEach(attr => {
                         svgTspan.setAttribute(attr.name, attr.value);
                     });
-                    
+
                     svgTspan.textContent = element.textContent;
                     resultNodes.push(svgTspan);
                 }
             }
         });
-        
+
         return resultNodes;
     }
 
@@ -356,7 +359,7 @@ export default class RadialTimelinePlugin extends Plugin {
         this.timelineMetricsService = new TimelineMetricsService(this);
 
         // CSS variables for publish stage colors are set once on layout ready
-        
+
         // Register the view
         this.registerView(
             TIMELINE_VIEW_TYPE,
@@ -364,7 +367,7 @@ export default class RadialTimelinePlugin extends Plugin {
                 return new RadialTimelineView(leaf, this);
             }
         );
-        
+
         // Register ribbon + commands
         this.commandRegistrar.registerAll();
         this.sceneAnalysisService.registerCommands();
@@ -374,14 +377,14 @@ export default class RadialTimelinePlugin extends Plugin {
             this.addSettingTab(new RadialTimelineSettingsTab(this.app, this));
             this._settingsTabAdded = true;
         }
-        
+
         // Note: Frontmatter change detection is handled by the TimelineView with proper debouncing
         // No metadata listener needed here to avoid triggering on body text changes
-        
+
         // Listen for tab changes and file manager interactions using Obsidian's events
         // This is more reliable than DOM events
         // (file-open listener consolidated below at line ~941)
-        
+
         // Track workspace layout changes to update our view
         // (layout-change listener consolidated below at line ~949)
 
@@ -410,7 +413,7 @@ export default class RadialTimelinePlugin extends Plugin {
     public isSceneFile(path: string): boolean {
         return this.sceneHighlighter.isSceneFile(path);
     }
-    
+
     public async processSceneAnalysisByManuscriptOrder(): Promise<void> {
         await this.sceneAnalysisService.processByManuscriptOrder();
     }
@@ -422,25 +425,25 @@ export default class RadialTimelinePlugin extends Plugin {
     public async processEntireSubplot(subplotName: string): Promise<void> {
         await this.sceneAnalysisService.processEntireSubplot(subplotName);
     }
-    
+
     // Helper to activate the timeline view
     async activateView() {
         // Check if view already exists
         const leaves = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE);
-        
+
         if (leaves.length > 0) {
             // View exists, just reveal it
             this.app.workspace.revealLeaf(leaves[0]);
             return;
         }
-        
+
         // Create a new leaf in the center (main editor area)
         const leaf = this.app.workspace.getLeaf('tab');
         await leaf.setViewState({
             type: TIMELINE_VIEW_TYPE,
             active: true
         });
-        
+
         // Reveal the leaf
         this.app.workspace.revealLeaf(leaf);
     }
@@ -456,7 +459,7 @@ export default class RadialTimelinePlugin extends Plugin {
         if (!this.settings.anthropicModelId) this.settings.anthropicModelId = DEFAULT_SETTINGS.anthropicModelId;
         if (!this.settings.openaiModelId) this.settings.openaiModelId = DEFAULT_SETTINGS.openaiModelId;
         if (!this.settings.geminiModelId) this.settings.geminiModelId = DEFAULT_SETTINGS.geminiModelId;
-        if (!this.settings.defaultAiProvider || !['openai', 'anthropic', 'gemini'].includes(this.settings.defaultAiProvider)) {
+        if (!this.settings.defaultAiProvider || !['openai', 'anthropic', 'gemini', 'local'].includes(this.settings.defaultAiProvider)) {
             this.settings.defaultAiProvider = DEFAULT_SETTINGS.defaultAiProvider;
         }
         if (typeof this.settings.lastSeenReleaseNotesVersion !== 'string') {
@@ -508,18 +511,18 @@ export default class RadialTimelinePlugin extends Plugin {
     // Remove redundant parseSceneTitle method - use the one from utils/text.ts instead
 
     // Method to refresh the timeline if the active view exists (with debouncing)
-    refreshTimelineIfNeeded(file: TAbstractFile | null | undefined, delayMs?: number) { 
+    refreshTimelineIfNeeded(file: TAbstractFile | null | undefined, delayMs?: number) {
         // For settings changes (file=null), use 0ms delay for immediate feedback
         // For file changes, use provided delay or default 400ms
         const effectiveDelay = file === null && delayMs === undefined ? 0 : (delayMs ?? 400);
-		this.timelineService.refreshTimelineIfNeeded(file, effectiveDelay);
-	}
+        this.timelineService.refreshTimelineIfNeeded(file, effectiveDelay);
+    }
 
     // Search related methods
     public openSearchPrompt(): void { this.searchService.openSearchPrompt(); }
-    
+
     public performSearch(term: string): void { this.searchService.performSearch(term); }
-    
+
     public clearSearch(): void { this.searchService.clearSearch(); }
 
     public setCSSColorVariables(): void {
@@ -527,7 +530,7 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     // Add helper method to highlight search terms
-    
+
     // Helper method to convert DocumentFragment to string for backward compatibility
 
 
@@ -559,7 +562,7 @@ export default class RadialTimelinePlugin extends Plugin {
     showBeatsStatusBar(current: number, total: number): void {
         this.beatsProcessingService.showStatus(current, total);
     }
-    
+
     /**
      * Hide and remove status bar item when processing completes
      */
