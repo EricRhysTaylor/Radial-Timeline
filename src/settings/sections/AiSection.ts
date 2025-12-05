@@ -95,7 +95,7 @@ export function renderAiSection(params: {
             optionId: 'local:custom',
             provider: 'local',
             modelId: 'custom',
-            label: 'OpenAI Compatible / Local',
+            label: 'Local / OpenAI Compatible',
             guidance: 'Use a local LLM (like Ollama) or any OpenAI-compatible API. Configure URL and Model ID below.'
         });
 
@@ -272,7 +272,7 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(localSection);
 
     new Settings(localSection)
-        .setName('Base URL')
+        .setName('Local LLM Base URL')
         .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
         .addText(text => text
             .setPlaceholder('http://localhost:11434/v1')

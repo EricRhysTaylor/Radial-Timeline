@@ -1,11 +1,17 @@
 {
-  "generatedAt": "2025-11-22T21:36:08.884Z",
+  "generatedAt": "2025-12-05T02:47:03.393Z",
   "summary": {
-    "anthropic": 9,
-    "openai": 102,
+    "anthropic": 10,
+    "openai": 101,
     "gemini": 50
   },
   "anthropic": [
+    {
+      "id": "claude-opus-4-5-20251101",
+      "display_name": "Claude Opus 4.5",
+      "created_at": "2025-11-24T00:00:00Z",
+      "type": "model"
+    },
     {
       "id": "claude-haiku-4-5-20251001",
       "display_name": "Claude Haiku 4.5",
@@ -62,6 +68,11 @@
     }
   ],
   "openai": [
+    {
+      "id": "gpt-5.1-codex-max",
+      "owned_by": "system",
+      "created": 1763671532
+    },
     {
       "id": "gpt-5.1-codex-mini",
       "owned_by": "system",
@@ -408,16 +419,6 @@
       "created": 1727460443
     },
     {
-      "id": "gpt-4o-audio-preview-2024-10-01",
-      "owned_by": "system",
-      "created": 1727389042
-    },
-    {
-      "id": "gpt-4o-realtime-preview-2024-10-01",
-      "owned_by": "system",
-      "created": 1727131766
-    },
-    {
       "id": "chatgpt-4o-latest",
       "owned_by": "system",
       "created": 1723515131
@@ -583,34 +584,10 @@
       "outputTokenLimit": 1
     },
     {
-      "id": "gemini-2.5-pro-preview-03-25",
-      "name": "models/gemini-2.5-pro-preview-03-25",
-      "displayName": "Gemini 2.5 Pro Preview 03-25",
-      "description": "Gemini 2.5 Pro Preview 03-25",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
       "id": "gemini-2.5-flash",
       "name": "models/gemini-2.5-flash",
       "displayName": "Gemini 2.5 Flash",
       "description": "Stable version of Gemini 2.5 Flash, our mid-size multimodal model that supports up to 1 million tokens, released in June of 2025.",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-2.5-pro-preview-05-06",
-      "name": "models/gemini-2.5-pro-preview-05-06",
-      "displayName": "Gemini 2.5 Pro Preview 05-06",
-      "description": "Preview release (May 6th, 2025) of Gemini 2.5 Pro",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-2.5-pro-preview-06-05",
-      "name": "models/gemini-2.5-pro-preview-06-05",
-      "displayName": "Gemini 2.5 Pro Preview",
-      "description": "Preview release (June 5th, 2025) of Gemini 2.5 Pro",
       "inputTokenLimit": 1048576,
       "outputTokenLimit": 65536
     },
@@ -711,30 +688,6 @@
       "outputTokenLimit": 65536
     },
     {
-      "id": "gemini-2.0-flash-thinking-exp-01-21",
-      "name": "models/gemini-2.0-flash-thinking-exp-01-21",
-      "displayName": "Gemini 2.5 Flash Preview 05-20",
-      "description": "Preview release (April 17th, 2025) of Gemini 2.5 Flash",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-2.0-flash-thinking-exp",
-      "name": "models/gemini-2.0-flash-thinking-exp",
-      "displayName": "Gemini 2.5 Flash Preview 05-20",
-      "description": "Preview release (April 17th, 2025) of Gemini 2.5 Flash",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-2.0-flash-thinking-exp-1219",
-      "name": "models/gemini-2.0-flash-thinking-exp-1219",
-      "displayName": "Gemini 2.5 Flash Preview 05-20",
-      "description": "Preview release (April 17th, 2025) of Gemini 2.5 Flash",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
       "id": "gemini-2.5-flash-preview-tts",
       "name": "models/gemini-2.5-flash-preview-tts",
       "displayName": "Gemini 2.5 Flash Preview TTS",
@@ -749,14 +702,6 @@
       "description": "Gemini 2.5 Pro Preview TTS",
       "inputTokenLimit": 8192,
       "outputTokenLimit": 16384
-    },
-    {
-      "id": "learnlm-2.0-flash-experimental",
-      "name": "models/learnlm-2.0-flash-experimental",
-      "displayName": "LearnLM 2.0 Flash Experimental",
-      "description": "LearnLM 2.0 Flash Experimental",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 32768
     },
     {
       "id": "gemma-3-1b-it",
@@ -965,6 +910,62 @@
       "name": "models/imagen-4.0-ultra-generate-preview-06-06",
       "displayName": "Imagen 4 Ultra (Preview)",
       "description": "Vertex served Imagen 4.0 ultra model",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "imagen-4.0-generate-001",
+      "name": "models/imagen-4.0-generate-001",
+      "displayName": "Imagen 4",
+      "description": "Vertex served Imagen 4.0 model",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "imagen-4.0-ultra-generate-001",
+      "name": "models/imagen-4.0-ultra-generate-001",
+      "displayName": "Imagen 4 Ultra",
+      "description": "Vertex served Imagen 4.0 ultra model",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "imagen-4.0-fast-generate-001",
+      "name": "models/imagen-4.0-fast-generate-001",
+      "displayName": "Imagen 4 Fast",
+      "description": "Vertex served Imagen 4.0 Fast model",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "veo-2.0-generate-001",
+      "name": "models/veo-2.0-generate-001",
+      "displayName": "Veo 2",
+      "description": "Vertex served Veo 2 model. Access to this model requires billing to be enabled on the associated Google Cloud Platform account. Please visit https://console.cloud.google.com/billing to enable it.",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "veo-3.0-generate-001",
+      "name": "models/veo-3.0-generate-001",
+      "displayName": "Veo 3",
+      "description": "Veo 3",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "veo-3.0-fast-generate-001",
+      "name": "models/veo-3.0-fast-generate-001",
+      "displayName": "Veo 3 fast",
+      "description": "Veo 3 fast",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "veo-3.1-generate-preview",
+      "name": "models/veo-3.1-generate-preview",
+      "displayName": "Veo 3.1",
+      "description": "Veo 3.1",
       "inputTokenLimit": 480,
       "outputTokenLimit": 8192
     }

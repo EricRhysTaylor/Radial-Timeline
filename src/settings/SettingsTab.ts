@@ -4,17 +4,17 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 import {
-  App,
-  PluginSettingTab,
-  Setting as Settings,
-  Component,
-  MarkdownRenderer,
-  Notice,
-  TextComponent,
-  ColorComponent,
-  TFolder,
-  normalizePath,
-  requestUrl,
+    App,
+    PluginSettingTab,
+    Setting as Settings,
+    Component,
+    MarkdownRenderer,
+    Notice,
+    TextComponent,
+    ColorComponent,
+    TFolder,
+    normalizePath,
+    requestUrl,
 } from 'obsidian';
 import { FolderSuggest } from './FolderSuggest';
 import { renderGeneralSection } from './sections/GeneralSection';
@@ -38,11 +38,12 @@ declare const EMBEDDED_README_CONTENT: string;
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
     private readmeComponent: Component | null = null; // <<< ADD THIS LINE
-    private _providerSections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement } = {};
-    private _keyValidateTimers: Partial<Record<'anthropic'|'gemini'|'openai', number>> = {};
+    private _providerSections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement; local?: HTMLElement } = {};
+    private _keyValidateTimers: Partial<Record<'anthropic' | 'gemini' | 'openai' | 'local', number>> = {};
     private _anthropicKeyInput?: HTMLInputElement;
     private _geminiKeyInput?: HTMLInputElement;
     private _openaiKeyInput?: HTMLInputElement;
+    private _localKeyInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = []; // Store references to AI-related settings
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
@@ -59,9 +60,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     // Dims non-selected provider sections based on chosen model/provider
     private refreshProviderDimming() {
-        const selected = (this.plugin.settings.defaultAiProvider || 'openai') as 'anthropic' | 'gemini' | 'openai';
+        const selected = (this.plugin.settings.defaultAiProvider || 'openai') as 'anthropic' | 'gemini' | 'openai' | 'local';
         const map = this._providerSections;
-        (['anthropic','gemini','openai'] as const).forEach(key => {
+        (['anthropic', 'gemini', 'openai', 'local'] as const).forEach(key => {
             const el = map[key];
             if (!el) return;
             if (key === selected) el.classList.remove('dimmed');
@@ -83,13 +84,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     // Debounced API key validation using zero-cost model list endpoints
-    private scheduleKeyValidation(provider: 'anthropic'|'gemini'|'openai') {
+    private scheduleKeyValidation(provider: 'anthropic' | 'gemini' | 'openai' | 'local') {
         // Clear prior timer
         const prior = this._keyValidateTimers[provider];
         if (prior) window.clearTimeout(prior);
         const inputEl = provider === 'anthropic' ? this._anthropicKeyInput
-                        : provider === 'gemini' ? this._geminiKeyInput
-                        : this._openaiKeyInput;
+            : provider === 'gemini' ? this._geminiKeyInput
+                : provider === 'openai' ? this._openaiKeyInput
+                    : this._localKeyInput;
         if (!inputEl) return;
 
         const key = inputEl.value?.trim();
@@ -108,6 +110,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     await fetchAnthropicModels(key);
                 } else if (provider === 'gemini') {
                     await fetchGeminiModels(key);
+                } else if (provider === 'local') {
+                    // No validation for local yet
+                    return;
                 } else {
                     await fetchOpenAiModels(key);
                 }
@@ -128,30 +133,30 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     // Method to show path suggestions
     private showPathSuggestions(currentValue: string, container: HTMLElement, textInput: TextComponent): void {
         const validPaths = this.plugin.settings.validFolderPaths;
-        
+
         // Filter paths that match the current input
-        const filteredPaths = validPaths.filter(path => 
+        const filteredPaths = validPaths.filter(path =>
             path.toLowerCase().includes(currentValue.toLowerCase()) || currentValue === ''
         );
-        
+
         // Clear previous suggestions
         container.empty();
-        
+
         if (filteredPaths.length === 0) {
             container.classList.add('hidden');
             return;
         }
-        
+
         // Show suggestions
         container.classList.remove('hidden');
-        
+
         filteredPaths.forEach(path => {
             const suggestionEl = container.createDiv({ cls: 'rt-source-path-suggestion-item' });
             // Padding, cursor, and border handled by CSS class
             suggestionEl.textContent = path;
-            
+
             // Hover effect handled by CSS :hover pseudo-class
-            
+
             // Click to select
             this.plugin.registerDomEvent(suggestionEl, 'click', async () => {
                 textInput.setValue(path);
@@ -173,7 +178,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     window.setTimeout(() => textInput.inputEl.removeClass('rt-setting-input-error'), 2000);
                 }
                 // Focus back to input
-                try { textInput.inputEl.focus(); } catch {}
+                try { textInput.inputEl.focus(); } catch { }
             });
         });
     }
@@ -199,33 +204,33 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     // Render Patreon support section
     private renderPatreonSection(containerEl: HTMLElement): void {
         const patreonContainer = containerEl.createDiv({ cls: 'rt-patreon-support' });
-        
+
         // Create large background "P" logo using theme variable
         const bgLogo = patreonContainer.createDiv({ cls: 'rt-patreon-bg-logo' });
         const bgSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         bgSvg.setAttribute('viewBox', '0 0 1080 1080');
         bgSvg.classList.add('rt-patreon-bg-svg');
-        
+
         const bgPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         bgPath.setAttribute('d', 'M1033.05,324.45c-0.19-137.9-107.59-250.92-233.6-291.7c-156.48-50.64-362.86-43.3-512.28,27.2 C106.07,145.41,49.18,332.61,47.06,519.31c-1.74,153.5,13.58,557.79,241.62,560.67c169.44,2.15,194.67-216.18,273.07-321.33 c55.78-74.81,127.6-95.94,216.01-117.82C929.71,603.22,1033.27,483.3,1033.05,324.45z');
         bgSvg.appendChild(bgPath);
         bgLogo.appendChild(bgSvg);
-        
+
         // Content container
         const contentContainer = patreonContainer.createDiv({ cls: 'rt-patreon-content' });
-        
+
         const title = contentContainer.createEl('h3', { cls: 'rt-patreon-title' });
         title.createSpan({ text: 'Support Radial Timeline Development' });
-        
+
         const description = contentContainer.createEl('p', { cls: 'rt-patreon-description' });
         description.appendText('Join my Patreon to show your unbridled enthusiasm for the Radial Timeline! Help guide the development of the project into the far far future by voting in polls and sharing ideas and feedback directly with the creator.');
-        
+
         const buttonContainer = contentContainer.createDiv({ cls: 'rt-patreon-button-container' });
         const patreonButton = buttonContainer.createEl('a', {
             cls: 'rt-patreon-button',
             href: 'https://www.patreon.com/c/EricRhysTaylor'
         });
-        
+
         // Create SVG icon using proper DOM methods
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('width', '16');
@@ -233,21 +238,21 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         svg.setAttribute('viewBox', '0 0 1080 1080');
         svg.setAttribute('fill', 'currentColor');
         svg.classList.add('rt-patreon-icon');
-        
+
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', 'M1033.05,324.45c-0.19-137.9-107.59-250.92-233.6-291.7c-156.48-50.64-362.86-43.3-512.28,27.2 C106.07,145.41,49.18,332.61,47.06,519.31c-1.74,153.5,13.58,557.79,241.62,560.67c169.44,2.15,194.67-216.18,273.07-321.33 c55.78-74.81,127.6-95.94,216.01-117.82C929.71,603.22,1033.27,483.3,1033.05,324.45z');
         svg.appendChild(path);
-        
+
         patreonButton.appendChild(svg);
-        
+
         // Add button text with member count
         const buttonText = patreonButton.createSpan({ cls: 'rt-patreon-button-text' });
         buttonText.appendText('Join on Patreon');
-        
+
         // Add member count badge - will be populated async
         const memberBadge = patreonButton.createSpan({ cls: 'rt-patreon-member-count' });
         memberBadge.appendText('Loading...');
-        
+
         // Fetch and display member count
         this.fetchPatreonMemberCount().then(count => {
             if (count !== null) {
@@ -256,7 +261,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 memberBadge.setText('Growing community!');
             }
         });
-        
+
         // SAFE: addEventListener in PluginSettingTab - cleaned up when settings are closed
         patreonButton.addEventListener('click', (e: MouseEvent) => {
             e.preventDefault();
@@ -282,7 +287,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        
+
         // Clear AI-related elements array for fresh render
         this._aiRelatedElements = [];
 
@@ -303,7 +308,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // 4. Story Beats System and Gossamer (templates dropdown, create templates button)
         renderStoryBeatsSection({ app: this.app, plugin: this.plugin, containerEl });
-            
+
         // 5. AI LLM for Scene Analysis
         renderAiSection({
             app: this.app,
@@ -312,12 +317,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             addAiRelatedElement: (el: HTMLElement) => this._aiRelatedElements.push(el),
             toggleAiSettingsVisibility: (show: boolean) => this.toggleAiSettingsVisibility(show),
             refreshProviderDimming: () => this.refreshProviderDimming(),
-            scheduleKeyValidation: (p: 'anthropic'|'gemini'|'openai') => this.scheduleKeyValidation(p),
-            setProviderSections: (sections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement }) => { this._providerSections = sections; },
-            setKeyInputRef: (provider: 'anthropic'|'gemini'|'openai', input: HTMLInputElement | undefined) => {
+            scheduleKeyValidation: (p: 'anthropic' | 'gemini' | 'openai' | 'local') => this.scheduleKeyValidation(p),
+            setProviderSections: (sections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement; local?: HTMLElement }) => { this._providerSections = sections; },
+            setKeyInputRef: (provider: 'anthropic' | 'gemini' | 'openai' | 'local', input: HTMLInputElement | undefined) => {
                 if (provider === 'anthropic') this._anthropicKeyInput = input;
                 if (provider === 'gemini') this._geminiKeyInput = input;
                 if (provider === 'openai') this._openaiKeyInput = input;
+                if (provider === 'local') this._localKeyInput = input;
             },
         });
 
@@ -326,9 +332,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // Colors section
         renderColorsSection(containerEl, this.plugin);
-        
+
         void renderReleaseNotesSection({ plugin: this.plugin, containerEl });
-        
+
         renderReadmeSection({ app: this.app, containerEl, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
     }
 
@@ -342,6 +348,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // super.hide(); 
     }
 
-    
+
 
 }
