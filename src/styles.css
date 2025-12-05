@@ -473,6 +473,16 @@
 }
 
 /* Mode toggle button styles */
+.rt-mode-toggle {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.rt-mode-toggle:hover {
+  opacity: 0.8;
+}
+
+
 .radial-timeline-svg #mode-toggle {
   cursor: pointer;
   color: var(--text-normal);

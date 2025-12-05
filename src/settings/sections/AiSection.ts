@@ -4,7 +4,7 @@ import type RadialTimelinePlugin from '../../main';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
 import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels } from '../../api/geminiApi';
-import { CURATED_MODELS, CuratedModel } from '../../data/aiModels';
+import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -78,15 +78,17 @@ export function renderAiSection(params: {
             local: 'Local / OpenAI Compatible'
         };
 
-        const choices: ModelChoice[] = (Object.entries(CURATED_MODELS) as Array<[Provider, CuratedModel[]]>)
-            .flatMap(([provider, models]) =>
-                models.map(model => ({
-                    optionId: `${provider}:${model.id}`,
-                    provider,
-                    modelId: model.id,
-                    label: `${providerLabel[provider]} — ${model.label}`,
-                    guidance: model.guidance,
-                })));
+        const orderedProviders: AiProvider[] = ['anthropic', 'gemini', 'openai'];
+        const choices: ModelChoice[] = orderedProviders.flatMap(provider => {
+            const models = CURATED_MODELS[provider] || [];
+            return models.map(model => ({
+                optionId: `${provider}:${model.id}`,
+                provider,
+                modelId: model.id,
+                label: `${providerLabel[provider]} — ${model.label}`,
+                guidance: model.guidance,
+            }));
+        });
 
         // Add Local Option
         choices.push({
@@ -227,23 +229,6 @@ export function renderAiSection(params: {
                 params.scheduleKeyValidation('gemini');
             }));
 
-    // Gemini Recommendation Note
-    const geminiInfo = new Settings(geminiSection)
-        .setDesc((() => {
-            const frag = document.createDocumentFragment();
-            frag.createEl('strong', { text: 'Recommendation: ' });
-            frag.createSpan({ text: 'Use Gemini 1.5 Pro (or newer) for its massive context window (up to 2M tokens) and Context Caching capabilities. This allows you to load your entire manuscript into a cached session, enabling faster, cheaper, and more continuous analysis across multiple queries without re-uploading the full text each time.' });
-            return frag;
-        })());
-    // Style the info box to look like a note
-    geminiInfo.settingEl.addClass('rt-setting-info-box');
-    // SAFE: CSS class used for layout reset
-    geminiInfo.settingEl.addClass('rt-reset-margin-padding');
-    // SAFE: CSS class used for text color
-    geminiInfo.settingEl.addClass('rt-text-muted');
-    geminiInfo.settingEl.querySelector('.setting-item-info')?.setAttribute('style', 'margin: 0; width: 100%;');
-    geminiInfo.settingEl.querySelector('.setting-item-control')?.remove(); // Remove the control side
-
     // OpenAI API Key
     new Settings(openaiSection)
         .setName('OpenAI API key')
@@ -279,6 +264,9 @@ export function renderAiSection(params: {
             }));
 
     // Local / OpenAI Compatible Section
+    const separator = containerEl.createEl('hr', { cls: 'rt-setting-hr' });
+    params.addAiRelatedElement(separator);
+
     const localSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-local' });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
     params.addAiRelatedElement(localSection);
