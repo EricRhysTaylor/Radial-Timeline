@@ -137,15 +137,15 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 
 ## Documentation
 
-Detailed guides and references have been moved to the [GitHub Wiki](https://github.com/EricRhysTaylor/radial-timeline/wiki).
+Detailed guides and references have been moved to the [GitHub Wiki](https://github.com/EricRhysTaylor/Radial-Timeline/wiki).
 
-*   **[Core Workflows](https://github.com/EricRhysTaylor/radial-timeline/wiki/Core-Workflows)**: Planning, Tracking Progress, and Zero Draft Mode.
-*   **[Chronologue Mode](https://github.com/EricRhysTaylor/radial-timeline/wiki/Chronologue-Mode)**: Constructing your story timeline and analyzing time gaps.
-*   **[Gossamer Mode](https://github.com/EricRhysTaylor/radial-timeline/wiki/Gossamer-Mode)**: Analyzing narrative momentum.
-*   **[AI Analysis](https://github.com/EricRhysTaylor/radial-timeline/wiki/AI-Analysis)**: Using AI for scene analysis.
-*   **[View Modes](https://github.com/EricRhysTaylor/radial-timeline/wiki/View-Modes)**: Detailed explanation of Narrative, Subplot, and other modes.
-*   **[YAML Reference](https://github.com/EricRhysTaylor/radial-timeline/wiki/YAML-Frontmatter)**: Complete guide to scene and beat frontmatter.
-*   **[Settings Guide](https://github.com/EricRhysTaylor/radial-timeline/wiki/Settings)**: Configuration options explained.
+*   **[Core Workflows](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Core-Workflows)**: Planning, Tracking Progress, and Zero Draft Mode.
+*   **[Chronologue Mode](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Chronologue-Mode)**: Constructing your story timeline and analyzing time gaps.
+*   **[Gossamer Mode](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Gossamer-Mode)**: Analyzing narrative momentum.
+*   **[AI Analysis](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/AI-Analysis)**: Using AI for scene analysis.
+*   **[View Modes](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/View-Modes)**: Detailed explanation of Narrative, Subplot, and other modes.
+*   **[YAML Reference](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/YAML-Frontmatter)**: Complete guide to scene and beat frontmatter.
+*   **[Settings Guide](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Settings)**: Configuration options explained.
 
 ---
 
