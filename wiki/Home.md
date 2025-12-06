@@ -11,3 +11,41 @@ Radial Timeline™ captures and visualizes all 4 critical timelines:
 *   **Chronological time**: when events happen in your story's world.
 *   **Author time**: your real-world writing progress toward completion from Todo to Complete.
 *   **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
+
+---
+
+### Visual Overview
+
+<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+  <div style="text-align: center;">
+    <img src="images/screenshot1.jpeg" alt="All Scenes Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Narrative Timeline</div>
+  </div>
+  <div style="text-align: center;">
+    <img src="images/screenshot2.jpeg" alt="Timeline Hover Synopsis" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline Hover Synopsis</div>
+  </div>
+</div>
+
+<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
+  <div style="text-align: center;">
+    <img src="images/screenshot3.jpeg" alt="Main Plot Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Mode</div>
+  </div>
+  <div style="text-align: center;">
+    <img src="images/screenshot4.jpeg" alt="Gossamer View" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer View</div>
+  </div>
+</div>
+
+<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
+  <div style="text-align: center;">
+    <img src="images/screenshot6.jpeg" alt="Chronologue Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode</div>
+  </div>
+  <div style="text-align: center;">
+    <img src="images/screenshot5.jpeg" alt="Chronologue Mode - SHIFT" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode - SHIFT</div>
+  </div>
+</div>
+

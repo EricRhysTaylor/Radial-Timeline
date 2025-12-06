@@ -10,3 +10,8 @@ Gossamer Mode visualizes narrative momentum using story beat scores. Timeline gr
 **Modes**: Gossamer mode (key **4**)
 **Command**: `Gossamer enter momentum scores`
 **Settings**: `Story beats system`
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/screenshot-gossamer.png" alt="Gossamer Range & Three Scores" style="width: 400; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer Range & Three Scores</div>
+</div>
