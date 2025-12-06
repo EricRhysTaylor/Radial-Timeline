@@ -1,0 +1,22 @@
+### Planning Your Novel
+*   **Story Beats**: Use any story beat system (Save the Cat, Hero's Journey, Story Grid, or Custom) to lay out the story momentum scaffolding.
+*   **Act Structure**: Create and distribute scenes by act (1-3) to see your three-act structure take shape as scene ideas come to you.
+*   **Subplot Tracking**: Each ring represents a different subplot—see how plot threads interweave.
+*   **Beat Templates**: Generate complete story beat sets like Save the Cat using Settings → Story beat system.
+
+**Command**: `Create template scene note`
+**Settings**: `Story beat system`
+
+### Tracking Progress
+*   **Status Colors**: In **Subplot Mode**, scenes are color-coded by status (Todo = plaid, Working = pink, Overdue = red, Complete = publish stage color customizable in settings). In Narrative and Chronologue modes, scenes display their subplot color.
+*   **Completion Estimates**: Plugin calculates target completion date based on your recent writing pace.
+*   **Publishing Stages**: Track manuscript through Zero → Author → House → Press.
+*   **Subplot Mode**: Switch to subplot mode (navigation top right via page icon or keyboard 2) for simplified view emphasizing publication progress as well as individual subplots.
+
+**Modes**: Narrative (key 1) or Subplot (key 2)
+**Settings**: Publishing stage colors
+
+### Zero Draft Mode
+Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progress to new scenes instead of endlessly revising.
+
+**Settings**: → Radial Timeline → Zero draft mode

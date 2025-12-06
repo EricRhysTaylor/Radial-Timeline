@@ -135,7 +135,7 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 Detailed guides and references have been moved to the [GitHub Wiki](https://github.com/EricRhysTaylor/radial-timeline/wiki).
 
@@ -159,6 +159,13 @@ Detailed guides and references have been moved to the [GitHub Wiki](https://gith
 **Manual installation**
 1.  Download the latest main.js, styles.css, and manifest.json from the <a href="https://github.com/EricRhysTaylor/radial-timeline/releases" target="_blank" rel="noopener">releases</a> page.
 2.  Extract the files to your vault's .obsidian/plugins/radial-timeline (may be hidden by file system)
+
+<hr>
+
+## Known Conflicts
+
+*   **Plugin Conflicts**: If you experience visual glitches or strange behavior (such as the timeline overlapping with other UI elements), it may be due to a conflict with another plugin. Try disabling other plugins to isolate the issue. The 
+
 
 <hr>
 
