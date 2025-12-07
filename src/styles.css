@@ -152,7 +152,7 @@
 
 .rt-version-text {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 16px;
+  font-size: 10px;
   /* 04b03b at 2x native (8px base) */
   text-anchor: start;
   dominant-baseline: baseline;
@@ -3903,6 +3903,12 @@
   padding: 0;
   margin-top: 15px;
   margin-bottom: 20px;
+}
+
+.rt-manuscript-readme-container img {
+  image-rendering: auto;
+  image-rendering: high-quality;
+  height: auto;
 }
 
 /* Settings input validation styles */
