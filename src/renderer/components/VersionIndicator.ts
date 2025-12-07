@@ -5,14 +5,14 @@
  */
 
 import { formatNumber } from '../../utils/svg';
-import { 
-    VERSION_INDICATOR_POS_X, 
+import {
+    VERSION_INDICATOR_POS_X,
     VERSION_INDICATOR_POS_Y
 } from '../layout/LayoutConstants';
 
 /**
  * Badge alert icon SVG path (lucide-badge-alert) - shown when update available
- * Size: 24x24, stroke-width: 1.5
+ * Size: 24x24, stroke-width: 1
  */
 const BADGE_ALERT_ICON = `
 <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/>
@@ -22,7 +22,7 @@ const BADGE_ALERT_ICON = `
 
 /**
  * Bug icon SVG path (lucide-bug) - shown when no update, links to bug reporting
- * Size: 24x24, stroke-width: 1.5
+ * Size: 24x24, stroke-width: 1
  */
 const BUG_ICON = `
 <path d="M12 20v-9"/>
@@ -50,19 +50,19 @@ export interface VersionIndicatorOptions {
  */
 function getUpdateSeverity(current: string, latest: string | undefined): 'none' | 'minor' | 'major' {
     if (!latest) return 'none';
-    
+
     const parseVersion = (v: string): number[] => {
         return v.replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
     };
-    
+
     const [curMajor] = parseVersion(current);
     const [latMajor] = parseVersion(latest);
-    
+
     // Major version bump (e.g., 4.x.x -> 5.x.x)
     if (latMajor > curMajor) {
         return 'major';
     }
-    
+
     // Any other update (minor or patch)
     return 'minor';
 }
@@ -74,41 +74,43 @@ function getUpdateSeverity(current: string, latest: string | undefined): 'none' 
  */
 export function renderVersionIndicator(options: VersionIndicatorOptions): string {
     const { version, hasUpdate, latestVersion } = options;
-    
+
     const x = formatNumber(VERSION_INDICATOR_POS_X);
     const y = formatNumber(VERSION_INDICATOR_POS_Y);
-    
+
     // Determine update severity
     const severity = hasUpdate ? getUpdateSeverity(version, latestVersion) : 'none';
-    
+
     // Build classes based on update state and severity
     const groupClasses = ['rt-version-indicator', `rt-update-${severity}`];
     if (hasUpdate) {
         groupClasses.push('rt-has-update');
     }
-    
+
     // Version text: show "NEW RELEASE" when update available, otherwise show version
     const versionText = hasUpdate ? 'NEW RELEASE' : version;
-    
-    // Icon positioned below the version text (centered roughly)
-    // Adjust position based on text width
-    const iconX = hasUpdate ? 36 : 12; // Center under longer "NEW RELEASE" text
-    const iconY = 6;  // Below the text baseline
-    
+
+    // Icon positioned below the version text (centered)
+    // Scale is 1.0, so width is 24. Center offset is -12
+    const iconScale = 1;
+    const iconSize = 24 * iconScale;
+    const iconX = -(iconSize / 2);
+    const iconY = 10;  // Below the text baseline
+
     // Tooltip for version text area
     const versionTooltip = hasUpdate && latestVersion
         ? `Current: ${version} → New: ${latestVersion}\nClick to update`
         : `Version ${version}`;
-    
+
     // Tooltip for icon
     const iconTooltip = hasUpdate
         ? `Update to ${latestVersion}`
         : 'Please report any bugs you encounter here.';
-    
+
     // Choose icon based on update state
     const iconContent = hasUpdate ? BADGE_ALERT_ICON : BUG_ICON;
     const iconClass = hasUpdate ? 'rt-version-alert-icon' : 'rt-version-bug-icon';
-    
+
     return `
         <g id="version-indicator" class="${groupClasses.join(' ')}" transform="translate(${x}, ${y})">
             <!-- Version text in 04b03b pixel font -->
@@ -118,18 +120,17 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
             </text>
             
             <!-- Icon below version: Bug icon (no update) or Alert icon (update available) -->
-            <g class="${iconClass}" transform="translate(${formatNumber(iconX)}, ${formatNumber(iconY)}) scale(0.7)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <g class="${iconClass}" transform="translate(${formatNumber(iconX)}, ${formatNumber(iconY)}) scale(${iconScale})">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
                     ${iconContent}
                 </svg>
                 <title>${iconTooltip}</title>
             </g>
             
             <!-- Invisible hit area for icon click -->
-            <rect class="rt-version-icon-hitarea" x="${formatNumber(iconX - 4)}" y="${formatNumber(iconY - 4)}" width="26" height="26" fill="transparent" pointer-events="all">
+            <rect class="rt-version-icon-hitarea" x="${formatNumber(iconX - 4)}" y="${formatNumber(iconY - 4)}" width="32" height="32" fill="transparent" pointer-events="all">
                 <title>${iconTooltip}</title>
             </rect>
         </g>
     `;
 }
-

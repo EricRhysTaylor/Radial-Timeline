@@ -152,9 +152,9 @@
 
 .rt-version-text {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 10px;
-  /* 04b03b at 2x native (8px base) */
-  text-anchor: start;
+  font-size: 20px;
+  /* 04b03b at 20px (2x PC-safe 10px) */
+  text-anchor: middle;
   dominant-baseline: baseline;
   letter-spacing: 0;
   pointer-events: none;
@@ -213,7 +213,7 @@
 .rt-version-bug-icon {
   fill: none;
   stroke: var(--text-muted);
-  stroke-width: 1.5px;
+  stroke-width: 1px;
   opacity: 0.6;
   transition: opacity 0.2s ease, stroke 0.2s ease;
   cursor: pointer;
@@ -227,7 +227,7 @@
 /* Alert icon (shown when update available) */
 .rt-version-alert-icon {
   fill: none;
-  stroke-width: 1.5px;
+  stroke-width: 1px;
   opacity: 1;
   transition: opacity 0.3s ease, stroke 0.2s ease;
   cursor: pointer;
