@@ -69,6 +69,16 @@ export function renderDefs(PUBLISH_STAGE_COLORS: Record<string, string>): string
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
+    <filter id="sceneTitleHalo" x="-20%" y="-20%" width="140%" height="140%">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1.2" result="expanded"/>
+      <feGaussianBlur in="expanded" stdDeviation="0.8" result="blurred"/>
+      <feFlood flood-color="#000000" flood-opacity="0.85" result="haloColor"/>
+      <feComposite in="haloColor" in2="blurred" operator="in" result="halo"/>
+      <feMerge>
+        <feMergeNode in="halo"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   `;
 
   return plaid + icons + filters;
@@ -104,5 +114,4 @@ export function renderProgressRingGradients(): string {
       </linearGradient>
     </defs>`;
 }
-
 
