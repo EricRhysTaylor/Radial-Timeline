@@ -1,4 +1,4 @@
-import { TFile, App } from 'obsidian';
+import { TFile, App, Notice } from 'obsidian';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import type { TimelineItem } from '../../types';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
@@ -158,6 +158,163 @@ export function setupAllScenesDelegatedHover(view: AllScenesView, container: HTM
             cancelAnimationFrame(rafId);
             rafId = null;
         }
+    });
+}
+
+function getSceneIdFromNumberGroup(group: Element | null): string | null {
+    if (!group) return null;
+    const rect = group.querySelector<SVGRectElement>('.rt-number-square[data-scene-id]');
+    return rect?.dataset.sceneId || null;
+}
+
+function cssEscape(value: string): string {
+    // Fallback for environments without CSS.escape
+    if (typeof (window as any).CSS !== 'undefined' && (window as any).CSS.escape) {
+        return (window as any).CSS.escape(value);
+    }
+    return value.replace(/[^a-zA-Z0-9_\-]/g, '\\$&');
+}
+
+function splitNumberParts(numText: string | null | undefined): { intPart: number; suffix: string } {
+    if (!numText) return { intPart: 0, suffix: '' };
+    const trimmed = String(numText).trim();
+    const match = trimmed.match(/^(\d+)(\..+)?$/);
+    if (!match) return { intPart: 0, suffix: '' };
+    return { intPart: Number(match[1]) || 0, suffix: match[2] || '' };
+}
+
+async function applySceneNumberUpdates(view: AllScenesView, updates: Array<{ path: string; newNumber: string }>): Promise<void> {
+    const { app } = view.plugin;
+    for (const update of updates) {
+        const file = app.vault.getAbstractFileByPath(update.path);
+        if (!(file instanceof TFile)) continue;
+        await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+            fm['Scene Number'] = update.newNumber;
+            const rawTitle = typeof fm['Title'] === 'string' ? (fm['Title'] as string) : file.basename;
+            const hasNumericPrefix = /^\s*\d+(?:\.\d+)?\s+/.test(rawTitle);
+            if (hasNumericPrefix) {
+                const cleanTitle = rawTitle.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
+                fm['Title'] = `${update.newNumber} ${cleanTitle}`.trim();
+            }
+        });
+    }
+}
+
+function buildOuterRingOrder(svg: SVGSVGElement): Array<{ sceneId: string; path: string; numberText: string }> {
+    const groups = Array.from(svg.querySelectorAll<SVGGElement>('.number-square-group[data-outer-ring="true"]'));
+    return groups.map((group) => {
+        const sceneId = getSceneIdFromNumberGroup(group) || '';
+        const pathEl = sceneId
+            ? svg.querySelector<SVGPathElement>(`#${cssEscape(sceneId)}`)
+            : null;
+        const sceneGroup = pathEl?.closest('.rt-scene-group');
+        const encodedPath = sceneGroup?.getAttribute('data-path') || '';
+        const path = encodedPath ? decodeURIComponent(encodedPath) : '';
+        const numberTextEl = svg.querySelector<SVGTextElement>(`.rt-number-text[data-scene-id="${cssEscape(sceneId)}"]`);
+        const numberText = numberTextEl?.textContent?.trim() || '';
+        return { sceneId, path, numberText };
+    }).filter(entry => entry.sceneId && entry.path);
+}
+
+export function setupOuterRingDrag(view: AllScenesView, svg: SVGSVGElement): void {
+    if (view.currentMode !== 'narrative') return;
+    const outerGroups = Array.from(svg.querySelectorAll<SVGGElement>('.number-square-group[data-outer-ring="true"]'));
+    if (!outerGroups.length) return;
+
+    let currentTarget: SVGGElement | null = null;
+    let dragging = false;
+    let sourceSceneId: string | null = null;
+
+    const clearHighlight = () => {
+        if (currentTarget) {
+            currentTarget.classList.remove('rt-drop-target');
+            const targetId = getSceneIdFromNumberGroup(currentTarget);
+            if (targetId) {
+                const pathEl = svg.querySelector<SVGPathElement>(`#${cssEscape(targetId)}`);
+                pathEl?.classList.remove('rt-drop-target');
+            }
+            currentTarget = null;
+        }
+    };
+
+    const setHighlight = (group: SVGGElement | null) => {
+        if (!group || group === currentTarget) return;
+        clearHighlight();
+        currentTarget = group;
+        currentTarget.classList.add('rt-drop-target');
+        const targetId = getSceneIdFromNumberGroup(group);
+        if (targetId) {
+            const pathEl = svg.querySelector<SVGPathElement>(`#${cssEscape(targetId)}`);
+            pathEl?.classList.add('rt-drop-target');
+        }
+    };
+
+    const findOuterGroup = (evt: PointerEvent): SVGGElement | null => {
+        const direct = (evt.target as Element | null)?.closest('.number-square-group[data-outer-ring="true"]');
+        if (direct) return direct as SVGGElement;
+        const fromPoint = document.elementFromPoint(evt.clientX, evt.clientY);
+        const fallback = fromPoint?.closest('.number-square-group[data-outer-ring="true"]');
+        return fallback as SVGGElement | null;
+    };
+
+    const finishDrag = async () => {
+        dragging = false;
+        const targetId = currentTarget ? getSceneIdFromNumberGroup(currentTarget) : null;
+        clearHighlight();
+        if (!sourceSceneId || !targetId || sourceSceneId === targetId) return;
+
+        const order = buildOuterRingOrder(svg);
+        const fromIdx = order.findIndex(o => o.sceneId === sourceSceneId);
+        const toIdx = order.findIndex(o => o.sceneId === targetId);
+        if (fromIdx === -1 || toIdx === -1) return;
+
+        const reordered = [...order];
+        const [moved] = reordered.splice(fromIdx, 1);
+        reordered.splice(toIdx, 0, moved);
+
+        const updates: Array<{ path: string; newNumber: string }> = [];
+        reordered.forEach((entry, idx) => {
+            const { suffix } = splitNumberParts(entry.numberText);
+            const nextNumber = `${idx + 1}${suffix}`;
+            if (nextNumber !== entry.numberText) {
+                updates.push({ path: entry.path, newNumber: nextNumber });
+            }
+        });
+
+        if (updates.length === 0) return;
+        await applySceneNumberUpdates(view, updates);
+        new Notice('Scenes reordered', 2000);
+        // Force immediate refresh to reflect new numbering
+        (view.plugin as any)?.refreshTimelineIfNeeded?.(null, 0);
+    };
+
+    const onPointerMove = (evt: PointerEvent) => {
+        if (!dragging) return;
+        const group = findOuterGroup(evt);
+        setHighlight(group);
+    };
+
+    const onPointerUp = async () => {
+        window.removeEventListener('pointermove', onPointerMove, true);
+        window.removeEventListener('pointerup', onPointerUp, true);
+        await finishDrag();
+        sourceSceneId = null;
+    };
+
+    const startDrag = (evt: PointerEvent, group: SVGGElement) => {
+        if (evt.button !== 0) return;
+        const sceneId = getSceneIdFromNumberGroup(group);
+        if (!sceneId) return;
+        evt.preventDefault();
+        sourceSceneId = sceneId;
+        dragging = true;
+        setHighlight(group);
+        window.addEventListener('pointermove', onPointerMove, true);
+        window.addEventListener('pointerup', onPointerUp, true);
+    };
+
+    outerGroups.forEach(group => {
+        view.registerDomEvent(group as unknown as HTMLElement, 'pointerdown', (evt: PointerEvent) => startDrag(evt, group));
     });
 }
 

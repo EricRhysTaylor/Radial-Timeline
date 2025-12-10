@@ -46,14 +46,22 @@ export function generateNumberSquareGroup(
     options?: {
         cornerRadius?: number;
         subplotIndex?: number;
+        dataAttrs?: Record<string, string | number | boolean | null | undefined>;
     }
 ): string {
     const cornerRadius = options?.cornerRadius ?? 0;
     const radiusAttr = cornerRadius > 0 ? ` rx="${cornerRadius}" ry="${cornerRadius}"` : '';
     const subplotAttr = options?.subplotIndex !== undefined ? ` data-subplot-idx="${options.subplotIndex}"` : '';
+    const dataAttrString = options?.dataAttrs
+        ? Object.entries(options.dataAttrs)
+            .filter(([, v]) => v !== undefined && v !== null)
+            .map(([k, v]) => `${k}="${escapeXml(String(v))}"`)
+            .join(' ')
+        : '';
+    const dataAttrs = dataAttrString ? ` ${dataAttrString}` : '';
 
     return `
-        <g class="number-square-group" transform="translate(${squareX}, ${squareY})">
+        <g class="number-square-group"${dataAttrs} transform="translate(${squareX}, ${squareY})">
             <g class="number-square-orient">
                 <rect 
                     x="-${squareSize.width/2}" 

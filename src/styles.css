@@ -1037,6 +1037,12 @@
   /* Draw stroke first, then fill covers inner half = "outside" border */
 }
 
+.number-square-group[data-outer-ring="true"] .rt-number-square,
+.number-square-group[data-outer-ring="true"] .rt-number-text {
+  pointer-events: auto;
+  cursor: grab;
+}
+
 .rt-number-square[data-subplot-idx="0"] {
   --rt-number-stroke-color: var(--rt-subplot-colors-0);
 }
@@ -1119,6 +1125,17 @@
   fill: #000000;
   pointer-events: none;
   font-size: calc(16px * var(--rt-number-font-scale, 1));
+}
+
+.rt-drop-target .rt-number-square,
+.rt-number-square.rt-drop-target {
+  stroke: var(--interactive-accent, #5e81ff);
+  stroke-width: 2px;
+}
+
+.rt-scene-path.rt-drop-target {
+  stroke: var(--interactive-accent, #5e81ff);
+  stroke-width: 3px;
 }
 
 /* AI grade text colors - scoped to plugin (no !important so non-selected can override) */

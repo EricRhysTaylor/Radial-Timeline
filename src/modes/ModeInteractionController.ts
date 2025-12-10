@@ -110,7 +110,7 @@ export class ModeInteractionController {
      */
     private async setupAllScenesHandlers(svg: SVGSVGElement): Promise<void> {
         // Import and use existing All Scenes mode setup
-        const { setupAllScenesDelegatedHover, setupSceneInteractions } = await import('../view/modes/AllScenesMode');
+        const { setupAllScenesDelegatedHover, setupSceneInteractions, setupOuterRingDrag } = await import('../view/modes/AllScenesMode');
         
         // Setup delegated hover
         const container = (this.view as any).containerEl as HTMLElement;
@@ -123,6 +123,9 @@ export class ModeInteractionController {
         sceneGroups.forEach(group => {
             setupSceneInteractions(this.view as any, group, svg, this.view.sceneData || []);
         });
+
+        // Setup drag-to-reorder on the outer ring (narrative mode only)
+        setupOuterRingDrag(this.view as any, svg);
     }
     
     /**

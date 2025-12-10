@@ -66,6 +66,8 @@ export function renderNumberSquaresUnified(params: {
         ? `${scene.title}::${scene.number ?? ''}::${scene.when ?? ''}`
         : undefined);
 
+    let posForOuter: { startAngle: number; endAngle: number } | undefined;
+
     if (positions && squareRadius !== undefined && act !== undefined && ringOuter !== undefined) {
       // All Scenes mode: use pre-calculated positions
       const pos = positions.get(idx);
@@ -73,6 +75,7 @@ export function renderNumberSquaresUnified(params: {
       sceneStartAngle = pos.startAngle;
       textPathRadius = squareRadius;
       sceneId = makeSceneId(act, ringOuter, idx, true, true, uniqueKey);
+      posForOuter = pos;
     } else if (NUM_RINGS && masterSubplotOrder && ringStartRadii && ringWidths && scenesByActAndSubplot) {
       // Main Plot mode: calculate positions on-the-fly
       const subplot = scene.subplot || 'Main Plot';
@@ -144,6 +147,17 @@ export function renderNumberSquaresUnified(params: {
 
     const subplotVisual = enableSubplotColors && resolveSubplotVisual ? resolveSubplotVisual(scene) : null;
 
+    const dataAttrs = posForOuter
+      ? {
+          'data-outer-ring': 'true',
+          'data-scene-order': idx,
+          'data-act': act,
+          'data-ring': ringOuter,
+          'data-start-angle': formatNumber(posForOuter.startAngle),
+          'data-end-angle': formatNumber(posForOuter.endAngle)
+        }
+      : undefined;
+
     svg += generateNumberSquareGroup(
       squareX,
       squareY,
@@ -156,6 +170,7 @@ export function renderNumberSquaresUnified(params: {
       {
         cornerRadius: 4,
         subplotIndex: subplotVisual?.subplotIndex,
+        dataAttrs
       }
     );
   });
