@@ -5,6 +5,7 @@
  */
 
 import type { App } from 'obsidian';
+import { requestUrl } from 'obsidian';
 
 /**
  * Service to check for plugin updates by comparing local manifest version
@@ -57,19 +58,20 @@ export class VersionCheckService {
         }
         
         try {
-            const response = await fetch(VersionCheckService.GITHUB_RELEASES_URL, {
+            const response = await requestUrl({
+                url: VersionCheckService.GITHUB_RELEASES_URL,
                 headers: {
                     'Accept': 'application/vnd.github.v3+json',
                     'User-Agent': 'Obsidian-Radial-Timeline-Plugin'
                 }
             });
             
-            if (!response.ok) {
+            if (response.status !== 200) {
                 console.warn('[VersionCheck] Failed to fetch latest release:', response.status);
                 return false;
             }
             
-            const release = await response.json();
+            const release = response.json;
             const tagName = release.tag_name as string;
             
             // Remove 'v' prefix if present

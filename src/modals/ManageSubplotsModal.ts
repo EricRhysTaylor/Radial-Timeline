@@ -228,7 +228,7 @@ class RenameSubplotModal extends Modal {
         const inputEl = inputContainer.createEl('input', { type: 'text', value: this.oldName, cls: 'rt-subplot-management-input' });
 
         // Focus input
-        setTimeout(() => inputEl.focus(), 50);
+        window.setTimeout(() => inputEl.focus(), 50);
 
         const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
         
