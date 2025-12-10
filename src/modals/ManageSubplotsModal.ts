@@ -35,8 +35,8 @@ export class ManageSubplotsModal extends Modal {
         contentEl.empty();
         
         // Add Pulse styles
-        modalEl.classList.add('rt-pulse-modal-shell');
-        contentEl.addClass('rt-pulse-modal');
+        modalEl.classList.add('rt-pulse-modal-shell', 'rt-subplot-modal-shell');
+        contentEl.addClass('rt-subplot-modal');
 
         // Hero Section
         const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
@@ -48,10 +48,9 @@ export class ManageSubplotsModal extends Modal {
         this.statsContainer = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
         this.statsContainer.createSpan({ text: 'Loading stats...', cls: 'rt-pulse-hero-meta-item' });
 
-        // Body / List Container
-        const bodyEl = contentEl.createDiv({ cls: 'rt-pulse-progress-body' });
-        const card = bodyEl.createDiv({ cls: 'rt-pulse-glass-card' });
-        this.listContainer = card.createDiv({ cls: 'rt-pulse-ruler-block' });
+        // Single card container (avoid extra nesting)
+        const card = contentEl.createDiv({ cls: 'rt-subplot-management-card rt-pulse-glass-card' });
+        this.listContainer = card.createDiv({ cls: 'rt-subplot-management-list' });
         
         // Initial load
         this.loadSubplots();
@@ -77,10 +76,10 @@ export class ManageSubplotsModal extends Modal {
         header.setText('Active Subplots');
 
         // List Scroll Area
-        const scrollArea = this.listContainer.createDiv({ cls: 'rt-pulse-ruler-scroll rt-subplot-management-list' });
+        const scrollArea = this.listContainer.createDiv({ cls: 'rt-subplot-management-scroll' });
 
         this.subplots.forEach(subplot => {
-            const row = scrollArea.createDiv({ cls: 'rt-pulse-ruler-item rt-subplot-management-row' });
+            const row = scrollArea.createDiv({ cls: 'rt-subplot-management-row' });
             
             // Left: Name and Count
             const info = row.createDiv({ cls: 'rt-subplot-management-info' });
@@ -97,6 +96,7 @@ export class ManageSubplotsModal extends Modal {
             // Rename Button
             const renameBtn = new ButtonComponent(actions)
                 .setTooltip('Rename')
+                .setDisabled(subplot.name === "Main Plot")
                 .onClick(() => this.handleRename(subplot.name));
             
             // Create separate element for SVG to avoid innerHTML on button
@@ -121,6 +121,7 @@ export class ManageSubplotsModal extends Modal {
             
             if (isMainPlot) {
                 deleteBtn.buttonEl.classList.add('rt-subplot-management-disabled');
+                renameBtn.buttonEl.classList.add('rt-subplot-management-disabled');
             }
         });
     }
