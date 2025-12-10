@@ -2503,7 +2503,80 @@
   margin-top: 22px;
 }
 
-/* Compatibility for BeatPlacementModal */
+
+/* Subplot Management Modal */
+
+.rt-subplot-management-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+}
+
+.rt-subplot-management-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.rt-subplot-management-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.rt-subplot-management-name {
+  font-size: 1.1em;
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.rt-subplot-management-count {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.rt-subplot-management-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rt-subplot-management-btn {
+  padding: 4px;
+  height: 32px;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  box-shadow: none;
+}
+
+.rt-subplot-management-delete-btn:not(:disabled) {
+  color: var(--text-error);
+}
+
+.rt-subplot-management-disabled {
+  opacity: 0.3;
+}
+
+.rt-subplot-management-input-label {
+  margin-bottom: 8px;
+  color: var(--text-muted);
+}
+
+.rt-subplot-management-input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.rt-subplot-management-header {
+  margin-bottom: 10px;
+}
+
 .rt-beats-info {
   font-size: 0.95rem;
   line-height: 1.6;

@@ -8,6 +8,7 @@ import type RadialTimelinePlugin from '../main';
 import { assembleManuscript } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { createTemplateScene } from '../SceneAnalysisCommands';
+import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 
 export class CommandRegistrar {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -34,6 +35,14 @@ export class CommandRegistrar {
             id: 'clear-timeline-search',
             name: 'Clear search',
             callback: () => this.plugin.clearSearch()
+        });
+
+        this.plugin.addCommand({
+            id: 'manage-subplots',
+            name: 'Manage subplots',
+            callback: () => {
+                new ManageSubplotsModal(this.app, this.plugin).open();
+            }
         });
 
         this.plugin.addCommand({
