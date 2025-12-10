@@ -4,6 +4,7 @@ import type RadialTimelinePlugin from '../../main';
 import { fetchAnthropicModels } from '../../api/anthropicApi';
 import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels } from '../../api/geminiApi';
+import { fetchLocalModels } from '../../api/localAiApi';
 import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
@@ -272,6 +273,8 @@ export function renderAiSection(params: {
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
     params.addAiRelatedElement(localSection);
 
+    let localModelText: TextComponent | null = null;
+
     new Settings(localSection)
         .setName('Local LLM Base URL')
         .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
@@ -287,10 +290,11 @@ export function renderAiSection(params: {
             params.setLocalConnectionInputs({ baseInput: text.inputEl });
         });
 
-    new Settings(localSection)
+    const localModelSetting = new Settings(localSection)
         .setName('Model ID')
         .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b", "local-model").')
         .addText(text => {
+            localModelText = text;
             text
                 .setPlaceholder('llama3')
                 .setValue(plugin.settings.localModelId || 'llama3')
@@ -301,6 +305,47 @@ export function renderAiSection(params: {
                 });
             params.setLocalConnectionInputs({ modelInput: text.inputEl });
         });
+
+    localModelSetting.addExtraButton(button => {
+        button
+            .setIcon('refresh-ccw')
+            .setTooltip('Detect installed models and auto-fill this field')
+            .onClick(async () => {
+                const baseUrl = plugin.settings.localBaseUrl?.trim();
+                if (!baseUrl) {
+                    new Notice('Set the Local LLM Base URL first.');
+                    return;
+                }
+                button.setDisabled(true);
+                button.setIcon('loader-2');
+                try {
+                    const models = await fetchLocalModels(baseUrl, plugin.settings.localApiKey?.trim());
+                    if (!Array.isArray(models) || models.length === 0) {
+                        new Notice('No models reported by the local server.');
+                        return;
+                    }
+                    const existing = plugin.settings.localModelId?.trim();
+                    const chosen = existing && models.some(m => m.id === existing)
+                        ? models.find(m => m.id === existing)!
+                        : models[0];
+                    plugin.settings.localModelId = chosen.id;
+                    await plugin.saveSettings();
+                    if (localModelText) {
+                        localModelText.setValue(chosen.id);
+                    }
+                    params.scheduleKeyValidation('local');
+                    const otherModels = models.map(m => m.id).filter(id => id !== chosen.id);
+                    const suffix = otherModels.length ? ` Also found: ${otherModels.join(', ')}.` : '';
+                    new Notice(`Using detected model "${chosen.id}".${suffix}`);
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    new Notice(`Unable to detect local models: ${message}`);
+                } finally {
+                    button.setDisabled(false);
+                    button.setIcon('refresh-ccw');
+                }
+            });
+    });
 
     new Settings(localSection)
         .setName('API Key (Optional)')

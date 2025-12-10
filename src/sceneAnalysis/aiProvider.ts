@@ -357,11 +357,26 @@ export async function callAiProvider(
             requestBodyForLog = {
                 model: modelId,
                 messages: [{ role: 'user', content: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt }],
-                max_completion_tokens: 2000
+                max_completion_tokens: 2000,
+                response_format: {
+                    type: 'json_schema' as const,
+                    json_schema: {
+                        name: 'scene_analysis',
+                        schema: jsonSchema
+                    }
+                }
             };
 
             const apiResponse = await retryWithBackoff(() =>
-                callOpenAiApi(apiKey!, modelId!, systemPrompt, userPrompt, 2000)
+                callOpenAiApi(
+                    apiKey!,
+                    modelId!,
+                    systemPrompt,
+                    userPrompt,
+                    2000,
+                    undefined,
+                    { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } }
+                )
             );
 
             responseDataForLog = apiResponse.responseData;
@@ -412,11 +427,26 @@ export async function callAiProvider(
             requestBodyForLog = {
                 model: modelId,
                 messages: [{ role: 'user', content: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt }],
-                max_completion_tokens: 2000
+                max_completion_tokens: 2000,
+                response_format: {
+                    type: 'json_schema' as const,
+                    json_schema: {
+                        name: 'scene_analysis',
+                        schema: jsonSchema
+                    }
+                }
             };
 
             const apiResponse = await retryWithBackoff(() =>
-                callOpenAiApi(apiKey!, modelId!, systemPrompt, userPrompt, 2000, localBaseUrl)
+                callOpenAiApi(
+                    apiKey!,
+                    modelId!,
+                    systemPrompt,
+                    userPrompt,
+                    2000,
+                    localBaseUrl,
+                    { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } }
+                )
             );
 
             responseDataForLog = apiResponse.responseData;

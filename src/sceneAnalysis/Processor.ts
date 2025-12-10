@@ -26,8 +26,8 @@ import type { SceneData } from './types';
 
 function buildQueueItem(scene: SceneData): SceneQueueItem {
     const hasNumber = typeof scene.sceneNumber === 'number' && !Number.isNaN(scene.sceneNumber);
-    const label = hasNumber ? `#${scene.sceneNumber}` : scene.file.basename;
-    const detail = hasNumber ? scene.file.basename : undefined;
+    const label = hasNumber ? String(scene.sceneNumber) : scene.file.basename;
+    const detail = scene.file.basename;
     return {
         id: scene.file.path,
         label,

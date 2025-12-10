@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Eric Rhys Taylor
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
-import { requestUrl, Notice } from 'obsidian'; // Use requestUrl for consistency
+import { requestUrl } from 'obsidian'; // Use requestUrl for consistency
 
 // Interface for the expected successful OpenAI Chat Completion response
 interface OpenAiChatSuccessResponse {
@@ -38,13 +38,19 @@ export interface OpenAiApiResponse {
     error?: string;
 }
 
+export type OpenAiResponseFormat =
+    | { type: 'json_object' }
+    | { type: 'json_schema'; json_schema: Record<string, unknown> };
+
 export async function callOpenAiApi(
     apiKey: string,
     modelId: string,
     systemPrompt: string | null,
     userPrompt: string,
     maxTokens: number | null = 4000,
-    baseUrl?: string
+    baseUrl?: string,
+    responseFormat?: OpenAiResponseFormat,
+    allowFormatFallback = true
 ): Promise<OpenAiApiResponse> {
     let apiUrl = 'https://api.openai.com/v1/chat/completions';
     if (baseUrl) {
@@ -74,10 +80,14 @@ export async function callOpenAiApi(
         model: string;
         messages: { role: string; content: string }[];
         max_completion_tokens?: number;
+        response_format?: OpenAiResponseFormat;
     } = { model: modelId, messages };
 
     if (maxTokens !== null) {
         requestBody.max_completion_tokens = maxTokens;
+    }
+    if (responseFormat) {
+        requestBody.response_format = responseFormat;
     }
 
     let responseData: unknown;
@@ -97,6 +107,10 @@ export async function callOpenAiApi(
         if (response.status >= 400) {
             const errorDetails = responseData as OpenAiErrorResponse;
             const msg = errorDetails?.error?.message ?? response.text ?? `OpenAI error (${response.status})`;
+            if (responseFormat && allowFormatFallback && /response_format/i.test(msg)) {
+                console.warn('[OpenAI API] response_format not supported by server, retrying without enforcement.');
+                return callOpenAiApi(apiKey, modelId, systemPrompt, userPrompt, maxTokens, baseUrl, undefined, false);
+            }
             return { success: false, content: null, responseData, error: msg };
         }
         const success = responseData as OpenAiChatSuccessResponse;

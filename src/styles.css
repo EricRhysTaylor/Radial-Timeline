@@ -2878,7 +2878,12 @@
 .rt-pulse-ruler-scroll {
   width: 100%;
   overflow-x: auto;
+  overflow-y: visible;
   padding-bottom: 8px;
+  padding-left: 12px;
+  padding-right: 12px;
+  scroll-padding-left: 18px;
+  scroll-padding-right: 18px;
   /* Hide scrollbar for cleaner look, but allow scroll */
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
@@ -2895,49 +2900,53 @@
 
 .rt-pulse-ruler-track {
   display: flex;
-  gap: 2px;
+  gap: 10px;
   min-width: min-content;
-  padding: 0 2px;
+  padding: 0 4px;
+  overflow: visible;
 }
 
 .rt-pulse-ruler-item {
   flex: 0 0 auto;
-  width: 72px;
-  min-height: 56px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  width: 120px;
+  min-height: 72px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 6px;
+  gap: 6px;
+  padding: 10px;
   opacity: 0.4;
   transition: all 0.3s ease;
 }
 
 .rt-pulse-ruler-value {
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 800;
   color: var(--text-normal);
-  letter-spacing: 0.04em;
   width: 100%;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.1;
+}
+
+.rt-pulse-ruler-item.rt-is-active .rt-pulse-ruler-value {
+  color: #1b1206;
 }
 
 .rt-pulse-ruler-label {
-  font-size: 0.68rem;
-  letter-spacing: 0.05em;
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
   color: var(--text-muted);
   width: 100%;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.2;
+  max-height: 2.4em;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .rt-pulse-ruler-item.rt-is-active {
