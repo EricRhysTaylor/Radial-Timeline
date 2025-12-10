@@ -188,7 +188,7 @@ class SubplotDeletionConfirmModal extends Modal {
         const meta = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
         meta.createSpan({ text: 'Scenes in only this subplot will be moved to Main Plot', cls: 'rt-pulse-hero-meta-item' });
 
-        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
+        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card rt-pulse-section-gap' });
         const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
         warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the manuscript?`);
 
