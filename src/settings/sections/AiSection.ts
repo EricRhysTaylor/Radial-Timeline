@@ -18,6 +18,7 @@ export function renderAiSection(params: {
     scheduleKeyValidation: (provider: Provider) => void;
     setProviderSections: (sections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement; local?: HTMLElement }) => void;
     setKeyInputRef: (provider: Provider, input: HTMLInputElement | undefined) => void;
+    setLocalConnectionInputs: (refs: { baseInput?: HTMLInputElement; modelInput?: HTMLInputElement }) => void;
 }): void {
     const { app, plugin, containerEl } = params;
 
@@ -274,35 +275,47 @@ export function renderAiSection(params: {
     new Settings(localSection)
         .setName('Local LLM Base URL')
         .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
-        .addText(text => text
-            .setPlaceholder('http://localhost:11434/v1')
-            .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1')
-            .onChange(async (value) => {
-                plugin.settings.localBaseUrl = value.trim();
-                await plugin.saveSettings();
-            }));
+        .addText(text => {
+            text
+                .setPlaceholder('http://localhost:11434/v1')
+                .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1')
+                .onChange(async (value) => {
+                    plugin.settings.localBaseUrl = value.trim();
+                    await plugin.saveSettings();
+                    params.scheduleKeyValidation('local');
+                });
+            params.setLocalConnectionInputs({ baseInput: text.inputEl });
+        });
 
     new Settings(localSection)
         .setName('Model ID')
         .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b", "local-model").')
-        .addText(text => text
-            .setPlaceholder('llama3')
-            .setValue(plugin.settings.localModelId || 'llama3')
-            .onChange(async (value) => {
-                plugin.settings.localModelId = value.trim();
-                await plugin.saveSettings();
-            }));
+        .addText(text => {
+            text
+                .setPlaceholder('llama3')
+                .setValue(plugin.settings.localModelId || 'llama3')
+                .onChange(async (value) => {
+                    plugin.settings.localModelId = value.trim();
+                    await plugin.saveSettings();
+                    params.scheduleKeyValidation('local');
+                });
+            params.setLocalConnectionInputs({ modelInput: text.inputEl });
+        });
 
     new Settings(localSection)
         .setName('API Key (Optional)')
         .setDesc('Required by some servers. For local tools like Ollama, this is usually ignored.')
-        .addText(text => text
-            .setPlaceholder('not-needed')
-            .setValue(plugin.settings.localApiKey || '')
-            .onChange(async (value) => {
-                plugin.settings.localApiKey = value.trim();
-                await plugin.saveSettings();
-            }));
+        .addText(text => {
+            text
+                .setPlaceholder('not-needed')
+                .setValue(plugin.settings.localApiKey || '')
+                .onChange(async (value) => {
+                    plugin.settings.localApiKey = value.trim();
+                    await plugin.saveSettings();
+                    params.scheduleKeyValidation('local');
+                });
+            params.setKeyInputRef('local', text.inputEl);
+        });
 
     // Apply provider dimming on first render
     params.refreshProviderDimming();
@@ -322,6 +335,9 @@ export function renderAiSection(params: {
         const input = openaiSection.querySelector('input[type="text"], input[type="password"], input') as HTMLInputElement | undefined;
         params.setKeyInputRef('openai', input);
         params.scheduleKeyValidation('openai');
+    }
+    if ((plugin.settings.localBaseUrl?.trim()) && (plugin.settings.localModelId?.trim())) {
+        params.scheduleKeyValidation('local');
     }
 
     // API Logging toggle

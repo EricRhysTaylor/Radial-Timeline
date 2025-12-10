@@ -821,6 +821,10 @@ export class SceneAnalysisProcessingModal extends Modal {
             return this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
         }
 
+        if (provider === 'local') {
+            return this.plugin.settings.localModelId || 'local-model';
+        }
+
         return this.plugin.settings.openaiModelId || 'gpt-4o';
     }
 }

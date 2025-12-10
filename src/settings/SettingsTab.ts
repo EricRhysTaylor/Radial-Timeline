@@ -32,6 +32,7 @@ import { renderAdvancedSection } from './sections/AdvancedSection';
 import { renderAiSection } from './sections/AiSection';
 import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
 import { renderPovSection } from './sections/PovSection';
+import { validateLocalModelAvailability } from '../api/localAiApi';
 
 declare const EMBEDDED_README_CONTENT: string;
 
@@ -44,6 +45,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _geminiKeyInput?: HTMLInputElement;
     private _openaiKeyInput?: HTMLInputElement;
     private _localKeyInput?: HTMLInputElement;
+    private _localBaseUrlInput?: HTMLInputElement;
+    private _localModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = []; // Store references to AI-related settings
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
@@ -85,23 +88,58 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     // Debounced API key validation using zero-cost model list endpoints
     private scheduleKeyValidation(provider: 'anthropic' | 'gemini' | 'openai' | 'local') {
-        // Clear prior timer
         const prior = this._keyValidateTimers[provider];
         if (prior) window.clearTimeout(prior);
+
+        if (provider === 'local') {
+            const baseInput = this._localBaseUrlInput;
+            const modelInput = this._localModelIdInput;
+            if (!baseInput || !modelInput) return;
+            const baseUrl = baseInput.value?.trim();
+            const modelId = modelInput.value?.trim();
+            if (!baseUrl || !modelId) return;
+
+            this._keyValidateTimers[provider] = window.setTimeout(async () => {
+                delete this._keyValidateTimers[provider];
+                const targets = [baseInput, modelInput];
+                targets.forEach(el => {
+                    el.removeClass('rt-setting-input-success');
+                    el.removeClass('rt-setting-input-error');
+                });
+                const result = await validateLocalModelAvailability(
+                    baseUrl,
+                    modelId,
+                    this.plugin.settings.localApiKey?.trim()
+                );
+                if (result.reachable && result.hasModel) {
+                    targets.forEach(el => {
+                        el.addClass('rt-setting-input-success');
+                        window.setTimeout(() => el.removeClass('rt-setting-input-success'), 1200);
+                    });
+                } else {
+                    targets.forEach(el => {
+                        el.addClass('rt-setting-input-error');
+                        window.setTimeout(() => el.removeClass('rt-setting-input-error'), 1400);
+                    });
+                    if (result.message) {
+                        new Notice(`Local AI validation failed: ${result.message}`);
+                    }
+                }
+            }, 800);
+            return;
+        }
+
         const inputEl = provider === 'anthropic' ? this._anthropicKeyInput
             : provider === 'gemini' ? this._geminiKeyInput
-                : provider === 'openai' ? this._openaiKeyInput
-                    : this._localKeyInput;
+                : this._openaiKeyInput;
         if (!inputEl) return;
 
         const key = inputEl.value?.trim();
-        if (!key) return; // nothing to validate
-
-        // Quick heuristic: avoid spamming empty/very short inputs
+        if (!key) return;
         if (key.length < 8) return;
 
         this._keyValidateTimers[provider] = window.setTimeout(async () => {
-            // Remove any old classes
+            delete this._keyValidateTimers[provider];
             inputEl.removeClass('rt-setting-input-success');
             inputEl.removeClass('rt-setting-input-error');
 
@@ -110,18 +148,13 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     await fetchAnthropicModels(key);
                 } else if (provider === 'gemini') {
                     await fetchGeminiModels(key);
-                } else if (provider === 'local') {
-                    // No validation for local yet
-                    return;
                 } else {
                     await fetchOpenAiModels(key);
                 }
-                // Success highlight briefly
                 inputEl.addClass('rt-setting-input-success');
                 window.setTimeout(() => inputEl.removeClass('rt-setting-input-success'), 1200);
             } catch (e) {
                 const msg = e instanceof Error ? e.message : String(e);
-                // Only mark invalid on explicit unauthorized cues; otherwise stay neutral
                 if (/401|unauthorized|invalid/i.test(msg)) {
                     inputEl.addClass('rt-setting-input-error');
                     window.setTimeout(() => inputEl.removeClass('rt-setting-input-error'), 1400);
@@ -324,6 +357,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 if (provider === 'gemini') this._geminiKeyInput = input;
                 if (provider === 'openai') this._openaiKeyInput = input;
                 if (provider === 'local') this._localKeyInput = input;
+            },
+            setLocalConnectionInputs: ({ baseInput, modelInput }) => {
+                if (baseInput) this._localBaseUrlInput = baseInput;
+                if (modelInput) this._localModelIdInput = modelInput;
             },
         });
 

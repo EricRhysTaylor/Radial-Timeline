@@ -59,12 +59,24 @@ async function logApiInteractionToFile(
         return modelId;
     })();
 
+    const sanitizeSegment = (value: string | null | undefined) => {
+        if (!value) return '';
+        return value
+            .replace(/[<>:"/\\|?*]+/g, '-')
+            .replace(/\s+/g, ' ')
+            .replace(/-+/g, '-')
+            .trim()
+            .replace(/^-+|-+$/g, '');
+    };
+
+    const safeModelSegment = sanitizeSegment(friendlyModelForFilename) || 'local-model';
+    const safeTimestamp = sanitizeSegment(timestamp) || new Date().getTime().toString();
     let fileName: string;
     if (sceneName) {
-        const cleanSceneName = sceneName.replace(/[<>:"/\\|?*]/g, '').trim();
-        fileName = `${cleanSceneName} — ${friendlyModelForFilename} — ${timestamp}.md`;
+        const cleanSceneName = sanitizeSegment(sceneName) || 'Scene';
+        fileName = `${cleanSceneName} — ${safeModelSegment} — ${safeTimestamp}.md`;
     } else {
-        fileName = `${provider}-log-${timestamp}.md`;
+        fileName = `${provider}-log-${safeTimestamp}.md`;
     }
 
     const filePath = `${logFolder}/${fileName}`;

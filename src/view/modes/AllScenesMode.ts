@@ -221,9 +221,24 @@ export function setupOuterRingDrag(view: AllScenesView, svg: SVGSVGElement): voi
     const outerGroups = Array.from(svg.querySelectorAll<SVGGElement>('.number-square-group[data-outer-ring="true"]'));
     if (!outerGroups.length) return;
 
+    const HOLD_MS = 180;
+    const MOVE_THRESHOLD_PX = 7;
+
+    const logDebug = (msg: string, data?: Record<string, unknown>) => {
+        // Reuse existing setting to avoid noisy logs unless explicitly enabled
+        if ((view.plugin.settings as any)?.enableHoverDebugLogging) {
+            // eslint-disable-next-line no-console
+            console.debug('[RT drag]', msg, data ?? {});
+        }
+    };
+
     let currentTarget: SVGGElement | null = null;
     let dragging = false;
     let sourceSceneId: string | null = null;
+    let sourceGroup: SVGGElement | null = null;
+    let holdTimer: number | null = null;
+    let startX = 0;
+    let startY = 0;
 
     const clearHighlight = () => {
         if (currentTarget) {
@@ -257,16 +272,41 @@ export function setupOuterRingDrag(view: AllScenesView, svg: SVGSVGElement): voi
         return fallback as SVGGElement | null;
     };
 
-    const finishDrag = async () => {
+    const resetState = () => {
         dragging = false;
-        const targetId = currentTarget ? getSceneIdFromNumberGroup(currentTarget) : null;
+        sourceSceneId = null;
+        sourceGroup = null;
+        if (holdTimer !== null) {
+            window.clearTimeout(holdTimer);
+            holdTimer = null;
+        }
+        svg.classList.remove('rt-dragging-outer');
         clearHighlight();
-        if (!sourceSceneId || !targetId || sourceSceneId === targetId) return;
+        logDebug('resetState');
+    };
+
+    const beginDrag = () => {
+        if (dragging || !sourceGroup) return;
+        dragging = true;
+        svg.classList.add('rt-dragging-outer');
+        setHighlight(sourceGroup);
+        logDebug('beginDrag', { sceneId: sourceSceneId });
+    };
+
+    const finishDrag = async () => {
+        const targetId = currentTarget ? getSceneIdFromNumberGroup(currentTarget) : null;
+        if (!sourceSceneId || !targetId || sourceSceneId === targetId) {
+            resetState();
+            return;
+        }
 
         const order = buildOuterRingOrder(svg);
         const fromIdx = order.findIndex(o => o.sceneId === sourceSceneId);
         const toIdx = order.findIndex(o => o.sceneId === targetId);
-        if (fromIdx === -1 || toIdx === -1) return;
+        if (fromIdx === -1 || toIdx === -1) {
+            resetState();
+            return;
+        }
 
         const reordered = [...order];
         const [moved] = reordered.splice(fromIdx, 1);
@@ -281,24 +321,47 @@ export function setupOuterRingDrag(view: AllScenesView, svg: SVGSVGElement): voi
             }
         });
 
-        if (updates.length === 0) return;
+        if (updates.length === 0) {
+            resetState();
+            return;
+        }
+        logDebug('apply updates', { count: updates.length, from: fromIdx, to: toIdx });
         await applySceneNumberUpdates(view, updates);
         new Notice('Scenes reordered', 2000);
-        // Force immediate refresh to reflect new numbering
         (view.plugin as any)?.refreshTimelineIfNeeded?.(null, 0);
+        resetState();
     };
 
     const onPointerMove = (evt: PointerEvent) => {
-        if (!dragging) return;
-        const group = findOuterGroup(evt);
-        setHighlight(group);
+        if (!sourceGroup || !sourceSceneId) return;
+        if (!dragging) {
+            const dx = evt.clientX - startX;
+            const dy = evt.clientY - startY;
+            if (Math.sqrt(dx * dx + dy * dy) >= MOVE_THRESHOLD_PX) {
+                if (holdTimer !== null) {
+                    window.clearTimeout(holdTimer);
+                    holdTimer = null;
+                }
+                beginDrag();
+            }
+        }
+        if (dragging) {
+            const group = findOuterGroup(evt);
+            setHighlight(group);
+            logDebug('drag move', { target: getSceneIdFromNumberGroup(group) });
+        }
     };
 
     const onPointerUp = async () => {
-        window.removeEventListener('pointermove', onPointerMove, true);
-        window.removeEventListener('pointerup', onPointerUp, true);
-        await finishDrag();
-        sourceSceneId = null;
+        if (holdTimer !== null) {
+            window.clearTimeout(holdTimer);
+            holdTimer = null;
+        }
+        if (dragging) {
+            await finishDrag();
+        } else {
+            resetState();
+        }
     };
 
     const startDrag = (evt: PointerEvent, group: SVGGElement) => {
@@ -307,11 +370,21 @@ export function setupOuterRingDrag(view: AllScenesView, svg: SVGSVGElement): voi
         if (!sceneId) return;
         evt.preventDefault();
         sourceSceneId = sceneId;
-        dragging = true;
-        setHighlight(group);
-        window.addEventListener('pointermove', onPointerMove, true);
-        window.addEventListener('pointerup', onPointerUp, true);
+        sourceGroup = group;
+        startX = evt.clientX;
+        startY = evt.clientY;
+        if (holdTimer !== null) {
+            window.clearTimeout(holdTimer);
+        }
+        holdTimer = window.setTimeout(() => {
+            holdTimer = null;
+            beginDrag();
+        }, HOLD_MS);
+        logDebug('pointerdown', { sceneId });
     };
+
+    view.registerDomEvent(window as unknown as HTMLElement, 'pointermove', onPointerMove);
+    view.registerDomEvent(window as unknown as HTMLElement, 'pointerup', onPointerUp);
 
     outerGroups.forEach(group => {
         view.registerDomEvent(group as unknown as HTMLElement, 'pointerdown', (evt: PointerEvent) => startDrag(evt, group));

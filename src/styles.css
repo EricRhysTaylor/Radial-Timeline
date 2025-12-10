@@ -1037,10 +1037,20 @@
   /* Draw stroke first, then fill covers inner half = "outside" border */
 }
 
-.number-square-group[data-outer-ring="true"] .rt-number-square,
-.number-square-group[data-outer-ring="true"] .rt-number-text {
+.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"] .rt-number-square,
+.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"] .rt-number-text {
   pointer-events: auto;
   cursor: grab;
+}
+
+.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"]:hover .rt-number-square,
+.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"]:hover .rt-number-text {
+  cursor: ew-resize;
+}
+
+.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .number-square-group[data-outer-ring="true"] .rt-number-square,
+.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .number-square-group[data-outer-ring="true"] .rt-number-text {
+  cursor: grabbing;
 }
 
 .rt-number-square[data-subplot-idx="0"] {
@@ -2892,8 +2902,8 @@
 
 .rt-pulse-ruler-item {
   flex: 0 0 auto;
-  width: 40px;
-  height: 50px;
+  width: 72px;
+  min-height: 56px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 4px;
@@ -2901,9 +2911,33 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 4px;
+  padding: 6px;
   opacity: 0.4;
   transition: all 0.3s ease;
+}
+
+.rt-pulse-ruler-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-normal);
+  letter-spacing: 0.04em;
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rt-pulse-ruler-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rt-pulse-ruler-item.rt-is-active {
