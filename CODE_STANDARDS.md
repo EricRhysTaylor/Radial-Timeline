@@ -230,6 +230,39 @@ modalEl.style.maxHeight = '80vh';
 
 **Why:** Obsidian's modal system requires direct styling of `modalEl` for width/height. Using CSS classes on `modalEl` or `containerEl` can break centering and backdrop behavior.
 
+#### Modal Layout Standards
+
+Every modal (AI Pulse Analysis, Manage Subplots, Gossamer score, release notes, etc.) must follow the same skeleton so we stop reworking gradients, padding, and redundant copy.
+
+1. **Shell + Base Class**
+   - Always add `rt-pulse-modal-shell` to `modalEl` unless the modal intentionally mirrors core Obsidian styling. Layer in specialized shells (e.g., `rt-subplot-modal-shell`) when a layout requires unique height constraints.
+   - Choose exactly one base class for `contentEl`:  
+     `rt-pulse-modal` (glass gradient surface), `rt-gossamer-score-modal` (neutral flex stack), or `rt-subplot-modal` (tall manager view). Only use custom wrappers when a modal truly needs its own CSS file.
+   - Place major sections directly inside `.rt-pulse-progress-hero` or `.rt-pulse-glass-card`. Do **not** nest multiple gradient wrappers or one-off `<div>` spacers to fake padding.
+
+2. **Sizing & Responsiveness**
+   - Inline size the shell with the standard comment:  
+     `// SAFE: Modal sizing via inline styles (Obsidian pattern)`  
+     `modalEl.style.width = '720px'; modalEl.style.maxWidth = '92vw'; modalEl.style.maxHeight = '90vh';`
+   - Tall modals rely on the `.modal-content` flex stack plus `flex:1 1 auto`/`min-height:0` on the scrolling cards so headers remain visible and scrolling happens inside content (see `.rt-subplot-management-card` + `.rt-subplot-management-scroll`).
+
+3. **Structure & Padding**
+   - Heroes follow the proven stack from `SceneAnalysisProcessingModal.ts`: badge → `<h2>` → one `rt-pulse-progress-subtitle` sentence → `rt-pulse-progress-meta` chips.
+   - Keep descriptive text in a single `rt-pulse-info` block right after the hero; additional cards should only introduce *new* details.
+   - Let CSS `gap` values define spacing. If you feel the need for `<br>` elements or manual padding tweaks, update the shared class instead.
+
+4. **Content Discipline**
+   - Before you finish, read the hero subtitle, info block, and card headings to ensure the same phrase isn’t repeated in multiple places. Each section must communicate something new (e.g., don’t restate “This action cannot be undone” both in the subtitle and card body).
+   - Prefer reusable classes for repeated patterns (`.rt-pulse-mode-option`, `.rt-pulse-ruler-*`, `.rt-pulse-actions`) so typography and padding stay identical across modals.
+
+5. **Scroll Behavior**
+   - Never apply fixed pixel heights to scroll areas. Use flex containers with `overflow-y:auto` on the immediate child that needs scrolling (error lists, subplot rows, AI queue).
+   - Horizontal trackers belong inside `.rt-pulse-ruler-scroll` so shared JS helpers (e.g., `updateQueueHighlight()`) can auto-scroll accurately.
+
+6. **Verification**
+   - After editing any modal, run `npm run standards`; if TypeScript changed, also run `npm run build`. These scripts enforce the `SAFE:` sizing comment, class prefixes, and duplicate-selector checks, so layout violations are caught automatically.
+   - During code review, confirm the modal uses the shared classes above and that copy is concise with no redundant sentences.
+
 ### Markdown Rendering
 ✅ **CORRECT usage:**
 ```typescript
@@ -855,4 +888,3 @@ When violations occur, the build will fail with specific guidance on how to fix 
 
 **Last Updated:** 2025-10-16  
 **Based on:** [Obsidian Plugin Guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines)
-

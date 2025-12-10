@@ -64,6 +64,14 @@ export class ManageSubplotsModal extends Modal {
     renderList() {
         if (!this.listContainer || !this.statsContainer) return;
 
+        // Sort: Main Plot first, then by count (desc), then name
+        const sorted = [...this.subplots].sort((a, b) => {
+            if (a.name === "Main Plot") return -1;
+            if (b.name === "Main Plot") return 1;
+            if (b.count !== a.count) return b.count - a.count;
+            return a.name.localeCompare(b.name);
+        });
+
         // Update Stats
         this.statsContainer.empty();
         this.statsContainer.createSpan({ text: `Total Subplots: ${this.subplots.length}`, cls: 'rt-pulse-hero-meta-item' });
@@ -78,7 +86,7 @@ export class ManageSubplotsModal extends Modal {
         // List Scroll Area
         const scrollArea = this.listContainer.createDiv({ cls: 'rt-subplot-management-scroll' });
 
-        this.subplots.forEach(subplot => {
+        sorted.forEach(subplot => {
             const row = scrollArea.createDiv({ cls: 'rt-subplot-management-row' });
             
             // Left: Name and Count
@@ -168,14 +176,21 @@ class SubplotDeletionConfirmModal extends Modal {
         modalEl.classList.add('rt-pulse-modal-shell');
         contentEl.addClass('rt-pulse-modal');
 
+        if (modalEl) {
+            modalEl.style.width = '600px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+
         const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
         hero.createSpan({ text: 'Warning', cls: 'rt-pulse-hero-badge' });
         hero.createEl('h2', { text: 'Remove Subplot?', cls: 'rt-pulse-progress-heading' });
         hero.createDiv({ text: 'This action cannot be undone.', cls: 'rt-pulse-progress-subtitle' });
+        const meta = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
+        meta.createSpan({ text: 'Scenes in only this subplot will be moved to Main Plot', cls: 'rt-pulse-hero-meta-item' });
 
         const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
         const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
-        warningEl.setText(`Are you sure you want to remove the subplot "${this.subplotName}" from the manuscript? Scenes with only this subplot will be moved to Main Plot.`);
+        warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the manuscript?`);
 
         const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
         

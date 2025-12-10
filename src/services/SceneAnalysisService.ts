@@ -284,7 +284,7 @@ class SubplotPickerModal extends Modal {
         this.statsEl.createDiv({ cls: 'rt-subplot-picker-stats-line', text: summaryLine });
         this.statsEl.createDiv({
             cls: 'rt-subplot-picker-summary',
-            text: 'Flagged scenes with processable metadata are sent to the AI.'
+            text: 'Flagged scenes with processable metadata are sent to the AI along with the manuscript content.'
         });
 
         if (this.heroStats) {

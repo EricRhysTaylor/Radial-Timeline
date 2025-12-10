@@ -2509,7 +2509,7 @@
 .rt-subplot-management-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .rt-subplot-management-card {
@@ -2517,14 +2517,19 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px 18px;
+  margin-top: 18px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .rt-subplot-management-scroll {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-height: 400px;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  padding-bottom: 4px;
 }
 
 .rt-subplot-management-row {
@@ -2536,6 +2541,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.02);
+  margin-bottom: 4px;
 }
 
 .rt-subplot-management-info {
@@ -2593,13 +2599,26 @@
 }
 
 .rt-subplot-management-header {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 /* Subplot modal sizing */
 .rt-subplot-modal-shell .modal-content {
   min-height: 80vh;
-  max-height: 85vh;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.rt-subplot-modal {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 90vh;
+}
+
+.rt-subplot-modal > .rt-pulse-progress-hero {
+  flex: 0 0 auto;
 }
 
 .rt-beats-info {

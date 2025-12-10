@@ -6,6 +6,8 @@
 
 import { formatNumber } from '../../utils/svg';
 import {
+    MONTH_LABEL_RADIUS,
+    SVG_SIZE,
     VERSION_INDICATOR_POS_X,
     VERSION_INDICATOR_POS_Y
 } from '../layout/LayoutConstants';
@@ -37,6 +39,28 @@ const BUG_ICON = `
 <path d="m8 2 1.88 1.88"/>
 <path d="M9 7.13V6a3 3 0 1 1 6 0v1.13"/>
 `;
+
+/** Approximate font size used for version text (px) — must match styles.css */
+const VERSION_TEXT_FONT_SIZE_PX = 20;
+
+/** Average character width ratio for the 04b03b font (roughly monospace) */
+const VERSION_TEXT_CHAR_WIDTH_RATIO = 0.62;
+
+/** Minimum inner padding from the SVG/circle edge for the version indicator */
+const VERSION_INDICATOR_SAFE_PADDING = 32;
+
+/** Hit area size for the icon (px) — see .rt-version-icon-hitarea */
+const ICON_HITAREA_SIZE = 32;
+
+const ICON_HITAREA_HALF_WIDTH = ICON_HITAREA_SIZE / 2;
+
+function estimateTextHalfWidth(text: string): number {
+    const trimmed = text.trim();
+    const effectiveText = trimmed.length ? trimmed : text;
+    const charCount = effectiveText.length || 4;
+    const approxCharWidthPx = VERSION_TEXT_FONT_SIZE_PX * VERSION_TEXT_CHAR_WIDTH_RATIO;
+    return (charCount * approxCharWidthPx) / 2;
+}
 
 export interface VersionIndicatorOptions {
     version: string;
@@ -75,7 +99,17 @@ function getUpdateSeverity(current: string, latest: string | undefined): 'none' 
 export function renderVersionIndicator(options: VersionIndicatorOptions): string {
     const { version, hasUpdate, latestVersion } = options;
 
-    const x = formatNumber(VERSION_INDICATOR_POS_X);
+    const rawVersionText = hasUpdate ? 'NEW RELEASE' : version;
+    const versionText = rawVersionText.trim() || rawVersionText;
+
+    const versionTextHalfWidth = Math.max(estimateTextHalfWidth(versionText), ICON_HITAREA_HALF_WIDTH);
+
+    const viewboxLeftEdge = -(SVG_SIZE / 2);
+    const circleLeftEdge = -MONTH_LABEL_RADIUS;
+    const safeCanvasCenterX = viewboxLeftEdge + VERSION_INDICATOR_SAFE_PADDING + versionTextHalfWidth;
+    const safeCircleCenterX = circleLeftEdge + VERSION_INDICATOR_SAFE_PADDING + versionTextHalfWidth;
+    const computedX = Math.max(VERSION_INDICATOR_POS_X, safeCanvasCenterX, safeCircleCenterX);
+    const x = formatNumber(computedX);
     const y = formatNumber(VERSION_INDICATOR_POS_Y);
 
     // Determine update severity
@@ -86,9 +120,6 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
     if (hasUpdate) {
         groupClasses.push('rt-has-update');
     }
-
-    // Version text: show "NEW RELEASE" when update available, otherwise show version
-    const versionText = hasUpdate ? 'NEW RELEASE' : version;
 
     // Icon positioned below the version text (centered)
     // Scale is 1.0, so width is 24. Center offset is -12
@@ -128,7 +159,7 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
             </g>
             
             <!-- Invisible hit area for icon click -->
-            <rect class="rt-version-icon-hitarea" x="${formatNumber(iconX - 4)}" y="${formatNumber(iconY - 4)}" width="32" height="32" fill="transparent" pointer-events="all">
+            <rect class="rt-version-icon-hitarea" x="${formatNumber(iconX - 4)}" y="${formatNumber(iconY - 4)}" width="${ICON_HITAREA_SIZE}" height="${ICON_HITAREA_SIZE}" fill="transparent" pointer-events="all">
                 <title>${iconTooltip}</title>
             </rect>
         </g>
