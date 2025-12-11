@@ -50,6 +50,7 @@ export async function callOpenAiApi(
     maxTokens: number | null = 4000,
     baseUrl?: string,
     responseFormat?: OpenAiResponseFormat,
+    temperature?: number,
     allowFormatFallback = true
 ): Promise<OpenAiApiResponse> {
     let apiUrl = 'https://api.openai.com/v1/chat/completions';
@@ -81,6 +82,7 @@ export async function callOpenAiApi(
         messages: { role: string; content: string }[];
         max_completion_tokens?: number;
         response_format?: OpenAiResponseFormat;
+        temperature?: number;
     } = { model: modelId, messages };
 
     if (maxTokens !== null) {
@@ -88,6 +90,9 @@ export async function callOpenAiApi(
     }
     if (responseFormat) {
         requestBody.response_format = responseFormat;
+    }
+    if (typeof temperature === 'number') {
+        requestBody.temperature = temperature;
     }
 
     let responseData: unknown;
@@ -109,7 +114,7 @@ export async function callOpenAiApi(
             const msg = errorDetails?.error?.message ?? response.text ?? `OpenAI error (${response.status})`;
             if (responseFormat && allowFormatFallback && /response_format/i.test(msg)) {
                 console.warn('[OpenAI API] response_format not supported by server, retrying without enforcement.');
-                return callOpenAiApi(apiKey, modelId, systemPrompt, userPrompt, maxTokens, baseUrl, undefined, false);
+                return callOpenAiApi(apiKey, modelId, systemPrompt, userPrompt, maxTokens, baseUrl, undefined, temperature, false);
             }
             return { success: false, content: null, responseData, error: msg };
         }

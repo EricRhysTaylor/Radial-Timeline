@@ -1053,6 +1053,13 @@
   cursor: grabbing;
 }
 
+.rt-drop-target-tick {
+  stroke: var(--rt-max-publish-stage-color, var(--interactive-accent, #5e81ff));
+  stroke-width: 4px;
+  stroke-linecap: round;
+  fill: none;
+}
+
 .rt-number-square[data-subplot-idx="0"] {
   --rt-number-stroke-color: var(--rt-subplot-colors-0);
 }
@@ -2758,6 +2765,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow: visible;
 }
 
 .rt-pulse-progress-container {
@@ -2782,8 +2790,13 @@
 }
 
 .rt-pulse-progress-bar.rt-progress-complete {
-  background: var(--interactive-accent);
-  box-shadow: 0 0 10px rgba(var(--interactive-accent-rgb), 0.4);
+  background: linear-gradient(90deg, #31d47b, #0fb069);
+  box-shadow: 0 0 10px rgba(49, 212, 123, 0.45);
+}
+
+.rt-pulse-progress-bar.rt-progress-error {
+  background: linear-gradient(90deg, #ff5f6d, #d7263d);
+  box-shadow: 0 0 12px rgba(215, 38, 61, 0.45);
 }
 
 @keyframes rt-progress-flow {
@@ -2902,7 +2915,7 @@
   display: flex;
   gap: 10px;
   min-width: min-content;
-  padding: 0 4px;
+  padding: 6px 4px 0 4px;
   overflow: visible;
 }
 
@@ -2924,23 +2937,22 @@
 }
 
 .rt-pulse-ruler-value {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 800;
-  color: var(--text-normal);
   width: 100%;
   text-align: center;
   white-space: normal;
   line-height: 1.1;
-}
-
-.rt-pulse-ruler-item.rt-is-active .rt-pulse-ruler-value {
-  color: #1b1206;
+  background: linear-gradient(90deg, #fff, #f2d7a3);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .rt-pulse-ruler-label {
   font-size: 0.82rem;
   letter-spacing: 0.01em;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.78);
   width: 100%;
   text-align: center;
   white-space: normal;
@@ -2956,6 +2968,40 @@
   transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 2;
+}
+
+.rt-pulse-ruler-item.rt-status-success {
+  background: rgba(49, 212, 123, 0.15);
+  border-color: rgba(49, 212, 123, 0.35);
+}
+
+.rt-pulse-ruler-item.rt-status-error {
+  background: rgba(255, 95, 109, 0.18);
+  border-color: rgba(255, 95, 109, 0.4);
+}
+
+.rt-pulse-ruler-item.rt-status-success.rt-is-active {
+  background: rgba(49, 212, 123, 0.3);
+  border-color: rgba(49, 212, 123, 0.55);
+}
+
+.rt-pulse-ruler-item.rt-status-error.rt-is-active {
+  background: rgba(255, 95, 109, 0.35);
+  border-color: rgba(255, 95, 109, 0.55);
+}
+
+.rt-pulse-ruler-item.rt-status-success .rt-pulse-ruler-value,
+.rt-pulse-ruler-item.rt-status-success .rt-pulse-ruler-label {
+  background: none;
+  color: #d8ffe7;
+  -webkit-text-fill-color: #d8ffe7;
+}
+
+.rt-pulse-ruler-item.rt-status-error .rt-pulse-ruler-value,
+.rt-pulse-ruler-item.rt-status-error .rt-pulse-ruler-label {
+  background: none;
+  color: #ffe0e5;
+  -webkit-text-fill-color: #ffe0e5;
 }
 
 .rt-pulse-actions {

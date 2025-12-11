@@ -40,12 +40,12 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     const apiKey = plugin.settings.localApiKey || '';
     const modelId = plugin.settings.localModelId || 'llama3';
     const baseUrl = plugin.settings.localBaseUrl || 'http://localhost:11434/v1';
-    const resp: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max, baseUrl);
+    const resp: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max, baseUrl, undefined, temp);
     return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
   } else {
     const apiKey = plugin.settings.openaiApiKey || '';
     const modelId = plugin.settings.openaiModelId || 'gpt-4.1';
-    const resp: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max);
+    const resp: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max, undefined, undefined, temp);
     return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
   }
 }

@@ -125,22 +125,9 @@ export class SceneDataService {
                     // Ensure actNumber is a valid number between 1 and 3
                     const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
     
-                    // Derive scene number: prefer explicit Scene Number, fallback to title prefix
-                    const rawSceneNumber = metadata["Scene Number"] ?? metadata.SceneNumber ?? metadata.Number;
-                    const parsedSceneNumber = (() => {
-                        if (rawSceneNumber !== undefined && rawSceneNumber !== null && rawSceneNumber !== '') {
-                            const asNum = Number(rawSceneNumber);
-                            if (!isNaN(asNum)) return asNum;
-                        }
-                        const titleToParse = (metadata.Title as string | undefined) ?? file.basename;
-                        const titleMatch = titleToParse?.match(/^(\d+(?:\.\d+)?)/);
-                        if (titleMatch) {
-                            const asNum = Number(titleMatch[1]);
-                            if (!isNaN(asNum)) return asNum;
-                        }
-                        return undefined;
-                    })();
-                    const sceneTitle = (metadata.Title as string | undefined) ?? file.basename;
+                    // Use filename for display; numbering is derived from the filename/title prefix.
+                    // Do not consume YAML Title for numbering/ordering to avoid stale frontmatter.
+                    const sceneTitle = file.basename;
 
                     // Create a scene for each subplot
                     for (const subplot of subplots) {
@@ -187,7 +174,7 @@ export class SceneDataService {
                             missingWhen,
                             path: file.path,
                             title: sceneTitle,
-                            number: parsedSceneNumber,
+                            number: undefined,
                             subplot: subplot,
                             act: String(validActNumber),
                             actNumber: validActNumber,

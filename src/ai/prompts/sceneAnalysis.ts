@@ -54,6 +54,13 @@ export function getSceneAnalysisJsonSchema() {
   return SCENE_ANALYSIS_JSON_SCHEMA;
 }
 
+export function getSceneAnalysisSystemPrompt(): string {
+  return `You are Radial Timeline's scene-analysis assistant.
+- Follow the JSON schema provided in the user's prompt exactly.
+- Never write prose, commentary, or markdown fences.
+- If you cannot provide valid JSON, return {"error":"reason"} using double quotes.`;
+}
+
 export function buildSceneAnalysisPrompt(
   prevBody: string | null,
   currentBody: string,
@@ -247,5 +254,4 @@ Scene ${nextNum}:
 ${nextBody ?? 'N/A'}
 `;
 }
-
 

@@ -89,6 +89,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     private queueItems: HTMLElement[] = [];
     private queueData: SceneQueueItem[] = [];
     private queueActiveId?: string;
+    private queueStatus: Map<string, 'success' | 'error'> = new Map();
 
     // Statistics
     private processedCount: number = 0;
@@ -204,6 +205,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     public setProcessingQueue(queue: SceneQueueItem[]): void {
         this.queueData = queue.slice();
+        this.queueStatus.clear();
         this.totalCount = queue.length;
         if (this.isProcessing && this.progressTextEl && queue.length > 0 && this.processedCount === 0) {
             this.progressTextEl.setText(`0 / ${queue.length} scenes (0%)`);
@@ -231,6 +233,11 @@ export class SceneAnalysisProcessingModal extends Modal {
             const secondary = item.detail?.trim();
             if (secondary && secondary !== primaryLabel) {
                 entry.createSpan({ cls: 'rt-pulse-ruler-label', text: secondary });
+            }
+
+            const state = this.queueStatus.get(item.id);
+            if (state) {
+                this.applyQueueStatus(entry, state);
             }
 
             this.queueItems.push(entry);
@@ -262,6 +269,20 @@ export class SceneAnalysisProcessingModal extends Modal {
                 container.scrollTo({ left: target, behavior: 'smooth' });
             }
         }
+    }
+
+    public markQueueStatus(queueId: string, status: 'success' | 'error'): void {
+        if (!queueId) return;
+        this.queueStatus.set(queueId, status);
+        const entry = this.queueItems.find(item => item.getAttribute('data-queue-id') === queueId);
+        if (entry) {
+            this.applyQueueStatus(entry, status);
+        }
+    }
+
+    private applyQueueStatus(entry: HTMLElement, status: 'success' | 'error'): void {
+        entry.removeClass('rt-status-success', 'rt-status-error');
+        entry.addClass(status === 'success' ? 'rt-status-success' : 'rt-status-error');
     }
 
     private setTripletNote(prevNum: string, currentNum: string, nextNum: string): void {
@@ -669,7 +690,12 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         if (this.progressBarEl) {
             this.progressBarEl.style.setProperty('--progress-width', '100%');
-            this.progressBarEl.addClass('rt-progress-complete');
+            this.progressBarEl.removeClass('rt-progress-complete', 'rt-progress-error');
+            if (this.errorCount > 0) {
+                this.progressBarEl.addClass('rt-progress-error');
+            } else {
+                this.progressBarEl.addClass('rt-progress-complete');
+            }
         }
 
         const successCount = Math.max(0, this.processedCount);
@@ -688,26 +714,22 @@ export class SceneAnalysisProcessingModal extends Modal {
         const statusParts: string[] = [];
         if (hasErrors) statusParts.push(`${this.errorCount} failed`);
         if (hasWarnings) statusParts.push(`${this.warningCount} skipped`);
-        if (!statusParts.length) statusParts.push('All scenes processed successfully');
 
         if (this.statusTextEl) {
-            this.statusTextEl.setText(statusParts.join(' | '));
+            const statusText = statusParts.join(' | ');
+            this.statusTextEl.setText(statusText);
             this.statusTextEl.removeClass('rt-error-text', 'rt-warning-text', 'rt-success-text');
-            if (hasErrors && successCount === 0) {
-                this.statusTextEl.addClass('rt-error-text');
-            } else if (hasErrors || hasWarnings) {
-                this.statusTextEl.addClass('rt-warning-text');
-            } else {
-                this.statusTextEl.addClass('rt-success-text');
+            if (statusText) {
+                if (hasErrors && successCount === 0) {
+                    this.statusTextEl.addClass('rt-error-text');
+                } else {
+                    this.statusTextEl.addClass('rt-warning-text');
+                }
             }
         }
 
         if (this.heroStatusEl) {
             this.heroStatusEl.setText(statusMessage);
-        }
-
-        if (this.queueNoteEl && !hasIssues && successCount === this.totalCount) {
-            this.queueNoteEl.setText('All queued scenes have been processed.');
         }
 
         if (this.errorListEl) {

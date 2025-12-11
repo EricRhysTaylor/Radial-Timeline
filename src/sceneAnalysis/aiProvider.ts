@@ -10,7 +10,7 @@ import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { callAnthropicApi } from '../api/anthropicApi';
 import { callOpenAiApi } from '../api/openaiApi';
 import { callGeminiApi } from '../api/geminiApi';
-import { getSceneAnalysisJsonSchema } from '../ai/prompts/sceneAnalysis';
+import { getSceneAnalysisJsonSchema, getSceneAnalysisSystemPrompt } from '../ai/prompts/sceneAnalysis';
 import type { AiProviderResponse, ApiRequestData, ParsedSceneAnalysis } from './types';
 import { parseGptResult } from './responseParsing';
 
@@ -315,7 +315,7 @@ export async function callAiProvider(
         };
 
         const jsonSchema = getSceneAnalysisJsonSchema();
-        const systemPrompt: string | null = null;
+        const systemPrompt: string = getSceneAnalysisSystemPrompt();
 
         if (provider === 'anthropic') {
             apiKey = plugin.settings.anthropicApiKey;
@@ -356,6 +356,7 @@ export async function callAiProvider(
 
             requestBodyForLog = {
                 model: modelId,
+                temperature: 0.1,
                 messages: [{ role: 'user', content: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt }],
                 max_completion_tokens: 2000,
                 response_format: {
@@ -375,7 +376,8 @@ export async function callAiProvider(
                     userPrompt,
                     2000,
                     undefined,
-                    { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } }
+                    { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } },
+                    0.1
                 )
             );
 
@@ -426,6 +428,7 @@ export async function callAiProvider(
 
             requestBodyForLog = {
                 model: modelId,
+                temperature: 0.1,
                 messages: [{ role: 'user', content: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt }],
                 max_completion_tokens: 2000,
                 response_format: {
@@ -445,7 +448,8 @@ export async function callAiProvider(
                     userPrompt,
                     2000,
                     localBaseUrl,
-                    { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } }
+                    { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } },
+                    0.1
                 )
             );
 

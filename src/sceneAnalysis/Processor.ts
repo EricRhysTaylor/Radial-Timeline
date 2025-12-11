@@ -23,11 +23,15 @@ import { buildSceneAnalysisPrompt } from '../ai/prompts/sceneAnalysis';
 import { parseGptResult } from './responseParsing';
 import { callAiProvider } from './aiProvider';
 import type { SceneData } from './types';
+import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
 
 function buildQueueItem(scene: SceneData): SceneQueueItem {
-    const hasNumber = typeof scene.sceneNumber === 'number' && !Number.isNaN(scene.sceneNumber);
-    const label = hasNumber ? String(scene.sceneNumber) : scene.file.basename;
-    const detail = scene.file.basename;
+    const rawTitle = typeof scene.frontmatter?.Title === 'string'
+        ? scene.frontmatter.Title as string
+        : scene.file.basename.replace(/\.md$/i, '');
+    const parsed = parseSceneTitle(rawTitle, scene.sceneNumber ?? undefined);
+    const label = parsed.number || (scene.sceneNumber != null ? String(scene.sceneNumber) : '') || rawTitle;
+    const detail = decodeHtmlEntities(parsed.text || rawTitle);
     return {
         id: scene.file.path,
         label,
@@ -118,6 +122,13 @@ export async function processWithModal(
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
+        const queueId = triplet.current.file.path;
+        const markQueueStatus = (status: 'success' | 'error') => {
+            if (modal && typeof modal.markQueueStatus === 'function') {
+                modal.markQueueStatus(queueId, status);
+            }
+        };
+
         const runAi = createAiRunner(plugin, vault, callAiProvider);
         const aiResult = await runAi(userPrompt, null, 'processByManuscriptOrder', sceneNameForLog, tripletForLog);
 
@@ -131,14 +142,18 @@ export async function processWithModal(
                 if (success) {
                     processedCount++;
                     modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
+                    markQueueStatus('success');
                     await plugin.saveSettings();
                 } else {
+                    markQueueStatus('error');
                     modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
                 }
             } else {
+                markQueueStatus('error');
                 modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
         } else {
+            markQueueStatus('error');
             modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
         }
     }
@@ -321,6 +336,12 @@ export async function processSubplotWithModal(
         if (!shouldProcess) continue;
 
         const sceneName = triplet.current.file.basename;
+        const queueId = triplet.current.file.path;
+        const markQueueStatus = (status: 'success' | 'error') => {
+            if (modal && typeof modal.markQueueStatus === 'function') {
+                modal.markQueueStatus(queueId, status);
+            }
+        };
 
         const prevBody = triplet.prev ? triplet.prev.body : null;
         const currentBody = triplet.current.body;
@@ -352,13 +373,17 @@ export async function processSubplotWithModal(
                 if (success) {
                     processedCount++;
                     modal.updateProgress(processedCount, total, sceneName);
+                    markQueueStatus('success');
                 } else {
+                    markQueueStatus('error');
                     modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
                 }
             } else {
+                markQueueStatus('error');
                 modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
         } else {
+            markQueueStatus('error');
             modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
         }
     }
@@ -421,6 +446,12 @@ export async function processEntireSubplotWithModalInternal(
         if (!shouldProcess) continue;
 
         const sceneName = triplet.current.file.basename;
+        const queueId = triplet.current.file.path;
+        const markQueueStatus = (status: 'success' | 'error') => {
+            if (modal && typeof modal.markQueueStatus === 'function') {
+                modal.markQueueStatus(queueId, status);
+            }
+        };
 
         const prevBody = triplet.prev ? triplet.prev.body : null;
         const currentBody = triplet.current.body;
@@ -451,13 +482,17 @@ export async function processEntireSubplotWithModalInternal(
                 if (success) {
                     processedCount++;
                     modal.updateProgress(processedCount, total, sceneName);
+                    markQueueStatus('success');
                 } else {
+                    markQueueStatus('error');
                     modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
                 }
             } else {
+                markQueueStatus('error');
                 modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
         } else {
+            markQueueStatus('error');
             modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
         }
     }

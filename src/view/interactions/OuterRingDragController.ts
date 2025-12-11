@@ -29,6 +29,7 @@ export class OuterRingDragController {
     private startX = 0;
     private startY = 0;
     private confirming = false;
+    private dropTick: SVGPathElement | null = null;
 
     constructor(view: OuterRingViewAdapter, svg: SVGSVGElement, options: OuterRingDragOptions) {
         this.view = view;
@@ -97,6 +98,9 @@ export class OuterRingDragController {
             this.currentTarget.classList.remove('rt-drop-target');
             this.currentTarget = null;
         }
+        if (this.dropTick) {
+            this.dropTick.setAttribute('d', '');
+        }
     }
 
     private setHighlight(group: SVGGElement | null): void {
@@ -104,6 +108,15 @@ export class OuterRingDragController {
         this.clearHighlight();
         this.currentTarget = group;
         this.currentTarget.classList.add('rt-drop-target');
+        const sceneId = this.getSceneIdFromNumberGroup(group);
+        if (!sceneId) return;
+        const pathEl = this.svg.querySelector<SVGPathElement>(`#${this.cssEscape(sceneId)}`);
+        const sceneGroup = pathEl?.closest<SVGGElement>('.rt-scene-group');
+        if (!sceneGroup) return;
+        const startAngle = Number(sceneGroup.getAttribute('data-start-angle') ?? '');
+        const outerR = Number(sceneGroup.getAttribute('data-outer-r') ?? '');
+        if (!Number.isFinite(startAngle) || !Number.isFinite(outerR)) return;
+        this.updateDropTick(startAngle, outerR);
     }
 
     private findOuterGroup(evt: PointerEvent): SVGGElement | null {
@@ -112,6 +125,34 @@ export class OuterRingDragController {
         const fromPoint = document.elementFromPoint(evt.clientX, evt.clientY);
         const fallback = fromPoint?.closest('.number-square-group[data-outer-ring="true"]');
         return fallback as SVGGElement | null;
+    }
+
+    private ensureDropTick(): SVGPathElement {
+        if (this.dropTick && this.dropTick.isConnected) return this.dropTick;
+        const existing = this.svg.querySelector<SVGPathElement>('.rt-drop-target-tick');
+        if (existing) {
+            this.dropTick = existing;
+            return existing;
+        }
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.classList.add('rt-drop-target-tick');
+        path.setAttribute('d', '');
+        // Append near the end so it renders on top of arcs but below tooltips
+        this.svg.appendChild(path);
+        this.dropTick = path;
+        return path;
+    }
+
+    private updateDropTick(startAngle: number, outerR: number): void {
+        const tickLen = 18;
+        const r1 = outerR;
+        const r2 = outerR + tickLen;
+        const x1 = r1 * Math.cos(startAngle);
+        const y1 = r1 * Math.sin(startAngle);
+        const x2 = r2 * Math.cos(startAngle);
+        const y2 = r2 * Math.sin(startAngle);
+        const tick = this.ensureDropTick();
+        tick.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
     }
 
     private resetState(): void {
@@ -216,7 +257,7 @@ export class OuterRingDragController {
         }
         this.log('apply updates', { count: updates.length, from: fromIdx, to: toIdx });
         await applySceneNumberUpdates(this.view.plugin.app, updates);
-        new Notice('Scenes reordered', 2000);
+        new Notice(`Moved scene ${sourceOriginalNumber} → before ${targetOriginalNumber}`, 2000);
         this.options.onRefresh();
         this.resetState();
     }
