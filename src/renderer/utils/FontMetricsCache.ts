@@ -58,7 +58,7 @@ export function ensureBeatLabelCache(fontScale: number = 1): void {
     currentFontScale = fontScale;
 
     const config: FontMetricsCacheConfig = {
-        fontFamily: "'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        fontFamily: "var(--font-interface)",
         fontSize: BEAT_LABEL_FONT_SIZE_PX * fontScale,
         fontWeight: 500,
         letterSpacing: `${BEAT_LABEL_LETTER_SPACING_EM}em`,
@@ -79,7 +79,7 @@ export function ensureNumberSquareCache(fontScale: number = 1): void {
     }
 
     const config: FontMetricsCacheConfig = {
-        fontFamily: "'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        fontFamily: "var(--font-interface)",
         fontSize: NUMBER_SQUARE_FONT_SIZE_PX,
         fontWeight: 'normal',
         letterSpacing: `${NUMBER_SQUARE_LETTER_SPACING_EM}em`

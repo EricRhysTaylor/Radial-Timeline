@@ -1,10 +1,10 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/logo.png" alt="Radial Timeline Logo" width="10%">
 </p>
-<p align="center" style="font-family: 'Lato', sans-serif; font-weight: 100; font-size: 14px; margin-top: 12px; margin-bottom: 0; letter-spacing: 8px;">
+<p align="center" style="font-family: sans-serif; font-weight: 100; font-size: 14px; margin-top: 12px; margin-bottom: 0; letter-spacing: 8px;">
   Radial Timeline™
 </p>
-<p align="center" style="font-family: 'Lato', sans-serif; font-size: 14px; margin-top: 4px;">
+<p align="center" style="font-family: sans-serif; font-size: 14px; margin-top: 4px;">
   by Eric Rhys Taylor
 </p>
 
@@ -126,7 +126,7 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
   <p align="center">
     <img src="https://i.ytimg.com/vi/7noTSFaj8Eo/maxresdefault.jpg" alt="Plan your novel with radial timeline in obsidian | complete author walkthrough & setup guide" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
   </p>
-  <p align="center" style="font-family: 'Lato', sans-serif; font-size: 16px; margin-top: 10px;">
+  <p align="center" style="font-family: sans-serif; font-size: 16px; margin-top: 10px;">
     Plan your novel with radial timeline in obsidian<br>
     Complete author walkthrough & setup guide
   </p>
