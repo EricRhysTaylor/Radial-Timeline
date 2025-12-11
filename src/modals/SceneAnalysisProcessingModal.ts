@@ -180,9 +180,14 @@ export class SceneAnalysisProcessingModal extends Modal {
         return this.getModeLabel(this.selectedMode);
     }
 
-    private renderProcessingHero(parent: HTMLElement, options?: { trackStatus?: boolean; subtitle?: string }): HTMLElement {
+    private renderProcessingHero(
+        parent: HTMLElement,
+        options?: { trackStatus?: boolean; subtitle?: string; metaItems?: string[] }
+    ): HTMLElement {
         const hero = parent.createDiv({ cls: 'rt-pulse-progress-hero' });
-        hero.createSpan({ text: 'AI pulse run', cls: 'rt-pulse-hero-badge' });
+        const modelLabel = this.getActiveModelDisplayName();
+        const badgeText = modelLabel ? `AI pulse run · ${modelLabel}` : 'AI pulse run';
+        hero.createSpan({ text: badgeText, cls: 'rt-pulse-hero-badge' });
         hero.createEl('h2', { text: this.getProcessingTitle(), cls: 'rt-pulse-progress-heading' });
         const subtitleText = options?.subtitle ?? this.getProcessingSubtitle();
         const subtitleEl = hero.createDiv({ cls: 'rt-pulse-progress-subtitle' });
@@ -193,13 +198,14 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.heroStatusEl = undefined;
         }
         const metaEl = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
-        metaEl.createSpan({ text: `Model: ${this.getActiveModelDisplayName()}`, cls: 'rt-pulse-hero-meta-item' });
-        metaEl.createSpan({
-            text: this.subplotName
-                ? (this.isEntireSubplot ? 'Entire subplot batch' : 'Flagged subplot scenes')
-                : this.getModeLabel(this.selectedMode),
-            cls: 'rt-pulse-hero-meta-item'
-        });
+        const metaItems =
+            options?.metaItems ??
+            [
+                'Select how many scenes to process. This run analyzes scenes in manuscript order and refreshes their pulse metadata.'
+            ];
+        for (const item of metaItems) {
+            metaEl.createSpan({ text: item, cls: 'rt-pulse-hero-meta-item' });
+        }
         return hero;
     }
 
@@ -332,10 +338,6 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         this.renderProcessingHero(contentEl);
 
-        // Info section with active AI provider
-        const infoEl = contentEl.createDiv({ cls: 'rt-pulse-info rt-pulse-glass-card' });
-        infoEl.setText('Select how many scenes to process. This run analyzes scenes in manuscript order and refreshes their pulse metadata.');
-
         // Mode selection
         const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes rt-pulse-glass-card' });
 
@@ -344,7 +346,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             modesSection,
             'flagged',
             'Process flagged scenes (Recommended)',
-            'Processes scenes with Pulse Update: Yes (legacy Review/Beats Update) and Status: Working or Complete. Use when you\'ve revised scenes and want to update their pulse.',
+            'Processes scenes with Pulse Update: Yes and Status: Working or Complete. Use when you\'ve revised scenes and want to update their pulse.',
             true
         );
 
@@ -553,7 +555,15 @@ export class SceneAnalysisProcessingModal extends Modal {
         contentEl.empty();
         this.ensureModalShell();
         titleEl.setText('');
-        this.renderProcessingHero(contentEl, { trackStatus: true });
+        this.renderProcessingHero(contentEl, {
+            trackStatus: true,
+            metaItems: [
+                `Model: ${this.getActiveModelDisplayName()}`,
+                this.subplotName
+                    ? (this.isEntireSubplot ? 'Entire subplot batch' : 'Flagged subplot scenes')
+                    : this.getModeLabel(this.selectedMode)
+            ]
+        });
 
         const bodyEl = contentEl.createDiv({ cls: 'rt-pulse-progress-body' });
         const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-pulse-glass-card' });
@@ -757,15 +767,6 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         contentEl.querySelectorAll('.rt-pulse-summary-tip').forEach(el => el.remove());
-        if (remainingScenes > 0) {
-            const tipEl = contentEl.createDiv({ cls: 'rt-pulse-summary-tip' });
-            tipEl.createEl('strong', { text: 'Resume hint: ' });
-            if (this.resumeCommandId || this.subplotName) {
-                tipEl.appendText('Use Resume to finish scenes not updated today.');
-            } else {
-                tipEl.appendText('Run the command in "Unprocessed" mode to retry missed scenes.');
-            }
-        }
 
         if (this.plugin.settings.logApiInteractions) {
             const logNoteEl = contentEl.createDiv({ cls: 'rt-pulse-summary-tip' });

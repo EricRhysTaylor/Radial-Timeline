@@ -3,7 +3,6 @@
  * This analyzes scene performance, not story beats (timeline slices)
  */
 
-// JSON schema for AI scene analysis response
 const SCENE_ANALYSIS_JSON_SCHEMA = {
   type: "object",
   properties: {
@@ -58,8 +57,32 @@ export function getSceneAnalysisSystemPrompt(): string {
   return `You are Radial Timeline's scene-analysis assistant.
 - Follow the JSON schema provided in the user's prompt exactly.
 - Never write prose, commentary, or markdown fences.
-- If you cannot provide valid JSON, return {"error":"reason"} using double quotes.`;
+- If you cannot provide valid JSON, return {"error":"reason"} using double quotes.
+- Grade rules are strict: only the *first* currentSceneAnalysis item may use A/B/C. All other items must use one of "+", "-", or "?".`;
 }
+
+const SCENE_ANALYSIS_JSON_EXAMPLE = `{
+  "previousSceneAnalysis": [
+    { "scene": "23", "title": "First-rescue echo", "grade": "+", "comment": "Chae’s compassion parallels Shail’s later desperation" },
+    { "scene": "23", "title": "Implant mystery", "grade": "?", "comment": "Tech anomalies foreshadow later biological puzzles" }
+  ],
+  "currentSceneAnalysis": [
+    { "scene": "24", "title": "Overall Scene Grade", "grade": "B", "comment": "Tighten pacing and reduce repetition in survival beats" },
+    { "scene": "24", "title": "Harsh environment pressure", "grade": "+", "comment": "Strongly escalates physical and emotional stakes" }
+  ],
+  "nextSceneAnalysis": [
+    { "scene": "25", "title": "Tech–bio tension", "grade": "+", "comment": "Survival biology echoes Diga genetic stakes" },
+    { "scene": "25", "title": "Trust and secrecy", "grade": "+", "comment": "Shail’s reliance reflects Chae–Trisan disclosure themes" }
+  ]
+}`;
+
+export function getSceneAnalysisJsonExample(): string {
+  return SCENE_ANALYSIS_JSON_EXAMPLE;
+}
+
+const SCENE_ANALYSIS_EXAMPLE_SECTION = `Example of valid JSON (do not copy verbatim; adapt to the scenes below):
+${SCENE_ANALYSIS_JSON_EXAMPLE}
+`;
 
 export function buildSceneAnalysisPrompt(
   prevBody: string | null,
@@ -106,6 +129,9 @@ Rules:
 - First item in currentSceneAnalysis must have grade A/B/C (overall scene quality).
 - Subsequent items use +/-/? for connection strength.
 - Keep comments concise (first item max 15 words, others max 10 words).
+- Never use letter grades (A/B/C) outside that first item; use only "+", "-", or "?" afterwards.
+
+${SCENE_ANALYSIS_EXAMPLE_SECTION}
 
 Scene ${currentNum}:
 ${currentBody || 'N/A'}
@@ -147,6 +173,10 @@ Rules:
 - Output ONLY valid JSON. No markdown code blocks, no preamble.
 - First currentSceneAnalysis item: grade A/B/C (overall quality). Others: +/-/? (connection strength).
 - nextSceneAnalysis items: +/-/? showing how next scene builds on current.
+- Never use letter grades (A/B/C) outside that first item; use only "+", "-", or "?" afterwards.
+- For nextSceneAnalysis entries, grades must be "+", "-", or "?" only.
+
+${SCENE_ANALYSIS_EXAMPLE_SECTION}
 
 Scene ${currentNum}:
 ${currentBody || 'N/A'}
@@ -191,6 +221,10 @@ Rules:
 - Output ONLY valid JSON. No markdown code blocks, no preamble.
 - previousSceneAnalysis items: +/-/? showing how previous scene sets up current.
 - First currentSceneAnalysis item: grade A/B/C (overall quality). Others: +/-/? (connection strength).
+- Never use letter grades (A/B/C) outside that first item; use only "+", "-", or "?" afterwards.
+- For previousSceneAnalysis entries, grades must be "+", "-", or "?" only.
+
+${SCENE_ANALYSIS_EXAMPLE_SECTION}
 
 Scene ${prevNum}:
 ${prevBody ?? 'N/A'}
@@ -243,6 +277,10 @@ Rules:
 - First currentSceneAnalysis item must have grade A/B/C (A=nearly perfect, C=needs improvement).
 - All other items use +/-/?: "+" for strong connections, "-" for weak, "?" for neutral.
 - Keep comments concise (first currentSceneAnalysis max 15 words, all others max 10 words).
+- Never use letter grades (A/B/C) outside that first item; use only "+", "-", or "?" afterwards.
+- previousSceneAnalysis and nextSceneAnalysis entries must use "+", "-", or "?".
+
+${SCENE_ANALYSIS_EXAMPLE_SECTION}
 
 Scene ${prevNum}:
 ${prevBody ?? 'N/A'}
@@ -254,4 +292,3 @@ Scene ${nextNum}:
 ${nextBody ?? 'N/A'}
 `;
 }
-
