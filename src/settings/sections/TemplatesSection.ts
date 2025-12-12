@@ -39,7 +39,6 @@ export function renderStoryBeatsSection(params: {
     const storyStructureInfo = containerEl.createEl('div', { cls: 'setting-item-description' });
     storyStructureInfo.style.marginTop = '-8px';
     storyStructureInfo.style.marginBottom = '18px';
-    storyStructureInfo.style.paddingLeft = '0';
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
 
     // Create template beat note button

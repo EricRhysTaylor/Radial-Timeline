@@ -130,31 +130,41 @@ export async function processWithModal(
         };
 
         const runAi = createAiRunner(plugin, vault, callAiProvider);
-        const aiResult = await runAi(userPrompt, null, 'processByManuscriptOrder', sceneNameForLog, tripletForLog);
+        try {
+            const aiResult = await runAi(userPrompt, null, 'processByManuscriptOrder', sceneNameForLog, tripletForLog);
 
-        if (aiResult.result) {
-            const parsedAnalysis = parseGptResult(aiResult.result, plugin);
-            if (parsedAnalysis) {
-                if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
-                if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
+            if (aiResult.result) {
+                const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                if (parsedAnalysis) {
+                    if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
+                    if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
 
-                const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
-                if (success) {
-                    processedCount++;
-                    modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
-                    markQueueStatus('success');
-                    await plugin.saveSettings();
+                    const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
+                    if (success) {
+                        processedCount++;
+                        modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
+                        markQueueStatus('success');
+                        await plugin.saveSettings();
+                    } else {
+                        markQueueStatus('error');
+                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                    }
                 } else {
                     markQueueStatus('error');
-                    modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                    const detail = (plugin as any).lastAnalysisError;
+                    const reason = detail ? ` (${detail})` : '';
+                    modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}${reason}`);
                 }
             } else {
                 markQueueStatus('error');
-                modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
-        } else {
+        } catch (sceneError) {
             markQueueStatus('error');
-            modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+            const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
+            modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);
+        } finally {
+            modal.noteLogAttempt();
         }
     }
 
@@ -360,31 +370,40 @@ export async function processSubplotWithModal(
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
         const runAi = createAiRunner(plugin, vault, callAiProvider);
-        // Use subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog
-        const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog);
+        try {
+            const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog);
 
-        if (aiResult.result) {
-            const parsedAnalysis = parseGptResult(aiResult.result, plugin);
-            if (parsedAnalysis) {
-                if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
-                if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
+            if (aiResult.result) {
+                const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                if (parsedAnalysis) {
+                    if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
+                    if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
 
-                const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
-                if (success) {
-                    processedCount++;
-                    modal.updateProgress(processedCount, total, sceneName);
-                    markQueueStatus('success');
+                    const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
+                    if (success) {
+                        processedCount++;
+                        modal.updateProgress(processedCount, total, sceneName);
+                        markQueueStatus('success');
+                    } else {
+                        markQueueStatus('error');
+                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                    }
                 } else {
                     markQueueStatus('error');
-                    modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                    const detail = (plugin as any).lastAnalysisError;
+                    const reason = detail ? ` (${detail})` : '';
+                    modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}${reason}`);
                 }
             } else {
                 markQueueStatus('error');
-                modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
-        } else {
+        } catch (sceneError) {
             markQueueStatus('error');
-            modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+            const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
+            modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);
+        } finally {
+            modal.noteLogAttempt();
         }
     }
 
@@ -470,30 +489,40 @@ export async function processEntireSubplotWithModalInternal(
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
         const runAi = createAiRunner(plugin, vault, callAiProvider);
-        const aiResult = await runAi(userPrompt, subplotName, 'processEntireSubplot', sceneNameForLog, tripletForLog);
+        try {
+            const aiResult = await runAi(userPrompt, subplotName, 'processEntireSubplot', sceneNameForLog, tripletForLog);
 
-        if (aiResult.result) {
-            const parsedAnalysis = parseGptResult(aiResult.result, plugin);
-            if (parsedAnalysis) {
-                if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
-                if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
+            if (aiResult.result) {
+                const parsedAnalysis = parseGptResult(aiResult.result, plugin);
+                if (parsedAnalysis) {
+                    if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
+                    if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
 
-                const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
-                if (success) {
-                    processedCount++;
-                    modal.updateProgress(processedCount, total, sceneName);
-                    markQueueStatus('success');
+                    const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
+                    if (success) {
+                        processedCount++;
+                        modal.updateProgress(processedCount, total, sceneName);
+                        markQueueStatus('success');
+                    } else {
+                        markQueueStatus('error');
+                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                    }
                 } else {
                     markQueueStatus('error');
-                    modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                    const detail = (plugin as any).lastAnalysisError;
+                    const reason = detail ? ` (${detail})` : '';
+                    modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}${reason}`);
                 }
             } else {
                 markQueueStatus('error');
-                modal.addError(`Failed to parse AI response for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
             }
-        } else {
+        } catch (sceneError) {
             markQueueStatus('error');
-            modal.addError(`AI processing failed for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+            const detail = sceneError instanceof Error ? sceneError.message : String(sceneError);
+            modal.addError(`Fatal error while processing scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}\n${detail}`);
+        } finally {
+            modal.noteLogAttempt();
         }
     }
 

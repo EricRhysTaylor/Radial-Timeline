@@ -150,7 +150,7 @@ export const en: TranslationKeys = {
             },
             yamlOverrides: {
                 name: 'Scene level YAML overrides',
-                desc: 'Values you can use for `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the global POV. If two, for example, then the first two characters in `Character:` YAML list will get a POV mark.',
+                desc: 'Values you can use for `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the scene POV. If two, for example, then the first two characters in `Character:` YAML list will get a POV mark for scene synopsis.',
             },
             modes: {
                 off: 'Legacy (first listed character, "pov" superscript)',
@@ -169,7 +169,7 @@ export const en: TranslationKeys = {
             },
             readability: {
                 name: 'Readability size',
-                desc: 'Choose a curated font sizing profile for timeline text. Large is tuned for low-res or low-vision viewing; Normal matches the current high-DPI layout.',
+                desc: 'Choose a curated font sizing profile for timeline text. Large is tuned for low-res or low-vision viewing; Normal works for standard and high-dpi layouts.',
                 normal: 'Normal',
                 large: 'Large',
             },

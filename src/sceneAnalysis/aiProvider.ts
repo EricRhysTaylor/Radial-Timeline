@@ -479,11 +479,12 @@ export async function callAiProvider(
 
         return { result, modelIdUsed: modelId };
     } catch (error) {
+        const detailedMessage = error instanceof Error ? error.message : String(error);
         if (apiErrorMsg) {
-            new Notice(apiErrorMsg);
+            new Notice(`${apiErrorMsg}\n\n${detailedMessage}`, 8000);
         } else {
             console.error(`[API][BeatsCommands][callAiProvider] Error during ${provider} API call:`, error);
-            new Notice(`Error calling ${provider} API. See console for details.`);
+            new Notice(`Error calling ${provider} API:\n${detailedMessage}`, 8000);
         }
 
         await logApiInteractionToFile(
@@ -500,6 +501,6 @@ export async function callAiProvider(
             null
         );
 
-        return { result: null, modelIdUsed: modelId || null };
+        throw error instanceof Error ? error : new Error(String(error));
     }
 }

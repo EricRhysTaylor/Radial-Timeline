@@ -7,6 +7,9 @@
 import type RadialTimelinePlugin from '../main';
 import type { BeatItem, ParsedSceneAnalysis, SceneAnalysisJsonResponse } from './types';
 
+const MAIN_GRADE_VALUES = new Set(['A', 'B', 'C']);
+const LINK_GRADE_VALUES = new Set(['+', '-', '?']);
+
 function formatBeatLines(
     items: BeatItem[] | undefined,
     section: 'previous' | 'current' | 'next'
@@ -40,6 +43,35 @@ function formatBeatLines(
         .join('\n');
 }
 
+function validateSceneAnalysisPayload(payload: SceneAnalysisJsonResponse): void {
+    if (!Array.isArray(payload.currentSceneAnalysis) || payload.currentSceneAnalysis.length < 2) {
+        throw new Error('currentSceneAnalysis must contain an overall grade plus additional pulse points.');
+    }
+
+    const [firstCurrent, ...restCurrent] = payload.currentSceneAnalysis;
+    if (!firstCurrent || !MAIN_GRADE_VALUES.has(firstCurrent.grade)) {
+        throw new Error('The first currentSceneAnalysis item must use grade A, B, or C.');
+    }
+
+    restCurrent.forEach((item, index) => {
+        if (!LINK_GRADE_VALUES.has(item.grade)) {
+            throw new Error(`currentSceneAnalysis item #${index + 2} must use "+", "-", or "?".`);
+        }
+    });
+
+    const ensureLinkGrades = (items: BeatItem[] | undefined, label: string) => {
+        if (!items) return;
+        items.forEach((item, index) => {
+            if (!LINK_GRADE_VALUES.has(item.grade)) {
+                throw new Error(`${label} item #${index + 1} must use "+", "-", or "?".`);
+            }
+        });
+    };
+
+    ensureLinkGrades(payload.previousSceneAnalysis, 'previousSceneAnalysis');
+    ensureLinkGrades(payload.nextSceneAnalysis, 'nextSceneAnalysis');
+}
+
 function sanitizeJsonControlCharacters(input: string): string {
     // Replace unescaped control characters (except common whitespace) with spaces so JSON.parse succeeds.
     return input.replace(/[\u0000-\u001F]/g, char => {
@@ -67,6 +99,8 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
                 throw error;
             }
         }
+        validateSceneAnalysisPayload(parsed);
+        (plugin as any).lastAnalysisError = '';
         return {
             previousSceneAnalysis: formatBeatLines(parsed.previousSceneAnalysis, 'previous'),
             currentSceneAnalysis: formatBeatLines(parsed.currentSceneAnalysis, 'current'),
@@ -94,40 +128,16 @@ export function parseGptResult(gptResult: string, plugin: RadialTimelinePlugin):
             trimmed = trimmed.trim();
         }
 
-        if (trimmed.startsWith('{')) {
-            const jsonResult = parseJsonBeatsResponse(trimmed, plugin);
-            if (jsonResult) return jsonResult;
+        if (!trimmed.startsWith('{')) {
+            throw new Error('LLM response was not valid JSON.');
         }
 
-        const sections = trimmed.split(/\n(?=previousSceneAnalysis:|currentSceneAnalysis:|nextSceneAnalysis:)/);
-        const sectionMap: Record<string, string> = {};
-        let currentSection = '';
-
-        sections.forEach(section => {
-            const match = section.match(/^(previousSceneAnalysis|currentSceneAnalysis|nextSceneAnalysis):/);
-            if (match) {
-                currentSection = match[1];
-                sectionMap[currentSection] = section.substring(match[0].length).trim();
-            } else if (currentSection) {
-                sectionMap[currentSection] += '\n' + section.trim();
-            }
-        });
-
-        const buildList = (content: string | undefined): string => {
-            if (!content) return '';
-            return content
-                .split('\n')
-                .map(line => line.trim())
-                .filter(Boolean)
-                .map(line => (line.startsWith('-') ? line : `- ${line}`))
-                .join('\n');
-        };
-
-        return {
-            previousSceneAnalysis: buildList(sectionMap.previousSceneAnalysis),
-            currentSceneAnalysis: buildList(sectionMap.currentSceneAnalysis),
-            nextSceneAnalysis: buildList(sectionMap.nextSceneAnalysis)
-        };
+        const jsonResult = parseJsonBeatsResponse(trimmed, plugin);
+        if (jsonResult) {
+            (plugin as any).lastAnalysisError = '';
+            return jsonResult;
+        }
+        return null;
     } catch (error) {
         console.error('[parseGptResult] Error parsing beats response:', error);
         (plugin as any).lastAnalysisError = String(error);

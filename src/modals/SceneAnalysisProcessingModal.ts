@@ -97,6 +97,9 @@ export class SceneAnalysisProcessingModal extends Modal {
     private errorCount: number = 0;
     private warningCount: number = 0;
     private pendingRafId: number | null = null;
+    private errorMessages: { message: string; hint?: string }[] = [];
+    private warningMessages: string[] = [];
+    private logAttempts: number = 0;
 
     constructor(
         app: App,
@@ -518,6 +521,9 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.processedCount = 0;
         this.errorCount = 0;
         this.warningCount = 0;
+        this.errorMessages = [];
+        this.warningMessages = [];
+        this.logAttempts = 0;
 
         // Notify plugin that processing has started
         this.plugin.activeBeatsModal = this;
@@ -649,6 +655,9 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Track error count
         this.errorCount++;
+        const normalizedMessage = message?.trim() || 'Unknown error';
+        const hint = this.deriveErrorHint(normalizedMessage);
+        this.errorMessages.push({ message: normalizedMessage, hint: hint ?? undefined });
 
         // Show error list if it was hidden
         if (this.errorListEl.hasClass('rt-hidden')) {
@@ -658,7 +667,10 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         const errorItem = this.errorListEl.createDiv({ cls: 'rt-pulse-error-item' });
-        errorItem.setText(message);
+        errorItem.setText(normalizedMessage);
+        if (hint) {
+            errorItem.createDiv({ cls: 'rt-pulse-error-hint', text: hint });
+        }
     }
 
     public setTripletInfo(prevNum: string, currentNum: string, nextNum: string, queueId?: string, sceneLabel?: string): void {
@@ -682,6 +694,8 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         // Track warning count (doesn't affect success count)
         this.warningCount++;
+        const normalizedMessage = message?.trim() || 'Warning encountered';
+        this.warningMessages.push(normalizedMessage);
 
         // Show error list if it was hidden
         if (this.errorListEl.hasClass('rt-hidden')) {
@@ -764,6 +778,25 @@ export class SceneAnalysisProcessingModal extends Modal {
                     text: `Warnings: ${this.warningCount} (skipped due to validation)`
                 });
             }
+
+            if (hasErrors && this.errorMessages.length > 0) {
+                const errorDetails = summaryContainer.createDiv({ cls: 'rt-pulse-summary-list' });
+                this.errorMessages.forEach(({ message, hint }) => {
+                    const item = errorDetails.createDiv({ cls: 'rt-pulse-summary-item rt-pulse-summary-item-error' });
+                    item.createSpan({ text: message });
+                    if (hint) {
+                        item.createDiv({ cls: 'rt-pulse-summary-hint', text: `Possible fix: ${hint}` });
+                    }
+                });
+            }
+
+            if (hasWarnings && this.warningMessages.length > 0) {
+                const warningDetails = summaryContainer.createDiv({ cls: 'rt-pulse-summary-list' });
+                this.warningMessages.forEach((warning) => {
+                    const item = warningDetails.createDiv({ cls: 'rt-pulse-summary-item rt-pulse-summary-item-warning' });
+                    item.createSpan({ text: warning });
+                });
+            }
         }
 
         contentEl.querySelectorAll('.rt-pulse-summary-tip').forEach(el => el.remove());
@@ -771,7 +804,11 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.plugin.settings.logApiInteractions) {
             const logNoteEl = contentEl.createDiv({ cls: 'rt-pulse-summary-tip' });
             logNoteEl.createEl('strong', { text: 'Logs: ' });
-            logNoteEl.appendText('Detailed AI interaction logs were saved to the AI folder.');
+            if (this.logAttempts > 0) {
+                logNoteEl.appendText('Detailed AI interaction logs were saved to the AI folder.');
+            } else {
+                logNoteEl.appendText('Logging is enabled, but no AI request reached the server.');
+            }
         }
 
         if (this.actionButtonContainer) {
@@ -819,6 +856,10 @@ export class SceneAnalysisProcessingModal extends Modal {
         return this.abortController?.signal ?? null;
     }
 
+    public noteLogAttempt(): void {
+        this.logAttempts++;
+    }
+
     /**
      * Programmatically abort processing (e.g., due to rate limiting)
      * Unlike abortProcessing(), this doesn't show a confirmation dialog
@@ -847,6 +888,32 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
 
         return this.plugin.settings.openaiModelId || 'gpt-4o';
+    }
+
+    private deriveErrorHint(message: string): string | null {
+        const normalized = message.toLowerCase();
+
+        if (normalized.includes('temperature') && normalized.includes('default (1)')) {
+            return 'This model only accepts its default temperature. Remove the custom temperature override in Settings → AI Providers.';
+        }
+
+        if (normalized.includes('model') && normalized.includes('not found')) {
+            return 'Verify that the model is downloaded locally (use `ollama list`) and update the Local Model ID in settings to match exactly.';
+        }
+
+        if (normalized.includes('ollama server not responding') || normalized.includes('could not find ollama')) {
+            return 'Launch Ollama (`ollama serve`) and confirm the Local Base URL points to the running server.';
+        }
+
+        if (normalized.includes('connection refused') || normalized.includes('timed out')) {
+            return 'The plugin could not contact the local server. Check that it is running and that Obsidian has network permission.';
+        }
+
+        if (normalized.includes('schema') && normalized.includes('json')) {
+            return 'The response was not valid JSON. Try switching to a larger or more instruction-following model.';
+        }
+
+        return null;
     }
 }
 
