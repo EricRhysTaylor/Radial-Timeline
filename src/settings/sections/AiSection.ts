@@ -362,6 +362,11 @@ export function renderAiSection(params: {
             params.setKeyInputRef('local', text.inputEl);
         });
 
+    const localWarning = localSection.createDiv({ cls: 'rt-setting-note rt-setting-warning' });
+    localWarning.createEl('strong', { text: 'Heads up:' });
+    localWarning.appendText(' lightweight consumer GPUs generally cannot run the larger LLMs that follow Radial Timeline’s JSON spec. If your local runs keep returning prose or failing outright, switch back to one of the cloud providers above (Claude, Gemini, or ChatGPT) until you can run a full 30B+ model.');
+    params.addAiRelatedElement(localWarning);
+
     // Apply provider dimming on first render
     params.refreshProviderDimming();
 
