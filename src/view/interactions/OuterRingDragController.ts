@@ -50,9 +50,10 @@ export class OuterRingDragController {
     }
 
     private log(msg: string, data?: Record<string, unknown>): void {
-        if (this.options.enableDebug) {
-            // eslint-disable-next-line no-console
-            console.debug('[RT drag]', msg, data ?? {});
+        if (!this.options.enableDebug) return;
+        const pluginAny = this.view?.plugin as { log?: (message: string, meta?: Record<string, unknown>) => void } | undefined;
+        if (pluginAny?.log) {
+            pluginAny.log(`Outer ring drag · ${msg}`, data);
         }
     }
 
