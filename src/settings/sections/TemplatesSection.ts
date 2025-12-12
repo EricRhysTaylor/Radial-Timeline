@@ -16,7 +16,7 @@ export function renderStoryBeatsSection(params: {
         .setName('Gossamer and story beats system')
         .setHeading();
 
-    new Settings(containerEl)
+    const beatSystemSetting = new Settings(containerEl)
         .setName('Story beats system')
         .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer view.')
         .addDropdown(dropdown => {
@@ -35,10 +35,17 @@ export function renderStoryBeatsSection(params: {
             dropdown.selectEl.style.minWidth = '200px';
         });
 
+    // Align the dropdown to the top
+    beatSystemSetting.settingEl.style.setProperty('align-items', 'flex-start', 'important');
+    // Ensure the control itself is top-aligned (overcoming global CSS !important)
+    beatSystemSetting.controlEl.style.setProperty('align-self', 'flex-start', 'important');
+    // Add a small top margin to the control to align with the first line of text
+    beatSystemSetting.controlEl.style.marginTop = '6px';
+
     // Story structure explanation
-    const storyStructureInfo = containerEl.createEl('div', { cls: 'setting-item-description' });
-    storyStructureInfo.style.marginTop = '-8px';
-    storyStructureInfo.style.marginBottom = '18px';
+    const storyStructureInfo = beatSystemSetting.descEl.createEl('div', { cls: 'setting-item-description' });
+    storyStructureInfo.style.marginTop = '8px';
+    storyStructureInfo.style.marginBottom = '0px';
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
 
     // Create template beat note button

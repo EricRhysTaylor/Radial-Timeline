@@ -58,7 +58,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 });
         });
 
-    // 3. Reset subplot color dominance
+    // 3. Reset subplot color precedence
     new Settings(containerEl)
         .setName(t('settings.advanced.resetSubplotColors.name'))
         .setDesc(t('settings.advanced.resetSubplotColors.desc'))

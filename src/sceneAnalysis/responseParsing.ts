@@ -44,8 +44,8 @@ function formatBeatLines(
 }
 
 function validateSceneAnalysisPayload(payload: SceneAnalysisJsonResponse): void {
-    if (!Array.isArray(payload.currentSceneAnalysis) || payload.currentSceneAnalysis.length < 2) {
-        throw new Error('currentSceneAnalysis must contain an overall grade plus additional pulse points.');
+    if (!Array.isArray(payload.currentSceneAnalysis) || payload.currentSceneAnalysis.length === 0) {
+        throw new Error('currentSceneAnalysis must include at least one item with the overall A/B/C grade.');
     }
 
     const [firstCurrent, ...restCurrent] = payload.currentSceneAnalysis;
@@ -55,7 +55,7 @@ function validateSceneAnalysisPayload(payload: SceneAnalysisJsonResponse): void 
 
     restCurrent.forEach((item, index) => {
         if (!LINK_GRADE_VALUES.has(item.grade)) {
-            throw new Error(`currentSceneAnalysis item #${index + 2} must use "+", "-", or "?".`);
+            throw new Error(`currentSceneAnalysis item #${index + 2} should use "+", "-", or "?" (additional insight).`);
         }
     });
 

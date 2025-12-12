@@ -275,7 +275,7 @@ export function renderAiSection(params: {
 
     let localModelText: TextComponent | null = null;
 
-    new Settings(localSection)
+    const localBaseUrlSetting = new Settings(localSection)
         .setName('Local LLM Base URL')
         .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
         .addText(text => {
@@ -289,6 +289,11 @@ export function renderAiSection(params: {
                 });
             params.setLocalConnectionInputs({ baseInput: text.inputEl });
         });
+
+    const localWarning = localBaseUrlSetting.descEl.createDiv({ cls: 'rt-setting-note rt-setting-warning' });
+    localWarning.style.marginTop = '8px';
+    localWarning.createEl('strong', { text: 'Advisory Note:' });
+    localWarning.appendText(' Strongly recommend one of the big three online LLM, as they are by far the most intelligent and fully compliant with Radial Timeline’s JSON response formatting requirements. Lightweight consumer GPUs with 16GB RAM generally cannot run the larger local LLMs that have the potential to work. However, I wanted to accomodate several requests for a local LLM.');
 
     const localModelSetting = new Settings(localSection)
         .setName('Model ID')
@@ -347,7 +352,7 @@ export function renderAiSection(params: {
             });
     });
 
-    new Settings(localSection)
+    const apiKeySetting = new Settings(localSection)
         .setName('API Key (Optional)')
         .setDesc('Required by some servers. For local tools like Ollama, this is usually ignored.')
         .addText(text => {
@@ -361,11 +366,6 @@ export function renderAiSection(params: {
                 });
             params.setKeyInputRef('local', text.inputEl);
         });
-
-    const localWarning = localSection.createDiv({ cls: 'rt-setting-note rt-setting-warning' });
-    localWarning.createEl('strong', { text: 'Heads up:' });
-    localWarning.appendText(' lightweight consumer GPUs generally cannot run the larger LLMs that follow Radial Timeline’s JSON spec. If your local runs keep returning prose or failing outright, switch back to one of the cloud providers above (Claude, Gemini, or ChatGPT) until you can run a full 30B+ model.');
-    params.addAiRelatedElement(localWarning);
 
     // Apply provider dimming on first render
     params.refreshProviderDimming();
