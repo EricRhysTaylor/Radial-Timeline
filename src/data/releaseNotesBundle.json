@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "version": "4.4.1",
+      "title": "4.4.1",
+      "body": "## What's Changed\r\n- Added latest models from ChatGPT 5.2, Claude Opus 4.5 and the older Gemini 2.5 \r\n- Improved the Gossamer momentum gemini score modal and status info\r\n- changed the release according in settings and modal to expand the latest release rather than the last Major release\r\n- Changed the triplet prompt and instructions to properly pull from the settings context and remove the excess instructions from the beginning designed to cajole the local LLM to obey instructions.\r\n- Enlarged the Release Update Alert icon to match the 24x24 size of the Bug svg icon",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.1",
+      "publishedAt": "2025-12-13T03:20:40Z"
+    },
+    {
       "version": "4.4.0",
       "title": "4.4.0",
       "body": "\r\n### What's New\r\n\r\n- Added Local LLM – Generic OpenAI provider option with advisory that it doesn't comply with json formatting. Perhaps a bigger local model will work?\r\n- Implemented the Subplot Manager command and modal to delete and rename a subplot which updates every scene in that subplot.\r\n- Fixed low-DPI PC rendering issues with scene-title strokes and moved to native Obsidian Inter (interface) font for consistent typography.\r\n- Updated the README link and refreshed the wiki.\r\n- Polished modal visuals, harmonized alert dialogs, and improved the Gossamer Score modal (including orphaned justification fixes).\r\n- Revamped the Gossamer “Enter Scores” modal to include justification text. New modal button Normalize Scores to clean up out of sequence or orphaned scores.\r\n",
@@ -66,13 +73,20 @@
     "publishedAt": "2025-11-05T20:39:14Z"
   },
   "latest": {
-    "version": "4.4.0",
-    "title": "4.4.0",
-    "body": "\r\n### What's New\r\n\r\n- Added Local LLM – Generic OpenAI provider option with advisory that it doesn't comply with json formatting. Perhaps a bigger local model will work?\r\n- Implemented the Subplot Manager command and modal to delete and rename a subplot which updates every scene in that subplot.\r\n- Fixed low-DPI PC rendering issues with scene-title strokes and moved to native Obsidian Inter (interface) font for consistent typography.\r\n- Updated the README link and refreshed the wiki.\r\n- Polished modal visuals, harmonized alert dialogs, and improved the Gossamer Score modal (including orphaned justification fixes).\r\n- Revamped the Gossamer “Enter Scores” modal to include justification text. New modal button Normalize Scores to clean up out of sequence or orphaned scores.\r\n",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.0",
-    "publishedAt": "2025-12-13T00:10:26Z"
+    "version": "4.4.1",
+    "title": "4.4.1",
+    "body": "## What's Changed\r\n- Added latest models from ChatGPT 5.2, Claude Opus 4.5 and the older Gemini 2.5 \r\n- Improved the Gossamer momentum gemini score modal and status info\r\n- changed the release according in settings and modal to expand the latest release rather than the last Major release\r\n- Changed the triplet prompt and instructions to properly pull from the settings context and remove the excess instructions from the beginning designed to cajole the local LLM to obey instructions.\r\n- Enlarged the Release Update Alert icon to match the 24x24 size of the Bug svg icon",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.1",
+    "publishedAt": "2025-12-13T03:20:40Z"
   },
   "patches": [
+    {
+      "version": "4.4.0",
+      "title": "4.4.0",
+      "body": "\r\n### What's New\r\n\r\n- Added Local LLM – Generic OpenAI provider option with advisory that it doesn't comply with json formatting. Perhaps a bigger local model will work?\r\n- Implemented the Subplot Manager command and modal to delete and rename a subplot which updates every scene in that subplot.\r\n- Fixed low-DPI PC rendering issues with scene-title strokes and moved to native Obsidian Inter (interface) font for consistent typography.\r\n- Updated the README link and refreshed the wiki.\r\n- Polished modal visuals, harmonized alert dialogs, and improved the Gossamer Score modal (including orphaned justification fixes).\r\n- Revamped the Gossamer “Enter Scores” modal to include justification text. New modal button Normalize Scores to clean up out of sequence or orphaned scores.\r\n",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.0",
+      "publishedAt": "2025-12-13T00:10:26Z"
+    },
     {
       "version": "4.3.0",
       "title": "4.3.0",
