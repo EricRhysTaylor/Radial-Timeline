@@ -74,10 +74,16 @@ export class GossamerProcessingModal extends Modal {
         this.showConfirmationView();
     }
 
-    private renderProcessingHero(parent: HTMLElement, subtitle: string): void {
+    private renderProcessingHero(parent: HTMLElement, subtitle: string, modelName?: string): void {
         const hero = parent.createDiv({ cls: 'rt-pulse-progress-hero' });
-        hero.createSpan({ text: 'AI Momentum Analysis', cls: 'rt-pulse-hero-badge' });
-        hero.createEl('h2', { text: 'Gossamer Gemini', cls: 'rt-pulse-progress-heading' });
+        
+        // Build badge text
+        const badgeText = modelName 
+            ? `AI MOMENTUM ANALYSIS • ${modelName.toUpperCase()}`
+            : 'AI MOMENTUM ANALYSIS';
+            
+        hero.createSpan({ text: badgeText, cls: 'rt-pulse-hero-badge' });
+        hero.createEl('h2', { text: 'Gossamer Momentum Analysis', cls: 'rt-pulse-progress-heading' });
         hero.createDiv({ text: subtitle, cls: 'rt-pulse-progress-subtitle' });
     }
 
@@ -100,11 +106,16 @@ export class GossamerProcessingModal extends Modal {
         super.close();
     }
 
+    private getActiveModelDisplayName(): string {
+        return `${this.plugin.settings.geminiModelId || 'gemini-3-pro-preview'}`;
+    }
+
     private showConfirmationView(): void {
         const { contentEl } = this;
         contentEl.empty();
 
-        this.renderProcessingHero(contentEl, 'Evaluate narrative momentum at each story beat using Gemini AI. This will pass the entire manuscript to Gemini, with instructions including the ideal beat ranges and context such as the previous score and justification. Gemini will return a score and an updated justification for each beat.');
+        const modelName = this.getActiveModelDisplayName();
+        this.renderProcessingHero(contentEl, 'Evaluate narrative momentum at each story beat. This will pass the entire manuscript to the AI, with instructions including the ideal beat ranges and context such as the previous score and justification. The AI will return a score and an updated justification for each beat.', modelName);
 
         this.confirmationView = contentEl;
 
@@ -124,7 +135,8 @@ export class GossamerProcessingModal extends Modal {
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
 
         // Check if API key is configured
-        if (!this.plugin.settings.geminiApiKey) {
+        // TODO: Update this check to be provider-agnostic
+        if (!this.plugin.settings.geminiApiKey && this.plugin.settings.defaultAiProvider === 'gemini') {
             // Warning section for missing API key
             const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
             warningEl.setText('⚠️ Gemini API key not configured. Please set your API key in Settings → AI → Gemini API key.');
@@ -136,7 +148,7 @@ export class GossamerProcessingModal extends Modal {
         new ButtonComponent(buttonRow)
             .setButtonText('Begin Analysis')
             .setCta()
-            .setDisabled(!this.plugin.settings.geminiApiKey) // Disable if no API key
+            // .setDisabled(!this.plugin.settings.geminiApiKey) // Disable if no API key
             .onClick(async () => {
                 await this.startProcessing();
             });
@@ -161,7 +173,8 @@ export class GossamerProcessingModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        this.renderProcessingHero(contentEl, 'Analyzing manuscript...');
+        const modelName = this.getActiveModelDisplayName();
+        this.renderProcessingHero(contentEl, 'Analyzing manuscript...', modelName);
 
         const bodyEl = contentEl.createDiv({ cls: 'rt-pulse-progress-body' });
         const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-pulse-glass-card' });
@@ -291,7 +304,7 @@ export class GossamerProcessingModal extends Modal {
         // Different messages based on elapsed time
         let message: string;
         if (elapsed < 30) {
-            message = `Sending manuscript to Gemini... ${timeStr}`;
+            message = `Sending manuscript to AI... ${timeStr}`;
         } else if (elapsed < 60) {
             message = `Evaluating beats... ${timeStr}`;
         } else {

@@ -19,7 +19,7 @@ export class SceneAnalysisService {
     private registerManuscriptCommand(): void {
         this.plugin.addCommand({
             id: 'update-beats-manuscript-order',
-            name: 'Scene Pulse Analysis (manuscript order)',
+            name: 'Scene pulse analysis (manuscript order)',
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;
@@ -40,7 +40,7 @@ export class SceneAnalysisService {
     private registerSubplotCommand(): void {
         this.plugin.addCommand({
             id: 'update-beats-choose-subplot',
-            name: 'Scene Pulse Analysis (subplot order)',
+            name: 'Scene pulse analysis (subplot order)',
             checkCallback: (checking) => {
                 if (!this.plugin.settings.enableAiSceneAnalysis) return false;
                 if (checking) return true;

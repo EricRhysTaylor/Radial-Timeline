@@ -54,11 +54,7 @@ export function getSceneAnalysisJsonSchema() {
 }
 
 export function getSceneAnalysisSystemPrompt(): string {
-  return `You are Radial Timeline's scene-analysis assistant.
-- Follow the JSON schema provided in the user's prompt exactly.
-- Never write prose, commentary, or markdown fences.
-- If you cannot provide valid JSON, return {"error":"reason"} using double quotes.
-- Grade rules are strict: only the *first* currentSceneAnalysis item may use A/B/C. All other items must use one of "+", "-", or "?".`;
+  return `You are Radial Timeline's scene-analysis assistant.`;
 }
 
 const SCENE_ANALYSIS_JSON_EXAMPLE = `{

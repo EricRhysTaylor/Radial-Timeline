@@ -16,7 +16,7 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
         },
         {
             id: 'gpt-5.1-chat-latest',
-            label: 'GPT-5.1 (Latest)',
+            label: 'GPT-5.1',
             guidance: "OpenAI's previous flagship. Strong reasoning and instruction following. [FYI](https://platform.openai.com/docs/models)",
         },
     ],
