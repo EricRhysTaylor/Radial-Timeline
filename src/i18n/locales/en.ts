@@ -188,7 +188,7 @@ export const en: TranslationKeys = {
             },
             sceneOrdering: {
                 name: 'Scene ordering based on When date',
-                desc: 'Under ConsiderationSort scenes chronologically by When date instead of manuscript order for all modes.',
+                desc: 'Under consideration. Sort scenes chronologically by When date instead of manuscript order for all modes.',
             },
         },
         ai: {

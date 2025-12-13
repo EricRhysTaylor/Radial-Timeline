@@ -35,17 +35,17 @@ export function renderStoryBeatsSection(params: {
             dropdown.selectEl.style.minWidth = '200px';
         });
 
+    beatSystemSetting.settingEl.classList.add('rt-setting-two-row');
     // Align the dropdown to the top
-    beatSystemSetting.settingEl.style.setProperty('align-items', 'flex-start', 'important');
-    // Ensure the control itself is top-aligned (overcoming global CSS !important)
     beatSystemSetting.controlEl.style.setProperty('align-self', 'flex-start', 'important');
-    // Add a small top margin to the control to align with the first line of text
     beatSystemSetting.controlEl.style.marginTop = '6px';
 
+    const storyStructureRow = beatSystemSetting.settingEl.createDiv({ cls: 'rt-story-structure-row' });
+    storyStructureRow.appendChild(beatSystemSetting.descEl);
+    beatSystemSetting.descEl.style.marginBottom = '0';
+
     // Story structure explanation
-    const storyStructureInfo = beatSystemSetting.descEl.createEl('div', { cls: 'setting-item-description' });
-    storyStructureInfo.style.marginTop = '8px';
-    storyStructureInfo.style.marginBottom = '0px';
+    const storyStructureInfo = storyStructureRow.createEl('div', { cls: 'rt-story-structure-info setting-item-description' });
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
 
     // Create template beat note button
@@ -160,4 +160,3 @@ export function renderStoryBeatsSection(params: {
         }
     }
 }
-

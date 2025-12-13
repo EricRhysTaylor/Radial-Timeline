@@ -4838,6 +4838,38 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   font-weight: 500;
 }
 
+.rt-setting-two-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  column-gap: 24px;
+  row-gap: 8px;
+  align-items: start;
+}
+
+.rt-setting-two-row .setting-item-info {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+}
+
+.rt-setting-two-row .setting-item-control {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+  justify-self: flex-end;
+}
+
+.rt-story-structure-row {
+  grid-column: 1 / 3;
+  grid-row: 2 / 3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rt-story-structure-row .setting-item-description {
+  margin: 0;
+}
+
 /* Gossamer modal checkbox options - 2 column layout */
 .rt-gossamer-options-container {
   display: grid;
