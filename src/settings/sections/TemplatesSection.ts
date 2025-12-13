@@ -36,6 +36,12 @@ export function renderStoryBeatsSection(params: {
         });
 
     beatSystemSetting.settingEl.classList.add('rt-setting-two-row');
+    
+    // Explicitly enforce grid layout via inline styles to override any stubborn Flexbox
+    beatSystemSetting.settingEl.style.setProperty('display', 'grid', 'important');
+    beatSystemSetting.settingEl.style.gridTemplateColumns = '1fr auto';
+    beatSystemSetting.settingEl.style.gridTemplateRows = 'auto auto';
+
     // Align the dropdown to the top
     beatSystemSetting.controlEl.style.setProperty('align-self', 'flex-start', 'important');
     beatSystemSetting.controlEl.style.marginTop = '6px';

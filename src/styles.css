@@ -4839,9 +4839,9 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 .rt-setting-two-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  grid-template-rows: auto auto !important;
   column-gap: 24px;
   row-gap: 8px;
   align-items: start;
