@@ -18,7 +18,7 @@ export class DragConfirmModal extends Modal {
         contentEl.addClass('rt-pulse-modal');
         contentEl.addClass('rt-pulse-glass-card');
         contentEl.addClass('rt-confirm-modal');
-        modalEl.style.setProperty('width', 'min(560px, 90vw)');
+        modalEl.style.setProperty('width', 'min(520px, 90vw)');
         modalEl.style.setProperty('max-height', '90vh');
         if (this.accent) {
             contentEl.style.setProperty('--rt-confirm-accent', this.accent);

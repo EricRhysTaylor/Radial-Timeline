@@ -993,12 +993,20 @@
   fill: none;
 }
 
+.rt-drop-target-arc {
+  stroke: var(--rt-max-publish-stage-color, var(--interactive-accent, #5e81ff));
+  stroke-width: 3px;
+  stroke-linecap: round;
+  fill: none;
+  opacity: 0.9;
+}
+
 .rt-confirm-modal {
   max-width: 560px;
 }
 
 .rt-confirm-heading {
-  color: var(--rt-confirm-accent, var(--rt-max-publish-stage-color, var(--interactive-accent, #ff9900))));
+  color: var(--rt-confirm-accent, var(--rt-max-publish-stage-color, var(--interactive-accent, #ff9900)));
 }
 
 .rt-number-square[data-subplot-idx="0"] {

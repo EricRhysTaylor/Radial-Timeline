@@ -187,19 +187,23 @@ export class OuterRingDragController {
     private updateDropArc(startAngle: number, endAngle: number, radius: number, color?: string): void {
         const arc = this.ensureDropArc();
         const norm = (a: number) => {
-            while (a < -Math.PI) a += Math.PI * 2;
-            while (a > Math.PI) a -= Math.PI * 2;
+            while (a < 0) a += Math.PI * 2;
+            while (a >= Math.PI * 2) a -= Math.PI * 2;
             return a;
         };
-        let a0 = startAngle;
-        let a1 = endAngle;
-        const delta = norm(a1 - a0);
+        const a0 = norm(startAngle);
+        const a1 = norm(endAngle);
+        // travel shortest path
+        let delta = a1 - a0;
+        if (delta > Math.PI) delta -= Math.PI * 2;
+        if (delta < -Math.PI) delta += Math.PI * 2;
+        const aEnd = a0 + delta;
         const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
         const sweep = delta >= 0 ? 1 : 0;
         const x0 = radius * Math.cos(a0);
         const y0 = radius * Math.sin(a0);
-        const x1p = radius * Math.cos(a1);
-        const y1p = radius * Math.sin(a1);
+        const x1p = radius * Math.cos(aEnd);
+        const y1p = radius * Math.sin(aEnd);
         arc.setAttribute('d', `M ${x0} ${y0} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${x1p} ${y1p}`);
         if (color) arc.setAttribute('stroke', color);
     }
