@@ -223,23 +223,23 @@ function tagExists(tag) {
 const CATEGORIES = [
     {
         title: "✨ New Features",
-        keywords: [/^feat/i, /^add/i, /^new/i, /^implement/i, /^create/i]
+        keywords: [/feat/i, /add/i, /new/i, /implement/i, /create/i]
     },
     {
         title: "🐛 Bug Fixes",
-        keywords: [/^fix/i, /^resolve/i, /^bug/i, /^patch/i, /^correct/i, /^repair/i]
+        keywords: [/fix/i, /resolve/i, /bug/i, /patch/i, /correct/i, /repair/i]
     },
     {
         title: "⚡ Improvements",
-        keywords: [/^improve/i, /^refactor/i, /^perf/i, /^optimiz/i, /^tweak/i, /^update/i, /^styl/i, /^polish/i, /^better/i, /^enlarge/i, /^adjust/i]
+        keywords: [/improve/i, /refactor/i, /perf/i, /optimiz/i, /tweak/i, /update/i, /styl/i, /polish/i, /better/i, /enlarge/i, /adjust/i, /refine/i]
     },
     {
         title: "📚 Documentation",
-        keywords: [/^doc/i, /^readme/i, /^wiki/i, /^comment/i]
+        keywords: [/doc/i, /readme/i, /wiki/i, /comment/i]
     },
     {
         title: "🔧 Maintenance",
-        keywords: [/^chore/i, /^maint/i, /^build/i, /^ci/i, /^bump/i, /^upgrade/i, /^script/i]
+        keywords: [/chore/i, /maint/i, /build/i, /ci/i, /bump/i, /upgrade/i, /script/i]
     }
 ];
 
@@ -273,17 +273,57 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
             let cleanMessages = [];
 
             if (rawMessage.startsWith('[backup]')) {
-                // Try to extract the description part between the em dashes
-                const segments = rawMessage.split(/\s+[—–-]\s+/);
+                // The backup format uses em-dashes (—) as separators.
+                // However, git log output might sometimes look different depending on terminal,
+                // but based on user info it is reliably em-dash " — ".
+
+                // We split by standard " — " to get the main chunks.
+                const segments = rawMessage.split(' — ');
+
                 if (segments.length >= 3) {
-                    // usually the 3rd segment is the description
-                    const desc = segments[2];
-                    if (desc && !desc.includes('automatic backup after build')) {
-                        // The description might be multiple sentences. Split them!
-                        cleanMessages = desc.split('. ').map(s => s.trim()).filter(s => s.length > 2);
+                    // 0: [backup] timestamp
+                    // 1: files summary e.g. "src(5)"
+                    // 2..N-2: DESCRIPTION parts (might contain em-dashes?)
+                    // N-1: files count e.g. "5 files" (sometimes missing or different)
+                    // N: stats e.g. "+5/-12"
+
+                    // The description is everything between index 2 and the stats part.
+                    // Usually the last two segments are "X files" and "+X/-Y".
+                    // Let's assume description starts at index 2.
+                    // We need to identify where description ends.
+                    // The "X files" segment usually matches /^\d+ files$/.
+                    // The stats segment matches /^[+\-]\d+\/[+\-]\d+/.
+
+                    let descParts = [];
+                    // Start from index 2
+                    for (let i = 2; i < segments.length; i++) {
+                        const seg = segments[i].trim();
+                        // Stop if we hit the stats trailer
+                        if (/^\d+\s+files$/.test(seg) || /^[+\-]\d+\/[+\-]\d+/.test(seg)) {
+                            // This looks like metadata, stop collecting description
+                            break;
+                        }
+                        descParts.push(seg);
+                    }
+
+                    // Join back with em-dash if it was split (unlikely for description text but possible)
+                    const fullDesc = descParts.join(' — ');
+
+                    if (fullDesc && !fullDesc.includes('automatic backup after build')) {
+                        // usage of ". " as splitter
+                        cleanMessages = fullDesc.split('. ').map(s => s.trim()).filter(s => s.length > 2);
                     }
                 } else {
-                    if (!rawMessage.includes('automatic backup after build')) {
+                    // Fallback: try splitting by hyphen if em-dash wasn't found (maybe encoding issue?)
+                    // But be careful not to split inside description
+                    const hyphenSegments = rawMessage.split(' - ');
+                    if (hyphenSegments.length >= 4 && rawMessage.includes('[backup]')) {
+                        // Very rough fallback
+                        const desc = hyphenSegments.slice(2, hyphenSegments.length - 2).join(' - ');
+                        if (desc && !desc.includes('automatic backup after build')) {
+                            cleanMessages = desc.split('. ').map(s => s.trim()).filter(s => s.length > 2);
+                        }
+                    } else if (!rawMessage.includes('automatic backup after build')) {
                         cleanMessages = [rawMessage];
                     }
                 }
@@ -309,7 +349,7 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
 
                 if (!assigned) {
                     // Filter out noise like "2 files"
-                    if (!/^\d+ files$/.test(message) && !message.toLowerCase().includes('[backup]')) {
+                    if (!/^\d+\s+files$/.test(message) && !message.toLowerCase().includes('[backup]') && !/^[+\-]\d+/.test(message)) {
                         uncategorized.push(`- ${message} ${hashLink}`);
                     }
                 }

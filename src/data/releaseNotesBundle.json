@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "version": "4.4.2",
+      "title": "4.4.2",
+      "body": "## What's Changed\r\n\r\nRefined Feature - Move Scene in Narrative Mode improved with subplot coloring for arc and elevated modal layout with icons. \r\n\r\nBug - Fixed in the Chronologue mode, where the subplot has only one scene and the title fails to appear. ([75fba10](https://github.com/EricRhysTaylor/Radial-Timeline/commit/75fba108a013a02ab92d8a6248c3a43415d059bc))",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.2",
+      "publishedAt": "2025-12-13T21:28:48Z"
+    },
+    {
       "version": "4.4.1",
       "title": "4.4.1",
       "body": "## What's Changed\r\n- Added latest models from ChatGPT 5.2, Claude Opus 4.5 and the older Gemini 2.5 \r\n- Improved the Gossamer momentum gemini score modal and status info\r\n- changed the release according in settings and modal to expand the latest release rather than the last Major release\r\n- Changed the triplet prompt and instructions to properly pull from the settings context and remove the excess instructions from the beginning designed to cajole the local LLM to obey instructions.\r\n- Enlarged the Release Update Alert icon to match the 24x24 size of the Bug svg icon",
@@ -73,13 +80,20 @@
     "publishedAt": "2025-11-05T20:39:14Z"
   },
   "latest": {
-    "version": "4.4.1",
-    "title": "4.4.1",
-    "body": "## What's Changed\r\n- Added latest models from ChatGPT 5.2, Claude Opus 4.5 and the older Gemini 2.5 \r\n- Improved the Gossamer momentum gemini score modal and status info\r\n- changed the release according in settings and modal to expand the latest release rather than the last Major release\r\n- Changed the triplet prompt and instructions to properly pull from the settings context and remove the excess instructions from the beginning designed to cajole the local LLM to obey instructions.\r\n- Enlarged the Release Update Alert icon to match the 24x24 size of the Bug svg icon",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.1",
-    "publishedAt": "2025-12-13T03:20:40Z"
+    "version": "4.4.2",
+    "title": "4.4.2",
+    "body": "## What's Changed\r\n\r\nRefined Feature - Move Scene in Narrative Mode improved with subplot coloring for arc and elevated modal layout with icons. \r\n\r\nBug - Fixed in the Chronologue mode, where the subplot has only one scene and the title fails to appear. ([75fba10](https://github.com/EricRhysTaylor/Radial-Timeline/commit/75fba108a013a02ab92d8a6248c3a43415d059bc))",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.2",
+    "publishedAt": "2025-12-13T21:28:48Z"
   },
   "patches": [
+    {
+      "version": "4.4.1",
+      "title": "4.4.1",
+      "body": "## What's Changed\r\n- Added latest models from ChatGPT 5.2, Claude Opus 4.5 and the older Gemini 2.5 \r\n- Improved the Gossamer momentum gemini score modal and status info\r\n- changed the release according in settings and modal to expand the latest release rather than the last Major release\r\n- Changed the triplet prompt and instructions to properly pull from the settings context and remove the excess instructions from the beginning designed to cajole the local LLM to obey instructions.\r\n- Enlarged the Release Update Alert icon to match the 24x24 size of the Bug svg icon",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.1",
+      "publishedAt": "2025-12-13T03:20:40Z"
+    },
     {
       "version": "4.4.0",
       "title": "4.4.0",

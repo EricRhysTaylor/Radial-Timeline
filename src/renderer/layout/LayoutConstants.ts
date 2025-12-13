@@ -43,6 +43,9 @@ export const SUBPLOT_OUTER_RADIUS_STANDARD = {
   large: 762
 } as const;
 
+
+// DRAG SCENE FEATURE //
+
 /** Absolute radius for the outer tip of the drag tick (px) */
 export const DRAG_DROP_TICK_OUTER_RADIUS = 790;
 
