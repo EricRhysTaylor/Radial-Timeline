@@ -3,10 +3,12 @@ import { Modal, App } from 'obsidian';
 export class DragConfirmModal extends Modal {
     private readonly summary: string[];
     private decision: boolean = false;
+    private readonly accent?: string;
 
-    constructor(app: App, summaryLines: string[]) {
+    constructor(app: App, summaryLines: string[], accent?: string) {
         super(app);
         this.summary = summaryLines;
+        this.accent = accent;
     }
 
     onOpen(): void {
@@ -15,8 +17,14 @@ export class DragConfirmModal extends Modal {
         modalEl.addClass('rt-pulse-modal-shell');
         contentEl.addClass('rt-pulse-modal');
         contentEl.addClass('rt-pulse-glass-card');
+        contentEl.addClass('rt-confirm-modal');
+        modalEl.style.setProperty('width', 'min(560px, 90vw)');
+        modalEl.style.setProperty('max-height', '90vh');
+        if (this.accent) {
+            contentEl.style.setProperty('--rt-confirm-accent', this.accent);
+        }
 
-        contentEl.createEl('h3', { text: 'Confirm reorder', cls: 'rt-pulse-progress-heading' });
+        contentEl.createEl('h3', { text: 'Confirm reorder', cls: 'rt-pulse-progress-heading rt-confirm-heading' });
 
         const list = contentEl.createEl('ul');
         this.summary.forEach(line => list.createEl('li', { text: line }));

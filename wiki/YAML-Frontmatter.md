@@ -21,6 +21,8 @@ Pulse Update:             # AI-generated scene pulse analysis flag
 ---
 ```
 
+**Tip**: After switching a scene’s `Status` to `Complete`, update the `Due` field to the actual completion date. This preserves an accurate completion timeline and keeps the plugin’s completion-date forecasts honest.
+
 **For multiple subplots or characters, use YAML list format:**
 ```yaml
 Subplot:

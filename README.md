@@ -42,8 +42,10 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing t
 
 **Narrative time**: the sequence you reveal events to readers.
 **Chronological time**: when events happen in your story's world.
-**Author time**: your real-world writing progress toward completion from Todo to Complete.
+**Author time**: your scene writing progress with target completion dates from Todo to Complete.
 **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
+
+Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Subplot Mode where each subplot gets its own ring and scenes inherit the author-status and publish-stage palette.
 
 <hr>
 
@@ -71,9 +73,9 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing t
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot3.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot3.jpeg" alt="Main Plot Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot3.jpeg" alt="Subplot Mode author workflow colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Mode</div>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Mode — Author & publishing progress</div>
   </div>
   <div style="text-align: center;">
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot4.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">

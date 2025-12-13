@@ -10,8 +10,9 @@
 ### Tracking Progress
 *   **Status Colors**: In **Subplot Mode**, scenes are color-coded by status (Todo = plaid, Working = pink, Overdue = red, Complete = publish stage color customizable in settings). In Narrative and Chronologue modes, scenes display their subplot color.
 *   **Completion Estimates**: Plugin calculates target completion date based on your recent writing pace.
+*   **Capture actual completion dates**: When you mark a scene as `Complete`, update its `Due` date to the day you finished. Those timestamps power the completion estimate calculations, so keeping them current improves the forecast.
 *   **Publishing Stages**: Track manuscript through Zero → Author → House → Press.
-*   **Subplot Mode**: Switch to subplot mode (navigation top right via page icon or keyboard 2) for simplified view emphasizing publication progress as well as individual subplots.
+*   **Subplot Mode**: Switch to subplot mode (navigation top right via page icon or keyboard 2) for a per-subplot view (no combined outer ring) that emphasizes publication progress and Todo/Working/Overdue status patterns.
 
 **Modes**: Narrative (key 1) or Subplot (key 2)
 **Settings**: Publishing stage colors

@@ -30,6 +30,10 @@ export class OuterRingDragController {
     private startY = 0;
     private confirming = false;
     private dropTick: SVGPathElement | null = null;
+    private originColor?: string;
+    private originStartAngle?: number;
+    private originOuterR?: number;
+    private dropArc: SVGPathElement | null = null;
 
     constructor(view: OuterRingViewAdapter, svg: SVGSVGElement, options: OuterRingDragOptions) {
         this.view = view;
@@ -102,6 +106,9 @@ export class OuterRingDragController {
         if (this.dropTick) {
             this.dropTick.setAttribute('d', '');
         }
+        if (this.dropArc) {
+            this.dropArc.setAttribute('d', '');
+        }
     }
 
     private setHighlight(group: SVGGElement | null): void {
@@ -117,7 +124,11 @@ export class OuterRingDragController {
         const startAngle = Number(sceneGroup.getAttribute('data-start-angle') ?? '');
         const outerR = Number(sceneGroup.getAttribute('data-outer-r') ?? '');
         if (!Number.isFinite(startAngle) || !Number.isFinite(outerR)) return;
-        this.updateDropTick(startAngle, outerR);
+        this.updateDropTick(startAngle, outerR, this.originColor);
+        if (this.originStartAngle !== undefined && this.originOuterR !== undefined) {
+            const rArc = Math.max(this.originOuterR, outerR) + 12;
+            this.updateDropArc(this.originStartAngle, startAngle, rArc, this.originColor);
+        }
     }
 
     private findOuterGroup(evt: PointerEvent): SVGGElement | null {
@@ -138,13 +149,29 @@ export class OuterRingDragController {
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.classList.add('rt-drop-target-tick');
         path.setAttribute('d', '');
-        // Append near the end so it renders on top of arcs but below tooltips
-        this.svg.appendChild(path);
+        const overlays = this.svg.querySelector<SVGGElement>('#rt-overlays');
+        if (overlays) overlays.appendChild(path); else this.svg.appendChild(path);
         this.dropTick = path;
         return path;
     }
 
-    private updateDropTick(startAngle: number, outerR: number): void {
+    private ensureDropArc(): SVGPathElement {
+        if (this.dropArc && this.dropArc.isConnected) return this.dropArc;
+        const existing = this.svg.querySelector<SVGPathElement>('.rt-drop-target-arc');
+        if (existing) {
+            this.dropArc = existing;
+            return existing;
+        }
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.classList.add('rt-drop-target-arc');
+        path.setAttribute('d', '');
+        const overlays = this.svg.querySelector<SVGGElement>('#rt-overlays');
+        if (overlays) overlays.appendChild(path); else this.svg.appendChild(path);
+        this.dropArc = path;
+        return path;
+    }
+
+    private updateDropTick(startAngle: number, outerR: number, color?: string): void {
         const tickLen = 18;
         const r1 = outerR;
         const r2 = outerR + tickLen;
@@ -154,6 +181,27 @@ export class OuterRingDragController {
         const y2 = r2 * Math.sin(startAngle);
         const tick = this.ensureDropTick();
         tick.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
+        if (color) tick.setAttribute('stroke', color);
+    }
+
+    private updateDropArc(startAngle: number, endAngle: number, radius: number, color?: string): void {
+        const arc = this.ensureDropArc();
+        const norm = (a: number) => {
+            while (a < -Math.PI) a += Math.PI * 2;
+            while (a > Math.PI) a -= Math.PI * 2;
+            return a;
+        };
+        let a0 = startAngle;
+        let a1 = endAngle;
+        const delta = norm(a1 - a0);
+        const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
+        const sweep = delta >= 0 ? 1 : 0;
+        const x0 = radius * Math.cos(a0);
+        const y0 = radius * Math.sin(a0);
+        const x1p = radius * Math.cos(a1);
+        const y1p = radius * Math.sin(a1);
+        arc.setAttribute('d', `M ${x0} ${y0} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${x1p} ${y1p}`);
+        if (color) arc.setAttribute('stroke', color);
     }
 
     private resetState(): void {
@@ -229,7 +277,7 @@ export class OuterRingDragController {
         this.confirming = true;
         let confirmed = false;
         try {
-            const modal = new DragConfirmModal(this.view.plugin.app, summaryLines);
+            const modal = new DragConfirmModal(this.view.plugin.app, summaryLines, this.originColor);
             confirmed = await new Promise<boolean>((resolve) => {
                 const onClose = () => resolve(modal.getResult());
                 modal.onClose = onClose;
@@ -304,6 +352,8 @@ export class OuterRingDragController {
         this.sourceGroup = group;
         this.startX = evt.clientX;
         this.startY = evt.clientY;
+        this.originColor = this.resolveSubplotColorFromGroup(group);
+        this.captureOriginGeometry(sceneId);
         if (this.holdTimer !== null) {
             window.clearTimeout(this.holdTimer);
         }
@@ -312,5 +362,29 @@ export class OuterRingDragController {
             this.beginDrag();
         }, this.HOLD_MS);
         this.log('pointerdown', { sceneId });
+    }
+
+    private captureOriginGeometry(sceneId: string): void {
+        const pathEl = this.svg.querySelector<SVGPathElement>(`#${this.cssEscape(sceneId)}`);
+        const sceneGroup = pathEl?.closest<SVGGElement>('.rt-scene-group');
+        if (!sceneGroup) {
+            this.originStartAngle = undefined;
+            this.originOuterR = undefined;
+            return;
+        }
+        const startAngle = Number(sceneGroup.getAttribute('data-start-angle') ?? '');
+        const outerR = Number(sceneGroup.getAttribute('data-outer-r') ?? '');
+        this.originStartAngle = Number.isFinite(startAngle) ? startAngle : undefined;
+        this.originOuterR = Number.isFinite(outerR) ? outerR : undefined;
+    }
+
+    private resolveSubplotColorFromGroup(group: SVGGElement): string | undefined {
+        const subplotIdxAttr = group.getAttribute('data-subplot-index');
+        if (!subplotIdxAttr) return undefined;
+        const idx = Number(subplotIdxAttr);
+        if (!Number.isFinite(idx)) return undefined;
+        const colors = (this.view.plugin.settings as any)?.subplotColors as string[] | undefined;
+        if (colors && colors[idx]) return colors[idx];
+        return undefined;
     }
 }
