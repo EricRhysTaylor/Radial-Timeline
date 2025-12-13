@@ -4,7 +4,15 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { NUM_ACTS, GRID_CELL_BASE, GRID_CELL_WIDTH_EXTRA, GRID_CELL_GAP_X, GRID_CELL_GAP_Y, GRID_HEADER_OFFSET_Y, GRID_LINE_HEIGHT, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
+import { NUM_ACTS, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
+import {
+    GRID_CELL_BASE,
+    GRID_CELL_WIDTH_EXTRA,
+    GRID_CELL_GAP_X,
+    GRID_CELL_GAP_Y,
+    GRID_HEADER_OFFSET_Y,
+    GRID_LINE_HEIGHT
+} from './layout/LayoutConstants';
 import type { TimelineItem } from '../types';
 import { formatNumber, escapeXml } from '../utils/svg';
 import { dateToAngle, isOverdueDateString } from '../utils/date';

@@ -987,14 +987,14 @@
 }
 
 .rt-drop-target-tick {
-  stroke: var(--rt-max-publish-stage-color, var(--interactive-accent, #5e81ff));
+  stroke: var(--rt-drag-color, var(--rt-max-publish-stage-color, var(--interactive-accent, #5e81ff)));
   stroke-width: 4px;
   stroke-linecap: round;
   fill: none;
 }
 
 .rt-drop-target-arc {
-  stroke: var(--rt-max-publish-stage-color, var(--interactive-accent, #5e81ff));
+  stroke: var(--rt-drag-color, var(--rt-max-publish-stage-color, var(--interactive-accent, #5e81ff)));
   stroke-width: 3px;
   stroke-linecap: round;
   fill: none;
@@ -1007,6 +1007,45 @@
 
 .rt-confirm-heading {
   color: var(--rt-confirm-accent, var(--rt-max-publish-stage-color, var(--interactive-accent, #ff9900)));
+}
+
+.rt-confirm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.rt-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.rt-confirm-row-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.9;
+  color: var(--rt-confirm-accent, var(--text-normal));
+}
+
+.rt-confirm-row-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.rt-confirm-row-text {
+  font-size: 1.05em;
+  line-height: 1.4;
+}
+
+.rt-confirm-modal .rt-mod-cta {
+  background-color: var(--rt-confirm-accent, var(--interactive-accent));
 }
 
 .rt-number-square[data-subplot-idx="0"] {
@@ -2604,7 +2643,7 @@
   max-height: 90vh;
 }
 
-.rt-subplot-modal > .rt-pulse-progress-hero {
+.rt-subplot-modal>.rt-pulse-progress-hero {
   flex: 0 0 auto;
 }
 
@@ -4882,6 +4921,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   grid-row: 2 / 3;
   margin: 0;
 }
+
 /* Gossamer modal checkbox options - 2 column layout */
 .rt-gossamer-options-container {
   display: grid;

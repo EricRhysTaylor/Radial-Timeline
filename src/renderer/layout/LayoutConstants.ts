@@ -15,6 +15,19 @@
 export const SVG_SIZE = 1600;
 
 // =============================================================================
+// VERSION INDICATOR POSITIONING (bottom-left edge)
+// =============================================================================
+
+/** Horizontal offset for update alert icon from version text */
+export const VERSION_INDICATOR_POS_X = -780;
+
+/** Vertical position for version indicator (bottom, positive Y in SVG coords) */
+export const VERSION_INDICATOR_POS_Y = 734;
+
+/** Horizontal offset for update alert icon from version text */
+export const VERSION_ALERT_OFFSET_X = 8;
+
+// =============================================================================
 // RADII - CORE STRUCTURE
 // =============================================================================
 
@@ -29,6 +42,12 @@ export const SUBPLOT_OUTER_RADIUS_STANDARD = {
   normal: 766,
   large: 762
 } as const;
+
+/** Absolute radius for the outer tip of the drag tick (px) */
+export const DRAG_DROP_TICK_OUTER_RADIUS = 790;
+
+/** Absolute radius for the drag arc line (px) */
+export const DRAG_DROP_ARC_RADIUS = 778;
 
 /** Where subplot rings end in Chronologue mode (smaller for time details) */
 export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;
@@ -193,16 +212,18 @@ export const SHIFT_BUTTON_POS_X = -700;
 /** Vertical position for chronologue shift button */
 export const SHIFT_BUTTON_POS_Y = -740;
 
+
+
+
 // =============================================================================
-// VERSION INDICATOR POSITIONING (bottom-left edge)
+// GRID MODE
 // =============================================================================
 
-/** Horizontal position for version indicator (left edge) */
-export const VERSION_INDICATOR_POS_X = -780;
+export const GRID_CELL_BASE = 22;
+export const GRID_CELL_WIDTH_EXTRA = 9; // width = round(base*1.5) + extra
+export const GRID_CELL_GAP_X = 2;
+export const GRID_CELL_GAP_Y = 4;
+export const GRID_HEADER_OFFSET_Y = 12;
+export const GRID_LINE_HEIGHT = 26;
 
-/** Vertical position for version indicator (bottom, positive Y in SVG coords) */
-export const VERSION_INDICATOR_POS_Y = 734;
-
-/** Horizontal offset for update alert icon from version text */
-export const VERSION_ALERT_OFFSET_X = 8;
 

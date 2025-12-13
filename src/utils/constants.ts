@@ -7,8 +7,6 @@
 export const NUM_ACTS = 3;
 
 // Grid and legend sizing
-export const GRID_CELL_BASE = 22;
-
 // Status colors - references CSS variables
 export const STATUS_COLORS = {
     Working: 'var(--rt-color-working)',
@@ -26,11 +24,6 @@ export interface SceneNumberInfo {
     width: number;
     height: number;
 }
-export const GRID_CELL_WIDTH_EXTRA = 9; // width = round(base*1.5) + extra
-export const GRID_CELL_GAP_X = 2;
-export const GRID_CELL_GAP_Y = 4;
-export const GRID_HEADER_OFFSET_Y = 12;
-export const GRID_LINE_HEIGHT = 26;
 
 // Stage and status orderings
 export const STAGE_ORDER = ["Zero", "Author", "House", "Press"] as const;

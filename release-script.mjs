@@ -143,7 +143,7 @@ function readExistingReleaseBundle() {
 
 function updateEmbeddedReleaseNotesFromGitHub(version) {
     console.log(`\n🔄 Fetching published release notes from GitHub for ${version}...`);
-    
+
     const semver = parseSemver(version);
     if (!semver) {
         console.error(`❌ Invalid version format: ${version}`);
@@ -160,7 +160,7 @@ function updateEmbeddedReleaseNotesFromGitHub(version) {
     // Fetch the major release (e.g., 3.0.0)
     const majorTag = `${semver.major}.0.0`;
     let major = fetchReleaseInfo(majorTag);
-    
+
     // If major release doesn't exist, use the existing one from bundle or fall back to latest
     if (!major) {
         const existing = readExistingReleaseBundle();
@@ -199,7 +199,7 @@ function getLastReleaseTag() {
     } catch (error) {
         console.log('⚠️  Could not get GitHub releases, falling back to Git tags');
     }
-    
+
     try {
         // Fallback to Git tags
         const output = execSync('git tag --sort=-version:refname | head -1', { encoding: 'utf8' });
@@ -219,42 +219,118 @@ function tagExists(tag) {
     }
 }
 
+// Categorization rules
+const CATEGORIES = [
+    {
+        title: "✨ New Features",
+        keywords: [/^feat/i, /^add/i, /^new/i, /^implement/i, /^create/i]
+    },
+    {
+        title: "🐛 Bug Fixes",
+        keywords: [/^fix/i, /^resolve/i, /^bug/i, /^patch/i, /^correct/i, /^repair/i]
+    },
+    {
+        title: "⚡ Improvements",
+        keywords: [/^improve/i, /^refactor/i, /^perf/i, /^optimiz/i, /^tweak/i, /^update/i, /^styl/i, /^polish/i, /^better/i, /^enlarge/i, /^adjust/i]
+    },
+    {
+        title: "📚 Documentation",
+        keywords: [/^doc/i, /^readme/i, /^wiki/i, /^comment/i]
+    },
+    {
+        title: "🔧 Maintenance",
+        keywords: [/^chore/i, /^maint/i, /^build/i, /^ci/i, /^bump/i, /^upgrade/i, /^script/i]
+    }
+];
+
 function generateChangelog(fromTag, toRef = 'HEAD') {
     try {
         const range = fromTag ? `${fromTag}..${toRef}` : toRef;
-        const commits = execSync(`git log ${range} --oneline --no-merges`, { encoding: 'utf8' });
-        
-        if (!commits.trim()) {
+        // Format: shortHash|fullHash|subject
+        const logs = execSync(`git log ${range} --pretty=format:"%h|%H|%s" --no-merges`, { encoding: 'utf8' });
+
+        if (!logs.trim()) {
             return "No changes since last release.";
         }
 
-        const lines = commits.trim().split('\n');
-        let changelog = "";
-        
+        const lines = logs.trim().split('\n');
+        const categorized = {};
+        const uncategorized = [];
+
+        // Initialize categories
+        CATEGORIES.forEach(cat => categorized[cat.title] = []);
+
         lines.forEach(line => {
-            const match = line.match(/^([a-f0-9]+)\s+(.+)$/);
-            if (match) {
-                const [, hash, message] = match;
-                // Clean up the message and format it nicely
-                let cleanMessage = message.trim();
-                
-                // If message is very long, truncate it sensibly
-                if (cleanMessage.length > 80) {
-                    const words = cleanMessage.split(' ');
-                    let truncated = '';
-                    for (const word of words) {
-                        if ((truncated + ' ' + word).length > 80) break;
-                        truncated += (truncated ? ' ' : '') + word;
+            const parts = line.split('|');
+            if (parts.length < 3) return;
+
+            const shortHash = parts[0];
+            const fullHash = parts[1];
+            let rawMessage = parts.slice(2).join('|').trim();
+
+            // Handle user's specific backup format: "[backup] timestamp — files — description — stats"
+            // Example: [backup] ... — src(6) — Fixed bugs in triplet analysis. ... — 6 files ...
+            let cleanMessages = [];
+
+            if (rawMessage.startsWith('[backup]')) {
+                // Try to extract the description part between the em dashes
+                const segments = rawMessage.split(/\s+[—–-]\s+/);
+                if (segments.length >= 3) {
+                    // usually the 3rd segment is the description
+                    const desc = segments[2];
+                    if (desc && !desc.includes('automatic backup after build')) {
+                        // The description might be multiple sentences. Split them!
+                        cleanMessages = desc.split('. ').map(s => s.trim()).filter(s => s.length > 2);
                     }
-                    cleanMessage = truncated + '...';
+                } else {
+                    if (!rawMessage.includes('automatic backup after build')) {
+                        cleanMessages = [rawMessage];
+                    }
                 }
-                
-                changelog += `- ${cleanMessage}\n`;
+            } else {
+                cleanMessages = [rawMessage];
+            }
+
+            cleanMessages.forEach(msg => {
+                if (msg.endsWith('.')) msg = msg.slice(0, -1);
+
+                // Enhance message with links
+                let message = msg.replace(/#(\d+)/g, '[#$1](https://github.com/EricRhysTaylor/Radial-Timeline/issues/$1)');
+                const hashLink = `([${shortHash}](https://github.com/EricRhysTaylor/Radial-Timeline/commit/${fullHash}))`;
+
+                let assigned = false;
+                for (const cat of CATEGORIES) {
+                    if (cat.keywords.some(regex => regex.test(message))) {
+                        categorized[cat.title].push(`- ${message} ${hashLink}`);
+                        assigned = true;
+                        break;
+                    }
+                }
+
+                if (!assigned) {
+                    // Filter out noise like "2 files"
+                    if (!/^\d+ files$/.test(message) && !message.toLowerCase().includes('[backup]')) {
+                        uncategorized.push(`- ${message} ${hashLink}`);
+                    }
+                }
+            });
+        });
+
+        let changelog = "";
+
+        CATEGORIES.forEach(cat => {
+            if (categorized[cat.title].length > 0) {
+                changelog += `### ${cat.title}\n${categorized[cat.title].join('\n')}\n\n`;
             }
         });
-        
-        return changelog.trim() || "No changes since last release.";
+
+        if (uncategorized.length > 0) {
+            changelog += `### 🛠 Other Changes\n${uncategorized.join('\n')}\n\n`;
+        }
+
+        return changelog.trim() || "No significant changes since last release.";
     } catch (error) {
+        console.error(error);
         return "Could not generate changelog.";
     }
 }
@@ -358,22 +434,22 @@ async function main() {
     // Read current version
     const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
     const currentVersion = packageJson.version;
-    
+
     console.log(`📦 Current version: ${currentVersion}`);
-    
+
     // Get last release tag
     const lastTag = getLastReleaseTag();
     console.log(`🏷️  Last release tag: ${lastTag || 'None found'}`);
-    
+
     // Get new version from user
     const newVersion = await question(`✨ Enter new version number: `);
-    
+
     if (!newVersion) {
         console.log("❌ Invalid version. Exiting.");
         rl.close();
         return;
     }
-    
+
     // Handle same version case
     if (newVersion === currentVersion) {
         console.log(`ℹ️  Re-releasing version ${currentVersion}`);
@@ -389,30 +465,30 @@ async function main() {
     // Generate changelog
     console.log(`\n📝 Generating changelog since ${lastTag || 'beginning'}...`);
     const autoChangelog = generateChangelog(lastTag);
-    
+
     console.log(`\n📋 Changes since last release:`);
     console.log(`${autoChangelog}`);
-    
+
     // Ask if user wants to edit release notes
     const editOption = await question(`\n✏️  Release notes:
 1. Publish now with auto-generated changelog
 2. Create draft release for editing in browser
 Choose (1/2): `);
-    
+
     let releaseNotes = `## What's Changed\n\n${autoChangelog}`;
     let createDraft = false;
-    
+
     if (editOption === '2') {
         createDraft = true;
         console.log(`📝 Will create draft release for editing in browser`);
-        
+
         console.log(`\n📋 Draft Release Summary:`);
         console.log(`   Current: ${currentVersion}`);
         console.log(`   New:     ${newVersion}`);
         console.log(`   Changes: ${lastTag ? `Since ${lastTag}` : 'Initial release'}`);
-        
+
         const confirm = await question(`\n❓ Create draft release? (y/N): `);
-        
+
         if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
             console.log("❌ Draft creation cancelled.");
             rl.close();
@@ -423,9 +499,9 @@ Choose (1/2): `);
         console.log(`   Current: ${currentVersion}`);
         console.log(`   New:     ${newVersion}`);
         console.log(`   Changes: ${lastTag ? `Since ${lastTag}` : 'Initial release'}`);
-        
+
         const confirm = await question(`\n❓ Proceed with release? (y/N): `);
-        
+
         if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
             console.log("❌ Release cancelled.");
             rl.close();
@@ -467,16 +543,16 @@ Choose (1/2): `);
             const tagRes = runCommand(`git tag ${newVersion}`, "Creating git tag", false, true);
             if (!tagRes) console.log(`ℹ️  Skipped creating tag ${newVersion}`);
         }
-        
+
         runCommand("git push origin master", "Pushing changes");
-        
+
         const pushTagRes = runCommand(`git push origin ${newVersion}`, "Pushing tag", false, true);
         if (!pushTagRes) console.log(`ℹ️  Tag ${newVersion} already pushed or skipped`);
 
         // Create GitHub release with release assets
         // Escape quotes in release notes for command line
         const escapedNotes = releaseNotes.replace(/"/g, '\\"').replace(/\n/g, '\\n');
-        
+
         let releaseCommand;
         if (createDraft) {
             releaseCommand = `gh release create ${newVersion} ` +
@@ -504,28 +580,28 @@ Choose (1/2): `);
 
         if (createDraft) {
             console.log(`\n🎉 Draft release ${newVersion} created successfully!`);
-			console.log(`📝 Draft release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
+            console.log(`📝 Draft release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
             console.log(`\n🌐 Opening draft release in browser for editing...`);
             console.log(`💡 Remember to publish the release when you're done editing!`);
             console.log(`💡 After publishing, run: npm run sync-release-notes && npm run build`);
             console.log(`   Then upload the updated main.js to the release`);
-            
+
             try {
                 // Open in browser via GitHub CLI (edit doesn't support --web; view does)
                 runCommand(`gh release view ${newVersion} --web`, "Opening release in browser", true);
             } catch (error) {
                 // Fallback: try OS open command on macOS
                 try {
-				const url = `https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`;
+                    const url = `https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`;
                     runCommand(`open ${url}`, "Opening release in browser", true);
                 } catch (e2) {
                     console.log(`⚠️  Could not open browser automatically. You can edit the draft release at:`);
-				console.log(`   https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
+                    console.log(`   https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
                 }
             }
         } else {
             console.log(`\n🎉 Release ${newVersion} published successfully!`);
-			console.log(`📦 GitHub release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
+            console.log(`📦 GitHub release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
             console.log(`\n💡 To update release notes in plugin, run:`);
             console.log(`   npm run sync-release-notes && npm run build`);
             console.log(`   Then upload the updated main.js to the release`);

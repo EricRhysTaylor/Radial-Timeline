@@ -28,13 +28,13 @@ export function renderNumberSquaresUnified(params: {
   enableSubplotColors?: boolean;
   resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
 }): string {
-  const { 
-    plugin, 
-    scenes, 
-    sceneGrades, 
-    positions, 
-    squareRadius, 
-    act, 
+  const {
+    plugin,
+    scenes,
+    sceneGrades,
+    positions,
+    squareRadius,
+    act,
     ringOuter,
     NUM_RINGS,
     masterSubplotOrder,
@@ -52,7 +52,7 @@ export function renderNumberSquaresUnified(params: {
 
   scenes.forEach((scene, idx) => {
     if (isBeatNote(scene)) return;
-    
+
     const number = getScenePrefixNumber(scene.title, scene.number);
     if (!number) return;
 
@@ -81,24 +81,24 @@ export function renderNumberSquaresUnified(params: {
       const subplot = scene.subplot || 'Main Plot';
       const subplotIndex = masterSubplotOrder.indexOf(subplot);
       const ring = NUM_RINGS - 1 - subplotIndex;
-      
+
       // Check if using When date sorting
       const currentMode = (plugin.settings as any).currentMode || 'narrative';
       const isChronologueMode = currentMode === 'chronologue';
       const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
-      
+
       const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
       // When using When date sorting, all scenes are in act 0
       const actIndex = sortByWhen ? 0 : (sceneActNumber - 1);
-      
+
       const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
       const filteredScenes = scenesInActAndSubplot.filter(s => !isBeatNote(s));
       const sceneIndex = filteredScenes.indexOf(scene);
-      
+
       // Calculate angles based on sorting method
       let startAngle: number;
       let endAngle: number;
-      
+
       if (sortByWhen) {
         // When date mode: Full 360° circle
         startAngle = -Math.PI / 2;
@@ -108,7 +108,7 @@ export function renderNumberSquaresUnified(params: {
         startAngle = (actIndex * 2 * Math.PI) / 3 - Math.PI / 2; // NUM_ACTS = 3
         endAngle = ((actIndex + 1) * 2 * Math.PI) / 3 - Math.PI / 2;
       }
-      
+
       const innerR = ringStartRadii[ring];
       const outerR = innerR + ringWidths[ring];
       const totalAngularSpace = endAngle - startAngle;
@@ -125,11 +125,11 @@ export function renderNumberSquaresUnified(params: {
     const squareSize = getNumberSquareSize(number, squareScale);
     const squareX = textPathRadius * Math.cos(sceneStartAngle);
     const squareY = textPathRadius * Math.sin(sceneStartAngle);
-    
+
     const { isSceneOpen, isSearchMatch, hasEdits } = getSceneState(scene, plugin);
     let squareClasses = buildSquareClasses(isSceneOpen, isSearchMatch, hasEdits);
     let textClasses = buildTextClasses(isSceneOpen, isSearchMatch, hasEdits);
-    
+
     const grade = sceneGrades.get(sceneId);
     if (plugin.settings.enableAiSceneAnalysis && grade) {
       textClasses += ` rt-grade-${grade}`;
@@ -149,13 +149,14 @@ export function renderNumberSquaresUnified(params: {
 
     const dataAttrs = posForOuter
       ? {
-          'data-outer-ring': 'true',
-          'data-scene-order': idx,
-          'data-act': act,
-          'data-ring': ringOuter,
-          'data-start-angle': formatNumber(posForOuter.startAngle),
-          'data-end-angle': formatNumber(posForOuter.endAngle)
-        }
+        'data-outer-ring': 'true',
+        'data-scene-order': idx,
+        'data-act': act,
+        'data-ring': ringOuter,
+        'data-start-angle': formatNumber(posForOuter.startAngle),
+        'data-end-angle': formatNumber(posForOuter.endAngle),
+        'data-subplot-index': subplotVisual?.subplotIndex
+      }
       : undefined;
 
     svg += generateNumberSquareGroup(
@@ -219,12 +220,12 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, enableSubplotColors = false, resolveSubplotVisual } = params;
   const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
   const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.75 : 1;
-  
+
   // Check if using When date sorting
   const currentMode = (plugin.settings as any).currentMode || 'narrative';
   const isChronologueMode = currentMode === 'chronologue';
   const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
-  
+
   let svg = '';
   scenes.forEach((scene) => {
     if (isBeatNote(scene)) return;
@@ -237,23 +238,23 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
     if (subplotIndex === -1) return;
     const ring = NUM_RINGS - 1 - subplotIndex;
     if (ring < 0 || ring >= NUM_RINGS) return;
-    
+
     // When using When date sorting, all scenes are in act 0
     // When using manuscript order, use the scene's actual act
     const sceneActNumber = scene.actNumber !== undefined ? scene.actNumber : 1;
     const actIndex = sortByWhen ? 0 : (sceneActNumber - 1);
-    
+
     const scenesInActAndSubplot = (scenesByActAndSubplot[actIndex] && scenesByActAndSubplot[actIndex][subplot]) || [];
     const filteredScenesForIndex = scenesInActAndSubplot.filter(s => !isBeatNote(s));
     // Find scene by path/title instead of object reference (fixes first-render bug)
     const sceneKey = scene.path || scene.title || '';
     const sceneIndex = filteredScenesForIndex.findIndex(s => (s.path || s.title || '') === sceneKey);
     if (sceneIndex === -1) return;
-    
+
     // Calculate angles based on sorting method
     let startAngle: number;
     let endAngle: number;
-    
+
     if (sortByWhen) {
       // When date mode: Full 360° circle
       startAngle = -Math.PI / 2;
