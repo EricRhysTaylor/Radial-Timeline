@@ -59,7 +59,7 @@ export class DragConfirmModal extends Modal {
 
 
         const buttons = contentEl.createDiv({ cls: 'rt-pulse-actions' });
-        const confirmBtn = buttons.createEl('button', { text: 'Apply', cls: 'rt-mod-cta' });
+        const confirmBtn = buttons.createEl('button', { text: 'Apply' });
         const cancelBtn = buttons.createEl('button', { text: 'Cancel' });
 
 

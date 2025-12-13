@@ -995,7 +995,7 @@
 
 .rt-drop-target-arc {
   stroke: var(--rt-drag-color, var(--rt-max-publish-stage-color, var(--interactive-accent, #5e81ff)));
-  stroke-width: 3px;
+  stroke-width: 4px;
   stroke-linecap: round;
   fill: none;
   opacity: 0.9;
@@ -1005,9 +1005,6 @@
   max-width: 560px;
 }
 
-.rt-confirm-heading {
-  color: var(--rt-confirm-accent, var(--rt-max-publish-stage-color, var(--interactive-accent, #ff9900)));
-}
 
 .rt-confirm-list {
   display: flex;
@@ -1042,10 +1039,6 @@
 .rt-confirm-row-text {
   font-size: 1.05em;
   line-height: 1.4;
-}
-
-.rt-confirm-modal .rt-mod-cta {
-  background-color: var(--rt-confirm-accent, var(--interactive-accent));
 }
 
 .rt-number-square[data-subplot-idx="0"] {

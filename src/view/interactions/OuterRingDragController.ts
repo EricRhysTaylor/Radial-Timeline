@@ -408,7 +408,7 @@ export class OuterRingDragController {
             if (computed) return computed;
         }
 
-        // Fallback to settings if CSS var fails (legacy/backup)
+        // Fallback to settings if CSS variable fails (legacy/backup)
         const colors = (this.view.plugin.settings as any)?.subplotColors as string[] | undefined;
         if (colors && colors[idx]) return colors[idx];
 
