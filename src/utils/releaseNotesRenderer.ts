@@ -14,21 +14,21 @@ export { formatPublishedDate };
 export async function renderReleaseNotesList(
     containerEl: HTMLElement,
     entries: EmbeddedReleaseNotesEntry[],
-    majorEntry: EmbeddedReleaseNotesEntry,
+    featuredEntry: EmbeddedReleaseNotesEntry,
     plugin: RadialTimelinePlugin,
     cssPrefix: string
 ): Promise<void> {
-    // Render all entries as collapsible details, with major entry expanded
+    // Render all entries as collapsible details, with the featured entry expanded by default
     for (const entry of entries) {
         const versionLabel = parseReleaseVersion(entry.version)?.fullLabel ?? (entry.title || entry.version);
         const details = containerEl.createEl('details', { cls: `${cssPrefix}-details` }) as HTMLDetailsElement;
-        
-        // Expand the major release
-        if (entry.version === majorEntry.version) {
+
+        // Expand the featured release
+        if (entry.version === featuredEntry.version) {
             details.open = true;
         }
-        
-        if (entry.version === majorEntry.version) {
+
+        if (entry.version === featuredEntry.version) {
             details.addClass(`${cssPrefix}-details-major`);
         }
 
@@ -50,9 +50,9 @@ export async function renderReleaseNotesList(
             });
         }
 
-        if (entry.version === majorEntry.version) {
+        if (entry.version === featuredEntry.version) {
             summaryEl.createSpan({
-                text: 'Featured',
+                text: 'Latest',
                 cls: `${cssPrefix}-details-summary-badge`
             });
         }

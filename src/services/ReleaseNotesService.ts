@@ -89,11 +89,8 @@ export class ReleaseNotesService {
         if (entries.length === 0) {
             throw new Error('Release bundle missing entries');
         }
-        const majorEntry = this.getMajorEntry();
-        if (!majorEntry) {
-            throw new Error('Release bundle missing major release entry');
-        }
-        const modal = new ReleaseNotesModal(app, plugin, entries, majorEntry);
+        const featuredEntry = entries[0]!;
+        const modal = new ReleaseNotesModal(app, plugin, entries, featuredEntry);
         modal.open();
     }
 
@@ -127,12 +124,6 @@ export class ReleaseNotesService {
         const entries = this.extractEntries(this.releaseNotesBundle);
         const majorEntry = this.resolveMajorEntry(this.releaseNotesBundle, entries);
         return majorEntry?.version ?? null;
-    }
-
-    getMajorEntry(): EmbeddedReleaseNotesEntry | null {
-        if (!this.releaseNotesBundle) return null;
-        const entries = this.extractEntries(this.releaseNotesBundle);
-        return this.resolveMajorEntry(this.releaseNotesBundle, entries);
     }
 
     private loadEmbeddedReleaseNotes(): EmbeddedReleaseNotesBundle | null {

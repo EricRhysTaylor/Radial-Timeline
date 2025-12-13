@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2025-12-05T02:47:03.393Z",
+  "generatedAt": "2025-12-13T02:21:58.604Z",
   "summary": {
     "anthropic": 10,
-    "openai": 101,
+    "openai": 106,
     "gemini": 50
   },
   "anthropic": [
@@ -68,6 +68,31 @@
     }
   ],
   "openai": [
+    {
+      "id": "gpt-5.2-chat-latest",
+      "owned_by": "system",
+      "created": 1765344352
+    },
+    {
+      "id": "gpt-5.2-pro",
+      "owned_by": "system",
+      "created": 1765343983
+    },
+    {
+      "id": "gpt-5.2-pro-2025-12-11",
+      "owned_by": "system",
+      "created": 1765343959
+    },
+    {
+      "id": "gpt-5.2",
+      "owned_by": "system",
+      "created": 1765313051
+    },
+    {
+      "id": "gpt-5.2-2025-12-11",
+      "owned_by": "system",
+      "created": 1765313028
+    },
     {
       "id": "gpt-5.1-codex-max",
       "owned_by": "system",
@@ -664,22 +689,6 @@
       "outputTokenLimit": 8192
     },
     {
-      "id": "gemini-2.0-pro-exp",
-      "name": "models/gemini-2.0-pro-exp",
-      "displayName": "Gemini 2.0 Pro Experimental",
-      "description": "Experimental release (March 25th, 2025) of Gemini 2.5 Pro",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
-      "id": "gemini-2.0-pro-exp-02-05",
-      "name": "models/gemini-2.0-pro-exp-02-05",
-      "displayName": "Gemini 2.0 Pro Experimental 02-05",
-      "description": "Experimental release (March 25th, 2025) of Gemini 2.5 Pro",
-      "inputTokenLimit": 1048576,
-      "outputTokenLimit": 65536
-    },
-    {
       "id": "gemini-exp-1206",
       "name": "models/gemini-exp-1206",
       "displayName": "Gemini Experimental 1206",
@@ -850,6 +859,14 @@
       "outputTokenLimit": 65536
     },
     {
+      "id": "deep-research-pro-preview-12-2025",
+      "name": "models/deep-research-pro-preview-12-2025",
+      "displayName": "Deep Research Pro Preview (Dec-12-2025)",
+      "description": "Preview release (December 12th, 2025) of Deep Research Pro",
+      "inputTokenLimit": 131072,
+      "outputTokenLimit": 65536
+    },
+    {
       "id": "embedding-001",
       "name": "models/embedding-001",
       "displayName": "Embedding 001",
@@ -966,6 +983,14 @@
       "name": "models/veo-3.1-generate-preview",
       "displayName": "Veo 3.1",
       "description": "Veo 3.1",
+      "inputTokenLimit": 480,
+      "outputTokenLimit": 8192
+    },
+    {
+      "id": "veo-3.1-fast-generate-preview",
+      "name": "models/veo-3.1-fast-generate-preview",
+      "displayName": "Veo 3.1 fast",
+      "description": "Veo 3.1 fast",
       "inputTokenLimit": 480,
       "outputTokenLimit": 8192
     }

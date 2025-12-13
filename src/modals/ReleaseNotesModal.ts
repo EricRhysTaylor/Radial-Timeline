@@ -45,14 +45,14 @@ function buildHeroPreview(body?: string): string | null {
 
 export class ReleaseNotesModal extends Modal {
     private readonly entries: EmbeddedReleaseNotesEntry[];
-    private readonly majorEntry: EmbeddedReleaseNotesEntry;
+    private readonly featuredEntry: EmbeddedReleaseNotesEntry;
     private readonly plugin: RadialTimelinePlugin;
 
-    constructor(app: App, plugin: RadialTimelinePlugin, entries: EmbeddedReleaseNotesEntry[], majorEntry: EmbeddedReleaseNotesEntry) {
+    constructor(app: App, plugin: RadialTimelinePlugin, entries: EmbeddedReleaseNotesEntry[], featuredEntry: EmbeddedReleaseNotesEntry) {
         super(app);
         this.plugin = plugin;
         this.entries = entries;
-        this.majorEntry = majorEntry;
+        this.featuredEntry = featuredEntry;
     }
 
     async onOpen(): Promise<void> {
@@ -62,12 +62,12 @@ export class ReleaseNotesModal extends Modal {
 
         titleEl.setText("What's New");
 
-        const versionLabel = parseReleaseVersion(this.majorEntry.version)?.fullLabel ?? this.majorEntry.version;
-        const releaseDate = formatPublishedDate(this.majorEntry.publishedAt);
+        const versionLabel = parseReleaseVersion(this.featuredEntry.version)?.fullLabel ?? this.featuredEntry.version;
+        const releaseDate = formatPublishedDate(this.featuredEntry.publishedAt);
 
         const heroEl = contentEl.createDiv({ cls: 'rt-release-notes-hero' });
-        heroEl.createSpan({ text: 'Featured release', cls: 'rt-release-notes-hero-badge' });
-        heroEl.createEl('h3', { text: this.majorEntry.title || versionLabel, cls: 'rt-release-notes-hero-title' });
+        heroEl.createSpan({ text: 'Latest release', cls: 'rt-release-notes-hero-badge' });
+        heroEl.createEl('h3', { text: this.featuredEntry.title || versionLabel, cls: 'rt-release-notes-hero-title' });
 
         const heroMetaEl = heroEl.createDiv({ cls: 'rt-release-notes-hero-meta' });
         heroMetaEl.createSpan({ text: versionLabel, cls: 'rt-release-notes-hero-version' });
@@ -75,12 +75,12 @@ export class ReleaseNotesModal extends Modal {
             heroMetaEl.createSpan({ text: releaseDate, cls: 'rt-release-notes-hero-date' });
         }
 
-        const heroPreview = buildHeroPreview(this.majorEntry.body);
+        const heroPreview = buildHeroPreview(this.featuredEntry.body);
         if (heroPreview) {
             heroEl.createEl('p', { text: heroPreview, cls: 'rt-release-notes-hero-description' });
         }
 
-        const releaseUrl = this.majorEntry.url ?? DEFAULT_RELEASES_URL;
+        const releaseUrl = this.featuredEntry.url ?? DEFAULT_RELEASES_URL;
         const heroActions = heroEl.createDiv({ cls: 'rt-release-notes-hero-actions' });
         const changelogLink = heroActions.createEl('a', {
             text: 'View full changelog',
@@ -95,7 +95,7 @@ export class ReleaseNotesModal extends Modal {
         });
 
         const bodyHost = contentEl.createDiv({ cls: 'rt-release-notes-modal-body' });
-        await renderReleaseNotesList(bodyHost, this.entries, this.majorEntry, this.plugin, 'rt-release-notes-modal');
+        await renderReleaseNotesList(bodyHost, this.entries, this.featuredEntry, this.plugin, 'rt-release-notes-modal');
 
         const footerEl = contentEl.createDiv({ cls: 'rt-release-notes-modal-footer' });
         const closeButton = footerEl.createEl('button', { text: 'Close' });

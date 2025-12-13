@@ -117,8 +117,8 @@ export async function processWithModal(
             modal.setTripletInfo(prevNum, currentNum, nextNum, triplet.current.file.path, triplet.current.file.basename);
         }
 
-        // Use default context for scene analysis to avoid blending with story beat templates
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
+        const contextPrompt = getActiveContextPrompt(plugin);
+        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
@@ -364,8 +364,8 @@ export async function processSubplotWithModal(
             modal.setTripletInfo(prevNum, currentNum, nextNum, triplet.current.file.path, sceneName);
         }
 
-        // Use default context for scene analysis to avoid blending with story beat templates
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
+        const contextPrompt = getActiveContextPrompt(plugin);
+        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
@@ -483,8 +483,8 @@ export async function processEntireSubplotWithModalInternal(
             modal.setTripletInfo(prevNum, currentNum, nextNum, triplet.current.file.path, sceneName);
         }
 
-        // Use default context for scene analysis to avoid blending with story beat templates
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum);
+        const contextPrompt = getActiveContextPrompt(plugin);
+        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };

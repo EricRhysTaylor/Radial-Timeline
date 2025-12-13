@@ -96,7 +96,7 @@ export function buildSceneAnalysisPrompt(
   // Build context prefix if provided
   const contextPrefix = contextPrompt?.trim() 
     ? `${contextPrompt.trim()}\n\n`
-    : 'You are a developmental editor for fiction. Keep analysis suitable for general audiences; avoid explicit detail.\n\n';
+    : 'You are a developmental editor for fiction.\n\n';
 
   const isPrevAvailable = !!prevBody;
   const isNextAvailable = !!nextBody;

@@ -5,8 +5,8 @@
  */
 
 import type RadialTimelinePlugin from '../../main';
-import { DEFAULT_RELEASES_URL, parseReleaseVersion } from '../../utils/releases';
-import { formatPublishedDate, renderReleaseNotesList } from '../../utils/releaseNotesRenderer';
+import { DEFAULT_RELEASES_URL } from '../../utils/releases';
+import { renderReleaseNotesList } from '../../utils/releaseNotesRenderer';
 
 interface ReleaseNotesSectionArgs {
     plugin: RadialTimelinePlugin;
@@ -26,8 +26,6 @@ export async function renderReleaseNotesSection({ plugin, containerEl }: Release
         return;
     }
 
-    const majorVersion = plugin.getReleaseNotesMajorVersion();
-    const majorEntry = (majorVersion ? entries.find(entry => entry.version === majorVersion) : null) ?? entries[entries.length - 1] ?? entries[0];
-
-    await renderReleaseNotesList(section, entries, majorEntry, plugin, 'rt-settings-release-notes');
+    const featuredEntry = entries[0] ?? entries[entries.length - 1]!;
+    await renderReleaseNotesList(section, entries, featuredEntry, plugin, 'rt-settings-release-notes');
 }
