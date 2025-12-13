@@ -40,12 +40,16 @@ export function renderStoryBeatsSection(params: {
     beatSystemSetting.controlEl.style.setProperty('align-self', 'flex-start', 'important');
     beatSystemSetting.controlEl.style.marginTop = '6px';
 
-    const storyStructureRow = beatSystemSetting.settingEl.createDiv({ cls: 'rt-story-structure-row' });
-    storyStructureRow.appendChild(beatSystemSetting.descEl);
-    beatSystemSetting.descEl.style.marginBottom = '0';
-
     // Story structure explanation
-    const storyStructureInfo = storyStructureRow.createEl('div', { cls: 'rt-story-structure-info setting-item-description' });
+    const storyStructureInfo = beatSystemSetting.settingEl.createDiv({
+        cls: 'rt-story-structure-info setting-item-description'
+    });
+    // Ensure styles are set if CSS class doesn't fully cover it (redundancy)
+    storyStructureInfo.style.gridColumn = '1 / 3';
+    storyStructureInfo.style.gridRow = '2 / 3';
+    storyStructureInfo.style.marginTop = '8px';
+    storyStructureInfo.style.marginBottom = '0';
+    
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
 
     // Create template beat note button

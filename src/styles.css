@@ -4850,6 +4850,9 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 .rt-setting-two-row .setting-item-info {
   grid-column: 1 / 2;
   grid-row: 1 / 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .rt-setting-two-row .setting-item-control {
@@ -4858,18 +4861,11 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   justify-self: flex-end;
 }
 
-.rt-story-structure-row {
+.rt-setting-two-row .rt-story-structure-info {
   grid-column: 1 / 3;
   grid-row: 2 / 3;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rt-story-structure-row .setting-item-description {
   margin: 0;
 }
-
 /* Gossamer modal checkbox options - 2 column layout */
 .rt-gossamer-options-container {
   display: grid;

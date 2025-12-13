@@ -92,6 +92,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         if (prior) window.clearTimeout(prior);
 
         if (provider === 'local') {
+            const selectedProvider = (this.plugin.settings.defaultAiProvider || 'openai') as 'anthropic' | 'gemini' | 'openai' | 'local';
+            if (selectedProvider !== 'local') {
+                return; // Skip local availability checks when another provider is active
+            }
             const baseInput = this._localBaseUrlInput;
             const modelInput = this._localModelIdInput;
             if (!baseInput || !modelInput) return;
