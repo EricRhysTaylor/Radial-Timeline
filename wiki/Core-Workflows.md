@@ -20,3 +20,11 @@
 Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progress to new scenes instead of endlessly revising.
 
 **Settings**: → Radial Timeline → Zero draft mode
+
+### Manage Subplots in Bulk
+Need to rename or delete a subplot across dozens of scenes? Use the **`Subplot Manager`** command (command palette → “Radial Timeline: Open Subplot Manager”). The modal lets you:
+
+* Rename a subplot and automatically update the frontmatter of every scene using it.
+* Delete a subplot and strip the tag from all scenes in one action.
+
+This is especially helpful after reorganizing your B/C plots—you no longer have to hunt through every note manually.

@@ -102,7 +102,6 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing t
   Click image to view full size in browser
 </div>  
 
----
 
 ## Quick Start
 
