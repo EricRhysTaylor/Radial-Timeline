@@ -1,6 +1,8 @@
 ### Narrative Mode (keyboard 1)
 Shows all scenes from all subplots on the outer ring with story beats and subplot color-coding. Structured around the **3-act model** with scenes organized by act divisions (120° per act). Provides comprehensive view with every detail. This is your primary manuscript-order workspace showing **Narrative time** (reading order).
 
+**Interactive Reordering**: You can reorder scenes by dragging the scene number squares on the outer ring. See [Core Workflows](Core-Workflows#moving-scenes) for details.
+
 **Tip**: For scenes in more than one subplot, click on the scene to make that subplot dominant in the color styling of the narrative and chronologue modes outer ring. A folded corner effect at the beginning of the subplot ring visually indicates which subplot is currently dominant.
 
 ### Subplot Mode (keyboard 2)

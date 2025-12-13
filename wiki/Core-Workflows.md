@@ -28,3 +28,14 @@ Need to rename or delete a subplot across dozens of scenes? Use the **`Subplot M
 * Delete a subplot and strip the tag from all scenes in one action.
 
 This is especially helpful after reorganizing your B/C plots—you no longer have to hunt through every note manually.
+
+### Moving Scenes
+You can reorder scenes directly on the timeline using drag-and-drop. This feature is exclusive to **Narrative Mode**.
+
+1.  Switch to **Narrative Mode** (keyboard 1).
+2.  Hover over the **scene number square** on the outer ring. The cursor will change to a double-arrow.
+3.  **Click and drag** to the target position (another scene number square). A tick mark tracks your progress around the timeline.
+4.  Release to drop. A confirmation dialog will appear with details of the move.
+5.  Confirm to reorder.
+
+**Note**: If you move a scene to a different Act, the feature will automatically evaluate the target scene's act and amend the YAML frontmatter to match.

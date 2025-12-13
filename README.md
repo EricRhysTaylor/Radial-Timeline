@@ -138,7 +138,7 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 
 Detailed guides and references have been moved to the [GitHub Wiki](https://github.com/EricRhysTaylor/Radial-Timeline/wiki).
 
-*   **[Core Workflows](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Core-Workflows)**: Planning, Tracking Progress, and Zero Draft Mode.
+*   **[Core Workflows](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Core-Workflows)**: Planning, Moving Scenes, Tracking Progress, and Zero Draft Mode.
 *   **[Chronologue Mode](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Chronologue-Mode)**: Constructing your story timeline and analyzing time gaps.
 *   **[Gossamer Mode](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Gossamer-Mode)**: Analyzing narrative momentum.
 *   **[AI Analysis](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/AI-Analysis)**: Using AI for scene analysis.
