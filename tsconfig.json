@@ -19,7 +19,8 @@
       "ES5",
       "ES6",
       "ES7"
-    ]
+    ],
+    "resolveJsonModule": true
   },
   "include": [
     "src/**/*.ts"

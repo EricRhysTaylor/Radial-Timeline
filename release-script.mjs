@@ -141,50 +141,79 @@ function readExistingReleaseBundle() {
     }
 }
 
-function updateEmbeddedReleaseNotesFromGitHub(version) {
-    console.log(`\n🔄 Fetching published release notes from GitHub for ${version}...`);
+function updateBundleWithLocalEntry(version, body) {
+    console.log(`\n🔄 Updating release notes bundle locally for ${version}...`);
 
-    const semver = parseSemver(version);
-    if (!semver) {
-        console.error(`❌ Invalid version format: ${version}`);
-        return;
-    }
-
-    // Fetch the latest published release (should be the one we just created)
-    const latest = fetchReleaseInfo(version);
-    if (!latest) {
-        console.error(`⚠️  Could not fetch release ${version} from GitHub. Release notes bundle not updated.`);
-        return;
-    }
-
-    // Fetch the major release (e.g., 3.0.0)
-    const majorTag = `${semver.major}.0.0`;
-    let major = fetchReleaseInfo(majorTag);
-
-    // If major release doesn't exist, use the existing one from bundle or fall back to latest
-    if (!major) {
-        const existing = readExistingReleaseBundle();
-        if (existing && existing.major) {
-            major = existing.major;
-        } else {
-            major = latest;
-        }
-    }
-
-    // Fetch all patch releases in this major version (excluding the major release itself)
-    const patches = fetchMajorPatchReleases(semver.major, majorTag);
-
-    const bundle = {
-        major,
-        latest,
-        patches: patches.length > 0 ? patches : undefined
+    // Create new entry object
+    // Note: We don't have the published URL or date yet, so we use placeholders/defaults
+    // The sync-release-notes script can correct these later if needed, but for the build
+    // we mostly care about the body content.
+    const newEntry = {
+        version: version,
+        title: version,
+        body: body,
+        url: `https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/${version}`,
+        publishedAt: new Date().toISOString()
     };
+
+    let bundle = readExistingReleaseBundle();
+    if (!bundle) {
+        // Initialize new bundle if one doesn't exist
+        bundle = { entries: [] };
+    }
+
+    // Ensure entries array exists (migrating from old format if needed)
+    if (!bundle.entries) {
+        bundle.entries = [];
+        if (bundle.latest) bundle.entries.push(bundle.latest);
+        if (bundle.patches) bundle.entries.push(...bundle.patches);
+        if (bundle.major) bundle.entries.push(bundle.major);
+    }
+
+    // Remove any existing entry for this version (idempotency)
+    bundle.entries = bundle.entries.filter(e => e.version !== version);
+
+    // Add new entry at the top
+    bundle.entries.unshift(newEntry);
+
+    // Sort entries just in case (descending order)
+    bundle.entries.sort((a, b) => compareSemverDesc(a.version, b.version));
+
+    // Update legacy fields for backward compatibility or ease of read
+    bundle.latest = bundle.entries[0];
+
+    // Re-determine major version
+    const semver = parseSemver(version);
+    if (semver) {
+        const majorVersionStr = `${semver.major}.0.0`;
+        // Try to find the actual major release entry
+        let majorEntry = bundle.entries.find(e => e.version === majorVersionStr);
+
+        // If not found, fall back logic (mirrors sync-release-notes.mjs partly)
+        if (!majorEntry) {
+            // If we are currently releasing the X.0.0, use it
+            if (version === majorVersionStr) {
+                majorEntry = newEntry;
+            } else {
+                // Fallback to oldest or keep existing logic
+                majorEntry = bundle.entries[bundle.entries.length - 1];
+            }
+        }
+        bundle.major = majorEntry;
+        bundle.majorVersion = majorEntry ? majorEntry.version : majorVersionStr;
+
+        // Re-populate patches (all entries in this major version excluding the major x.0.0 itself)
+        bundle.patches = bundle.entries.filter(e => {
+            const s = parseSemver(e.version);
+            return s && s.major === semver.major && e.version !== bundle.majorVersion;
+        });
+    }
 
     try {
         writeFileSync(EMBEDDED_RELEASE_NOTES_PATH, JSON.stringify(bundle, null, 2));
-        console.log(`✅ Embedded release notes updated from published GitHub release ${version}`);
+        console.log(`✅ Release notes bundle updated with ${version}`);
     } catch (err) {
-        console.error(`⚠️  Failed to update embedded release notes: ${err.message}`);
+        console.error(`⚠️  Failed to update release notes bundle: ${err.message}`);
     }
 }
 
@@ -439,6 +468,74 @@ function injectEmbeddedFontsIntoReleaseCss() {
     console.log('✅ Injected embedded @font-face rules into release/styles.css');
 }
 
+import { spawn } from 'child_process';
+import { unlinkSync } from 'fs';
+
+function editReleaseNotesLocally(initialContent) {
+    return new Promise((resolve, reject) => {
+        const tempFile = 'RELEASE_NOTES_EDIT.md';
+        try {
+            writeFileSync(tempFile, initialContent, 'utf8');
+        } catch (e) {
+            return reject(new Error(`Could not write temp file: ${e.message}`));
+        }
+
+        // Try to find a suitable editor
+        // 1. VISUAL or EDITOR env var
+        // 2. 'code -w' (VS Code, wait mode)
+        // 3. 'nano'
+        // 4. 'vi'
+        let editor = process.env.VISUAL || process.env.EDITOR;
+        let args = [];
+
+        if (!editor) {
+            // Default preference logic
+            try {
+                // Check if 'code' is available
+                execSync('which code', { stdio: 'ignore' });
+                editor = 'code';
+                args = ['-w']; // Wait is crucial for VS Code
+            } catch {
+                try {
+                    execSync('which nano', { stdio: 'ignore' });
+                    editor = 'nano';
+                } catch {
+                    editor = 'vi';
+                }
+            }
+        } else {
+            // Split editor command if it has args (e.g. "code -w")
+            const parts = editor.split(' ');
+            editor = parts[0];
+            args = parts.slice(1);
+        }
+
+        console.log(`Opening ${tempFile} with ${editor}...`);
+
+        const child = spawn(editor, [...args, tempFile], {
+            stdio: 'inherit'
+        });
+
+        child.on('error', (err) => {
+            reject(new Error(`Failed to start editor ${editor}: ${err.message}`));
+        });
+
+        child.on('exit', (code) => {
+            if (code === 0) {
+                try {
+                    const content = readFileSync(tempFile, 'utf8');
+                    unlinkSync(tempFile);
+                    resolve(content.trim());
+                } catch (e) {
+                    reject(new Error(`Failed to read back edited notes: ${e.message}`));
+                }
+            } else {
+                reject(new Error(`Editor exited with code ${code}`));
+            }
+        });
+    });
+}
+
 async function main() {
     console.log("🚀 Obsidian Plugin Release Process\n");
 
@@ -511,42 +608,45 @@ async function main() {
 
     // Ask if user wants to edit release notes
     const editOption = await question(`\n✏️  Release notes:
-1. Publish now with auto-generated changelog
-2. Create draft release for editing in browser
-Choose (1/2): `);
+1. Publish now (Auto-generated)
+2. Edit locally then Publish (Recommended)
+3. Create draft on GitHub (Notes will be unedited in plugin)
+Choose (1/2/3): `);
 
     let releaseNotes = `## What's Changed\n\n${autoChangelog}`;
     let createDraft = false;
 
     if (editOption === '2') {
+        console.log(`\n📝 Opening system editor to edit release notes...`);
+        try {
+            releaseNotes = await editReleaseNotesLocally(releaseNotes);
+            console.log(`✅ Release notes updated from editor.`);
+            // Show preview of first few lines
+            const preview = releaseNotes.split('\n').slice(0, 5).join('\n');
+            console.log(`\n--- Preview ---\n${preview}\n...`);
+        } catch (err) {
+            console.error(`❌ Failed to edit locally: ${err.message}`);
+            return;
+        }
+    } else if (editOption === '3') {
         createDraft = true;
-        console.log(`📝 Will create draft release for editing in browser`);
+        console.log(`⚠️  Warning: Edits made on GitHub will NOT be reflected in the plugin build.`);
+    }
 
-        console.log(`\n📋 Draft Release Summary:`);
-        console.log(`   Current: ${currentVersion}`);
-        console.log(`   New:     ${newVersion}`);
-        console.log(`   Changes: ${lastTag ? `Since ${lastTag}` : 'Initial release'}`);
+    /* Verification Summary */
+    console.log(`\n📋 Release Summary:`);
+    console.log(`   Current: ${currentVersion}`);
+    console.log(`   New:     ${newVersion}`);
+    if (editOption === '2') console.log(`   Notes:   Edited locally`);
+    else if (editOption === '3') console.log(`   Notes:   Draft (Unedited in build)`);
+    else console.log(`   Notes:   Auto-generated`);
 
-        const confirm = await question(`\n❓ Create draft release? (y/N): `);
+    const confirm = await question(`\n❓ Proceed with release? (y/N): `);
 
-        if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
-            console.log("❌ Draft creation cancelled.");
-            rl.close();
-            return;
-        }
-    } else {
-        console.log(`\n📋 Release Summary:`);
-        console.log(`   Current: ${currentVersion}`);
-        console.log(`   New:     ${newVersion}`);
-        console.log(`   Changes: ${lastTag ? `Since ${lastTag}` : 'Initial release'}`);
-
-        const confirm = await question(`\n❓ Proceed with release? (y/N): `);
-
-        if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
-            console.log("❌ Release cancelled.");
-            rl.close();
-            return;
-        }
+    if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
+        console.log("❌ Release cancelled.");
+        rl.close();
+        return;
     }
 
     rl.close();
@@ -561,9 +661,11 @@ Choose (1/2): `);
             updateManifestAndVersions(newVersion);
         }
 
-        // Run build process (without release notes first)
+        // Update local release notes bundle automatically
+        updateBundleWithLocalEntry(newVersion, releaseNotes);
+
+        // Run build process
         runCommand("npm run build", "Building plugin");
-        // Inject embedded fonts into release CSS (base64 in @font-face, no runtime <style> tags)
         injectEmbeddedFontsIntoReleaseCss();
 
         // Check if there are changes to commit
@@ -571,12 +673,11 @@ Choose (1/2): `);
             execSync('git diff --exit-code', { stdio: 'pipe' });
             console.log("ℹ️  No changes to commit");
         } catch {
-            // There are changes, commit them
             runCommand(`git add .`, "Staging changes");
             runCommand(`git commit -m "Release version ${newVersion}"`, "Committing changes");
         }
 
-        // Create and push tag (handle existing tags)
+        // Tag creation
         if (tagExists(newVersion)) {
             console.log(`ℹ️  Tag ${newVersion} already exists, skipping tag creation`);
         } else {
@@ -623,8 +724,7 @@ Choose (1/2): `);
             console.log(`📝 Draft release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
             console.log(`\n🌐 Opening draft release in browser for editing...`);
             console.log(`💡 Remember to publish the release when you're done editing!`);
-            console.log(`💡 After publishing, run: npm run sync-release-notes && npm run build`);
-            console.log(`   Then upload the updated main.js to the release`);
+            console.log(`💡 After publishing, run: npm run sync-release-notes (optional, for next dev cycle)`);
 
             try {
                 // Open in browser via GitHub CLI (edit doesn't support --web; view does)
@@ -642,9 +742,7 @@ Choose (1/2): `);
         } else {
             console.log(`\n🎉 Release ${newVersion} published successfully!`);
             console.log(`📦 GitHub release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
-            console.log(`\n💡 To update release notes in plugin, run:`);
-            console.log(`   npm run sync-release-notes && npm run build`);
-            console.log(`   Then upload the updated main.js to the release`);
+            console.log(`\n✅ Release notes embedded in plugin match this release automatically.`);
         }
 
     } catch (error) {

@@ -8,8 +8,7 @@ import { compareReleaseVersionsDesc, parseReleaseVersion } from '../utils/releas
 import type { EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry, RadialTimelineSettings } from '../types';
 import { ReleaseNotesModal } from '../modals/ReleaseNotesModal';
 import type RadialTimelinePlugin from '../main';
-
-declare const EMBEDDED_RELEASE_NOTES: string;
+import releaseNotesBundle from '../data/releaseNotesBundle.json';
 
 export class ReleaseNotesService {
     private releaseNotesBundle: EmbeddedReleaseNotesBundle | null = null;
@@ -19,7 +18,7 @@ export class ReleaseNotesService {
     constructor(
         private settings: RadialTimelineSettings,
         private saveSettings: () => Promise<void>
-    ) {}
+    ) { }
 
     /**
      * Initialize service state by merging embedded release notes with cached settings.
@@ -127,8 +126,8 @@ export class ReleaseNotesService {
     }
 
     private loadEmbeddedReleaseNotes(): EmbeddedReleaseNotesBundle | null {
-        const parsed = JSON.parse(EMBEDDED_RELEASE_NOTES);
-        return this.normalizeBundleFromValue(parsed);
+        // cast imported json to unknown first
+        return this.normalizeBundleFromValue(releaseNotesBundle as unknown);
     }
 
     private requireBundle(): EmbeddedReleaseNotesBundle {

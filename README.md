@@ -90,7 +90,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot6.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
       <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot6.jpeg" alt="Chronologue Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode</div>
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode (<a href="https://www.youtube.com/watch?v=XKWq32LB0d0" target="_blank">Watch Video</a>)</div>
   </div>
   <div style="text-align: center;">
     <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/screenshot5.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">

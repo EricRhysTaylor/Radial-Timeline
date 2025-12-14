@@ -26,17 +26,8 @@ try {
 }
 // --- Read README content --- END ---
 
-// --- Read release notes content (mirrors GitHub release body) ---
-const releaseNotesPath = path.resolve('src/data/releaseNotesBundle.json');
-let releaseNotesContent = '';
-try {
-	releaseNotesContent = fs.readFileSync(releaseNotesPath, 'utf-8');
-} catch (err) {
-	logErrorDetails('Failed to read src/data/releaseNotesBundle.json for embedding:', err);
-	releaseNotesContent = JSON.stringify({
-		body: 'Release notes are unavailable. Visit the GitHub release page for full details.'
-	});
-}
+
+// --- Read release notes content REMOVED: Managed via direct import in code ---
 
 // Define source and destination paths
 const sourceDir = ".";
@@ -108,12 +99,12 @@ async function copyBuildAssets() {
 			logErrorDetails(`Error ensuring destination directory ${destDir}`, err);
 			continue;
 		}
-		
+
 		// --- Copy individual files from src/ ---
 		for (const file of filesToCopy) {
 			const sourcePath = path.join(sourceDir, "src", file);
 			const destPath = path.join(destDir, file);
-			
+
 			// Check if source file exists
 			if (fs.existsSync(sourcePath)) {
 				try {
@@ -121,7 +112,7 @@ async function copyBuildAssets() {
 					if (!fs.existsSync(path.dirname(destPath))) {
 						fs.mkdirSync(path.dirname(destPath), { recursive: true });
 					}
-					
+
 					// Copy the file
 					fs.copyFileSync(sourcePath, destPath);
 				} catch (err) {
@@ -131,7 +122,7 @@ async function copyBuildAssets() {
 				console.warn(`Warning: ${sourcePath} does not exist, skipping.`);
 			}
 		}
-		
+
 		// --- Copy main.js ---
 		if (destDirs.length > 1) {
 			const mainJsPath = path.join(destDirs[0], "main.js");
@@ -144,7 +135,7 @@ async function copyBuildAssets() {
 			}
 		}
 	}
-	
+
 	// Keep root manifest.json in sync for submission tooling
 	try {
 		const srcManifest = path.join(sourceDir, "src", "manifest.json");
@@ -154,10 +145,10 @@ async function copyBuildAssets() {
 	} catch (err) {
 		logErrorDetails("Error syncing manifest.json to project root:", err);
 	}
-	
+
 	// Note: Release files are now maintained in the release/ folder
 	// No need to copy to project root since release/ is the source of truth
-	
+
 	// Show full destination paths, one per line for better readability
 	console.log('Build assets copied to:');
 	destDirs.forEach(dir => console.log(`  ${dir}`));
@@ -191,7 +182,7 @@ const context = await esbuild.context({
 	outdir: destDirs[0],
 	define: {
 		'EMBEDDED_README_CONTENT': JSON.stringify(readmeContent),
-		'EMBEDDED_RELEASE_NOTES': JSON.stringify(releaseNotesContent),
+		// 'EMBEDDED_RELEASE_NOTES': // REMOVED: Managed via direct import in code
 		'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development')
 	}
 });
@@ -216,7 +207,7 @@ if (prod) {
 	// Copy files initially
 	await copyBuildAssets();
 	console.log("Watching for changes...");
-	
+
 	// Set up file watchers for non-TS files
 	filesToCopy.forEach(file => {
 		const sourcePath = path.join(sourceDir, "src", file);
