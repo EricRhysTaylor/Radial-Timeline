@@ -1,7 +1,6 @@
 import { Notice, App } from 'obsidian';
 import { applySceneNumberUpdates, type SceneUpdate } from '../../services/SceneReorderService';
 import { DragConfirmModal } from '../../modals/DragConfirmModal';
-import { DRAG_DROP_ARC_RADIUS, DRAG_DROP_TICK_OUTER_RADIUS } from '../../renderer/layout/LayoutConstants';
 
 export interface OuterRingViewAdapter {
     plugin: { app: App; settings: Record<string, unknown> };
@@ -127,7 +126,7 @@ export class OuterRingDragController {
         if (!Number.isFinite(startAngle) || !Number.isFinite(outerR)) return;
         this.updateDropTick(startAngle, outerR, this.originColor);
         if (this.originStartAngle !== undefined && this.originOuterR !== undefined) {
-            const rArc = DRAG_DROP_ARC_RADIUS;
+            const rArc = Math.max(this.originOuterR, outerR) + 12;
             this.updateDropArc(this.originStartAngle, startAngle, rArc, this.originColor);
         }
     }
@@ -173,49 +172,36 @@ export class OuterRingDragController {
     }
 
     private updateDropTick(startAngle: number, outerR: number, color?: string): void {
-        const tick = this.ensureDropTick();
-
+        const tickLen = 18;
         const r1 = outerR;
-        const r2 = DRAG_DROP_TICK_OUTER_RADIUS;
+        const r2 = outerR + tickLen;
         const x1 = r1 * Math.cos(startAngle);
         const y1 = r1 * Math.sin(startAngle);
         const x2 = r2 * Math.cos(startAngle);
         const y2 = r2 * Math.sin(startAngle);
+        const tick = this.ensureDropTick();
         tick.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
-        if (color) {
-            tick.style.setProperty('--rt-drag-color', color);
-        } else {
-            tick.style.removeProperty('--rt-drag-color');
-        }
+        if (color) tick.setAttribute('stroke', color);
     }
 
     private updateDropArc(startAngle: number, endAngle: number, radius: number, color?: string): void {
         const arc = this.ensureDropArc();
-
         const norm = (a: number) => {
-            while (a < 0) a += Math.PI * 2;
-            while (a >= Math.PI * 2) a -= Math.PI * 2;
+            while (a < -Math.PI) a += Math.PI * 2;
+            while (a > Math.PI) a -= Math.PI * 2;
             return a;
         };
-        const a0 = norm(startAngle);
-        const a1 = norm(endAngle);
-        // travel shortest path
-        let delta = a1 - a0;
-        if (delta > Math.PI) delta -= Math.PI * 2;
-        if (delta < -Math.PI) delta += Math.PI * 2;
-        const aEnd = a0 + delta;
+        let a0 = startAngle;
+        let a1 = endAngle;
+        const delta = norm(a1 - a0);
         const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
         const sweep = delta >= 0 ? 1 : 0;
         const x0 = radius * Math.cos(a0);
         const y0 = radius * Math.sin(a0);
-        const x1p = radius * Math.cos(aEnd);
-        const y1p = radius * Math.sin(aEnd);
+        const x1p = radius * Math.cos(a1);
+        const y1p = radius * Math.sin(a1);
         arc.setAttribute('d', `M ${x0} ${y0} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${x1p} ${y1p}`);
-        if (color) {
-            arc.style.setProperty('--rt-drag-color', color);
-        } else {
-            arc.style.removeProperty('--rt-drag-color');
-        }
+        if (color) arc.setAttribute('stroke', color);
     }
 
     private resetState(): void {
@@ -397,21 +383,8 @@ export class OuterRingDragController {
         if (!subplotIdxAttr) return undefined;
         const idx = Number(subplotIdxAttr);
         if (!Number.isFinite(idx)) return undefined;
-
-        // Use CSS variable lookup compatible with TimelineRenderer.ts
-        const normalized = idx % 16;
-        const varName = `--rt-subplot-colors-${normalized}`;
-
-        // Attempt to get from computed style
-        if (typeof document !== 'undefined') {
-            const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-            if (computed) return computed;
-        }
-
-        // Fallback to settings if CSS variable fails (legacy/backup)
         const colors = (this.view.plugin.settings as any)?.subplotColors as string[] | undefined;
         if (colors && colors[idx]) return colors[idx];
-
         return undefined;
     }
 }

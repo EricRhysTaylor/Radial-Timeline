@@ -1,6 +1,7 @@
 *   [[Home]]
 *   **User Guide**
     *   [[Core Workflows]]
+    *   [[How-to]]
     *   [[Chronologue Mode]]
     *   [[Gossamer Mode]]
     *   [[AI Analysis]]

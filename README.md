@@ -126,7 +126,7 @@ Radial Timeline determines scene order based on the **leading number** in the sc
 *   Scene order is **per Act** (defined in the YAML frontmatter).
 *   You can also reorder scenes via **drag-and-drop** in Narrative Mode.
 
-For full details, see **[[Reordering Scenes|Core-Workflows#reordering-scenes]]**.
+For full details, see **[Reordering Scenes](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/How-to#reordering-scenes)**.
 
 **Optional - Insert story beats**: Consider inserting story beats for your chosen system such as the 15-beat Save the Cat by going to Settings → Radial Timeline → Create Templates.
 
@@ -150,7 +150,8 @@ For full details, see **[[Reordering Scenes|Core-Workflows#reordering-scenes]]**
 
 Detailed guides and references have been moved to the [GitHub Wiki](https://github.com/EricRhysTaylor/Radial-Timeline/wiki).
 
-*   **[Core Workflows](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Core-Workflows)**: Planning, Moving Scenes, Tracking Progress, and Zero Draft Mode.
+*   **[How-to Guide](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/How-to)**: Reordering scenes (drag & drop), managing subplots in bulk, and other tips.
+*   **[Core Workflows](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Core-Workflows)**: Planning, Tracking Progress, and Zero Draft Mode.
 *   **[Chronologue Mode](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Chronologue-Mode)**: Constructing your story timeline and analyzing time gaps.
 *   **[Gossamer Mode](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Gossamer-Mode)**: Analyzing narrative momentum.
 *   **[AI Analysis](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/AI-Analysis)**: Using AI for scene analysis.
