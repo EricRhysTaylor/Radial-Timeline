@@ -151,6 +151,20 @@
   cursor: pointer;
 }
 
+/* =============================================================================
+   HELP ICON
+   Bottom-right corner help/wiki link
+   ============================================================================= */
+.rt-help-icon {
+  cursor: pointer;
+  fill: var(--text-muted);
+  transition: fill 0.2s ease;
+}
+
+.rt-help-icon:hover {
+  fill: var(--text-normal);
+}
+
 .rt-version-text {
   font-family: '04b03b', 'Monaco', 'Courier New', monospace;
   font-size: 20px;

@@ -86,6 +86,7 @@ import { appendSynopsisElementForScene } from './utils/SynopsisBuilder';
 import { renderGossamerOverlay, type StageColorMap } from './utils/Gossamer';
 import { renderRotationToggle } from './utils/RotationToggle';
 import { renderVersionIndicator } from './components/VersionIndicator';
+import { renderHelpIcon } from './components/HelpIcon';
 import type { CompletionEstimate } from './utils/Estimation';
 import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
@@ -1335,6 +1336,9 @@ export function createTimelineSVG(
         // Version service not initialized yet - render without update info
         // Will be updated on next render after version check completes
     }
+
+    // Add help icon (bottom-right corner)
+    svg += renderHelpIcon();
 
     // Add Chronologue mode arcs
     if (isChronologueMode) {

@@ -28,6 +28,16 @@ export const VERSION_INDICATOR_POS_Y = 734;
 export const VERSION_ALERT_OFFSET_X = 8;
 
 // =============================================================================
+// HELP ICON POSITIONING (bottom-right edge)
+// =============================================================================
+
+/** Horizontal position for help icon */
+export const HELP_ICON_POS_X = 780;
+
+/** Vertical position for help icon (bottom, positive Y in SVG coords) */
+export const HELP_ICON_POS_Y = 734;
+
+// =============================================================================
 // RADII - CORE STRUCTURE
 // =============================================================================
 
