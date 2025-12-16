@@ -35,3 +35,10 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
   <img src="images/screenshot-duration.png" alt="Duration Marks in Chronologue Mode (red, orange and normal)" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Duration Marks in Chronologue Mode (red, orange and normal)</div>
 </div>
+
+
+---
+
+### FAQ: Custom Calendars & Alien Time
+
+For a detailed explanation of why Radial Timeline does not support custom calendars or alien time, see the [[FAQ]].

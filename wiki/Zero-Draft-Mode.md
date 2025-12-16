@@ -1,4 +1,4 @@
-## Zero draft mode
+## Zero Draft Mode
 
 Zero draft mode helps you capture edits for completed scenes at Stage Zero before opening the note.
 
@@ -10,9 +10,9 @@ Zero draft mode helps you capture edits for completed scenes at Stage Zero befor
 
 ### Buttons
 
-- OK: Overwrites `Pending Edits` with the current input. If you cleared previously non‑empty content, a confirmation asks to delete it (the key remains with an empty string).
-- Cancel: Closes the dialog. If there are unsaved changes, you’ll be asked to confirm discarding them.
-- Override (red): Opens the note without saving. If there are unsaved changes, you’ll be asked to confirm discarding them first.
+- **OK**: Overwrites `Pending Edits` with the current input. If you cleared previously non‑empty content, a confirmation asks to delete it (the key remains with an empty string).
+- **Cancel**: Closes the dialog. If there are unsaved changes, you’ll be asked to confirm discarding them.
+- **Override (red)**: Opens the note without saving. If there are unsaved changes, you’ll be asked to confirm discarding them first.
 
 ### Matching logic
 
@@ -22,7 +22,7 @@ Zero draft mode helps you capture edits for completed scenes at Stage Zero befor
 
 ### How to enable/disable
 
-- Go to Settings → Zero draft mode and toggle it on or off.
+- Go to **Settings → Radial Timeline → Zero draft mode** and toggle it on or off.
 
 ### Frontmatter fields used
 
@@ -31,5 +31,3 @@ Zero draft mode helps you capture edits for completed scenes at Stage Zero befor
 - `Status` (read)
 
 All frontmatter writes are performed via `app.fileManager.processFrontMatter`, following Obsidian’s standards.
-
-

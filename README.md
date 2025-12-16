@@ -118,6 +118,16 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 - Using command palette → "Create template scene note"
 - Use Obsidian's core templates plugin
 
+## Scene Naming & Ordering
+
+Radial Timeline determines scene order based on the **leading number** in the scene file name (e.g., `1 My Scene.md`).
+
+*   To reorder a scene, simply change its number: rename `1 My Scene` to `5 My Scene`.
+*   Scene order is **per Act** (defined in the YAML frontmatter).
+*   You can also reorder scenes via **drag-and-drop** in Narrative Mode.
+
+For full details, see **[[Reordering Scenes|Core-Workflows#reordering-scenes]]**.
+
 **Optional - Insert story beats**: Consider inserting story beats for your chosen system such as the 15-beat Save the Cat by going to Settings → Radial Timeline → Create Templates.
 
 **Pro tip**: Organize your vault for multiple books by creating folders for each then set your Radial Timeline™ plugin source path (Settings → Radial timeline → Source path) to a specific folder like `Book 1: The Saga Begins` to quickly organize your vault.
