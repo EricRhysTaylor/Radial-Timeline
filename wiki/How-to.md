@@ -55,6 +55,8 @@ In recent versions of Radial Timeline:
 - Drop the scene into its new position on the **numbered scene square**
 - Confirm the change when prompted
 
+**Note:** You can only drag a scene to another act if that act already contains at least one scene. To move a scene to an empty act, either create a new scene in that act first or manually update the `Act` field in the scene's YAML frontmatter.
+
 This method automatically updates ordering for you.
 
 ---
