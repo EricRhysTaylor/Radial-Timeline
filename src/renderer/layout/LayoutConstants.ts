@@ -32,7 +32,7 @@ export const VERSION_ALERT_OFFSET_X = 8;
 // =============================================================================
 
 /** Horizontal position for help icon */
-export const HELP_ICON_POS_X = 780;
+export const HELP_ICON_POS_X = 730;
 
 /** Vertical position for help icon (bottom, positive Y in SVG coords) */
 export const HELP_ICON_POS_Y = 734;

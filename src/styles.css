@@ -157,12 +157,13 @@
    ============================================================================= */
 .rt-help-icon {
   cursor: pointer;
-  fill: var(--text-muted);
-  transition: fill 0.2s ease;
+  stroke: var(--text-muted);
+  transition: stroke 0.2s ease, filter 0.2s ease;
 }
 
 .rt-help-icon:hover {
-  fill: var(--text-normal);
+  stroke: var(--text-normal);
+  filter: drop-shadow(0 0 5px var(--text-muted));
 }
 
 .rt-version-text {
@@ -230,13 +231,14 @@
   stroke: var(--text-muted);
   stroke-width: 1px;
   opacity: 0.6;
-  transition: opacity 0.2s ease, stroke 0.2s ease;
+  transition: opacity 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
   cursor: pointer;
 }
 
 .rt-version-bug-icon:hover {
   opacity: 1;
   stroke: var(--text-normal);
+  filter: drop-shadow(0 0 5px var(--text-muted));
 }
 
 /* Alert icon (shown when update available) */
@@ -244,7 +246,7 @@
   fill: none;
   stroke-width: 1px;
   opacity: 1;
-  transition: opacity 0.3s ease, stroke 0.2s ease;
+  transition: opacity 0.3s ease, stroke 0.2s ease, filter 0.2s ease;
   cursor: pointer;
   animation: rt-version-pulse 2s ease-in-out infinite;
 }
@@ -257,6 +259,7 @@
 
 .rt-update-minor:hover .rt-version-alert-icon {
   stroke: #f97316;
+  filter: drop-shadow(0 0 5px #f97316);
 }
 
 .rt-update-major .rt-version-alert-icon {
@@ -266,6 +269,7 @@
 
 .rt-update-major:hover .rt-version-alert-icon {
   stroke: #ef4444;
+  filter: drop-shadow(0 0 5px #ef4444);
 }
 
 @keyframes rt-version-pulse {

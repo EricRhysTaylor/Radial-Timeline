@@ -1,4 +1,4 @@
-### Reordering Scenes
+### Reorder Scenes
 
 Scenes in Radial Timeline can be reordered in two ways: **by renaming the scene title** or **by dragging scenes in Narrative Mode**.
 
