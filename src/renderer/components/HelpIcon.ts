@@ -48,7 +48,7 @@ export function renderHelpIcon(): string {
             <title>Get Help</title>
             
             <!-- Hit area -->
-             <rect class="rt-help-icon-hitarea" x="${formatNumber(iconX - 8)}" y="${formatNumber(iconY - 8)}" width="${iconSize + 16}" height="${iconSize + 16}" fill="transparent" pointer-events="all">
+             <rect class="rt-help-icon-hitarea" x="${formatNumber(iconX - 8)}" y="${formatNumber(iconY - 8)}" width="${iconSize + 16}" height="${iconSize + 16}" fill="white" fill-opacity="0" stroke="none" pointer-events="all">
                 <title>Get Help</title>
             </rect>
         </g>

@@ -158,10 +158,12 @@
 .rt-help-icon {
   cursor: pointer;
   stroke: var(--text-muted);
-  transition: stroke 0.2s ease, filter 0.2s ease;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
 }
 
 .rt-help-icon:hover {
+  opacity: 1;
   stroke: var(--text-normal);
   filter: drop-shadow(0 0 5px var(--text-muted));
 }
@@ -235,10 +237,10 @@
   cursor: pointer;
 }
 
-.rt-version-bug-icon:hover {
+.rt-update-none:hover .rt-version-bug-icon {
   opacity: 1;
   stroke: var(--text-normal);
-  filter: drop-shadow(0 0 5px var(--text-muted));
+  filter: drop-shadow(0 0 5px var(--text-normal));
 }
 
 /* Alert icon (shown when update available) */

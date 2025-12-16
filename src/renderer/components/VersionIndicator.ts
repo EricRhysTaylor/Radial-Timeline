@@ -159,7 +159,7 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
             </g>
             
             <!-- Invisible hit area for icon click -->
-            <rect class="rt-version-icon-hitarea" x="${formatNumber(iconX - 4)}" y="${formatNumber(iconY - 4)}" width="${ICON_HITAREA_SIZE}" height="${ICON_HITAREA_SIZE}" fill="transparent" pointer-events="all">
+            <rect class="rt-version-icon-hitarea" x="${formatNumber(iconX - 4)}" y="${formatNumber(iconY - 4)}" width="${ICON_HITAREA_SIZE}" height="${ICON_HITAREA_SIZE}" fill="white" fill-opacity="0" stroke="none" pointer-events="all">
                 <title>${iconTooltip}</title>
             </rect>
         </g>
