@@ -30,7 +30,7 @@ The manuscript visualization plugin for Obsidian.
 
 **Stop losing track of subplot threads across dozens of scenes.** Radial Timeline™ transforms your manuscript into a live visual map where you can see your entire story structure at a glance.
 
-## What It Does
+# What It Does
 
 Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and story beats. Scenes highlight across subplots to show interrelationships. Multiple view modes dissect your novel like an X-ray.
 
