@@ -282,22 +282,26 @@ export class GossamerScoreModal extends Modal {
           scoreContainer.addClass('rt-gossamer-score-item-container');
           scoreContainer.setAttribute('data-gossamer-num', gossamerNum.toString());
 
-          const iconColumn = scoreContainer.createDiv();
+          // Header row: Icon + Label + Value (Centered)
+          const headerRow = scoreContainer.createDiv('rt-gossamer-score-header');
+
+          const iconColumn = headerRow.createDiv();
           iconColumn.addClass('rt-gossamer-icon-column');
           iconColumn.appendChild(this.createCircleXIcon());
 
-          const textColumn = scoreContainer.createDiv();
-          textColumn.addClass('rt-gossamer-text-column');
-          textColumn.createSpan({
+          headerRow.createSpan({
             text: `G${gossamerNum}`,
             cls: 'rt-gossamer-score-label'
           });
-          textColumn.createSpan({
+          
+          headerRow.createSpan({
             text: `${score}`,
             cls: 'rt-gossamer-score-value'
           });
+
+          // Body row: Justification (Full width)
           if (justification) {
-            const justEl = textColumn.createSpan({
+            const justEl = scoreContainer.createDiv({
               text: justification,
               cls: 'rt-gossamer-score-justification'
             });

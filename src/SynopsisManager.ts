@@ -101,8 +101,8 @@ export default class SynopsisManager {
     if (!profile) return null;
     const conversion = convertFromEarth(scene.when, profile);
     if (!conversion) return null;
-    const prefix = t('planetary.synopsis.prefix');
-    return `${prefix}${conversion.formatted}`;
+    const label = (profile.label || 'LOCAL').toUpperCase();
+    return `${label}: ${conversion.formatted}`;
   }
   
   /**

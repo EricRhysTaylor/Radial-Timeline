@@ -3,12 +3,12 @@
  */
 import { App, ButtonComponent, Modal, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { getSceneFilesByOrder, ManuscriptOrder } from '../utils/manuscript';
+import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
 
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
-    useMarkdownToc: boolean;
+    tocMode: TocMode;
     rangeStart?: number;
     rangeEnd?: number;
 }
@@ -20,7 +20,7 @@ export class ManuscriptOptionsModal extends Modal {
     private readonly onSubmit: (result: ManuscriptModalResult) => Promise<void>;
 
     private order: ManuscriptOrder = 'narrative';
-    private useMarkdownToc = true;
+    private tocMode: TocMode = 'markdown';
 
     private sceneTitles: string[] = [];
     private totalScenes = 0;
@@ -81,7 +81,7 @@ export class ManuscriptOptionsModal extends Modal {
         });
         hero.createDiv({
             cls: 'rt-pulse-progress-subtitle',
-            text: t('manuscriptModal.subtitle')
+            text: t('manuscriptModal.description')
         });
         this.heroMetaEl = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
@@ -94,13 +94,17 @@ export class ManuscriptOptionsModal extends Modal {
         const tocCard = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
         tocCard.createDiv({ cls: 'rt-manuscript-card-head', text: t('manuscriptModal.tocHeading') });
         const tocActions = tocCard.createDiv({ cls: 'rt-manuscript-pill-row' });
-        this.createPill(tocActions, t('manuscriptModal.tocPlain'), !this.useMarkdownToc, () => {
-            this.useMarkdownToc = false;
+        this.createPill(tocActions, t('manuscriptModal.tocMarkdown'), this.tocMode === 'markdown', () => {
+            this.tocMode = 'markdown';
             this.updatePills(tocActions, 0);
         });
-        this.createPill(tocActions, t('manuscriptModal.tocMarkdown'), this.useMarkdownToc, () => {
-            this.useMarkdownToc = true;
+        this.createPill(tocActions, t('manuscriptModal.tocPlain'), this.tocMode === 'plain', () => {
+            this.tocMode = 'plain';
             this.updatePills(tocActions, 1);
+        });
+        this.createPill(tocActions, t('manuscriptModal.tocNone'), this.tocMode === 'none', () => {
+            this.tocMode = 'none';
+            this.updatePills(tocActions, 2);
         });
         tocCard.createDiv({
             cls: 'rt-manuscript-card-note',
@@ -366,7 +370,7 @@ export class ManuscriptOptionsModal extends Modal {
         try {
             await this.onSubmit({
                 order: this.order,
-                useMarkdownToc: this.useMarkdownToc,
+                tocMode: this.tocMode,
                 rangeStart: this.order === 'narrative' ? this.rangeStart : undefined,
                 rangeEnd: this.order === 'narrative' ? this.rangeEnd : undefined
             });

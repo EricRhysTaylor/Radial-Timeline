@@ -126,13 +126,13 @@ export interface TranslationKeys {
     };
     manuscriptModal: {
         title: string;
-        subtitle: string;
         description: string;
         heroLoading: string;
         heroNarrativeMeta: string;
         tocHeading: string;
         tocPlain: string;
         tocMarkdown: string;
+        tocNone: string;
         tocNote: string;
         orderHeading: string;
         orderNarrative: string;
@@ -302,15 +302,15 @@ export const en: TranslationKeys = {
     },
     manuscriptModal: {
         title: 'Create manuscript',
-        subtitle: 'Pick TOC flavor, ordering, and the scene window to export.',
         description: 'Use markdown-linked TOC for Obsidian-friendly navigation, or plain TOC for AI processing. Narrative order supports custom ranges with a draggable selector.',
         heroLoading: 'Loading scenes...',
         heroNarrativeMeta: 'Narrative ordering for range preview',
         tocHeading: 'Table of contents',
-        tocPlain: 'Plain text',
         tocMarkdown: 'Markdown links (default)',
+        tocPlain: 'Plain text',
+        tocNone: 'No TOC',
         tocNote: 'Exactly one TOC format will be used. Markdown adds clickable scene anchors.',
-        orderHeading: 'Ordering',
+        orderHeading: 'Scene ordering',
         orderNarrative: 'Narrative',
         orderChronological: 'Chronological',
         orderReverse: 'Reverse narrative',
@@ -363,8 +363,8 @@ export const en: TranslationKeys = {
         modal: {
             title: 'Planetary time converter',
             activeProfile: 'Active profile',
-            datetimeLabel: 'Earth datetime (ISO)',
-            datetimeDesc: 'Enter an ISO datetime (e.g., 2025-03-21T14:00:00Z) or click Now.',
+            datetimeLabel: 'Earth date & time',
+            datetimeDesc: 'Pick a local date and time to convert.',
             now: 'Now',
             convert: 'Convert',
             noProfile: 'Add a planetary profile in Settings first.',

@@ -4031,11 +4031,11 @@
   text-align: right;
 }
 
-/* Gossamer score item container - two column layout */
+/* Gossamer score item container - vertical layout */
 .rt-gossamer-score-item-container {
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: flex-start;
   gap: 8px;
   padding: 10px 12px;
@@ -4048,6 +4048,14 @@
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   min-height: 52px;
   box-sizing: border-box;
+}
+
+.rt-gossamer-score-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center; /* Center the header items */
+  gap: 8px;
 }
 
 .rt-gossamer-score-item-container:hover {
@@ -4077,7 +4085,7 @@
   transform: scale(1.05);
 }
 
-/* Text column - right side */
+/* Text column - right side - DEPRECATED in favor of header/body split, but keeping for legacy if needed */
 .rt-gossamer-text-column {
   display: flex;
   flex-direction: column;
@@ -4091,7 +4099,7 @@
   min-width: 0;
 }
 
-.rt-gossamer-score-item-container:hover .rt-gossamer-text-column {
+.rt-gossamer-score-item-container:hover .rt-gossamer-score-value {
   color: var(--text-accent);
 }
 
@@ -4120,6 +4128,7 @@
   text-overflow: ellipsis;
   word-break: break-word;
   max-width: 100%;
+  text-align: center;
 }
 
 .rt-mapping-list {

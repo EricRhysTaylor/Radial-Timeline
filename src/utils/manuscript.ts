@@ -26,6 +26,8 @@ export interface ManuscriptSceneSelection {
   sortOrder: string;
   titles: string[];
 }
+ 
+export type TocMode = 'markdown' | 'plain' | 'none';
 
 /**
  * Strip YAML frontmatter from file content
@@ -191,7 +193,12 @@ export function sliceScenesByNarrativeRange(
  * @param useObsidianLinks - If true, use [[#Scene Title]] format for clickable links in Obsidian
  * @param sortOrder - Description of the sort order used
  */
-function generateTableOfContents(scenes: SceneContent[], totalWords: number, useObsidianLinks = false, sortOrder?: string): string {
+function generateTableOfContents(
+  scenes: SceneContent[],
+  totalWords: number,
+  useObsidianLinks = false,
+  sortOrder?: string
+): string {
   const tocLines: string[] = [
     '# TABLE OF CONTENTS',
     '',
@@ -202,8 +209,6 @@ function generateTableOfContents(scenes: SceneContent[], totalWords: number, use
   // Add sort order note if provided
   if (sortOrder) {
     tocLines.push(`**Sort Order:** ${sortOrder}`);
-    tocLines.push('');
-    tocLines.push('Note: Narrative mode sorts scenes by scene title/number (for all scenes, main plot, and Gossamer modes). Chronologue mode sorts scenes chronologically by When date/time. These may produce the same order depending on your scene title structure.');
     tocLines.push('');
   }
 
@@ -238,7 +243,8 @@ export async function assembleManuscript(
   vault: Vault,
   progressCallback?: (sceneIndex: number, sceneTitle: string, totalScenes: number) => void,
   useObsidianLinks = false,
-  sortOrder?: string
+  sortOrder?: string,
+  includeToc: boolean = true
 ): Promise<AssembledManuscript> {
   const scenes: SceneContent[] = [];
   const textParts: string[] = [];
@@ -271,7 +277,7 @@ export async function assembleManuscript(
   }
 
   // Generate TOC and prepend to manuscript
-  const toc = generateTableOfContents(scenes, totalWords, useObsidianLinks, sortOrder);
+  const toc = includeToc ? generateTableOfContents(scenes, totalWords, useObsidianLinks, sortOrder) : '';
   const manuscriptText = toc + textParts.join('');
 
   return {

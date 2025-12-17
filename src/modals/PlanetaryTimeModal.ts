@@ -8,7 +8,8 @@ export class PlanetaryTimeModal extends Modal {
     private plugin: RadialTimelinePlugin;
     private profiles: PlanetaryProfile[];
     private activeId: string | undefined;
-    private inputValue: string;
+    private localDateValue: string;
+    private localTimeValue: string;
     private resultEl: HTMLElement | null = null;
     private profileDropdown: DropdownComponent | null = null;
 
@@ -17,7 +18,9 @@ export class PlanetaryTimeModal extends Modal {
         this.plugin = plugin;
         this.profiles = plugin.settings.planetaryProfiles || [];
         this.activeId = plugin.settings.activePlanetaryProfileId || this.profiles[0]?.id;
-        this.inputValue = new Date().toISOString();
+        const now = new Date();
+        this.localDateValue = this.formatDateInput(now);
+        this.localTimeValue = this.formatTimeInput(now);
     }
 
     onOpen(): void {
@@ -58,10 +61,19 @@ export class PlanetaryTimeModal extends Modal {
             .setDesc(t('planetary.modal.datetimeDesc'));
 
         inputSetting.addText((text: TextComponent) => {
-            text.setPlaceholder(new Date().toISOString());
-            text.setValue(this.inputValue);
+            text.inputEl.type = 'date';
+            text.setValue(this.localDateValue);
             text.onChange((value) => {
-                this.inputValue = value;
+                this.localDateValue = value;
+            });
+        });
+
+        inputSetting.addText((text: TextComponent) => {
+            text.inputEl.type = 'time';
+            text.inputEl.step = '60';
+            text.setValue(this.localTimeValue);
+            text.onChange((value) => {
+                this.localTimeValue = value;
             });
         });
 
@@ -69,12 +81,14 @@ export class PlanetaryTimeModal extends Modal {
             button.setIcon('clock');
             button.setTooltip(t('planetary.modal.now'));
             button.onClick(() => {
-                this.inputValue = new Date().toISOString();
-                const input = inputSetting.controlEl.querySelector('input');
-                if (input) {
-                    input.value = this.inputValue;
+                const now = new Date();
+                this.localDateValue = this.formatDateInput(now);
+                this.localTimeValue = this.formatTimeInput(now);
+                const inputs = inputSetting.controlEl.querySelectorAll('input');
+                inputs.forEach((input, idx) => {
                     input.classList.remove('rt-setting-input-error', 'rt-setting-input-success');
-                }
+                    input.value = idx === 0 ? this.localDateValue : this.localTimeValue;
+                });
                 this.renderResult();
             });
         });
@@ -99,8 +113,13 @@ export class PlanetaryTimeModal extends Modal {
         }
         let parsed: Date | null = null;
         try {
-            const maybe = new Date(this.inputValue);
-            parsed = Number.isNaN(maybe.getTime()) ? null : maybe;
+            if (!this.localDateValue) {
+                parsed = null;
+            } else {
+                const time = this.localTimeValue || '00:00';
+                const maybe = new Date(`${this.localDateValue}T${time}`);
+                parsed = Number.isNaN(maybe.getTime()) ? null : maybe;
+            }
         } catch {
             parsed = null;
         }
@@ -120,5 +139,18 @@ export class PlanetaryTimeModal extends Modal {
         if (!this.profiles.length) return null;
         const match = this.profiles.find(p => p.id === this.activeId);
         return match || this.profiles[0];
+    }
+
+    private formatDateInput(d: Date): string {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    private formatTimeInput(d: Date): string {
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
     }
 }

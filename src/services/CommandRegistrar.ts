@@ -154,12 +154,16 @@ export class CommandRegistrar {
                 : '';
             const sortLabelWithRange = `${sortOrder}${rangeSuffix}`;
 
+            const includeToc = options.tocMode !== 'none';
+            const useMarkdownToc = options.tocMode === 'markdown';
+
             const manuscript = await assembleManuscript(
                 orderedFiles,
                 this.app.vault,
                 undefined,
-                options.useMarkdownToc,
-                sortLabelWithRange
+                useMarkdownToc,
+                sortLabelWithRange,
+                includeToc
             );
 
             if (!manuscript.text || manuscript.text.trim().length === 0) {
