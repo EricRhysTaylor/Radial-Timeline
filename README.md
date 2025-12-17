@@ -164,7 +164,7 @@ Detailed guides and references have been moved to the [GitHub Wiki](https://gith
 
 ---
 
-## Installation
+# Installation
 
 **From Obsidian**
 1.  Open settings → community plugins.
