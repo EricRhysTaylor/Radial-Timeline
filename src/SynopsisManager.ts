@@ -989,8 +989,16 @@ export default class SynopsisManager {
         // Update planetary outline rect if present
         const prev = textEl.previousElementSibling;
         if (prev && prev.tagName === 'rect' && prev.classList.contains('rt-planetary-outline')) {
-          const width = parseFloat(prev.getAttribute('width') || '0');
-          prev.setAttribute('x', String(x - width));
+          let currentWidth = parseFloat(prev.getAttribute('width') || '0');
+          try {
+            const len = textEl.getComputedTextLength();
+            if (len > 0) {
+               currentWidth = len + 12; // text len + indent(6) + pad(6)
+               prev.setAttribute('width', String(currentWidth));
+            }
+          } catch (e) { /* ignore */ }
+
+          prev.setAttribute('x', String(x - currentWidth));
           prev.setAttribute('y', String(yPosition - 14));
           textEl.setAttribute('dx', '-6');
         }
@@ -1012,6 +1020,13 @@ export default class SynopsisManager {
         // Update planetary outline rect if present
         const prev = textEl.previousElementSibling;
         if (prev && prev.tagName === 'rect' && prev.classList.contains('rt-planetary-outline')) {
+          try {
+            const len = textEl.getComputedTextLength();
+            if (len > 0) {
+               prev.setAttribute('width', String(len + 12));
+            }
+          } catch (e) { /* ignore */ }
+
           prev.setAttribute('x', String(x));
           prev.setAttribute('y', String(yPosition - 14));
           textEl.setAttribute('dx', '6');
