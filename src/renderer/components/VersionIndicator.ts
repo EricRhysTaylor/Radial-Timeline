@@ -102,12 +102,18 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
     const rawVersionText = hasUpdate ? 'NEW RELEASE' : version;
     const versionText = rawVersionText.trim() || rawVersionText;
 
-    const versionTextHalfWidth = Math.max(estimateTextHalfWidth(versionText), ICON_HITAREA_HALF_WIDTH);
+    const actionText = hasUpdate ? 'Update to Latest Version' : 'Report Bug';
+
+    const versionTextHalfWidth = estimateTextHalfWidth(versionText);
+    const actionTextHalfWidth = estimateTextHalfWidth(actionText);
+    
+    // Ensure we have enough space for the widest text (likely the action text)
+    const maxHalfWidth = Math.max(versionTextHalfWidth, actionTextHalfWidth, ICON_HITAREA_HALF_WIDTH);
 
     const viewboxLeftEdge = -(SVG_SIZE / 2);
     const circleLeftEdge = -MONTH_LABEL_RADIUS;
-    const safeCanvasCenterX = viewboxLeftEdge + VERSION_INDICATOR_SAFE_PADDING + versionTextHalfWidth;
-    const safeCircleCenterX = circleLeftEdge + VERSION_INDICATOR_SAFE_PADDING + versionTextHalfWidth;
+    const safeCanvasCenterX = viewboxLeftEdge + VERSION_INDICATOR_SAFE_PADDING + maxHalfWidth;
+    const safeCircleCenterX = circleLeftEdge + VERSION_INDICATOR_SAFE_PADDING + maxHalfWidth;
     const computedX = Math.max(VERSION_INDICATOR_POS_X, safeCanvasCenterX, safeCircleCenterX);
     const x = formatNumber(computedX);
     const y = formatNumber(VERSION_INDICATOR_POS_Y);
@@ -128,26 +134,20 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
     const iconX = -(iconSize / 2);
     const iconY = 10;  // Below the text baseline
 
-    // Tooltip for version text area
-    const versionTooltip = hasUpdate && latestVersion
-        ? `Current: ${version} → New: ${latestVersion}\nClick to update`
-        : `Version ${version}`;
-
-    // Tooltip for icon
-    const iconTooltip = hasUpdate
-        ? `Update to ${latestVersion}`
-        : 'Please report any bugs you encounter here.';
-
     // Choose icon based on update state
     const iconContent = hasUpdate ? BADGE_ALERT_ICON : BUG_ICON;
     const iconClass = hasUpdate ? 'rt-version-alert-icon' : 'rt-version-bug-icon';
 
     return `
         <g id="version-indicator" class="${groupClasses.join(' ')}" transform="translate(${x}, ${y})">
-            <!-- Version text in 04b03b pixel font -->
-            <text class="rt-version-text" x="0" y="0">
+            <!-- Version text (visible by default) -->
+            <text class="rt-version-text rt-version-number" x="0" y="0">
                 ${versionText}
-                <title>${versionTooltip}</title>
+            </text>
+
+            <!-- Action text (visible on hover) -->
+            <text class="rt-version-text rt-version-action" x="0" y="0">
+                ${actionText}
             </text>
             
             <!-- Icon below version: Bug icon (no update) or Alert icon (update available) -->
@@ -155,12 +155,10 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
                     ${iconContent}
                 </svg>
-                <title>${iconTooltip}</title>
             </g>
             
             <!-- Invisible hit area for icon click -->
             <rect class="rt-version-icon-hitarea" x="${formatNumber(iconX - 4)}" y="${formatNumber(iconY - 4)}" width="${ICON_HITAREA_SIZE}" height="${ICON_HITAREA_SIZE}" fill="white" fill-opacity="0" stroke="none" pointer-events="all">
-                <title>${iconTooltip}</title>
             </rect>
         </g>
     `;

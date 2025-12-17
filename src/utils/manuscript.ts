@@ -3,6 +3,7 @@
  */
 import { TFile, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import type { TimelineItem } from '../types';
 
 export interface SceneContent {
   title: string;
@@ -16,6 +17,14 @@ export interface AssembledManuscript {
   totalScenes: number;
   scenes: SceneContent[];
   sortOrder?: string;
+}
+
+export type ManuscriptOrder = 'narrative' | 'chronological' | 'reverse-narrative';
+
+export interface ManuscriptSceneSelection {
+  files: TFile[];
+  sortOrder: string;
+  titles: string[];
 }
 
 /**
@@ -109,6 +118,69 @@ export async function getSortedSceneFiles(plugin: RadialTimelinePlugin): Promise
   }
   
   return { files: sceneFiles, sortOrder };
+}
+
+/**
+ * Fetch scene files in a specific order (ignores current mode when explicit order is provided)
+ */
+export async function getSceneFilesByOrder(
+  plugin: RadialTimelinePlugin,
+  order: ManuscriptOrder
+): Promise<ManuscriptSceneSelection> {
+  const allScenes = await plugin.getSceneData();
+
+  const uniquePaths = new Set<string>();
+  const uniqueScenes = allScenes.filter((scene: TimelineItem) => {
+    if (scene.itemType === 'Scene' && scene.path && !uniquePaths.has(scene.path)) {
+      uniquePaths.add(scene.path);
+      return true;
+    }
+    return false;
+  });
+
+  const { sortScenes, sortScenesChronologically } = await import('./sceneHelpers');
+  let sortedScenes: TimelineItem[];
+  let sortOrder: string;
+
+  if (order === 'chronological') {
+    sortedScenes = sortScenesChronologically(uniqueScenes);
+    sortOrder = 'Chronological (by When date/time)';
+  } else {
+    sortedScenes = sortScenes(uniqueScenes, false, false);
+    if (order === 'reverse-narrative') {
+      sortedScenes = sortedScenes.slice().reverse();
+      sortOrder = 'Reverse narrative (by scene title/number)';
+    } else {
+      sortOrder = 'Narrative (by scene title/number)';
+    }
+  }
+
+  const files = sortedScenes
+    .map(scene => (scene.path ? plugin.app.vault.getAbstractFileByPath(scene.path) : null))
+    .filter((file): file is TFile => file instanceof TFile);
+
+  const titles = files.map(file => file.basename);
+
+  return { files, sortOrder, titles };
+}
+
+/**
+ * Apply an inclusive range to a narrative-sorted list of scenes.
+ * Range is 1-based; if start/end are undefined the full list is returned.
+ */
+export function sliceScenesByNarrativeRange(
+  sceneFiles: TFile[],
+  startIndex?: number,
+  endIndex?: number
+): TFile[] {
+  if (!sceneFiles.length) return sceneFiles;
+
+  const start = startIndex && startIndex > 0 ? startIndex : 1;
+  const end = endIndex && endIndex > 0 ? endIndex : sceneFiles.length;
+  const clampedStart = Math.min(Math.max(start, 1), sceneFiles.length);
+  const clampedEnd = Math.min(Math.max(end, clampedStart), sceneFiles.length);
+
+  return sceneFiles.slice(clampedStart - 1, clampedEnd);
 }
 
 

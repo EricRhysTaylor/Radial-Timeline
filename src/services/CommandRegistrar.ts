@@ -5,10 +5,12 @@
 
 import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { assembleManuscript } from '../utils/manuscript';
+import { assembleManuscript, getSceneFilesByOrder, sliceScenesByNarrativeRange } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { createTemplateScene } from '../SceneAnalysisCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
+import { ManuscriptOptionsModal, ManuscriptModalResult } from '../modals/ManuscriptOptionsModal';
+import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
 
 export class CommandRegistrar {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -97,6 +99,23 @@ export class CommandRegistrar {
             name: 'Open',
             callback: () => this.plugin.activateView()
         });
+
+        this.plugin.addCommand({
+            id: 'open-planetary-time-converter',
+            name: 'Planetary time converter',
+            checkCallback: (checking) => {
+                if (!this.plugin.settings.enablePlanetaryTime) return false;
+                if (!this.plugin.settings.planetaryProfiles || this.plugin.settings.planetaryProfiles.length === 0) {
+                    if (!checking) {
+                        new Notice('Add a planetary profile in Settings first.');
+                    }
+                    return false;
+                }
+                if (checking) return true;
+                new PlanetaryTimeModal(this.app, this.plugin).open();
+                return true;
+            }
+        });
     }
 
     private getBeatSystemDisplayName(): string {
@@ -106,20 +125,55 @@ export class CommandRegistrar {
     }
 
     private async generateManuscript(): Promise<void> {
+        const modal = new ManuscriptOptionsModal(this.app, this.plugin, async (result) => {
+            await this.handleManuscriptSubmission(result);
+        });
+        modal.open();
+    }
+
+    private async handleManuscriptSubmission(options: ManuscriptModalResult): Promise<void> {
         try {
             new Notice('Assembling manuscript...');
-            const { getSortedSceneFiles } = await import('../utils/manuscript');
-            const { files: sceneFiles, sortOrder } = await getSortedSceneFiles(this.plugin);
-            if (sceneFiles.length === 0) {
+            const { files, sortOrder } = await getSceneFilesByOrder(this.plugin, options.order);
+            if (files.length === 0) {
                 new Notice('No scenes found in source path.');
                 return;
             }
-            const manuscript = await assembleManuscript(sceneFiles, this.app.vault, undefined, true, sortOrder);
+
+            const orderedFiles = options.order === 'narrative'
+                ? sliceScenesByNarrativeRange(files, options.rangeStart, options.rangeEnd)
+                : files;
+
+            if (orderedFiles.length === 0) {
+                new Notice('Selected range is empty.');
+                return;
+            }
+
+            const rangeSuffix = options.order === 'narrative' && options.rangeStart && options.rangeEnd
+                ? ` · Scenes ${options.rangeStart}-${options.rangeEnd}`
+                : '';
+            const sortLabelWithRange = `${sortOrder}${rangeSuffix}`;
+
+            const manuscript = await assembleManuscript(
+                orderedFiles,
+                this.app.vault,
+                undefined,
+                options.useMarkdownToc,
+                sortLabelWithRange
+            );
+
             if (!manuscript.text || manuscript.text.trim().length === 0) {
                 new Notice('Manuscript is empty. Check that your scene files have content.');
                 return;
             }
-            const orderLabel = sortOrder?.toLowerCase().startsWith('chrono') ? 'Chronological' : 'Narrative';
+
+            const orderLabel =
+                options.order === 'chronological'
+                    ? 'Chronological'
+                    : options.order === 'reverse-narrative'
+                        ? 'Reverse Narrative'
+                        : 'Narrative';
+
             const now = new Date();
             const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
             const timeDisplayStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });

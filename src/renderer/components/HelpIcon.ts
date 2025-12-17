@@ -40,16 +40,17 @@ export function renderHelpIcon(): string {
 
     return `
         <g id="help-icon" class="rt-help-icon" transform="translate(${x}, ${y})">
+            <!-- Hover Text: "Get Help" -->
+            <text class="rt-help-text" x="0" y="-5">Get Help</text>
+
             <g transform="translate(${formatNumber(iconX)}, ${formatNumber(iconY)})">
                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-life-buoy-icon lucide-life-buoy">
                     ${LIFE_BUOY_ICON}
                 </svg>
             </g>
-            <title>Get Help</title>
             
             <!-- Hit area -->
              <rect class="rt-help-icon-hitarea" x="${formatNumber(iconX - 8)}" y="${formatNumber(iconY - 8)}" width="${iconSize + 16}" height="${iconSize + 16}" fill="white" fill-opacity="0" stroke="none" pointer-events="all">
-                <title>Get Help</title>
             </rect>
         </g>
     `;

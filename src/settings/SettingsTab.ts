@@ -32,6 +32,7 @@ import { renderAdvancedSection } from './sections/AdvancedSection';
 import { renderAiSection } from './sections/AiSection';
 import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
 import { renderPovSection } from './sections/PovSection';
+import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 import { validateLocalModelAvailability } from '../api/localAiApi';
 
 declare const EMBEDDED_README_CONTENT: string;
@@ -345,6 +346,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // 4. Story Beats System and Gossamer (templates dropdown, create templates button)
         renderStoryBeatsSection({ app: this.app, plugin: this.plugin, containerEl });
+
+        // Planetary time conversions (opt-in)
+        renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl });
 
         // 5. AI LLM for Scene Analysis
         renderAiSection({

@@ -586,6 +586,15 @@ async saveSettings() {
 this.addSettingTab(new MySettingsTab(this.app, this));
 ```
 
+✅ **Organize with SettingGroup (Obsidian 1.11.0+):**
+If targeting Obsidian v1.11.0+, use `SettingGroup` for better visual organization over manual headers.
+```typescript
+// Prefer this over containerEl.createEl('h2', ...) if minAppVersion >= 1.11.0
+new SettingGroup(containerEl)
+  .setName("Group Name")
+  .addSetting((setting) => { ... });
+```
+
 ---
 
 ## Manifest Requirements
@@ -732,10 +741,17 @@ public log(...args: unknown[]): void {
 - Example keys (even fake ones that match patterns)
 
 ✅ **ALWAYS:**
-- Store keys in plugin settings
+- Store keys in plugin settings (or Keychain API if available)
 - Load from `this.settings.apiKey`
 - Use `.gitignore` for local config files
 - Rotate any leaked keys immediately
+
+**New in Obsidian 1.11.0+:**
+Prefer using the **Keychain API** for storing sensitive data like API keys instead of `data.json`.
+```typescript
+// Conceptual example (check official docs for exact API)
+await this.app.keychain.saveToken("api-key", token);
+```
 
 **Patterns that trigger alerts:**
 - `sk-...` (OpenAI)
@@ -886,5 +902,5 @@ When violations occur, the build will fail with specific guidance on how to fix 
 
 ---
 
-**Last Updated:** 2025-10-16  
-**Based on:** [Obsidian Plugin Guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines)
+**Last Updated:** 2025-12-16
+**Based on:** [Obsidian Plugin Guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines) & Obsidian v1.11.1

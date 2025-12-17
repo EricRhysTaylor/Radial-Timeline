@@ -8,6 +8,8 @@ import type { TimelineItem } from './types';
 import { decodeHtmlEntities, parseSceneTitleComponents, splitIntoBalancedLines } from './utils/text';
 import { getPublishStageStyle, splitSynopsisLines, decodeContentLines, isOverdueAndIncomplete } from './synopsis/SynopsisData';
 import { createSynopsisContainer, createTextGroup, createText } from './synopsis/SynopsisView';
+import { convertFromEarth, getActivePlanetaryProfile } from './utils/planetaryTime';
+import { t } from './i18n';
 import { 
   SUBPLOT_OUTER_RADIUS_MAINPLOT, 
   SUBPLOT_OUTER_RADIUS_STANDARD, 
@@ -92,6 +94,17 @@ export default class SynopsisManager {
     return dateStr;
   }
 
+  private buildPlanetaryLine(scene: TimelineItem): string | null {
+    if (!scene.when) return null;
+    const settings = this.plugin.settings as any;
+    const profile = getActivePlanetaryProfile(settings);
+    if (!profile) return null;
+    const conversion = convertFromEarth(scene.when, profile);
+    if (!conversion) return null;
+    const prefix = t('planetary.synopsis.prefix');
+    return `${prefix}${conversion.formatted}`;
+  }
+  
   /**
    * Add title content to a text element safely
    * @param titleContent The title content to add
@@ -327,6 +340,11 @@ export default class SynopsisManager {
     const missingWhenMessage = this.buildMissingWhenMessage(scene);
     if (missingWhenMessage) {
       appendInfoLine('rt-info-text rt-title-text-secondary rt-missing-when-text', missingWhenMessage);
+    }
+
+    const planetaryLine = this.buildPlanetaryLine(scene);
+    if (planetaryLine) {
+      appendInfoLine('rt-info-text rt-title-text-secondary rt-planetary-time-text', planetaryLine);
     }
 
     // Compute Due/Overdue state (YYYY-MM-DD expected)

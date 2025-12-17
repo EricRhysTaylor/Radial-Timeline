@@ -139,7 +139,10 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     releaseNotesLastFetched: undefined,
     localBaseUrl: 'http://localhost:11434/v1',
     localModelId: 'llama3',
-    localApiKey: ''
+    localApiKey: '',
+    enablePlanetaryTime: false,
+    planetaryProfiles: [],
+    activePlanetaryProfileId: undefined
 };
 
 // STATUS_COLORS now imported from constants

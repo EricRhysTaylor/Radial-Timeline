@@ -63,4 +63,19 @@ export interface RadialTimelineSettings {
     lastSeenReleaseNotesVersion?: string;
     cachedReleaseNotes?: EmbeddedReleaseNotesBundle | null;
     releaseNotesLastFetched?: string;
+    enablePlanetaryTime?: boolean;
+    planetaryProfiles?: PlanetaryProfile[];
+    activePlanetaryProfileId?: string;
+}
+
+export interface PlanetaryProfile {
+    id: string;
+    label: string;
+    hoursPerDay: number;
+    daysPerWeek: number;
+    daysPerYear: number;
+    epochOffsetDays?: number;
+    epochLabel?: string;
+    monthNames?: string[];
+    weekdayNames?: string[];
 }
