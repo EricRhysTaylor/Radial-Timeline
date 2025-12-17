@@ -970,7 +970,7 @@
 }
 
 .documentation-container h1 {
-  font-size: 1.8em;
+  font-size: 2.2em;
   margin-top: 0.5em;
 }
 
@@ -1111,7 +1111,7 @@
 
 
 .rt-confirm-heading {
-  color: var(--rt-confirm-accent, var(--rt-max-publish-stage-color, var(--interactive-accent, #ff9900))));
+  color: var(--rt-confirm-accent, var(--rt-max-publish-stage-color, var(--interactive-accent, #ff9900)));
 }
 
 .rt-number-square[data-subplot-idx="0"] {
