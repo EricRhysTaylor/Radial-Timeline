@@ -33,7 +33,6 @@ import { renderAiSection } from './sections/AiSection';
 import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
 import { renderPovSection } from './sections/PovSection';
 import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
-import { renderMetadataSection } from './sections/MetadataSection';
 import { validateLocalModelAvailability } from '../api/localAiApi';
 
 declare const EMBEDDED_README_CONTENT: string;
@@ -50,6 +49,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _localBaseUrlInput?: HTMLInputElement;
     private _localModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = []; // Store references to AI-related settings
+
+    // TODO: Migrate to Obsidian Keychain API when available (v1.11.0+)
+    // Currently storing keys in data.json (plain text) because app.keychain is not yet exposed in the public API types.
+    // See: https://obsidian.md/changelog/2025-12-10-desktop-v1.11.0/
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app, plugin);
@@ -335,9 +338,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // 1. Source path (from GeneralSection)
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl });
-
-        // Metadata Mapping
-        renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl });
 
         // 2. Publication and Progress section (target date, show estimate, zero draft mode)
         renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl });

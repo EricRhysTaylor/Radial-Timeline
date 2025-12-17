@@ -82,7 +82,8 @@ export class SceneDataService {
         for (const file of files) {
             try {
             const rawMetadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
-                const metadata = rawMetadata ? normalizeFrontmatterKeys(rawMetadata, this.settings.frontmatterMappings) : undefined;
+                const mappings = this.settings.enableCustomMetadataMapping ? this.settings.frontmatterMappings : undefined;
+                const metadata = rawMetadata ? normalizeFrontmatterKeys(rawMetadata, mappings) : undefined;
                 
                 if (metadata && metadata.Class === "Scene") {
                     // Parse the When field using the centralized parser (single source of truth)

@@ -28,17 +28,15 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         plugin.settings.planetaryProfiles = profiles;
     }
 
-    const heading = new Settings(containerEl)
-        .setName(t('planetary.heading'))
-        .setDesc('Keep planning in Earth time, but peek at a local/fictional calendar.');
-    heading.setHeading();
+    // Section header and description (use Obsidian defaults)
+    containerEl.createEl('h3', { text: t('planetary.heading') });
 
     // Feature toggle
     const visibilityTargets: HTMLElement[] = [];
 
     new Settings(containerEl)
         .setName(t('planetary.enable.name'))
-        .setDesc(t('planetary.enable.desc'))
+        .setDesc('Keep planning in Earth time, but peek at a local/fictional calendar.')
         .addToggle(toggle => {
             toggle.setValue(!!plugin.settings.enablePlanetaryTime);
             toggle.onChange(async (value) => {
@@ -48,10 +46,14 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             });
         });
 
+    // Wrap all dependent controls so we can hide them together
+    const bodyEl = containerEl.createDiv({ cls: 'rt-planetary-body' });
+    visibilityTargets.push(bodyEl);
+
     // Active profile selector + buttons
     let activeProfileId = plugin.settings.activePlanetaryProfileId || profiles[0]?.id;
 
-    const selectorSetting = new Settings(containerEl)
+    const selectorSetting = new Settings(bodyEl)
         .setName(t('planetary.active.name'))
         .setDesc(t('planetary.active.desc'));
 
@@ -108,8 +110,8 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     renderSelector();
 
     // Profile fields
-    const fieldsContainer = containerEl.createDiv({ cls: 'rt-planetary-fields' });
-    const previewContainer = containerEl.createDiv({ cls: 'rt-planetary-preview' });
+    const fieldsContainer = bodyEl.createDiv({ cls: 'rt-planetary-fields' });
+    const previewContainer = bodyEl.createDiv({ cls: 'rt-planetary-preview' });
     visibilityTargets.push(selectorSetting.settingEl, fieldsContainer, previewContainer);
 
     const flash = (input: HTMLInputElement, type: 'success' | 'error') => {

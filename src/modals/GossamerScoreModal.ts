@@ -297,10 +297,11 @@ export class GossamerScoreModal extends Modal {
             cls: 'rt-gossamer-score-value'
           });
           if (justification) {
-            textColumn.createSpan({
+            const justEl = textColumn.createSpan({
               text: justification,
               cls: 'rt-gossamer-score-justification'
             });
+            justEl.setAttribute('title', justification);
           }
 
           scoreContainer.addEventListener('click', () => {

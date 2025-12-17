@@ -67,6 +67,7 @@ export interface RadialTimelineSettings {
     planetaryProfiles?: PlanetaryProfile[];
     activePlanetaryProfileId?: string;
     frontmatterMappings?: Record<string, string>;
+    enableCustomMetadataMapping?: boolean;
 }
 
 export interface PlanetaryProfile {

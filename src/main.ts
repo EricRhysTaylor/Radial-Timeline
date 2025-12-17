@@ -143,7 +143,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     enablePlanetaryTime: false,
     planetaryProfiles: [],
     activePlanetaryProfileId: undefined,
-    frontmatterMappings: {}
+    frontmatterMappings: {},
+    enableCustomMetadataMapping: false
 };
 
 // STATUS_COLORS now imported from constants

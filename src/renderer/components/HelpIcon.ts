@@ -36,12 +36,12 @@ export function renderHelpIcon(): string {
     // Align vertically with the version icon (which is at Y + 10 in VersionIndicator)
     // VersionIndicator Y is 734. Its icon is at y=10. So absolute Y ~ 744.
     // If we use HELP_ICON_POS_Y = 734, we should add 10 to match visual weight.
-    const iconY = 10 - iconHalfSize; 
+    const iconY = 10; 
 
     return `
         <g id="help-icon" class="rt-help-icon" transform="translate(${x}, ${y})">
             <!-- Hover Text: "GET HELP" -->
-            <text class="rt-help-text" x="0" y="-5">GET HELP</text>
+            <text class="rt-help-text" x="0" y="0">GET HELP</text>
 
             <g transform="translate(${formatNumber(iconX)}, ${formatNumber(iconY)})">
                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-life-buoy-icon lucide-life-buoy">
