@@ -149,3 +149,4 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
     // Initial render
     renderMappings();
 }
+

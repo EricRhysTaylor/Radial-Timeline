@@ -236,7 +236,7 @@ class RenameSubplotModal extends Modal {
         hero.createSpan({ text: 'Edit', cls: 'rt-pulse-hero-badge' });
         hero.createEl('h2', { text: 'Rename Subplot', cls: 'rt-pulse-progress-heading' });
 
-        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
+        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card rt-pulse-section-gap' });
         
         const inputContainer = card.createDiv({ cls: 'rt-pulse-info' });
         inputContainer.createDiv({ text: `Rename "${this.oldName}" to:`, cls: 'rt-subplot-management-input-label' });

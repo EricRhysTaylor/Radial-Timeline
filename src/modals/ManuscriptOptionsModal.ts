@@ -86,11 +86,6 @@ export class ManuscriptOptionsModal extends Modal {
         this.heroMetaEl = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
 
-        container.createDiv({
-            cls: 'rt-pulse-info',
-            text: t('manuscriptModal.description')
-        });
-
         const tocCard = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
         tocCard.createDiv({ cls: 'rt-manuscript-card-head', text: t('manuscriptModal.tocHeading') });
         const tocActions = tocCard.createDiv({ cls: 'rt-manuscript-pill-row' });

@@ -337,6 +337,39 @@ export default class SynopsisManager {
       extraLineCount += 1;
     };
 
+    const appendPlanetaryLine = (text: string) => {
+      const y = (1 + extraLineCount) * metadataLineHeight;
+      const indentX = 20; // indent text inward
+      const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const textEl = createText(0, y, 'rt-info-text rt-title-text-secondary rt-planetary-time-text', text);
+      // Force indent via dx attribute (more reliable than x for relative offset)
+      textEl.setAttribute('dx', String(indentX));
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute('class', 'rt-planetary-outline');
+
+      // Compute approximate size immediately (getBBox fails when hidden)
+      const charWidth = 7.5;
+      const estWidth = text.length * charWidth + indentX;
+      const estHeight = 16;
+      const padX = 6;
+      const padY = 2;
+      const yOffset = 7;
+
+      // Border starts at x=0 like other text lines (parent group handles positioning)
+      rect.setAttribute('x', '0');
+      rect.setAttribute('y', String(y - estHeight + padY + yOffset));
+      rect.setAttribute('width', String(estWidth + padX));
+      rect.setAttribute('height', String(estHeight + padY * 2));
+      rect.setAttribute('rx', '6');
+      rect.setAttribute('ry', '6');
+
+      group.appendChild(rect);
+      group.appendChild(textEl);
+      synopsisTextGroup.appendChild(group);
+
+      extraLineCount += 1;
+    };
+
     const missingWhenMessage = this.buildMissingWhenMessage(scene);
     if (missingWhenMessage) {
       appendInfoLine('rt-info-text rt-title-text-secondary rt-missing-when-text', missingWhenMessage);
@@ -344,7 +377,7 @@ export default class SynopsisManager {
 
     const planetaryLine = this.buildPlanetaryLine(scene);
     if (planetaryLine) {
-      appendInfoLine('rt-info-text rt-title-text-secondary rt-planetary-time-text', planetaryLine);
+      appendPlanetaryLine(planetaryLine);
     }
 
     // Compute Due/Overdue state (YYYY-MM-DD expected)
@@ -946,12 +979,18 @@ export default class SynopsisManager {
       const titleRightEdge = hasMetadata ? metadataLeftEdge - gap : metadataRightEdge;
       
       rowElements.forEach((textEl, index) => {
-        if (index === 0) {
-          textEl.setAttribute('x', String(titleRightEdge));
-          textEl.setAttribute('y', String(yPosition));
-        } else {
-          textEl.setAttribute('x', String(metadataLeftEdge));
-          textEl.setAttribute('y', String(yPosition));
+        const x = index === 0 ? titleRightEdge : metadataLeftEdge;
+        textEl.setAttribute('x', String(x));
+        textEl.setAttribute('y', String(yPosition));
+
+        // Update planetary outline rect if present
+        const prev = textEl.previousElementSibling;
+        if (prev && prev.tagName === 'rect' && prev.classList.contains('rt-planetary-outline')) {
+          prev.setAttribute('x', String(x));
+          prev.setAttribute('y', String(yPosition - 7));
+        }
+
+        if (index !== 0) {
           textEl.setAttribute('text-anchor', 'start');
           this.alignMetadataTspans(textEl, metadataLeftEdge);
         }
@@ -961,12 +1000,18 @@ export default class SynopsisManager {
       const metadataLeftEdge = hasMetadata ? rowLeftEdge + primaryWidth + gap : rowLeftEdge;
       
       rowElements.forEach((textEl, index) => {
-        if (index === 0) {
-          textEl.setAttribute('x', String(rowLeftEdge));
-          textEl.setAttribute('y', String(yPosition));
-        } else {
-          textEl.setAttribute('x', String(metadataLeftEdge));
-          textEl.setAttribute('y', String(yPosition));
+        const x = index === 0 ? rowLeftEdge : metadataLeftEdge;
+        textEl.setAttribute('x', String(x));
+        textEl.setAttribute('y', String(yPosition));
+
+        // Update planetary outline rect if present
+        const prev = textEl.previousElementSibling;
+        if (prev && prev.tagName === 'rect' && prev.classList.contains('rt-planetary-outline')) {
+          prev.setAttribute('x', String(x));
+          prev.setAttribute('y', String(yPosition - 7));
+        }
+
+        if (index !== 0) {
           this.alignMetadataTspans(textEl, metadataLeftEdge);
         }
       });
