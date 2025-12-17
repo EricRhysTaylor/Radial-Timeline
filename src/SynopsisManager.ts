@@ -339,21 +339,24 @@ export default class SynopsisManager {
 
     const appendPlanetaryLine = (text: string) => {
       const y = (1 + extraLineCount) * metadataLineHeight;
-      const indentX = 20; // indent text inward
+      const indentX = 6; // indent text inward
       const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
       const textEl = createText(0, y, 'rt-info-text rt-title-text-secondary rt-planetary-time-text', text);
       // Force indent via dx attribute (more reliable than x for relative offset)
       textEl.setAttribute('dx', String(indentX));
+      textEl.style.fill = titleColor; // Use scene publish stage color
+
       const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       rect.setAttribute('class', 'rt-planetary-outline');
+      rect.style.stroke = titleColor; // Use scene publish stage color for border too
 
       // Compute approximate size immediately (getBBox fails when hidden)
       const charWidth = 7.5;
       const estWidth = text.length * charWidth + indentX;
-      const estHeight = 16;
+      const estHeight = 13;
       const padX = 6;
       const padY = 2;
-      const yOffset = 7;
+      const yOffset = -1; // Aligned with positionRowColumns update (-14 offset)
 
       // Border starts at x=0 like other text lines (parent group handles positioning)
       rect.setAttribute('x', '0');
@@ -986,8 +989,10 @@ export default class SynopsisManager {
         // Update planetary outline rect if present
         const prev = textEl.previousElementSibling;
         if (prev && prev.tagName === 'rect' && prev.classList.contains('rt-planetary-outline')) {
-          prev.setAttribute('x', String(x));
-          prev.setAttribute('y', String(yPosition - 7));
+          const width = parseFloat(prev.getAttribute('width') || '0');
+          prev.setAttribute('x', String(x - width));
+          prev.setAttribute('y', String(yPosition - 14));
+          textEl.setAttribute('dx', '-6');
         }
 
         if (index !== 0) {
@@ -1008,7 +1013,8 @@ export default class SynopsisManager {
         const prev = textEl.previousElementSibling;
         if (prev && prev.tagName === 'rect' && prev.classList.contains('rt-planetary-outline')) {
           prev.setAttribute('x', String(x));
-          prev.setAttribute('y', String(yPosition - 7));
+          prev.setAttribute('y', String(yPosition - 14));
+          textEl.setAttribute('dx', '6');
         }
 
         if (index !== 0) {
