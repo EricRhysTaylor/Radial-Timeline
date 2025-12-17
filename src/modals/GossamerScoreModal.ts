@@ -242,7 +242,7 @@ export class GossamerScoreModal extends Modal {
       const justificationContainer = firstRow.createDiv('rt-gossamer-justification-container');
       if (entry.currentJustification) {
         const currentNote = justificationContainer.createDiv('rt-gossamer-current-justification');
-        currentNote.setText(`Latest note: ${entry.currentJustification}`);
+        currentNote.setText(`${entry.currentJustification}`);
       }
 
       // 3. Right side: New score input
