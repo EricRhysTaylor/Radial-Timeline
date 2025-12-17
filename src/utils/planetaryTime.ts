@@ -101,9 +101,11 @@ export function formatPlanetaryDateTime(opts: {
     const { profile, localYear, localMonthIndex, localDayOfMonth, localWeekdayIndex, localHours, localMinutes } = opts;
     const monthLabel = profile.monthNames?.[localMonthIndex] ?? `Month ${localMonthIndex + 1}`;
     const weekdayLabel = profile.weekdayNames?.[localWeekdayIndex] ?? `Day ${localWeekdayIndex + 1}`;
-    const epochLabel = profile.epochLabel ? `${profile.epochLabel} ` : '';
+    const epochLabel = profile.epochLabel ? `${profile.epochLabel.toUpperCase()} ` : '';
     const timeStr = `${pad(localHours)}:${pad(localMinutes)}`;
-    return `${epochLabel}Year ${localYear}, ${monthLabel} ${localDayOfMonth} (${weekdayLabel}) — ${timeStr}`;
+    const weekdayAbbrev = abbreviate(weekdayLabel);
+    const monthAbbrev = abbreviate(monthLabel);
+    return `${epochLabel}YEAR ${localYear}, ${weekdayAbbrev} ${monthAbbrev} ${localDayOfMonth} @ ${timeStr}`;
 }
 
 export function parseCommaNames(input: string | undefined): string[] | undefined {
@@ -122,4 +124,12 @@ function pad(value: number): string {
 function mod(value: number, divisor: number): number {
     const result = value % divisor;
     return result < 0 ? result + divisor : result;
+}
+
+function abbreviate(label: string): string {
+    const trimmed = label.trim();
+    if (!trimmed) return '';
+    // Use first token up to space or first 3 characters as a fallback
+    const token = trimmed.split(/\s+/)[0];
+    return token.slice(0, 3).toUpperCase();
 }

@@ -30,7 +30,7 @@ The manuscript visualization plugin for Obsidian.
 
 **Stop losing track of subplot threads across dozens of scenes.** Radial Timeline™ transforms your manuscript into a live visual map where you can see your entire story structure at a glance.
 
-## What It Does
+# What It Does
 
 Radial Timeline™ arranges your scenes by act, subplot, narrative or chronological order in a striking radial layout—revealing the structure, rhythm, and scope of your story. Each ring represents a subplot; hover interactions surface important details like scene synopsis and story beats. Scenes highlight across subplots to show interrelationships. Multiple view modes dissect your novel like an X-ray.
 
@@ -49,7 +49,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 <hr>
 
-## Visual Overview
+# Visual Overview
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <div style="text-align: center;">
@@ -105,7 +105,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 </div>  
 
 
-## Quick Start
+# Quick Start
 
 **Get your first timeline in 3 steps:**
 
@@ -118,7 +118,7 @@ That's it! Your first scene appears on the timeline. Create more scenes by:
 - Using command palette → "Create template scene note"
 - Use Obsidian's core templates plugin
 
-## Scene Naming & Ordering
+# Scene Naming & Ordering
 
 Radial Timeline determines scene order based on the **leading number** in the scene file name (e.g., `1 My Scene.md`).
 
@@ -146,7 +146,7 @@ For full details, see **[Reordering Scenes](https://github.com/EricRhysTaylor/Ra
 
 ---
 
-## Documentation
+# Documentation
 
 Detailed guides and references have been moved to the [GitHub Wiki](https://github.com/EricRhysTaylor/Radial-Timeline/wiki).
 
@@ -161,7 +161,7 @@ Detailed guides and references have been moved to the [GitHub Wiki](https://gith
 
 ---
 
-## Installation
+# Installation
 
 **From Obsidian**
 1.  Open settings → community plugins.
@@ -174,14 +174,14 @@ Detailed guides and references have been moved to the [GitHub Wiki](https://gith
 
 <hr>
 
-## Known Conflicts
+# Known Conflicts
 
 *   **Plugin Conflicts**: If you experience visual glitches or strange behavior (such as the timeline overlapping with other UI elements), it may be due to a conflict with another plugin. Try disabling other plugins to isolate the issue. Please see [known plugin conflicts](https://github.com/EricRhysTaylor/Radial-Timeline/issues?q=label%3A%22Plugin+Conflict%22).
 
 
 <hr>
 
-## Feedback and support
+# Feedback and support
 
 Please see the [Github Wiki](https://github.com/EricRhysTaylor/radial-timeline/wiki) for documentation. Also check out the Discussions group at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/discussions" target="_blank" rel="noopener">Discussions</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">Github Repository Issues page</a>. If you find the radial timeline plugin useful and would like to encourage continued development, please consider joining my <a href="https://www.patreon.com/c/EricRhysTaylor" target="_blank" rel="noopener">Patreon</a> or just buying me a coffee:
 
@@ -192,13 +192,13 @@ Please see the [Github Wiki](https://github.com/EricRhysTaylor/radial-timeline/w
 
 <hr>
 
-## Author
+# Author
 
 Created by Eric Rhys Taylor
 
 Reviewed and approved for the Obsidian Community Plugins directory. Developed with best practices and secure API use in mind.
 
-## License & Intellectual Property
+# License & Intellectual Property
 
 Radial Timeline™ © 2025 Eric Rhys Taylor  
 Released under a **Source-Available, Non-Commercial License**.  
@@ -209,7 +209,20 @@ Released under a **Source-Available, Non-Commercial License**.
 
 See the [LICENSE](./LICENSE) and [NOTICE](./NOTICE) files for full details.
 
-## Disclaimer & Limitation of Liability
+# Disclaimer & Limitation of Liability
 
 This software is provided “as is” without warranty of any kind, express or implied.
 The author makes no guarantees regarding performance, reliability, or compatibility with third-party plugins, APIs, or services.
+
+# Acknowledgments and Respect
+
+## Technical implementation
+The radial timeline visualization was inspired by and draws on principles from d3.js.
+*   SVG-based visualization techniques
+*   Data-driven document manipulation
+*   Interactive elements with hover and click behaviors
+*   Radial layouts and polar coordinates
+*   Scale transformations and data mapping
+*   Dynamic color manipulation and pattern generation
+
+Built using pure SVG and javascript, fully compatible with Obsidian's document object model.

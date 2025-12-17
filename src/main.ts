@@ -75,6 +75,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     currentMode: 'narrative', // Default to Narrative mode
     logApiInteractions: true, // <<< ADDED: Default for new setting
     targetCompletionDate: undefined, // Ensure it's undefined by default
+    showCompletionEstimate: true, // Default: show the estimate tick
     openaiApiKey: '', // Default to empty string
     anthropicApiKey: '', // <<< ADDED: Default empty string
     anthropicModelId: 'claude-sonnet-4-5-20250929', // Default to Sonnet 4.5 (20250929)

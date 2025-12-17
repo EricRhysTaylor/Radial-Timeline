@@ -1140,7 +1140,7 @@ export function createTimelineSVG(
 
     // Add tick mark and label for the estimated completion date if available
     // (Moved here to draw AFTER center stats so it appears on top)
-    if (estimateResult) {
+    if (estimateResult && (plugin.settings as any).showCompletionEstimate !== false) {
         svg += renderEstimatedDateElements({ estimateDate: estimateResult.date, progressRadius });
     }
 

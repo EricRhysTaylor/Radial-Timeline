@@ -62,6 +62,10 @@ export interface TranslationKeys {
                 normal: string;
                 large: string;
             };
+            showEstimate: {
+                name: string;
+                desc: string;
+            };
             debounce: {
                 name: string;
                 desc: string;
@@ -237,6 +241,10 @@ export const en: TranslationKeys = {
                 desc: 'Choose a curated font sizing profile for timeline text. Large is tuned for low-res or low-vision viewing; Normal works for standard and high-dpi layouts.',
                 normal: 'Normal',
                 large: 'Large',
+            },
+            showEstimate: {
+                name: 'Show estimated completion date',
+                desc: 'Display a tick mark and label on the timeline for the estimated completion date.',
             },
             debounce: {
                 name: 'Metadata refresh debounce (ms)',
