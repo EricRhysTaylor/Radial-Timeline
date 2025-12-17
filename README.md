@@ -45,7 +45,7 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing t
 3. **Author time**: your scene writing progress with target completion dates from Todo to Complete.
 4. **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
 
-Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Subplot Mode where each subplot gets its own ring and scenes inherit the author-status and publish-stage palette.
+Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Subplot Mode where all scenes is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.
 
 ---
 
@@ -204,17 +204,6 @@ The radial timeline is designed for high pixel density displays (around 200 ppi 
 *   Tablets.
 
 If you're experiencing visual quality issues on Windows, please check your display scaling settings.
-
-### Implementation
-The radial timeline visualization was inspired by and draws on principles from [d3.js](https://d3js.org).
-*   SVG-based visualization techniques
-*   Data-driven document manipulation
-*   Interactive elements with hover and click behaviors
-*   Radial layouts and polar coordinates
-*   Scale transformations and data mapping
-*   Dynamic color manipulation and pattern generation
-
-Built using pure SVG and javascript, fully compatible with Obsidian's document object model.
 
 ## Acknowledgments
 

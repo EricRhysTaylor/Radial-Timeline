@@ -6,14 +6,3 @@ The radial timeline is designed for high pixel density displays (around 200 ppi 
 
 If you're experiencing visual quality issues on Windows, please check your display scaling settings.
 
-## Implementation
-The radial timeline visualization was inspired by and draws on principles from [d3.js](https://d3js.org).
-*   SVG-based visualization techniques
-*   Data-driven document manipulation
-*   Interactive elements with hover and click behaviors
-*   Radial layouts and polar coordinates
-*   Scale transformations and data mapping
-*   Dynamic color manipulation and pattern generation
-
-Built using pure SVG and javascript, fully compatible with Obsidian's document object model.
-
