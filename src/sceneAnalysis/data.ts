@@ -152,7 +152,7 @@ export async function getAllSceneData(plugin: RadialTimelinePlugin, vault: Vault
             try {
                 const fmText = (fmInfo as { frontmatter?: string }).frontmatter ?? '';
                 const rawFrontmatter = fmText ? (parseYaml(fmText) || {}) : {};
-                frontmatter = normalizeFrontmatterKeys(rawFrontmatter);
+                frontmatter = normalizeFrontmatterKeys(rawFrontmatter, plugin.settings.frontmatterMappings);
             } catch {
                 return null;
             }

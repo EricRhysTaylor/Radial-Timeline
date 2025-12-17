@@ -33,6 +33,7 @@ import { renderAiSection } from './sections/AiSection';
 import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
 import { renderPovSection } from './sections/PovSection';
 import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
+import { renderMetadataSection } from './sections/MetadataSection';
 import { validateLocalModelAvailability } from '../api/localAiApi';
 
 declare const EMBEDDED_README_CONTENT: string;
@@ -334,6 +335,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // 1. Source path (from GeneralSection)
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl });
+
+        // Metadata Mapping
+        renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl });
 
         // 2. Publication and Progress section (target date, show estimate, zero draft mode)
         renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl });

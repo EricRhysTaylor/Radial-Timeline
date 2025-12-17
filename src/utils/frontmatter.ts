@@ -14,8 +14,11 @@
  * - publish stage/Publish Stage/PublishStage → Publish Stage
  * - scene number/Scene Number/SceneNumber → Scene Number
  * - etc.
+ * 
+ * @param fm - The raw frontmatter object
+ * @param customMappings - Optional user-defined mappings (User Key -> Canonical Key)
  */
-export function normalizeFrontmatterKeys(fm: Record<string, unknown>): Record<string, unknown> {
+export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMappings?: Record<string, string>): Record<string, unknown> {
   const normalized: Record<string, unknown> = {};
   
   // Define canonical key names (proper case with spaces)
@@ -88,7 +91,20 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>): Record<st
     'beats3': 'beats3',
     'beatslastupdated': 'Pulse Last Updated',
     'pulselastupdated': 'Pulse Last Updated',
+    'when': 'When',
+    'place': 'Place',
+    'title': 'Title',
+    'suggestplacement': 'Suggest Placement'
   };
+  
+  // Merge custom mappings
+  if (customMappings) {
+    for (const [userKey, canonicalKey] of Object.entries(customMappings)) {
+      // Normalize to lowercase, remove spaces and special chars for lookup
+      const normalizedKey = userKey.toLowerCase().replace(/[\s_-]/g, '');
+      keyMappings[normalizedKey] = canonicalKey;
+    }
+  }
   
   // Process each key in the original frontmatter
   for (const [key, value] of Object.entries(fm)) {

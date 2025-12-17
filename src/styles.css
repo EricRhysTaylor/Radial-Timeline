@@ -145,6 +145,11 @@
    ============================================================================= */
 .rt-version-indicator {
   cursor: default;
+  transition: filter 0.2s ease;
+}
+
+.rt-version-indicator:hover {
+  filter: drop-shadow(0 0 5px var(--text-muted));
 }
 
 .rt-version-indicator.rt-has-update {
@@ -173,14 +178,15 @@
   font-size: 20px;
   text-anchor: middle;
   dominant-baseline: baseline;
-  fill: var(--text-normal);
+  fill: var(--text-muted);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition: fill 0.2s ease, opacity 0.2s ease;
 }
 
 .rt-help-icon:hover .rt-help-text {
   opacity: 1;
+  fill: var(--text-normal);
 }
 
 .rt-version-text {
@@ -1090,6 +1096,10 @@
 
 .rt-planetary-time-text {
   fill: var(--text-muted, currentColor);
+}
+
+.rt-planetary-hidden {
+  display: none !important;
 }
 
 .rt-confirm-heading {

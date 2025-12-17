@@ -66,6 +66,7 @@ export interface RadialTimelineSettings {
     enablePlanetaryTime?: boolean;
     planetaryProfiles?: PlanetaryProfile[];
     activePlanetaryProfileId?: string;
+    frontmatterMappings?: Record<string, string>;
 }
 
 export interface PlanetaryProfile {

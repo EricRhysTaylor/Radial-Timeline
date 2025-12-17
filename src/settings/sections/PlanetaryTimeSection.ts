@@ -34,6 +34,8 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     heading.setHeading();
 
     // Feature toggle
+    const visibilityTargets: HTMLElement[] = [];
+
     new Settings(containerEl)
         .setName(t('planetary.enable.name'))
         .setDesc(t('planetary.enable.desc'))
@@ -41,6 +43,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             toggle.setValue(!!plugin.settings.enablePlanetaryTime);
             toggle.onChange(async (value) => {
                 plugin.settings.enablePlanetaryTime = value;
+                applyVisibility(value);
                 await plugin.saveSettings();
             });
         });
@@ -107,6 +110,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     // Profile fields
     const fieldsContainer = containerEl.createDiv({ cls: 'rt-planetary-fields' });
     const previewContainer = containerEl.createDiv({ cls: 'rt-planetary-preview' });
+    visibilityTargets.push(selectorSetting.settingEl, fieldsContainer, previewContainer);
 
     const flash = (input: HTMLInputElement, type: 'success' | 'error') => {
         const successClass = 'rt-setting-input-success';
@@ -225,6 +229,14 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         body.setText(result.formatted);
     };
 
+    const applyVisibility = (enabled: boolean) => {
+        visibilityTargets.forEach(el => {
+            if (!el) return;
+            el.classList.toggle('rt-planetary-hidden', !enabled);
+        });
+    };
+
     renderFields();
     renderPreview();
+    applyVisibility(!!plugin.settings.enablePlanetaryTime);
 }

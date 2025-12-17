@@ -12,7 +12,7 @@
  */
 
 import { App, TFile } from 'obsidian';
-import type { TimelineItem } from '../types';
+import type { TimelineItem, RadialTimelineSettings } from '../types';
 import { normalizeFrontmatterKeys } from '../utils/frontmatter';
 import { parseWhenField } from '../utils/date';
 import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
@@ -21,12 +21,6 @@ import { filterBeatsBySystem } from '../utils/gossamer';
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
-}
-
-export interface RadialTimelineSettings {
-    sourcePath: string;
-    beatSystem?: string;
-    dominantSubplots?: Record<string, string>;
 }
 
 const PULSE_FLAG_METADATA_KEYS = [
@@ -88,7 +82,7 @@ export class SceneDataService {
         for (const file of files) {
             try {
             const rawMetadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
-                const metadata = rawMetadata ? normalizeFrontmatterKeys(rawMetadata) : undefined;
+                const metadata = rawMetadata ? normalizeFrontmatterKeys(rawMetadata, this.settings.frontmatterMappings) : undefined;
                 
                 if (metadata && metadata.Class === "Scene") {
                     // Parse the When field using the centralized parser (single source of truth)

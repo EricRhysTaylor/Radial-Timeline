@@ -102,7 +102,7 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
     const rawVersionText = hasUpdate ? 'NEW RELEASE' : version;
     const versionText = rawVersionText.trim() || rawVersionText;
 
-    const actionText = hasUpdate ? 'Update to Latest Version' : 'Report Bug';
+    const actionText = hasUpdate ? 'UPDATE TO LATEST VERSION' : 'REPORT BUG';
 
     const versionTextHalfWidth = estimateTextHalfWidth(versionText);
     const actionTextHalfWidth = estimateTextHalfWidth(actionText);
