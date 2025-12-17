@@ -187,15 +187,19 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         };
 
         addTextField(t('planetary.fields.profileName'), 'label');
-        addNumberField(t('planetary.fields.hoursPerDay'), 'hoursPerDay', 'e.g., 17.25');
-        addNumberField(t('planetary.fields.daysPerWeek'), 'daysPerWeek', 'e.g., 12');
-        addNumberField(t('planetary.fields.daysPerYear'), 'daysPerYear', 'e.g., 480');
-        addNumberField(t('planetary.fields.epochOffset'), 'epochOffsetDays', 'Shift the conversion reference point.');
-        addTextField(t('planetary.fields.epochLabel'), 'epochLabel', 'Displayed before the year, e.g., “AE” or “Era of Storms”.');
+        addNumberField(t('planetary.fields.hoursPerDay'), 'hoursPerDay', 'Length of a local day in Earth hours (e.g., 17 or 30).');
+        addNumberField(t('planetary.fields.daysPerWeek'), 'daysPerWeek', 'Local days in a week (e.g., 12).');
+        addNumberField(t('planetary.fields.daysPerYear'), 'daysPerYear', 'Local days in a year (e.g., 480).');
+        addNumberField(
+            t('planetary.fields.epochOffset'),
+            'epochOffsetDays',
+            'Shift Year 1, Day 1 by Earth days (0 = 1970-01-01, +365 ≈ 1971-01-01, -30 ≈ 1969-12-02, today 2025-12-17 ≈ 20,449). 1970 is the Unix epoch reference point.'
+        );
+        addTextField(t('planetary.fields.epochLabel'), 'epochLabel', 'Shown before YEAR (e.g., “CF”, “Era of Storms”).');
 
         new Settings(fieldsContainer)
             .setName(t('planetary.fields.monthNames'))
-            .setDesc('Optional. If empty, generic month numbers are used.')
+            .setDesc('Optional. Year divides evenly across these months; fewer names = fewer months. Leave blank for numbered months.')
             .addText((text: TextComponent) => {
                 text.setValue((profile.monthNames || []).join(', '));
                 text.onChange(async (value) => {
@@ -206,7 +210,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
 
         new Settings(fieldsContainer)
             .setName(t('planetary.fields.weekdayNames'))
-            .setDesc('Optional. If empty, generic weekday numbers are used.')
+            .setDesc('Optional. Sets weekday labels; leave blank for numbered weekdays.')
             .addText((text: TextComponent) => {
                 text.setValue((profile.weekdayNames || []).join(', '));
                 text.onChange(async (value) => {
@@ -241,4 +245,8 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     renderFields();
     renderPreview();
     applyVisibility(!!plugin.settings.enablePlanetaryTime);
+
+    // Author tips
+    const tips = containerEl.createDiv({ cls: 'setting-item-description' });
+    tips.setText('Author tips: keep Earth as the planning source, use the profile label to match your world calendar, set epoch offset to align Year 1 to a story milestone, and jot orbital quirks in scene notes.');
 }

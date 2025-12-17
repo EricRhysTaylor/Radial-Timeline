@@ -100,6 +100,9 @@ export class PlanetaryTimeModal extends Modal {
             .onClick(() => this.renderResult());
         convertBtn.buttonEl.classList.add('rt-planetary-convert-btn');
 
+        const helper = contentEl.createDiv({ cls: 'setting-item-description' });
+        helper.setText('Epoch offset tip: 0 = 1970-01-01 (Unix epoch). Today (2025-12-17) is about +20,449 days. Positive moves Year 1 forward; negative moves it backward.');
+
         this.resultEl = contentEl.createDiv({ cls: 'rt-planetary-modal-result' });
         this.renderResult();
     }

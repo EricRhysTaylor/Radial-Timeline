@@ -10,6 +10,7 @@
     *   [[View Modes]]
     *   [[YAML Frontmatter]]
     *   [[Settings]]
-*   **Technical & FAQ**
+*   **Technical & Help**
     *   [[Technical]]
+    *   [[Acknowledgments]]
     *   [[FAQ]]

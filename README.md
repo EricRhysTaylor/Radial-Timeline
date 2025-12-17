@@ -23,7 +23,7 @@
 	<a href="https://github.com/EricRhysTaylor/radial-timeline/blob/master/LICENSE" target="_blank" rel="noopener"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=Non-Commercial&colorA=363a4f&colorB=b7bdf8" alt="Non-Commercial license"/></a>
 </p>
 
-<hr style="margin-bottom: 20px;">
+---
 
 
 The manuscript visualization plugin for Obsidian.
@@ -47,7 +47,7 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing t
 
 Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Subplot Mode where each subplot gets its own ring and scenes inherit the author-status and publish-stage palette.
 
-<hr>
+---
 
 # Visual Overview
 
@@ -158,6 +158,9 @@ Detailed guides and references have been moved to the [GitHub Wiki](https://gith
 *   **[View Modes](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/View-Modes)**: Detailed explanation of Narrative, Subplot, and other modes.
 *   **[YAML Reference](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/YAML-Frontmatter)**: Complete guide to scene and beat frontmatter.
 *   **[Settings Guide](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Settings)**: Configuration options explained.
+*   **[Technical](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Technical)**: Screen resolution and implementation details.
+*   **[Acknowledgments](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Acknowledgments)**: Credits and inspirations.
+*   **[FAQ](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/FAQ)**: Frequently asked questions.
 
 ---
 
@@ -172,14 +175,14 @@ Detailed guides and references have been moved to the [GitHub Wiki](https://gith
 1.  Download the latest main.js, styles.css, and manifest.json from the <a href="https://github.com/EricRhysTaylor/radial-timeline/releases" target="_blank" rel="noopener">releases</a> page.
 2.  Extract the files to your vault's .obsidian/plugins/radial-timeline (may be hidden by file system)
 
-<hr>
+---
 
 # Known Conflicts
 
 *   **Plugin Conflicts**: If you experience visual glitches or strange behavior (such as the timeline overlapping with other UI elements), it may be due to a conflict with another plugin. Try disabling other plugins to isolate the issue. Please see [known plugin conflicts](https://github.com/EricRhysTaylor/Radial-Timeline/issues?q=label%3A%22Plugin+Conflict%22).
 
 
-<hr>
+---
 
 # Feedback and support
 
@@ -190,7 +193,40 @@ Please see the [Github Wiki](https://github.com/EricRhysTaylor/radial-timeline/w
 &nbsp;&nbsp;&nbsp;&nbsp;
 <a href='https://ko-fi.com/Z8Z21NMQRN' target='_blank'><img style='border:0px;width:150px;' src='https://storage.ko-fi.com/cdn/kofi4.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
-<hr>
+---
+
+# Technical Notes
+
+## Screen Resolution
+The radial timeline is designed for high pixel density displays (around 200 ppi or higher) for optimal visual quality.
+*   All Apple Retina displays — 2x pixel density.
+*   Recommend Windows systems with 4k displays or higher. (Tested on 1080p 2550x1440)
+*   Tablets.
+
+If you're experiencing visual quality issues on Windows, please check your display scaling settings.
+
+## Implementation
+The radial timeline visualization was inspired by and draws on principles from [d3.js](https://d3js.org).
+*   SVG-based visualization techniques
+*   Data-driven document manipulation
+*   Interactive elements with hover and click behaviors
+*   Radial layouts and polar coordinates
+*   Scale transformations and data mapping
+*   Dynamic color manipulation and pattern generation
+
+Built using pure SVG and javascript, fully compatible with Obsidian's document object model.
+
+# Acknowledgments
+
+*   [d3.js](https://d3js.org) — pioneering data-driven, SVG-based visualization patterns that informed the radial layout, scales, and interaction patterns.
+*   [Save the Cat! Writes a Novel](https://www.jessicabrody.com/books/non-fiction/save-cat-writes-novel/about/) (2018), Jessica Brody — a practical articulation of the Save the Cat beats.
+*   [The Story Grid](https://storygrid.com), Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow.
+*   [Obsidian](https://obsidian.md) — for a thriving plugin ecosystem and thoughtful feature development.
+*   [W3C SVG specification](https://www.w3.org/Graphics/SVG/) — for making vector graphics on the web dependable.
+*   **04 Font** by Yuji Oshimoto — a beautiful Japanese freeware font. © 1998–2003 Yuji Oshimoto. [04.jp.org](http://www.04.jp.org/)
+    <br>このフォントはフリーウェアです。非営利目的での配布、譲渡、転載は自由ですが、作者の許可なく販売したり、営利目的の製品に添付する事は固く禁じさせて頂きます。なお、このフォントを使用していかなる損害についても作者は責任を負わないものとします。御意見、御感想などよろしければメールください。
+
+---
 
 # Author
 
@@ -205,24 +241,11 @@ Released under a **Source-Available, Non-Commercial License**.
 
 - You may view, install, and use this plugin for personal or educational purposes.
 - Commercial use, redistribution, or creation of derivative works using this source code is prohibited without written permission.
-- The “Radial Timeline” name is a trademark of Eric Rhys Taylor.  
+- The "Radial Timeline" name is a trademark of Eric Rhys Taylor.  
 
 See the [LICENSE](./LICENSE) and [NOTICE](./NOTICE) files for full details.
 
 # Disclaimer & Limitation of Liability
 
-This software is provided “as is” without warranty of any kind, express or implied.
+This software is provided "as is" without warranty of any kind, express or implied.
 The author makes no guarantees regarding performance, reliability, or compatibility with third-party plugins, APIs, or services.
-
-# Acknowledgments and Respect
-
-## Technical implementation
-The radial timeline visualization was inspired by and draws on principles from d3.js.
-*   SVG-based visualization techniques
-*   Data-driven document manipulation
-*   Interactive elements with hover and click behaviors
-*   Radial layouts and polar coordinates
-*   Scale transformations and data mapping
-*   Dynamic color manipulation and pattern generation
-
-Built using pure SVG and javascript, fully compatible with Obsidian's document object model.

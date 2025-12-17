@@ -1096,6 +1096,10 @@
 
 .rt-planetary-time-text {
   fill: var(--text-muted, currentColor);
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px dashed var(--text-muted, currentColor);
+  border-radius: 6px;
 }
 
 .rt-planetary-hidden {
