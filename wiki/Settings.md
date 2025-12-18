@@ -21,6 +21,16 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 *   **Contextual Prompt**: Customize AI analysis prompts.
 *   **API Logging**: Track AI interactions.
 
+### Planetary Time (Experimental)
+*   **Enable planetary time**: Toggle to show planetary time features.
+*   **Active Profile**: Select which custom calendar to use for conversions.
+*   **Profiles**: Create and manage multiple calendar systems (e.g., "Mars", "Fantasy Realm").
+    *   **Hours per day**: Length of a local day in Earth hours.
+    *   **Days per week**: Number of days in a local week.
+    *   **Days per year**: Number of local days in a local year.
+    *   **Epoch Offset**: Number of Earth days to shift the start of your calendar (relative to 1970-01-01).
+    *   **Month/Weekday Names**: Comma-separated lists of custom names.
+
 ### Advanced
 *   **Auto-expand clipped scene titles**: Disable to prevent scene title expansion on hover.
 *   **Metadata refresh debounce (ms)**: Delay before refreshing timeline after YAML frontmatter changes.

@@ -41,7 +41,7 @@ Radial Timeline™ arranges your scenes by act, subplot, narrative or chronologi
 Radial Timeline™ captures and visualizes all 4 critical timelines, revealing the big picture as your manuscript evolves from the nucleus of an idea to the final polished novel.
 
 1. **Narrative time**: the sequence you reveal events to readers.
-2. **Chronological time**: when events happen in your story's world.
+2. **Chronological time**: when events happen in your story's world. (Includes experimental Planetary Time calculator for sci-fi/fantasy calendars).
 3. **Author time**: your scene writing progress with target completion dates from Todo to Complete.
 4. **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
 

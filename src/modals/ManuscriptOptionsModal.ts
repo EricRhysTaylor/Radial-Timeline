@@ -73,17 +73,17 @@ export class ManuscriptOptionsModal extends Modal {
 
     // Layout -----------------------------------------------------------------
     private renderSkeleton(container: HTMLElement): void {
-        const hero = container.createDiv({ cls: 'rt-pulse-progress-hero' });
-        hero.createSpan({ cls: 'rt-pulse-hero-badge', text: 'Manuscript' });
-        hero.createEl('h2', {
-            cls: 'rt-pulse-progress-heading',
+        const hero = container.createDiv({ cls: 'rt-gossamer-simple-header' });
+        hero.createSpan({ cls: 'rt-gossamer-simple-badge', text: 'Manuscript' });
+        hero.createDiv({
+            cls: 'rt-gossamer-hero-system',
             text: t('manuscriptModal.title')
         });
         hero.createDiv({
-            cls: 'rt-pulse-progress-subtitle',
+            cls: 'rt-gossamer-score-subtitle',
             text: t('manuscriptModal.description')
         });
-        this.heroMetaEl = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
+        this.heroMetaEl = hero.createDiv({ cls: 'rt-gossamer-simple-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
 
         const tocCard = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });

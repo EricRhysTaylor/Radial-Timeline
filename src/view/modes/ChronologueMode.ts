@@ -12,7 +12,6 @@ import { openOrRevealFile } from '../../utils/fileUtils';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
 import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorManager';
-import { convertFromEarth, getActivePlanetaryProfile } from '../../utils/planetaryTime';
 
 export interface ChronologueView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
@@ -49,9 +48,6 @@ export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement):
     
     // Scene click interactions (will delegate to shift mode if active)
     setupSceneClickInteractions(view, svg);
-
-    // Local time tooltip (Alt/Option)
-    setupPlanetaryTooltip(view, svg);
 }
 
 /**
@@ -404,75 +400,6 @@ function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement):
                 await openOrRevealFile((view.plugin as any).app, file);
             }
         }
-    });
-}
-
-function setupPlanetaryTooltip(view: ChronologueView, svg: SVGSVGElement): void {
-    if (view.currentMode !== 'chronologue') return;
-    const plugin: any = view.plugin; // SAFE: any type used for view augmentation by Obsidian/other modules
-
-    const sceneList: TimelineItem[] = (view.sceneData || (view as any).scenes || []) as TimelineItem[];
-    const sceneByPath = new Map<string, TimelineItem>();
-    sceneList.forEach(scene => {
-        if (scene.path) {
-            sceneByPath.set(scene.path, scene);
-        }
-    });
-
-    const tooltip = document.createElement('div');
-    tooltip.classList.add('rt-planetary-tooltip');
-    // SAFE: inline style used for tooltip visibility
-    tooltip.style.display = 'none'; // SAFE: inline style used for tooltip visibility
-    tooltip.style.position = 'fixed'; // SAFE: inline style used for tooltip positioning
-    tooltip.style.pointerEvents = 'none'; // SAFE: inline style used for tooltip interaction
-    (svg.parentElement ?? document.body).appendChild(tooltip);
-
-    const hide = () => {
-        // SAFE: inline style used for tooltip visibility
-        tooltip.style.display = 'none'; // SAFE: inline style used for tooltip visibility
-    };
-
-    view.registerDomEvent(svg as unknown as HTMLElement, 'pointermove', (e: PointerEvent) => {
-        const profile = getActivePlanetaryProfile(plugin.settings);
-        if (!profile) {
-            hide();
-            return;
-        }
-        if (!e.altKey) {
-            hide();
-            return;
-        }
-        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
-        if (!g) {
-            hide();
-            return;
-        }
-        const encoded = g.getAttribute('data-path');
-        if (!encoded) {
-            hide();
-            return;
-        }
-        const path = decodeURIComponent(encoded);
-        const scene = sceneByPath.get(path);
-        if (!scene || !scene.when) {
-            hide();
-            return;
-        }
-        const conversion = convertFromEarth(scene.when, profile);
-        if (!conversion) {
-            hide();
-            return;
-        }
-        tooltip.textContent = conversion.formatted;
-        // SAFE: inline style used for tooltip visibility
-        tooltip.style.display = 'block'; // SAFE: inline style used for tooltip visibility
-        tooltip.style.left = `${e.clientX + 12}px`; // SAFE: inline style used for tooltip positioning
-        tooltip.style.top = `${e.clientY + 12}px`; // SAFE: inline style used for tooltip positioning
-    });
-
-    view.registerDomEvent(svg as unknown as HTMLElement, 'pointerleave', hide);
-    view.registerDomEvent(window as unknown as HTMLElement, 'keyup', (e: KeyboardEvent) => {
-        if (e.key.toLowerCase() === 'alt') hide();
     });
 }
 
