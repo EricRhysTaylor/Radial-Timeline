@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "version": "4.5.0",
+      "title": "4.5.0",
+      "body": "## What's Changed\n\n### ✨ New Features\n- Enhancements 1) Restructured Gossamer Momentum Modal 2) Added Custom Metadata key remapping 3) added Alien Calendar system with modal calculator and Scene Synopsis Peek Line 4) Added more wiki and Readme documentation 5) Manuscript Generation Modal with various options ([6267936](https://github.com/EricRhysTaylor/Radial-Timeline/commit/62679364d75c4043ecec9d2ec0e65da826ba1ede))\n- Documents: added link to youtube video introducing Chronologue Mode ([20cd617](https://github.com/EricRhysTaylor/Radial-Timeline/commit/20cd617c98a750aa1b2360b0a2a83282e3157de6))\n\n### 📚 Documentation\n- docs: clarify drag and drop limitation in How-to.md ([6989f73](https://github.com/EricRhysTaylor/Radial-Timeline/commit/6989f73faa5e7b6b783ffaeea7f89f22f5e6a07e))\n\n### 🔧 Maintenance\n- Enhancements: Give Generate Manuscript full ability to present Narrative, Chronologue in reverse order and within ranges as desired ([eea95f9](https://github.com/EricRhysTaylor/Radial-Timeline/commit/eea95f90d17043ff67d7e65fe373e7906986a862))\n\n### 🛠 Other Changes\n- Design: fine tune the Alien Calendar text presentation in synopsis ([e367929](https://github.com/EricRhysTaylor/Radial-Timeline/commit/e36792935a7ff19d234a811bb2ed01efa2c2d705))\n- src/data/patreonStats.json ([8b16547](https://github.com/EricRhysTaylor/Radial-Timeline/commit/8b165475d8ffe4ad250c73d87aa6116bcf86cb32))",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.5.0",
+      "publishedAt": "2025-12-18T21:39:19.735Z"
+    },
+    {
       "version": "4.4.2",
       "title": "4.4.2",
       "body": "## What's Changed\r\n\r\nRefined Feature - Move Scene in Narrative Mode improved with subplot coloring for arc and elevated modal layout with icons. \r\n\r\nBug - Fixed in the Chronologue mode, where the subplot has only one scene and the title fails to appear. ([75fba10](https://github.com/EricRhysTaylor/Radial-Timeline/commit/75fba108a013a02ab92d8a6248c3a43415d059bc))",
@@ -80,13 +87,27 @@
     "publishedAt": "2025-11-05T20:39:14Z"
   },
   "latest": {
-    "version": "4.4.2",
-    "title": "4.4.2",
-    "body": "## What's Changed\r\n\r\nRefined Feature - Move Scene in Narrative Mode improved with subplot coloring for arc and elevated modal layout with icons. \r\n\r\nBug - Fixed in the Chronologue mode, where the subplot has only one scene and the title fails to appear. ([75fba10](https://github.com/EricRhysTaylor/Radial-Timeline/commit/75fba108a013a02ab92d8a6248c3a43415d059bc))",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.2",
-    "publishedAt": "2025-12-13T21:28:48Z"
+    "version": "4.5.0",
+    "title": "4.5.0",
+    "body": "## What's Changed\n\n### ✨ New Features\n- Enhancements 1) Restructured Gossamer Momentum Modal 2) Added Custom Metadata key remapping 3) added Alien Calendar system with modal calculator and Scene Synopsis Peek Line 4) Added more wiki and Readme documentation 5) Manuscript Generation Modal with various options ([6267936](https://github.com/EricRhysTaylor/Radial-Timeline/commit/62679364d75c4043ecec9d2ec0e65da826ba1ede))\n- Documents: added link to youtube video introducing Chronologue Mode ([20cd617](https://github.com/EricRhysTaylor/Radial-Timeline/commit/20cd617c98a750aa1b2360b0a2a83282e3157de6))\n\n### 📚 Documentation\n- docs: clarify drag and drop limitation in How-to.md ([6989f73](https://github.com/EricRhysTaylor/Radial-Timeline/commit/6989f73faa5e7b6b783ffaeea7f89f22f5e6a07e))\n\n### 🔧 Maintenance\n- Enhancements: Give Generate Manuscript full ability to present Narrative, Chronologue in reverse order and within ranges as desired ([eea95f9](https://github.com/EricRhysTaylor/Radial-Timeline/commit/eea95f90d17043ff67d7e65fe373e7906986a862))\n\n### 🛠 Other Changes\n- Design: fine tune the Alien Calendar text presentation in synopsis ([e367929](https://github.com/EricRhysTaylor/Radial-Timeline/commit/e36792935a7ff19d234a811bb2ed01efa2c2d705))\n- src/data/patreonStats.json ([8b16547](https://github.com/EricRhysTaylor/Radial-Timeline/commit/8b165475d8ffe4ad250c73d87aa6116bcf86cb32))",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.5.0",
+    "publishedAt": "2025-12-18T21:39:19.735Z"
   },
   "patches": [
+    {
+      "version": "4.5.0",
+      "title": "4.5.0",
+      "body": "## What's Changed\n\n### ✨ New Features\n- Enhancements 1) Restructured Gossamer Momentum Modal 2) Added Custom Metadata key remapping 3) added Alien Calendar system with modal calculator and Scene Synopsis Peek Line 4) Added more wiki and Readme documentation 5) Manuscript Generation Modal with various options ([6267936](https://github.com/EricRhysTaylor/Radial-Timeline/commit/62679364d75c4043ecec9d2ec0e65da826ba1ede))\n- Documents: added link to youtube video introducing Chronologue Mode ([20cd617](https://github.com/EricRhysTaylor/Radial-Timeline/commit/20cd617c98a750aa1b2360b0a2a83282e3157de6))\n\n### 📚 Documentation\n- docs: clarify drag and drop limitation in How-to.md ([6989f73](https://github.com/EricRhysTaylor/Radial-Timeline/commit/6989f73faa5e7b6b783ffaeea7f89f22f5e6a07e))\n\n### 🔧 Maintenance\n- Enhancements: Give Generate Manuscript full ability to present Narrative, Chronologue in reverse order and within ranges as desired ([eea95f9](https://github.com/EricRhysTaylor/Radial-Timeline/commit/eea95f90d17043ff67d7e65fe373e7906986a862))\n\n### 🛠 Other Changes\n- Design: fine tune the Alien Calendar text presentation in synopsis ([e367929](https://github.com/EricRhysTaylor/Radial-Timeline/commit/e36792935a7ff19d234a811bb2ed01efa2c2d705))\n- src/data/patreonStats.json ([8b16547](https://github.com/EricRhysTaylor/Radial-Timeline/commit/8b165475d8ffe4ad250c73d87aa6116bcf86cb32))",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.5.0",
+      "publishedAt": "2025-12-18T21:39:19.735Z"
+    },
+    {
+      "version": "4.4.2",
+      "title": "4.4.2",
+      "body": "## What's Changed\r\n\r\nRefined Feature - Move Scene in Narrative Mode improved with subplot coloring for arc and elevated modal layout with icons. \r\n\r\nBug - Fixed in the Chronologue mode, where the subplot has only one scene and the title fails to appear. ([75fba10](https://github.com/EricRhysTaylor/Radial-Timeline/commit/75fba108a013a02ab92d8a6248c3a43415d059bc))",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.2",
+      "publishedAt": "2025-12-13T21:28:48Z"
+    },
     {
       "version": "4.4.1",
       "title": "4.4.1",
