@@ -1,6 +1,7 @@
 import { Notice, App } from 'obsidian';
 import { applySceneNumberUpdates, type SceneUpdate } from '../../services/SceneReorderService';
 import { DragConfirmModal } from '../../modals/DragConfirmModal';
+import { DRAG_DROP_ARC_RADIUS, DRAG_DROP_TICK_OUTER_RADIUS } from '../../renderer/layout/LayoutConstants';
 
 export interface OuterRingViewAdapter {
     plugin: { app: App; settings: Record<string, unknown> };
@@ -173,19 +174,29 @@ export class OuterRingDragController {
 
     private updateDropTick(startAngle: number, outerR: number, color?: string): void {
         const tickLen = 18;
-        const r1 = outerR;
-        const r2 = outerR + tickLen;
+        // Use constant for outer tip radius
+        const r2 = DRAG_DROP_TICK_OUTER_RADIUS;
+        const r1 = r2 - tickLen;
         const x1 = r1 * Math.cos(startAngle);
         const y1 = r1 * Math.sin(startAngle);
         const x2 = r2 * Math.cos(startAngle);
         const y2 = r2 * Math.sin(startAngle);
         const tick = this.ensureDropTick();
         tick.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
-        if (color) tick.setAttribute('stroke', color);
+        // Apply color directly to the element style to override CSS class
+        if (color) {
+            tick.style.stroke = color;
+            tick.removeAttribute('stroke'); // remove attribute in favor of style
+        } else {
+            tick.style.removeProperty('stroke');
+        }
     }
 
     private updateDropArc(startAngle: number, endAngle: number, radius: number, color?: string): void {
         const arc = this.ensureDropArc();
+        // Use constant for arc radius instead of dynamic calculation
+        const rArc = DRAG_DROP_ARC_RADIUS;
+
         const norm = (a: number) => {
             while (a < -Math.PI) a += Math.PI * 2;
             while (a > Math.PI) a -= Math.PI * 2;
@@ -196,12 +207,18 @@ export class OuterRingDragController {
         const delta = norm(a1 - a0);
         const largeArc = Math.abs(delta) > Math.PI ? 1 : 0;
         const sweep = delta >= 0 ? 1 : 0;
-        const x0 = radius * Math.cos(a0);
-        const y0 = radius * Math.sin(a0);
-        const x1p = radius * Math.cos(a1);
-        const y1p = radius * Math.sin(a1);
-        arc.setAttribute('d', `M ${x0} ${y0} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${x1p} ${y1p}`);
-        if (color) arc.setAttribute('stroke', color);
+        const x0 = rArc * Math.cos(a0);
+        const y0 = rArc * Math.sin(a0);
+        const x1p = rArc * Math.cos(a1);
+        const y1p = rArc * Math.sin(a1);
+        arc.setAttribute('d', `M ${x0} ${y0} A ${rArc} ${rArc} 0 ${largeArc} ${sweep} ${x1p} ${y1p}`);
+        // Apply color directly to the element style to override CSS class
+        if (color) {
+            arc.style.stroke = color;
+            arc.removeAttribute('stroke'); // remove attribute in favor of style
+        } else {
+            arc.style.removeProperty('stroke');
+        }
     }
 
     private resetState(): void {

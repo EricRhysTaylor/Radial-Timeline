@@ -36,7 +36,7 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
     *   **Month/Weekday Names**: Comma-separated lists of custom names.
 
 ### Advanced
-*   **Auto-expand clipped scene titles**: Disable to prevent scene title expansion on hover.
+*   **Auto-expand clipped scene titles**: Disable to prevent scene title expansion on hover. FYI: May make scene drag-and-drop a bit challenging as the scene will expand thus changing the location of the number square drag hotspot.
 *   **Show completion estimate**: Toggle the predicted completion date tick on the timeline (based on your writing pace).
 *   **Timeline readability scale**: Choose between normal and large UI elements for high-resolution displays.
 *   **Metadata refresh debounce (ms)**: Delay before refreshing timeline after YAML frontmatter changes.

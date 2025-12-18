@@ -421,6 +421,11 @@ async function performBuildAndUpload(version, isDraft = false) {
 async function main() {
     console.log("🚀 Obsidian Plugin Release Process\n");
 
+    // Update Patreon Stats if token is present
+    if (process.env.PATREON_ACCESS_TOKEN) {
+        runCommand('npm run update-patreon', 'Updating Patreon stats', true, true);
+    }
+
     try {
         const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
         if (branch !== 'master') {
