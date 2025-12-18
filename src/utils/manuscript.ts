@@ -25,6 +25,8 @@ export interface ManuscriptSceneSelection {
   files: TFile[];
   sortOrder: string;
   titles: string[];
+  whenDates: (string | null)[];
+  sceneNumbers: number[];
 }
  
 export type TocMode = 'markdown' | 'plain' | 'none';
@@ -162,13 +164,26 @@ export async function getSceneFilesByOrder(
     }
   }
 
-  const files = sortedScenes
-    .map(scene => (scene.path ? plugin.app.vault.getAbstractFileByPath(scene.path) : null))
-    .filter((file): file is TFile => file instanceof TFile);
+  const files: TFile[] = [];
+  const titles: string[] = [];
+  const whenDates: (string | null)[] = [];
+  const sceneNumbers: number[] = [];
 
-  const titles = files.map(file => file.basename);
+  for (const scene of sortedScenes) {
+    if (!scene.path) continue;
+    const file = plugin.app.vault.getAbstractFileByPath(scene.path);
+    if (!(file instanceof TFile)) continue;
+    files.push(file);
+    titles.push(file.basename);
+    whenDates.push(scene.when ? formatWhenDate(scene.when) : null);
+    sceneNumbers.push(scene.number ?? 0);
+  }
 
-  return { files, sortOrder, titles };
+  return { files, sortOrder, titles, whenDates, sceneNumbers };
+}
+
+function formatWhenDate(date: Date): string {
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 /**

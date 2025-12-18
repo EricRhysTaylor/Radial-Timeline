@@ -23,6 +23,8 @@ export class ManuscriptOptionsModal extends Modal {
     private tocMode: TocMode = 'markdown';
 
     private sceneTitles: string[] = [];
+    private sceneWhenDates: (string | null)[] = [];
+    private sceneNumbers: number[] = [];
     private totalScenes = 0;
     private rangeStart = 1;
     private rangeEnd = 1;
@@ -193,9 +195,11 @@ export class ManuscriptOptionsModal extends Modal {
         const onPointerMove = (evt: PointerEvent) => {
             if (!this.trackEl || !this.activeHandle || this.totalScenes === 0) return;
             const rect = this.trackEl.getBoundingClientRect();
-            const ratio = (evt.clientX - rect.left) / rect.width;
-            const clampedRatio = Math.min(Math.max(ratio, 0), 1);
-            const position = this.ratioToIndex(clampedRatio);
+            let ratio = (evt.clientX - rect.left) / rect.width;
+            ratio = Math.min(Math.max(ratio, 0), 1);
+            // In reverse mode, invert the ratio so left = high number, right = low number
+            if (this.isReverseOrder()) ratio = 1 - ratio;
+            const position = this.ratioToIndex(ratio);
             this.updateRangeFromDrag(this.activeHandle, position);
         };
 
@@ -207,10 +211,15 @@ export class ManuscriptOptionsModal extends Modal {
 
         const attach = (handle: HTMLElement, handleType: DragHandle) => {
             handle.onpointerdown = (evt: PointerEvent) => {
-                this.activeHandle = handleType;
+                // In reverse mode, swap handle assignments: left handle = 'end', right handle = 'start'
+                const effectiveHandle = this.isReverseOrder()
+                    ? (handleType === 'start' ? 'end' : 'start')
+                    : handleType;
+                this.activeHandle = effectiveHandle;
                 window.addEventListener('pointermove', onPointerMove);
                 window.addEventListener('pointerup', onPointerUp, { once: true });
                 evt.preventDefault();
+                evt.stopPropagation(); // Prevent track from also receiving this event
             };
         };
 
@@ -219,11 +228,16 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.trackEl.onpointerdown = (evt: PointerEvent) => {
             const rect = this.trackEl!.getBoundingClientRect();
-            const ratio = (evt.clientX - rect.left) / rect.width;
-            const position = this.ratioToIndex(Math.min(Math.max(ratio, 0), 1));
+            let ratio = (evt.clientX - rect.left) / rect.width;
+            ratio = Math.min(Math.max(ratio, 0), 1);
+            // In reverse mode, invert position calculation
+            if (this.isReverseOrder()) ratio = 1 - ratio;
+            const position = this.ratioToIndex(ratio);
             const distStart = Math.abs(position - this.rangeStart);
             const distEnd = Math.abs(position - this.rangeEnd);
-            const target: DragHandle = distStart <= distEnd ? 'start' : 'end';
+            let target: DragHandle = distStart <= distEnd ? 'start' : 'end';
+            // In reverse mode, swap the target as well
+            if (this.isReverseOrder()) target = target === 'start' ? 'end' : 'start';
             this.updateRangeFromDrag(target, position);
         };
 
@@ -243,8 +257,10 @@ export class ManuscriptOptionsModal extends Modal {
     // Data loading -----------------------------------------------------------
     private async loadScenesForOrder(): Promise<void> {
         try {
-            const { titles } = await getSceneFilesByOrder(this.plugin, this.order);
+            const { titles, whenDates, sceneNumbers } = await getSceneFilesByOrder(this.plugin, this.order);
             this.sceneTitles = titles;
+            this.sceneWhenDates = whenDates;
+            this.sceneNumbers = sceneNumbers;
             this.totalScenes = titles.length;
             this.rangeStart = 1;
             this.rangeEnd = Math.max(1, this.totalScenes);
@@ -278,11 +294,32 @@ export class ManuscriptOptionsModal extends Modal {
         this.updateRangeUI();
     }
 
+    private isReverseOrder(): boolean {
+        return this.order === 'reverse-narrative' || this.order === 'reverse-chronological';
+    }
+
+    private isChronologicalOrder(): boolean {
+        return this.order === 'chronological' || this.order === 'reverse-chronological';
+    }
+
+    private getSceneNumberAt(position: number): number {
+        // Convert 1-based position to 0-based index and get scene number
+        const index = Math.max(0, Math.min(position - 1, this.sceneNumbers.length - 1));
+        return this.sceneNumbers[index] ?? position;
+    }
+
     private syncRangeAvailability(): void {
+        const isReverse = this.isReverseOrder();
+        // Get actual scene numbers for the range boundaries
+        const startSceneNum = this.getSceneNumberAt(this.rangeStart);
+        const endSceneNum = this.getSceneNumberAt(this.rangeEnd);
+        // For reverse mode, display high number first (left) then low number (right)
+        const displayStart = isReverse ? endSceneNum : startSceneNum;
+        const displayEnd = isReverse ? startSceneNum : endSceneNum;
         this.rangeStatusEl?.setText(
             t('manuscriptModal.rangeStatus', {
-                start: this.rangeStart,
-                end: this.rangeEnd,
+                start: displayStart,
+                end: displayEnd,
                 total: this.totalScenes,
                 count: this.rangeEnd - this.rangeStart + 1
             })
@@ -296,22 +333,32 @@ export class ManuscriptOptionsModal extends Modal {
         const startPercent = this.totalScenes === 1 ? 0 : ((this.rangeStart - 1) / (this.totalScenes - 1)) * 100;
         const endPercent = this.totalScenes === 1 ? 100 : ((this.rangeEnd - 1) / (this.totalScenes - 1)) * 100;
 
-        this.startHandleEl.style.left = `${startPercent}%`;
-        this.endHandleEl.style.left = `${endPercent}%`;
-        this.rangeFillEl.style.left = `${startPercent}%`;
-        this.rangeFillEl.style.width = `${Math.max(endPercent - startPercent, 1)}%`; // SAFE: inline style used for live drag track sizing
+        if (this.isReverseOrder()) {
+            // In reverse mode: left handle = rangeEnd (inverted), right handle = rangeStart (inverted)
+            const leftPos = 100 - endPercent;
+            const rightPos = 100 - startPercent;
+            this.startHandleEl.style.left = `${leftPos}%`;
+            this.endHandleEl.style.left = `${rightPos}%`;
+            this.rangeFillEl.style.left = `${leftPos}%`;
+            this.rangeFillEl.style.width = `${Math.max(rightPos - leftPos, 1)}%`; // SAFE: inline style used for live drag track sizing
+        } else {
+            this.startHandleEl.style.left = `${startPercent}%`;
+            this.endHandleEl.style.left = `${endPercent}%`;
+            this.rangeFillEl.style.left = `${startPercent}%`;
+            this.rangeFillEl.style.width = `${Math.max(endPercent - startPercent, 1)}%`; // SAFE: inline style used for live drag track sizing
+        }
 
         this.renderRangeCards();
-        if (this.order === 'narrative') {
-            this.rangeStatusEl?.setText(
-                t('manuscriptModal.rangeStatus', {
-                    start: this.rangeStart,
-                    end: this.rangeEnd,
-                    total: this.totalScenes,
-                    count: this.rangeEnd - this.rangeStart + 1
-                })
-            );
+        this.syncRangeAvailability();
+    }
+
+    private formatCardTitle(index: number): string {
+        const title = this.sceneTitles[index] ?? '—';
+        if (this.isChronologicalOrder()) {
+            const whenDate = this.sceneWhenDates[index];
+            return whenDate ? `${title} · ${whenDate}` : title;
         }
+        return title;
     }
 
     private renderRangeCards(): void {
@@ -319,27 +366,34 @@ export class ManuscriptOptionsModal extends Modal {
         this.rangeCardContainer.empty();
         if (this.totalScenes === 0) return;
 
+        const isReverse = this.isReverseOrder();
+        // Get actual scene numbers for range display
+        const startSceneNum = this.getSceneNumberAt(this.rangeStart);
+        const endSceneNum = this.getSceneNumberAt(this.rangeEnd);
+        const displayStart = isReverse ? endSceneNum : startSceneNum;
+        const displayEnd = isReverse ? startSceneNum : endSceneNum;
+
         const firstCard = this.rangeCardContainer.createDiv({ cls: 'rt-manuscript-range-card' });
         firstCard.toggleClass('rt-is-muted', this.rangeStart > 1);
         firstCard.createDiv({ cls: 'rt-manuscript-range-label', text: t('manuscriptModal.rangeFirst') });
-        firstCard.createDiv({ cls: 'rt-manuscript-range-title', text: this.sceneTitles[0] ?? '—' });
+        firstCard.createDiv({ cls: 'rt-manuscript-range-title', text: this.formatCardTitle(0) });
 
         const selectedCard = this.rangeCardContainer.createDiv({ cls: 'rt-manuscript-range-card rt-manuscript-range-card-active' });
         const isFullRange = this.rangeStart === 1 && this.rangeEnd === this.totalScenes;
         selectedCard.toggleClass('rt-is-muted', isFullRange);
         const rangeLabel = isFullRange
             ? t('manuscriptModal.rangeAllLabel')
-            : t('manuscriptModal.rangeSelectedLabel', { start: this.rangeStart, end: this.rangeEnd });
+            : t('manuscriptModal.rangeSelectedLabel', { start: displayStart, end: displayEnd });
         selectedCard.createDiv({ cls: 'rt-manuscript-range-label', text: rangeLabel });
         const middleTitle = this.rangeStart === this.rangeEnd
-            ? (this.sceneTitles[this.rangeStart - 1] ?? t('manuscriptModal.rangeSingleLabel'))
+            ? this.formatCardTitle(this.rangeStart - 1)
             : t('manuscriptModal.rangeCountLabel', { count: this.rangeEnd - this.rangeStart + 1 });
         selectedCard.createDiv({ cls: 'rt-manuscript-range-title', text: middleTitle });
 
         const lastCard = this.rangeCardContainer.createDiv({ cls: 'rt-manuscript-range-card' });
         lastCard.toggleClass('rt-is-muted', this.rangeEnd < this.totalScenes);
         lastCard.createDiv({ cls: 'rt-manuscript-range-label', text: t('manuscriptModal.rangeLast') });
-        lastCard.createDiv({ cls: 'rt-manuscript-range-title', text: this.sceneTitles[this.totalScenes - 1] ?? '—' });
+        lastCard.createDiv({ cls: 'rt-manuscript-range-title', text: this.formatCardTitle(this.totalScenes - 1) });
     }
 
     // Submission -------------------------------------------------------------
