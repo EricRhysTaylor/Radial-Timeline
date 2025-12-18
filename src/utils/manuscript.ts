@@ -4,6 +4,7 @@
 import { TFile, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
+import { getScenePrefixNumber } from './text';
 
 export interface SceneContent {
   title: string;
@@ -176,7 +177,8 @@ export async function getSceneFilesByOrder(
     files.push(file);
     titles.push(file.basename);
     whenDates.push(scene.when ? formatWhenDate(scene.when) : null);
-    sceneNumbers.push(scene.number ?? 0);
+    const numStr = getScenePrefixNumber(scene.title, scene.number);
+    sceneNumbers.push(numStr ? parseInt(numStr, 10) || 0 : 0);
   }
 
   return { files, sortOrder, titles, whenDates, sceneNumbers };
