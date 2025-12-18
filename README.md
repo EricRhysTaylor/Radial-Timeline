@@ -222,7 +222,7 @@ Please see the [Github Wiki](https://github.com/EricRhysTaylor/radial-timeline/w
 
 Created by Eric Rhys Taylor
 
-Reviewed and approved for the Obsidian Community Plugins directory. Developed with best practices and secure API use in mind.
+Reviewed and approved for the Obsidian Community Plugins directory. Developed with best practices in mind.
 
 ## License & Intellectual Property
 

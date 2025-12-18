@@ -63,7 +63,7 @@ export class ManuscriptOptionsModal extends Modal {
         contentEl.classList.add('rt-pulse-modal');
 
         this.renderSkeleton(contentEl);
-        await this.loadNarrativeScenes();
+        await this.loadScenesForOrder();
     }
 
     onClose(): void {
@@ -110,8 +110,9 @@ export class ManuscriptOptionsModal extends Modal {
         orderCard.createDiv({ cls: 'rt-manuscript-card-head', text: t('manuscriptModal.orderHeading') });
         const orderRow = orderCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createOrderPill(orderRow, t('manuscriptModal.orderNarrative'), 'narrative');
+        this.createOrderPill(orderRow, t('manuscriptModal.orderReverseNarrative'), 'reverse-narrative');
         this.createOrderPill(orderRow, t('manuscriptModal.orderChronological'), 'chronological');
-        this.createOrderPill(orderRow, t('manuscriptModal.orderReverse'), 'reverse-narrative');
+        this.createOrderPill(orderRow, t('manuscriptModal.orderReverseChronological'), 'reverse-chronological');
         orderCard.createDiv({
             cls: 'rt-manuscript-card-note',
             text: t('manuscriptModal.orderNote')
@@ -178,11 +179,11 @@ export class ManuscriptOptionsModal extends Modal {
         const pill = parent.createDiv({ cls: 'rt-manuscript-pill' });
         pill.createSpan({ text: label });
         if (this.order === order) pill.classList.add('rt-is-active');
-        pill.onClickEvent(() => {
+        pill.onClickEvent(async () => {
             parent.querySelectorAll('.rt-manuscript-pill').forEach(el => el.removeClass('rt-is-active'));
             pill.classList.add('rt-is-active');
             this.order = order;
-            this.syncRangeAvailability();
+            await this.loadScenesForOrder();
         });
     }
 
@@ -206,7 +207,6 @@ export class ManuscriptOptionsModal extends Modal {
 
         const attach = (handle: HTMLElement, handleType: DragHandle) => {
             handle.onpointerdown = (evt: PointerEvent) => {
-                if (this.order !== 'narrative') return;
                 this.activeHandle = handleType;
                 window.addEventListener('pointermove', onPointerMove);
                 window.addEventListener('pointerup', onPointerUp, { once: true });
@@ -218,7 +218,6 @@ export class ManuscriptOptionsModal extends Modal {
         attach(this.endHandleEl, 'end');
 
         this.trackEl.onpointerdown = (evt: PointerEvent) => {
-            if (this.order !== 'narrative') return;
             const rect = this.trackEl!.getBoundingClientRect();
             const ratio = (evt.clientX - rect.left) / rect.width;
             const position = this.ratioToIndex(Math.min(Math.max(ratio, 0), 1));
@@ -242,9 +241,9 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     // Data loading -----------------------------------------------------------
-    private async loadNarrativeScenes(): Promise<void> {
+    private async loadScenesForOrder(): Promise<void> {
         try {
-            const { titles } = await getSceneFilesByOrder(this.plugin, 'narrative');
+            const { titles } = await getSceneFilesByOrder(this.plugin, this.order);
             this.sceneTitles = titles;
             this.totalScenes = titles.length;
             this.rangeStart = 1;
@@ -280,24 +279,14 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     private syncRangeAvailability(): void {
-        const rangeDisabled = this.order !== 'narrative';
-        this.trackEl?.toggleClass('rt-is-disabled', rangeDisabled);
-        this.startHandleEl?.toggleClass('rt-is-disabled', rangeDisabled);
-        this.endHandleEl?.toggleClass('rt-is-disabled', rangeDisabled);
-        this.rangeFillEl?.toggleClass('rt-is-disabled', rangeDisabled);
-
-        if (rangeDisabled) {
-            this.rangeStatusEl?.setText(t('manuscriptModal.rangeDisabled'));
-        } else {
-            this.rangeStatusEl?.setText(
-                t('manuscriptModal.rangeStatus', {
-                    start: this.rangeStart,
-                    end: this.rangeEnd,
-                    total: this.totalScenes,
-                    count: this.rangeEnd - this.rangeStart + 1
-                })
-            );
-        }
+        this.rangeStatusEl?.setText(
+            t('manuscriptModal.rangeStatus', {
+                start: this.rangeStart,
+                end: this.rangeEnd,
+                total: this.totalScenes,
+                count: this.rangeEnd - this.rangeStart + 1
+            })
+        );
     }
 
     private updateRangeUI(): void {
@@ -366,8 +355,8 @@ export class ManuscriptOptionsModal extends Modal {
             await this.onSubmit({
                 order: this.order,
                 tocMode: this.tocMode,
-                rangeStart: this.order === 'narrative' ? this.rangeStart : undefined,
-                rangeEnd: this.order === 'narrative' ? this.rangeEnd : undefined
+                rangeStart: this.rangeStart,
+                rangeEnd: this.rangeEnd
             });
             this.close();
         } catch (err) {

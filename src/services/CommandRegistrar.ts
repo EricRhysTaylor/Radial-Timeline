@@ -5,7 +5,7 @@
 
 import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { assembleManuscript, getSceneFilesByOrder, sliceScenesByNarrativeRange } from '../utils/manuscript';
+import { assembleManuscript, getSceneFilesByOrder, sliceScenesByRange } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { createTemplateScene } from '../SceneAnalysisCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
@@ -140,16 +140,17 @@ export class CommandRegistrar {
                 return;
             }
 
-            const orderedFiles = options.order === 'narrative'
-                ? sliceScenesByNarrativeRange(files, options.rangeStart, options.rangeEnd)
-                : files;
+            // Apply range to all ordering modes
+            const orderedFiles = sliceScenesByRange(files, options.rangeStart, options.rangeEnd);
 
             if (orderedFiles.length === 0) {
                 new Notice('Selected range is empty.');
                 return;
             }
 
-            const rangeSuffix = options.order === 'narrative' && options.rangeStart && options.rangeEnd
+            const hasCustomRange = options.rangeStart && options.rangeEnd &&
+                !(options.rangeStart === 1 && options.rangeEnd === files.length);
+            const rangeSuffix = hasCustomRange
                 ? ` · Scenes ${options.rangeStart}-${options.rangeEnd}`
                 : '';
             const sortLabelWithRange = `${sortOrder}${rangeSuffix}`;
@@ -171,12 +172,20 @@ export class CommandRegistrar {
                 return;
             }
 
-            const orderLabel =
-                options.order === 'chronological'
-                    ? 'Chronological'
-                    : options.order === 'reverse-narrative'
-                        ? 'Reverse Narrative'
-                        : 'Narrative';
+            let orderLabel: string;
+            switch (options.order) {
+                case 'chronological':
+                    orderLabel = 'Chronological';
+                    break;
+                case 'reverse-chronological':
+                    orderLabel = 'Reverse Chronological';
+                    break;
+                case 'reverse-narrative':
+                    orderLabel = 'Reverse Narrative';
+                    break;
+                default:
+                    orderLabel = 'Narrative';
+            }
 
             const now = new Date();
             const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });

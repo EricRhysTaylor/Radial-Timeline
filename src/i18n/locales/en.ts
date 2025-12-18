@@ -140,8 +140,9 @@ export interface TranslationKeys {
         tocNote: string;
         orderHeading: string;
         orderNarrative: string;
+        orderReverseNarrative: string;
         orderChronological: string;
-        orderReverse: string;
+        orderReverseChronological: string;
         orderNote: string;
         rangeHeading: string;
         rangeFirst: string;
@@ -150,7 +151,6 @@ export interface TranslationKeys {
         rangeSingleLabel: string;
         rangeSelectedLabel: string;
         rangeCountLabel: string;
-        rangeDisabled: string;
         rangeStatus: string;
         rangeLoading: string;
         actionCreate: string;
@@ -310,9 +310,9 @@ export const en: TranslationKeys = {
     },
     manuscriptModal: {
         title: 'Create manuscript',
-        description: 'Use markdown-linked TOC for Obsidian-friendly navigation, or plain TOC for AI processing. Narrative order supports custom ranges with a draggable selector.',
+        description: 'Use markdown-linked TOC for Obsidian-friendly navigation, or plain TOC for AI processing. All orderings support custom ranges with the draggable selector.',
         heroLoading: 'Loading scenes...',
-        heroNarrativeMeta: 'Narrative ordering for range preview',
+        heroNarrativeMeta: 'Drag handles to select range',
         tocHeading: 'Table of contents',
         tocMarkdown: 'Markdown links (default)',
         tocPlain: 'Plain text',
@@ -320,17 +320,17 @@ export const en: TranslationKeys = {
         tocNote: 'Exactly one TOC format will be used. Markdown adds clickable scene anchors.',
         orderHeading: 'Scene ordering',
         orderNarrative: 'Narrative',
+        orderReverseNarrative: 'Reverse',
         orderChronological: 'Chronological',
-        orderReverse: 'Reverse narrative',
-        orderNote: 'Reverse uses narrative order inverted. Chronological follows When dates.',
-        rangeHeading: 'Range (narrative only)',
+        orderReverseChronological: 'Reverse chrono',
+        orderNote: 'Chronological follows When dates. Reverse options invert the ordering.',
+        rangeHeading: 'Scene range',
         rangeFirst: 'First scene',
         rangeLast: 'Last scene',
         rangeAllLabel: 'All scenes',
         rangeSingleLabel: 'Single scene',
         rangeSelectedLabel: 'Scenes {{start}}–{{end}}',
         rangeCountLabel: '{{count}} scenes selected',
-        rangeDisabled: 'Range applies to narrative ordering. Switch to narrative to adjust.',
         rangeStatus: 'Scenes {{start}} – {{end}} of {{total}} ({{count}} selected)',
         rangeLoading: 'Fetching scenes…',
         actionCreate: 'Create manuscript',

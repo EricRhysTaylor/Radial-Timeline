@@ -19,7 +19,7 @@ export interface AssembledManuscript {
   sortOrder?: string;
 }
 
-export type ManuscriptOrder = 'narrative' | 'chronological' | 'reverse-narrative';
+export type ManuscriptOrder = 'narrative' | 'chronological' | 'reverse-narrative' | 'reverse-chronological';
 
 export interface ManuscriptSceneSelection {
   files: TFile[];
@@ -144,9 +144,14 @@ export async function getSceneFilesByOrder(
   let sortedScenes: TimelineItem[];
   let sortOrder: string;
 
-  if (order === 'chronological') {
+  if (order === 'chronological' || order === 'reverse-chronological') {
     sortedScenes = sortScenesChronologically(uniqueScenes);
-    sortOrder = 'Chronological (by When date/time)';
+    if (order === 'reverse-chronological') {
+      sortedScenes = sortedScenes.slice().reverse();
+      sortOrder = 'Reverse chronological (by When date/time)';
+    } else {
+      sortOrder = 'Chronological (by When date/time)';
+    }
   } else {
     sortedScenes = sortScenes(uniqueScenes, false, false);
     if (order === 'reverse-narrative') {
@@ -167,10 +172,10 @@ export async function getSceneFilesByOrder(
 }
 
 /**
- * Apply an inclusive range to a narrative-sorted list of scenes.
+ * Apply an inclusive range to any ordered list of scenes.
  * Range is 1-based; if start/end are undefined the full list is returned.
  */
-export function sliceScenesByNarrativeRange(
+export function sliceScenesByRange(
   sceneFiles: TFile[],
   startIndex?: number,
   endIndex?: number
