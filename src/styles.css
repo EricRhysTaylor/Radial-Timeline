@@ -417,15 +417,6 @@
   stroke-width: 1px;
 }
 
-.radial-timeline-container .rt-scene-act {
-  fill-opacity: 0;
-}
-
-.radial-timeline-container .rt-scene-act:hover {
-  fill-opacity: 0.3;
-  cursor: pointer;
-}
-
 /* Void cells - empty space in timeline */
 .radial-timeline-container .rt-void-cell {
   fill: var(--rt-color-empty);
@@ -433,10 +424,6 @@
   stroke: white;
   stroke-width: 1;
   cursor: default;
-}
-
-.radial-timeline-container .rt-scene-path.rt-faded {
-  opacity: 0.3;
 }
 
 /* Optimized global fade: Apply to all children when parent has class */
@@ -633,19 +620,14 @@
 
 /* Gossamer1 dots on hover - add white stroke outline */
 .rt-gossamer-dot:hover,
-.rt-gossamer-dot.rt-hover {
+.rt-gossamer-dot.rt-hover,
+.rt-gossamer-dot-historical.rt-hover {
   stroke: white;
   stroke-width: 3;
 }
 
 .rt-gossamer-dot-historical {
   stroke-width: 1px;
-}
-
-.rt-gossamer-dot-historical.rt-hover {
-  /* Add white stroke outline when Gossamer1 dot or beat slice is hovered */
-  stroke: white;
-  stroke-width: 3;
 }
 
 .rt-gossamer-band {
@@ -821,10 +803,6 @@
   stroke: white !important;
   /* Turn white on hover or synchronized hover */
   stroke-width: 3px;
-}
-
-.radial-timeline-container .rt-scene-title.rt-faded {
-  opacity: 0.2;
 }
 
 .rt-scene-info {
@@ -1107,10 +1085,6 @@
   stroke-width: 2;
 }
 
-.rt-planetary-hidden {
-  display: none !important;
-}
-
 /* Fix input styling in planetary modal */
 .rt-planetary-modal-shell input[type="date"],
 .rt-planetary-modal-shell input[type="time"] {
@@ -1223,40 +1197,7 @@
 .rt-scene-path.rt-drop-target {
   stroke: var(--interactive-accent, #5e81ff);
   stroke-width: 3px;
-}
-
-/* AI grade text colors - scoped to plugin (no !important so non-selected can override) */
-.rt-number-text.rt-grade-A {
-  fill: #00ff48;
-}
-
-.rt-number-text.rt-grade-B {
-  fill: #ffbb00;
-}
-
-.rt-number-text.rt-grade-C {
-  fill: #ff0000;
-}
-
-/* Preserve grade colors when scene is open (higher specificity overrides white fill below) */
-.rt-number-text.rt-scene-is-open.rt-grade-A {
-  fill: #00ff48;
-}
-
-.rt-number-text.rt-scene-is-open.rt-grade-B {
-  fill: #ffbb00;
-}
-
-.rt-number-text.rt-scene-is-open.rt-grade-C {
-  fill: #ff0000;
-}
-
-.rt-number-square.rt-faded,
-.rt-number-text.rt-faded {
-  opacity: 1;
-}
-
-.radial-timeline-container .rt-scene-title.rt-selected {
+}.radial-timeline-container .rt-scene-title.rt-selected {
   filter: url(#sceneTitleHalo);
 }
 
@@ -1447,22 +1388,7 @@
   fill: #FFFFFF;
   /* white for default case; grade colors override via higher specificity */
   font-weight: bold;
-}
-
-/* Preserve grade colors when scene is open and selected */
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A {
-  fill: #00ff48;
-}
-
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B {
-  fill: #ffbb00;
-}
-
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C {
-  fill: #ff0000;
-}
-
-.rt-number-square.rt-search-result {
+}.rt-number-square.rt-search-result {
   fill: var(--rt-color-search) !important;
 }
 
@@ -1520,50 +1446,10 @@
 .rt-number-text.rt-missing-when {
   fill: #FFFFFF !important;
   opacity: 1;
-}
-
-/* Preserve grade colors for pending edits (higher specificity) */
-.rt-number-text.rt-has-edits.rt-grade-A {
-  fill: #00ff48;
-}
-
-.rt-number-text.rt-has-edits.rt-grade-B {
-  fill: #ffbb00;
-}
-
-.rt-number-text.rt-has-edits.rt-grade-C {
-  fill: #ff0000;
-}
-
-.rt-number-text.rt-has-edits.rt-selected,
+}.rt-number-text.rt-has-edits.rt-selected,
 .rt-number-text.rt-has-edits.rt-search-result.rt-selected {
   font-weight: bold;
-}
-
-/* Preserve grade colors for pending edits selected state */
-.rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A {
-  fill: #00ff48;
-}
-
-.rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B {
-  fill: #ffbb00;
-}
-
-.rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C {
-  fill: #ff0000;
-}
-
-/* AI grade colors turn white when non-selected (covers all states: default, open, pending edits) */
-.rt-number-text.rt-non-selected.rt-grade-A,
-.rt-number-text.rt-non-selected.rt-grade-B,
-.rt-number-text.rt-non-selected.rt-grade-C {
-  fill: #FFFFFF !important;
-}
-
-.rt-clear-search-btn {
+}.rt-clear-search-btn {
   cursor: pointer;
 }
 
@@ -1939,10 +1825,6 @@
 /* Settings visibility utility classes */
 .rt-settings-visible {
   display: block;
-}
-
-.rt-settings-hidden {
-  display: none !important;
 }
 
 .rt-settings-release-notes {
@@ -4171,10 +4053,6 @@
   margin-bottom: 20px;
 }
 
-.rt-mapping-hidden {
-  display: none !important;
-}
-
 .rt-gossamer-score-separator {
   color: var(--text-faint);
 }
@@ -5235,4 +5113,45 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 
 .rt-text-muted {
   color: var(--text-muted) !important;
+}
+
+/* Consolidated Hidden States */
+.rt-planetary-hidden,
+.rt-settings-hidden,
+.rt-mapping-hidden {
+  display: none !important;
+}
+
+/* Consolidated Grade Colors */
+/* Grade A - Green */
+.rt-number-text.rt-grade-A,
+.rt-number-text.rt-scene-is-open.rt-grade-A,
+.rt-number-text.rt-has-edits.rt-grade-A,
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A,
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A,
+.rt-number-text.rt-non-selected.rt-grade-A {
+  fill: #00ff48;
+}
+
+/* Grade B - Yellow */
+.rt-number-text.rt-grade-B,
+.rt-number-text.rt-scene-is-open.rt-grade-B,
+.rt-number-text.rt-has-edits.rt-grade-B,
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B,
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B,
+.rt-number-text.rt-non-selected.rt-grade-B {
+  fill: #ffbb00;
+}
+
+/* Grade C - Red */
+.rt-number-text.rt-grade-C,
+.rt-number-text.rt-scene-is-open.rt-grade-C,
+.rt-number-text.rt-has-edits.rt-grade-C,
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C,
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C,
+.rt-number-text.rt-non-selected.rt-grade-C {
+  fill: #ff0000;
 }

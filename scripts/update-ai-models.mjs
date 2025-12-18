@@ -24,7 +24,7 @@ async function fetchJson(url, options = {}) {
 async function fetchOpenAiModels(apiKey) {
     if (!apiKey) {
         console.warn('[update-models] OPENAI_API_KEY missing – skipping OpenAI fetch.');
-        return [];
+        return null;
     }
     const data = await fetchJson('https://api.openai.com/v1/models', {
         headers: {
@@ -41,7 +41,7 @@ async function fetchOpenAiModels(apiKey) {
 async function fetchAnthropicModels(apiKey) {
     if (!apiKey) {
         console.warn('[update-models] ANTHROPIC_API_KEY missing – skipping Anthropic fetch.');
-        return [];
+        return null;
     }
     const data = await fetchJson('https://api.anthropic.com/v1/models', {
         headers: {
@@ -60,7 +60,7 @@ async function fetchAnthropicModels(apiKey) {
 async function fetchGeminiModels(apiKey) {
     if (!apiKey) {
         console.warn('[update-models] GEMINI_API_KEY missing – skipping Gemini fetch.');
-        return [];
+        return null;
     }
     const data = await fetchJson(
         `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`
@@ -76,20 +76,33 @@ async function fetchGeminiModels(apiKey) {
 }
 
 async function main() {
+    let existingData = {};
+    try {
+        const fileContent = await fs.readFile(OUTPUT_PATH, 'utf8');
+        existingData = JSON.parse(fileContent);
+    } catch (err) {
+        // Ignore if file doesn't exist or is invalid
+    }
+
     const [anthropic, openai, gemini] = await Promise.all([
         fetchAnthropicModels(process.env.ANTHROPIC_API_KEY),
         fetchOpenAiModels(process.env.OPENAI_API_KEY),
         fetchGeminiModels(process.env.GEMINI_API_KEY),
     ]);
 
+    // Use fetched data if available, otherwise fall back to existing data
+    const finalAnthropic = anthropic !== null ? anthropic : (existingData.anthropic || []);
+    const finalOpenai = openai !== null ? openai : (existingData.openai || []);
+    const finalGemini = gemini !== null ? gemini : (existingData.gemini || []);
+
     // Sort models latest to oldest
-    const sortedAnthropic = anthropic.sort((a, b) => {
+    const sortedAnthropic = finalAnthropic.sort((a, b) => {
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
         return dateB - dateA; // Descending
     });
 
-    const sortedOpenai = openai.sort((a, b) => {
+    const sortedOpenai = finalOpenai.sort((a, b) => {
         return (b.created || 0) - (a.created || 0); // Descending
     });
 
@@ -101,11 +114,11 @@ async function main() {
         summary: {
             anthropic: sortedAnthropic.length,
             openai: sortedOpenai.length,
-            gemini: gemini.length,
+            gemini: finalGemini.length,
         },
         anthropic: sortedAnthropic,
         openai: sortedOpenai,
-        gemini,
+        gemini: finalGemini,
     };
 
     await fs.mkdir(path.dirname(OUTPUT_PATH), { recursive: true });

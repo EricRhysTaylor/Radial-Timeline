@@ -57,6 +57,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                     });
                 
                 // Handle rename on blur
+                // SAFE: addEventListener used for Settings (transient element, cleanup via DOM removal)
                 text.inputEl.addEventListener('blur', async () => {
                     const newValue = text.getValue().trim();
                     if (newValue && newValue !== userKey) {

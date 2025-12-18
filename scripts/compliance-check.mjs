@@ -225,12 +225,22 @@ const checks = [
     allowSafeComment: true,
     severity: 'warn',
   },
+  {
+    id: 'deprecated-frontmatter-props',
+    description: 'Use tags/aliases/cssclasses instead of deprecated tag/alias/cssclass (Obsidian 1.9.0+).',
+    // Match usage of .tag, .alias, .cssclass on objects (likely frontmatter)
+    regex: /\.(tag|alias|cssclass)\b/,
+    allowSafeComment: true,
+    severity: 'warn',
+  },
 ];
 
 // Provide human-friendly autofix suggestions
 function getSuggestion(issue) {
   const id = issue.id;
   switch (id) {
+    case 'deprecated-frontmatter-props':
+        return "Rename property to plural form (tags, aliases, cssclasses) and ensure it is an array.";
     case 'innerHTML':
       return "Use element.textContent for text or createElement/appendChild to build nodes.";
     case 'outerHTML':

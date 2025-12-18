@@ -22,13 +22,36 @@ async function fetchLatestVersion() {
             res.on('end', () => {
                 try {
                     const json = JSON.parse(data);
-                    // Get the latest version key (keys are version numbers)
-                    // The json is like { "1.0.0": { ... }, "1.1.1": { ... } }
-                    // We need to sort and find the max
-                    const versions = Object.keys(json).sort((a, b) => {
-                        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-                    });
-                    resolve(versions[versions.length - 1]);
+                    
+                    // CASE 1: 'latestVersion' key (Present in your debug log)
+                    if (json.latestVersion && typeof json.latestVersion === 'string') {
+                        resolve(json.latestVersion);
+                        return;
+                    }
+
+                    // CASE 2: 'latest' key
+                    if (json.latest && typeof json.latest === 'string') {
+                        resolve(json.latest);
+                        return;
+                    }
+
+                    // CASE 3: 'versions' object map
+                    const versionMap = (json.versions && typeof json.versions === 'object') ? json.versions : json;
+                    
+                    // CASE 4: Keys are version numbers
+                    const versions = Object.keys(versionMap)
+                        .filter(k => /^\d+\.\d+\.\d+/.test(k))
+                        .sort((a, b) => {
+                            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+                        });
+                    
+                    if (versions.length > 0) {
+                        resolve(versions[versions.length - 1]);
+                    } else {
+                        // Fallback: Dump keys for debugging if we can't find any version
+                        console.warn(`[Debug] Could not find version keys. Available keys: ${Object.keys(json).join(', ')}`);
+                        resolve('0.0.0');
+                    }
                 } catch (e) {
                     reject(e);
                 }

@@ -16,6 +16,7 @@ This document outlines the coding standards and best practices for the Radial Ti
 - **[Obsidian API Reference](https://docs.obsidian.md/Reference/TypeScript+API)** - Complete TypeScript API documentation
 - **[Component API](https://docs.obsidian.md/Reference/TypeScript+API/Component)** - Details on `registerDomEvent`, `registerEvent`, etc.
 - **[Modal API](https://docs.obsidian.md/Reference/TypeScript+API/Modal)** - Modal class documentation
+- **[Changelog](https://obsidian.md/changelog)** - Latest API changes (e.g., property deprecations)
 
 ### Special Comment Markers
 When code intentionally violates a standard for valid reasons, use comment markers:
@@ -29,6 +30,13 @@ These comments tell automated checkers to skip the line and document why the cod
 ---
 
 ## Obsidian Plugin Guidelines
+
+### API Changes & Deprecations (2024-2025)
+✅ **Properties (Frontmatter) Changes:**
+- Use `tags` instead of `tag`
+- Use `aliases` instead of `alias`
+- Use `cssclasses` instead of `cssclass`
+- Ensure these are arrays/lists, not single text values
 
 ### DOM Manipulation
 ❌ **NEVER use:**
@@ -237,8 +245,9 @@ Every modal (AI Pulse Analysis, Manage Subplots, Gossamer score, release notes, 
 1. **Shell + Base Class**
    - Always add `rt-pulse-modal-shell` to `modalEl` unless the modal intentionally mirrors core Obsidian styling. Layer in specialized shells (e.g., `rt-subplot-modal-shell`) when a layout requires unique height constraints.
    - Choose exactly one base class for `contentEl`:  
-     `rt-pulse-modal` (glass gradient surface), `rt-gossamer-score-modal` (neutral flex stack), or `rt-subplot-modal` (tall manager view). Only use custom wrappers when a modal truly needs its own CSS file.
-   - Place major sections directly inside `.rt-pulse-progress-hero` or `.rt-pulse-glass-card`. Do **not** nest multiple gradient wrappers or one-off `<div>` spacers to fake padding.
+     `rt-pulse-modal` (glass gradient surface), `rt-gossamer-score-modal` (neutral/flat stack, preferred for most modals), or `rt-subplot-modal` (tall manager view). Only use custom wrappers when a modal truly needs its own CSS file.
+   - Use the Gossamer “simple header” pattern (`rt-gossamer-simple-header` + badge/title/subtitle/meta) for new modals that should be flat/subdued (e.g., Manuscript options). Reserve the heavier `rt-pulse-progress-hero` only when the modal needs a spotlight hero.
+   - Place major sections directly inside `.rt-gossamer-score-modal` (or `.rt-pulse-modal`) as bordered sections (e.g., `.rt-pulse-glass-card.rt-manuscript-card` style: light border, no drop shadow). Do **not** stack multiple gradients or card shadows; rely on subtle borders/spacing instead of layered surfaces.
 
 2. **Sizing & Responsiveness**
    - Inline size the shell with the standard comment:  
