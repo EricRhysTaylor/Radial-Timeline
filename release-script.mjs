@@ -468,74 +468,6 @@ function injectEmbeddedFontsIntoReleaseCss() {
     console.log('✅ Injected embedded @font-face rules into release/styles.css');
 }
 
-import { spawn } from 'child_process';
-import { unlinkSync } from 'fs';
-
-function editReleaseNotesLocally(initialContent) {
-    return new Promise((resolve, reject) => {
-        const tempFile = 'RELEASE_NOTES_EDIT.md';
-        try {
-            writeFileSync(tempFile, initialContent, 'utf8');
-        } catch (e) {
-            return reject(new Error(`Could not write temp file: ${e.message}`));
-        }
-
-        // Try to find a suitable editor
-        // 1. VISUAL or EDITOR env var
-        // 2. 'code -w' (VS Code, wait mode)
-        // 3. 'nano'
-        // 4. 'vi'
-        let editor = process.env.VISUAL || process.env.EDITOR;
-        let args = [];
-
-        if (!editor) {
-            // Default preference logic
-            try {
-                // Check if 'code' is available
-                execSync('which code', { stdio: 'ignore' });
-                editor = 'code';
-                args = ['-w']; // Wait is crucial for VS Code
-            } catch {
-                try {
-                    execSync('which nano', { stdio: 'ignore' });
-                    editor = 'nano';
-                } catch {
-                    editor = 'vi';
-                }
-            }
-        } else {
-            // Split editor command if it has args (e.g. "code -w")
-            const parts = editor.split(' ');
-            editor = parts[0];
-            args = parts.slice(1);
-        }
-
-        console.log(`Opening ${tempFile} with ${editor}...`);
-
-        const child = spawn(editor, [...args, tempFile], {
-            stdio: 'inherit'
-        });
-
-        child.on('error', (err) => {
-            reject(new Error(`Failed to start editor ${editor}: ${err.message}`));
-        });
-
-        child.on('exit', (code) => {
-            if (code === 0) {
-                try {
-                    const content = readFileSync(tempFile, 'utf8');
-                    unlinkSync(tempFile);
-                    resolve(content.trim());
-                } catch (e) {
-                    reject(new Error(`Failed to read back edited notes: ${e.message}`));
-                }
-            } else {
-                reject(new Error(`Editor exited with code ${code}`));
-            }
-        });
-    });
-}
-
 async function main() {
     console.log("🚀 Obsidian Plugin Release Process\n");
 
@@ -608,38 +540,24 @@ async function main() {
 
     // Ask if user wants to edit release notes
     const editOption = await question(`\n✏️  Release notes:
-1. Publish now (Auto-generated)
-2. Edit locally then Publish (Recommended)
-3. Create draft on GitHub (Notes will be unedited in plugin)
-Choose (1/2/3): `);
+1. Publish now (Auto-generated notes)
+2. Create draft → Edit on GitHub → Sync back (Recommended)
+Choose (1/2): `);
 
     let releaseNotes = `## What's Changed\n\n${autoChangelog}`;
     let createDraft = false;
 
     if (editOption === '2') {
-        console.log(`\n📝 Opening system editor to edit release notes...`);
-        try {
-            releaseNotes = await editReleaseNotesLocally(releaseNotes);
-            console.log(`✅ Release notes updated from editor.`);
-            // Show preview of first few lines
-            const preview = releaseNotes.split('\n').slice(0, 5).join('\n');
-            console.log(`\n--- Preview ---\n${preview}\n...`);
-        } catch (err) {
-            console.error(`❌ Failed to edit locally: ${err.message}`);
-            return;
-        }
-    } else if (editOption === '3') {
         createDraft = true;
-        console.log(`⚠️  Warning: Edits made on GitHub will NOT be reflected in the plugin build.`);
+        console.log(`\n📝 Will create draft on GitHub for you to edit.`);
     }
 
     /* Verification Summary */
     console.log(`\n📋 Release Summary:`);
     console.log(`   Current: ${currentVersion}`);
     console.log(`   New:     ${newVersion}`);
-    if (editOption === '2') console.log(`   Notes:   Edited locally`);
-    else if (editOption === '3') console.log(`   Notes:   Draft (Unedited in build)`);
-    else console.log(`   Notes:   Auto-generated`);
+    if (createDraft) console.log(`   Notes:   Draft (Edit on GitHub, then sync)`);
+    else console.log(`   Notes:   Auto-generated (publish immediately)`);
 
     const confirm = await question(`\n❓ Proceed with release? (y/N): `);
 
@@ -721,10 +639,12 @@ Choose (1/2/3): `);
 
         if (createDraft) {
             console.log(`\n🎉 Draft release ${newVersion} created successfully!`);
-            console.log(`📝 Draft release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
-            console.log(`\n🌐 Opening draft release in browser for editing...`);
-            console.log(`💡 Remember to publish the release when you're done editing!`);
-            console.log(`💡 After publishing, run: npm run sync-release-notes (optional, for next dev cycle)`);
+            console.log(`\n📝 Next steps:`);
+            console.log(`   1. Edit release notes on GitHub (opening now...)`);
+            console.log(`   2. Save the draft (don't publish yet!)`);
+            console.log(`   3. Return here and run: npm run sync-release-notes`);
+            console.log(`   4. Commit the updated notes: npm run backup --note="Sync release notes"`);
+            console.log(`   5. Go back to GitHub and publish the release`);
 
             try {
                 // Open in browser via GitHub CLI (edit doesn't support --web; view does)
@@ -735,7 +655,7 @@ Choose (1/2/3): `);
                     const url = `https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`;
                     runCommand(`open ${url}`, "Opening release in browser", true);
                 } catch (e2) {
-                    console.log(`⚠️  Could not open browser automatically. You can edit the draft release at:`);
+                    console.log(`⚠️  Could not open browser automatically. Edit at:`);
                     console.log(`   https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
                 }
             }

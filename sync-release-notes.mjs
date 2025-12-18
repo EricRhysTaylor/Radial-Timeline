@@ -17,14 +17,16 @@ function parseSemver(version) {
 
 function fetchRelease(tag) {
     try {
-        const json = execSync(`gh release view ${tag} --json name,body,publishedAt,url`, { encoding: 'utf8' });
+        const json = execSync(`gh release view ${tag} --json name,body,publishedAt,url,isDraft`, { encoding: 'utf8' });
         const data = JSON.parse(json);
+        const isDraft = data.isDraft || false;
         return {
             version: tag,
             title: data.name || tag,
             body: data.body || '',
             url: data.url || `https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/${tag}`,
-            publishedAt: data.publishedAt || new Date().toISOString()
+            publishedAt: data.publishedAt || new Date().toISOString(),
+            isDraft
         };
     } catch (error) {
         console.warn(`⚠️  Could not fetch release ${tag}: ${error.message}`);
@@ -167,8 +169,13 @@ try {
     console.log(`\n✅ Release notes synced to ${BUNDLE_PATH}`);
     console.log(`   Entries: ${entries.length}`);
     console.log(`   Major Version: ${majorVersion ?? 'n/a'}`);
-    console.log(`   Latest: ${latestEntry?.version ?? 'n/a'}`);
-    console.log('\n💡 Reminder: run "npm run backup" to commit these updated release notes.');
+    const latestLabel = latestEntry?.isDraft ? `${latestEntry.version} (DRAFT)` : (latestEntry?.version ?? 'n/a');
+    console.log(`   Latest: ${latestLabel}`);
+    if (latestEntry?.isDraft) {
+        console.log('\n💡 Next: run "npm run backup --note=\'Sync release notes\'" to commit, then publish the draft on GitHub.');
+    } else {
+        console.log('\n💡 Reminder: run "npm run backup" to commit these updated release notes.');
+    }
 } catch (err) {
     console.error(`❌ Failed to write bundle: ${err.message}`);
     process.exit(1);
