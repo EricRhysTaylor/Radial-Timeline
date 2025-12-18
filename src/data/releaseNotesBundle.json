@@ -4,9 +4,9 @@
       "version": "4.5.0",
       "title": "4.5.0",
       "body": "### New Features\r\n 1) Custom Metadata key remapping in Settings\r\n 2) Alien Calendar system in Settings with Command calculator modal and Scene hover Synopsis Peek Line \r\n 3) Generate Manuscript modal with options for Table of Contents and Narrative, Chronologue forward/reverse order and within ranges ([eea95f9](https://github.com/EricRhysTaylor/Radial-Timeline/commit/eea95f90d17043ff67d7e65fe373e7906986a862))\r\n4) Added life raft icon bottom right linking to Wiki docs\r\n\r\n### Documentation\r\n- Add and clarify scene drag and drop feature and limitations in How-to.md ([6989f73](https://github.com/EricRhysTaylor/Radial-Timeline/commit/6989f73faa5e7b6b783ffaeea7f89f22f5e6a07e))\r\n\r\n### Bug\r\n- Gossamer Modal Justification text overflow fixed\r\n",
-      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-b4794551fdd4c88b0144",
-      "publishedAt": "2025-12-18T21:54:09.656Z",
-      "isDraft": true
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.5.0",
+      "publishedAt": "2025-12-18T21:54:36Z",
+      "isDraft": false
     },
     {
       "version": "4.4.2",
@@ -102,9 +102,9 @@
     "version": "4.5.0",
     "title": "4.5.0",
     "body": "### New Features\r\n 1) Custom Metadata key remapping in Settings\r\n 2) Alien Calendar system in Settings with Command calculator modal and Scene hover Synopsis Peek Line \r\n 3) Generate Manuscript modal with options for Table of Contents and Narrative, Chronologue forward/reverse order and within ranges ([eea95f9](https://github.com/EricRhysTaylor/Radial-Timeline/commit/eea95f90d17043ff67d7e65fe373e7906986a862))\r\n4) Added life raft icon bottom right linking to Wiki docs\r\n\r\n### Documentation\r\n- Add and clarify scene drag and drop feature and limitations in How-to.md ([6989f73](https://github.com/EricRhysTaylor/Radial-Timeline/commit/6989f73faa5e7b6b783ffaeea7f89f22f5e6a07e))\r\n\r\n### Bug\r\n- Gossamer Modal Justification text overflow fixed\r\n",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-b4794551fdd4c88b0144",
-    "publishedAt": "2025-12-18T21:54:09.656Z",
-    "isDraft": true
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.5.0",
+    "publishedAt": "2025-12-18T21:54:36Z",
+    "isDraft": false
   },
   "patches": [
     {
