@@ -11,13 +11,9 @@ const ALL_CANONICAL_KEYS = CANONICAL_KEYS;
 export function renderMetadataSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
 
+    // Toggle for Metadata Mapping - Combined with Heading semantics but as a toggle
     new Settings(containerEl)
         .setName('Custom Metadata Mapping')
-        .setHeading();
-
-    // Toggle for Metadata Mapping
-    new Settings(containerEl)
-        .setName('Enable custom metadata mapping')
         .setDesc('Map your custom frontmatter keys to system keys. Useful for legacy data or non-standard naming conventions.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.enableCustomMetadataMapping ?? false)
@@ -150,5 +146,3 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
     // Initial render
     renderMappings();
 }
-
-

@@ -38,17 +38,6 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
             drop.selectEl.style.setProperty('width', 'fit-content', 'important');
         });
 
-    // 1c. Show completion estimate
-    new Settings(containerEl)
-        .setName(t('settings.advanced.showEstimate.name'))
-        .setDesc(t('settings.advanced.showEstimate.desc'))
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.showCompletionEstimate ?? true)
-            .onChange(async (value) => {
-                plugin.settings.showCompletionEstimate = value;
-                await plugin.saveSettings();
-                plugin.refreshTimelineIfNeeded(null);
-            }));
 
     // 2. Metadata refresh debounce
     new Settings(containerEl)

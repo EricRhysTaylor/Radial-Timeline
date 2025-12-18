@@ -1,6 +1,7 @@
 import type { App } from 'obsidian';
 import { Setting as ObsidianSetting, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
+import { t } from '../../i18n';
 
 export function renderPublicationSection(params: {
     app: App;
@@ -56,5 +57,16 @@ export function renderPublicationSection(params: {
                 plugin.settings.enableZeroDraftMode = value;
                 await plugin.saveSettings();
             }));
-}
 
+    // --- Show completion estimate ---
+    new ObsidianSetting(containerEl)
+        .setName(t('settings.advanced.showEstimate.name'))
+        .setDesc(t('settings.advanced.showEstimate.desc'))
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.showCompletionEstimate ?? true)
+            .onChange(async (value) => {
+                plugin.settings.showCompletionEstimate = value;
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            }));
+}

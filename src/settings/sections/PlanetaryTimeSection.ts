@@ -36,7 +36,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
 
     new Settings(containerEl)
         .setName(t('planetary.enable.name'))
-        .setDesc('Keep planning in Earth time, but peek at a local/fictional calendar.')
+        .setDesc('Keep Earth as the planning source, use the profile label to match your world calendar, set epoch offset to align Year 1 to a story milestone, and jot orbital quirks in scene notes.')
         .addToggle(toggle => {
             toggle.setValue(!!plugin.settings.enablePlanetaryTime);
             toggle.onChange(async (value) => {
@@ -199,7 +199,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
 
         new Settings(fieldsContainer)
             .setName(t('planetary.fields.monthNames'))
-            .setDesc('Optional. Year divides evenly across these months; fewer names = fewer months. Leave blank for numbered months.')
+            .setDesc('Optional. Determines how the year is divided. Provide names to set the month count (e.g. 4 names = 4 months). Leave blank for 12 numbered months.')
             .addText((text: TextComponent) => {
                 text.setValue((profile.monthNames || []).join(', '));
                 text.onChange(async (value) => {
@@ -245,8 +245,4 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     renderFields();
     renderPreview();
     applyVisibility(!!plugin.settings.enablePlanetaryTime);
-
-    // Author tips
-    const tips = containerEl.createDiv({ cls: 'setting-item-description' });
-    tips.setText('Author tips: keep Earth as the planning source, use the profile label to match your world calendar, set epoch offset to align Year 1 to a story milestone, and jot orbital quirks in scene notes.');
 }

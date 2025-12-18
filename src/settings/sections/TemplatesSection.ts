@@ -79,7 +79,7 @@ export function renderStoryBeatsSection(params: {
     };
 
     const contextTemplateSetting = new Settings(containerEl)
-        .setName('AI prompt context template')
+        .setName('AI prompt role & context template')
         .setDesc(`Active: ${getActiveTemplateName()}`)
         .addExtraButton(button => button
             .setIcon('gear')

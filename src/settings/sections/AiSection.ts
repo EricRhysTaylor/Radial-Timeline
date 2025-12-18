@@ -265,10 +265,6 @@ export function renderAiSection(params: {
                 }
             }));
 
-    // Local / OpenAI Compatible Section
-    const separator = containerEl.createEl('hr', { cls: 'rt-setting-hr' });
-    params.addAiRelatedElement(separator);
-
     const localSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-local' });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
     params.addAiRelatedElement(localSection);

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, unlinkSync } from "fs";
 import { execSync } from "child_process";
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from "fs";
 import readline from "readline";
 
 const rl = readline.createInterface({
@@ -79,56 +79,11 @@ function compareSemverDesc(a, b) {
 function fetchReleaseInfo(tag) {
     if (!tag) return null;
     try {
-        const json = execSync(`gh release view ${tag} --json name,body,publishedAt,htmlUrl,url`, { encoding: 'utf8' });
-        const data = JSON.parse(json);
-        if (!data) return null;
-        return {
-            version: tag,
-            title: data.name || `Radial Timeline ${tag}`,
-            body: data.body || '',
-            url: data.htmlUrl || data.url || `https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/${tag}`,
-            publishedAt: data.publishedAt || new Date().toISOString()
-        };
+        // Only fetch minimal info to check existence and draft status
+        const json = execSync(`gh release view ${tag} --json name,isDraft,tagName`, { encoding: 'utf8' });
+        return JSON.parse(json);
     } catch (error) {
-        console.warn(`⚠️  Unable to fetch release ${tag}: ${error.message}`);
-        return null;
-    }
-}
-
-function fetchMajorPatchReleases(major, skipVersion) {
-    try {
-        const json = execSync(`gh api repos/EricRhysTaylor/Radial-Timeline/releases?per_page=100`, { encoding: 'utf8' });
-        const releases = JSON.parse(json);
-        if (!Array.isArray(releases)) return [];
-
-        const patches = [];
-        const seen = new Set();
-
-        for (const rel of releases) {
-            const rawTag = (rel.tag_name || rel.name || '').toString().trim();
-            if (!rawTag) continue;
-            const version = rawTag.replace(/^v/i, '');
-            if (!version || version === skipVersion) continue;
-            if (seen.has(version)) continue;
-            const semver = parseSemver(version);
-            if (!semver) continue;
-            if (semver.major !== major) continue;
-            if (semver.minor === 0 && semver.patch === 0) continue;
-            seen.add(version);
-            patches.push({
-                version,
-                title: rel.name || `Radial Timeline ${version}`,
-                body: rel.body || '',
-                url: rel.html_url || rel.url || `https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/${version}`,
-                publishedAt: rel.published_at || rel.publishedAt || new Date().toISOString()
-            });
-        }
-
-        patches.sort((a, b) => compareSemverDesc(a.version, b.version));
-        return patches;
-    } catch (error) {
-        console.warn(`⚠️  Unable to fetch patch releases: ${error.message}`);
-        return [];
+        return null; // Release doesn't exist
     }
 }
 
@@ -144,10 +99,6 @@ function readExistingReleaseBundle() {
 function updateBundleWithLocalEntry(version, body) {
     console.log(`\n🔄 Updating release notes bundle locally for ${version}...`);
 
-    // Create new entry object
-    // Note: We don't have the published URL or date yet, so we use placeholders/defaults
-    // The sync-release-notes script can correct these later if needed, but for the build
-    // we mostly care about the body content.
     const newEntry = {
         version: version,
         title: version,
@@ -158,11 +109,9 @@ function updateBundleWithLocalEntry(version, body) {
 
     let bundle = readExistingReleaseBundle();
     if (!bundle) {
-        // Initialize new bundle if one doesn't exist
         bundle = { entries: [] };
     }
 
-    // Ensure entries array exists (migrating from old format if needed)
     if (!bundle.entries) {
         bundle.entries = [];
         if (bundle.latest) bundle.entries.push(bundle.latest);
@@ -175,34 +124,25 @@ function updateBundleWithLocalEntry(version, body) {
 
     // Add new entry at the top
     bundle.entries.unshift(newEntry);
-
-    // Sort entries just in case (descending order)
     bundle.entries.sort((a, b) => compareSemverDesc(a.version, b.version));
 
-    // Update legacy fields for backward compatibility or ease of read
+    // Update legacy fields
     bundle.latest = bundle.entries[0];
 
-    // Re-determine major version
     const semver = parseSemver(version);
     if (semver) {
         const majorVersionStr = `${semver.major}.0.0`;
-        // Try to find the actual major release entry
         let majorEntry = bundle.entries.find(e => e.version === majorVersionStr);
 
-        // If not found, fall back logic (mirrors sync-release-notes.mjs partly)
         if (!majorEntry) {
-            // If we are currently releasing the X.0.0, use it
             if (version === majorVersionStr) {
                 majorEntry = newEntry;
             } else {
-                // Fallback to oldest or keep existing logic
                 majorEntry = bundle.entries[bundle.entries.length - 1];
             }
         }
         bundle.major = majorEntry;
         bundle.majorVersion = majorEntry ? majorEntry.version : majorVersionStr;
-
-        // Re-populate patches (all entries in this major version excluding the major x.0.0 itself)
         bundle.patches = bundle.entries.filter(e => {
             const s = parseSemver(e.version);
             return s && s.major === semver.major && e.version !== bundle.majorVersion;
@@ -219,21 +159,18 @@ function updateBundleWithLocalEntry(version, body) {
 
 function getLastReleaseTag() {
     try {
-        // First try to get the latest GitHub release (what's actually published)
         const ghOutput = execSync('gh release list --limit 1 --json tagName', { encoding: 'utf8' });
         const releases = JSON.parse(ghOutput);
         if (releases && releases.length > 0) {
             return releases[0].tagName;
         }
     } catch (error) {
-        console.log('⚠️  Could not get GitHub releases, falling back to Git tags');
+        // console.log('⚠️  Could not get GitHub releases, falling back to Git tags');
     }
 
     try {
-        // Fallback to Git tags
         const output = execSync('git tag --sort=-version:refname | head -1', { encoding: 'utf8' });
-        const tag = output.trim();
-        return tag || null;
+        return output.trim() || null;
     } catch {
         return null;
     }
@@ -275,7 +212,6 @@ const CATEGORIES = [
 function generateChangelog(fromTag, toRef = 'HEAD') {
     try {
         const range = fromTag ? `${fromTag}..${toRef}` : toRef;
-        // Format: shortHash|fullHash|subject
         const logs = execSync(`git log ${range} --pretty=format:"%h|%H|%s" --no-merges`, { encoding: 'utf8' });
 
         if (!logs.trim()) {
@@ -286,7 +222,6 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
         const categorized = {};
         const uncategorized = [];
 
-        // Initialize categories
         CATEGORIES.forEach(cat => categorized[cat.title] = []);
 
         lines.forEach(line => {
@@ -296,58 +231,24 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
             const shortHash = parts[0];
             const fullHash = parts[1];
             let rawMessage = parts.slice(2).join('|').trim();
-
-            // Handle user's specific backup format: "[backup] timestamp — files — description — stats"
-            // Example: [backup] ... — src(6) — Fixed bugs in triplet analysis. ... — 6 files ...
             let cleanMessages = [];
 
             if (rawMessage.startsWith('[backup]')) {
-                // The backup format uses em-dashes (—) as separators.
-                // However, git log output might sometimes look different depending on terminal,
-                // but based on user info it is reliably em-dash " — ".
-
-                // We split by standard " — " to get the main chunks.
                 const segments = rawMessage.split(' — ');
-
                 if (segments.length >= 3) {
-                    // 0: [backup] timestamp
-                    // 1: files summary e.g. "src(5)"
-                    // 2..N-2: DESCRIPTION parts (might contain em-dashes?)
-                    // N-1: files count e.g. "5 files" (sometimes missing or different)
-                    // N: stats e.g. "+5/-12"
-
-                    // The description is everything between index 2 and the stats part.
-                    // Usually the last two segments are "X files" and "+X/-Y".
-                    // Let's assume description starts at index 2.
-                    // We need to identify where description ends.
-                    // The "X files" segment usually matches /^\d+ files$/.
-                    // The stats segment matches /^[+\-]\d+\/[+\-]\d+/.
-
                     let descParts = [];
-                    // Start from index 2
                     for (let i = 2; i < segments.length; i++) {
                         const seg = segments[i].trim();
-                        // Stop if we hit the stats trailer
-                        if (/^\d+\s+files$/.test(seg) || /^[+\-]\d+\/[+\-]\d+/.test(seg)) {
-                            // This looks like metadata, stop collecting description
-                            break;
-                        }
+                        if (/^\d+\s+files$/.test(seg) || /^[+\-]\d+\/[+\-]\d+/.test(seg)) break;
                         descParts.push(seg);
                     }
-
-                    // Join back with em-dash if it was split (unlikely for description text but possible)
                     const fullDesc = descParts.join(' — ');
-
                     if (fullDesc && !fullDesc.includes('automatic backup after build')) {
-                        // usage of ". " as splitter
                         cleanMessages = fullDesc.split('. ').map(s => s.trim()).filter(s => s.length > 2);
                     }
                 } else {
-                    // Fallback: try splitting by hyphen if em-dash wasn't found (maybe encoding issue?)
-                    // But be careful not to split inside description
                     const hyphenSegments = rawMessage.split(' - ');
                     if (hyphenSegments.length >= 4 && rawMessage.includes('[backup]')) {
-                        // Very rough fallback
                         const desc = hyphenSegments.slice(2, hyphenSegments.length - 2).join(' - ');
                         if (desc && !desc.includes('automatic backup after build')) {
                             cleanMessages = desc.split('. ').map(s => s.trim()).filter(s => s.length > 2);
@@ -362,8 +263,6 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
 
             cleanMessages.forEach(msg => {
                 if (msg.endsWith('.')) msg = msg.slice(0, -1);
-
-                // Enhance message with links
                 let message = msg.replace(/#(\d+)/g, '[#$1](https://github.com/EricRhysTaylor/Radial-Timeline/issues/$1)');
                 const hashLink = `([${shortHash}](https://github.com/EricRhysTaylor/Radial-Timeline/commit/${fullHash}))`;
 
@@ -377,7 +276,6 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
                 }
 
                 if (!assigned) {
-                    // Filter out noise like "2 files"
                     if (!/^\d+\s+files$/.test(message) && !message.toLowerCase().includes('[backup]') && !/^[+\-]\d+/.test(message)) {
                         uncategorized.push(`- ${message} ${hashLink}`);
                     }
@@ -386,7 +284,6 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
         });
 
         let changelog = "";
-
         CATEGORIES.forEach(cat => {
             if (categorized[cat.title].length > 0) {
                 changelog += `### ${cat.title}\n${categorized[cat.title].join('\n')}\n\n`;
@@ -404,7 +301,7 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
     }
 }
 
-// Build @font-face rules from src/assets/embeddedFonts.ts and inject into release/styles.css
+// Build @font-face rules
 function buildEmbeddedFontsCss() {
     const srcPath = 'src/assets/embeddedFonts.ts';
     let css = '';
@@ -452,7 +349,6 @@ function injectEmbeddedFontsIntoReleaseCss() {
         console.warn('⚠️  Could not read release/styles.css to inject fonts:', e.message);
         return;
     }
-    // Remove previous injected block if present
     const startIdx = css.indexOf(markerStart);
     const endIdx = css.indexOf(markerEnd);
     if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
@@ -468,45 +364,102 @@ function injectEmbeddedFontsIntoReleaseCss() {
     console.log('✅ Injected embedded @font-face rules into release/styles.css');
 }
 
+async function performBuildAndUpload(version, isDraft = false) {
+    // 1. Sync release notes from GitHub to ensure local bundle is current
+    console.log('\n🔄 Syncing release notes from GitHub...');
+    try {
+        execSync('npm run sync-release-notes', { stdio: 'inherit' });
+    } catch (e) {
+        console.error('❌ Failed to sync release notes. Aborting build.');
+        return;
+    }
+
+    // 2. Commit the synced notes (otherwise git status is dirty)
+    try {
+        runCommand('git add src/data/releaseNotesBundle.json', 'Staging synced release notes');
+        // We only commit if there are changes
+        const status = execSync('git status --porcelain', { encoding: 'utf8' });
+        if (status.includes('src/data/releaseNotesBundle.json')) {
+            runCommand(`git commit -m "docs: sync release notes for ${version}"`, 'Committing release notes');
+            
+            // OPTIONAL: Move tag to this new commit so the tag includes the notes
+            // This is "history rewriting" but ensures the tag is "perfect"
+            console.log(`\n📍 Updating tag ${version} to include release notes...`);
+            runCommand(`git tag -f ${version}`, `Moving tag ${version} to HEAD`);
+            runCommand(`git push origin ${version} --force`, `Pushing tag ${version}`);
+        }
+    } catch (e) {
+        console.warn('⚠️  Could not commit synced notes or move tag. Proceeding anyway.');
+    }
+
+    // 3. Build
+    runCommand("npm run build", "Building plugin (with new notes)");
+    injectEmbeddedFontsIntoReleaseCss();
+
+    // 4. Upload Assets
+    console.log(`\n📤 Uploading assets to release ${version}...`);
+    const assets = "release/main.js release/manifest.json release/styles.css";
+    runCommand(`gh release upload ${version} ${assets} --clobber`, "Uploading assets", false, true);
+
+    // 5. Publish (if it was a draft)
+    if (isDraft) {
+        const confirm = await question(`\n❓ Draft release ${version} is ready. Publish it now? (y/N): `);
+        if (confirm.toLowerCase() === 'y') {
+            const notesFile = '.release-notes-temp.md'; // Use temp file logic if we were editing description, but here we just toggle status
+            // We assume description is already correct on GitHub
+            runCommand(`gh release edit ${version} --draft=false --latest`, "Publishing release");
+            console.log(`\n🎉 Release ${version} published successfully!`);
+            console.log(`📦 https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${version}`);
+        } else {
+            console.log(`\n✅ Assets uploaded. Release ${version} remains a draft.`);
+        }
+    } else {
+        console.log(`\n✅ Assets updated for existing release ${version}.`);
+    }
+}
+
 async function main() {
     console.log("🚀 Obsidian Plugin Release Process\n");
 
-    // Enforce releasing from master only
     try {
         const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
         if (branch !== 'master') {
-            console.error(`❌ Releases must be cut from 'master'. Current branch: '${branch}'.`);
-            console.error(`👉 Run:  git switch master && git pull  then re-run: npm run release`);
+            console.error(`❌ Releases must be cut from 'master'. Current: '${branch}'`);
             process.exit(1);
         }
-    } catch (e) {
-        console.error('❌ Could not determine current git branch. Ensure you are on master.');
-        process.exit(1);
-    }
-
-    // Ensure working tree on master is clean before we attempt a merge or build
-    try {
-        const dirty = execSync('git status --porcelain', { encoding: 'utf8' }).trim();
-        if (dirty) {
-            console.error('❌ Your working tree on master has uncommitted changes.');
-            console.error('👉 Commit or stash them, then run npm run release again.');
-            process.exit(1);
-        }
-    } catch (e) {
-        console.error('❌ Could not verify working tree state.');
-        process.exit(1);
-    }
-
-    // Local master is the source of truth - no need to sync with remote
-    console.log("✅ Using local master as source of truth for release.");
+    } catch (e) { /* ignore */ }
 
     // Read current version
     const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
     const currentVersion = packageJson.version;
+    console.log(`📦 Current local version: ${currentVersion}`);
 
-    console.log(`📦 Current version: ${currentVersion}`);
+    // Check if there is already a release/draft for this version
+    const existingRelease = fetchReleaseInfo(currentVersion);
+    
+    if (existingRelease) {
+        if (existingRelease.isDraft) {
+            console.log(`\n⚠️  Found existing DRAFT release for ${currentVersion} on GitHub.`);
+            console.log(`   This means you probably edited the notes and are ready to finish.`);
+            const choice = await question(`\n❓ Finish release ${currentVersion}? (Sync notes -> Build -> Upload -> Publish) (y/N): `);
+            if (choice.toLowerCase() === 'y') {
+                await performBuildAndUpload(currentVersion, true);
+                rl.close();
+                return;
+            }
+        } else {
+            console.log(`\n⚠️  Found existing PUBLISHED release for ${currentVersion} on GitHub.`);
+            const choice = await question(`\n❓ Repair/Update assets for ${currentVersion}? (Sync notes -> Build -> Upload) (y/N): `);
+            if (choice.toLowerCase() === 'y') {
+                await performBuildAndUpload(currentVersion, false);
+                rl.close();
+                return;
+            }
+        }
+    }
 
-    // Get last release tag
+    // --- NEW RELEASE FLOW ---
+    
     const lastTag = getLastReleaseTag();
     console.log(`🏷️  Last release tag: ${lastTag || 'None found'}`);
 
@@ -514,167 +467,63 @@ async function main() {
     const newVersion = await question(`✨ Enter new version number: `);
 
     if (!newVersion) {
-        console.log("❌ Invalid version. Exiting.");
+        console.log("❌ Invalid version.");
         rl.close();
         return;
     }
 
-    // Handle same version case
     if (newVersion === currentVersion) {
-        console.log(`ℹ️  Re-releasing version ${currentVersion}`);
-    }
-
-    // Validate version format (basic semver check)
-    if (!/^\d+\.\d+\.\d+$/.test(newVersion)) {
-        console.log("❌ Version must be in format X.Y.Z (e.g., 2.1.1)");
+        console.log("ℹ️  Version matches current. Use the repair options above if needed.");
         rl.close();
         return;
     }
 
     // Generate changelog
-    console.log(`\n📝 Generating changelog since ${lastTag || 'beginning'}...`);
+    console.log(`\n📝 Generating changelog...`);
     const autoChangelog = generateChangelog(lastTag);
+    
+    // Create Draft Release Logic
+    console.log(`\n⚙️  Step 1: Creating Draft Release`);
+    
+    // 1. Bump version locally
+    runCommand(`npm version ${newVersion} --no-git-tag-version`, "Bumping version");
+    
+    // 2. Update bundle with preliminary auto-notes (so we have something)
+    updateBundleWithLocalEntry(newVersion, `## What's Changed\n\n${autoChangelog}`);
 
-    console.log(`\n📋 Changes since last release:`);
-    console.log(`${autoChangelog}`);
+    // 3. Commit bump
+    runCommand(`git add .`, "Staging version bump");
+    runCommand(`git commit -m "Release version ${newVersion}"`, "Committing version bump");
+    
+    // 4. Create Draft on GitHub (Text Only)
+    // We create the tag now so we can attach the release to it
+    runCommand(`git tag ${newVersion}`, `Creating tag ${newVersion}`);
+    runCommand(`git push origin master`, "Pushing code");
+    runCommand(`git push origin ${newVersion}`, "Pushing tag");
 
-    // Ask if user wants to edit release notes
-    const editOption = await question(`\n✏️  Release notes:
-1. Publish now (Auto-generated notes)
-2. Create draft → Edit on GitHub → Sync back (Recommended)
-Choose (1/2): `);
+    const notesFile = '.release-notes-temp.md';
+    writeFileSync(notesFile, `## What's Changed\n\n${autoChangelog}`);
 
-    let releaseNotes = `## What's Changed\n\n${autoChangelog}`;
-    let createDraft = false;
+    const cmd = `gh release create ${newVersion} --title "${newVersion}" --notes-file "${notesFile}" --draft`;
+    runCommand(cmd, "Creating Draft Release on GitHub");
+    
+    unlinkSync(notesFile);
 
-    if (editOption === '2') {
-        createDraft = true;
-        console.log(`\n📝 Will create draft on GitHub for you to edit.`);
-    }
+    console.log(`\n🎉 Draft Release Created!`);
+    console.log(`👉 Action Required:`);
+    console.log(`   1. Browser is opening... Edit the release notes on GitHub.`);
+    console.log(`   2. Add your wiki links, fix typos, make it perfect.`);
+    console.log(`   3. SAVE the draft (Do NOT publish yet).`);
+    console.log(`   4. Return here and run: npm run release`);
+    console.log(`      (It will detect the draft and run the 'Finish' steps)`);
 
-    /* Verification Summary */
-    console.log(`\n📋 Release Summary:`);
-    console.log(`   Current: ${currentVersion}`);
-    console.log(`   New:     ${newVersion}`);
-    if (createDraft) console.log(`   Notes:   Draft (Edit on GitHub, then sync)`);
-    else console.log(`   Notes:   Auto-generated (publish immediately)`);
-
-    const confirm = await question(`\n❓ Proceed with release? (y/N): `);
-
-    if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
-        console.log("❌ Release cancelled.");
-        rl.close();
-        return;
+    try {
+        runCommand(`gh release view ${newVersion} --web`, "Opening GitHub", true);
+    } catch (e) {
+        console.log(`   Link: https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/${newVersion}`);
     }
 
     rl.close();
-
-    try {
-        // Version bump and file sync
-        if (newVersion !== currentVersion) {
-            // Use npm to bump version and trigger package.json "version" script
-            runCommand(`npm version ${newVersion} --no-git-tag-version`, "Bumping version and updating manifest/versions");
-        } else {
-            console.log(`ℹ️  Version unchanged, syncing manifest/versions only`);
-            updateManifestAndVersions(newVersion);
-        }
-
-        // Update local release notes bundle automatically
-        updateBundleWithLocalEntry(newVersion, releaseNotes);
-
-        // Run build process
-        runCommand("npm run build", "Building plugin");
-        injectEmbeddedFontsIntoReleaseCss();
-
-        // Check if there are changes to commit
-        try {
-            execSync('git diff --exit-code', { stdio: 'pipe' });
-            console.log("ℹ️  No changes to commit");
-        } catch {
-            runCommand(`git add .`, "Staging changes");
-            runCommand(`git commit -m "Release version ${newVersion}"`, "Committing changes");
-        }
-
-        // Tag creation
-        if (tagExists(newVersion)) {
-            console.log(`ℹ️  Tag ${newVersion} already exists, skipping tag creation`);
-        } else {
-            const tagRes = runCommand(`git tag ${newVersion}`, "Creating git tag", false, true);
-            if (!tagRes) console.log(`ℹ️  Skipped creating tag ${newVersion}`);
-        }
-
-        runCommand("git push origin master", "Pushing changes");
-
-        const pushTagRes = runCommand(`git push origin ${newVersion}`, "Pushing tag", false, true);
-        if (!pushTagRes) console.log(`ℹ️  Tag ${newVersion} already pushed or skipped`);
-
-        // Create GitHub release with release assets
-        // Write notes to a temp file to preserve newlines properly
-        const notesFile = '.release-notes-temp.md';
-        writeFileSync(notesFile, releaseNotes);
-
-        let releaseCommand;
-        if (createDraft) {
-            releaseCommand = `gh release create ${newVersion} ` +
-                `release/main.js release/manifest.json release/styles.css ` +
-                `--title "${newVersion}" ` +
-                `--notes-file "${notesFile}" ` +
-                `--draft`;
-        } else {
-            releaseCommand = `gh release create ${newVersion} ` +
-                `release/main.js release/manifest.json release/styles.css ` +
-                `--title "${newVersion}" ` +
-                `--notes-file "${notesFile}" ` +
-                `--latest`;
-        }
-        const createRes = runCommand(releaseCommand, createDraft ? "Creating draft GitHub release" : "Creating GitHub release", false, true);
-        if (!createRes) {
-            console.log(`ℹ️  Release ${newVersion} may already exist, updating instead`);
-            const updateCommand = `gh release edit ${newVersion} ` +
-                `--title "${newVersion}" ` +
-                `--notes-file "${notesFile}" ` +
-                (createDraft ? `--draft` : `--latest`);
-            runCommand(updateCommand, "Updating GitHub release");
-            runCommand(`gh release upload ${newVersion} release/main.js release/manifest.json release/styles.css --clobber`, "Updating release assets", false, true);
-        }
-
-        // Clean up temp file
-        try {
-            unlinkSync(notesFile);
-        } catch { /* ignore */ }
-
-        if (createDraft) {
-            console.log(`\n🎉 Draft release ${newVersion} created successfully!`);
-            console.log(`\n📝 Next steps:`);
-            console.log(`   1. Edit release notes on GitHub (opening now...)`);
-            console.log(`   2. Save the draft (don't publish yet!)`);
-            console.log(`   3. Return here and run: npm run sync-release-notes`);
-            console.log(`   4. Commit the updated notes: npm run backup --note="Sync release notes"`);
-            console.log(`   5. Go back to GitHub and publish the release`);
-
-            try {
-                // Open in browser via GitHub CLI (edit doesn't support --web; view does)
-                runCommand(`gh release view ${newVersion} --web`, "Opening release in browser", true);
-            } catch (error) {
-                // Fallback: try OS open command on macOS
-                try {
-                    const url = `https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`;
-                    runCommand(`open ${url}`, "Opening release in browser", true);
-                } catch (e2) {
-                    console.log(`⚠️  Could not open browser automatically. Edit at:`);
-                    console.log(`   https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
-                }
-            }
-        } else {
-            console.log(`\n🎉 Release ${newVersion} published successfully!`);
-            console.log(`📦 GitHub release: https://github.com/EricRhysTaylor/radial-timeline/releases/tag/${newVersion}`);
-            console.log(`\n✅ Release notes embedded in plugin match this release automatically.`);
-        }
-
-    } catch (error) {
-        console.error(`❌ Release failed:`, error.message);
-        process.exit(1);
-    }
 }
 
 main();

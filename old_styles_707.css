@@ -145,48 +145,10 @@
    ============================================================================= */
 .rt-version-indicator {
   cursor: default;
-  transition: filter 0.2s ease;
-}
-
-.rt-version-indicator:hover {
-  filter: drop-shadow(0 0 5px var(--text-muted));
 }
 
 .rt-version-indicator.rt-has-update {
   cursor: pointer;
-}
-
-/* =============================================================================
-   HELP ICON
-   Bottom-right corner help/wiki link
-   ============================================================================= */
-.rt-help-icon {
-  cursor: pointer;
-  stroke: var(--text-muted);
-  opacity: 0.6;
-  transition: opacity 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
-}
-
-.rt-help-icon:hover {
-  opacity: 1;
-  stroke: var(--text-normal);
-  filter: drop-shadow(0 0 5px var(--text-muted));
-}
-
-.rt-help-text {
-  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
-  font-size: 20px;
-  text-anchor: middle;
-  dominant-baseline: baseline;
-  fill: var(--text-muted);
-  opacity: 0;
-  pointer-events: none;
-  transition: fill 0.2s ease, opacity 0.2s ease;
-}
-
-.rt-help-icon:hover .rt-help-text {
-  opacity: 1;
-  fill: var(--text-normal);
 }
 
 .rt-version-text {
@@ -197,23 +159,7 @@
   dominant-baseline: baseline;
   letter-spacing: 0;
   pointer-events: none;
-  transition: fill 0.2s ease, opacity 0.2s ease;
-}
-
-.rt-version-text.rt-version-number {
-  opacity: 1;
-}
-
-.rt-version-indicator:hover .rt-version-text.rt-version-number {
-  opacity: 0;
-}
-
-.rt-version-text.rt-version-action {
-  opacity: 0;
-}
-
-.rt-version-indicator:hover .rt-version-text.rt-version-action {
-  opacity: 1;
+  transition: fill 0.2s ease;
 }
 
 /* Version color: Default muted when up-to-date (no update available) */
@@ -270,14 +216,13 @@
   stroke: var(--text-muted);
   stroke-width: 1px;
   opacity: 0.6;
-  transition: opacity 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+  transition: opacity 0.2s ease, stroke 0.2s ease;
   cursor: pointer;
 }
 
-.rt-update-none:hover .rt-version-bug-icon {
+.rt-version-bug-icon:hover {
   opacity: 1;
   stroke: var(--text-normal);
-  filter: drop-shadow(0 0 5px var(--text-normal));
 }
 
 /* Alert icon (shown when update available) */
@@ -285,7 +230,7 @@
   fill: none;
   stroke-width: 1px;
   opacity: 1;
-  transition: opacity 0.3s ease, stroke 0.2s ease, filter 0.2s ease;
+  transition: opacity 0.3s ease, stroke 0.2s ease;
   cursor: pointer;
   animation: rt-version-pulse 2s ease-in-out infinite;
 }
@@ -298,7 +243,6 @@
 
 .rt-update-minor:hover .rt-version-alert-icon {
   stroke: #f97316;
-  filter: drop-shadow(0 0 5px #f97316);
 }
 
 .rt-update-major .rt-version-alert-icon {
@@ -308,7 +252,6 @@
 
 .rt-update-major:hover .rt-version-alert-icon {
   stroke: #ef4444;
-  filter: drop-shadow(0 0 5px #ef4444);
 }
 
 @keyframes rt-version-pulse {
@@ -417,6 +360,15 @@
   stroke-width: 1px;
 }
 
+.radial-timeline-container .rt-scene-act {
+  fill-opacity: 0;
+}
+
+.radial-timeline-container .rt-scene-act:hover {
+  fill-opacity: 0.3;
+  cursor: pointer;
+}
+
 /* Void cells - empty space in timeline */
 .radial-timeline-container .rt-void-cell {
   fill: var(--rt-color-empty);
@@ -424,6 +376,10 @@
   stroke: white;
   stroke-width: 1;
   cursor: default;
+}
+
+.radial-timeline-container .rt-scene-path.rt-faded {
+  opacity: 0.3;
 }
 
 /* Optimized global fade: Apply to all children when parent has class */
@@ -620,14 +576,19 @@
 
 /* Gossamer1 dots on hover - add white stroke outline */
 .rt-gossamer-dot:hover,
-.rt-gossamer-dot.rt-hover,
-.rt-gossamer-dot-historical.rt-hover {
+.rt-gossamer-dot.rt-hover {
   stroke: white;
   stroke-width: 3;
 }
 
 .rt-gossamer-dot-historical {
   stroke-width: 1px;
+}
+
+.rt-gossamer-dot-historical.rt-hover {
+  /* Add white stroke outline when Gossamer1 dot or beat slice is hovered */
+  stroke: white;
+  stroke-width: 3;
 }
 
 .rt-gossamer-band {
@@ -805,6 +766,10 @@
   stroke-width: 3px;
 }
 
+.radial-timeline-container .rt-scene-title.rt-faded {
+  opacity: 0.2;
+}
+
 .rt-scene-info {
   opacity: 0;
   pointer-events: none !important;
@@ -948,7 +913,7 @@
 }
 
 .documentation-container h1 {
-  font-size: 2.2em;
+  font-size: 1.8em;
   margin-top: 0.5em;
 }
 
@@ -1022,83 +987,11 @@
 }
 
 .rt-drop-target-tick {
-  stroke: var(--rt-max-publish-stage-color, var(--interactive-accent, #5e81ff));
+  stroke: var(--rt-drag-color, var(--rt-max-publish-stage-color, var(--interactive-accent, #5e81ff)));
   stroke-width: 4px;
   stroke-linecap: round;
   fill: none;
 }
-
-.rt-confirm-modal {
-  max-width: 560px;
-}
-
-/* Planetary time (local calendar) */
-.rt-planetary-tooltip {
-  position: fixed;
-  pointer-events: none;
-  background: var(--background-primary, #1e1e1e);
-  color: var(--text-normal, #f3f3f3);
-  border: 1px solid var(--background-modifier-border, #3a3a3a);
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  z-index: 9999;
-  white-space: nowrap;
-}
-
-.rt-planetary-preview {
-  margin-top: 6px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--background-secondary, rgba(255, 255, 255, 0.02));
-  border: 1px solid var(--background-modifier-border, #3a3a3a);
-}
-
-.rt-planetary-preview-heading {
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.rt-planetary-modal-actions {
-  margin-top: 8px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.rt-planetary-modal-result {
-  margin-top: 12px;
-  font-weight: 600;
-}
-
-.rt-planetary-time-text {
-  fill: var(--text-muted, currentColor);
-  font-size: 14px !important;
-  line-height: 1.2;
-}
-
-.rt-planetary-outline {
-  fill: none;
-  stroke: var(--text-muted);
-  stroke-dasharray: 4 3;
-  stroke-width: 2;
-}
-
-/* Fix input styling in planetary modal */
-.rt-planetary-modal-shell input[type="date"],
-.rt-planetary-modal-shell input[type="time"] {
-  background-color: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-normal);
-  font-family: var(--font-interface);
-  font-size: var(--font-ui-medium);
-  line-height: 1.3;
-  padding: 4px 8px;
-  border-radius: var(--input-radius);
-  height: auto;
-}
-
 
 .rt-drop-target-arc {
   stroke: var(--rt-drag-color, var(--rt-max-publish-stage-color, var(--interactive-accent, #5e81ff)));
@@ -1106,6 +999,10 @@
   stroke-linecap: round;
   fill: none;
   opacity: 0.9;
+}
+
+.rt-confirm-modal {
+  max-width: 560px;
 }
 
 .rt-confirm-heading {
@@ -1244,7 +1141,40 @@
 .rt-scene-path.rt-drop-target {
   stroke: var(--interactive-accent, #5e81ff);
   stroke-width: 3px;
-}.radial-timeline-container .rt-scene-title.rt-selected {
+}
+
+/* AI grade text colors - scoped to plugin (no !important so non-selected can override) */
+.rt-number-text.rt-grade-A {
+  fill: #00ff48;
+}
+
+.rt-number-text.rt-grade-B {
+  fill: #ffbb00;
+}
+
+.rt-number-text.rt-grade-C {
+  fill: #ff0000;
+}
+
+/* Preserve grade colors when scene is open (higher specificity overrides white fill below) */
+.rt-number-text.rt-scene-is-open.rt-grade-A {
+  fill: #00ff48;
+}
+
+.rt-number-text.rt-scene-is-open.rt-grade-B {
+  fill: #ffbb00;
+}
+
+.rt-number-text.rt-scene-is-open.rt-grade-C {
+  fill: #ff0000;
+}
+
+.rt-number-square.rt-faded,
+.rt-number-text.rt-faded {
+  opacity: 1;
+}
+
+.radial-timeline-container .rt-scene-title.rt-selected {
   filter: url(#sceneTitleHalo);
 }
 
@@ -1435,7 +1365,22 @@
   fill: #FFFFFF;
   /* white for default case; grade colors override via higher specificity */
   font-weight: bold;
-}.rt-number-square.rt-search-result {
+}
+
+/* Preserve grade colors when scene is open and selected */
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A {
+  fill: #00ff48;
+}
+
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B {
+  fill: #ffbb00;
+}
+
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C {
+  fill: #ff0000;
+}
+
+.rt-number-square.rt-search-result {
   fill: var(--rt-color-search) !important;
 }
 
@@ -1493,10 +1438,50 @@
 .rt-number-text.rt-missing-when {
   fill: #FFFFFF !important;
   opacity: 1;
-}.rt-number-text.rt-has-edits.rt-selected,
+}
+
+/* Preserve grade colors for pending edits (higher specificity) */
+.rt-number-text.rt-has-edits.rt-grade-A {
+  fill: #00ff48;
+}
+
+.rt-number-text.rt-has-edits.rt-grade-B {
+  fill: #ffbb00;
+}
+
+.rt-number-text.rt-has-edits.rt-grade-C {
+  fill: #ff0000;
+}
+
+.rt-number-text.rt-has-edits.rt-selected,
 .rt-number-text.rt-has-edits.rt-search-result.rt-selected {
   font-weight: bold;
-}.rt-clear-search-btn {
+}
+
+/* Preserve grade colors for pending edits selected state */
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A {
+  fill: #00ff48;
+}
+
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B {
+  fill: #ffbb00;
+}
+
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C {
+  fill: #ff0000;
+}
+
+/* AI grade colors turn white when non-selected (covers all states: default, open, pending edits) */
+.rt-number-text.rt-non-selected.rt-grade-A,
+.rt-number-text.rt-non-selected.rt-grade-B,
+.rt-number-text.rt-non-selected.rt-grade-C {
+  fill: #FFFFFF !important;
+}
+
+.rt-clear-search-btn {
   cursor: pointer;
 }
 
@@ -1872,6 +1857,10 @@
 /* Settings visibility utility classes */
 .rt-settings-visible {
   display: block;
+}
+
+.rt-settings-hidden {
+  display: none !important;
 }
 
 .rt-settings-release-notes {
@@ -2540,160 +2529,6 @@
   margin-top: 22px;
 }
 
-/* Manuscript Modal */
-.rt-pulse-glass-card.rt-manuscript-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: none;
-  padding: 18px 20px;
-  margin-top: 12px;
-}
-
-.rt-manuscript-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.rt-manuscript-card-head {
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.rt-manuscript-card-note {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-.rt-manuscript-pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.rt-manuscript-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  cursor: pointer;
-  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
-}
-
-.rt-manuscript-pill.rt-is-active {
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-}
-
-.rt-manuscript-pill:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.rt-manuscript-range-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.rt-manuscript-range-cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.rt-manuscript-range-card {
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 70px;
-}
-
-.rt-manuscript-range-card.rt-is-muted {
-  opacity: 0.55;
-}
-
-.rt-manuscript-range-card-active {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-}
-
-.rt-manuscript-range-label {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.rt-manuscript-range-title {
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.rt-manuscript-range-track-wrap {
-  position: relative;
-  padding: 6px 2px 2px 2px;
-}
-
-.rt-manuscript-range-track {
-  position: relative;
-  height: 12px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.16));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.rt-manuscript-range-track.rt-is-disabled {
-  opacity: 0.5;
-}
-
-.rt-manuscript-range-fill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255, 189, 105, 0.8), rgba(126, 196, 255, 0.85));
-  pointer-events: none;
-}
-
-.rt-manuscript-range-handle {
-  position: absolute;
-  top: 50%;
-  width: 18px;
-  height: 18px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: #111;
-  border: 2px solid rgba(255, 255, 255, 0.75);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
-  cursor: grab;
-}
-
-.rt-manuscript-range-handle.rt-is-disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.rt-manuscript-range-status {
-  font-size: 0.95rem;
-  color: var(--text-muted);
-}
-
-.rt-manuscript-loading {
-  color: var(--text-muted);
-}
-
-.rt-manuscript-actions {
-  margin-top: 18px;
-}
-
 
 /* Subplot Management Modal */
 
@@ -2794,10 +2629,6 @@
 }
 
 /* Subplot modal sizing */
-.rt-subplot-modal-shell.modal {
-  width: min(500px, 90vw);
-}
-
 .rt-subplot-modal-shell .modal-content {
   min-height: 80vh;
   max-height: 90vh;
@@ -2812,7 +2643,7 @@
   max-height: 90vh;
 }
 
-.rt-subplot-modal > .rt-pulse-progress-hero {
+.rt-subplot-modal>.rt-pulse-progress-hero {
   flex: 0 0 auto;
 }
 
@@ -3994,11 +3825,11 @@
   text-align: right;
 }
 
-/* Gossamer score item container - vertical layout */
+/* Gossamer score item container - two column layout */
 .rt-gossamer-score-item-container {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
   justify-content: flex-start;
   gap: 8px;
   padding: 10px 12px;
@@ -4011,14 +3842,6 @@
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   min-height: 52px;
   box-sizing: border-box;
-}
-
-.rt-gossamer-score-header {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center; /* Center the header items */
-  gap: 8px;
 }
 
 .rt-gossamer-score-item-container:hover {
@@ -4048,7 +3871,7 @@
   transform: scale(1.05);
 }
 
-/* Text column - right side - DEPRECATED in favor of header/body split, but keeping for legacy if needed */
+/* Text column - right side */
 .rt-gossamer-text-column {
   display: flex;
   flex-direction: column;
@@ -4058,11 +3881,11 @@
   transition: color 0.2s ease;
   font-weight: 600;
   line-height: 1.2;
-  flex: 1;
-  min-width: 0;
+  flex-shrink: 0;
+  flex-grow: 0;
 }
 
-.rt-gossamer-score-item-container:hover .rt-gossamer-score-value {
+.rt-gossamer-score-item-container:hover .rt-gossamer-text-column {
   color: var(--text-accent);
 }
 
@@ -4083,21 +3906,8 @@
   font-size: 0.75rem;
   color: var(--text-muted);
   font-weight: 400;
+  max-width: 220px;
   line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-break: break-word;
-  max-width: 100%;
-  text-align: center;
-}
-
-.rt-mapping-list {
-  padding-left: 20px;
-  border-left: 2px solid var(--background-modifier-border);
-  margin-bottom: 20px;
 }
 
 .rt-gossamer-score-separator {
@@ -5111,6 +4921,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   grid-row: 2 / 3;
   margin: 0;
 }
+
 /* Gossamer modal checkbox options - 2 column layout */
 .rt-gossamer-options-container {
   display: grid;
@@ -5160,49 +4971,4 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 
 .rt-text-muted {
   color: var(--text-muted) !important;
-}
-
-/* Consolidated Hidden States */
-.rt-planetary-hidden,
-.rt-settings-hidden,
-.rt-mapping-hidden {
-  display: none !important;
-}
-
-/* Consolidated Grade Colors */
-/* Grade A - Green */
-.rt-number-text.rt-grade-A,
-.rt-number-text.rt-scene-is-open.rt-grade-A,
-.rt-number-text.rt-has-edits.rt-grade-A,
-.rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A,
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A {
-  fill: #00ff48;
-}
-
-/* Grade B - Yellow */
-.rt-number-text.rt-grade-B,
-.rt-number-text.rt-scene-is-open.rt-grade-B,
-.rt-number-text.rt-has-edits.rt-grade-B,
-.rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B,
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B {
-  fill: #ffbb00;
-}
-
-/* Grade C - Red */
-.rt-number-text.rt-grade-C,
-.rt-number-text.rt-scene-is-open.rt-grade-C,
-.rt-number-text.rt-has-edits.rt-grade-C,
-.rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
-.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C,
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C {
-  fill: #ff0000;
-}
-
-/* Grade Non-Selected (Reset to white) */
-.rt-number-text.rt-non-selected.rt-grade-A,
-.rt-number-text.rt-non-selected.rt-grade-B,
-.rt-number-text.rt-non-selected.rt-grade-C {
-  fill: #FFFFFF !important;
 }

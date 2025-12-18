@@ -244,7 +244,7 @@ export const en: TranslationKeys = {
             },
             showEstimate: {
                 name: 'Show estimated completion date',
-                desc: 'Display a tick mark and label on the timeline for the estimated completion date.',
+                desc: 'Display a tick mark and label on the timeline for the estimated completion date. Tip: When you complete a scene, in addition to setting the Status to Complete, also set the Due date to the same day the scene was completed to improve the estimate.',
             },
             debounce: {
                 name: 'Metadata refresh debounce (ms)',
@@ -347,7 +347,7 @@ export const en: TranslationKeys = {
         },
         active: {
             name: 'Active profile',
-            desc: 'Pick which planet profile is used for conversions.',
+            desc: 'Pick which planet or setting profile is used for conversions.',
         },
         actions: {
             add: 'Add profile',
