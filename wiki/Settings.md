@@ -7,6 +7,10 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 *   **Target completion date**: Optional target (YYYY-MM-DD). Marker appears on outer ring.
 *   **Zero draft mode**: Prevents edits to completed zero-draft scenes.
 
+### Metadata and mapping
+*   **Enable custom metadata mapping**: Map your own frontmatter keys (e.g., `StoryLine`) to system keys (`Subplot`).
+*   **Mappings**: Define multiple key pairs for legacy data support.
+
 ### Chronologue mode settings
 *   **Chronologue duration arc cap**: Select maximum duration to display on scene duration arcs, or use "auto".
 *   **Discontinuity gap threshold**: Controls when the ∞ symbol appears in shift mode. Auto-calculated as 3× the median time gap.
@@ -33,6 +37,8 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 
 ### Advanced
 *   **Auto-expand clipped scene titles**: Disable to prevent scene title expansion on hover.
+*   **Show completion estimate**: Toggle the predicted completion date tick on the timeline (based on your writing pace).
+*   **Timeline readability scale**: Choose between normal and large UI elements for high-resolution displays.
 *   **Metadata refresh debounce (ms)**: Delay before refreshing timeline after YAML frontmatter changes.
 
 ### Visual customization

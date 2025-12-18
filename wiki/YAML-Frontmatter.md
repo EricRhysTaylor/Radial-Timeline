@@ -19,9 +19,28 @@ Pending Edits:            # Notes for future revisions (especially for zero draf
 Words:                    # Scene word count
 Pulse Update:             # AI-generated scene pulse analysis flag
 ---
-```
+---
 
-**Tip**: After switching a scene’s `Status` to `Complete`, update the `Due` field to the actual completion date. This preserves an accurate completion timeline and keeps the plugin’s completion-date forecasts honest.
+### Custom Metadata Mapping
+
+If your vault already uses different frontmatter keys for scene metadata, you can map them to Radial Timeline's system keys in **Settings → Custom Metadata Mapping**.
+
+**Supported System Keys:**
+* `Class` (Scene/Beat)
+* `When` (Chronology)
+* `Subplot`
+* `Act`
+* `Duration`
+* `Character`
+* `POV`
+* `Place`
+* `Synopsis`
+* `Status`
+* `Publish Stage`
+* `Due`
+* `Words`
+
+Example: If you use `Timeline: 2024-01-01` instead of `When: 2024-01-01`, create a mapping from `Timeline` to `When`.
 
 **For multiple subplots or characters, use YAML list format:**
 ```yaml

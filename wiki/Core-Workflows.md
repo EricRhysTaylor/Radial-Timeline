@@ -17,6 +17,16 @@
 **Modes**: Narrative (key 1) or Subplot (key 2)
 **Settings**: Publishing stage colors
 
+### Generating a Manuscript
+
+When you're ready to read through your work or send it to an editor, use the **`Generate manuscript`** command.
+
+1.  Open the command palette (`Cmd/Ctrl + P`) and select **`Radial Timeline: Generate manuscript`**.
+2.  **Order**: Choose Narrative (reading order) or Chronological (story-world order).
+3.  **TOC**: Select Markdown, Plain Text, or No Table of Contents.
+4.  **Range**: Use the slider to select a specific range of scenes to include (useful for generating a single act or chapter).
+5.  **Output**: A new file is created in the `AI/` folder containing the compiled text of all selected scenes.
+
 ### Zero Draft Mode
 Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progress to new scenes instead of endlessly revising. See the **[Zero Draft Mode](Zero-Draft-Mode)** guide for full details.
 

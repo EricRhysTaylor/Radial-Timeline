@@ -44,6 +44,7 @@ Radial Timeline™ captures and visualizes all 4 critical timelines, revealing t
 2. **Chronological time**: when events happen in your story's world. (Includes experimental Planetary Time calculator for sci-fi/fantasy calendars).
 3. **Author time**: your scene writing progress with target completion dates from Todo to Complete.
 4. **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
+5. **Manuscript Generation**: compile your scenes into a single document for editing or submission, with support for narrative or chronological ordering and table of contents.
 
 Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Subplot Mode where all scenes is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.
 
@@ -151,7 +152,7 @@ For full details, see **[Reordering Scenes](https://github.com/EricRhysTaylor/Ra
 Detailed guides and references have been moved to the [GitHub Wiki](https://github.com/EricRhysTaylor/Radial-Timeline/wiki).
 
 *   **[How-to Guide](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/How-to)**: Reordering scenes (drag & drop), managing subplots in bulk, and other tips.
-*   **[Core Workflows](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Core-Workflows)**: Planning, Tracking Progress, and Zero Draft Mode.
+*   **[Core Workflows](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Core-Workflows)**: Planning, Tracking Progress, Zero Draft Mode, and Generating Manuscripts.
 *   **[Chronologue Mode](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Chronologue-Mode)**: Constructing your story timeline and analyzing time gaps.
 *   **[Gossamer Mode](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Gossamer-Mode)**: Analyzing narrative momentum.
 *   **[AI Analysis](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/AI-Analysis)**: Using AI for scene analysis.
