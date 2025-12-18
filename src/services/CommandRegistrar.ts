@@ -197,7 +197,7 @@ export class CommandRegistrar {
             } catch { }
             const existing = this.app.vault.getAbstractFileByPath(manuscriptPath);
             if (existing) {
-                new Notice(`File ${manuscriptPath} already exists. Try again in a moment.`);
+                new Notice('Warning: Duplicate title. Please wait 1 minute then try again.');
                 return;
             }
             const createdFile = await this.app.vault.create(manuscriptPath, manuscript.text);

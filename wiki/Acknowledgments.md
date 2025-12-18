@@ -1,6 +1,5 @@
 This project stands on the shoulders of many generous teachers, tools, and storytellers:
-
-*   [d3.js](https://d3js.org) — pioneering data-driven, SVG-based visualization patterns that informed the radial layout, scales, and interaction patterns.
+*   [d3.js](https://d3js.org) — powerful data-driven, SVG-based visualization patterns that present complex statistical data in a visually appealing and approachable format.
 *   [Save the Cat! Writes a Novel](https://www.jessicabrody.com/books/non-fiction/save-cat-writes-novel/about/) (2018), Jessica Brody — a practical articulation of the Save the Cat beats.
 *   [The Story Grid](https://storygrid.com), Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow.
 *   [Obsidian](https://obsidian.md) — for a thriving plugin ecosystem and thoughtful feature development.

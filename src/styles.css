@@ -5129,8 +5129,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 .rt-number-text.rt-has-edits.rt-grade-A,
 .rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
 .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A,
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A,
-.rt-number-text.rt-non-selected.rt-grade-A {
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A {
   fill: #00ff48;
 }
 
@@ -5140,8 +5139,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 .rt-number-text.rt-has-edits.rt-grade-B,
 .rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
 .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B,
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B,
-.rt-number-text.rt-non-selected.rt-grade-B {
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B {
   fill: #ffbb00;
 }
 
@@ -5151,7 +5149,13 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 .rt-number-text.rt-has-edits.rt-grade-C,
 .rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
 .rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C,
-.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C,
-.rt-number-text.rt-non-selected.rt-grade-C {
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C {
   fill: #ff0000;
+}
+
+/* Grade Non-Selected (Reset to white) */
+.rt-number-text.rt-non-selected.rt-grade-A,
+.rt-number-text.rt-non-selected.rt-grade-B,
+.rt-number-text.rt-non-selected.rt-grade-C {
+  fill: #FFFFFF !important;
 }
