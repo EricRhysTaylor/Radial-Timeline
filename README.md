@@ -190,14 +190,14 @@ Detailed guides and references have been moved to the [GitHub Wiki](https://gith
 ### Screen Resolution
 The radial timeline is designed for high pixel density displays (around 200 ppi or higher) for optimal visual quality.
 *   All Apple Retina displays — 2x pixel density.
-*   Recommend Windows systems with 4k displays or higher. (Tested on 1080p 2550x1440)
+*   Recommend Windows systems with 4k displays or higher. (Tested down to 1080p 2550x1440)
 *   Tablets.
 
 If you're experiencing visual quality issues on Windows, please check your display scaling settings.
 
 ## Acknowledgments
 
-*   [d3.js](https://d3js.org) — pioneering data-driven, SVG-based visualization patterns that informed the radial layout, scales, and interaction patterns.
+*   [d3.js](https://d3js.org) — powerful data-driven, SVG-based visualization patterns that present complex statistical data in a visually appealing and approachable format.
 *   [Save the Cat! Writes a Novel](https://www.jessicabrody.com/books/non-fiction/save-cat-writes-novel/about/) (2018), Jessica Brody — a practical articulation of the Save the Cat beats.
 *   [The Story Grid](https://storygrid.com), Shawn Coyne — a rigorous methodology for analyzing scenes and beat flow.
 *   [Obsidian](https://obsidian.md) — for a thriving plugin ecosystem and thoughtful feature development.
