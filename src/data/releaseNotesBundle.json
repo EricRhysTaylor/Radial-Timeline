@@ -3,79 +3,90 @@
     {
       "version": "4.5.0",
       "title": "4.5.0",
-      "body": "## What's Changed\n\n### ✨ New Features\n- Enhancements 1) Restructured Gossamer Momentum Modal 2) Added Custom Metadata key remapping 3) added Alien Calendar system with modal calculator and Scene Synopsis Peek Line 4) Added more wiki and Readme documentation 5) Manuscript Generation Modal with various options ([6267936](https://github.com/EricRhysTaylor/Radial-Timeline/commit/62679364d75c4043ecec9d2ec0e65da826ba1ede))\n- Documents: added link to youtube video introducing Chronologue Mode ([20cd617](https://github.com/EricRhysTaylor/Radial-Timeline/commit/20cd617c98a750aa1b2360b0a2a83282e3157de6))\n\n### 📚 Documentation\n- docs: clarify drag and drop limitation in How-to.md ([6989f73](https://github.com/EricRhysTaylor/Radial-Timeline/commit/6989f73faa5e7b6b783ffaeea7f89f22f5e6a07e))\n\n### 🔧 Maintenance\n- Enhancements: Give Generate Manuscript full ability to present Narrative, Chronologue in reverse order and within ranges as desired ([eea95f9](https://github.com/EricRhysTaylor/Radial-Timeline/commit/eea95f90d17043ff67d7e65fe373e7906986a862))\n\n### 🛠 Other Changes\n- Design: fine tune the Alien Calendar text presentation in synopsis ([e367929](https://github.com/EricRhysTaylor/Radial-Timeline/commit/e36792935a7ff19d234a811bb2ed01efa2c2d705))\n- src/data/patreonStats.json ([8b16547](https://github.com/EricRhysTaylor/Radial-Timeline/commit/8b165475d8ffe4ad250c73d87aa6116bcf86cb32))",
-      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.5.0",
-      "publishedAt": "2025-12-18T21:39:19.735Z"
+      "body": "### New Features\r\n 1) Custom Metadata key remapping in Settings\r\n 2) Alien Calendar system in Settings with Command calculator modal and Scene hover Synopsis Peek Line \r\n 3) Generate Manuscript modal with options for Table of Contents and Narrative, Chronologue forward/reverse order and within ranges ([eea95f9](https://github.com/EricRhysTaylor/Radial-Timeline/commit/eea95f90d17043ff67d7e65fe373e7906986a862))\r\n4) Added life raft icon bottom right linking to Wiki docs\r\n\r\n### Documentation\r\n- Add and clarify scene drag and drop feature and limitations in How-to.md ([6989f73](https://github.com/EricRhysTaylor/Radial-Timeline/commit/6989f73faa5e7b6b783ffaeea7f89f22f5e6a07e))\r\n\r\n### Bug\r\n- Gossamer Modal Justification text overflow fixed\r\n",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-b4794551fdd4c88b0144",
+      "publishedAt": "2025-12-18T21:54:09.656Z",
+      "isDraft": true
     },
     {
       "version": "4.4.2",
       "title": "4.4.2",
       "body": "## What's Changed\r\n\r\nRefined Feature - Move Scene in Narrative Mode improved with subplot coloring for arc and elevated modal layout with icons. \r\n\r\nBug - Fixed in the Chronologue mode, where the subplot has only one scene and the title fails to appear. ([75fba10](https://github.com/EricRhysTaylor/Radial-Timeline/commit/75fba108a013a02ab92d8a6248c3a43415d059bc))",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.2",
-      "publishedAt": "2025-12-13T21:28:48Z"
+      "publishedAt": "2025-12-13T21:28:48Z",
+      "isDraft": false
     },
     {
       "version": "4.4.1",
       "title": "4.4.1",
       "body": "## What's Changed\r\n- Added latest models from ChatGPT 5.2, Claude Opus 4.5 and the older Gemini 2.5 \r\n- Improved the Gossamer momentum gemini score modal and status info\r\n- changed the release according in settings and modal to expand the latest release rather than the last Major release\r\n- Changed the triplet prompt and instructions to properly pull from the settings context and remove the excess instructions from the beginning designed to cajole the local LLM to obey instructions.\r\n- Enlarged the Release Update Alert icon to match the 24x24 size of the Bug svg icon",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.1",
-      "publishedAt": "2025-12-13T03:20:40Z"
+      "publishedAt": "2025-12-13T03:20:40Z",
+      "isDraft": false
     },
     {
       "version": "4.4.0",
       "title": "4.4.0",
       "body": "### What's New\r\n\r\n- Added the ability to move scenes. Requires Narrative mode and cursor hovering over the scene number square. This turns cursor into a double-arrow where you can click-drag to the target scene number square, then release. Small dialog box will request confirmation and specify details of the scene move. A tick mark will track your progress around the timeline. Only works using the outer all scenes (narrative) ring and in Narrative Mode. When moving to another act, feature will evaluate the target scene's act and amend the YAML to match.\r\n- Added Local LLM – Generic OpenAI provider option with advisory that it doesn't comply with JSON formatting. Perhaps a bigger local model will work?\r\n- Implemented the Subplot Manager command and modal to delete and rename a subplot which updates every scene in that subplot.\r\n- Fixed low-DPI PC rendering issues with scene-title strokes and moved to native Obsidian Inter (interface) font for consistent typography.\r\n- Updated the README link and refreshed the wiki.\r\n- Polished modal visuals, harmonized alert dialogs, and improved the Gossamer Score modal (including orphaned justification fixes).\r\n- Revamped the Gossamer “Enter Scores” modal to include justification text. New modal button Normalize Scores to clean up out of sequence or orphaned scores.\r\n",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.0",
-      "publishedAt": "2025-12-13T00:10:26Z"
+      "publishedAt": "2025-12-13T00:10:26Z",
+      "isDraft": false
     },
     {
       "version": "4.3.0",
       "title": "4.3.0",
       "body": "## What's New in 4.3.0\r\n\r\n### Features\r\n- Added **Report Bug** button in settings\r\n- Added **Update Plugin** button for easy updates\r\n- Added **version number** display on timeline\r\n- Added **Release Alert** notification when new version is available\r\n- Added **Localization framework** (i18n support)\r\n- Added **Working Title** setting to protect book title in screenshots/videos\r\n- Added **Regular and Large text size** options for accessibility\r\n\r\n### Improvements\r\n- Refreshed **Subplot and Manuscript Order modals** with updated styling\r\n- Restyled **AI Analysis modals** for better UX\r\n- Enlarged **Save the Cat beats text** from 12px to 13px for readability\r\n- Adjusted **Synopsis indentation** in upper half of timeline\r\n- Improved **AI Pulse Analysis** across all 3 providers (OpenAI, Anthropic, Gemini)\r\n- Scene **number square text** now properly colored based on Grade (A/B/C)\r\n- Migrated to **cache system** for beat label and number square text spacing\r\n\r\n### Fixes\r\n- Renamed internal CSS classes from `beats-text` to `pulse-text` for consistency\r\n\r\n### Changes\r\n- Removed `Book:` YAML field requirement—now uses Source folder name as title",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.3.0",
-      "publishedAt": "2025-11-30T12:06:40Z"
+      "publishedAt": "2025-11-30T12:06:40Z",
+      "isDraft": false
     },
     {
       "version": "4.2.0",
       "title": "4.2.0",
       "body": "## What's Changed\r\n\r\n- Added comprehensive POV settings and scene yaml overrides for all types of pov\r\n- Added Book Title via settings source path above Control Buttons.\r\n- Adjusted AI models.\r\n- Added intelligent duration time unites so we get 4 months + 2 days instead of 4.2 months\r\n- Added handling for missing When date and time for yaml.\r\n",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.2.0",
-      "publishedAt": "2025-11-18T00:56:16Z"
+      "publishedAt": "2025-11-18T00:56:16Z",
+      "isDraft": false
     },
     {
       "version": "4.1.1",
       "title": "4.1.1",
       "body": "## What's Changed\r\n\r\n- fix release-notes cache so major release version entry stays correct",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.1.1",
-      "publishedAt": "2025-11-16T03:37:17Z"
+      "publishedAt": "2025-11-16T03:37:17Z",
+      "isDraft": false
     },
     {
       "version": "4.1.0",
       "title": "4.1.0",
       "body": "## New Release 4.1\r\n\r\n### Major Features Added\r\n\r\n1. **Dominant Subplot Color Feature - Narrative, Chronologue Mode**\r\n   - For Scenes with multiple subplots - click scene to open tab now sets associated subplot color to appear in all scenes ring above other subplot colors. The default subplot color dominance is outer to innermost.\r\n\r\n2. **Chronologue Mode**\r\n   - New plugin customization settings with calculations reported for both duration cap and discontinuity gaps\r\n   - Fine-tuned Chronologue styles for better readability and impact. Adjusted adaptive timeline units\r\n  \r\n3. **Gossamer Mode**\r\n   - Fine-tuned presentation by replacing some dots with smaller scores and replacing the Score dot with larger number text. \r\n   - Major revamp of how it handles a new vault and missing information. Degrades gracefully if scores are missing or ideal ranges. \r\n   - Improved handling of Manual Score Update Modal button Copy AI Template with verbose checkbox and inclusion of Story Beats details from actual Story Beat notes to better support story beat customizations by author.\r\n\r\n5. **Documentation & Settings**\r\n   - Reorganized Settings for better presentation and grouping\r\n   - Updated docs and README with latest changes and added illustrations\r\n   - Added Ko-fi Donate Button\r\n\r\n---\r\n\r\n### Major Refactors\r\n\r\n- Cache system (added then removed haha)\r\n- Fallbacks removed for cleaner, get it right the first time operation\r\n- Slimmed main.ts hugely\r\n- Renamed files and terms throughout code to avoid confusion\r\n\r\n---\r\n\r\n### Bug Fixes\r\n\r\n1. **Search Functionality**\r\n    - Fixed search term bugs (Nov 13)\r\n    - Resolved Chronologue bugs relating to Search and existing scene hover\r\n\r\n2. **Novel Completion Features** (Nov 10)\r\n    - Debugging Novel Complete Target date and Estimate Completion Ticks aligning properly\r\n\r\n---",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.1.0",
-      "publishedAt": "2025-11-16T02:14:51Z"
+      "publishedAt": "2025-11-16T02:14:51Z",
+      "isDraft": false
     },
     {
       "version": "4.0.2",
       "title": "4.0.2",
       "body": "## Changes\r\n\r\n### README & Documentation\r\n- Various edits and improvements to documentation\r\n- New readme illustrations added\r\n\r\n### Chronologue Mode Refinements\r\n\r\n#### Outer Perimeter Fine-tuning\r\n- Enlarged duration arcs. Moved time unit labels up.\r\n- Moved chronological tick styling from inline SVG to CSS for easier customization\r\n\r\n#### Time Unit Labeling Finesse\r\n- **Elegant time display**: Now shows \"noon\" and \"midnight\" instead of \"12:00pm\" and \"12:00am\" (matching synopsis treatment)\r\n- **Intelligent adaptive labeling** maintains context-aware display based on time gaps between major scene labels",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.2",
-      "publishedAt": "2025-11-08T00:24:59Z"
+      "publishedAt": "2025-11-08T00:24:59Z",
+      "isDraft": false
     },
     {
       "version": "4.0.1",
       "title": "4.0.1",
       "body": "## What's Changed\r\n\r\n- Bug in Chronologue mode, whereby hovering in all scenes, the ring will fail to activate the same scene in subplots.\r\n- Readme Updates",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.1",
-      "publishedAt": "2025-11-06T22:57:22Z"
+      "publishedAt": "2025-11-06T22:57:22Z",
+      "isDraft": false
     },
     {
       "version": "4.0.0",
       "title": "4.0.0",
       "body": "## Major Release 4.0: Chronologue Mode & Timeline Intelligence\r\n\r\n### Chronologue Mode\r\n\r\nVisualize your story in true chronological order with the new **Chronologue Mode**. See the timeline of your story around the enlarged outer perimeter. All scenes and subplots now respect your date and time-based chronology. Perfect for understanding story flow and identifying pacing issues and temporal impossibilities.\r\n\r\n- Start date and end date at the top of timeline using zero stage color and press stage color\r\n- Duration time arcs show duration of each scene relative to other scenes\r\n- Intelligent time unit labeling reveals the timespan of the manuscript\r\n- Dedicated shift button for checking elapsed time between scene & discontinuities\r\n\r\n### Intelligent Date-Time Ordering\r\n\r\nScenes and plots now automatically organize based on when events actually occur in your narrative, not manuscript order. Ideal for complex narratives with flashbacks, parallel timelines, or non-linear storytelling.\r\n\r\n### Advanced Mode Control System\r\n\r\n- Four dedicated view modes: Main Plot, All Scenes, Chronologue and Gossamer\r\n- Keyboard shortcuts and current mode title\r\n\r\n### Enhanced Synopsis Display\r\n\r\n- Expanded synopsis details with larger scene title and searchable date and time\r\n- Duration tracking on a separate line below date and time\r\n- Improved text positioning for all quadrants\r\n\r\n### View Optimizations\r\n- Timeline radius adjusts to view mode so no space is wasted\r\n- Various advanced settings for customization of modes\r\n---\r\n",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.0",
-      "publishedAt": "2025-11-05T20:39:14Z"
+      "publishedAt": "2025-11-05T20:39:14Z",
+      "isDraft": false
     }
   ],
   "majorVersion": "4.0.0",
@@ -84,85 +95,89 @@
     "title": "4.0.0",
     "body": "## Major Release 4.0: Chronologue Mode & Timeline Intelligence\r\n\r\n### Chronologue Mode\r\n\r\nVisualize your story in true chronological order with the new **Chronologue Mode**. See the timeline of your story around the enlarged outer perimeter. All scenes and subplots now respect your date and time-based chronology. Perfect for understanding story flow and identifying pacing issues and temporal impossibilities.\r\n\r\n- Start date and end date at the top of timeline using zero stage color and press stage color\r\n- Duration time arcs show duration of each scene relative to other scenes\r\n- Intelligent time unit labeling reveals the timespan of the manuscript\r\n- Dedicated shift button for checking elapsed time between scene & discontinuities\r\n\r\n### Intelligent Date-Time Ordering\r\n\r\nScenes and plots now automatically organize based on when events actually occur in your narrative, not manuscript order. Ideal for complex narratives with flashbacks, parallel timelines, or non-linear storytelling.\r\n\r\n### Advanced Mode Control System\r\n\r\n- Four dedicated view modes: Main Plot, All Scenes, Chronologue and Gossamer\r\n- Keyboard shortcuts and current mode title\r\n\r\n### Enhanced Synopsis Display\r\n\r\n- Expanded synopsis details with larger scene title and searchable date and time\r\n- Duration tracking on a separate line below date and time\r\n- Improved text positioning for all quadrants\r\n\r\n### View Optimizations\r\n- Timeline radius adjusts to view mode so no space is wasted\r\n- Various advanced settings for customization of modes\r\n---\r\n",
     "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.0",
-    "publishedAt": "2025-11-05T20:39:14Z"
+    "publishedAt": "2025-11-05T20:39:14Z",
+    "isDraft": false
   },
   "latest": {
     "version": "4.5.0",
     "title": "4.5.0",
-    "body": "## What's Changed\n\n### ✨ New Features\n- Enhancements 1) Restructured Gossamer Momentum Modal 2) Added Custom Metadata key remapping 3) added Alien Calendar system with modal calculator and Scene Synopsis Peek Line 4) Added more wiki and Readme documentation 5) Manuscript Generation Modal with various options ([6267936](https://github.com/EricRhysTaylor/Radial-Timeline/commit/62679364d75c4043ecec9d2ec0e65da826ba1ede))\n- Documents: added link to youtube video introducing Chronologue Mode ([20cd617](https://github.com/EricRhysTaylor/Radial-Timeline/commit/20cd617c98a750aa1b2360b0a2a83282e3157de6))\n\n### 📚 Documentation\n- docs: clarify drag and drop limitation in How-to.md ([6989f73](https://github.com/EricRhysTaylor/Radial-Timeline/commit/6989f73faa5e7b6b783ffaeea7f89f22f5e6a07e))\n\n### 🔧 Maintenance\n- Enhancements: Give Generate Manuscript full ability to present Narrative, Chronologue in reverse order and within ranges as desired ([eea95f9](https://github.com/EricRhysTaylor/Radial-Timeline/commit/eea95f90d17043ff67d7e65fe373e7906986a862))\n\n### 🛠 Other Changes\n- Design: fine tune the Alien Calendar text presentation in synopsis ([e367929](https://github.com/EricRhysTaylor/Radial-Timeline/commit/e36792935a7ff19d234a811bb2ed01efa2c2d705))\n- src/data/patreonStats.json ([8b16547](https://github.com/EricRhysTaylor/Radial-Timeline/commit/8b165475d8ffe4ad250c73d87aa6116bcf86cb32))",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.5.0",
-    "publishedAt": "2025-12-18T21:39:19.735Z"
+    "body": "### New Features\r\n 1) Custom Metadata key remapping in Settings\r\n 2) Alien Calendar system in Settings with Command calculator modal and Scene hover Synopsis Peek Line \r\n 3) Generate Manuscript modal with options for Table of Contents and Narrative, Chronologue forward/reverse order and within ranges ([eea95f9](https://github.com/EricRhysTaylor/Radial-Timeline/commit/eea95f90d17043ff67d7e65fe373e7906986a862))\r\n4) Added life raft icon bottom right linking to Wiki docs\r\n\r\n### Documentation\r\n- Add and clarify scene drag and drop feature and limitations in How-to.md ([6989f73](https://github.com/EricRhysTaylor/Radial-Timeline/commit/6989f73faa5e7b6b783ffaeea7f89f22f5e6a07e))\r\n\r\n### Bug\r\n- Gossamer Modal Justification text overflow fixed\r\n",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-b4794551fdd4c88b0144",
+    "publishedAt": "2025-12-18T21:54:09.656Z",
+    "isDraft": true
   },
   "patches": [
-    {
-      "version": "4.5.0",
-      "title": "4.5.0",
-      "body": "## What's Changed\n\n### ✨ New Features\n- Enhancements 1) Restructured Gossamer Momentum Modal 2) Added Custom Metadata key remapping 3) added Alien Calendar system with modal calculator and Scene Synopsis Peek Line 4) Added more wiki and Readme documentation 5) Manuscript Generation Modal with various options ([6267936](https://github.com/EricRhysTaylor/Radial-Timeline/commit/62679364d75c4043ecec9d2ec0e65da826ba1ede))\n- Documents: added link to youtube video introducing Chronologue Mode ([20cd617](https://github.com/EricRhysTaylor/Radial-Timeline/commit/20cd617c98a750aa1b2360b0a2a83282e3157de6))\n\n### 📚 Documentation\n- docs: clarify drag and drop limitation in How-to.md ([6989f73](https://github.com/EricRhysTaylor/Radial-Timeline/commit/6989f73faa5e7b6b783ffaeea7f89f22f5e6a07e))\n\n### 🔧 Maintenance\n- Enhancements: Give Generate Manuscript full ability to present Narrative, Chronologue in reverse order and within ranges as desired ([eea95f9](https://github.com/EricRhysTaylor/Radial-Timeline/commit/eea95f90d17043ff67d7e65fe373e7906986a862))\n\n### 🛠 Other Changes\n- Design: fine tune the Alien Calendar text presentation in synopsis ([e367929](https://github.com/EricRhysTaylor/Radial-Timeline/commit/e36792935a7ff19d234a811bb2ed01efa2c2d705))\n- src/data/patreonStats.json ([8b16547](https://github.com/EricRhysTaylor/Radial-Timeline/commit/8b165475d8ffe4ad250c73d87aa6116bcf86cb32))",
-      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.5.0",
-      "publishedAt": "2025-12-18T21:39:19.735Z"
-    },
     {
       "version": "4.4.2",
       "title": "4.4.2",
       "body": "## What's Changed\r\n\r\nRefined Feature - Move Scene in Narrative Mode improved with subplot coloring for arc and elevated modal layout with icons. \r\n\r\nBug - Fixed in the Chronologue mode, where the subplot has only one scene and the title fails to appear. ([75fba10](https://github.com/EricRhysTaylor/Radial-Timeline/commit/75fba108a013a02ab92d8a6248c3a43415d059bc))",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.2",
-      "publishedAt": "2025-12-13T21:28:48Z"
+      "publishedAt": "2025-12-13T21:28:48Z",
+      "isDraft": false
     },
     {
       "version": "4.4.1",
       "title": "4.4.1",
       "body": "## What's Changed\r\n- Added latest models from ChatGPT 5.2, Claude Opus 4.5 and the older Gemini 2.5 \r\n- Improved the Gossamer momentum gemini score modal and status info\r\n- changed the release according in settings and modal to expand the latest release rather than the last Major release\r\n- Changed the triplet prompt and instructions to properly pull from the settings context and remove the excess instructions from the beginning designed to cajole the local LLM to obey instructions.\r\n- Enlarged the Release Update Alert icon to match the 24x24 size of the Bug svg icon",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.1",
-      "publishedAt": "2025-12-13T03:20:40Z"
+      "publishedAt": "2025-12-13T03:20:40Z",
+      "isDraft": false
     },
     {
       "version": "4.4.0",
       "title": "4.4.0",
       "body": "### What's New\r\n\r\n- Added the ability to move scenes. Requires Narrative mode and cursor hovering over the scene number square. This turns cursor into a double-arrow where you can click-drag to the target scene number square, then release. Small dialog box will request confirmation and specify details of the scene move. A tick mark will track your progress around the timeline. Only works using the outer all scenes (narrative) ring and in Narrative Mode. When moving to another act, feature will evaluate the target scene's act and amend the YAML to match.\r\n- Added Local LLM – Generic OpenAI provider option with advisory that it doesn't comply with JSON formatting. Perhaps a bigger local model will work?\r\n- Implemented the Subplot Manager command and modal to delete and rename a subplot which updates every scene in that subplot.\r\n- Fixed low-DPI PC rendering issues with scene-title strokes and moved to native Obsidian Inter (interface) font for consistent typography.\r\n- Updated the README link and refreshed the wiki.\r\n- Polished modal visuals, harmonized alert dialogs, and improved the Gossamer Score modal (including orphaned justification fixes).\r\n- Revamped the Gossamer “Enter Scores” modal to include justification text. New modal button Normalize Scores to clean up out of sequence or orphaned scores.\r\n",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.4.0",
-      "publishedAt": "2025-12-13T00:10:26Z"
+      "publishedAt": "2025-12-13T00:10:26Z",
+      "isDraft": false
     },
     {
       "version": "4.3.0",
       "title": "4.3.0",
       "body": "## What's New in 4.3.0\r\n\r\n### Features\r\n- Added **Report Bug** button in settings\r\n- Added **Update Plugin** button for easy updates\r\n- Added **version number** display on timeline\r\n- Added **Release Alert** notification when new version is available\r\n- Added **Localization framework** (i18n support)\r\n- Added **Working Title** setting to protect book title in screenshots/videos\r\n- Added **Regular and Large text size** options for accessibility\r\n\r\n### Improvements\r\n- Refreshed **Subplot and Manuscript Order modals** with updated styling\r\n- Restyled **AI Analysis modals** for better UX\r\n- Enlarged **Save the Cat beats text** from 12px to 13px for readability\r\n- Adjusted **Synopsis indentation** in upper half of timeline\r\n- Improved **AI Pulse Analysis** across all 3 providers (OpenAI, Anthropic, Gemini)\r\n- Scene **number square text** now properly colored based on Grade (A/B/C)\r\n- Migrated to **cache system** for beat label and number square text spacing\r\n\r\n### Fixes\r\n- Renamed internal CSS classes from `beats-text` to `pulse-text` for consistency\r\n\r\n### Changes\r\n- Removed `Book:` YAML field requirement—now uses Source folder name as title",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.3.0",
-      "publishedAt": "2025-11-30T12:06:40Z"
+      "publishedAt": "2025-11-30T12:06:40Z",
+      "isDraft": false
     },
     {
       "version": "4.2.0",
       "title": "4.2.0",
       "body": "## What's Changed\r\n\r\n- Added comprehensive POV settings and scene yaml overrides for all types of pov\r\n- Added Book Title via settings source path above Control Buttons.\r\n- Adjusted AI models.\r\n- Added intelligent duration time unites so we get 4 months + 2 days instead of 4.2 months\r\n- Added handling for missing When date and time for yaml.\r\n",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.2.0",
-      "publishedAt": "2025-11-18T00:56:16Z"
+      "publishedAt": "2025-11-18T00:56:16Z",
+      "isDraft": false
     },
     {
       "version": "4.1.1",
       "title": "4.1.1",
       "body": "## What's Changed\r\n\r\n- fix release-notes cache so major release version entry stays correct",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.1.1",
-      "publishedAt": "2025-11-16T03:37:17Z"
+      "publishedAt": "2025-11-16T03:37:17Z",
+      "isDraft": false
     },
     {
       "version": "4.1.0",
       "title": "4.1.0",
       "body": "## New Release 4.1\r\n\r\n### Major Features Added\r\n\r\n1. **Dominant Subplot Color Feature - Narrative, Chronologue Mode**\r\n   - For Scenes with multiple subplots - click scene to open tab now sets associated subplot color to appear in all scenes ring above other subplot colors. The default subplot color dominance is outer to innermost.\r\n\r\n2. **Chronologue Mode**\r\n   - New plugin customization settings with calculations reported for both duration cap and discontinuity gaps\r\n   - Fine-tuned Chronologue styles for better readability and impact. Adjusted adaptive timeline units\r\n  \r\n3. **Gossamer Mode**\r\n   - Fine-tuned presentation by replacing some dots with smaller scores and replacing the Score dot with larger number text. \r\n   - Major revamp of how it handles a new vault and missing information. Degrades gracefully if scores are missing or ideal ranges. \r\n   - Improved handling of Manual Score Update Modal button Copy AI Template with verbose checkbox and inclusion of Story Beats details from actual Story Beat notes to better support story beat customizations by author.\r\n\r\n5. **Documentation & Settings**\r\n   - Reorganized Settings for better presentation and grouping\r\n   - Updated docs and README with latest changes and added illustrations\r\n   - Added Ko-fi Donate Button\r\n\r\n---\r\n\r\n### Major Refactors\r\n\r\n- Cache system (added then removed haha)\r\n- Fallbacks removed for cleaner, get it right the first time operation\r\n- Slimmed main.ts hugely\r\n- Renamed files and terms throughout code to avoid confusion\r\n\r\n---\r\n\r\n### Bug Fixes\r\n\r\n1. **Search Functionality**\r\n    - Fixed search term bugs (Nov 13)\r\n    - Resolved Chronologue bugs relating to Search and existing scene hover\r\n\r\n2. **Novel Completion Features** (Nov 10)\r\n    - Debugging Novel Complete Target date and Estimate Completion Ticks aligning properly\r\n\r\n---",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.1.0",
-      "publishedAt": "2025-11-16T02:14:51Z"
+      "publishedAt": "2025-11-16T02:14:51Z",
+      "isDraft": false
     },
     {
       "version": "4.0.2",
       "title": "4.0.2",
       "body": "## Changes\r\n\r\n### README & Documentation\r\n- Various edits and improvements to documentation\r\n- New readme illustrations added\r\n\r\n### Chronologue Mode Refinements\r\n\r\n#### Outer Perimeter Fine-tuning\r\n- Enlarged duration arcs. Moved time unit labels up.\r\n- Moved chronological tick styling from inline SVG to CSS for easier customization\r\n\r\n#### Time Unit Labeling Finesse\r\n- **Elegant time display**: Now shows \"noon\" and \"midnight\" instead of \"12:00pm\" and \"12:00am\" (matching synopsis treatment)\r\n- **Intelligent adaptive labeling** maintains context-aware display based on time gaps between major scene labels",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.2",
-      "publishedAt": "2025-11-08T00:24:59Z"
+      "publishedAt": "2025-11-08T00:24:59Z",
+      "isDraft": false
     },
     {
       "version": "4.0.1",
       "title": "4.0.1",
       "body": "## What's Changed\r\n\r\n- Bug in Chronologue mode, whereby hovering in all scenes, the ring will fail to activate the same scene in subplots.\r\n- Readme Updates",
       "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.1",
-      "publishedAt": "2025-11-06T22:57:22Z"
+      "publishedAt": "2025-11-06T22:57:22Z",
+      "isDraft": false
     }
   ]
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, unlinkSync } from "fs";
 import { execSync } from "child_process";
 import readline from "readline";
 
@@ -251,23 +251,23 @@ function tagExists(tag) {
 // Categorization rules
 const CATEGORIES = [
     {
-        title: "✨ New Features",
+        title: "New Features",
         keywords: [/feat/i, /add/i, /new/i, /implement/i, /create/i]
     },
     {
-        title: "🐛 Bug Fixes",
+        title: "Bug Fixes",
         keywords: [/fix/i, /resolve/i, /bug/i, /patch/i, /correct/i, /repair/i]
     },
     {
-        title: "⚡ Improvements",
+        title: "Improvements",
         keywords: [/improve/i, /refactor/i, /perf/i, /optimiz/i, /tweak/i, /update/i, /styl/i, /polish/i, /better/i, /enlarge/i, /adjust/i, /refine/i]
     },
     {
-        title: "📚 Documentation",
+        title: "Documentation",
         keywords: [/doc/i, /readme/i, /wiki/i, /comment/i]
     },
     {
-        title: "🔧 Maintenance",
+        title: "Maintenance",
         keywords: [/chore/i, /maint/i, /build/i, /ci/i, /bump/i, /upgrade/i, /script/i]
     }
 ];
@@ -394,7 +394,7 @@ function generateChangelog(fromTag, toRef = 'HEAD') {
         });
 
         if (uncategorized.length > 0) {
-            changelog += `### 🛠 Other Changes\n${uncategorized.join('\n')}\n\n`;
+            changelog += `### Other Changes\n${uncategorized.join('\n')}\n\n`;
         }
 
         return changelog.trim() || "No significant changes since last release.";
@@ -609,21 +609,22 @@ Choose (1/2): `);
         if (!pushTagRes) console.log(`ℹ️  Tag ${newVersion} already pushed or skipped`);
 
         // Create GitHub release with release assets
-        // Escape quotes in release notes for command line
-        const escapedNotes = releaseNotes.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+        // Write notes to a temp file to preserve newlines properly
+        const notesFile = '.release-notes-temp.md';
+        writeFileSync(notesFile, releaseNotes);
 
         let releaseCommand;
         if (createDraft) {
             releaseCommand = `gh release create ${newVersion} ` +
                 `release/main.js release/manifest.json release/styles.css ` +
                 `--title "${newVersion}" ` +
-                `--notes "${escapedNotes}" ` +
+                `--notes-file "${notesFile}" ` +
                 `--draft`;
         } else {
             releaseCommand = `gh release create ${newVersion} ` +
                 `release/main.js release/manifest.json release/styles.css ` +
                 `--title "${newVersion}" ` +
-                `--notes "${escapedNotes}" ` +
+                `--notes-file "${notesFile}" ` +
                 `--latest`;
         }
         const createRes = runCommand(releaseCommand, createDraft ? "Creating draft GitHub release" : "Creating GitHub release", false, true);
@@ -631,11 +632,16 @@ Choose (1/2): `);
             console.log(`ℹ️  Release ${newVersion} may already exist, updating instead`);
             const updateCommand = `gh release edit ${newVersion} ` +
                 `--title "${newVersion}" ` +
-                `--notes "${escapedNotes}" ` +
+                `--notes-file "${notesFile}" ` +
                 (createDraft ? `--draft` : `--latest`);
             runCommand(updateCommand, "Updating GitHub release");
             runCommand(`gh release upload ${newVersion} release/main.js release/manifest.json release/styles.css --clobber`, "Updating release assets", false, true);
         }
+
+        // Clean up temp file
+        try {
+            unlinkSync(notesFile);
+        } catch { /* ignore */ }
 
         if (createDraft) {
             console.log(`\n🎉 Draft release ${newVersion} created successfully!`);
