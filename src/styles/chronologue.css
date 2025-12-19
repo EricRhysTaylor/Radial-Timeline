@@ -1,0 +1,100 @@
+/* Chronologue Mode Styles */
+
+/* Chronologue timeline arc */
+.rt-chronologue-timeline-arc {
+  pointer-events: none;
+}
+
+.rt-chronologue-timeline-arc line:not(.rt-elapsed-endpoint-marker) {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+/* Chronologue time labels */
+.rt-chronologue-time-label {
+  font-size: 10px;
+  fill: var(--text-muted);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Chronologue warning for scenes without When field */
+.rt-chronologue-warning .rt-scene-path {
+  stroke: var(--text-error);
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+}
+/* Hide chronological ticks that overlap with elapsed endpoint markers */
+.rt-chronological-tick.rt-tick-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Elapsed time label */
+.rt-elapsed-time-group {
+  pointer-events: none;
+}
+
+.rt-elapsed-time-label {
+  font-size: 16px;
+  font-weight: 700;
+  fill: var(--interactive-accent);
+  stroke: white;
+  stroke-width: 7px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
+  text-transform: uppercase;
+}
+
+.rt-chronologue-duration-ticks {
+  pointer-events: none;
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc {
+  stroke: var(--text-muted);
+  stroke-width: 6px;
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc-overlap {
+  stroke: #ff9900;
+  /* Yellow for temporal overlaps */
+  stroke-width: 6px;
+  /*stroke-dasharray: 4, 1; /* Dotted pattern: 4px dash, 1px gap */
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc-unparseable {
+  stroke: #ff0000;
+  /* Red for unparseable/missing durations (using --rt-color-due red) */
+  stroke-width: 6px;
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc-ongoing:not(.rt-duration-arc-overlap) {
+  stroke: var(--text-muted);
+  /* Standard color for "ongoing" durations */
+  stroke-width: 6px;
+}
+
+/* Discontinuity marker text "∞" - infinity symbol marks large time jumps between scenes in chronologue mode */
+.rt-discontinuity-marker {
+  font-size: 20px;
+  font-weight: 500;
+  fill: var(--text-muted);
+  stroke: rgb(0, 0, 0);
+  stroke-width: 6px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
+  pointer-events: none;
+  /* Hide discontinuity markers by default (only show in shift mode) */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, fill 0.2s ease;
+  /* Add transition to base state for both directions */
+}
+
+/* Show discontinuity markers when shift mode is active */
+svg[data-shift-mode="active"] .rt-discontinuity-marker {
+  opacity: 1;
+  visibility: visible;
+}

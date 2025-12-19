@@ -32,6 +32,7 @@ import { TimelineMetricsService } from './services/TimelineMetricsService';
 import { migrateSceneAnalysisFields } from './migrations/sceneAnalysis';
 import { SettingsService } from './services/SettingsService';
 import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
+import { DEFAULT_SETTINGS } from './settings/defaults';
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
 
 
@@ -44,109 +45,7 @@ declare const EMBEDDED_README_CONTENT: string;
 export const TIMELINE_VIEW_TYPE = "radial-timeline";
 const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline"; // Sentence case per guidelines
 
-export const DEFAULT_SETTINGS: RadialTimelineSettings = {
-    sourcePath: '',
-    showSourcePathAsTitle: true, // Default: show source path as title of the work
-    validFolderPaths: [], // <<< ADDED: Default empty array for folder path history
-    publishStageColors: {
-        Zero: '#9E70CF',   // Purple (Stage Zero)
-        Author: '#5E85CF', // Blue   (Author)
-        House: '#DA7847',  // Orange (House)
-        Press: '#6FB971'   // Green  (Press)
-    },
-    subplotColors: [
-        '#EFBDEB', // 0
-        '#a35ca7', // 1
-        '#6461A0', // 2
-        '#314CB6', // 3
-        '#0A81D1', // 4
-        '#98CE00', // 5
-        '#16E0BD', // 6
-        '#78C3FB', // 7
-        '#273C2C', // 8
-        '#A6D8D4', // 9
-        '#FF8600', // 10
-        '#F9E784', // 11
-        '#CEC3C1', // 12
-        '#F3D34A', // 13
-        '#004777', // 14
-        '#8B4513'  // 15 - Brown for Ring 16
-    ],
-    currentMode: 'narrative', // Default to Narrative mode
-    logApiInteractions: true, // <<< ADDED: Default for new setting
-    targetCompletionDate: undefined, // Ensure it's undefined by default
-    showCompletionEstimate: true, // Default: show the estimate tick
-    openaiApiKey: '', // Default to empty string
-    anthropicApiKey: '', // <<< ADDED: Default empty string
-    anthropicModelId: 'claude-sonnet-4-5-20250929', // Default to Sonnet 4.5 (20250929)
-    geminiApiKey: '',
-    geminiModelId: DEFAULT_GEMINI_MODEL_ID, // Default to Gemini 3 Pro Preview
-    defaultAiProvider: 'openai',
-    openaiModelId: 'gpt-5.1-chat-latest', // Default to GPT-5.1
-    enableAiSceneAnalysis: true,
-    showFullTripletAnalysis: true,
-    enableZeroDraftMode: false,
-    metadataRefreshDebounceMs: 10000,
-    discontinuityThreshold: undefined, // Default to auto-calculated (3x median gap or 30 days)
-    enableSceneTitleAutoExpand: true, // Default: enabled to maintain current behavior
-    enableHoverDebugLogging: false,
-    sortByWhenDate: false, // Default: manuscript order (backward compatible)
-    chronologueDurationCapSelection: 'auto',
-    readabilityScale: 'normal',
-    aiContextTemplates: [
-        {
-            id: "commercial_genre",
-            name: "Commercial Genre Fiction (Balanced Depth)",
-            prompt: `Act as a developmental editor for a commercial genre novel. Prioritize pacing, clarity, and emotional stakes. Ensure each scene moves the plot or deepens character conflict. Keep prose lean; prefer tension and subtext to exposition. Focus feedback on momentum, scene purpose, and reader engagement.`,
-            isBuiltIn: true
-        },
-        {
-            id: "literary",
-            name: "Literary / Character-Driven Fiction",
-            prompt: `Act as a developmental editor for a literary or character-driven novel. Emphasize emotional resonance, internal conflict, and subtext. Feedback should focus on authenticity of character motivation, narrative voice, and thematic depth. Avoid line-level polish; focus on the psychological realism of each beat.`,
-            isBuiltIn: true
-        },
-        {
-            id: "young_adult",
-            name: "Young Adult / Coming-of-Age",
-            prompt: `Act as a developmental editor for a young adult coming-of-age novel. Focus on pacing, clear emotional arcs, and voice consistency. Ensure stakes feel personal and immediate. Highlight areas where dialogue or internal monologue can better show growth or vulnerability. Keep feedback concise and energetic.`,
-            isBuiltIn: true
-        },
-        {
-            id: "science_fiction",
-            name: "Epic or Hard Science Fiction / World-Building Focus",
-            prompt: `Act as a developmental editor for a science-fiction novel with complex world-building. Balance clarity and immersion; ensure exposition is dramatized through character action or dialogue. Focus feedback on world logic, pacing through discovery, and integrating big ideas without slowing emotional momentum. Prioritize cohesion between technology, society, and theme.`,
-            isBuiltIn: true
-        },
-        {
-            id: "thriller",
-            name: "Mystery / Thriller / Suspense",
-            prompt: `Act as a developmental editor for a mystery or thriller novel. Emphasize pacing, tension, and clarity of motive. Identify where reveals or reversals land too early or too late. Ensure reader curiosity and suspense are sustained through every scene. Keep feedback focused on plot mechanics and emotional rhythm.`,
-            isBuiltIn: true
-        },
-        {
-            id: "romance",
-            name: "Romance / Emotional-Arc Focused Fiction",
-            prompt: `Act as a developmental editor for a romance or emotionally driven narrative. Focus feedback on relationship dynamics, emotional authenticity, and pacing of attraction/conflict/resolution. Ensure internal and external conflicts are intertwined. Highlight where subtext or tension could replace exposition.`,
-            isBuiltIn: true
-        }
-    ],
-    activeAiContextTemplateId: 'commercial_genre',
-    beatSystem: 'Save The Cat', // Default beat system
-    dominantSubplots: {}, // Default: empty map, will use outermost subplot for scenes in multiple subplots
-    globalPovMode: 'off',
-    lastSeenReleaseNotesVersion: '',
-    cachedReleaseNotes: null,
-    releaseNotesLastFetched: undefined,
-    localBaseUrl: 'http://localhost:11434/v1',
-    localModelId: 'llama3',
-    localApiKey: '',
-    enablePlanetaryTime: false,
-    planetaryProfiles: [],
-    activePlanetaryProfileId: undefined,
-    frontmatterMappings: {},
-    enableCustomMetadataMapping: false
-};
+
 
 // STATUS_COLORS now imported from constants
 
@@ -240,73 +139,10 @@ export default class RadialTimelinePlugin extends Plugin {
      * Position and curve the text elements in the SVG
      * @param container The container element with the SVG
      */
-    curveTextElements(container: Element, curveFactor: number, angleToCenter: number): void {
-        // Find all text elements inside the container
-        const textElements = container.querySelectorAll('text');
-        if (!textElements.length) return;
-
-        // Apply the curvature to each text element
-        textElements.forEach((textEl) => {
-            try {
-                // Create a curved path effect for this text
-                const pathId = `path-${Math.random().toString(36).substring(2, 9)}`;
-
-                // Create a curved path element
-                const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                pathElement.setAttribute('id', pathId);
-                pathElement.setAttribute('d', `M 0,0 Q ${Math.cos(angleToCenter) * 500},${Math.sin(angleToCenter) * 500 * curveFactor} 1000,0`);
-
-                // Use CSS class instead of inline style
-                pathElement.classList.add('svg-path');
-
-                // Add the path to the container before the text
-                textEl.parentNode?.insertBefore(pathElement, textEl);
-
-                // Link the text to the path
-                textEl.setAttribute('path', `url(#${pathId})`);
-                textEl.setAttribute('pathLength', '1');
-                textEl.setAttribute('startOffset', '0');
-            } catch (error) {
-                console.error('Error applying text curvature:', error);
-            }
-        });
-    }
 
 
-    private processHighlightedContent(fragment: DocumentFragment): Node[] {
-        // Create a temporary container using Obsidian's createEl
-        const container = document.createElement('div');
-        container.appendChild(fragment.cloneNode(true));
 
-        // Extract all nodes from the container
-        const resultNodes: Node[] = [];
 
-        // Process each child node
-        Array.from(container.childNodes).forEach(node => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                // For text nodes, create plain text nodes
-                if (node.textContent) {
-                    resultNodes.push(document.createTextNode(node.textContent));
-                }
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-                // For element nodes (like tspan), create SVG elements
-                const element = node as Element;
-                if (element.tagName.toLowerCase() === 'tspan') {
-                    const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-
-                    // Copy attributes
-                    Array.from(element.attributes).forEach(attr => {
-                        svgTspan.setAttribute(attr.name, attr.value);
-                    });
-
-                    svgTspan.textContent = element.textContent;
-                    resultNodes.push(svgTspan);
-                }
-            }
-        });
-
-        return resultNodes;
-    }
 
     public getReleaseNotesBundle(): EmbeddedReleaseNotesBundle | null {
         return this.releaseNotesService?.getBundle() ?? null;
@@ -415,6 +251,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // this.statusBarService.update(...);
     }
     public getRendererService(): RendererService { return this.rendererService; }
+    public getTimelineService(): TimelineService { return this.timelineService; }
 
     public isSceneFile(path: string): boolean {
         return this.sceneHighlighter.isSceneFile(path);
@@ -432,27 +269,7 @@ export default class RadialTimelinePlugin extends Plugin {
         await this.sceneAnalysisService.processEntireSubplot(subplotName);
     }
 
-    // Helper to activate the timeline view
-    async activateView() {
-        // Check if view already exists
-        const leaves = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE);
 
-        if (leaves.length > 0) {
-            // View exists, just reveal it
-            this.app.workspace.revealLeaf(leaves[0]);
-            return;
-        }
-
-        // Create a new leaf in the center (main editor area)
-        const leaf = this.app.workspace.getLeaf('tab');
-        await leaf.setViewState({
-            type: TIMELINE_VIEW_TYPE,
-            active: true
-        });
-
-        // Reveal the leaf
-        this.app.workspace.revealLeaf(leaf);
-    }
 
     async getSceneData(options?: GetSceneDataOptions): Promise<TimelineItem[]> {
         return this.sceneDataService.getSceneData(options);

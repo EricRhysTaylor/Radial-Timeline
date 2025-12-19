@@ -67,17 +67,17 @@ export class TimelineService {
      */
     private calculatePriority(changeTypes: ChangeType[]): number {
         // High priority (immediate): Scene data, mode changes, settings
-        if (changeTypes.includes(ChangeType.SCENE_DATA) || 
+        if (changeTypes.includes(ChangeType.SCENE_DATA) ||
             changeTypes.includes(ChangeType.MODE) ||
             changeTypes.includes(ChangeType.SETTINGS)) {
             return 0;
         }
-        
+
         // Medium priority (short delay): Gossamer
         if (changeTypes.includes(ChangeType.GOSSAMER)) {
             return 1;
         }
-        
+
         // Low priority (normal delay): Search, open files, time
         return 2;
     }
@@ -89,7 +89,7 @@ export class TimelineService {
         if (!this.pendingRequest) return;
 
         const views = this.getTimelineViews();
-        
+
         // Performance optimization: Only refresh the ACTIVE timeline view
         const activeLeaf = this.app.workspace.getActiveViewOfType(RadialTimelineView);
         if (activeLeaf) {
@@ -101,7 +101,7 @@ export class TimelineService {
                 firstView.refreshTimeline();
             }
         }
-        
+
         // Clear pending request
         this.pendingRequest = null;
         this.refreshTimeout = null;
@@ -113,16 +113,16 @@ export class TimelineService {
      */
     refreshTimelineIfNeeded(file: TAbstractFile | null | undefined, delayMs?: number): void {
         if (file && (!(file instanceof TFile) || file.extension !== 'md')) return;
-        
+
         // Use configured debounce delay from settings (default 10000ms)
         const effectiveDelay = delayMs ?? this.plugin.settings.metadataRefreshDebounceMs ?? 10000;
-        
+
         // If file is null, it's likely a settings change
         if (!file) {
             this.scheduleRender([ChangeType.SETTINGS], effectiveDelay);
             return;
         }
-        
+
         // File changes (YAML edits)
         this.scheduleRender([ChangeType.SCENE_DATA], effectiveDelay);
     }
@@ -136,6 +136,29 @@ export class TimelineService {
             this.refreshTimeout = null;
         }
         this.pendingRequest = null;
+    }
+    /**
+     * Activate or create the timeline view
+     */
+    async activateView(): Promise<void> {
+        // Check if view already exists
+        const leaves = this.app.workspace.getLeavesOfType(TIMELINE_VIEW_TYPE);
+
+        if (leaves.length > 0) {
+            // View exists, just reveal it
+            this.app.workspace.revealLeaf(leaves[0]);
+            return;
+        }
+
+        // Create a new leaf in the center (main editor area)
+        const leaf = this.app.workspace.getLeaf('tab');
+        await leaf.setViewState({
+            type: TIMELINE_VIEW_TYPE,
+            active: true
+        });
+
+        // Reveal the leaf
+        this.app.workspace.revealLeaf(leaf);
     }
 }
 

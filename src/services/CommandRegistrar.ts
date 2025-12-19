@@ -22,7 +22,7 @@ export class CommandRegistrar {
 
     private registerRibbon(): void {
         this.plugin.addRibbonIcon('shell', 'Radial timeline', () => {
-            this.plugin.activateView();
+            this.plugin.getTimelineService().activateView();
         });
     }
 
@@ -97,7 +97,7 @@ export class CommandRegistrar {
         this.plugin.addCommand({
             id: 'open-timeline-view',
             name: 'Open',
-            callback: () => this.plugin.activateView()
+            callback: () => this.plugin.getTimelineService().activateView()
         });
 
         this.plugin.addCommand({

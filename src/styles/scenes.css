@@ -1,0 +1,606 @@
+.radial-timeline-container .rt-storybeat-title {
+  fill: var(--text-normal);
+  font-size: calc(13px * var(--rt-font-scale, 1));
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  pointer-events: none;
+  cursor: default;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Hover: emphasize story beat titles with a solid black background using stroke */
+.radial-timeline-container .rt-storybeat-title:hover,
+.radial-timeline-container .rt-scene-group.beats:hover .rt-storybeat-title,
+.rt-scene-group.rt-gossamer-hover .rt-storybeat-title,
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats:hover .rt-storybeat-title,
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"]:hover .rt-storybeat-title {
+  filter: url(#beatTextBg);
+  /* black background halo */
+  fill: #ffffff !important;
+  font-weight: 700;
+  /* heavier for readability */
+}
+
+/* Rotation toggle base styles (timeline only; no animations) */
+.radial-timeline-svg #rotation-toggle use {
+  color: inherit;
+  stroke: currentColor;
+  fill: none;
+}
+
+.radial-timeline-svg #rotation-toggle:hover use {
+  /* Make arrow white on hover via currentColor (symbols use stroke=currentColor) */
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+  fill: none !important;
+}
+
+.radial-timeline-svg #rotation-toggle .arrow-icon.is-hidden {
+  display: none;
+}
+
+.radial-timeline-svg #rotation-toggle {
+  cursor: pointer;
+}
+
+/* Hide rotation toggle in Gossamer mode */
+.radial-timeline-svg[data-gossamer-mode="true"] #rotation-toggle {
+  display: none;
+}
+
+/* Hide rotation toggle in Chronologue mode */
+.radial-timeline-svg[data-chronologue-mode="true"] #rotation-toggle {
+  display: none;
+}
+
+/* Mode toggle button styles */
+.rt-mode-toggle {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.rt-mode-toggle:hover {
+  opacity: 0.8;
+}
+
+.rt-scene-info {
+  opacity: 0;
+  pointer-events: none !important;
+  vector-effect: non-scaling-stroke;
+}
+
+.rt-scene-info text {
+  stroke: white;
+  stroke-width: 4px;
+  paint-order: stroke;
+  pointer-events: none !important;
+}
+
+.rt-status-count {
+  font-size: 80%;
+  opacity: 1;
+  vertical-align: super;
+  position: relative;
+  top: -0.7em;
+  font-weight: normal;
+  line-height: 0;
+  dominant-baseline: inherit;
+}
+
+.rt-subplot-text {
+  font-size: 16px;
+  fill: var(--text-muted);
+  font-weight: normal;
+
+}
+
+.scene-hover .rt-subplot-text,
+.rt-scene-group:hover .rt-subplot-text {
+  fill: #ffffff;
+}
+
+.rt-number-square {
+  pointer-events: none;
+  fill: #FFFFFF;
+  stroke: none;
+  stroke-width: 0;
+  paint-order: stroke fill;
+  /* Draw stroke first, then fill covers inner half = "outside" border */
+}
+
+.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"] .rt-number-square,
+.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"] .rt-number-text {
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"]:hover .rt-number-square,
+.radial-timeline-svg[data-mode="narrative"] .number-square-group[data-outer-ring="true"]:hover .rt-number-text {
+  cursor: ew-resize;
+}
+
+.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .number-square-group[data-outer-ring="true"] .rt-number-square,
+.radial-timeline-svg[data-mode="narrative"].rt-dragging-outer .number-square-group[data-outer-ring="true"] .rt-number-text {
+  cursor: grabbing;
+}
+
+.rt-number-square[data-subplot-idx="0"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-0);
+}
+
+.rt-number-square[data-subplot-idx="1"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-1);
+}
+
+.rt-number-square[data-subplot-idx="2"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-2);
+}
+
+.rt-number-square[data-subplot-idx="3"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-3);
+}
+
+.rt-number-square[data-subplot-idx="4"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-4);
+}
+
+.rt-number-square[data-subplot-idx="5"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-5);
+}
+
+.rt-number-square[data-subplot-idx="6"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-6);
+}
+
+.rt-number-square[data-subplot-idx="7"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-7);
+}
+
+.rt-number-square[data-subplot-idx="8"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-8);
+}
+
+.rt-number-square[data-subplot-idx="9"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-9);
+}
+
+.rt-number-square[data-subplot-idx="10"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-10);
+}
+
+.rt-number-square[data-subplot-idx="11"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-11);
+}
+
+.rt-number-square[data-subplot-idx="12"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-12);
+}
+
+.rt-number-square[data-subplot-idx="13"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-13);
+}
+
+.rt-number-square[data-subplot-idx="14"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-14);
+}
+
+.rt-number-square[data-subplot-idx="15"] {
+  --rt-number-stroke-color: var(--rt-subplot-colors-15);
+}
+
+.rt-subplot-dominance-flags {
+  pointer-events: none;
+}
+
+.rt-subplot-dominance-flag {
+  pointer-events: none;
+}
+
+.rt-subplot-dominance-flag path {
+  shape-rendering: geometricPrecision;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+
+.rt-number-text {
+  fill: #000000;
+  pointer-events: none;
+  font-size: calc(16px * var(--rt-number-font-scale, 1));
+}
+
+.radial-timeline-container .rt-scene-title.rt-selected {
+  filter: url(#sceneTitleHalo);
+}
+
+/* Scene is open: non-selected state */
+.rt-number-square.rt-scene-is-open.rt-non-selected {
+  fill: #EFEFEF !important;
+  stroke: none;
+  stroke-width: 0;
+}
+
+.rt-number-text.rt-scene-is-open.rt-non-selected {
+  fill: #FFFFFF !important;
+  opacity: 1;
+}
+
+.rt-number-square.rt-selected {
+  transform: none;
+  stroke: var(--rt-number-stroke-color, var(--scene-color, #705DCF));
+}
+
+.rt-number-square.rt-scene-is-open.rt-selected {
+  stroke: var(--rt-number-stroke-color, var(--scene-color, #705DCF));
+  stroke-width: 6px;
+  fill: var(--interactive-accent, #705DCF);
+}
+
+.rt-number-square.rt-selected:not(.rt-scene-is-open) {
+  stroke-width: 6px;
+}
+
+.rt-number-square.rt-non-selected {
+  fill: #EFEFEF;
+  stroke: none;
+  stroke-width: 0;
+}
+
+.rt-number-text.rt-selected {
+  font-weight: bold;
+}
+
+.rt-number-text.rt-non-selected {
+  fill: #FFFFFF;
+}
+
+.rt-search-term {
+  fill: inherit;
+  stroke: var(--rt-color-search);
+  stroke-width: var(--rt-search-stroke-width);
+  stroke-opacity: var(--rt-search-stroke-opacity);
+  paint-order: stroke;
+}
+
+/* Allow inline subplot/character colors to apply in synopsis */
+/* Tspans don't inherit stroke from parent text elements, so set explicitly */
+.rt-info-text.rt-metadata-text tspan[data-item-type=subplot],
+.rt-info-text.rt-metadata-text tspan[data-item-type=character] {
+  fill: var(--rt-dynamic-color, var(--text-normal)) !important;
+  stroke: white;
+  stroke-width: 4px;
+  paint-order: stroke;
+}
+
+.rt-info-text.rt-metadata-text tspan.rt-pov-character {
+  font-weight: 700;
+}
+
+/* POV marker styling - superscript after first character name */
+.rt-info-text.rt-metadata-text tspan.rt-pov-marker {
+  fill: var(--rt-dynamic-color, var(--text-muted)) !important;
+  /* Use character color, fallback to muted */
+  font-size: calc(12px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1))) !important;
+  /* Smaller than default 18px metadata text */
+  font-weight: 500;
+}
+
+/* Command palette search modal styling */
+.radial-timeline-container .search-container.flex-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.radial-timeline-container .search-input {
+  width: 600px;
+  max-width: 90vw;
+}
+
+.radial-timeline-search .rt-button-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
+.rt-scene-info.rt-visible {
+  opacity: 1 !important;
+  pointer-events: all !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+/*Synopsis Title*/
+.rt-title-text-main {
+  font-size: 36px;
+  font-weight: 700;
+  --title-color: var(--text-normal);
+  /* No parent fill; child tspans own their colors via custom properties */
+}
+
+/* Date/Time and Duration mini-block (Column 2 of title row) */
+/* This styles the separate text element containing date/time and duration */
+/* Positioned to the right of the main scene title */
+.rt-title-date-time {
+  font-size: 14px;
+  font-weight: 400;
+  font-style: normal !important;
+}
+
+/* Title tspans use dynamic color (set on hover) or fallback to max publish stage color */
+.rt-title-text-main tspan[data-item-type=title] {
+  fill: var(--rt-dynamic-color, var(--rt-max-publish-stage-color)) !important;
+}
+
+/* Date and Duration tspans - small gray text */
+.rt-title-date-time tspan {
+  fill: #888888 !important;
+  font-size: 16px !important;
+  font-weight: 400;
+}
+
+/* Date tspan - explicitly normal (not italic) */
+.rt-title-date-time tspan[data-item-type=date],
+.rt-title-date-time .rt-date-text {
+  font-style: normal !important;
+}
+
+/* Duration tspan - italic only */
+.rt-title-date-time tspan[data-item-type=duration],
+.rt-title-date-time .rt-duration-text {
+  font-style: italic !important;
+}
+
+/*Beats text styling*/
+.rt-title-text-secondary {
+  font-size: calc(18px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  fill: #666666;
+  text-transform: uppercase;
+  font-weight: normal;
+}
+
+/* Subplot and character text styling - randomized colors in JS file for characters. Subplots follow subplot settings color defined styles*/
+.rt-metadata-text {
+  font-size: calc(18px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  font-weight: normal;
+}
+
+/* Overdue text styling */
+.rt-overdue-text {
+  fill: var(--rt-color-due) !important;
+}
+
+.rt-missing-when-text {
+  fill: var(--rt-color-due) !important;
+  font-style: italic;
+}
+
+/* Revisions/Pending edits text styling */
+.rt-revisions-text {
+  fill: #C0C0C0 !important;
+}
+
+/* Search highlight parent tspan with dynamic fill */
+.rt-scene-info tspan.rt-with-dynamic-fill {
+  fill: var(--rt-dynamic-fill-color, inherit) !important;
+}
+
+.rt-number-square.rt-scene-is-open {
+  fill: var(--interactive-accent, #705DCF);
+}
+
+.rt-number-text.rt-scene-is-open {
+  font-weight: normal;
+  fill: #FFFFFF;
+  /* white for default case; grade colors override via higher specificity */
+}
+
+.rt-number-text.rt-scene-is-open.rt-selected {
+  fill: #FFFFFF;
+  /* white for default case; grade colors override via higher specificity */
+  font-weight: bold;
+}
+
+.rt-number-square.rt-search-result {
+  fill: var(--rt-color-search) !important;
+}
+
+.rt-number-square.rt-search-result.rt-non-selected,
+.rt-number-square.rt-search-result.rt-scene-is-open.rt-non-selected {
+  fill: #EFEFEF !important;
+}
+
+.rt-number-text.rt-search-result.rt-non-selected {
+  fill: #FFFFFF !important;
+}
+
+.rt-number-text.rt-scene-is-open.rt-search-result.rt-non-selected {
+  fill: #FFFFFF !important;
+}
+
+.rt-number-text.rt-scene-is-open.rt-search-result {
+  fill: #000000 !important;
+}
+
+/* Search result squares stay yellow unless muted via rt-non-selected */
+.rt-number-square.rt-search-result.rt-selected {
+  fill: var(--rt-color-search);
+  stroke: #ff9500;
+  stroke-width: 2px;
+}
+
+.rt-number-square.rt-has-edits {
+  fill: #C0C0C0;
+  /* Light gray for pending edits */
+}
+
+.rt-number-square.rt-has-edits.rt-search-result {
+  fill: var(--rt-color-search) !important;
+}
+
+.rt-number-square.rt-has-edits.rt-scene-is-open {
+  fill: var(--interactive-accent, #705DCF);
+}
+
+.rt-number-square.rt-has-edits.rt-non-selected {
+  fill: #EFEFEF !important;
+}
+
+.rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
+  fill: #EFEFEF !important;
+}
+
+.rt-number-square.rt-missing-when {
+  fill: var(--rt-color-due) !important;
+  stroke: var(--rt-color-due) !important;
+  stroke-width: 2px;
+}
+
+.rt-number-text.rt-missing-when {
+  fill: #FFFFFF !important;
+  opacity: 1;
+}
+
+.rt-number-text.rt-has-edits.rt-selected,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected {
+  font-weight: bold;
+}
+
+.rt-clear-search-btn {
+  cursor: pointer;
+}
+
+.rt-clear-search-btn:hover {
+  transform: scale(1.1);
+}
+
+.rt-clear-search-btn:hover circle {
+  fill: #FFE5E5;
+}
+
+.rt-highlight-rect {
+  fill: var(--rt-color-search);
+  rx: 3;
+  ry: 3;
+  opacity: 0.3;
+}
+
+.rt-highlight-rect.rt-stage-zero {
+  fill: var(--rt-publishStageColors-Zero, var(--rt-color-zero));
+}
+
+.rt-highlight-rect.rt-stage-author {
+  fill: var(--rt-publishStageColors-Author, var(--rt-color-author));
+}
+
+.rt-highlight-rect.rt-stage-house {
+  fill: var(--rt-publishStageColors-House, var(--rt-color-house));
+}
+
+.rt-highlight-rect.rt-stage-press {
+  fill: var(--rt-publishStageColors-Press, var(--rt-color-press));
+}
+
+.synopsis-spacer {
+  line-height: 1.5em;
+  min-height: 1.5em;
+  display: block;
+  visibility: visible !important;
+  fill: transparent;
+}
+
+/* Search container styles (scoped to plugin container) */
+.radial-timeline-container .search-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Modal-specific search input sizing */
+.radial-timeline-search .search-input {
+  width: 100%;
+  max-width: 100%;
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+/* Dynamic subplot/character colors are set inline in TypeScript - no static CSS needed */
+
+/* Dynamic color elements */
+[data-item-type="subplot"],
+[data-item-type="character"] {
+  stroke: white;
+  stroke-width: 0.07em;
+  paint-order: stroke;
+}
+
+/* SVG interaction elements */
+.radial-timeline-container .svg-interaction {
+  pointer-events: none;
+}
+
+/* ============================================
+   SUBPLOT DOMINANCE FLAGS (TRIANGLES) BEHAVIOR
+   ============================================ */
+
+/* Default shown state - uses darker/saturated version of subplot color */
+.rt-subplot-dominance-flag.is-shown path {
+  /* Fallback */
+  fill: var(--flag-color);
+  /* Modern browsers: darken and saturate for better visibility */
+  fill: color-mix(in srgb, var(--flag-color), black 20%);
+  filter: saturate(1.5);
+}
+
+/* Hidden state - uses same gray as non-selected number squares */
+.rt-subplot-dominance-flag.is-hidden path {
+  fill: #EFEFEF;
+}
+
+/* Hide triangles in most modes - only show in base narrative view */
+.radial-timeline-svg[data-mode="subplot"] .rt-subplot-dominance-flag,
+/* Main Plot mode */
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-subplot-dominance-flag,
+.radial-timeline-svg[data-shift-mode="active"] .rt-subplot-dominance-flag,
+.radial-timeline-svg.scene-hover .rt-subplot-dominance-flag {
+  display: none;
+}
+
+/* Consolidated Grade Colors */
+/* Grade A - Green */
+.rt-number-text.rt-grade-A,
+.rt-number-text.rt-scene-is-open.rt-grade-A,
+.rt-number-text.rt-has-edits.rt-grade-A,
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-A,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-A,
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-A {
+  fill: #00ff48;
+}
+
+/* Grade B - Yellow */
+.rt-number-text.rt-grade-B,
+.rt-number-text.rt-scene-is-open.rt-grade-B,
+.rt-number-text.rt-has-edits.rt-grade-B,
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-B,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-B,
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-B {
+  fill: #ffbb00;
+}
+
+/* Grade C - Red */
+.rt-number-text.rt-grade-C,
+.rt-number-text.rt-scene-is-open.rt-grade-C,
+.rt-number-text.rt-has-edits.rt-grade-C,
+.rt-number-text.rt-has-edits.rt-selected.rt-grade-C,
+.rt-number-text.rt-has-edits.rt-search-result.rt-selected.rt-grade-C,
+.rt-number-text.rt-scene-is-open.rt-selected.rt-grade-C {
+  fill: #ff0000;
+}
+
+/* Grade Non-Selected (Reset to white) */
+.rt-number-text.rt-non-selected.rt-grade-A,
+.rt-number-text.rt-non-selected.rt-grade-B,
+.rt-number-text.rt-non-selected.rt-grade-C {
+  fill: #FFFFFF !important;
+}

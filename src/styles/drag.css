@@ -1,0 +1,25 @@
+.rt-drop-target-arc {
+  stroke: var(--interactive-accent);
+  stroke-width: 4px;
+  stroke-linecap: round;
+  fill: none;
+  opacity: 0.9;
+}
+
+.rt-drop-target-tick {
+  stroke: var(--interactive-accent);
+  stroke-width: 4px;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.rt-drop-target .rt-number-square,
+.rt-number-square.rt-drop-target {
+  stroke: var(--interactive-accent, #5e81ff);
+  stroke-width: 2px;
+}
+
+.rt-scene-path.rt-drop-target {
+  stroke: var(--interactive-accent, #5e81ff);
+  stroke-width: 3px;
+}

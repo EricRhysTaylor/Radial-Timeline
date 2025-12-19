@@ -1,0 +1,231 @@
+/* =============================================================================
+   VERSION INDICATOR
+   Bottom-right corner version display with update alert
+   ============================================================================= */
+.rt-version-indicator {
+  cursor: default;
+  transition: filter 0.2s ease;
+}
+
+.rt-version-indicator:hover {
+  filter: drop-shadow(0 0 5px var(--text-muted));
+}
+
+.rt-version-indicator.rt-has-update {
+  cursor: pointer;
+}
+
+/* =============================================================================
+   HELP ICON
+   Bottom-right corner help/wiki link
+   ============================================================================= */
+.rt-help-icon {
+  cursor: pointer;
+  stroke: var(--text-muted);
+  opacity: 0.6;
+  transition: opacity 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+}
+
+.rt-help-icon:hover {
+  opacity: 1;
+  stroke: var(--text-normal);
+  filter: drop-shadow(0 0 5px var(--text-muted));
+}
+
+.rt-help-text {
+  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
+  font-size: 20px;
+  text-anchor: middle;
+  dominant-baseline: baseline;
+  fill: var(--text-muted);
+  opacity: 0;
+  pointer-events: none;
+  transition: fill 0.2s ease, opacity 0.2s ease;
+}
+
+.rt-help-icon:hover .rt-help-text {
+  opacity: 1;
+  fill: var(--text-normal);
+}
+
+.rt-version-text {
+  font-family: '04b03b', 'Monaco', 'Courier New', monospace;
+  font-size: 20px;
+  /* 04b03b at 20px (2x PC-safe 10px) */
+  text-anchor: middle;
+  dominant-baseline: baseline;
+  letter-spacing: 0;
+  pointer-events: none;
+  transition: fill 0.2s ease, opacity 0.2s ease;
+}
+
+.rt-version-text.rt-version-number {
+  opacity: 1;
+}
+
+.rt-version-indicator:hover .rt-version-text.rt-version-number {
+  opacity: 0;
+}
+
+.rt-version-text.rt-version-action {
+  opacity: 0;
+}
+
+.rt-version-indicator:hover .rt-version-text.rt-version-action {
+  opacity: 1;
+}
+
+/* Version color: Default muted when up-to-date (no update available) */
+.rt-update-none .rt-version-text {
+  fill: var(--text-muted);
+}
+
+.rt-update-none:hover .rt-version-text {
+  fill: var(--text-normal);
+}
+
+/* Version color: Orange when minor/patch update available */
+.rt-update-minor .rt-version-text {
+  fill: #fb923c;
+  /* Orange */
+}
+
+.rt-update-minor:hover .rt-version-text {
+  fill: #f97316;
+  /* Brighter orange on hover */
+}
+
+/* Version color: Red when major update available */
+.rt-update-major .rt-version-text {
+  fill: #f87171;
+  /* Red */
+}
+
+.rt-update-major:hover .rt-version-text {
+  fill: #ef4444;
+  /* Brighter red on hover */
+}
+
+/* "NEW RELEASE" text animation when update available */
+.rt-has-update .rt-version-text {
+  animation: rt-new-release-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rt-new-release-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Bug icon (shown when no update available) */
+.rt-version-bug-icon {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+  cursor: pointer;
+}
+
+.rt-update-none:hover .rt-version-bug-icon {
+  opacity: 1;
+  stroke: var(--text-normal);
+  filter: drop-shadow(0 0 5px var(--text-normal));
+}
+
+/* Alert icon (shown when update available) */
+.rt-version-alert-icon {
+  fill: none;
+  stroke-width: 1px;
+  opacity: 1;
+  transition: opacity 0.3s ease, stroke 0.2s ease, filter 0.2s ease;
+  cursor: pointer;
+  animation: rt-version-pulse 2s ease-in-out infinite;
+}
+
+/* Alert icon color matches severity */
+.rt-update-minor .rt-version-alert-icon {
+  stroke: #fb923c;
+  /* Orange */
+}
+
+.rt-update-minor:hover .rt-version-alert-icon {
+  stroke: #f97316;
+  filter: drop-shadow(0 0 5px #f97316);
+}
+
+.rt-update-major .rt-version-alert-icon {
+  stroke: #f87171;
+  /* Red */
+}
+
+.rt-update-major:hover .rt-version-alert-icon {
+  stroke: #ef4444;
+  filter: drop-shadow(0 0 5px #ef4444);
+}
+
+@keyframes rt-version-pulse {
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+/* Progress Ring Base (thin gray track underneath) */
+.radial-timeline-container .progress-ring-base {
+  fill: none;
+  stroke: #000000;
+  /* Purple background to match estimation arc #5e0098*/
+  stroke-width: 10px;
+  /* Base width */
+}
+
+/* Year Progress Ring (Rainbow Segments) */
+.radial-timeline-container .progress-ring-fill {
+  fill: none;
+  stroke-width: 6px;
+  /* Make rainbow ring thinner */
+  stroke-linecap: round;
+  /* Optional: round ends */
+}
+
+.radial-timeline-container .estimation-date-label {
+  font-size: 14px;
+  fill: #ff0000;
+  font-weight: bold;
+}
+
+.radial-timeline-container .estimated-date-tick {
+  stroke: #ff0000;
+  stroke-width: 2px;
+}
+
+.radial-timeline-container .estimated-date-dot {
+  fill: #ff0000;
+}
+
+/* Target Completion Date Marker Styles */
+.radial-timeline-container .target-date-tick {
+  stroke: #00cc00;
+  /* Bright Green */
+  stroke-width: 2px;
+}
+
+.radial-timeline-container .target-date-marker {
+  fill: none;
+  /* No fill */
+  stroke: #00cc00;
+  /* Bright Green */
+  stroke-width: 2px;
+  /* Outline width */
+}

@@ -1,8 +1,8 @@
 import type RadialTimelinePlugin from '../main';
-import { DEFAULT_SETTINGS } from '../main';
+import { DEFAULT_SETTINGS } from '../settings/defaults';
 
 export class ThemeService {
-    constructor(private plugin: RadialTimelinePlugin) {}
+    constructor(private plugin: RadialTimelinePlugin) { }
 
     applyCssVariables(): void {
         const root = document.documentElement;

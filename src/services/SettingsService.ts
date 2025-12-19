@@ -1,10 +1,10 @@
 import { normalizePath, TFolder } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { DEFAULT_SETTINGS } from '../main';
+import { DEFAULT_SETTINGS } from '../settings/defaults';
 import type { AiContextTemplate } from '../types/settings';
 
 export class SettingsService {
-    constructor(private plugin: RadialTimelinePlugin) {}
+    constructor(private plugin: RadialTimelinePlugin) { }
 
     async validateAndRememberPath(path: string): Promise<boolean> {
         if (!path || path.trim() === '') return false;

@@ -1,0 +1,495 @@
+.rt-scene-title-bold.rt-title-stage-zero {
+  fill: var(--rt-publishStageColors-Zero, var(--rt-color-zero)) !important;
+}
+
+.rt-scene-title-bold.rt-title-stage-author {
+  fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important;
+}
+
+.rt-scene-title-bold.rt-title-stage-house {
+  fill: var(--rt-publishStageColors-House, var(--rt-color-house)) !important;
+}
+
+.rt-scene-title-bold.rt-title-stage-press {
+  fill: var(--rt-publishStageColors-Press, var(--rt-color-press)) !important;
+}
+
+.radial-timeline-container .rt-month-label {
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-size: 16px;
+  fill: var(--text-normal);
+}
+
+.radial-timeline-container .rt-month-label-outer {
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-size: 18px;
+  fill: var(--text-normal);
+}
+
+/* Hide outer ring month labels in all modes except Chronologue */
+/* Outer ring months are only relevant in Chronologue mode where scenes are chronologically ordered */
+.radial-timeline-svg:not([data-mode="chronologue"]) .rt-month-label-outer {
+  opacity: 0;
+}
+
+/* First and last date labels (beginning/ending dates) */
+.radial-timeline-container .rt-month-label-outer.rt-date-boundary {
+  font-size: 14px;
+  text-transform: uppercase;
+  stroke: #000000;
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+/* Beginning date uses Zero stage color */
+.radial-timeline-container .rt-month-label-outer.rt-date-first {
+  fill: var(--rt-publishStageColors-Zero);
+  font-weight: 500;
+
+}
+
+/* Ending date uses Press stage color */
+.radial-timeline-container .rt-month-label-outer.rt-date-last {
+  fill: var(--rt-publishStageColors-Press);
+  font-weight: 500;
+}
+
+/* Chronological tick marks (Chronologue mode) */
+.radial-timeline-container .rt-chronological-tick-major {
+  stroke: var(--text-muted);
+  stroke-width: 2;
+  opacity: 1;
+}
+
+.radial-timeline-container .rt-chronological-tick-minor {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2, 2;
+  opacity: 1;
+}
+
+/* Beginning tick uses Zero stage color to match the date label */
+.radial-timeline-container .rt-chronological-tick.rt-date-first {
+  stroke: var(--rt-publishStageColors-Zero) !important;
+}
+
+/* Ending tick uses Press stage color to match the date label */
+.radial-timeline-container .rt-chronological-tick.rt-date-last {
+  stroke: var(--rt-publishStageColors-Press) !important;
+}
+
+.radial-timeline-container .rt-act-label {
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-size: 20px;
+  font-weight: 700;
+  /* fill: var(--text-normal); */
+  /* Color is now set dynamically in SVG */
+}
+
+.radial-timeline-container .rt-month-spoke-line {
+  stroke: var(--text-normal);
+  stroke-width: 1px;
+  stroke-dasharray: 2, 2;
+  opacity: 1;
+}
+
+.radial-timeline-container .rt-month-spoke-line.rt-month-spoke-intermediate {
+  opacity: 1;
+}
+
+.radial-timeline-container .rt-month-spoke-line.rt-act-boundary {
+  stroke: var(--text-normal);
+  stroke-width: 2px;
+  stroke-dasharray: none;
+  opacity: 1;
+}
+
+.radial-timeline-container .rt-scene-title-small {
+  font-size: calc(9px * var(--rt-font-scale, 1));
+}
+
+.radial-timeline-container .rt-scene-title-medium {
+  font-size: calc(16px * var(--rt-font-scale, 1));
+}
+
+.radial-timeline-container .rt-scene-title-large {
+  font-size: calc(18px * var(--rt-font-scale, 1));
+}
+.subplot-ring-label-path {
+  fill: none;
+  stroke: none;
+  pointer-events: none;
+}
+
+.rt-subplot-ring-label-text {
+  fill: var(--rt-max-publish-stage-color);
+  /* Use max stage color */
+  opacity: .3;
+  /* Corrected opacity back to 30% */
+  font-family: 'Asimovian', 'Impact', 'Arial Black', Arial, sans-serif;
+  font-weight: 400;
+  /* Regular weight */
+  font-synthesis: none;
+  /* Prevent faux bold/italic synthesis for single-weight font */
+  letter-spacing: -0.02em;
+  /* tighter tracking */
+  font-size: var(--rt-subplot-font-size);
+  dominant-baseline: central;
+  /* Try central for potentially better vertical centering */
+  text-transform: uppercase;
+  pointer-events: none;
+  /* Ignore mouse events */
+}
+
+/* Use .non-selected class for faded state (consistent with other elements) */
+.rt-subplot-ring-label-text.rt-non-selected {
+  opacity: .1;
+  /* Corrected opacity back to 30% */
+}
+
+/* Hide subplot ring labels in Gossamer mode AND on hover */
+.radial-timeline-svg[data-gossamer-mode="true"] .rt-subplot-ring-label-text {
+  opacity: 0 !important;
+}
+
+.radial-timeline-svg.scene-hover .rt-subplot-ring-label-text {
+  opacity: 0 !important;
+}
+
+/* Hide subplot ring labels in shift mode (top left quadrant) */
+.radial-timeline-svg[data-shift-mode="active"] .rt-subplot-ring-label-text {
+  opacity: 0 !important;
+}
+
+/* Mode selector grid */
+.rt-mode-selector-grid {
+  pointer-events: all;
+}
+
+.rt-mode-option {
+  cursor: pointer;
+}
+
+
+.rt-mode-option:hover .rt-document-bg {
+  fill: var(--interactive-accent);
+  stroke: var(--text-normal);
+  stroke-width: 2px;
+}
+
+.rt-mode-option:hover .rt-mode-acronym-text {
+  fill: var(--text-on-accent);
+}
+
+.rt-mode-option .rt-document-bg {
+  fill: var(--interactive-normal);
+  stroke: var(--text-normal);
+  stroke-width: 2px;
+  transition: fill 0.2s ease;
+}
+
+.rt-mode-option .rt-mode-acronym-text {
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: var(--font-interface);
+  font-size: 13px;
+  /* Beat titles are 12px, this is slightly larger */
+  font-weight: normal;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  fill: var(--text-normal);
+  transition: fill 0.2s ease;
+}
+
+.rt-mode-option .rt-mode-number-label {
+  pointer-events: none;
+  text-anchor: start;
+  dominant-baseline: middle;
+  font-family: var(--font-interface);
+  font-size: 15px;
+  font-weight: normal;
+  fill: var(--text-normal);
+}
+
+.rt-mode-option .rt-active {
+  fill: var(--interactive-accent) !important;
+  stroke: var(--text-normal) !important;
+  stroke-width: 2px !important;
+}
+
+.rt-mode-option .rt-active.rt-mode-acronym-text {
+  fill: var(--text-on-accent) !important;
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+}
+
+.rt-mode-option .rt-active.rt-mode-number-label {
+  fill: var(--text-on-accent) !important;
+  font-size: 15px;
+  font-weight: 300;
+
+}
+
+/* Book title text above the mode title - uses Obsidian's text font setting */
+.rt-book-title-text {
+  pointer-events: none;
+  text-anchor: start;
+  dominant-baseline: baseline;
+  font-family: var(--font-text);
+  font-size: 20px;
+  font-weight: var(--inline-title-weight);
+  letter-spacing: 0.02em;
+  fill: var(--text-normal);
+}
+
+/* Mode title text above the first page icon */
+.rt-mode-title-text {
+  pointer-events: none;
+  text-anchor: start;
+  dominant-baseline: baseline;
+  font-family: var(--font-interface);
+  font-size: 26px;
+  font-weight: 100;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  fill: var(--text-normal);
+}
+
+
+/* Shift mode button - styled like mode pages */
+.rt-shift-mode-button {
+  cursor: pointer;
+}
+
+.rt-shift-mode-button .rt-shift-button-bg {
+  fill: var(--interactive-normal);
+  stroke: var(--text-normal);
+  stroke-width: 2px;
+  transition: fill 0.2s ease;
+}
+
+.rt-shift-mode-button .rt-shift-button-text {
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: var(--font-interface);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  fill: var(--text-normal);
+  transition: fill 0.2s ease;
+}
+
+.rt-shift-mode-button:hover .rt-shift-button-bg {
+  fill: var(--interactive-accent);
+  stroke: var(--text-normal);
+  stroke-width: 2px;
+}
+
+.rt-shift-mode-button:hover .rt-shift-button-text {
+  fill: var(--text-on-accent);
+}
+
+.rt-shift-mode-active .rt-shift-button-bg {
+  fill: var(--interactive-accent) !important;
+  stroke: var(--text-normal) !important;
+  stroke-width: 2px !important;
+}
+
+.rt-shift-mode-active .rt-shift-button-text {
+  fill: var(--text-on-accent) !important;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* Shift mode scene selection */
+/* Shift mode: All scene groups fade to low opacity by default */
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"] {
+  opacity: 0.15;
+}
+
+/* Shift mode: All scene fills are gray */
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
+  fill: var(--interactive-normal) !important;
+}
+
+/* Shift mode: Style the number squares and text to match the grayed-out scenes */
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square {
+  fill: var(--interactive-normal) !important;
+  /* Dark gray background */
+  stroke: none !important;
+  /* Remove any borders */
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-text {
+  fill: var(--text-muted) !important;
+  /* Dark muted text to match dark theme */
+  opacity: 0.5;
+  /* Dim the text to match the faded scenes */
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-scene-is-open:not(.rt-shift-active) {
+  fill: var(--interactive-normal) !important;
+  stroke: none !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-scene-is-open:not(.rt-shift-active) {
+  fill: var(--text-muted) !important;
+  opacity: 0.5 !important;
+}
+
+/* Shift mode: Hover/selected scenes restore full opacity and disable transition */
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:hover,
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:has(.rt-shift-locked) {
+  opacity: 1 !important;
+  transition: none !important;
+  /* Override parent transition for instant hover */
+}
+
+/* Shift mode: Hover/selected scenes get accent color */
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:hover .rt-scene-path,
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-scene-path,
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path.rt-shift-locked {
+  fill: var(--interactive-accent) !important;
+  filter: brightness(1.2) !important;
+}
+
+/* Shift mode: A new class, managed by JS, to restore number squares on hover/select */
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active {
+  /* Apply subplot color based on data attribute - avoid inline styles */
+  fill: var(--rt-subplot-colors-0);
+  /* Default fallback */
+}
+
+/* Apply subplot colors via data attributes - avoids inline style recalc */
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="0"] {
+  fill: var(--rt-subplot-colors-0) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="1"] {
+  fill: var(--rt-subplot-colors-1) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="2"] {
+  fill: var(--rt-subplot-colors-2) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="3"] {
+  fill: var(--rt-subplot-colors-3) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="4"] {
+  fill: var(--rt-subplot-colors-4) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="5"] {
+  fill: var(--rt-subplot-colors-5) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="6"] {
+  fill: var(--rt-subplot-colors-6) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="7"] {
+  fill: var(--rt-subplot-colors-7) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="8"] {
+  fill: var(--rt-subplot-colors-8) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="9"] {
+  fill: var(--rt-subplot-colors-9) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="10"] {
+  fill: var(--rt-subplot-colors-10) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="11"] {
+  fill: var(--rt-subplot-colors-11) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="12"] {
+  fill: var(--rt-subplot-colors-12) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="13"] {
+  fill: var(--rt-subplot-colors-13) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="14"] {
+  fill: var(--rt-subplot-colors-14) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="15"] {
+  fill: var(--rt-subplot-colors-15) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
+  fill: #000000 !important;
+  /* Black text */
+  opacity: 1 !important;
+  /* Full opacity when active */
+}
+
+/* Ensure active text wins over grade/non-selected rules */
+.radial-timeline-container .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
+  fill: #000000 !important;
+  opacity: 1 !important;
+  /* Full opacity when active */
+}
+
+/* Legacy: Keep for backwards compatibility */
+.rt-shift-selected {
+  stroke: var(--interactive-accent) !important;
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 8px var(--interactive-accent-alpha-50));
+}
+
+/* Elapsed time arc (SHIFT mode) - uses Stage 1 Zero color */
+.rt-elapsed-time-arc {
+  pointer-events: none;
+}
+
+.rt-elapsed-arc-path {
+  fill: none;
+  stroke: var(--rt-publishStageColors-Zero);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+.rt-elapsed-endpoint-marker {
+  fill: none;
+  stroke: var(--rt-publishStageColors-Zero);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+/* When field warning tooltip */
+.rt-when-field-warning {
+  pointer-events: none;
+}
+
+.rt-when-field-warning rect {
+  fill: var(--background-primary);
+  stroke: var(--text-error);
+  stroke-width: 1;
+}
+
+.rt-when-field-warning text {
+
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--text-error);
+}

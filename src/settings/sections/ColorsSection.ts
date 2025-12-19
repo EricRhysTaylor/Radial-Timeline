@@ -1,6 +1,6 @@
 import { Setting as Settings, ColorComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import { DEFAULT_SETTINGS } from '../../main';
+import { DEFAULT_SETTINGS } from '../defaults';
 
 export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTimelinePlugin): void {
     // --- Publishing Stage Colors ---
@@ -71,7 +71,7 @@ export function renderColorsSection(containerEl: HTMLElement, plugin: RadialTime
     const ensureArray = (arr: unknown): string[] => Array.isArray(arr) ? arr as string[] : [];
     const subplotColors = ensureArray(plugin.settings.subplotColors);
     for (let i = 0; i < 16; i++) {
-        const labelText = `Ring ${i+1}`;
+        const labelText = `Ring ${i + 1}`;
         const current = subplotColors[i] || DEFAULT_SETTINGS.subplotColors[i];
         const cell = subplotGrid.createDiv({ cls: 'rt-color-grid-item' });
         const label = cell.createDiv({ cls: 'rt-color-grid-label' });

@@ -87,3 +87,79 @@ export function sanitizeSvgText(text: string): string {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+/**
+ * Position and curve the text elements in the SVG
+ * @param container The container element with the SVG
+ * @param curveFactor Factor to control the curvature
+ * @param angleToCenter Angle to the center
+ */
+export function curveTextElements(container: Element, curveFactor: number, angleToCenter: number): void {
+    // Find all text elements inside the container
+    const textElements = container.querySelectorAll('text');
+    if (!textElements.length) return;
+
+    // Apply the curvature to each text element
+    textElements.forEach((textEl) => {
+        try {
+            // Create a curved path effect for this text
+            const pathId = `path-${Math.random().toString(36).substring(2, 9)}`;
+
+            // Create a curved path element
+            const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            pathElement.setAttribute('id', pathId);
+            pathElement.setAttribute('d', `M 0,0 Q ${Math.cos(angleToCenter) * 500},${Math.sin(angleToCenter) * 500 * curveFactor} 1000,0`);
+
+            // Use CSS class instead of inline style
+            pathElement.classList.add('svg-path');
+
+            // Add the path to the container before the text
+            textEl.parentNode?.insertBefore(pathElement, textEl);
+
+            // Link the text to the path
+            textEl.setAttribute('path', `url(#${pathId})`);
+            textEl.setAttribute('pathLength', '1');
+            textEl.setAttribute('startOffset', '0');
+        } catch (error) {
+            console.error('Error applying text curvature:', error);
+        }
+    });
+}
+
+/**
+ * Process highlighted content from a document fragment into SVG-compatible nodes
+ */
+export function processHighlightedContent(fragment: DocumentFragment): Node[] {
+    // Create a temporary container using Obsidian's createEl or standard DOM
+    const container = document.createElement('div');
+    container.appendChild(fragment.cloneNode(true));
+
+    // Extract all nodes from the container
+    const resultNodes: Node[] = [];
+
+    // Process each child node
+    Array.from(container.childNodes).forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            // For text nodes, create plain text nodes
+            if (node.textContent) {
+                resultNodes.push(document.createTextNode(node.textContent));
+            }
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            // For element nodes (like tspan), create SVG elements
+            const element = node as Element;
+            if (element.tagName.toLowerCase() === 'tspan') {
+                const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+
+                // Copy attributes
+                Array.from(element.attributes).forEach(attr => {
+                    svgTspan.setAttribute(attr.name, attr.value);
+                });
+
+                svgTspan.textContent = element.textContent;
+                resultNodes.push(svgTspan);
+            }
+        }
+    });
+
+    return resultNodes;
+}
