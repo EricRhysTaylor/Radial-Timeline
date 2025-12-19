@@ -1,3 +1,10 @@
+/* Grid center key text (headers and row labels) */
+.center-key-text {
+  font-size: 18px;
+  fill: var(--text-normal, #333333);
+  font-weight: 400;
+  text-transform: uppercase;
+}
 
 .radial-timeline-svg #mode-toggle {
   cursor: pointer;

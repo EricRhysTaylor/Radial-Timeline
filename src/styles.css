@@ -163,7 +163,7 @@
   --rt-number-font-scale: 1.15;
 }
 
-/* Stage-specific fill should be applied to the bold title tspans, not the parent text.
+/* Stage-specific fill should be applied to the bold title tspans, not the parent text. */
 .radial-timeline-container {
   display: flex;
   flex-direction: column;
@@ -189,10 +189,12 @@
 }
 
 .radial-timeline-container svg {
-  width: 100%;
-  height: 100%;
-  max-width: 100vw;
-  max-height: 100vh;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  /* Flexbox fix for vertical resizing */
   margin: 0 auto;
   padding: 0;
   transform-origin: center;
@@ -267,6 +269,7 @@
   font-size: calc(18px * var(--rt-font-scale, 1));
   pointer-events: none;
 }
+
 /* Layout containers */
 .rt-flex-container {
   display: flex;
@@ -280,6 +283,7 @@
   padding: 10px;
   margin-top: 20px;
 }
+
 /* Dynamic positioning */
 .radial-timeline-container .dynamic-position {
   position: absolute;
@@ -323,8 +327,6 @@
 .rt-info-container {
   cursor: pointer;
 }
-
-
 
 /* --- timeline.css --- */
 .rt-scene-title-bold.rt-title-stage-zero {
@@ -1433,6 +1435,13 @@
 }
 
 /* --- grid.css --- */
+/* Grid center key text (headers and row labels) */
+.center-key-text {
+  font-size: 18px;
+  fill: var(--text-normal, #333333);
+  font-weight: 400;
+  text-transform: uppercase;
+}
 
 .radial-timeline-svg #mode-toggle {
   cursor: pointer;
@@ -1740,7 +1749,6 @@
   fill: #ffffff;
   text-decoration: underline;
 }
-
 
 /* --- indicators.css --- */
 /* =============================================================================

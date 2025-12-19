@@ -14,15 +14,9 @@ try {
   // Ensure we are in a git repo
   run('git rev-parse --is-inside-work-tree');
 
-  // Always use master branch for backups
-  const branch = 'master';
-  const currentBranch = safeRun('git rev-parse --abbrev-ref HEAD') || 'master';
-  
-  // Switch to master branch if not already on it
-  if (currentBranch !== branch) {
-    console.log(`[backup] Switching from ${currentBranch} to ${branch} branch...`);
-    run(`git checkout ${branch}`);
-  }
+  // Use current branch for backups
+  const branch = safeRun('git rev-parse --abbrev-ref HEAD') || 'master';
+  console.log(`[backup] backing up branch: ${branch}`);
 
   // Stage all changes (including new/deleted files)
   safeRun('git add -A');
@@ -37,7 +31,7 @@ try {
   // Build a more descriptive commit message
   const iso = new Date();
   const pad = (n) => String(n).padStart(2, '0');
-  const dateStr = `${iso.getFullYear()}-${pad(iso.getMonth()+1)}-${pad(iso.getDate())} ${pad(iso.getHours())}:${pad(iso.getMinutes())}`;
+  const dateStr = `${iso.getFullYear()}-${pad(iso.getMonth() + 1)}-${pad(iso.getDate())} ${pad(iso.getHours())}:${pad(iso.getMinutes())}`;
 
   const files = run('git diff --cached --name-only').split('\n').filter(Boolean);
   if (files.length) {
@@ -69,7 +63,7 @@ try {
     const ins = shortstat.match(/(\d+) insertions?\(\+\)/);
     const del = shortstat.match(/(\d+) deletions?\(-\)/);
     insertions = ins ? Number(ins[1]) : 0;
-    deletions  = del ? Number(del[1]) : 0;
+    deletions = del ? Number(del[1]) : 0;
   }
 
   if (insertions || deletions) {

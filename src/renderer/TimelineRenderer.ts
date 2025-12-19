@@ -190,7 +190,7 @@ export function createTimelineSVG(
     svg += `<g id="timeline-config-data" data-max-stage-color="${maxStageColor}"></g>`;
 
     // Create defs for patterns and gradients
-    svg += `<defs>`;
+
 
     // Create a map to store scene number information for the scene square and synopsis
     const sceneNumbersMap = new Map<string, SceneNumberInfo>();
@@ -229,8 +229,7 @@ export function createTimelineSVG(
         outerLabels = standardMonths;
     }
 
-    // **Include the `<style>` code here**
-    svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" data-font-scale="${readabilityScale}" ${isChronologueMode ? 'data-chronologue-mode="true"' : ''} preserveAspectRatio="xMidYMid meet">`;
+
 
 
     // After radii are known, compute global stacking map (outer-ring narrative only)
