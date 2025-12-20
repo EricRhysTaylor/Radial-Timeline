@@ -8,6 +8,7 @@
     *   [[Zero Draft Mode]]
 *   **Reference**
     *   [[View Modes]]
+    *   [[Commands]]
     *   [[YAML Frontmatter]]
     *   [[Settings]]
 *   **Technical & Help**
