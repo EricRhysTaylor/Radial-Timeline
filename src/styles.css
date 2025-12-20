@@ -2073,8 +2073,8 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 }
 
 .rt-chronologue-duration-ticks .rt-duration-arc-unparseable {
-  stroke: #ff0000;
-  /* Red for unparseable/missing durations (using --rt-color-due red) */
+  stroke: var(--rt-color-due);
+  /* Red for unparseable/missing durations */
   stroke-width: 6px;
 }
 

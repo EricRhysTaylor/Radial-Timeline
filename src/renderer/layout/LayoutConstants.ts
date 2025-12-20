@@ -76,7 +76,7 @@ export const BACKDROP_RING_RADIUS = 190;
 export const BACKDROP_RING_HEIGHT = 20;
 
 /** Vertical offset for the backdrop segment labels relative to ring center */
-export const BACKDROP_TITLE_RADIUS_OFFSET = 5;
+export const BACKDROP_TITLE_RADIUS_OFFSET = 3;
 
 // =============================================================================
 // RADII - OUTER LABELS AND TICKS
