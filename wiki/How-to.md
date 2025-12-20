@@ -83,6 +83,22 @@ Need to rename or delete a subplot across dozens of scenes? Use the **`Subplot M
 
 This is especially helpful after reorganizing your B/C plots—you no longer have to hunt through every note manually.
 
+### Search
+You can filter scenes by searching for text content across multiple fields.
+
+*   **Trigger**: Use the command palette (`Cmd/Ctrl + P`) → **Radial Timeline: Search timeline**.
+*   **Matches**: Searches case-insensitive text in:
+    *   Title
+    *   Date (`When`) and Times (e.g., "9am", "April")
+    *   Synopsis
+    *   Pulse analysis
+    *   Subplot
+    *   Characters
+*   **Visuals**:
+    *   **Scene Numbers**: Highlighted in yellow on the outer ring.
+    *   **Text**: Matching text within the synopsis or metadata hover is outlined in yellow.
+*   **Clear**: Use the command **Radial Timeline: Clear search** or click the clear button in the search bar.
+
 ### Other Key Workflows
 
 *   **Zero Draft Mode**: Prevent edits to completed scenes to focus on forward momentum. See [[Zero Draft Mode]].

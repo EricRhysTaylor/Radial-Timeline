@@ -16,8 +16,8 @@ Type "Radial Timeline" to filter the list.
 | :--- | :--- | :--- |
 | **Open** | Opens the main Radial Timeline view. | [[Home#quick-start]] |
 | **Create template scene note** | Creates a new scene file using the default template. | [[Core Workflows#create-scenes]] |
-| **Search timeline** | Opens the search bar in the timeline view to filter scenes. | [[View Modes#search]] |
-| **Clear search** | Clears the active search filter. | [[View Modes#search]] |
+| **Search timeline** | Opens the search bar in the timeline view to filter scenes. | [[How-to#search]] |
+| **Clear search** | Clears the active search filter. | [[How-to#search]] |
 | **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all files. | [[How-to#manage-subplots-in-bulk]] |
 | **Generate manuscript** | Compiles your scenes into a single manuscript file (narrative or chronological). | [[Core Workflows#generate-manuscript]] |
 | **Gossamer enter momentum scores** | Opens the score entry modal for manual Gossamer analysis. | [[Gossamer Mode#manual-entry]] |
