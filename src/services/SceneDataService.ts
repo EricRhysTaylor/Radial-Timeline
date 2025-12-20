@@ -197,8 +197,8 @@ export class SceneDataService {
                             "Pulse Last Updated": typeof pulseLastUpdated === 'string' ? pulseLastUpdated : undefined
                         });
                     }
-                } else if (metadata && metadata.Class === "Context") {
-                    // Parse Context Item
+                } else if (metadata && metadata.Class === "Backdrop") {
+                    // Parse Backdrop Item
                     const whenStr = metadata.When;
                     let when: Date | undefined;
                     if (typeof whenStr === 'string') {
@@ -222,9 +222,9 @@ export class SceneDataService {
                         title: file.basename, // Use filename as title, as requested
                         synopsis: metadata.Synopsis as string | undefined, // For hover
                         Duration: duration,
-                        itemType: "Context",
-                        // Place context in "Context" subplot logically, though it might not need sorting like scenes
-                        subplot: "Context"
+                        End: metadata.End as string | undefined,
+                        itemType: "Backdrop"
+                        // No subplot assignment - rendered in special Backdrop Ring
                     });
 
                 } else if (metadata && isStoryBeat(metadata.Class)) {

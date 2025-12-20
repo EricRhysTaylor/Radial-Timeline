@@ -131,6 +131,8 @@ export function renderRings(ctx: RingRenderContext): string {
 
                 const scenesByPath = new Map<string, TimelineItem[]>();
                 scenes.forEach(s => {
+                    if (s.itemType === 'Backdrop') return; // EXCLUDE BACKDROP
+
                     if (!sortByWhen) {
                         const sAct = s.actNumber !== undefined ? s.actNumber - 1 : 0;
                         if (sAct !== act) return;

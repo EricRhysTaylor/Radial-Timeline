@@ -2109,101 +2109,48 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 /* ==========================================================================
-   Context Ring Styles
+   Backdrop Ring Styles
    ========================================================================== */
 
-/* ==========================================================================
-   Context Ring Styles
-   ========================================================================== */
-
-.rt-context-ring {
+.rt-backdrop-ring {
   pointer-events: none;
   /* Let clicks pass through to synopsis */
 }
 
-.rt-context-segment {
+.rt-backdrop-segment {
+  stroke: var(--text-muted);
+  /* Subdued gray */
+  stroke-opacity: 0.2;
   opacity: 0.8;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, stroke-opacity 0.2s ease;
 }
 
-.rt-context-segment:hover {
+.rt-backdrop-segment:hover {
   opacity: 1;
+  stroke-opacity: 0.4;
 }
 
 /* Overlap pattern: Alternating visual style (stroke-dasharray handled inline for offset) */
-.rt-context-overlap {
+.rt-backdrop-overlap {
   opacity: 0.9;
 }
 
 /* Repeating text label along the arc */
-.rt-context-label {
+.rt-backdrop-label {
   /* Use the custom bit font */
   font-family: 'hooge05_55Regular', monospace, ui-monospace, SFMono-Regular;
   font-size: 10px;
   font-weight: normal;
-  /* hooge is typically bold-looking by default, standard weight often better */
-  fill: var(--text-normal);
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
-  /* Improve readability against colored background */
+  fill: var(--text-muted);
+  /* Medium gray */
+  text-shadow: none;
   pointer-events: none;
   letter-spacing: 1px;
+  transition: fill 0.2s ease;
 }
 
-/* Context Colors: Muted backgrounds, brighter text */
-/* Define 6 cycling colors for context segments */
-.rt-context-color-0 {
-  stroke: var(--color-red);
-}
-
-.rt-context-color-1 {
-  stroke: var(--color-orange);
-}
-
-.rt-context-color-2 {
-  stroke: var(--color-yellow);
-}
-
-.rt-context-color-3 {
-  stroke: var(--color-green);
-}
-
-.rt-context-color-4 {
-  stroke: var(--color-blue);
-}
-
-.rt-context-color-5 {
-  stroke: var(--color-purple);
-}
-
-/* Ensure text inherits color or is brighter */
-.rt-context-ring .rt-context-segment {
-  /* Mute the stroke opacity slightly */
-  stroke-opacity: 0.5;
-}
-
-/* Text fill should match the color family but be fully opaque/bright */
-.rt-context-segment.rt-context-color-0+.rt-context-label {
-  fill: var(--color-red);
-}
-
-.rt-context-segment.rt-context-color-1+.rt-context-label {
-  fill: var(--color-orange);
-}
-
-.rt-context-segment.rt-context-color-2+.rt-context-label {
-  fill: var(--color-yellow);
-}
-
-.rt-context-segment.rt-context-color-3+.rt-context-label {
-  fill: var(--color-green);
-}
-
-.rt-context-segment.rt-context-color-4+.rt-context-label {
-  fill: var(--color-blue);
-}
-
-.rt-context-segment.rt-context-color-5+.rt-context-label {
-  fill: var(--color-purple);
+.rt-backdrop-segment:hover+.rt-backdrop-label {
+  fill: var(--text-normal);
 }
 
 /* --- modals.css --- */

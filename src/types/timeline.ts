@@ -26,7 +26,7 @@ export interface TimelineItem {
     "Pulse Update"?: boolean | string;
     "Pulse Last Updated"?: string;
     "Beats Update"?: boolean | string; // legacy compatibility
-    itemType?: "Scene" | "Plot" | "Beat" | "Context";
+    itemType?: "Scene" | "Plot" | "Beat" | "Backdrop";
     Description?: string;
     "Beat Model"?: string;
     Range?: string;
@@ -62,4 +62,5 @@ export interface TimelineItem {
     Gossamer28?: number;
     Gossamer29?: number;
     Gossamer30?: number;
+    End?: string;
 }

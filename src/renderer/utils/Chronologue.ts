@@ -12,7 +12,7 @@ import {
     renderChronologicalBackboneArc,
     type ChronologueSceneEntry
 } from '../components/ChronologueTimeline';
-import { renderContextRing } from '../components/ContextRing';
+import { renderBackdropRing } from '../components/BackdropRing';
 
 export type ChronologueLabel = {
     name: string;
@@ -35,7 +35,7 @@ export function buildChronologueOuterLabels(
     const seenPaths = new Set<string>();
     const combined: TimelineItem[] = [];
     scenes.forEach(s => {
-        if (isBeatNote(s)) {
+        if (isBeatNote(s) || s.itemType === 'Backdrop') {
             return;
         }
 
@@ -140,8 +140,17 @@ export function renderChronologueOverlays({
         customThresholdMs
     );
 
-    // Render Context Ring
-    svg += renderContextRing(scenes);
+    // Render Backdrop Ring - positioned between the outer ring and the next subplot ring
+    const numRings = ringStartRadii.length;
+    let backdropRadius = 190; // Default central
+    if (numRings > 1) {
+        // Boundary between the outermost ring (numRings - 1) and its inner neighbor
+        backdropRadius = ringStartRadii[numRings - 1];
+    } else if (numRings === 1) {
+        // If only one ring, place it just inside that ring
+        backdropRadius = ringStartRadii[0] - 10;
+    }
+    svg += renderBackdropRing(scenes, backdropRadius);
 
     stopChronoOverlays();
     return svg;

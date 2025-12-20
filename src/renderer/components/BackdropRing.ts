@@ -1,12 +1,12 @@
 /*
- * Context Ring Renderer
- * Renders the "Context" layer in Chronologue mode.
+ * Backdrop Ring Renderer
+ * Renders the "Backdrop" layer in Chronologue mode.
  */
 
 import type { TimelineItem } from '../../types/timeline';
-import { parseDuration, calculateTimeSpan } from '../../utils/date';
+import { parseDuration, calculateTimeSpan, parseWhenField } from '../../utils/date';
 import { formatNumber } from '../../utils/svg';
-import { CONTEXT_RING_RADIUS, CONTEXT_RING_HEIGHT } from '../layout/LayoutConstants';
+import { BACKDROP_RING_RADIUS, BACKDROP_RING_HEIGHT } from '../layout/LayoutConstants';
 
 /**
  * Map a time value to an angular position on the timeline arc
@@ -18,25 +18,25 @@ function mapTimeToAngle(timeMs: number, startMs: number, endMs: number): number 
     return progress * 2 * Math.PI - Math.PI / 2;
 }
 
-interface ContextSegment {
+interface BackdropSegment {
     scene: TimelineItem;
     startAngle: number;
     endAngle: number;
-    colorIndex: number; // For styling
 }
 
-export function renderContextRing(
+export function renderBackdropRing(
     scenes: TimelineItem[],
-    availableRadius: number = CONTEXT_RING_RADIUS
+    availableRadius: number = BACKDROP_RING_RADIUS
 ): string {
-    // 1. Filter for valid Context items
-    const contextItems = scenes.filter(s => s.itemType === 'Context' && s.when && s.Duration);
-    if (contextItems.length === 0) return '';
+    // 1. Filter for valid Backdrop items
+    const backdropItems = scenes.filter(s => s.itemType === 'Backdrop' && s.when && (s.Duration || s.End));
+    if (backdropItems.length === 0) return '';
 
-    // 2. Identify Time Span of the *entire* View (not just context items)
-    // We normally use the full range of all scenes to align with the main timeline
-    // Collect ALL valid dates from ALL scenes to establish the global timeline range
+    // 2. Identify Time Span of the *entire* View (not just backdrop items)
+    // IMPORTANT: Per user request, Backdrop items MUST NOT influence the timeline range.
+    // The range is determined purely by 'Scene' type items.
     const allValidDates = scenes
+        .filter(s => s.itemType === 'Scene')
         .map(s => s.when)
         .filter((d): d is Date => d instanceof Date && !isNaN(d.getTime()));
 
@@ -55,21 +55,34 @@ export function renderContextRing(
     if (totalDuration <= 0) return '';
 
     // 3. Process segments
-    const segments: ContextSegment[] = contextItems.map((item, index) => {
+    const segments: BackdropSegment[] = backdropItems.map((item, index) => {
         const itemStart = item.when!.getTime();
-        const duration = parseDuration(item.Duration!) || 0;
-        const itemEnd = itemStart + duration;
 
-        // Clamp to view range? Or allow rendering even if outside? 
-        // Ideally should match timeline.
+        let itemEnd: number;
+        if (item.End) {
+            // Parse End field (e.g., "2085-04-15" or "04/15/2085")
+            const parsedEnd = parseWhenField(item.End);
+            itemEnd = parsedEnd ? parsedEnd.getTime() : itemStart;
+        } else {
+            const duration = parseDuration(item.Duration!) || 0;
+            itemEnd = itemStart + duration;
+        }
+
+        // Clamp to view range so rings are only plotted where they overlap with scenes
+        const clampedStart = Math.max(itemStart, startMs);
+        const clampedEnd = Math.min(itemEnd, endMs);
+
+        // If the item is entirely outside the scene range, we'll return null and filter it
+        if (clampedStart >= clampedEnd) {
+            return null;
+        }
 
         return {
             scene: item,
-            startAngle: mapTimeToAngle(itemStart, startMs, endMs),
-            endAngle: mapTimeToAngle(itemEnd, startMs, endMs),
-            colorIndex: index % 6 // Cycle through 6 colors? Or use some hashing?
+            startAngle: mapTimeToAngle(clampedStart, startMs, endMs),
+            endAngle: mapTimeToAngle(clampedEnd, startMs, endMs)
         };
-    });
+    }).filter((seg): seg is BackdropSegment => seg !== null);
 
     // 4. Render Segments
     // Strategy for overlaps: 
@@ -86,7 +99,7 @@ export function renderContextRing(
     // We will use stroke-dasharray for ALL context arcs to allow "mixing".
     // Or, we can detect overlaps and only dash then.
     // For now, let's implement the "solid" arc with a repeating text label.
-    // We'll add a class `rt-context-overlap` if it overlaps.
+    // We'll add a class `rt-backdrop-overlap` if it overlaps.
 
     // Detection of overlaps for styling
     // Simple N^2 check is fine for typical number of contexts
@@ -105,7 +118,7 @@ export function renderContextRing(
         }
     }
 
-    let svg = `<g class="rt-context-ring">`;
+    let svg = `<g class="rt-backdrop-ring">`;
 
     segments.forEach((seg, idx) => {
         const isOverlapping = overlaps.has(idx);
@@ -120,13 +133,12 @@ export function renderContextRing(
         const d = `M ${x1} ${y1} A ${formatNumber(availableRadius)} ${formatNumber(availableRadius)} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
 
         // Unique ID for text path
-        const pathId = `context-arc-${idx}`;
+        const pathId = `backdrop-arc-${idx}`;
 
         // Classes
-        // .rt-context-segment
-        // .rt-context-segment-overlap (if overlapping)
-        // .rt-context-color-N (for colors)
-        const segmentClass = `rt-context-segment rt-context-color-${seg.colorIndex} ${isOverlapping ? 'rt-context-overlap' : ''}`;
+        // .rt-backdrop-segment
+        // .rt-backdrop-overlap (if overlapping)
+        const segmentClass = `rt-backdrop-segment ${isOverlapping ? 'rt-backdrop-overlap' : ''}`;
 
         // 1. Definition Path (invisible, for text)
         svg += `<defs><path id="${pathId}" d="${d}" /></defs>`;
@@ -139,7 +151,7 @@ export function renderContextRing(
             ? `stroke-dasharray: 10, 10; stroke-dashoffset: ${idx * 10};`
             : '';
 
-        svg += `<path d="${d}" class="${segmentClass}" style="${dashStyle}" fill="none" stroke-width="${CONTEXT_RING_HEIGHT}" />`; // SAFE: inline style used for dynamic stroke-dashoffset
+        svg += `<path d="${d}" class="${segmentClass}" style="${dashStyle}" fill="none" stroke-width="${BACKDROP_RING_HEIGHT}" />`; // SAFE: inline style used for dynamic stroke-dashoffset
 
         // 3. Repeating Text
         // "micro font or bit font"
@@ -152,7 +164,7 @@ export function renderContextRing(
         // Estimate char width ~ 6px for micro font?
         const content = (title + ' • ').repeat(Math.ceil(arcLen / (title.length * 8 + 20)));
 
-        svg += `<text class="rt-context-label" dy="5">
+        svg += `<text class="rt-backdrop-label" dy="5">
             <textPath href="#${pathId}" startOffset="0" spacing="auto">
                 ${content}
             </textPath>
@@ -163,15 +175,15 @@ export function renderContextRing(
         // The user said "synopsis would still be there". 
         // The main renderer handles Synopsis via `appendSynopsisElementForScene`.
         // We just need to make sure `extractGradeFromScene` or whatever generates the ID matches.
-        // Actually, main renderer generates synopses for ALL scenes passed to it.
+        // actually, main renderer generates synopses for ALL scenes passed to it.
         // `timeline.ts` line 342 iterates all scenes.
-        // Our `Context` items are in `scenes` array.
+        // Our `Backdrop` items are in `scenes` array.
         // But `timeline.ts` skips them if it expects acts/subplots? 
-        // We added logic to SceneDataService to put them in "Context" subplot.
+        // We added logic to SceneDataService to put them in "Backdrop" subplot.
         // We need to ensure the main loop in TimelineRenderer doesn't skip them or render them in the normal rings.
         // Wait, main renderer renders RINGS based on subplots. 
-        // If "Context" is a subplot, it might try to render a normal ring for it!
-        // We probably want to EXCLUDE Context items from the standard ring loop.
+        // If "Backdrop" is a subplot, it might try to render a normal ring for it!
+        // We probably want to EXCLUDE Backdrop items from the standard ring loop.
     });
 
     svg += `</g>`;

@@ -91,6 +91,8 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
             const scenesByPathForSquares = new Map<string, TimelineItem[]>();
 
             scenes.forEach(s => {
+                if (s.itemType === 'Backdrop') return; // SKIP BACKDROP
+
                 // When using When date sorting, include all scenes (ignore Act)
                 // When using manuscript order, filter by Act
                 if (!sortByWhen) {

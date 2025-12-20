@@ -49,6 +49,7 @@ export function computeCacheableValues(
 
     const allSubplotsSet = new Set<string>();
     scenes.forEach(scene => {
+        if (scene.itemType === 'Backdrop') return;
         const key = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
         allSubplotsSet.add(key);
     });
@@ -73,6 +74,7 @@ export function computeCacheableValues(
     if (sortByWhen) {
         scenesByActAndSubplot[0] = {};
         scenes.forEach(scene => {
+            if (scene.itemType === 'Backdrop') return;
             const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
             if (!scenesByActAndSubplot[0][subplot]) {
                 scenesByActAndSubplot[0][subplot] = [];
@@ -87,6 +89,7 @@ export function computeCacheableValues(
             scenesByActAndSubplot[act] = {};
         }
         scenes.forEach(scene => {
+            if (scene.itemType === 'Backdrop') return;
             const act = scene.actNumber !== undefined ? scene.actNumber - 1 : 0;
             const validAct = (act >= 0 && act < NUM_ACTS) ? act : 0;
             const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
@@ -134,8 +137,8 @@ export function computeCacheableValues(
     const subplotOuterRadius = isChronologueMode
         ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
         : isSubplotMode
-        ? SUBPLOT_OUTER_RADIUS_MAINPLOT
-        : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
+            ? SUBPLOT_OUTER_RADIUS_MAINPLOT
+            : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 
     const ringGeo = computeRingGeometry({
         size: SVG_SIZE,

@@ -51,7 +51,7 @@ export function renderNumberSquaresUnified(params: {
   const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.75 : 1; // pad more aggressively when font grows
 
   scenes.forEach((scene, idx) => {
-    if (isBeatNote(scene)) return;
+    if (isBeatNote(scene) || scene.itemType === 'Backdrop') return;
 
     const number = getScenePrefixNumber(scene.title, scene.number);
     if (!number) return;
@@ -228,7 +228,7 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
 
   let svg = '';
   scenes.forEach((scene) => {
-    if (isBeatNote(scene)) return;
+    if (isBeatNote(scene) || scene.itemType === 'Backdrop') return;
     const number = getScenePrefixNumber(scene.title, scene.number);
     if (!number) return;
     const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
