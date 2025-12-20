@@ -1,15 +1,15 @@
 *   [[Home]]
 *   **User Guide**
-    *   [[Core Workflows]]
-    *   [[How-to]]
+    *   [[Core Workflows]]   
     *   [[Chronologue Mode]]
     *   [[Gossamer Mode]]
     *   [[AI Analysis]]
+    *   [[How-to]]
 *   **Reference**
-    *   [[View Modes]]
     *   [[Commands]]
-    *   [[YAML Frontmatter]]
     *   [[Settings]]
+    *   [[View Modes]]
+    *   [[YAML Frontmatter]]
 *   **Technical & Help**
     *   [[Technical]]
     *   [[Acknowledgments]]

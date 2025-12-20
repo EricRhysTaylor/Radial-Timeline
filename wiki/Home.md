@@ -9,7 +9,7 @@ Radial Timeline™ arranges your scenes by act, subplot, narrative or chronologi
 Radial Timeline™ captures and visualizes all 4 critical timelines:
 *   **Narrative time**: the sequence you reveal events to readers.
 *   **Chronological time**: when events happen in your story's world.
-*   **Author time**: your scene writing progress with target completion dates from Todo to Complete.
+*   **Author time**: your scene writing progress with target due dates tracking Todo, Working, Complete and Overdue.
 *   **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
 
 Narrative and Chronologue modes keep subplot colors front-and-center so you can compare structure without workflow noise. When you need to see Todo/Working/Overdue progress or publish stage colors, jump into Subplot Mode where all scenes is replaced by Main Plot and scenes inherit the author-status and publish-stage palette.
