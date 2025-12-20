@@ -146,34 +146,28 @@ export function renderChronologueOverlays({
         customThresholdMs
     );
 
-    // Render Backdrop Ring - positioned in its pre-allocated virtual lane if available
+    // Render Backdrop Ring - ONLY if it was pre-allocated a virtual lane by the layout engine
     const backdropSubplotIndex = masterSubplotOrder.indexOf('Backdrop');
-    let backdropRadius = 190; // Default central
-    const numRings = ringStartRadii.length;
-
     if (backdropSubplotIndex !== -1) {
+        const numRings = ringStartRadii.length;
         // Find the specific ring index for this subplot
         // Ring indices go from 0 (inner) to NUM_RINGS-1 (outer)
         const ringIndex = numRings - 1 - backdropSubplotIndex;
-        if (ringIndex >= 0 && ringIndex < numRings) {
-            // Use middle of the allocated ring
-            backdropRadius = ringStartRadii[ringIndex] + ringWidths[ringIndex] / 2;
-        }
-    } else if (numRings > 1) {
-        // Fallback for unexpected state
-        backdropRadius = ringStartRadii[numRings - 1];
-    } else if (numRings === 1) {
-        backdropRadius = ringStartRadii[0] - 10;
-    }
 
-    svg += renderBackdropRing({
-        plugin,
-        scenes,
-        availableRadius: backdropRadius,
-        synopsesElements,
-        maxTextWidth,
-        masterSubplotOrder
-    });
+        if (ringIndex >= 0 && ringIndex < numRings) {
+            // Use precise middle radius of the allocated ring lane
+            const backdropRadius = ringStartRadii[ringIndex] + ringWidths[ringIndex] / 2;
+
+            svg += renderBackdropRing({
+                plugin,
+                scenes,
+                availableRadius: backdropRadius,
+                synopsesElements,
+                maxTextWidth,
+                masterSubplotOrder
+            });
+        }
+    }
 
     stopChronoOverlays();
     return svg;

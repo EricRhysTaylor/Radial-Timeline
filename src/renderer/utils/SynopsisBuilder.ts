@@ -13,13 +13,25 @@ export function buildSynopsisElement(
     subplotIndexResolver?: (name: string) => number
 ): SVGGElement {
     const fontScale = getReadabilityMultiplier(plugin.settings as any);
+
+    // For Backdrop items, only show Title and Synopsis/Description
+    if (scene.itemType === 'Backdrop') {
+        const lines = [scene.title || 'Untitled'];
+        if (scene.synopsis) {
+            lines.push(...splitIntoBalancedLines(scene.synopsis, maxTextWidth, fontScale));
+        } else if (scene.Description) {
+            lines.push(...splitIntoBalancedLines(scene.Description, maxTextWidth, fontScale));
+        }
+        return plugin.synopsisManager.generateElement(scene, lines, sceneId, subplotIndexResolver);
+    }
+
     const contentLines = [
         scene.title || '',
         ...(isBeatNote(scene) && scene.Description
             ? splitIntoBalancedLines(scene.Description, maxTextWidth, fontScale)
             : scene.synopsis
-            ? splitIntoBalancedLines(scene.synopsis, maxTextWidth, fontScale)
-            : [])
+                ? splitIntoBalancedLines(scene.synopsis, maxTextWidth, fontScale)
+                : [])
     ];
 
     if (isBeatNote(scene)) {

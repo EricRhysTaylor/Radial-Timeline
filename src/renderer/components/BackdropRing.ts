@@ -6,7 +6,7 @@
 import type { TimelineItem } from '../../types/timeline';
 import { parseDuration, calculateTimeSpan, parseWhenField } from '../../utils/date';
 import { formatNumber } from '../../utils/svg';
-import { BACKDROP_RING_RADIUS, BACKDROP_RING_HEIGHT, BACKDROP_TITLE_RADIUS_OFFSET } from '../layout/LayoutConstants';
+import { BACKDROP_RING_HEIGHT, BACKDROP_TITLE_RADIUS_OFFSET } from '../layout/LayoutConstants';
 import type { PluginRendererFacade } from '../../utils/sceneHelpers';
 import { appendSynopsisElementForScene } from '../utils/SynopsisBuilder';
 import { makeSceneId } from '../../utils/numberSquareHelpers';
@@ -30,7 +30,7 @@ interface BackdropSegment {
 export type BackdropRingOptions = {
     plugin: PluginRendererFacade;
     scenes: TimelineItem[];
-    availableRadius?: number;
+    availableRadius: number; // Required: the lane radius must be determined by layout engine
     synopsesElements: SVGGElement[];
     maxTextWidth: number;
     masterSubplotOrder: string[];
@@ -39,7 +39,7 @@ export type BackdropRingOptions = {
 export function renderBackdropRing({
     plugin,
     scenes,
-    availableRadius = BACKDROP_RING_RADIUS,
+    availableRadius,
     synopsesElements,
     maxTextWidth,
     masterSubplotOrder
@@ -182,29 +182,29 @@ export function renderBackdropRing({
             targets: synopsesElements
         });
 
-        // Classes
-        // .rt-backdrop-segment
-        // .rt-backdrop-overlap (if overlapping)
-        const segmentClass = `rt-backdrop-segment ${isOverlapping ? 'rt-backdrop-overlap' : ''}`;
+        // Create a standard scene group wrapper so interactions (Synopsis, Click) work automatically
+        const encodedPath = encodeURIComponent(seg.scene.path || '');
+        const currentSegmentClass = `rt-backdrop-segment ${isOverlapping ? 'rt-backdrop-overlap' : ''}`;
+        svg += `<g class="rt-scene-group" data-item-type="Backdrop" data-path="${encodedPath}">`;
 
         // 1. Definition Path (invisible, for text)
         svg += `<defs><path id="${pathId}" d="${td}" /></defs>`;
 
         // 2. Visible Arc
-        // If overlapping, we might apply a dasharray via CSS or attribute
-        // User asked for "alternating pattern". We can use dashoffset based on index to shift the dashes
+        // If overlapping, we apply alternating dashoffset via inline style
         // SAFE: inline style used for dynamic stroke-dashoffset that varies per element based on index
         const dashStyle = isOverlapping
             ? `stroke-dasharray: 10, 10; stroke-dashoffset: ${idx * 10};`
             : '';
 
-        svg += `<path id="${sceneId}" d="${d}" class="${segmentClass}" style="${dashStyle}" fill="none" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="all" data-scene-id="${sceneId}" />`; // SAFE: inline style used for dynamic stroke-dashoffset
+        // Add rt-scene-path class so interactions can find the ID
+        svg += `<path id="${sceneId}" d="${d}" class="${currentSegmentClass} rt-scene-path" style="${dashStyle}" fill="none" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="all" data-scene-id="${sceneId}" />`; // SAFE: inline style used for dynamic stroke-dashoffset
 
         // 3. Repeating Text
         const title = seg.scene.title || 'Untitled';
         // Arc Length = radius * angle
         const arcLen = textRadius * (seg.endAngle - seg.startAngle);
-        // Estimate char width ~ 6px for micro font?
+        // Estimate char width: font-size 20px is ~14px wide for this monospace font
         const content = (title + ' • ').repeat(Math.ceil(arcLen / (title.length * 14 + 30)));
 
         svg += `<text class="rt-backdrop-label">
@@ -212,6 +212,8 @@ export function renderBackdropRing({
                 ${content}
             </textPath>
         </text>`;
+
+        svg += `</g>`;
 
         // Synopsis (Transparent hover target usually handled by shared synopsis logic, 
         // but here we might need specific hover area since it's a specific ring?)

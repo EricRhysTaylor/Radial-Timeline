@@ -69,14 +69,11 @@ export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 740;
 // RADII - BACKDROP RING
 // =============================================================================
 
-/** Radius for the new Backdrop Ring (positioned "under" all scenes at the center) */
-export const BACKDROP_RING_RADIUS = 190;
-
 /** Height (thickness) of the Backdrop Ring */
 export const BACKDROP_RING_HEIGHT = 20;
 
 /** Vertical offset for the backdrop segment labels relative to ring center */
-export const BACKDROP_TITLE_RADIUS_OFFSET = 3;
+export const BACKDROP_TITLE_RADIUS_OFFSET = -1;
 
 // =============================================================================
 // RADII - OUTER LABELS AND TICKS

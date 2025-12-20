@@ -2119,8 +2119,8 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 
 .rt-backdrop-ring-background {
   stroke: var(--rt-color-empty);
-  /* Use the 'void cell' base color */
-  stroke-opacity: 0.1;
+  /* Match 'rt-void-cell' density for a cohesive "empty" lane */
+  stroke-opacity: 0.9;
   fill: none !important;
 }
 
@@ -2133,9 +2133,11 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   cursor: pointer;
 }
 
-.rt-backdrop-segment:hover {
-  stroke-opacity: 0.8;
-  /* Make it 'darker' (more prominent) on hover */
+.rt-backdrop-segment:hover,
+.rt-backdrop-segment.rt-selected {
+  stroke: var(--rt-color-empty) !important;
+  stroke-opacity: 1 !important;
+  /* Full Highlight */
 }
 
 /* Overlap pattern: Alternating visual style (stroke-dasharray handled inline for offset) */
@@ -2151,16 +2153,50 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   font-weight: normal;
   fill: var(--rt-color-empty);
   /* 100% White */
+  stroke: none;
+  /* NO STROKE BY DEFAULT */
   text-shadow: none;
   dominant-baseline: middle;
   pointer-events: none;
   letter-spacing: 1px;
-  transition: fill 0.2s ease;
+  text-transform: uppercase;
+  transition: fill 0.2s ease, opacity 0.2s ease, stroke 0.2s ease;
 }
 
-.rt-backdrop-segment:hover+.rt-backdrop-label {
-  fill: var(--rt-color-empty);
-  opacity: 1;
+.rt-backdrop-segment:hover+.rt-backdrop-label,
+.rt-backdrop-segment.rt-selected+.rt-backdrop-label {
+  fill: var(--rt-color-empty) !important;
+  opacity: 1 !important;
+  stroke: #000000 !important;
+  stroke-width: 3px !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+  paint-order: stroke fill !important;
+}
+
+/* Global Fade: When any scene is hovered, stay "light gray" (void-like) 
+   instead of turning dark/transparent, to provide a clean base for synopsis */
+.radial-timeline-svg.scene-hover .rt-backdrop-segment:not(:hover) {
+  stroke: var(--rt-color-empty-selected) !important;
+  stroke-opacity: 0.9 !important;
+}
+
+/* Dim all labels in scene-hover by default to clear space for synopsis */
+.radial-timeline-svg.scene-hover .rt-backdrop-label {
+  fill: var(--rt-color-empty-selected) !important;
+  opacity: 0.1 !important;
+  stroke: none !important;
+}
+
+.radial-timeline-svg.scene-hover .rt-backdrop-segment:hover+.rt-backdrop-label {
+  fill: var(--rt-color-empty) !important;
+  opacity: 1 !important;
+  stroke: #000000 !important;
+}
+
+.radial-timeline-svg.scene-hover .rt-backdrop-ring-background {
+  stroke: var(--rt-color-empty-selected) !important;
+  stroke-opacity: 0.9 !important;
 }
 
 /* Shift mode compliance */

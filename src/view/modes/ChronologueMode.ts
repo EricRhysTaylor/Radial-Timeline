@@ -39,13 +39,13 @@ export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement):
     if (view.currentMode !== 'chronologue') {
         return;
     }
-    
+
     // Setup shift mode controller - pass view directly like yesterday
     setupChronologueShiftController(view, svg);
-    
+
     // Standard scene hover interactions (will check shift mode internally)
     setupSceneHoverInteractions(view, svg);
-    
+
     // Scene click interactions (will delegate to shift mode if active)
     setupSceneClickInteractions(view, svg);
 }
@@ -56,14 +56,14 @@ export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement):
 function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement): void {
     // Create scene interaction manager for title expansion
     const manager = new SceneInteractionManager(view as any, svg);
-    
+
     // ALWAYS DISABLE title expansion in Chronologue mode:
     // - Not needed: Chronological order focuses on temporal relationships, not scene titles
     // - Causes layout breaks: If a scene is expanded when entering shift mode, the expanded 
     //   state persists and breaks the layout
     // - User settings toggle is ignored for Chronologue mode
     manager.setTitleExpansionEnabled(false);
-    
+
     const sceneIdCache = new WeakMap<Element, string>();
 
     const getSceneIdFromGroup = (group: Element): string | null => {
@@ -111,8 +111,8 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
 
     const sceneElementRefs = new Map<string, SceneElementRefs>();
     const scenesByPath = new Map<string, string[]>(); // Cache: path -> array of sceneIds
-    
-    svg.querySelectorAll<SVGGElement>('.rt-scene-group[data-item-type="Scene"]').forEach(group => {
+
+    svg.querySelectorAll<SVGGElement>('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Backdrop"]').forEach(group => {
         const sceneId = getSceneIdFromGroup(group);
         if (!sceneId) return;
 
@@ -125,7 +125,7 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             numberText: numberTextBySceneId.get(sceneId) ?? null,
             title: titleEl ?? null,
         });
-        
+
         // Build path-to-sceneIds cache for fast lookups
         const pathAttr = group.getAttribute('data-path');
         if (pathAttr) {
@@ -185,10 +185,10 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             if (matchingSceneIds) {
                 matchingSceneIds.forEach(matchSceneId => {
                     if (matchSceneId === sceneId) return; // Skip self
-                    
+
                     const matchRefs = sceneElementRefs.get(matchSceneId);
                     if (!matchRefs) return;
-                    
+
                     if (matchRefs.path) {
                         matchRefs.path.classList.add('rt-selected');
                         matchRefs.path.classList.remove('rt-non-selected');
@@ -242,10 +242,10 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             if (matchingSceneIds) {
                 matchingSceneIds.forEach(matchSceneId => {
                     if (matchSceneId === sceneId) return; // Skip self
-                    
+
                     const matchRefs = sceneElementRefs.get(matchSceneId);
                     if (!matchRefs) return;
-                    
+
                     if (matchRefs.path) {
                         matchRefs.path.classList.remove('rt-selected');
                         if (keepFaded) {
@@ -254,7 +254,7 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
                             matchRefs.path.classList.remove('rt-non-selected');
                         }
                     }
-                    
+
                     toggleFade(matchRefs.numberSquare);
                     toggleFade(matchRefs.numberText);
                     toggleFade(matchRefs.title);
@@ -270,10 +270,10 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         if (isShiftModeActive()) {
             return;
         }
-        
-        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
+
+        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Backdrop"]');
         if (!g) return;
-        
+
         const sid = sceneIdCache.get(g) ?? getSceneIdFromGroup(g);
         if (!sid) return;
 
@@ -308,7 +308,7 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
 
         // Add scene-hover class to hide subplot labels during hover
         svg.classList.add('scene-hover');
-        
+
         const syn = synopsisBySceneId.get(sid);
         if (syn) {
             // Calculate position BEFORE making visible to prevent flicker in wrong location
@@ -317,12 +317,12 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
             updateSynopsisTitleColor(syn, sid, 'chronologue');
             syn.classList.add('rt-visible');
         }
-        
+
         highlightScene(sid);
-        
+
         // Use manager for scene title expansion
         manager.onSceneHover(g, sid);
-        
+
         // Show warning for scenes without When field
         if (g.classList.contains('rt-chronologue-warning')) {
             showWhenFieldWarning(svg, g, e as unknown as MouseEvent);
@@ -332,9 +332,9 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
     });
 
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
-        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
+        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Backdrop"]');
         if (!g) return;
-        
+
         const sid = sceneIdCache.get(g) ?? getSceneIdFromGroup(g);
         if (!sid) return;
 
@@ -343,8 +343,8 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
         // Always cleanup manager state (angles, etc.) even when moving to another scene
         manager.onSceneLeave();
 
-        // If moving to another scene, allow the other handler to take over without clearing shared state
-        if (related?.closest('.rt-scene-group[data-item-type="Scene"]')) {
+        // If moving to another scene or backdrop, allow the other handler to take over without clearing shared state
+        if (related?.closest('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Backdrop"]')) {
             return;
         }
 
@@ -370,9 +370,9 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
  */
 function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement): void {
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', async (e: MouseEvent) => {
-        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
+        const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Backdrop"]');
         if (!g) return;
-        
+
         // When shift mode is active, delegate to shift controller
         if (isShiftModeActive()) {
             const handled = (view as any).handleShiftModeClick?.(e, g);
@@ -380,19 +380,19 @@ function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement):
                 return; // Shift mode handled the click
             }
         }
-        
+
         // Handle dominant subplot selection for scenes in multiple subplots
         const scenes = view.sceneData || (view as any).scenes || [];
         if (scenes.length > 0) {
             await handleDominantSubplotSelection(view, g, svg, scenes);
         }
-        
+
         // Normal behavior: open scene file
         e.stopPropagation();
-        
+
         const encodedPath = g.getAttribute('data-path');
         if (!encodedPath) return;
-        
+
         const filePath = decodeURIComponent(encodedPath);
         if (view.plugin.app) {
             const file = view.plugin.app.vault.getAbstractFileByPath(filePath);
@@ -409,14 +409,14 @@ function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement):
 function showWhenFieldWarning(svg: SVGSVGElement, sceneGroup: Element, event: MouseEvent): void {
     // Remove existing warning
     hideWhenFieldWarning(svg);
-    
+
     // Create warning tooltip
     const warning = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     warning.setAttribute('class', 'rt-when-field-warning');
-    
+
     const x = event.clientX;
     const y = event.clientY;
-    
+
     warning.innerHTML = ` // SAFE: innerHTML used for SVG element creation from trusted internal template
         <rect x="${x - 60}" y="${y - 30}" width="120" height="20" 
               rx="4" fill="var(--background-primary)" 
@@ -428,7 +428,7 @@ function showWhenFieldWarning(svg: SVGSVGElement, sceneGroup: Element, event: Mo
             Missing When field
         </text>
     `;
-    
+
     svg.appendChild(warning);
 }
 
