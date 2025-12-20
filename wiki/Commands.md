@@ -8,7 +8,7 @@ To open the Command Palette:
 
 Type "Radial Timeline" to filter the list.
 
-<img src="images/commands.png" alt="Radial Timeline Commands" width="50%" />
+![Radial Timeline Commands](images/commands.png)
 
 ## Command Reference
 
