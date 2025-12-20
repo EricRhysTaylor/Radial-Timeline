@@ -13,6 +13,7 @@ const stylesDir = path.join(srcDir, 'styles');
 const outputFile = path.join(srcDir, 'styles.css');
 
 const files = [
+    'font.css',
     'variables.css',
     'base.css',
     'timeline.css',

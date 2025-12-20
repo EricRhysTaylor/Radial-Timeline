@@ -63,7 +63,13 @@ export const DRAG_DROP_TICK_OUTER_RADIUS = 796;
 export const DRAG_DROP_ARC_RADIUS = 797;
 
 /** Where subplot rings end in Chronologue mode (smaller for time details) */
-export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;
+export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 740;
+
+/** Radius for the new Context Ring (between subplots and outer timeline) */
+export const CONTEXT_RING_RADIUS = 745;
+
+/** Height (thickness) of the Context Ring */
+export const CONTEXT_RING_HEIGHT = 10;
 
 // =============================================================================
 // RADII - OUTER LABELS AND TICKS

@@ -48,19 +48,19 @@ function getPulseUpdateFromMetadata(metadata: Record<string, unknown> | undefine
 export class SceneDataService {
     private app: App;
     private settings: RadialTimelineSettings;
-    
+
     constructor(app: App, settings: RadialTimelineSettings) {
         this.app = app;
         this.settings = settings;
     }
-    
+
     /**
      * Update settings (called when settings change)
      */
     updateSettings(settings: RadialTimelineSettings): void {
         this.settings = settings;
     }
-    
+
     /**
      * Get all scene data from the vault
      */
@@ -77,14 +77,14 @@ export class SceneDataService {
         });
 
         const scenes: TimelineItem[] = [];
-        const plotsToProcess: Array<{file: TFile, metadata: Record<string, unknown>, validActNumber: number}> = [];
-    
+        const plotsToProcess: Array<{ file: TFile, metadata: Record<string, unknown>, validActNumber: number }> = [];
+
         for (const file of files) {
             try {
-            const rawMetadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
+                const rawMetadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
                 const mappings = this.settings.enableCustomMetadataMapping ? this.settings.frontmatterMappings : undefined;
                 const metadata = rawMetadata ? normalizeFrontmatterKeys(rawMetadata, mappings) : undefined;
-                
+
                 if (metadata && metadata.Class === "Scene") {
                     // Parse the When field using the centralized parser (single source of truth)
                     const whenStr = metadata.When;
@@ -108,18 +108,18 @@ export class SceneDataService {
 
                     // Split subplots if provided, otherwise default to "Main Plot"
                     const subplots = metadata.Subplot
-                        ? Array.isArray(metadata.Subplot) 
-                            ? metadata.Subplot 
+                        ? Array.isArray(metadata.Subplot)
+                            ? metadata.Subplot
                             : [metadata.Subplot]
                         : ["Main Plot"];
-                    
+
                     // Read actNumber from metadata, default to 1 if missing or empty
                     const actValue = metadata.Act;
                     const actNumber = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
-    
+
                     // Ensure actNumber is a valid number between 1 and 3
                     const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
-    
+
                     // Use filename for display; numbering is derived from the filename/title prefix.
                     // Do not consume YAML Title for numbering/ordering to avoid stale frontmatter.
                     const sceneTitle = file.basename;
@@ -127,19 +127,19 @@ export class SceneDataService {
                     // Create a scene for each subplot
                     for (const subplot of subplots) {
                         const durationValue = metadata.Duration;
-                        const duration = (durationValue !== undefined && durationValue !== null) 
-                            ? String(durationValue) 
+                        const duration = (durationValue !== undefined && durationValue !== null)
+                            ? String(durationValue)
                             : undefined;
-                        
+
                         const pulseUpdate = getPulseUpdateFromMetadata(metadata);
                         const pulseLastUpdated = metadata["Pulse Last Updated"] ?? metadata["Beats Last Updated"];
-                        
+
                         // Parse Character field and strip Obsidian wiki links [[...]]
                         const rawCharacter = metadata.Character;
-                        const characterList = Array.isArray(rawCharacter) 
+                        const characterList = Array.isArray(rawCharacter)
                             ? (rawCharacter as string[]).map(c => stripWikiLinks(c))
                             : (rawCharacter ? [stripWikiLinks(rawCharacter as string)] : undefined);
-                        
+
                         const rawPov = metadata.POV;
                         let povField: string | undefined;
                         if (Array.isArray(rawPov)) {
@@ -183,13 +183,13 @@ export class SceneDataService {
                             pendingEdits: metadata["Pending Edits"] as string | undefined,
                             Duration: duration,
                             // AI Scene Analysis fields - handle both string and array formats from YAML
-                            "previousSceneAnalysis": Array.isArray(metadata["previousSceneAnalysis"]) 
+                            "previousSceneAnalysis": Array.isArray(metadata["previousSceneAnalysis"])
                                 ? (metadata["previousSceneAnalysis"] as string[]).join('\n')
                                 : metadata["previousSceneAnalysis"] as string | undefined,
-                            "currentSceneAnalysis": Array.isArray(metadata["currentSceneAnalysis"]) 
+                            "currentSceneAnalysis": Array.isArray(metadata["currentSceneAnalysis"])
                                 ? (metadata["currentSceneAnalysis"] as string[]).join('\n')
                                 : metadata["currentSceneAnalysis"] as string | undefined,
-                            "nextSceneAnalysis": Array.isArray(metadata["nextSceneAnalysis"]) 
+                            "nextSceneAnalysis": Array.isArray(metadata["nextSceneAnalysis"])
                                 ? (metadata["nextSceneAnalysis"] as string[]).join('\n')
                                 : metadata["nextSceneAnalysis"] as string | undefined,
                             itemType: "Scene",
@@ -197,6 +197,36 @@ export class SceneDataService {
                             "Pulse Last Updated": typeof pulseLastUpdated === 'string' ? pulseLastUpdated : undefined
                         });
                     }
+                } else if (metadata && metadata.Class === "Context") {
+                    // Parse Context Item
+                    const whenStr = metadata.When;
+                    let when: Date | undefined;
+                    if (typeof whenStr === 'string') {
+                        const parsed = parseWhenField(whenStr);
+                        if (parsed) when = parsed;
+                    } else if (whenStr instanceof Date) {
+                        when = whenStr;
+                    }
+
+                    const durationValue = metadata.Duration;
+                    const duration = (durationValue !== undefined && durationValue !== null)
+                        ? String(durationValue)
+                        : undefined;
+
+                    const isoDate = when ? when.toISOString().split('T')[0] : '';
+
+                    scenes.push({
+                        date: isoDate,
+                        when: when,
+                        path: file.path,
+                        title: file.basename, // Use filename as title, as requested
+                        synopsis: metadata.Synopsis as string | undefined, // For hover
+                        Duration: duration,
+                        itemType: "Context",
+                        // Place context in "Context" subplot logically, though it might not need sorting like scenes
+                        subplot: "Context"
+                    });
+
                 } else if (metadata && isStoryBeat(metadata.Class)) {
                     // Defer processing of Plot/Beat items until after all scenes are collected
                     const actValue = metadata.Act;
@@ -208,33 +238,33 @@ export class SceneDataService {
                 console.error(`Error processing file ${file.path}:`, error);
             }
         }
-        
+
         // Apply dominant subplot preferences before processing beats
         this.applyDominantSubplotPreferences(scenes);
-        
+
         // Filter scenes to show only dominant subplot representation
         const filteredScenes = this.filterScenesByDominantSubplot(scenes);
-        
+
         // Build a map: date -> scenes (only unique file paths)
         const scenesByDate = new Map<string, TimelineItem[]>();
         const processedPaths = new Set<string>();
-        
+
         for (const scene of filteredScenes) {
             const dateKey = scene.date;
-            
+
             // Skip if we've already processed this path for this date
             const pathDateKey = `${scene.path}-${dateKey}`;
             if (processedPaths.has(pathDateKey)) {
                 continue;
             }
             processedPaths.add(pathDateKey);
-            
+
             if (!scenesByDate.has(dateKey)) {
                 scenesByDate.set(dateKey, []);
             }
             scenesByDate.get(dateKey)!.push(scene);
         }
-        
+
         // Process plot/beat items
         // Filter by Beat Model if requested (use centralized helper - single source of truth)
         let beatsToProcess = plotsToProcess;
@@ -247,11 +277,11 @@ export class SceneDataService {
             const filtered = filterBeatsBySystem(beatsWithModel, this.settings.beatSystem);
             beatsToProcess = filtered.map(f => f.original);
         }
-        
+
         for (const { file, metadata, validActNumber } of beatsToProcess) {
             const whenStr = metadata.When;
             let when: Date | undefined;
-            
+
             if (typeof whenStr === 'string') {
                 const parsed = parseWhenField(whenStr);
                 if (parsed) {
@@ -260,16 +290,16 @@ export class SceneDataService {
             } else if (whenStr instanceof Date) {
                 when = whenStr;
             }
-            
+
             // For beats, When is optional - use manuscript order if not provided
             // Determine date key: if When exists, use it; otherwise use a placeholder for manuscript ordering
-            const dateKey = when && !isNaN(when.getTime()) 
+            const dateKey = when && !isNaN(when.getTime())
                 ? when.toISOString().split('T')[0]
                 : ''; // Empty string for beats without When (will be ordered by act/filename)
-            
+
             // Get beat system from metadata or plugin settings
             const beatModel = (metadata["Beat Model"] || this.settings.beatSystem || "") as string;
-            
+
             // Beats appear only once in the outermost ring - not duplicated per subplot
             filteredScenes.push({
                 date: dateKey,
@@ -294,16 +324,16 @@ export class SceneDataService {
                 "Publish Stage": metadata["Publish Stage"] as string | undefined
             });
         }
-        
+
         return filteredScenes;
     }
-    
+
     /**
      * Apply dominant subplot preferences from settings
      */
     private applyDominantSubplotPreferences(scenes: TimelineItem[]): void {
         if (!this.settings.dominantSubplots) return;
-        
+
         // Group scenes by path
         const scenesByPath = new Map<string, TimelineItem[]>();
         scenes.forEach(scene => {
@@ -313,12 +343,12 @@ export class SceneDataService {
             }
             scenesByPath.get(scene.path)!.push(scene);
         });
-        
+
         // For each path with a stored preference, mark the preferred subplot
         Object.entries(this.settings.dominantSubplots).forEach(([path, dominantSubplot]) => {
             const scenesForPath = scenesByPath.get(path);
             if (!scenesForPath || scenesForPath.length <= 1) return;
-            
+
             // Mark scenes matching the dominant subplot
             scenesForPath.forEach(scene => {
                 // Store the preference on the scene for later filtering
@@ -326,7 +356,7 @@ export class SceneDataService {
             });
         });
     }
-    
+
     /**
      * Keep all scenes but mark the dominant subplot for visual coloring
      * (this does NOT filter - all subplot versions are kept for rendering in their respective rings)
@@ -337,7 +367,7 @@ export class SceneDataService {
         // and will be used by the renderer for coloring purposes in narrative/chronologue modes
         return scenes;
     }
-    
+
     /**
      * Check if a file path is a scene file
      */
@@ -346,10 +376,10 @@ export class SceneDataService {
         // It needs to check the file's metadata
         const file = this.app.vault.getAbstractFileByPath(filePath);
         if (!(file instanceof TFile)) return false;
-        
+
         const metadata = this.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!metadata) return false;
-        
+
         return metadata.Class === "Scene";
     }
 }

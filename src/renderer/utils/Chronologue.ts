@@ -12,6 +12,7 @@ import {
     renderChronologicalBackboneArc,
     type ChronologueSceneEntry
 } from '../components/ChronologueTimeline';
+import { renderContextRing } from '../components/ContextRing';
 
 export type ChronologueLabel = {
     name: string;
@@ -138,6 +139,9 @@ export function renderChronologueOverlays({
         chronologueSceneEntries,
         customThresholdMs
     );
+
+    // Render Context Ring
+    svg += renderContextRing(scenes);
 
     stopChronoOverlays();
     return svg;
