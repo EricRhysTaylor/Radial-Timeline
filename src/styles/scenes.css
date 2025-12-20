@@ -128,13 +128,13 @@
 /* Drag source outline */
 .number-square-group.rt-drag-source .rt-number-square {
   stroke: var(--rt-number-stroke-color, var(--scene-color, #705DCF));
-  stroke-width: 6px;
+  stroke-width: 10px;
 }
 
 /* Drop target outline - uses color from dragged source */
 .number-square-group.rt-drop-target .rt-number-square {
   stroke: var(--rt-drag-stroke-color, var(--rt-number-stroke-color, var(--scene-color, #705DCF)));
-  stroke-width: 6px;
+  stroke-width: 10px;
 }
 
 .rt-number-square[data-subplot-idx="0"] {
