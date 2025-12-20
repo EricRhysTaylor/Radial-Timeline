@@ -28,7 +28,7 @@ When you're ready to read through your work or send it to an editor, use the **`
 5.  **Output**: A new file is created in the `AI/` folder containing the compiled text of all selected scenes.
 
 ### Zero Draft Mode
-Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progress to new scenes instead of endlessly revising. See the **[Zero Draft Mode](Zero-Draft-Mode)** guide for full details.
+Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progress to new scenes instead of endlessly revising. See the **[Settings](Settings#zero-draft-mode)** for details.
 
 **Settings**: → Radial Timeline → Zero draft mode
 

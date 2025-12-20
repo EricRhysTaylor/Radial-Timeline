@@ -5,7 +5,10 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 
 ### Publication and progress
 *   **Target completion date**: Optional target (YYYY-MM-DD). Marker appears on outer ring.
-*   **Zero draft mode**: Prevents edits to completed zero-draft scenes.
+*   **Zero draft mode**: Prevents edits to completed zero-draft scenes to keep you moving forward.
+    *   **What it does**: When you click a scene marked as `Publish Stage: Zero` and `Status: Complete`, instead of opening the file, a dialog appears.
+    *   **Pending Edits**: The dialog lets you capture quick notes or edits into a `Pending Edits` frontmatter field without getting sucked into a full revision.
+    *   **Override**: You can click the "Override" button (red) to force open the note if absolutely necessary.
 
 ### Metadata and mapping
 *   **Enable custom metadata mapping**: Map your own frontmatter keys (e.g., `StoryLine`) to system keys (`Subplot`).
