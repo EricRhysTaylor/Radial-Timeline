@@ -53,11 +53,11 @@ In recent versions of Radial Timeline:
 - Switch to **Narrative Mode**
 - Drag the **numbered scene squares** on the outer ring (cursor becomes double arrow)
 
-![Drag scene start](images/screenshot-drag.png)
+![Drag scene start](images/drag.png)
 
 - Drop the scene into its new position on the **numbered scene square**
 
-![Drag scene destination](images/screenshot-drag-arc.png)
+![Drag scene destination](images/drag-arc.png)
 
 - Confirm the change when prompted
 

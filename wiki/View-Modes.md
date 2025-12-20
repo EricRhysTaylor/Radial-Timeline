@@ -21,6 +21,6 @@ Visualizes narrative momentum using story beat scores. Timeline grays out; momen
 
 ---
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/screenshot-navigation.png" alt="Navigating in Radial Timeline" style="width: 235; max-width: 100%;" />
+  <img src="images/navigation.png" alt="Navigating in Radial Timeline" style="width: 235; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Navigating in Radial Timeline</div>
 </div>

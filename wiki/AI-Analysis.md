@@ -8,7 +8,7 @@
 **Settings**: `AI LLM for scene analysis`
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/screenshot-beats.png" alt="Story Beats Analysis" style="width: 600; max-width: 100%;" />
+  <img src="images/beats.png" alt="Story Beats Analysis" style="width: 600; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Story Beats Analysis</div>
 </div>
 

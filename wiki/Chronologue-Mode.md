@@ -27,12 +27,12 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 **Settings**: Duration arc cap, Discontinuity gap threshold (Chronologue section)
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/screenshot-discontinuity.png" alt="Discontinuity infinity symbols in Chronologue Mode" style="width: 380; max-width: 100%;" />
+  <img src="images/discontinuity.png" alt="Discontinuity infinity symbols in Chronologue Mode" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Discontinuity infinity symbols in Chronologue Mode</div>
 </div>
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/screenshot-duration.png" alt="Duration Marks in Chronologue Mode (red, orange and normal)" style="width: 380; max-width: 100%;" />
+  <img src="images/duration.png" alt="Duration Marks in Chronologue Mode (red, orange and normal)" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Duration Marks in Chronologue Mode (red, orange and normal)</div>
 </div>
 
