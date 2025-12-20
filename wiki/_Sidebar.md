@@ -1,6 +1,8 @@
 *   [[Home]]
 *   **User Guide**
     *   [[Core Workflows]]   
+    *   [[Narrative Mode]]
+    *   [[Subplot Mode]]
     *   [[Chronologue Mode]]
     *   [[Gossamer Mode]]
     *   [[AI Analysis]]

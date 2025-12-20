@@ -95,12 +95,7 @@ You can filter scenes by searching for text content across multiple fields.
     *   Subplot
     *   Characters
 *   **Visuals**:
-    *   **Scene Numbers**: Highlighted in yellow on the outer ring.
-    *   **Text**: Matching text within the synopsis or metadata hover is outlined in yellow.
-*   **Clear**: Use the command **Radial Timeline: Clear search** or click the clear button in the search bar.
-
-### Other Key Workflows
-
-*   **Zero Draft Mode**: Prevent edits to completed scenes to focus on forward momentum. See [[Zero Draft Mode]].
-*   **AI Analysis**: Analyze your scenes for pacing and consistency. See [[AI Analysis]].
+    *   **Scene Numbers**: Highlighted in yellow all subplot rings.
+    *   **Text**: Matching text within the synopsis hover metadata is highlighted in yellow.
+*   **Clear**: Use the command **Radial Timeline: Clear search** or click the clear button in the modal.
 
