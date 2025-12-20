@@ -65,11 +65,18 @@ export const DRAG_DROP_ARC_RADIUS = 797;
 /** Where subplot rings end in Chronologue mode (smaller for time details) */
 export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 740;
 
+// =============================================================================
+// RADII - BACKDROP RING
+// =============================================================================
+
 /** Radius for the new Backdrop Ring (positioned "under" all scenes at the center) */
 export const BACKDROP_RING_RADIUS = 190;
 
 /** Height (thickness) of the Backdrop Ring */
 export const BACKDROP_RING_HEIGHT = 20;
+
+/** Vertical offset for the backdrop segment labels relative to ring center */
+export const BACKDROP_TITLE_RADIUS_OFFSET = 5;
 
 // =============================================================================
 // RADII - OUTER LABELS AND TICKS

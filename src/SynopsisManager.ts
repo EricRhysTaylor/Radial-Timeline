@@ -10,14 +10,15 @@ import { getPublishStageStyle, splitSynopsisLines, decodeContentLines, isOverdue
 import { createSynopsisContainer, createTextGroup, createText } from './synopsis/SynopsisView';
 import { convertFromEarth, getActivePlanetaryProfile } from './utils/planetaryTime';
 import { t } from './i18n';
-import { 
-  SUBPLOT_OUTER_RADIUS_MAINPLOT, 
-  SUBPLOT_OUTER_RADIUS_STANDARD, 
+import {
+  SUBPLOT_OUTER_RADIUS_MAINPLOT,
+  SUBPLOT_OUTER_RADIUS_STANDARD,
   SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
   SYNOPSIS_INSET
 } from './renderer/layout/LayoutConstants';
 import { adjustBeatLabelsAfterRender } from './renderer/dom/BeatLabelAdjuster';
 import { sortScenes, isBeatNote, shouldDisplayMissingWhenWarning } from './utils/sceneHelpers';
+import { parseWhenField } from './utils/date';
 import { getReadabilityMultiplier, getReadabilityScale } from './utils/readability';
 
 /**
@@ -40,21 +41,21 @@ export default class SynopsisManager {
     const parser = new DOMParser();
     // Wrap with a root element to ensure proper parsing
     const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
-    
+
     // Extract the content from the wrapper div
     const container = doc.querySelector('div');
     const fragment = document.createDocumentFragment();
-    
+
     if (container) {
       // Move all child nodes to our fragment
       while (container.firstChild) {
         fragment.appendChild(container.firstChild);
       }
     }
-    
+
     return fragment;
   }
-  
+
   /**
    * Format date from When field to friendly format for display
    * @param when Date object from scene.when
@@ -104,7 +105,7 @@ export default class SynopsisManager {
     const label = (profile.label || 'LOCAL').toUpperCase();
     return `${label}: ${conversion.formatted}`;
   }
-  
+
   /**
    * Add title content to a text element safely
    * @param titleContent The title content to add
@@ -120,7 +121,7 @@ export default class SynopsisManager {
    */
   private addTitleContent(titleContent: string, titleTextElement: SVGTextElement, titleColor: string, sceneNumber?: number | null, sceneDate?: string, sceneDuration?: string): SVGTextElement | null {
     if (titleContent.includes('<tspan')) {
-      
+
       // For pre-formatted HTML with tspans, parse safely
       const parser = new DOMParser();
       const doc = parser.parseFromString(`<svg><text>${titleContent}</text></svg>`, 'image/svg+xml');
@@ -138,34 +139,34 @@ export default class SynopsisManager {
         if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === 'tspan') {
           const tspan = node as Element;
           const svgTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-          
+
           Array.from(tspan.attributes).forEach(attr => {
             svgTspan.setAttribute(attr.name, attr.value);
           });
-          
+
           if (tspan instanceof HTMLElement || tspan instanceof SVGElement) {
             const style = (tspan as HTMLElement).getAttribute('style');
             if (style) {
               svgTspan.setAttribute('style', style);
             }
           }
-          
+
           svgTspan.textContent = tspan.textContent;
           titleTextElement.appendChild(svgTspan);
-          
+
         } else if (node.nodeType === Node.TEXT_NODE) {
           if (node.textContent) {
             titleTextElement.appendChild(document.createTextNode(node.textContent));
           }
         }
       });
-      
+
       return null; // Pre-formatted content doesn't have separate metadata
 
     } else {
       // Non-search case: render title with date and duration
       const titleParts = parseSceneTitleComponents(titleContent, sceneNumber, sceneDate, sceneDuration);
-      
+
       // Add scene number if it exists
       if (titleParts.sceneNumber) {
         const numTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
@@ -175,7 +176,7 @@ export default class SynopsisManager {
         numTspan.textContent = `${titleParts.sceneNumber} `;
         titleTextElement.appendChild(numTspan);
       }
-      
+
       // Add main title
       const mainTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
       mainTspan.classList.add('rt-scene-title-bold');
@@ -183,8 +184,8 @@ export default class SynopsisManager {
       mainTspan.style.setProperty('--rt-dynamic-color', titleColor);
       mainTspan.textContent = titleParts.title;
       titleTextElement.appendChild(mainTspan);
-      
-      
+
+
       // Create separate date/time and duration element (Column 2 of title row)
       // This is the mini-block positioned to the right of the main scene title
       if (titleParts.date || titleParts.duration) {
@@ -195,7 +196,7 @@ export default class SynopsisManager {
         metadataElement.setAttribute("text-anchor", "start");
         metadataElement.setAttribute("data-metadata-block", "true");
         metadataElement.setAttribute("data-column-gap", `8px`); // default gap in px
-        
+
         // Row 1: Date/time (at baseline, same as title)
         if (titleParts.date) {
           const dateTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
@@ -206,7 +207,7 @@ export default class SynopsisManager {
           dateTspan.textContent = titleParts.date;
           metadataElement.appendChild(dateTspan);
         }
-        
+
         // Row 2: Duration (on new line, aligned with date start)
         if (titleParts.duration) {
           const durationTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
@@ -218,11 +219,11 @@ export default class SynopsisManager {
           durationTspan.textContent = titleParts.duration;
           metadataElement.appendChild(durationTspan);
         }
-        
+
         return metadataElement;
       }
     }
-    
+
     return null; // No metadata to add
   }
 
@@ -233,7 +234,7 @@ export default class SynopsisManager {
   private createMetadataElement(sceneDate?: string, sceneDuration?: string): SVGTextElement | null {
     return null;
   }
-  
+
   /**
    * Create a DOM element for a scene synopsis with consistent formatting
    * @returns An SVG group element containing the formatted synopsis
@@ -241,12 +242,12 @@ export default class SynopsisManager {
   generateElement(scene: TimelineItem, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number): SVGGElement {
     const { stageClass, titleColor } = getPublishStageStyle(scene["Publish Stage"], this.plugin.settings.publishStageColors);
     const fontScale = this.getReadabilityScale();
-    
+
     const { synopsisEndIndex, metadataItems } = splitSynopsisLines(contentLines);
-    
+
     // Process all content lines to decode any HTML entities
     const decodedContentLines = decodeContentLines(contentLines);
-    
+
     // Deterministic subplot color from stylesheet variables
     const getSubplotColor = (subplot: string, sceneIdentifier: string): string => {
       const resolveCssVariable = (index: number): string => {
@@ -286,43 +287,54 @@ export default class SynopsisManager {
       const index = resolveIndex();
       return resolveCssVariable(index);
     };
-    
+
     const styleSource = getComputedStyle(document.documentElement);
     const synopsisLineHeight = parseFloat(styleSource.getPropertyValue('--rt-synopsis-line-height'));
     const pulseLineHeightRaw = parseFloat(styleSource.getPropertyValue('--rt-pulse-line-height'));
     const metadataLineHeight = parseFloat(styleSource.getPropertyValue('--rt-synopsis-metadata-line-height'));
     const lineHeight = synopsisLineHeight * fontScale;
     const pulseLineHeight = pulseLineHeightRaw * fontScale;
-    
+
     // Create the main container group
     const containerGroup = createSynopsisContainer(sceneId, scene.path);
-    
+
     // Store publish stage color on synopsis for hover title color updates in Subplot mode
     containerGroup.setAttribute('data-stage-color', titleColor);
-    
+
     // Create the synopsis text group
     const synopsisTextGroup = createTextGroup();
     containerGroup.appendChild(synopsisTextGroup);
-    
+
     // Add the title at origin (0,0) - stage color moved to child tspans
     const titleContent = decodedContentLines[0];
     const titleTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
     titleTextElement.setAttribute("class", `rt-info-text rt-title-text-main`);
     titleTextElement.setAttribute("x", "0");
     titleTextElement.setAttribute("y", "0");
-    
-    // Process title content with special handling for formatting
+
     // Format date from When field for display
     // For Beats (Plot items), only show date if NOT in Gossamer mode
     const currentMode = (this.plugin.settings as any).currentMode || 'narrative';
     const isGossamerMode = currentMode === 'gossamer';
+    const isBackdrop = scene.itemType === 'Backdrop';
     const shouldShowDate = scene.when && !(scene.itemType === 'Plot' && isGossamerMode);
+
     const formattedDate = shouldShowDate ? this.formatDateForDisplay(scene.when) : undefined;
-    const duration = scene.Duration ? scene.Duration : undefined;
+
+    let duration = scene.Duration ? scene.Duration : undefined;
+    if (isBackdrop && (scene as any).End) {
+      const endDate = parseWhenField((scene as any).End);
+      if (endDate) {
+        duration = `to ${this.formatDateForDisplay(endDate)}`;
+      } else {
+        duration = `to ${(scene as any).End}`;
+      }
+    }
+
     const metadataElement = this.addTitleContent(titleContent, titleTextElement, titleColor, scene.number, formattedDate, duration);
-    
+
     synopsisTextGroup.appendChild(titleTextElement);
-    
+
     // Append metadata element; positioning handled during layout pass
     if (metadataElement) {
       synopsisTextGroup.appendChild(metadataElement);
@@ -406,22 +418,22 @@ export default class SynopsisManager {
     // Add synopsis lines with precise vertical spacing, offset by the number of extra lines
     for (let i = 1; i < synopsisEndIndex; i++) {
       const lineContent = decodedContentLines[i];
-      
+
       // Check if this is a Gossamer score line (marked with <gossamer> tags) - check BEFORE decoding
       const isGossamerLine = contentLines[i].includes('<gossamer>') && contentLines[i].includes('</gossamer>');
-      
+
       const lineY = (i + extraLineCount) * lineHeight; // shift down by inserted lines
       const synopsisLineElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      
+
       if (isGossamerLine) {
         // Apply title styling for Gossamer lines
         synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-main rt-gossamer-score-line");
         synopsisLineElement.setAttribute("x", "0");
         synopsisLineElement.setAttribute("y", String(lineY));
-        
+
         // Extract the content between the tags from the original line (before decoding)
         const gossamerContent = contentLines[i].replace(/<gossamer>/g, '').replace(/<\/gossamer>/g, '');
-        
+
         // Create a tspan with the same styling as title tspans
         const gossamerTspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
         gossamerTspan.classList.add('rt-scene-title-bold');
@@ -434,20 +446,20 @@ export default class SynopsisManager {
         synopsisLineElement.setAttribute("class", "rt-info-text rt-title-text-secondary");
         synopsisLineElement.setAttribute("x", "0");
         synopsisLineElement.setAttribute("y", String(lineY));
-        
+
         if (lineContent.includes('<tspan')) {
           this.processContentWithTspans(lineContent, synopsisLineElement);
         } else {
           synopsisLineElement.textContent = lineContent;
         }
       }
-      
+
       synopsisTextGroup.appendChild(synopsisLineElement);
     }
-    
+
     // Process metadata items with consistent vertical spacing
     if (metadataItems.length > 0) {
-      
+
       // Helper function to add a spacer element
       const addSpacer = (yPosition: number, height: number) => {
         const spacerElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -482,7 +494,7 @@ export default class SynopsisManager {
           currentMetadataY = addSpacer(currentMetadataY, 0);
         }
       }
-      
+
       // Process currentSceneAnalysis metadata if it exists and AI scene analysis is enabled
       if (this.plugin.settings.enableAiSceneAnalysis && scene["currentSceneAnalysis"]) {
         const beatsY = currentMetadataY;
@@ -490,11 +502,11 @@ export default class SynopsisManager {
         const linesAdded = this.formatBeatsText(beatsText, 'currentSceneAnalysis', synopsisTextGroup, beatsY, pulseLineHeight, 0); // Pass 'currentSceneAnalysis'
         currentMetadataY = beatsY + (linesAdded * pulseLineHeight);
         if (linesAdded > 0) {
-           // Call addSpacer with height 0, update starting point for next block
+          // Call addSpacer with height 0, update starting point for next block
           currentMetadataY = addSpacer(currentMetadataY, 0);
         }
       }
-      
+
       // Process nextSceneAnalysis metadata if it exists and AI scene analysis is enabled
       if (this.plugin.settings.enableAiSceneAnalysis && showTripletNeighbors && scene["nextSceneAnalysis"]) {
         const beatsY = currentMetadataY;
@@ -506,50 +518,50 @@ export default class SynopsisManager {
           currentMetadataY = addSpacer(currentMetadataY, 0);
         }
       }
-      
+
       // --- Subplot rendering starts here, using the final currentMetadataY ---
       // currentMetadataY now holds the Y position *before* the last added spacer (if any)
       // or after the last content block if no spacer was added.
-      const subplotStartY = currentMetadataY; 
+      const subplotStartY = currentMetadataY;
 
       // Process subplots if first metadata item exists
       const decodedMetadataItems = metadataItems.map(item => decodeHtmlEntities(item));
-      
+
       if (decodedMetadataItems.length > 0 && decodedMetadataItems[0] && decodedMetadataItems[0].trim().length > 0) {
         const subplots = decodedMetadataItems[0].split(', ').filter((s: string) => s.trim().length > 0);
-        
-          if (subplots.length > 0) {
-            const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            subplotTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
-            subplotTextElement.setAttribute("x", "0");
-            // Use the calculated subplotStartY
-            subplotTextElement.setAttribute("y", String(subplotStartY)); 
-            
-            // Format each subplot with its own color
-            subplots.forEach((subplot: string, j: number) => { 
-              const color = getSubplotColor(subplot.trim(), sceneId);
-              const subplotText = subplot.trim();
-              const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
-              tspan.setAttribute("data-item-type", "subplot");
-              tspan.style.setProperty('--rt-dynamic-color', color);
-              tspan.textContent = subplotText;
-              subplotTextElement.appendChild(tspan);
-              if (j < subplots.length - 1) {
-                const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-                comma.setAttribute("fill", "var(--text-muted)");
-                comma.textContent = ", ";
-                subplotTextElement.appendChild(comma);
-              }
-            });
-            
-            synopsisTextGroup.appendChild(subplotTextElement);
+
+        if (subplots.length > 0) {
+          const subplotTextElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          subplotTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
+          subplotTextElement.setAttribute("x", "0");
+          // Use the calculated subplotStartY
+          subplotTextElement.setAttribute("y", String(subplotStartY));
+
+          // Format each subplot with its own color
+          subplots.forEach((subplot: string, j: number) => {
+            const color = getSubplotColor(subplot.trim(), sceneId);
+            const subplotText = subplot.trim();
+            const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
+            tspan.setAttribute("data-item-type", "subplot");
+            tspan.style.setProperty('--rt-dynamic-color', color);
+            tspan.textContent = subplotText;
+            subplotTextElement.appendChild(tspan);
+            if (j < subplots.length - 1) {
+              const comma = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+              comma.setAttribute("fill", "var(--text-muted)");
+              comma.textContent = ", ";
+              subplotTextElement.appendChild(comma);
+            }
+          });
+
+          synopsisTextGroup.appendChild(subplotTextElement);
         }
       }
-      
+
       // Process character - second metadata item
       if (decodedMetadataItems.length > 1 && decodedMetadataItems[1] && decodedMetadataItems[1].trim().length > 0) {
-         // Calculate character Y based on subplot position plus standard line height
-        const characterY = subplotStartY + lineHeight; 
+        // Calculate character Y based on subplot position plus standard line height
+        const characterY = subplotStartY + lineHeight;
         const characterList = decodedMetadataItems[1].split(', ').filter((c: string) => c.trim().length > 0);
 
         if (characterList.length > 0) {
@@ -559,7 +571,7 @@ export default class SynopsisManager {
           characterTextElement.setAttribute("class", "rt-info-text rt-metadata-text");
           characterTextElement.setAttribute("x", "0");
           characterTextElement.setAttribute("y", String(characterY));
-          
+
           // Format each character with its own color
           characterList.forEach((character: string, j: number) => {
             const trimmedChar = character.trim();
@@ -571,7 +583,7 @@ export default class SynopsisManager {
               ? trimmedChar.replace(/\s*>pov(?:=[^<]+)?<\s*/i, '').trim()
               : trimmedChar;
             const color = povLabel ? CHARACTER_COLOR_POV : CHARACTER_COLOR_DEFAULT;
-            
+
             if (cleanedText) {
               const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan") as SVGTSpanElement;
               tspan.setAttribute("data-item-type", "character");
@@ -609,15 +621,15 @@ export default class SynopsisManager {
               characterTextElement.appendChild(resetTspan);
             }
           });
-          
+
           synopsisTextGroup.appendChild(characterTextElement);
         }
       }
     }
-    
+
     return containerGroup;
   }
-  
+
   /**
    * Generate SVG string from DOM element (temporary compatibility method)
    */
@@ -626,7 +638,7 @@ export default class SynopsisManager {
     const serializer = new XMLSerializer();
     return serializer.serializeToString(element);
   }
-  
+
   /**
    * Update the position of a synopsis based on mouse position
    */
@@ -654,10 +666,10 @@ export default class SynopsisManager {
     const isSubplotMode = currentMode === 'subplot';
     const readabilityScale = getReadabilityScale(this.plugin.settings);
 
-    const subplotOuterRadius = isChronologueMode 
-        ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE 
-        : isSubplotMode 
-        ? SUBPLOT_OUTER_RADIUS_MAINPLOT 
+    const subplotOuterRadius = isChronologueMode
+      ? SUBPLOT_OUTER_RADIUS_CHRONOLOGUE
+      : isSubplotMode
+        ? SUBPLOT_OUTER_RADIUS_MAINPLOT
         : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 
     const adjustedRadius = subplotOuterRadius - SYNOPSIS_INSET;
@@ -697,14 +709,14 @@ export default class SynopsisManager {
    * Q4: Top-Right (+x, -y)
    */
   private getQuadrant(x: number, y: number): string {
-    
+
     // Define quadrants based on SVG coordinates
     if (x >= 0 && y >= 0) return "Q1";      // Bottom Right (+x, +y)
     else if (x < 0 && y >= 0) return "Q2";  // Bottom Left (-x, +y)
     else if (x < 0 && y < 0) return "Q3";   // Top Left (-x, -y)
     else return "Q4";                       // Top Right (+x, -y)
   }
-  
+
   /**
    * Get position configuration for a specific quadrant
    */
@@ -723,12 +735,12 @@ export default class SynopsisManager {
       isRightAligned: false,
       isTopHalf: false
     };
-    
+
     // Fixed vertical positions
     const topHalfOffset = -550; // Fixed vertical position from center for top half
     const bottomHalfOffset = 120; // Updated value for bottom half (Q1, Q2)
-    
-    
+
+
     switch (quadrant) {
       case "Q1": // Mouse in Bottom Right -> Synopsis in Q2 (Bottom Left)
         result.x = 0;
@@ -737,7 +749,7 @@ export default class SynopsisManager {
         result.isRightAligned = false; // Left aligned
         result.isTopHalf = false;
         break;
-        
+
       case "Q2": // Mouse in Bottom Left -> Synopsis in Q1 (Bottom Right)
         result.x = 0;
         result.y = bottomHalfOffset; // Bottom half with updated value
@@ -745,7 +757,7 @@ export default class SynopsisManager {
         result.isRightAligned = true; // Right aligned
         result.isTopHalf = false;
         break;
-        
+
       case "Q3": // Mouse in Top Left -> Synopsis in Q4 (Top Right)
         result.x = 0;
         result.y = topHalfOffset; // Top half (unchanged)
@@ -753,7 +765,7 @@ export default class SynopsisManager {
         result.isRightAligned = true; // Right aligned
         result.isTopHalf = true;
         break;
-        
+
       case "Q4": // Mouse in Top Right -> Synopsis in Q3 (Top Left)
         result.x = 0;
         result.y = topHalfOffset; // Top half (unchanged)
@@ -762,11 +774,11 @@ export default class SynopsisManager {
         result.isTopHalf = true;
         break;
     }
-    
-    
+
+
     return result;
   }
-  
+
   /**
    * Position text elements along an arc
    * 
@@ -798,7 +810,7 @@ export default class SynopsisManager {
     // Find all text elements
     const textElements = Array.from(synopsis.querySelectorAll('text')) as SVGTextElement[];
     if (textElements.length === 0) return;
-    
+
     const textAnchor = isRightAligned ? 'end' : 'start';
     textElements.forEach(textEl => {
       if (textEl.getAttribute('data-metadata-block') === 'true') {
@@ -807,42 +819,42 @@ export default class SynopsisManager {
         textEl.setAttribute('text-anchor', textAnchor);
       }
     });
-    
+
     // Get the synopsis text group
     const synopsisTextGroup = synopsis.querySelector('.rt-synopsis-text');
     if (!synopsisTextGroup) {
       return;
     }
-    
+
     // Reset any previous transforms
     (synopsisTextGroup as SVGElement).removeAttribute('transform');
-    
+
     const fontScale = this.getReadabilityScale();
     // Circle parameters scale with readability to avoid overlaps
     const titleLineHeight = 32 * fontScale; // Increased spacing for title/date line
     const synopsisLineHeight = 22 * fontScale; // Reduced spacing for synopsis text
     const scorePreGap = 46 * fontScale; // Manual gap before the Gossamer score line; adjust as needed
     const metadataSpacing = 14 * fontScale; // Default horizontal gap between title and metadata block
-    
+
     // Get pulse line height from CSS for beats text
     const styleSource = getComputedStyle(document.documentElement);
     const pulseLineHeightRaw = parseFloat(styleSource.getPropertyValue('--rt-pulse-line-height'));
     const pulseLineHeight = pulseLineHeightRaw * fontScale;
-    
+
     // Calculate starting y-position from synopsis position
     const synopsisTransform = (synopsis as SVGElement).getAttribute('transform') || '';
     const translateMatch = synopsisTransform.match(/translate\(([^,]+),\s*([^)]+)\)/);
-    
+
     if (!translateMatch || translateMatch.length < 3) {
       return;
     }
-    
+
     const baseX = parseFloat(translateMatch[1]);
     const baseY = parseFloat(translateMatch[2]);
-    
+
     // Separate text elements into rows (vertically stacked lines)
     const textRows: SVGTextElement[][] = [];
-    
+
     // Build rows, grouping metadata blocks with their preceding title rows
     textElements.forEach((textEl) => {
       if (textEl.getAttribute('data-metadata-block') === 'true' && textRows.length > 0) {
@@ -851,17 +863,17 @@ export default class SynopsisManager {
         textRows.push([textEl]);
       }
     });
-    
+
     // Position each row using Pythagorean theorem relative to circle center
     let yOffset = 0;
-    
+
     textRows.forEach((rowElements, rowIndex) => {
       const primaryEl = rowElements[0] ?? null;
 
       // Track which line height is used for this row (needed for inset scaling)
       // Row 0 (title) uses titleLineHeight; others determined by content type
       let currentRowLineHeight = rowIndex === 0 ? titleLineHeight : synopsisLineHeight;
-      
+
       // Calculate absolute position for this row with variable line heights
       if (rowIndex > 0) {
         const currentEl = rowElements[0];
@@ -889,9 +901,9 @@ export default class SynopsisManager {
           currentRowLineHeight = synopsisLineHeight;
         }
       }
-      
+
       let anchorY = baseY + yOffset;
-      
+
       if (Math.abs(anchorY) >= radius) {
         // Clamp rows that extend beyond the circle; they'll hug the perimeter instead of crashing
         anchorY = Math.sign(anchorY) * (radius - 1);
@@ -904,7 +916,7 @@ export default class SynopsisManager {
 
       const circleX = Math.sqrt(radiusDiff);
       const direction = isRightAligned ? 1 : -1;
-      
+
       // Top half only: inset based on font size to compensate for text above baseline
       // Bottom half needs no adjustment - the baseline alignment works correctly there
       // Title and first synopsis line need more inset; later rows need less
@@ -919,11 +931,11 @@ export default class SynopsisManager {
       const anchorAbsoluteX = (circleX - inset) * direction;
 
       const anchorX = anchorAbsoluteX - baseX;
-      
+
       const { primaryWidth, metadataWidth, gap } = this.measureRowLayout(rowElements, metadataSpacing);
       const roundedAnchorX = Math.round(anchorX);
       const rowY = rowIndex === 0 ? 0 : yOffset;
-      
+
       this.positionRowColumns(
         rowElements,
         roundedAnchorX,
@@ -941,11 +953,11 @@ export default class SynopsisManager {
     if (rowElements.length === 0) {
       return { primaryWidth: 0, metadataWidth: 0, gap: defaultGap };
     }
-    
+
     const primaryWidth = this.measureTextWidth(rowElements[0]);
     let metadataWidth = 0;
     let gap = defaultGap;
-    
+
     if (rowElements.length > 1) {
       const metadataEl = rowElements[1];
       metadataWidth = this.measureTextWidth(metadataEl);
@@ -957,7 +969,7 @@ export default class SynopsisManager {
         }
       }
     }
-    
+
     return { primaryWidth, metadataWidth, gap };
   }
 
@@ -973,14 +985,14 @@ export default class SynopsisManager {
     if (rowElements.length === 0) {
       return;
     }
-    
+
     const hasMetadata = rowElements.length > 1;
 
     if (isRightAligned) {
       const metadataRightEdge = anchorX - SYNOPSIS_INSET;
       const metadataLeftEdge = hasMetadata ? metadataRightEdge - metadataWidth : metadataRightEdge;
       const titleRightEdge = hasMetadata ? metadataLeftEdge - gap : metadataRightEdge;
-      
+
       rowElements.forEach((textEl, index) => {
         const x = index === 0 ? titleRightEdge : metadataLeftEdge;
         textEl.setAttribute('x', String(x));
@@ -993,8 +1005,8 @@ export default class SynopsisManager {
           try {
             const len = textEl.getComputedTextLength();
             if (len > 0) {
-               currentWidth = len + 12; // text len + indent(6) + pad(6)
-               prev.setAttribute('width', String(currentWidth));
+              currentWidth = len + 12; // text len + indent(6) + pad(6)
+              prev.setAttribute('width', String(currentWidth));
             }
           } catch (e) { /* ignore */ }
 
@@ -1011,7 +1023,7 @@ export default class SynopsisManager {
     } else {
       const rowLeftEdge = anchorX + SYNOPSIS_INSET;
       const metadataLeftEdge = hasMetadata ? rowLeftEdge + primaryWidth + gap : rowLeftEdge;
-      
+
       rowElements.forEach((textEl, index) => {
         const x = index === 0 ? rowLeftEdge : metadataLeftEdge;
         textEl.setAttribute('x', String(x));
@@ -1023,7 +1035,7 @@ export default class SynopsisManager {
           try {
             const len = textEl.getComputedTextLength();
             if (len > 0) {
-               prev.setAttribute('width', String(len + 12));
+              prev.setAttribute('width', String(len + 12));
             }
           } catch (e) { /* ignore */ }
 
@@ -1071,7 +1083,7 @@ export default class SynopsisManager {
   private processContentWithTspans(content: string, parentElement: SVGElement): void {
     // First decode any HTML entities in the content
     let processedContent = content;
-    
+
     // Check if the content contains HTML-encoded tspan elements
     if (content.includes('&lt;tspan') && !content.includes('<tspan')) {
       // Convert HTML entities to actual tags for proper parsing
@@ -1081,10 +1093,10 @@ export default class SynopsisManager {
         .replace(/&quot;/g, '"')
         .replace(/&apos;/g, "'")
         .replace(/&amp;/g, '&');
-        
+
 
     }
-    
+
     // Use DOMParser to parse the content safely
     const parser = new DOMParser();
     const doc = parser.parseFromString(`<div>${processedContent}</div>`, 'text/html');
@@ -1142,29 +1154,29 @@ export default class SynopsisManager {
   private splitTextIntoLines(text: string, maxWidth: number): string[] {
     // Handle null, undefined, or non-string input
     if (!text || typeof text !== 'string') {
-  
+
       return [''];  // Return an array with a single empty string
     }
-    
+
     // Trim the text to remove leading/trailing whitespace
     const trimmedText = text.trim();
-    
+
     // Check if the trimmed text is empty
     if (!trimmedText) {
-  
+
       return [''];  // Return an array with a single empty string for empty content
     }
-    
+
     // Simple line splitting based on approximate character count
     const words = trimmedText.split(/\s+/);
     const lines: string[] = [];
     let currentLine = '';
     const maxCharsPerLine = 50; // Approximately 400px at 16px font size
-    
+
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
       const wordWidth = word.length;
-      
+
       if (currentLine.length + wordWidth + 1 > maxCharsPerLine && currentLine !== '') {
         lines.push(currentLine.trim());
         currentLine = word;
@@ -1172,17 +1184,17 @@ export default class SynopsisManager {
         currentLine += (currentLine ? ' ' : '') + word;
       }
     }
-    
+
     if (currentLine) {
       lines.push(currentLine.trim());
     }
-    
+
     // If we still end up with no lines, ensure we return something
     if (lines.length === 0) {
 
       return [trimmedText]; // Return the trimmed text as a single line
     }
-    
+
     return lines;
   }
 
@@ -1204,12 +1216,12 @@ export default class SynopsisManager {
     if (!beatsText) {
       return 0;
     }
-    
+
     let lines: string[] = [];
-    
+
     // Performance optimization: Check if already contains newlines (most common case for YAML)
     const hasNewlines = beatsText.includes('\n');
-    
+
     if (hasNewlines) {
       // Fast path: already formatted with newlines, just split
       lines = beatsText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
@@ -1222,7 +1234,7 @@ export default class SynopsisManager {
         // Pattern: split on ", " followed by text containing "+ /" or "- /" or "? /"
         const beatSeparatorPattern = /,\s*(?=[^,]*[\+\-\?]\s*\/)/g;
         const parts = trimmedText.split(beatSeparatorPattern);
-        
+
         if (parts.length > 1) {
           lines = parts.map(item => `- ${item.trim()}`).filter(line => line.length > 2);
         } else {
@@ -1235,7 +1247,7 @@ export default class SynopsisManager {
       }
     }
     // END: Restore line splitting logic
-    
+
 
 
     // Add this after the line splitting logic but before the for loop
@@ -1246,19 +1258,19 @@ export default class SynopsisManager {
       const processedLines: string[] = [];
 
       for (const originalLine of lines) {
-          if (!originalLine || !originalLine.trim()) continue;
+        if (!originalLine || !originalLine.trim()) continue;
 
-          const line = originalLine.trim();
-          let wasSplit = false;
+        const line = originalLine.trim();
+        let wasSplit = false;
 
-          // 1. Check if the line should have grade styling.
-          let isGradeLine = false;
-          const prefixMatch = line.match(/^\s*(\[[A-Z][+-]?\]\s*)/);
-          const numericGradeRegex = /^\s*-?\s*(\d+(\.\d+)?\s+[ABC])/i; // Simplified to find the grade pattern itself.
-          if (prefixMatch || line.match(numericGradeRegex)) {
-              isGradeLine = true;
-          }
-          
+        // 1. Check if the line should have grade styling.
+        let isGradeLine = false;
+        const prefixMatch = line.match(/^\s*(\[[A-Z][+-]?\]\s*)/);
+        const numericGradeRegex = /^\s*-?\s*(\d+(\.\d+)?\s+[ABC])/i; // Simplified to find the grade pattern itself.
+        if (prefixMatch || line.match(numericGradeRegex)) {
+          isGradeLine = true;
+        }
+
 
 
 
@@ -1270,55 +1282,55 @@ export default class SynopsisManager {
         const hasSlashSeparator = /\s\/\s/.test(line);
         if (!hasSlashSeparator) {
           if (isGradeLine) {
-              // For grade lines (when not using slash), prefer splitting on ". " to avoid decimals, else comma.
-              if (line.match(/\.\s/)) {
-                  splitChar = '.';
-              } else if (line.includes(',')) {
-                  splitChar = ',';
-              }
+            // For grade lines (when not using slash), prefer splitting on ". " to avoid decimals, else comma.
+            if (line.match(/\.\s/)) {
+              splitChar = '.';
+            } else if (line.includes(',')) {
+              splitChar = ',';
+            }
           } else {
-              // Non-grade lines (no slash) may be legacy comma-separated items
-              if (line.includes(',')) {
-                  splitChar = ',';
-              }
+            // Non-grade lines (no slash) may be legacy comma-separated items
+            if (line.includes(',')) {
+              splitChar = ',';
+            }
           }
         }
 
-          // 3. Perform the split and format the new lines.
-          if (splitChar) {
-              const parts = line.split(splitChar);
-              if (parts.length > 1) {
-                  wasSplit = true;
-                  const wrapTag = isGradeLine ? '[GRADE]' : '[BODY]';
+        // 3. Perform the split and format the new lines.
+        if (splitChar) {
+          const parts = line.split(splitChar);
+          if (parts.length > 1) {
+            wasSplit = true;
+            const wrapTag = isGradeLine ? '[GRADE]' : '[BODY]';
 
-                  // First part includes the split character.
-                  processedLines.push(parts[0] + splitChar);
-                  
-                  // Subsequent parts get the appropriate wrap tag.
-                  for (let i = 1; i < parts.length; i++) {
-                      const part = parts[i].trim();
-                      if (part) {
-                          // Add split character back except for the last part
-                          const text = (i < parts.length - 1) ? part + splitChar : part;
-                          processedLines.push(`${wrapTag} ${text}`);
-                      }
-                  }
+            // First part includes the split character.
+            processedLines.push(parts[0] + splitChar);
+
+            // Subsequent parts get the appropriate wrap tag.
+            for (let i = 1; i < parts.length; i++) {
+              const part = parts[i].trim();
+              if (part) {
+                // Add split character back except for the last part
+                const text = (i < parts.length - 1) ? part + splitChar : part;
+                processedLines.push(`${wrapTag} ${text}`);
               }
+            }
           }
+        }
 
-          // 4. If no split occurred, add the original line back.
-          if (!wasSplit) {
-              processedLines.push(originalLine);
-          }
+        // 4. If no split occurred, add the original line back.
+        if (!wasSplit) {
+          processedLines.push(originalLine);
+        }
       }
-      
+
       // Replace original lines with the new processed lines.
       lines.splice(0, lines.length, ...processedLines);
     }
 
     let currentY = baseY;
     let lineCount = 0;
-  
+
     // Process lines and render synopsis content
 
     for (let i = 0; i < lines.length; i++) {
@@ -1339,15 +1351,15 @@ export default class SynopsisManager {
       // Check for body text wrapper from non-grade line splitting FIRST
       const bodyWrapMatch = rawContent.match(/^\[BODY\]\s*(.*)$/);
       const gradeWrapMatch = rawContent.match(/^\[GRADE\]\s*(.*)$/);
-      
+
       if (gradeWrapMatch) {
         // This is a wrapped line from a grade line.
         titleText = gradeWrapMatch[1];
         rawContent = titleText;
         // Apply grade formatting to wrapped grade segments
-        titleClass = 'pulse-text-grade'; 
+        titleClass = 'pulse-text-grade';
         commentClass = 'pulse-text-grade';
-        
+
         // Find the grade from the first line for border logic
         if (lines.length > 0) {
           const firstLineContent = lines[0].replace(/^-\s*/, '');
@@ -1361,7 +1373,7 @@ export default class SynopsisManager {
         titleText = bodyWrapMatch[1];
         rawContent = titleText;
         // Apply light gray body text formatting  
-        titleClass = 'rt-info-text rt-title-text-secondary'; 
+        titleClass = 'rt-info-text rt-title-text-secondary';
         commentClass = 'rt-info-text rt-title-text-secondary';
       } else {
         // Only do sign detection if this is NOT body text or grade text
@@ -1378,14 +1390,14 @@ export default class SynopsisManager {
             useSlashSeparator = true;     // We found the pattern, so use the slash
             // NOTE: Title sign is implicitly removed because titleText comes from group 1 (before the sign)
           } else {
-             // Pattern not found. Check if there's a sign at the end for coloring, but don't split.
-             const endSignMatch = rawContent.match(/\s*([-+?])$/);
-             if (endSignMatch) {
-               signDetected = endSignMatch[1];
-               // Remove the sign from the title text for display
-               titleText = rawContent.substring(0, endSignMatch.index).trim();
-             }
-             // No split needed, commentText remains empty, useSlashSeparator remains false
+            // Pattern not found. Check if there's a sign at the end for coloring, but don't split.
+            const endSignMatch = rawContent.match(/\s*([-+?])$/);
+            if (endSignMatch) {
+              signDetected = endSignMatch[1];
+              // Remove the sign from the title text for display
+              titleText = rawContent.substring(0, endSignMatch.index).trim();
+            }
+            // No split needed, commentText remains empty, useSlashSeparator remains false
           }
 
           // 2. Determine Title CSS Class based on the detected sign
@@ -1396,19 +1408,19 @@ export default class SynopsisManager {
           } // Otherwise remains 'pulse-text-neutral'
         }
       }
-      
+
       // Handle special case for currentSceneAnalysis grade detection (simple, content-based only)
       if (beatKey === 'currentSceneAnalysis' && !bodyWrapMatch && !gradeWrapMatch) {
         // Check if THIS specific line has a grade pattern
         const gradeMatch = titleText.match(/^\s*-?\s*(\d+(\.\d+)?\s+[ABC])/i);
-        
+
         if (gradeMatch) {
           // This line itself has a grade - apply grade formatting
           const gradeLetterMatch = titleText.match(/\s+([ABC])/i);
           if (gradeLetterMatch && gradeLetterMatch[1]) {
             detectedGrade = gradeLetterMatch[1].toUpperCase();
           }
-          titleClass = 'pulse-text-grade'; 
+          titleClass = 'pulse-text-grade';
           commentClass = 'pulse-text-grade';
         }
       }
@@ -1472,9 +1484,9 @@ export default class SynopsisManager {
 
         parentGroup.appendChild(spacer);
       };
-      
+
       addSpacer(currentY, spacerSize);
-        currentY += spacerSize;
+      currentY += spacerSize;
     }
 
     return lineCount;

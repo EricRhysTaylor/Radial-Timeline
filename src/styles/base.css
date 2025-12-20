@@ -72,7 +72,7 @@
 
 .radial-timeline-container .rt-scene-path {
   cursor: pointer;
-  stroke: #ffffff;
+  stroke: var(--rt-color-empty);
   stroke-width: 1px;
 }
 
@@ -80,7 +80,7 @@
 .radial-timeline-container .rt-void-cell {
   fill: var(--rt-color-empty);
   fill-opacity: 0.9;
-  stroke: white;
+  stroke: var(--rt-color-empty);
   stroke-width: 1;
   cursor: default;
 }
@@ -91,13 +91,13 @@
 }
 
 .rt-global-fade .rt-number-square:not(.rt-selected) {
-  fill: #EFEFEF;
+  fill: var(--rt-color-empty-selected);
   stroke: none;
   stroke-width: 0;
 }
 
 .rt-global-fade .rt-number-text:not(.rt-selected) {
-  fill: #FFFFFF;
+  fill: var(--rt-color-empty);
 }
 
 .radial-timeline-container .rt-scene-path.rt-non-selected {

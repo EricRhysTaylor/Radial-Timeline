@@ -92,9 +92,11 @@ function createLocalDate(year: number, monthIndex: number, day: number, hour = 1
 
 export function parseWhenField(when: string): Date | null {
     if (!when || typeof when !== 'string') return null;
-    
-    const trimmed = when.trim();
-    
+
+    // Standardize separators (support both dashes and slashes)
+    const standardized = when.trim().replace(/\//g, '-');
+    const trimmed = standardized;
+
     // Try ISO date format: YYYY-MM-DD or YYYY-M-D (flexible month/day digits)
     // Parse as local time by extracting components
     const dateOnlyMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed);
@@ -105,7 +107,7 @@ export function parseWhenField(when: string): Date | null {
         const date = new Date(year, month, day, 12, 0, 0, 0); // Local time at noon (12:00 PM)
         return isNaN(date.getTime()) ? null : date;
     }
-    
+
     // Try ISO 8601 format with T separator and seconds: YYYY-MM-DDTHH:MM:SS (flexible month/day digits)
     const iso8601SecondsMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})T(\d{1,2}):(\d{1,2}):(\d{1,2})$/.exec(trimmed);
     if (iso8601SecondsMatch) {
@@ -118,7 +120,7 @@ export function parseWhenField(when: string): Date | null {
         const date = new Date(year, month, day, hour, minute, second, 0); // Local time
         return isNaN(date.getTime()) ? null : date;
     }
-    
+
     // Try ISO 8601 format with T separator, no seconds: YYYY-MM-DDTHH:MM (flexible month/day digits)
     const iso8601Match = /^(\d{4})-(\d{1,2})-(\d{1,2})T(\d{1,2}):(\d{1,2})$/.exec(trimmed);
     if (iso8601Match) {
@@ -130,7 +132,7 @@ export function parseWhenField(when: string): Date | null {
         const date = new Date(year, month, day, hour, minute, 0, 0); // Local time
         return isNaN(date.getTime()) ? null : date;
     }
-    
+
     // Try date + time with seconds and space separator: YYYY-MM-DD HH:MM:SS (flexible month/day digits)
     const dateTimeSecondsMatch = /^(\d{4})-(\d{1,2})-(\d{1,2}) (\d{1,2}):(\d{1,2}):(\d{1,2})$/.exec(trimmed);
     if (dateTimeSecondsMatch) {
@@ -143,7 +145,7 @@ export function parseWhenField(when: string): Date | null {
         const date = new Date(year, month, day, hour, minute, second, 0); // Local time
         return isNaN(date.getTime()) ? null : date;
     }
-    
+
     // Try date + time with space separator: YYYY-MM-DD HH:MM (flexible month/day digits)
     const dateTimeMatch = /^(\d{4})-(\d{1,2})-(\d{1,2}) (\d{1,2}):(\d{1,2})$/.exec(trimmed);
     if (dateTimeMatch) {
@@ -236,19 +238,19 @@ export function calculateTimeSpan(dates: Date[]): TimeSpanInfo {
             recommendedUnit: 'days'
         };
     }
-    
+
     const sortedDates = dates.slice().sort((a, b) => a.getTime() - b.getTime());
     const earliest = sortedDates[0];
     const latest = sortedDates[sortedDates.length - 1];
     const totalMs = latest.getTime() - earliest.getTime();
-    
+
     const minutes = totalMs / (1000 * 60);
     const hours = minutes / 60;
     const days = hours / 24;
     const weeks = days / 7;
     const months = days / 30.44; // Average days per month
     const years = days / 365.25; // Account for leap years
-    
+
     // Determine recommended unit based on span
     let recommendedUnit: TimeSpanInfo['recommendedUnit'];
     if (hours <= 3) {
@@ -270,7 +272,7 @@ export function calculateTimeSpan(dates: Date[]): TimeSpanInfo {
         // 24+ months - use years, starting at 2 years and up
         recommendedUnit = 'years';
     }
-    
+
     return {
         totalMs,
         minutes,
@@ -288,7 +290,7 @@ export function calculateTimeSpan(dates: Date[]): TimeSpanInfo {
  */
 export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): TimeLabelInfo[] {
     const labels: TimeLabelInfo[] = [];
-    
+
     switch (span.recommendedUnit) {
         case 'minutes':
             // Generate minute labels (max 90 labels for up to 90 minutes)
@@ -304,7 +306,7 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
-            
+
         case 'hours':
             // Generate hourly labels (max 24 labels)
             const maxHours = Math.min(24, Math.ceil(span.hours));
@@ -318,7 +320,7 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
-            
+
         case 'days':
             // Generate daily labels (max 7 labels)
             const maxDays = Math.min(7, Math.ceil(span.days));
@@ -332,7 +334,7 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
-            
+
         case 'weeks':
             // Generate weekly labels (max 8 labels)
             const maxWeeks = Math.min(8, Math.ceil(span.weeks));
@@ -346,7 +348,7 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
-            
+
         case 'months':
             // Generate monthly labels (max 12 labels)
             const maxMonths = Math.min(12, Math.ceil(span.months));
@@ -360,7 +362,7 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
                 });
             }
             break;
-            
+
         case 'years':
             // Generate yearly labels (max 10 labels)
             const maxYears = Math.min(10, Math.ceil(span.years));
@@ -375,7 +377,7 @@ export function generateTimeLabels(span: TimeSpanInfo, earliestDate: Date): Time
             }
             break;
     }
-    
+
     return labels;
 }
 
@@ -565,31 +567,31 @@ export function formatElapsedTime(ms: number, clickCount: number = 0): string {
 }
 
 export function dateToAngle(date: Date): number {
-  const startOfYear = new Date(date.getFullYear(), 0, 1);
-  const dayOfYear = (date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24);
-  const daysInYear =
-    (new Date(date.getFullYear(), 11, 31).getTime() - startOfYear.getTime()) /
-      (1000 * 60 * 60 * 24) +
-    1;
-  const progress = dayOfYear / daysInYear;
-  return progress * 2 * Math.PI - Math.PI / 2;
-} 
+    const startOfYear = new Date(date.getFullYear(), 0, 1);
+    const dayOfYear = (date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24);
+    const daysInYear =
+        (new Date(date.getFullYear(), 11, 31).getTime() - startOfYear.getTime()) /
+        (1000 * 60 * 60 * 24) +
+        1;
+    const progress = dayOfYear / daysInYear;
+    return progress * 2 * Math.PI - Math.PI / 2;
+}
 
 // Parses YYYY-MM-DD and checks if strictly before today (local date)
 export function isOverdueDateString(dueString?: string, today: Date = new Date()): boolean {
-  if (!dueString || typeof dueString !== 'string') return false;
-  const parts = dueString.split('-').map(Number);
-  if (parts.length !== 3 || parts.some(n => isNaN(n))) return false;
-  const [dueYear, dueMonth1, dueDay] = parts;
-  const dueMonth = dueMonth1 - 1;
-  const todayY = today.getFullYear();
-  const todayM = today.getMonth();
-  const todayD = today.getDate();
-  if (dueYear < todayY) return true;
-  if (dueYear > todayY) return false;
-  if (dueMonth < todayM) return true;
-  if (dueMonth > todayM) return false;
-  return dueDay < todayD; // strictly before today
+    if (!dueString || typeof dueString !== 'string') return false;
+    const parts = dueString.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(n => isNaN(n))) return false;
+    const [dueYear, dueMonth1, dueDay] = parts;
+    const dueMonth = dueMonth1 - 1;
+    const todayY = today.getFullYear();
+    const todayM = today.getMonth();
+    const todayD = today.getDate();
+    if (dueYear < todayY) return true;
+    if (dueYear > todayY) return false;
+    if (dueMonth < todayM) return true;
+    if (dueMonth > todayM) return false;
+    return dueDay < todayD; // strictly before today
 }
 
 interface DurationUnitDefinition {
@@ -654,10 +656,10 @@ function matchDurationDetail(duration: string | undefined): InternalDurationMatc
  */
 export function parseDuration(duration: string | undefined): number | null {
     if (!duration || typeof duration !== 'string') return null;
-    
+
     const trimmed = duration.trim().toLowerCase();
     if (trimmed === '' || trimmed === '0') return 0;
-    
+
     const match = matchDurationDetail(duration);
     if (!match) return null;
     if (match.value === 0) return 0;
@@ -741,7 +743,7 @@ export function prepareScenesForDiscontinuityDetection(
             uniqueScenesMap.set(key, { when: scene.when });
         }
     });
-    
+
     // Sort chronologically
     const uniqueScenes = Array.from(uniqueScenesMap.values());
     return uniqueScenes.sort((a, b) => a.when.getTime() - b.when.getTime());
@@ -758,11 +760,11 @@ export function calculateAutoDiscontinuityThreshold(
     scenes: { when?: Date; itemType?: string; path?: string; title?: string }[]
 ): number | null {
     const preparedScenes = prepareScenesForDiscontinuityDetection(scenes);
-    
+
     if (preparedScenes.length < 3) {
         return null;
     }
-    
+
     // Calculate gaps between consecutive scenes
     const gaps: number[] = [];
     for (let i = 1; i < preparedScenes.length; i++) {
@@ -771,16 +773,16 @@ export function calculateAutoDiscontinuityThreshold(
             gaps.push(gap);
         }
     }
-    
+
     if (gaps.length === 0) {
         return null;
     }
-    
+
     // Calculate median gap
     const sortedGaps = [...gaps].sort((a, b) => a - b);
     const medianIndex = Math.floor(sortedGaps.length / 2);
     const medianGap = sortedGaps[medianIndex];
-    
+
     // If median gap is 0 or very small, many scenes have identical/close timestamps
     // In this case, use the median of NON-ZERO gaps to find the typical meaningful gap
     if (medianGap === 0) {
@@ -794,7 +796,7 @@ export function calculateAutoDiscontinuityThreshold(
         const nonZeroMedian = nonZeroGaps[nonZeroMedianIndex];
         return nonZeroMedian * 3;
     }
-    
+
     // Return 3× median
     return medianGap * 3;
 }
@@ -808,24 +810,24 @@ export function calculateAutoDiscontinuityThreshold(
  * @returns Array of scene indices with large gaps before them
  */
 export function detectDiscontinuities(
-    scenes: { when?: Date }[], 
+    scenes: { when?: Date }[],
     thresholdMs: number
 ): number[] {
     if (scenes.length < 3) {
         return [];
     }
-    
+
     if (!thresholdMs || thresholdMs <= 0) {
         return [];
     }
-    
+
     // Find scenes with gaps >= threshold
     const discontinuityIndices: number[] = [];
-    
+
     for (let i = 1; i < scenes.length; i++) {
         const prev = scenes[i - 1].when;
         const curr = scenes[i].when;
-        
+
         if (prev && curr) {
             const gap = curr.getTime() - prev.getTime();
             if (gap >= 0 && gap >= thresholdMs) {
@@ -833,7 +835,7 @@ export function detectDiscontinuities(
             }
         }
     }
-    
+
     return discontinuityIndices;
 }
 
@@ -847,24 +849,24 @@ export function detectDiscontinuities(
  */
 export function detectSceneOverlaps(scenes: { when?: Date; Duration?: string }[]): Set<number> {
     const overlaps = new Set<number>();
-    
+
     for (let i = 0; i < scenes.length - 1; i++) {
         const current = scenes[i];
         const next = scenes[i + 1];
-        
+
         if (!current.when || !next.when) continue;
-        
+
         const durationMs = parseDuration(current.Duration);
         if (durationMs === null || durationMs === 0) continue;
-        
+
         const currentEnd = current.when.getTime() + durationMs;
         const nextStart = next.when.getTime();
-        
+
         if (currentEnd > nextStart) {
             overlaps.add(i); // Mark current scene as overlapping
         }
     }
-    
+
     return overlaps;
 }
 
@@ -899,7 +901,7 @@ export interface ChronologicalTickInfo {
  * @returns Array of tick info matching month format { angle, name, shortName }
  */
 export function generateChronologicalTicks(
-    scenes: { when?: Date }[], 
+    scenes: { when?: Date }[],
     sceneStartAngles?: number[],
     sceneAngularSize?: number,
     timeSpan?: TimeSpanInfo
@@ -911,17 +913,17 @@ export function generateChronologicalTicks(
             validScenes.push({ date: s.when, sortedIndex: idx });
         }
     });
-    
+
     if (validScenes.length === 0) {
         // No valid dates - return empty
         return [];
     }
-    
+
     // Calculate time span if not provided (for intelligent labeling)
     const validDates = validScenes.map(s => s.date);
     const span = timeSpan || calculateTimeSpan(validDates);
     const earliestDate = validDates[0]; // Already chronologically sorted
-    
+
     // Special case: Only one scene - just show that date at the top
     if (validScenes.length === 1) {
         const singleDate = validScenes[0].date;
@@ -930,7 +932,7 @@ export function generateChronologicalTicks(
         const day = singleDate.getDate();
         const year = singleDate.getFullYear();
         const dateLabel = `${month} ${day}, ${year}`;
-        
+
         return [{
             angle: -Math.PI / 2, // Top of circle
             name: dateLabel,
@@ -938,10 +940,10 @@ export function generateChronologicalTicks(
             isMajor: true
         }];
     }
-    
+
     const ticks: ChronologicalTickInfo[] = [];
     const numScenes = validScenes.length;
-    
+
     // Get scene start angle - use provided start angles (aligned to scene beginnings)
     const getSceneStartAngle = (sortedIndex: number): number => {
         if (sceneStartAngles && sceneStartAngles[sortedIndex] !== undefined) {
@@ -951,7 +953,7 @@ export function generateChronologicalTicks(
         const anglePerScene = (2 * Math.PI) / numScenes;
         return -Math.PI / 2 + (sortedIndex * anglePerScene);
     };
-    
+
     // Since scenes are already sorted chronologically, first and last are at indices 0 and numScenes - 1
     const firstScene = validScenes[0];
     const lastScene = validScenes[numScenes - 1];
@@ -964,17 +966,17 @@ export function generateChronologicalTicks(
     const MAX_MAJOR_TICKS = 20;
     let step = 1;
     let numMajorTicks = numScenes;
-    
+
     if (numScenes > MAX_MAJOR_TICKS) {
         // Calculate step that gives us approximately MAX_MAJOR_TICKS major ticks
         // But ensure it divides evenly into numScenes for balanced distribution
         step = Math.ceil(numScenes / MAX_MAJOR_TICKS);
-        
+
         // Find a step that evenly divides numScenes (or gets close)
         // Try to find the largest divisor <= step that gives us <= MAX_MAJOR_TICKS
         let bestStep = step;
         let bestMajorCount = Math.ceil((numScenes - 1) / step) + 1; // +1 for first scene
-        
+
         // Try divisors near our target step
         for (let testStep = step; testStep >= 1; testStep--) {
             const testMajorCount = Math.ceil((numScenes - 1) / testStep) + 1;
@@ -985,7 +987,7 @@ export function generateChronologicalTicks(
                 break;
             }
         }
-        
+
         step = bestStep;
         numMajorTicks = bestMajorCount;
     }
@@ -994,12 +996,12 @@ export function generateChronologicalTicks(
     const promoteSet = new Set<number>();
     promoteSet.add(0); // Always promote first scene
     promoteSet.add(numScenes - 1); // Always promote last scene
-    
+
     // Promote every Nth scene (except first/last) for balanced distribution
     for (let i = step; i < numScenes - 1; i += step) {
         promoteSet.add(i);
     }
-    
+
     // Check if first and last would overlap (they're at the same or very close angles)
     // This happens when timeline wraps around a full circle
     const angleDiff = Math.abs(lastAngle - firstAngle);
@@ -1023,31 +1025,31 @@ export function generateChronologicalTicks(
         const formatTime12Hour = (date: Date): string => {
             const hour = date.getHours();
             const minute = date.getMinutes();
-            
+
             // Special cases for noon and midnight (elegant, matches synopsis treatment)
             if (hour === 12 && minute === 0) {
                 return 'noon';
             } else if (hour === 0 && minute === 0) {
                 return 'midnight';
             }
-            
+
             // Regular time formatting
             const ampm = hour >= 12 ? 'pm' : 'am';
             const displayHour = hour % 12 || 12; // Convert 0 to 12
             const minuteStr = minute.toString().padStart(2, '0');
             return `${displayHour}:${minuteStr}${ampm}`;
         };
-        
+
         const month = sceneDate.toLocaleString('en-US', { month: 'short' });
         const day = sceneDate.getDate();
         const year = sceneDate.getFullYear();
         const timeStr = formatTime12Hour(sceneDate);
-        
+
         // Analyze gap before this scene to determine label type
         const gapMs = sceneGaps[sceneIndex];
         const gapHours = gapMs / (1000 * 60 * 60);
         const gapDays = gapHours / 24;
-        
+
         // First scene: Always anchor with full context
         if (isFirst) {
             // Check if overall timeline is short (time-based) or long (date-based)
@@ -1060,7 +1062,7 @@ export function generateChronologicalTicks(
                 return { name: `${year}\n${month} ${day}`, shortName: `${year}\n${month} ${day}` };
             }
         }
-        
+
         // Last scene: Match the format of the first scene for consistency
         if (isLast) {
             const totalSpanHours = span.hours;
@@ -1072,7 +1074,7 @@ export function generateChronologicalTicks(
                 return { name: `${year}\n${month} ${day}`, shortName: `${year}\n${month} ${day}` };
             }
         }
-        
+
         // Intermediate scenes: Adaptive labels based on gap before this scene
         if (gapHours < 6) {
             // Gap < 6 hours: Show TIME only
@@ -1088,17 +1090,17 @@ export function generateChronologicalTicks(
 
     // Generate ticks aligned to scene starts (not centers)
     let lastLabeledSceneDate: Date | null = null; // Track the last scene that got a label
-    
+
     for (let i = 0; i < numScenes; i++) {
         const scene = validScenes[i];
         const sceneStartAngle = getSceneStartAngle(scene.sortedIndex);
-        
+
         // Calculate gap from the last LABELED scene, not just the previous scene
         let gapFromLastLabel = 0;
         if (lastLabeledSceneDate !== null) {
             gapFromLastLabel = scene.date.getTime() - lastLabeledSceneDate.getTime();
         }
-        
+
         // Store the gap in sceneGaps for generateLabel to use
         if (i === 0) {
             sceneGaps[i] = 0; // First scene has no gap
@@ -1107,7 +1109,7 @@ export function generateChronologicalTicks(
         } else {
             sceneGaps[i] = gapFromLastLabel; // Gap from last labeled scene
         }
-        
+
         if (i === 0) {
             // First scene: intelligent label with context
             const labels = generateLabel(scene.date, i, true, false);

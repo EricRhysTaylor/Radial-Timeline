@@ -18,7 +18,7 @@ export function renderSubplotLabels(params: {
   for (let ringOffset = 0; ringOffset < ringsToUse; ringOffset++) {
     const ring = totalRings - ringOffset - 1;
     const subplot = masterSubplotOrder[ringOffset];
-    if (!subplot) continue;
+    if (!subplot || subplot === 'Backdrop') continue; // SKIP BACKDROP SUBPLOT LABEL
     const innerR = ringStartRadii[ring];
     const outerR = innerR + ringWidths[ring];
     const labelPathId = `subplot-label-path-${ring}`;

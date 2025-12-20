@@ -6,7 +6,10 @@
 import type { TimelineItem } from '../../types/timeline';
 import { parseDuration, calculateTimeSpan, parseWhenField } from '../../utils/date';
 import { formatNumber } from '../../utils/svg';
-import { BACKDROP_RING_RADIUS, BACKDROP_RING_HEIGHT } from '../layout/LayoutConstants';
+import { BACKDROP_RING_RADIUS, BACKDROP_RING_HEIGHT, BACKDROP_TITLE_RADIUS_OFFSET } from '../layout/LayoutConstants';
+import type { PluginRendererFacade } from '../../utils/sceneHelpers';
+import { appendSynopsisElementForScene } from '../utils/SynopsisBuilder';
+import { makeSceneId } from '../../utils/numberSquareHelpers';
 
 /**
  * Map a time value to an angular position on the timeline arc
@@ -24,10 +27,23 @@ interface BackdropSegment {
     endAngle: number;
 }
 
-export function renderBackdropRing(
-    scenes: TimelineItem[],
-    availableRadius: number = BACKDROP_RING_RADIUS
-): string {
+export type BackdropRingOptions = {
+    plugin: PluginRendererFacade;
+    scenes: TimelineItem[];
+    availableRadius?: number;
+    synopsesElements: SVGGElement[];
+    maxTextWidth: number;
+    masterSubplotOrder: string[];
+};
+
+export function renderBackdropRing({
+    plugin,
+    scenes,
+    availableRadius = BACKDROP_RING_RADIUS,
+    synopsesElements,
+    maxTextWidth,
+    masterSubplotOrder
+}: BackdropRingOptions): string {
     // 1. Filter for valid Backdrop items
     const backdropItems = scenes.filter(s => s.itemType === 'Backdrop' && s.when && (s.Duration || s.End));
     if (backdropItems.length === 0) return '';
@@ -40,7 +56,9 @@ export function renderBackdropRing(
         .map(s => s.when)
         .filter((d): d is Date => d instanceof Date && !isNaN(d.getTime()));
 
-    if (allValidDates.length === 0) return '';
+    if (allValidDates.length === 0) {
+        return '';
+    }
 
     const timeSpan = calculateTimeSpan(allValidDates);
     // calculateTimeSpan does not return start/end dates, so compute them locally
@@ -52,7 +70,9 @@ export function renderBackdropRing(
     const endMs = latest.getTime();
     const totalDuration = endMs - startMs;
 
-    if (totalDuration <= 0) return '';
+    if (totalDuration <= 0) {
+        return '';
+    }
 
     // 3. Process segments
     const segments: BackdropSegment[] = backdropItems.map((item, index) => {
@@ -120,6 +140,10 @@ export function renderBackdropRing(
 
     let svg = `<g class="rt-backdrop-ring">`;
 
+    // Background Circle for the whole ring (Void Style)
+    // Use a specific class to avoid global 'rt-void-cell' fill behavior
+    svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" />`;
+
     segments.forEach((seg, idx) => {
         const isOverlapping = overlaps.has(idx);
         const largeArcFlag = (seg.endAngle - seg.startAngle) > Math.PI ? 1 : 0;
@@ -132,8 +156,31 @@ export function renderBackdropRing(
 
         const d = `M ${x1} ${y1} A ${formatNumber(availableRadius)} ${formatNumber(availableRadius)} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
 
+        // Text Path Geometry (shifted outward by offset constant)
+        const textRadius = availableRadius + BACKDROP_TITLE_RADIUS_OFFSET;
+        const tx1 = formatNumber(textRadius * Math.cos(seg.startAngle));
+        const ty1 = formatNumber(textRadius * Math.sin(seg.startAngle));
+        const tx2 = formatNumber(textRadius * Math.cos(seg.endAngle));
+        const ty2 = formatNumber(textRadius * Math.sin(seg.endAngle));
+        const td = `M ${tx1} ${ty1} A ${formatNumber(textRadius)} ${formatNumber(textRadius)} 0 ${largeArcFlag} 1 ${tx2} ${ty2}`;
+
+        const TD_COL_DY = 16; // Standard row height for synopsis metadata
+
         // Unique ID for text path
         const pathId = `backdrop-arc-${idx}`;
+        const sceneUniqueKey = seg.scene.path || `${seg.scene.title || ''}::${seg.scene.number ?? ''}::${seg.scene.when ?? ''}`;
+        const sceneId = makeSceneId(0, 1, idx, true, true, sceneUniqueKey);
+
+        // Populate Synopsis
+        appendSynopsisElementForScene({
+            plugin,
+            scene: seg.scene,
+            sceneId,
+            maxTextWidth,
+            masterSubplotOrder,
+            scenes,
+            targets: synopsesElements
+        });
 
         // Classes
         // .rt-backdrop-segment
@@ -141,7 +188,7 @@ export function renderBackdropRing(
         const segmentClass = `rt-backdrop-segment ${isOverlapping ? 'rt-backdrop-overlap' : ''}`;
 
         // 1. Definition Path (invisible, for text)
-        svg += `<defs><path id="${pathId}" d="${d}" /></defs>`;
+        svg += `<defs><path id="${pathId}" d="${td}" /></defs>`;
 
         // 2. Visible Arc
         // If overlapping, we might apply a dasharray via CSS or attribute
@@ -151,20 +198,16 @@ export function renderBackdropRing(
             ? `stroke-dasharray: 10, 10; stroke-dashoffset: ${idx * 10};`
             : '';
 
-        svg += `<path d="${d}" class="${segmentClass}" style="${dashStyle}" fill="none" stroke-width="${BACKDROP_RING_HEIGHT}" />`; // SAFE: inline style used for dynamic stroke-dashoffset
+        svg += `<path id="${sceneId}" d="${d}" class="${segmentClass}" style="${dashStyle}" fill="none" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="all" data-scene-id="${sceneId}" />`; // SAFE: inline style used for dynamic stroke-dashoffset
 
         // 3. Repeating Text
-        // "micro font or bit font"
-        // Repeats title over and over
-        const title = (seg.scene.title || 'Untitled').toUpperCase();
-        // create a long string of repeating title
-        // Estimated characters needed: Arc Length / char width.
+        const title = seg.scene.title || 'Untitled';
         // Arc Length = radius * angle
-        const arcLen = availableRadius * (seg.endAngle - seg.startAngle);
+        const arcLen = textRadius * (seg.endAngle - seg.startAngle);
         // Estimate char width ~ 6px for micro font?
-        const content = (title + ' • ').repeat(Math.ceil(arcLen / (title.length * 8 + 20)));
+        const content = (title + ' • ').repeat(Math.ceil(arcLen / (title.length * 14 + 30)));
 
-        svg += `<text class="rt-backdrop-label" dy="5">
+        svg += `<text class="rt-backdrop-label">
             <textPath href="#${pathId}" startOffset="0" spacing="auto">
                 ${content}
             </textPath>

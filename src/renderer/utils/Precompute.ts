@@ -21,6 +21,8 @@ import { startPerfSegment } from '../utils/Performance';
 import { computeSubplotDominanceStates, type SubplotDominanceState } from '../components/SubplotDominanceIndicators';
 import { getReadabilityScale } from '../../utils/readability';
 
+const BACKDROP_RING_HEIGHT = 20; // px
+
 export interface PrecomputedRenderValues {
     scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } };
     masterSubplotOrder: string[];
@@ -48,12 +50,22 @@ export function computeCacheableValues(
     const forceChronological = isChronologueMode;
 
     const allSubplotsSet = new Set<string>();
+    let hasBackdrops = false;
     scenes.forEach(scene => {
-        if (scene.itemType === 'Backdrop') return;
+        if (scene.itemType === 'Backdrop') {
+            hasBackdrops = true;
+            return;
+        }
         const key = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
         allSubplotsSet.add(key);
     });
     const allSubplots = Array.from(allSubplotsSet);
+
+    // Add virtual 'Backdrop' subplot for Chronologue mode to reserve space
+    if (isChronologueMode && hasBackdrops) {
+        allSubplots.push('Backdrop');
+    }
+
     const NUM_RINGS = allSubplots.length;
 
     const shouldShowBeats = shouldRenderStoryBeats(plugin);
@@ -126,7 +138,20 @@ export function computeCacheableValues(
         return a.subplot.localeCompare(b.subplot);
     });
 
-    const masterSubplotOrder = subplotCounts.map(item => item.subplot);
+    let masterSubplotOrder = subplotCounts.map(item => item.subplot);
+
+    // For Chronologue mode, ensure 'Backdrop' is the second ring from the outside
+    // Outer Ring (ringOffset=0) is typically Main Plot or All Scenes.
+    // Backdrop (ringOffset=1) should be next.
+    if (isChronologueMode && hasBackdrops) {
+        masterSubplotOrder = masterSubplotOrder.filter(s => s !== 'Backdrop');
+        if (masterSubplotOrder.length > 0) {
+            // Insert after the first one (Main Plot)
+            masterSubplotOrder.splice(1, 0, 'Backdrop');
+        } else {
+            masterSubplotOrder.push('Backdrop');
+        }
+    }
 
     const subplotDominanceStates = computeSubplotDominanceStates({
         scenes,
@@ -140,6 +165,12 @@ export function computeCacheableValues(
             ? SUBPLOT_OUTER_RADIUS_MAINPLOT
             : SUBPLOT_OUTER_RADIUS_STANDARD[readabilityScale];
 
+    const backdropSubplotIndex = masterSubplotOrder.indexOf('Backdrop');
+    let fixedRingIndex: number | undefined;
+    if (isChronologueMode && backdropSubplotIndex !== -1) {
+        fixedRingIndex = NUM_RINGS - 1 - backdropSubplotIndex;
+    }
+
     const ringGeo = computeRingGeometry({
         size: SVG_SIZE,
         innerRadius: INNER_RADIUS,
@@ -147,7 +178,9 @@ export function computeCacheableValues(
         outerRadius: MONTH_LABEL_RADIUS,
         numRings: NUM_RINGS,
         monthTickTerminal: 0,
-        monthTextInset: 0
+        monthTextInset: 0,
+        fixedRingIndex,
+        fixedRingWidth: isChronologueMode ? BACKDROP_RING_HEIGHT : undefined
     });
 
     const maxStageColor = getMostAdvancedStageColor(scenes, plugin.settings.publishStageColors);

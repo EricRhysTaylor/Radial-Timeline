@@ -88,8 +88,11 @@ export type ChronologueOverlayOptions = {
     manuscriptOrderPositions?: Map<string, { startAngle: number; endAngle: number }>;
     ringStartRadii: number[];
     ringWidths: number[];
+    masterSubplotOrder?: string[];
     chronologueSceneEntries?: ChronologueSceneEntry[];
     durationArcRadius?: number;
+    synopsesElements?: SVGGElement[];
+    maxTextWidth?: number;
 };
 
 export function renderChronologueOverlays({
@@ -99,8 +102,11 @@ export function renderChronologueOverlays({
     manuscriptOrderPositions,
     ringStartRadii,
     ringWidths,
+    masterSubplotOrder = [],
     chronologueSceneEntries,
-    durationArcRadius = 0
+    durationArcRadius = 0,
+    synopsesElements = [],
+    maxTextWidth = 0
 }: ChronologueOverlayOptions): string {
     const stopChronoOverlays = startPerfSegment(plugin, 'timeline.chronologue-overlays');
     let svg = '';
@@ -140,17 +146,34 @@ export function renderChronologueOverlays({
         customThresholdMs
     );
 
-    // Render Backdrop Ring - positioned between the outer ring and the next subplot ring
-    const numRings = ringStartRadii.length;
+    // Render Backdrop Ring - positioned in its pre-allocated virtual lane if available
+    const backdropSubplotIndex = masterSubplotOrder.indexOf('Backdrop');
     let backdropRadius = 190; // Default central
-    if (numRings > 1) {
-        // Boundary between the outermost ring (numRings - 1) and its inner neighbor
+    const numRings = ringStartRadii.length;
+
+    if (backdropSubplotIndex !== -1) {
+        // Find the specific ring index for this subplot
+        // Ring indices go from 0 (inner) to NUM_RINGS-1 (outer)
+        const ringIndex = numRings - 1 - backdropSubplotIndex;
+        if (ringIndex >= 0 && ringIndex < numRings) {
+            // Use middle of the allocated ring
+            backdropRadius = ringStartRadii[ringIndex] + ringWidths[ringIndex] / 2;
+        }
+    } else if (numRings > 1) {
+        // Fallback for unexpected state
         backdropRadius = ringStartRadii[numRings - 1];
     } else if (numRings === 1) {
-        // If only one ring, place it just inside that ring
         backdropRadius = ringStartRadii[0] - 10;
     }
-    svg += renderBackdropRing(scenes, backdropRadius);
+
+    svg += renderBackdropRing({
+        plugin,
+        scenes,
+        availableRadius: backdropRadius,
+        synopsesElements,
+        maxTextWidth,
+        masterSubplotOrder
+    });
 
     stopChronoOverlays();
     return svg;

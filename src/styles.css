@@ -231,7 +231,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 .radial-timeline-container .rt-scene-path {
   cursor: pointer;
-  stroke: #ffffff;
+  stroke: var(--rt-color-empty);
   stroke-width: 1px;
 }
 
@@ -239,7 +239,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 .radial-timeline-container .rt-void-cell {
   fill: var(--rt-color-empty);
   fill-opacity: 0.9;
-  stroke: white;
+  stroke: var(--rt-color-empty);
   stroke-width: 1;
   cursor: default;
 }
@@ -250,13 +250,13 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 }
 
 .rt-global-fade .rt-number-square:not(.rt-selected) {
-  fill: #EFEFEF;
+  fill: var(--rt-color-empty-selected);
   stroke: none;
   stroke-width: 0;
 }
 
 .rt-global-fade .rt-number-text:not(.rt-selected) {
-  fill: #FFFFFF;
+  fill: var(--rt-color-empty);
 }
 
 .radial-timeline-container .rt-scene-path.rt-non-selected {
@@ -855,7 +855,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"]:hover .rt-storybeat-title {
   filter: url(#beatTextBg);
   /* black background halo */
-  fill: #ffffff !important;
+  fill: var(--rt-color-empty) !important;
   font-weight: 700;
   /* heavier for readability */
 }
@@ -869,8 +869,8 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 .radial-timeline-svg #rotation-toggle:hover use {
   /* Make arrow white on hover via currentColor (symbols use stroke=currentColor) */
-  color: #ffffff !important;
-  stroke: #ffffff !important;
+  color: var(--rt-color-empty) !important;
+  stroke: var(--rt-color-empty) !important;
   fill: none !important;
 }
 
@@ -935,12 +935,12 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 .scene-hover .rt-subplot-text,
 .rt-scene-group:hover .rt-subplot-text {
-  fill: #ffffff;
+  fill: var(--rt-color-empty);
 }
 
 .rt-number-square {
   pointer-events: none;
-  fill: #FFFFFF;
+  fill: var(--rt-color-empty);
   stroke: none;
   stroke-width: 0;
   paint-order: stroke fill;
@@ -1065,13 +1065,13 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 /* Scene is open: non-selected state */
 .rt-number-square.rt-scene-is-open.rt-non-selected {
-  fill: #EFEFEF !important;
+  fill: var(--rt-color-empty-selected) !important;
   stroke: none;
   stroke-width: 0;
 }
 
 .rt-number-text.rt-scene-is-open.rt-non-selected {
-  fill: #FFFFFF !important;
+  fill: var(--rt-color-empty) !important;
   opacity: 1;
 }
 
@@ -1091,7 +1091,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 }
 
 .rt-number-square.rt-non-selected {
-  fill: #EFEFEF;
+  fill: var(--rt-color-empty-selected);
   stroke: none;
   stroke-width: 0;
 }
@@ -1101,7 +1101,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 }
 
 .rt-number-text.rt-non-selected {
-  fill: #FFFFFF;
+  fill: var(--rt-color-empty);
 }
 
 .rt-search-term {
@@ -1228,7 +1228,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 /* Revisions/Pending edits text styling */
 .rt-revisions-text {
-  fill: #C0C0C0 !important;
+  fill: var(--rt-gossamer-historical-color) !important;
 }
 
 /* Search highlight parent tspan with dynamic fill */
@@ -1242,12 +1242,12 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 .rt-number-text.rt-scene-is-open {
   font-weight: normal;
-  fill: #FFFFFF;
+  fill: var(--rt-color-empty);
   /* white for default case; grade colors override via higher specificity */
 }
 
 .rt-number-text.rt-scene-is-open.rt-selected {
-  fill: #FFFFFF;
+  fill: var(--rt-color-empty);
   /* white for default case; grade colors override via higher specificity */
   font-weight: bold;
 }
@@ -1258,15 +1258,15 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 .rt-number-square.rt-search-result.rt-non-selected,
 .rt-number-square.rt-search-result.rt-scene-is-open.rt-non-selected {
-  fill: #EFEFEF !important;
+  fill: var(--rt-color-empty-selected) !important;
 }
 
 .rt-number-text.rt-search-result.rt-non-selected {
-  fill: #FFFFFF !important;
+  fill: var(--rt-color-empty) !important;
 }
 
 .rt-number-text.rt-scene-is-open.rt-search-result.rt-non-selected {
-  fill: #FFFFFF !important;
+  fill: var(--rt-color-empty) !important;
 }
 
 .rt-number-text.rt-scene-is-open.rt-search-result {
@@ -1281,7 +1281,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 }
 
 .rt-number-square.rt-has-edits {
-  fill: #C0C0C0;
+  fill: var(--rt-gossamer-historical-color);
   /* Light gray for pending edits */
 }
 
@@ -1294,11 +1294,11 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 }
 
 .rt-number-square.rt-has-edits.rt-non-selected {
-  fill: #EFEFEF !important;
+  fill: var(--rt-color-empty-selected) !important;
 }
 
 .rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
-  fill: #EFEFEF !important;
+  fill: var(--rt-color-empty-selected) !important;
 }
 
 .rt-number-square.rt-missing-when {
@@ -1308,7 +1308,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 }
 
 .rt-number-text.rt-missing-when {
-  fill: #FFFFFF !important;
+  fill: var(--rt-color-empty) !important;
   opacity: 1;
 }
 
@@ -1405,7 +1405,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 /* Hidden state - uses same gray as non-selected number squares */
 .rt-subplot-dominance-flag.is-hidden path {
-  fill: #EFEFEF;
+  fill: var(--rt-color-empty-selected);
 }
 
 /* Hide triangles in most modes - only show in base narrative view */
@@ -1452,7 +1452,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 .rt-number-text.rt-non-selected.rt-grade-A,
 .rt-number-text.rt-non-selected.rt-grade-B,
 .rt-number-text.rt-non-selected.rt-grade-C {
-  fill: #FFFFFF !important;
+  fill: var(--rt-color-empty) !important;
 }
 
 /* --- grid.css --- */
@@ -1742,7 +1742,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 .status-header:hover .status-header-letter {
   transform: scale(1.05);
-  fill: #ffffff;
+  fill: var(--rt-color-empty);
   text-decoration: underline;
 }
 
@@ -1767,7 +1767,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 .stage-header:hover .stage-header-letter {
   transform: scale(1.07);
-  fill: #ffffff;
+  fill: var(--rt-color-empty);
   text-decoration: underline;
 }
 
@@ -2117,40 +2117,65 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   /* Let clicks pass through to synopsis */
 }
 
+.rt-backdrop-ring-background {
+  stroke: var(--rt-color-empty);
+  /* Use the 'void cell' base color */
+  stroke-opacity: 0.1;
+  fill: none !important;
+}
+
 .rt-backdrop-segment {
-  stroke: var(--text-muted);
-  /* Subdued gray */
-  stroke-opacity: 0.2;
-  opacity: 0.8;
-  transition: opacity 0.2s ease, stroke-opacity 0.2s ease;
+  stroke: var(--rt-color-todo);
+  /* Use the 'todo' gray color */
+  stroke-opacity: 0.3;
+  opacity: 1;
+  transition: stroke-opacity 0.2s ease, opacity 0.2s ease;
+  cursor: pointer;
 }
 
 .rt-backdrop-segment:hover {
-  opacity: 1;
-  stroke-opacity: 0.4;
+  stroke-opacity: 0.8;
+  /* Make it 'darker' (more prominent) on hover */
 }
 
 /* Overlap pattern: Alternating visual style (stroke-dasharray handled inline for offset) */
 .rt-backdrop-overlap {
-  opacity: 0.9;
+  opacity: 1;
 }
 
 /* Repeating text label along the arc */
 .rt-backdrop-label {
   /* Use the custom bit font */
   font-family: 'hooge05_55Regular', monospace, ui-monospace, SFMono-Regular;
-  font-size: 10px;
+  font-size: 20px;
   font-weight: normal;
-  fill: var(--text-muted);
-  /* Medium gray */
+  fill: var(--rt-color-empty);
+  /* 100% White */
   text-shadow: none;
+  dominant-baseline: middle;
   pointer-events: none;
   letter-spacing: 1px;
   transition: fill 0.2s ease;
 }
 
 .rt-backdrop-segment:hover+.rt-backdrop-label {
-  fill: var(--text-normal);
+  fill: var(--rt-color-empty);
+  opacity: 1;
+}
+
+/* Shift mode compliance */
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-ring {
+  opacity: 0.15;
+  transition: opacity 0.2s ease;
+}
+
+/* Re-brighten on hover during shift mode */
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment:hover {
+  opacity: 1;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment:hover+.rt-backdrop-label {
+  opacity: 1;
 }
 
 /* --- modals.css --- */
@@ -2220,6 +2245,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   border-radius: var(--input-radius);
   height: auto;
 }
+
 .rt-confirm-modal {
   max-width: 560px;
 }
@@ -2290,7 +2316,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 .rt-zero-draft-override {
   background-color: var(--rt-color-due) !important;
   /* use defined red */
-  color: #ffffff !important;
+  color: var(--rt-color-empty) !important;
   border-color: var(--rt-color-due) !important;
 }
 
@@ -2301,6 +2327,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 .rt-zero-draft-override:focus {
   box-shadow: 0 0 0 2px rgba(208, 94, 94, 0.3);
 }
+
 /* Text Input Modal Styles */
 .rt-text-input-modal-field {
   width: 100%;
@@ -2313,6 +2340,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   gap: 8px;
   justify-content: flex-end;
 }
+
 /* Subplot Picker Modal */
 .rt-subplot-picker-modal {
   gap: 18px;
@@ -2421,7 +2449,6 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   font-size: 0.78rem;
   color: var(--text-muted);
 }
-
 
 /* --- pulse.css --- */
 .rt-gossamer-beat-outline:hover,
@@ -5024,6 +5051,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   padding: 8px 20px;
   border-radius: 999px;
 }
+
 /* Styling for the embedded README container in settings */
 .rt-manuscript-readme-container {
   padding: 0;
@@ -5045,7 +5073,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 .rt-setting-input-error {
-  border-color: #ff4444 !important;
+  border-color: var(--rt-gossamer-error-color) !important;
   background-color: rgba(255, 68, 68, 0.1) !important;
   box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2) !important;
 }
@@ -5208,6 +5236,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   border-left: 1px solid rgba(255, 255, 255, 0.3);
   opacity: 0.9;
 }
+
 /* Story structure description styling in settings */
 .rt-story-structure-selected {
   color: var(--text-success);
@@ -5247,6 +5276,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   grid-row: 2 / 3;
   margin: 0;
 }
+
 /* Utility classes for settings */
 .rt-reset-margin-padding {
   margin-top: 0 !important;
@@ -5263,7 +5293,6 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 .rt-mapping-hidden {
   display: none !important;
 }
-
 
 /* --- drag.css --- */
 .rt-drop-target-arc {

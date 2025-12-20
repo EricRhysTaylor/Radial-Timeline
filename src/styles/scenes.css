@@ -17,7 +17,7 @@
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"]:hover .rt-storybeat-title {
   filter: url(#beatTextBg);
   /* black background halo */
-  fill: #ffffff !important;
+  fill: var(--rt-color-empty) !important;
   font-weight: 700;
   /* heavier for readability */
 }
@@ -31,8 +31,8 @@
 
 .radial-timeline-svg #rotation-toggle:hover use {
   /* Make arrow white on hover via currentColor (symbols use stroke=currentColor) */
-  color: #ffffff !important;
-  stroke: #ffffff !important;
+  color: var(--rt-color-empty) !important;
+  stroke: var(--rt-color-empty) !important;
   fill: none !important;
 }
 
@@ -97,12 +97,12 @@
 
 .scene-hover .rt-subplot-text,
 .rt-scene-group:hover .rt-subplot-text {
-  fill: #ffffff;
+  fill: var(--rt-color-empty);
 }
 
 .rt-number-square {
   pointer-events: none;
-  fill: #FFFFFF;
+  fill: var(--rt-color-empty);
   stroke: none;
   stroke-width: 0;
   paint-order: stroke fill;
@@ -227,13 +227,13 @@
 
 /* Scene is open: non-selected state */
 .rt-number-square.rt-scene-is-open.rt-non-selected {
-  fill: #EFEFEF !important;
+  fill: var(--rt-color-empty-selected) !important;
   stroke: none;
   stroke-width: 0;
 }
 
 .rt-number-text.rt-scene-is-open.rt-non-selected {
-  fill: #FFFFFF !important;
+  fill: var(--rt-color-empty) !important;
   opacity: 1;
 }
 
@@ -253,7 +253,7 @@
 }
 
 .rt-number-square.rt-non-selected {
-  fill: #EFEFEF;
+  fill: var(--rt-color-empty-selected);
   stroke: none;
   stroke-width: 0;
 }
@@ -263,7 +263,7 @@
 }
 
 .rt-number-text.rt-non-selected {
-  fill: #FFFFFF;
+  fill: var(--rt-color-empty);
 }
 
 .rt-search-term {
@@ -390,7 +390,7 @@
 
 /* Revisions/Pending edits text styling */
 .rt-revisions-text {
-  fill: #C0C0C0 !important;
+  fill: var(--rt-gossamer-historical-color) !important;
 }
 
 /* Search highlight parent tspan with dynamic fill */
@@ -404,12 +404,12 @@
 
 .rt-number-text.rt-scene-is-open {
   font-weight: normal;
-  fill: #FFFFFF;
+  fill: var(--rt-color-empty);
   /* white for default case; grade colors override via higher specificity */
 }
 
 .rt-number-text.rt-scene-is-open.rt-selected {
-  fill: #FFFFFF;
+  fill: var(--rt-color-empty);
   /* white for default case; grade colors override via higher specificity */
   font-weight: bold;
 }
@@ -420,15 +420,15 @@
 
 .rt-number-square.rt-search-result.rt-non-selected,
 .rt-number-square.rt-search-result.rt-scene-is-open.rt-non-selected {
-  fill: #EFEFEF !important;
+  fill: var(--rt-color-empty-selected) !important;
 }
 
 .rt-number-text.rt-search-result.rt-non-selected {
-  fill: #FFFFFF !important;
+  fill: var(--rt-color-empty) !important;
 }
 
 .rt-number-text.rt-scene-is-open.rt-search-result.rt-non-selected {
-  fill: #FFFFFF !important;
+  fill: var(--rt-color-empty) !important;
 }
 
 .rt-number-text.rt-scene-is-open.rt-search-result {
@@ -443,7 +443,7 @@
 }
 
 .rt-number-square.rt-has-edits {
-  fill: #C0C0C0;
+  fill: var(--rt-gossamer-historical-color);
   /* Light gray for pending edits */
 }
 
@@ -456,11 +456,11 @@
 }
 
 .rt-number-square.rt-has-edits.rt-non-selected {
-  fill: #EFEFEF !important;
+  fill: var(--rt-color-empty-selected) !important;
 }
 
 .rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
-  fill: #EFEFEF !important;
+  fill: var(--rt-color-empty-selected) !important;
 }
 
 .rt-number-square.rt-missing-when {
@@ -470,7 +470,7 @@
 }
 
 .rt-number-text.rt-missing-when {
-  fill: #FFFFFF !important;
+  fill: var(--rt-color-empty) !important;
   opacity: 1;
 }
 
@@ -567,7 +567,7 @@
 
 /* Hidden state - uses same gray as non-selected number squares */
 .rt-subplot-dominance-flag.is-hidden path {
-  fill: #EFEFEF;
+  fill: var(--rt-color-empty-selected);
 }
 
 /* Hide triangles in most modes - only show in base narrative view */
@@ -614,5 +614,5 @@
 .rt-number-text.rt-non-selected.rt-grade-A,
 .rt-number-text.rt-non-selected.rt-grade-B,
 .rt-number-text.rt-non-selected.rt-grade-C {
-  fill: #FFFFFF !important;
+  fill: var(--rt-color-empty) !important;
 }

@@ -20,7 +20,7 @@
  */
 export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMappings?: Record<string, string>): Record<string, unknown> {
   const normalized: Record<string, unknown> = {};
-  
+
   // Define canonical key names (proper case with spaces)
   const keyMappings: Record<string, string> = {
     'class': 'Class',
@@ -38,6 +38,7 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
     'date': 'Date',
     'status': 'Status',
     'synopsis': 'Synopsis',
+    'end': 'End',
     'description': 'Description',
     'range': 'Range',
     'words': 'Words',
@@ -94,7 +95,7 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
     'when': 'When',
     'place': 'Place'
   };
-  
+
   // Merge custom mappings
   if (customMappings) {
     for (const [userKey, canonicalKey] of Object.entries(customMappings)) {
@@ -103,20 +104,20 @@ export function normalizeFrontmatterKeys(fm: Record<string, unknown>, customMapp
       keyMappings[normalizedKey] = canonicalKey;
     }
   }
-  
+
   // Process each key in the original frontmatter
   for (const [key, value] of Object.entries(fm)) {
     // Normalize to lowercase, remove spaces and special chars for lookup
     const normalizedKey = key.toLowerCase().replace(/[\s_-]/g, '');
-    
+
     // Find canonical name or keep original if not in mapping
     const canonicalKey = keyMappings[normalizedKey] || key;
-    
+
     // If canonical key already exists, prefer the first occurrence
     if (!(canonicalKey in normalized)) {
       normalized[canonicalKey] = value;
     }
   }
-  
+
   return normalized;
 }

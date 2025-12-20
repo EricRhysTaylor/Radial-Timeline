@@ -109,38 +109,63 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   /* Let clicks pass through to synopsis */
 }
 
+.rt-backdrop-ring-background {
+  stroke: var(--rt-color-empty);
+  /* Use the 'void cell' base color */
+  stroke-opacity: 0.1;
+  fill: none !important;
+}
+
 .rt-backdrop-segment {
-  stroke: var(--text-muted);
-  /* Subdued gray */
-  stroke-opacity: 0.2;
-  opacity: 0.8;
-  transition: opacity 0.2s ease, stroke-opacity 0.2s ease;
+  stroke: var(--rt-color-todo);
+  /* Use the 'todo' gray color */
+  stroke-opacity: 0.3;
+  opacity: 1;
+  transition: stroke-opacity 0.2s ease, opacity 0.2s ease;
+  cursor: pointer;
 }
 
 .rt-backdrop-segment:hover {
-  opacity: 1;
-  stroke-opacity: 0.4;
+  stroke-opacity: 0.8;
+  /* Make it 'darker' (more prominent) on hover */
 }
 
 /* Overlap pattern: Alternating visual style (stroke-dasharray handled inline for offset) */
 .rt-backdrop-overlap {
-  opacity: 0.9;
+  opacity: 1;
 }
 
 /* Repeating text label along the arc */
 .rt-backdrop-label {
   /* Use the custom bit font */
   font-family: 'hooge05_55Regular', monospace, ui-monospace, SFMono-Regular;
-  font-size: 10px;
+  font-size: 20px;
   font-weight: normal;
-  fill: var(--text-muted);
-  /* Medium gray */
+  fill: var(--rt-color-empty);
+  /* 100% White */
   text-shadow: none;
+  dominant-baseline: middle;
   pointer-events: none;
   letter-spacing: 1px;
   transition: fill 0.2s ease;
 }
 
 .rt-backdrop-segment:hover+.rt-backdrop-label {
-  fill: var(--text-normal);
+  fill: var(--rt-color-empty);
+  opacity: 1;
+}
+
+/* Shift mode compliance */
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-ring {
+  opacity: 0.15;
+  transition: opacity 0.2s ease;
+}
+
+/* Re-brighten on hover during shift mode */
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment:hover {
+  opacity: 1;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment:hover+.rt-backdrop-label {
+  opacity: 1;
 }

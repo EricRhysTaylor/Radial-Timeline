@@ -566,6 +566,24 @@ export function createTimelineSVG(
     // Close rotatable container
     svg += `</g>`;
 
+    let chronologueOverlaysHtml = '';
+    // Add Chronologue mode arcs
+    if (isChronologueMode) {
+        chronologueOverlaysHtml = renderChronologueOverlays({
+            plugin,
+            scenes,
+            subplotOuterRadius,
+            manuscriptOrderPositions,
+            ringStartRadii,
+            ringWidths,
+            masterSubplotOrder,
+            chronologueSceneEntries,
+            durationArcRadius: CHRONOLOGUE_DURATION_ARC_RADIUS,
+            synopsesElements,
+            maxTextWidth
+        });
+    }
+
     // Serialize synopses to string and store HTML for later insertion
     const synopsisHTML = serializeSynopsesToString(synopsesElements);
 
@@ -580,7 +598,14 @@ export function createTimelineSVG(
         publishStageColors: PUBLISH_STAGE_COLORS
     });
 
-    // Add synopses LAST so they appear on top of everything (including gossamer plots)
+    // Add synopses LAST so they appear on top of everything (including gossamer plots and Chronologue arcs)
+    svg += chronologueOverlaysHtml;
+
+    // Render boundary date labels on top of chronologue arcs
+    if (isChronologueMode && boundaryLabelsHtml) {
+        svg += boundaryLabelsHtml;
+    }
+
     svg += synopsisHTML;
 
     // Close static root container
@@ -605,25 +630,6 @@ export function createTimelineSVG(
 
     // Add help icon (bottom-right corner)
     svg += renderHelpIcon();
-
-    // Add Chronologue mode arcs
-    if (isChronologueMode) {
-        svg += renderChronologueOverlays({
-            plugin,
-            scenes,
-            subplotOuterRadius,
-            manuscriptOrderPositions,
-            ringStartRadii,
-            ringWidths,
-            chronologueSceneEntries,
-            durationArcRadius: CHRONOLOGUE_DURATION_ARC_RADIUS
-        });
-
-        // Render boundary date labels on top of chronologue arcs
-        if (boundaryLabelsHtml) {
-            svg += boundaryLabelsHtml;
-        }
-    }
 
     // Add JavaScript to handle synopsis visibility
     const scriptSection = ``;

@@ -748,6 +748,7 @@
   padding: 8px 20px;
   border-radius: 999px;
 }
+
 /* Styling for the embedded README container in settings */
 .rt-manuscript-readme-container {
   padding: 0;
@@ -769,7 +770,7 @@
 }
 
 .rt-setting-input-error {
-  border-color: #ff4444 !important;
+  border-color: var(--rt-gossamer-error-color) !important;
   background-color: rgba(255, 68, 68, 0.1) !important;
   box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2) !important;
 }
@@ -932,6 +933,7 @@
   border-left: 1px solid rgba(255, 255, 255, 0.3);
   opacity: 0.9;
 }
+
 /* Story structure description styling in settings */
 .rt-story-structure-selected {
   color: var(--text-success);
@@ -971,6 +973,7 @@
   grid-row: 2 / 3;
   margin: 0;
 }
+
 /* Utility classes for settings */
 .rt-reset-margin-padding {
   margin-top: 0 !important;

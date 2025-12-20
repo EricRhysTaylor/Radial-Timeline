@@ -120,6 +120,8 @@ export function renderRings(ctx: RingRenderContext): string {
             }
 
             const subplot = masterSubplotOrder[ringOffset];
+            if (subplot === 'Backdrop') continue; // SKIP VIRTUAL BACKDROP SUBPLOT
+
             const isOuterRing = ringOffset === 0;
 
             // --- Outer Ring Special Handling ---
