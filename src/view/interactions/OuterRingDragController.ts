@@ -102,6 +102,7 @@ export class OuterRingDragController {
     private clearHighlight(): void {
         if (this.currentTarget) {
             this.currentTarget.classList.remove('rt-drop-target');
+            this.currentTarget.style.removeProperty('--rt-drag-stroke-color');
             this.currentTarget = null;
         }
         if (this.dropTick) {
@@ -117,6 +118,9 @@ export class OuterRingDragController {
         this.clearHighlight();
         this.currentTarget = group;
         this.currentTarget.classList.add('rt-drop-target');
+        if (this.originColor) {
+            this.currentTarget.style.setProperty('--rt-drag-stroke-color', this.originColor);
+        }
         const sceneId = this.getSceneIdFromNumberGroup(group);
         if (!sceneId) return;
         const pathEl = this.svg.querySelector<SVGPathElement>(`#${this.cssEscape(sceneId)}`);
@@ -224,6 +228,9 @@ export class OuterRingDragController {
     private resetState(): void {
         this.dragging = false;
         this.sourceSceneId = null;
+        if (this.sourceGroup) {
+            this.sourceGroup.classList.remove('rt-drag-source');
+        }
         this.sourceGroup = null;
         if (this.holdTimer !== null) {
             window.clearTimeout(this.holdTimer);
@@ -238,6 +245,7 @@ export class OuterRingDragController {
         if (this.dragging || !this.sourceGroup) return;
         this.dragging = true;
         this.svg.classList.add('rt-dragging-outer');
+        this.sourceGroup.classList.add('rt-drag-source');
         this.setHighlight(this.sourceGroup);
         this.log('beginDrag', { sceneId: this.sourceSceneId });
     }

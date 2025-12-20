@@ -125,6 +125,18 @@
   cursor: grabbing;
 }
 
+/* Drag source outline */
+.number-square-group.rt-drag-source .rt-number-square {
+  stroke: var(--rt-number-stroke-color, var(--scene-color, #705DCF));
+  stroke-width: 6px;
+}
+
+/* Drop target outline - uses color from dragged source */
+.number-square-group.rt-drop-target .rt-number-square {
+  stroke: var(--rt-drag-stroke-color, var(--rt-number-stroke-color, var(--scene-color, #705DCF)));
+  stroke-width: 6px;
+}
+
 .rt-number-square[data-subplot-idx="0"] {
   --rt-number-stroke-color: var(--rt-subplot-colors-0);
 }
