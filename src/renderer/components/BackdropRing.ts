@@ -240,6 +240,9 @@ export function renderBackdropRing({
 
     // Background Circle for the whole ring (Void Style)
     // Use a specific class to avoid global 'rt-void-cell' fill behavior
+    // UPDATED: Using full ring height (BACKDROP_RING_HEIGHT) for stroke width.
+    // The "thin white border" perception might be due to anti-aliasing or contrast with adjacent rings.
+    // Ensure this stroke is centered on availableRadius.
     svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" fill="none" />`;
 
     segments.forEach((seg, idx) => {
@@ -288,18 +291,10 @@ export function renderBackdropRing({
         // 1. Definition Path (invisible, for text)
         svg += `<defs><path id="${pathId}" d="${td}" /></defs>`;
 
-        // 2. Visible Arc
-        // Add rt-scene-path class so interactions can find the ID
-        // Note: Removed dashStyle logic to prevent artifacting ("middle line")
-        // UPDATED: Using full ring height (BACKDROP_RING_HEIGHT = 20px) for the stroke width.
-        // Since stroke is centered, this fills the 20px wide lane perfectly.
-        svg += `<path id="${sceneId}" d="${d}" class="${currentSegmentClass} rt-scene-path" fill="none" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="all" data-scene-id="${sceneId}" />`;
-
-        // 2b. Box outline around the backdrop segment (like planetary calendar box)
-        // Inset the box by 1px on each side for a cleaner look
         const halfHeight = BACKDROP_RING_HEIGHT / 2;
-        const boxInnerRadius = availableRadius - halfHeight + 1; // +1px inset
-        const boxOuterRadius = availableRadius + halfHeight - 1; // -1px inset
+        // Use full height geometry without inset for solid fill
+        const boxInnerRadius = availableRadius - halfHeight;
+        const boxOuterRadius = availableRadius + halfHeight;
         const boxLargeArcFlag = (seg.endAngle - seg.startAngle) > Math.PI ? 1 : 0;
         
         // Box corners
@@ -319,33 +314,28 @@ export function renderBackdropRing({
             `A ${formatNumber(boxInnerRadius)} ${formatNumber(boxInnerRadius)} 0 ${boxLargeArcFlag} 0 ${startInnerX} ${startInnerY} ` +
             `Z`;
         
-        // Removed class "rt-backdrop-box" which had the dashed border
-        // Use inline style or a new class for the solid fill if needed, but user said "segment should remain the same fill"
-        // referring to the colored segment likely. The "ring fill" request refers to the background circle?
-        // "use a medium gray for the ring fill" -> This likely refers to the `rt-backdrop-ring-background` circle.
-        // "remove dashed border for backdrop" -> This likely refers to this box path.
-        
-        // If we remove the dashed border but keep the segment fill, we might not need this path at all if it was ONLY the border.
-        // But if this path provides the "segment" fill, we keep it without the border class.
-        // The previous code had: `svg += `<path class="rt-backdrop-box" d="${boxPath}" />`;`
-        // And `rt-backdrop-box` likely defined the border.
-        // The ACTUAL colored segment is drawn by the `d="${d}"` path above with class `rt-backdrop-segment`.
-        
-        // So I will remove this box path entirely if it was just the border, OR render it transparently if needed for hit testing?
-        // User said: "remove dashed border for backdrop".
-        // The `rt-backdrop-box` was indeed the dashed border box. I will comment it out or remove it.
-        // svg += `<path class="rt-backdrop-box" d="${boxPath}" />`;
+        // 2. Visible Segment (Filled Geometry)
+        // Replaces the stroked arc with a filled closed path geometry
+        svg += `<path id="${sceneId}" d="${boxPath}" class="${currentSegmentClass} rt-scene-path" pointer-events="all" data-scene-id="${sceneId}" />`;
         
         // 3. Repeating Text
         const title = seg.scene.title || 'Untitled';
         // Arc Length = radius * angle, minus padding (8px at each end = 16px total)
-        const textPadding = 8;
-        const arcLen = textRadius * (seg.endAngle - seg.startAngle) - (textPadding * 2);
-        // Estimate char width: font-size 20px is ~14px wide for this monospace font
-        const content = (title + ' • ').repeat(Math.ceil(arcLen / (title.length * 14 + 30)));
+        // Use full available arc length for repeat calculation
+        const textPadding = 4;
+        const totalArcLen = textRadius * (seg.endAngle - seg.startAngle);
+        const usableArcLen = Math.max(0, totalArcLen - (textPadding * 2));
+        
+        // Estimate char width more conservatively to ensure filling
+        // font-size 20px, avg char width approx 12-14px.
+        // Adding extra repeats to be safe since textPath clips overflow automatically.
+        const estimatedTextWidth = (title.length * 14) + 30; // +30 for the bullet/spacing
+        const repeatCount = Math.ceil(usableArcLen / estimatedTextWidth) + 2; // +2 buffer
+        
+        const content = (title + ' • ').repeat(repeatCount);
 
         svg += `<text class="rt-backdrop-label">
-            <textPath href="#${pathId}" startOffset="${textPadding}" spacing="auto">
+            <textPath href="#${pathId}" startOffset="${textPadding}" spacing="auto" method="align">
                 ${content}
             </textPath>
         </text>`;

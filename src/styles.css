@@ -2118,35 +2118,33 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 .rt-backdrop-ring-background {
-  stroke: var(--text-muted); /* Medium gray */
-  stroke-opacity: 0.3; /* Subtle but visible fill */
+  stroke: #666666; /* Fixed gray as requested */
+  stroke-opacity: 1; /* Fully opaque */
   fill: none !important;
 }
 
 .radial-timeline-container .rt-backdrop-segment {
-  stroke: var(--rt-color-todo);
-  /* Use the 'todo' gray color */
-  stroke-opacity: 0.3;
+  fill: #999999; /* Fixed lighter gray as requested */
+  fill-opacity: 1; /* Fully opaque */
   opacity: 1;
-  transition: stroke-opacity 0.2s ease, opacity 0.2s ease;
+  /* transition: fill-opacity 0.2s ease, opacity 0.2s ease; */
   cursor: pointer;
-  fill: none !important;
-  /* Prevent global fade from adding fill to arc strokes */
-  pointer-events: stroke !important; /* Only the stroke is the target */
+  stroke: none !important;
+  pointer-events: fill !important;
 }
 
-/* Active/hovered backdrop segment - NO FILL on hover */
+/* Active/hovered backdrop segment */
 .radial-timeline-container .rt-backdrop-segment:hover,
 .radial-timeline-container .rt-backdrop-segment.rt-selected {
-  stroke: transparent !important; /* No fill */
-  stroke-opacity: 0 !important;
-  stroke-width: 20px !important;
-  fill: none !important;
+  fill: var(--rt-max-publish-stage-color) !important;
+  fill-opacity: 0.8 !important;
+  stroke: none !important;
 }
 
 /* Box outline around backdrop segment (matches planetary calendar box style) */
 .rt-backdrop-box {
   display: none; /* Remove dashed border as requested */
+  /* transition: stroke 0.2s ease; */
 }
 
 /* Hide box during scene hover (global fade) */
@@ -2175,7 +2173,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   pointer-events: none;
   letter-spacing: 1px;
   text-transform: uppercase;
-  transition: fill 0.2s ease, opacity 0.2s ease, stroke 0.2s ease;
+  /* transition: fill 0.2s ease, opacity 0.2s ease, stroke 0.2s ease; */
 }
 
 /* Ensure textPath inherits label styling and has no decoration */
@@ -2203,8 +2201,9 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 
 /* Global Fade: When any scene is hovered, backdrop takes same non-select color as scenes */
 .radial-timeline-container .radial-timeline-svg.scene-hover .rt-backdrop-segment:not(:hover) {
-  stroke: var(--rt-color-empty-selected) !important;
-  stroke-opacity: 1 !important;
+  fill: var(--rt-color-empty-selected) !important;
+  fill-opacity: 1 !important;
+  stroke: none !important;
 }
 
 /* Backdrop labels during scene-hover: stay visible white, no stroke */
@@ -2224,18 +2223,19 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 /* Shift mode compliance */
 .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-ring {
   opacity: 0.15;
-  transition: opacity 0.2s ease;
+  /* transition: opacity 0.2s ease; */
 }
 
-/* Ensure backdrop segments never get fill during shift mode, global fade, or non-selected states.
-   Backdrop segments are arc strokes only - they should never have a fill. */
-.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment,
-.rt-global-fade .rt-backdrop-segment,
-.radial-timeline-container .rt-backdrop-segment.rt-non-selected,
-.radial-timeline-container .rt-backdrop-segment.rt-scene-is-open,
-.radial-timeline-container .rt-backdrop-segment.rt-scene-is-open.rt-non-selected {
+/* Ensure backdrop segments never get fill during shift mode.
+   But normal backdrop segments DO have fill now. Only Shift Mode should hide/dim it. */
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment {
   fill: none !important;
+  stroke: var(--text-muted); /* Fallback outline for shift mode? or just hide */
+  stroke-width: 1px;
 }
+
+/* Global fade and non-selected states just change the fill color (handled above) */
+/* .rt-global-fade .rt-backdrop-segment, ... removed empty block */
 
 /* Re-brighten on hover during shift mode */
 .radial-timeline-container .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment:hover {
