@@ -108,5 +108,49 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     planetaryProfiles: [],
     activePlanetaryProfileId: undefined,
     frontmatterMappings: {},
-    enableCustomMetadataMapping: false
+    enableCustomMetadataMapping: false,
+    sceneTemplates: {
+        base: `Class: Scene              # Type: Scene or Beat
+Act: {{Act}}              # Which act (1-3)
+When: {{When}}            # Story chronology date (YYYY-MM-DD 12:34pm)
+Duration: 2 hours         # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
+Synopsis:                 # Brief description of what happens in this scene
+Subplot: {{Subplot}}      # Single subplot (or use array format below for multiple)
+Character: {{Character}}  # Characters in the scene (use array format below for multiple)
+POV:                      # blank, first, you, third, omni, narrator, two, all, count
+Place: {{Place}}          # Location where scene takes place (use array format for multiple)
+Status: Todo              # Scene status (Todo/Working/Complete)
+Due: {{When}}             # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
+Publish Stage: Zero       # Revision stage (Zero/Author/House/Press)
+Revision: 0               # Revision count (suggest leaving blank until stage > Zero)
+Pending Edits:            # Notes for next revision (especially for zero draft mode)
+Words: 0                  # Scene word count
+Pulse Update:             # AI-generated scene pulse analysis flag`,
+        advanced: `Class: Scene
+Act: {{Act}}
+When: {{When}}
+Duration: 6 hours
+Synopsis: What happens in a few lines.
+Subplot:
+{{SubplotList}}
+
+Character:
+  - "[[{{Character}}]]"
+Place:
+  - "[[{{Place}}]]"
+Questions:                           #Analysis Block
+Reader Emotion:
+Internal: How do the characters change?
+Type:
+Shift:
+Publish Stage: Zero
+Status: Todo
+Due:
+Words:                                #Statistics
+Total Time:
+Revision: 
+Pending Edits:
+Pulse Update: No`
+    },
+    defaultSceneTemplate: 'base'
 };

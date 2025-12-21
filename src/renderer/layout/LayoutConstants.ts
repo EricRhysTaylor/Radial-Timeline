@@ -63,7 +63,7 @@ export const DRAG_DROP_TICK_OUTER_RADIUS = 796;
 export const DRAG_DROP_ARC_RADIUS = 797;
 
 /** Where subplot rings end in Chronologue mode (smaller for time details) */
-export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 740;
+export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 750;
 
 // =============================================================================
 // RADII - BACKDROP RING
@@ -73,7 +73,7 @@ export const SUBPLOT_OUTER_RADIUS_CHRONOLOGUE = 740;
 export const BACKDROP_RING_HEIGHT = 20;
 
 /** Vertical offset for the backdrop segment labels relative to ring center */
-export const BACKDROP_TITLE_RADIUS_OFFSET = -1;
+export const BACKDROP_TITLE_RADIUS_OFFSET = -2;
 
 // =============================================================================
 // RADII - OUTER LABELS AND TICKS

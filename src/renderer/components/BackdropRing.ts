@@ -240,10 +240,10 @@ export function renderBackdropRing({
 
     // Background Circle for the whole ring (Void Style)
     // Use a specific class to avoid global 'rt-void-cell' fill behavior
-    // UPDATED: Using full ring height (BACKDROP_RING_HEIGHT) for stroke width.
-    // The "thin white border" perception might be due to anti-aliasing or contrast with adjacent rings.
-    // Ensure this stroke is centered on availableRadius.
-    svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" fill="none" />`;
+    // UPDATED: User requested 18px stroke to create a border effect within the 20px reserved slot.
+    // The "thin white border" is created by the 1px gap on each side (20px slot - 18px stroke).
+    const RENDER_STROKE_WIDTH = 18;
+    svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${RENDER_STROKE_WIDTH}" pointer-events="none" fill="none" />`;
 
     segments.forEach((seg, idx) => {
         const isOverlapping = overlaps.has(idx);
@@ -291,7 +291,7 @@ export function renderBackdropRing({
         // 1. Definition Path (invisible, for text)
         svg += `<defs><path id="${pathId}" d="${td}" /></defs>`;
 
-        const halfHeight = BACKDROP_RING_HEIGHT / 2;
+        const halfHeight = RENDER_STROKE_WIDTH / 2;
         // Use full height geometry without inset for solid fill
         const boxInnerRadius = availableRadius - halfHeight;
         const boxOuterRadius = availableRadius + halfHeight;
