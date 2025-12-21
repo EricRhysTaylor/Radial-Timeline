@@ -55,6 +55,28 @@ export function buildChronologueOuterLabels(
         .filter((when): when is Date => when instanceof Date && !isNaN(when.getTime()));
     const timeSpan = validDates.length > 0 ? calculateTimeSpan(validDates) : undefined;
 
+    // DEBUG: Chronologue Outer Label Range
+    if (validDates.length > 0) {
+        // calculateTimeSpan might add padding? let's check exact dates
+        const sortedDates = validDates.slice().sort((a, b) => a.getTime() - b.getTime());
+        console.log('[Chronologue] Outer Labels Range:', {
+             start: sortedDates[0].toLocaleString(),
+             startMs: sortedDates[0].getTime(),
+             end: sortedDates[sortedDates.length - 1].toLocaleString(),
+             endMs: sortedDates[sortedDates.length - 1].getTime(),
+             count: validDates.length,
+             timeSpanTotal: timeSpan?.totalMs
+        });
+        
+        // Log first few scenes to verify positions
+        sortedScenes.slice(0, 3).forEach((s, i) => {
+             console.log(`[Chronologue] Scene [${i}] "${s.title}"`, {
+                 when: s.when?.toLocaleString(),
+                 ms: s.when?.getTime()
+             });
+        });
+    }
+
     const sceneStartAngles: number[] = [];
     let sceneAngularSize = 0;
     if (sortedScenes.length > 0) {

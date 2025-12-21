@@ -17,11 +17,17 @@ export function updateSynopsisTitleColor(synopsis: Element, sceneId: string, mod
         // Get the subplot color from the ring the scene is displayed in
         const sceneGroup = document.getElementById(sceneId)?.closest('.rt-scene-group') as HTMLElement | null;
         if (sceneGroup) {
-            const subplotIndex = sceneGroup.getAttribute('data-subplot-index');
-            if (subplotIndex) {
-                const idx = parseInt(subplotIndex, 10) % 15;
-                const varName = `--rt-subplot-colors-${idx}`;
-                color = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+            // Check for Backdrop first
+            if (sceneGroup.getAttribute('data-item-type') === 'Backdrop') {
+                // Use the max publish stage color for Backdrops
+                color = getComputedStyle(document.documentElement).getPropertyValue('--rt-max-publish-stage-color').trim();
+            } else {
+                const subplotIndex = sceneGroup.getAttribute('data-subplot-index');
+                if (subplotIndex) {
+                    const idx = parseInt(subplotIndex, 10) % 15;
+                    const varName = `--rt-subplot-colors-${idx}`;
+                    color = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+                }
             }
         }
     } else if (mode === 'subplot') {

@@ -7,7 +7,7 @@ import type { TimelineItem } from '../../types/timeline';
 import { parseDuration, calculateTimeSpan, parseWhenField } from '../../utils/date';
 import { formatNumber } from '../../utils/svg';
 import { BACKDROP_RING_HEIGHT, BACKDROP_TITLE_RADIUS_OFFSET } from '../layout/LayoutConstants';
-import type { PluginRendererFacade } from '../../utils/sceneHelpers';
+import { isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers';
 import { appendSynopsisElementForScene } from '../utils/SynopsisBuilder';
 import { makeSceneId } from '../../utils/numberSquareHelpers';
 
@@ -48,13 +48,28 @@ export function renderBackdropRing({
     const backdropItems = scenes.filter(s => s.itemType === 'Backdrop' && s.when && (s.Duration || s.End));
     if (backdropItems.length === 0) return '';
 
-    // 2. Identify Time Span of the *entire* View (not just backdrop items)
-    // IMPORTANT: Per user request, Backdrop items MUST NOT influence the timeline range.
-    // The range is determined purely by 'Scene' type items.
+    // 2. Identify Time Span of the *entire* View
+    // IMPORTANT: Per user request, Backdrop items must NOT influence the timeline range.
+    // However, we must use the exact same filtering as Chronologue.ts to ensure alignment.
+    // This allows scenes with undefined itemType (which default to Scene) to define the range.
     const allValidDates = scenes
-        .filter(s => s.itemType === 'Scene')
+        .filter(s => !isBeatNote(s) && s.itemType !== 'Backdrop')
         .map(s => s.when)
         .filter((d): d is Date => d instanceof Date && !isNaN(d.getTime()));
+
+    // DEBUG: Range Calculation
+    if (allValidDates.length > 0) {
+        const sorted = allValidDates.slice().sort((a, b) => a.getTime() - b.getTime());
+        console.log('[BackdropRing] Time Span Range:', {
+            start: sorted[0].toLocaleString(),
+            startMs: sorted[0].getTime(),
+            end: sorted[sorted.length - 1].toLocaleString(),
+            endMs: sorted[sorted.length - 1].getTime(),
+            count: allValidDates.length
+        });
+    } else {
+        console.log('[BackdropRing] No valid dates found for range.');
+    }
 
     if (allValidDates.length === 0) {
         return '';
@@ -68,19 +83,85 @@ export function renderBackdropRing({
 
     const startMs = earliest.getTime();
     const endMs = latest.getTime();
-    const totalDuration = endMs - startMs;
 
-    if (totalDuration <= 0) {
-        return '';
-    }
+    // Removed unused totalDuration check to fix linting error
+    // const totalDuration = endMs - startMs;
+    // if (totalDuration <= 0) return '';
 
     // 3. Process segments
+    // IMPORTANT: The `Chronologue.ts` and `generateChronologicalTicks` logic positions scenes evenly around the circle
+    // based on their index (equal angular spacing), NOT proportional to time.
+    // Therefore, mapping Backdrop time directly to angle using `mapTimeToAngle` (linear time interpolation) is INCORRECT
+    // because the scene ring is NOT linear time. It is index-based.
+
+    // To align the Backdrop with the scenes, we must find where the Backdrop's start/end dates fall within the
+    // sorted list of scenes and interpolate between the angular positions of those scenes.
+
+    // Sort valid dates/scenes chronologically to match the ring layout
+    const sortedScenes = scenes
+        .filter(s => !isBeatNote(s) && s.itemType !== 'Backdrop' && s.when && !isNaN(s.when.getTime()))
+        .sort((a, b) => a.when!.getTime() - b.when!.getTime());
+
+    if (sortedScenes.length === 0) return '';
+
+    // Helper: Map a timestamp to an angle by interpolating between scene indices
+    // The scene ring maps scenes to angles: Start = -PI/2, End = 3PI/2.
+    // Each scene occupies `totalAngle / numScenes`.
+    // Scene[i] starts at `startAngle + (i * angularSize)`.
+    const startAngle = -Math.PI / 2;
+    const endAngle = (3 * Math.PI) / 2;
+    const totalAngle = endAngle - startAngle;
+    const angularSize = totalAngle / sortedScenes.length;
+
+    function mapTimestampToSceneIndexAngle(timeMs: number): number {
+        // Find the index of the scene just before this time
+        let prevIndex = -1;
+        for (let i = 0; i < sortedScenes.length; i++) {
+            if (sortedScenes[i].when!.getTime() <= timeMs) {
+                prevIndex = i;
+            } else {
+                break;
+            }
+        }
+
+        // If before the first scene
+        if (prevIndex === -1) {
+             // For backdrops starting before the first scene, we can clamp to the start (as requested)
+             // or project backwards. Since "clampedStart" handles the bounding, if we are here,
+             // it means we are effectively at index 0.
+             // BUT: We want to support time-based interpolation between scenes if possible.
+             // If we are strictly index-based, "time" between Scene A and Scene B is linear only between their indices.
+             return startAngle;
+        }
+
+        // If after the last scene
+        if (prevIndex === sortedScenes.length - 1) {
+            return startAngle + (prevIndex * angularSize) + angularSize; // End of last scene
+        }
+
+        // Interpolate between Scene[i] and Scene[i+1]
+        const prevScene = sortedScenes[prevIndex];
+        const nextScene = sortedScenes[prevIndex + 1];
+        const prevTime = prevScene.when!.getTime();
+        const nextTime = nextScene.when!.getTime();
+        
+        const segmentDuration = nextTime - prevTime;
+        // Avoid division by zero if scenes are at same time
+        const progress = segmentDuration > 0 ? (timeMs - prevTime) / segmentDuration : 0;
+        
+        // The gap between scene starts is `angularSize`.
+        // Scene[i] starts at `angle`. Scene[i+1] starts at `angle + angularSize`.
+        // So we interpolate within that angular slice.
+        const prevAngle = startAngle + (prevIndex * angularSize);
+        return prevAngle + (progress * angularSize);
+    }
+
+
     const segments: BackdropSegment[] = backdropItems.map((item, index) => {
         const itemStart = item.when!.getTime();
-
+        
         let itemEnd: number;
         if (item.End) {
-            // Parse End field (e.g., "2085-04-15" or "04/15/2085")
             const parsedEnd = parseWhenField(item.End);
             itemEnd = parsedEnd ? parsedEnd.getTime() : itemStart;
         } else {
@@ -88,19 +169,36 @@ export function renderBackdropRing({
             itemEnd = itemStart + duration;
         }
 
-        // Clamp to view range so rings are only plotted where they overlap with scenes
-        const clampedStart = Math.max(itemStart, startMs);
-        const clampedEnd = Math.min(itemEnd, endMs);
+        // Clamp to valid date range (though range is now technically discrete scenes)
+        // We use the start/end timestamps of the first/last scene as the bounding box
+        const viewStartMs = sortedScenes[0].when!.getTime();
+        const viewEndMs = sortedScenes[sortedScenes.length - 1].when!.getTime();
 
-        // If the item is entirely outside the scene range, we'll return null and filter it
-        if (clampedStart >= clampedEnd) {
-            return null;
-        }
+        const clampedStartMs = Math.max(itemStart, viewStartMs);
+        const clampedEndMs = Math.min(itemEnd, viewEndMs);
+
+        // Filter out if strictly outside
+        if (clampedStartMs >= clampedEndMs && itemStart < viewStartMs && itemEnd < viewStartMs) return null;
+        if (clampedStartMs >= clampedEndMs && itemStart > viewEndMs) return null;
+
+        // Ensure we at least show a sliver if it overlaps a single point or is very short but valid
+        // Actually, if clampedStart == clampedEnd, it's a point. Backdrop usually implies duration.
+        // Let's allow it.
+
+        const computedStartAngle = mapTimestampToSceneIndexAngle(clampedStartMs);
+        const computedEndAngle = mapTimestampToSceneIndexAngle(clampedEndMs);
+
+        console.log(`[BackdropRing] Item "${item.title}" mapped`, {
+             start: new Date(clampedStartMs).toLocaleString(),
+             end: new Date(clampedEndMs).toLocaleString(),
+             startAngleDeg: (computedStartAngle * 180 / Math.PI).toFixed(1),
+             endAngleDeg: (computedEndAngle * 180 / Math.PI).toFixed(1)
+        });
 
         return {
             scene: item,
-            startAngle: mapTimeToAngle(clampedStart, startMs, endMs),
-            endAngle: mapTimeToAngle(clampedEnd, startMs, endMs)
+            startAngle: computedStartAngle,
+            endAngle: computedEndAngle
         };
     }).filter((seg): seg is BackdropSegment => seg !== null);
 
@@ -142,7 +240,7 @@ export function renderBackdropRing({
 
     // Background Circle for the whole ring (Void Style)
     // Use a specific class to avoid global 'rt-void-cell' fill behavior
-    svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" />`;
+    svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" fill="none" />`;
 
     segments.forEach((seg, idx) => {
         const isOverlapping = overlaps.has(idx);
@@ -191,14 +289,11 @@ export function renderBackdropRing({
         svg += `<defs><path id="${pathId}" d="${td}" /></defs>`;
 
         // 2. Visible Arc
-        // If overlapping, we apply alternating dashoffset via inline style
-        // SAFE: inline style used for dynamic stroke-dashoffset that varies per element based on index
-        const dashStyle = isOverlapping
-            ? `stroke-dasharray: 10, 10; stroke-dashoffset: ${idx * 10};`
-            : '';
-
         // Add rt-scene-path class so interactions can find the ID
-        svg += `<path id="${sceneId}" d="${d}" class="${currentSegmentClass} rt-scene-path" style="${dashStyle}" fill="none" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="all" data-scene-id="${sceneId}" />`; // SAFE: inline style used for dynamic stroke-dashoffset
+        // Note: Removed dashStyle logic to prevent artifacting ("middle line")
+        // UPDATED: Using full ring height (BACKDROP_RING_HEIGHT = 20px) for the stroke width.
+        // Since stroke is centered, this fills the 20px wide lane perfectly.
+        svg += `<path id="${sceneId}" d="${d}" class="${currentSegmentClass} rt-scene-path" fill="none" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="all" data-scene-id="${sceneId}" />`;
 
         // 2b. Box outline around the backdrop segment (like planetary calendar box)
         // Inset the box by 1px on each side for a cleaner look
@@ -224,8 +319,23 @@ export function renderBackdropRing({
             `A ${formatNumber(boxInnerRadius)} ${formatNumber(boxInnerRadius)} 0 ${boxLargeArcFlag} 0 ${startInnerX} ${startInnerY} ` +
             `Z`;
         
-        svg += `<path class="rt-backdrop-box" d="${boxPath}" />`;
-
+        // Removed class "rt-backdrop-box" which had the dashed border
+        // Use inline style or a new class for the solid fill if needed, but user said "segment should remain the same fill"
+        // referring to the colored segment likely. The "ring fill" request refers to the background circle?
+        // "use a medium gray for the ring fill" -> This likely refers to the `rt-backdrop-ring-background` circle.
+        // "remove dashed border for backdrop" -> This likely refers to this box path.
+        
+        // If we remove the dashed border but keep the segment fill, we might not need this path at all if it was ONLY the border.
+        // But if this path provides the "segment" fill, we keep it without the border class.
+        // The previous code had: `svg += `<path class="rt-backdrop-box" d="${boxPath}" />`;`
+        // And `rt-backdrop-box` likely defined the border.
+        // The ACTUAL colored segment is drawn by the `d="${d}"` path above with class `rt-backdrop-segment`.
+        
+        // So I will remove this box path entirely if it was just the border, OR render it transparently if needed for hit testing?
+        // User said: "remove dashed border for backdrop".
+        // The `rt-backdrop-box` was indeed the dashed border box. I will comment it out or remove it.
+        // svg += `<path class="rt-backdrop-box" d="${boxPath}" />`;
+        
         // 3. Repeating Text
         const title = seg.scene.title || 'Untitled';
         // Arc Length = radius * angle, minus padding (8px at each end = 16px total)

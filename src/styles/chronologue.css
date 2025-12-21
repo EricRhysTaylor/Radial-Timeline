@@ -110,9 +110,8 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 .rt-backdrop-ring-background {
-  stroke: var(--rt-color-empty);
-  /* Match 'rt-void-cell' density for a cohesive "empty" lane */
-  stroke-opacity: 0.9;
+  stroke: var(--text-muted); /* Medium gray */
+  stroke-opacity: 0.3; /* Subtle but visible fill */
   fill: none !important;
 }
 
@@ -125,23 +124,21 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   cursor: pointer;
   fill: none !important;
   /* Prevent global fade from adding fill to arc strokes */
+  pointer-events: stroke !important; /* Only the stroke is the target */
 }
 
-/* Active/hovered backdrop segment - darker gray fill */
+/* Active/hovered backdrop segment - NO FILL on hover */
 .radial-timeline-container .rt-backdrop-segment:hover,
 .radial-timeline-container .rt-backdrop-segment.rt-selected {
-  stroke: #666666 !important;
-  stroke-opacity: 1 !important;
+  stroke: transparent !important; /* No fill */
+  stroke-opacity: 0 !important;
+  stroke-width: 20px !important;
+  fill: none !important;
 }
 
 /* Box outline around backdrop segment (matches planetary calendar box style) */
 .rt-backdrop-box {
-  fill: none;
-  stroke: var(--rt-color-empty);
-  stroke-dasharray: 4 3;
-  stroke-width: 2;
-  pointer-events: none;
-  transition: stroke 0.2s ease;
+  display: none; /* Remove dashed border as requested */
 }
 
 /* Hide box during scene hover (global fade) */
@@ -185,15 +182,15 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   stroke: none;
 }
 
-/* On backdrop hover: text and box turn dark gray */
+/* On backdrop hover: text and box turn to max publish stage color */
 .rt-scene-group[data-item-type="Backdrop"]:hover .rt-backdrop-label {
-  fill: #666666 !important;
+  fill: var(--rt-max-publish-stage-color) !important;
   opacity: 1 !important;
   stroke: none !important;
 }
 
 .rt-scene-group[data-item-type="Backdrop"]:hover .rt-backdrop-box {
-  stroke: #666666 !important;
+  stroke: var(--rt-max-publish-stage-color) !important;
 }
 
 /* Global Fade: When any scene is hovered, backdrop takes same non-select color as scenes */
@@ -240,4 +237,10 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 /* Shift mode: brighten label when hovering backdrop */
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Backdrop"]:hover .rt-backdrop-label {
   opacity: 1;
+}
+
+/* Shift mode: Disable interactivity for backdrop */
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Backdrop"],
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Backdrop"] * {
+  pointer-events: none !important;
 }
