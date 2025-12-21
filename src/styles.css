@@ -2163,7 +2163,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   font-family: 'hooge05_55Regular', monospace, ui-monospace, SFMono-Regular;
   font-size: 20px;
   font-weight: normal;
-  fill: var(--rt-color-empty);
+  fill: #666666; /* Match ring fill color as requested */
   /* 100% White */
   stroke: none;
   /* NO STROKE BY DEFAULT */
