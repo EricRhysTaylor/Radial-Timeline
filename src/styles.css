@@ -2020,7 +2020,7 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 
 /* Chronologue time labels */
 .rt-chronologue-time-label {
-  font-size: 10px;
+  font-size: 20px;
   fill: var(--text-muted);
   opacity: 0.7;
   pointer-events: none;
@@ -2124,24 +2124,41 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   fill: none !important;
 }
 
-.rt-backdrop-segment {
+.radial-timeline-container .rt-backdrop-segment {
   stroke: var(--rt-color-todo);
   /* Use the 'todo' gray color */
   stroke-opacity: 0.3;
   opacity: 1;
   transition: stroke-opacity 0.2s ease, opacity 0.2s ease;
   cursor: pointer;
+  fill: none !important;
+  /* Prevent global fade from adding fill to arc strokes */
 }
 
-.rt-backdrop-segment:hover,
-.rt-backdrop-segment.rt-selected {
-  stroke: var(--rt-color-empty) !important;
+/* Active/hovered backdrop segment - darker gray fill */
+.radial-timeline-container .rt-backdrop-segment:hover,
+.radial-timeline-container .rt-backdrop-segment.rt-selected {
+  stroke: #666666 !important;
   stroke-opacity: 1 !important;
-  /* Full Highlight */
+}
+
+/* Box outline around backdrop segment (matches planetary calendar box style) */
+.rt-backdrop-box {
+  fill: none;
+  stroke: var(--rt-color-empty);
+  stroke-dasharray: 4 3;
+  stroke-width: 2;
+  pointer-events: none;
+  transition: stroke 0.2s ease;
+}
+
+/* Hide box during scene hover (global fade) */
+.radial-timeline-svg.scene-hover .rt-backdrop-box {
+  stroke: transparent;
 }
 
 /* Overlap pattern: Alternating visual style (stroke-dasharray handled inline for offset) */
-.rt-backdrop-overlap {
+.radial-timeline-container .rt-backdrop-overlap {
   opacity: 1;
 }
 
@@ -2156,6 +2173,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   stroke: none;
   /* NO STROKE BY DEFAULT */
   text-shadow: none;
+  text-decoration: none;
   dominant-baseline: middle;
   pointer-events: none;
   letter-spacing: 1px;
@@ -2163,40 +2181,47 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   transition: fill 0.2s ease, opacity 0.2s ease, stroke 0.2s ease;
 }
 
-.rt-backdrop-segment:hover+.rt-backdrop-label,
-.rt-backdrop-segment.rt-selected+.rt-backdrop-label {
-  fill: var(--rt-color-empty) !important;
+/* Ensure textPath inherits label styling and has no decoration */
+.rt-backdrop-label textPath {
+  text-decoration: none;
+  pointer-events: none;
+}
+
+/* Ensure definition paths are never rendered (SVG defs are invisible by default) */
+.rt-scene-group[data-item-type="Backdrop"] defs path {
+  fill: none;
+  stroke: none;
+}
+
+/* On backdrop hover: text and box turn dark gray */
+.rt-scene-group[data-item-type="Backdrop"]:hover .rt-backdrop-label {
+  fill: #666666 !important;
   opacity: 1 !important;
-  stroke: #000000 !important;
-  stroke-width: 3px !important;
-  stroke-linejoin: round !important;
-  stroke-linecap: round !important;
-  paint-order: stroke fill !important;
-}
-
-/* Global Fade: When any scene is hovered, stay "light gray" (void-like) 
-   instead of turning dark/transparent, to provide a clean base for synopsis */
-.radial-timeline-svg.scene-hover .rt-backdrop-segment:not(:hover) {
-  stroke: var(--rt-color-empty-selected) !important;
-  stroke-opacity: 0.9 !important;
-}
-
-/* Dim all labels in scene-hover by default to clear space for synopsis */
-.radial-timeline-svg.scene-hover .rt-backdrop-label {
-  fill: var(--rt-color-empty-selected) !important;
-  opacity: 0.1 !important;
   stroke: none !important;
 }
 
-.radial-timeline-svg.scene-hover .rt-backdrop-segment:hover+.rt-backdrop-label {
+.rt-scene-group[data-item-type="Backdrop"]:hover .rt-backdrop-box {
+  stroke: #666666 !important;
+}
+
+/* Global Fade: When any scene is hovered, backdrop takes same non-select color as scenes */
+.radial-timeline-container .radial-timeline-svg.scene-hover .rt-backdrop-segment:not(:hover) {
+  stroke: var(--rt-color-empty-selected) !important;
+  stroke-opacity: 1 !important;
+}
+
+/* Backdrop labels during scene-hover: stay visible white, no stroke */
+.radial-timeline-svg.scene-hover .rt-backdrop-label {
   fill: var(--rt-color-empty) !important;
   opacity: 1 !important;
-  stroke: #000000 !important;
+  stroke: none !important;
 }
+
+/* Highlighted label in scene-hover handled above in consolidated rule */
 
 .radial-timeline-svg.scene-hover .rt-backdrop-ring-background {
   stroke: var(--rt-color-empty-selected) !important;
-  stroke-opacity: 0.9 !important;
+  stroke-opacity: 1 !important;
 }
 
 /* Shift mode compliance */
@@ -2205,12 +2230,23 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   transition: opacity 0.2s ease;
 }
 
+/* Ensure backdrop segments never get fill during shift mode, global fade, or non-selected states.
+   Backdrop segments are arc strokes only - they should never have a fill. */
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment,
+.rt-global-fade .rt-backdrop-segment,
+.radial-timeline-container .rt-backdrop-segment.rt-non-selected,
+.radial-timeline-container .rt-backdrop-segment.rt-scene-is-open,
+.radial-timeline-container .rt-backdrop-segment.rt-scene-is-open.rt-non-selected {
+  fill: none !important;
+}
+
 /* Re-brighten on hover during shift mode */
-.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment:hover {
+.radial-timeline-container .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment:hover {
   opacity: 1;
 }
 
-.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment:hover+.rt-backdrop-label {
+/* Shift mode: brighten label when hovering backdrop */
+.radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Backdrop"]:hover .rt-backdrop-label {
   opacity: 1;
 }
 

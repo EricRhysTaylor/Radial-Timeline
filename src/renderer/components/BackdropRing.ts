@@ -200,15 +200,42 @@ export function renderBackdropRing({
         // Add rt-scene-path class so interactions can find the ID
         svg += `<path id="${sceneId}" d="${d}" class="${currentSegmentClass} rt-scene-path" style="${dashStyle}" fill="none" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="all" data-scene-id="${sceneId}" />`; // SAFE: inline style used for dynamic stroke-dashoffset
 
+        // 2b. Box outline around the backdrop segment (like planetary calendar box)
+        // Inset the box by 1px on each side for a cleaner look
+        const halfHeight = BACKDROP_RING_HEIGHT / 2;
+        const boxInnerRadius = availableRadius - halfHeight + 1; // +1px inset
+        const boxOuterRadius = availableRadius + halfHeight - 1; // -1px inset
+        const boxLargeArcFlag = (seg.endAngle - seg.startAngle) > Math.PI ? 1 : 0;
+        
+        // Box corners
+        const startInnerX = formatNumber(boxInnerRadius * Math.cos(seg.startAngle));
+        const startInnerY = formatNumber(boxInnerRadius * Math.sin(seg.startAngle));
+        const startOuterX = formatNumber(boxOuterRadius * Math.cos(seg.startAngle));
+        const startOuterY = formatNumber(boxOuterRadius * Math.sin(seg.startAngle));
+        const endInnerX = formatNumber(boxInnerRadius * Math.cos(seg.endAngle));
+        const endInnerY = formatNumber(boxInnerRadius * Math.sin(seg.endAngle));
+        const endOuterX = formatNumber(boxOuterRadius * Math.cos(seg.endAngle));
+        const endOuterY = formatNumber(boxOuterRadius * Math.sin(seg.endAngle));
+        
+        // Full box path: start outer -> arc to end outer -> line to end inner -> arc back to start inner -> close
+        const boxPath = `M ${startOuterX} ${startOuterY} ` +
+            `A ${formatNumber(boxOuterRadius)} ${formatNumber(boxOuterRadius)} 0 ${boxLargeArcFlag} 1 ${endOuterX} ${endOuterY} ` +
+            `L ${endInnerX} ${endInnerY} ` +
+            `A ${formatNumber(boxInnerRadius)} ${formatNumber(boxInnerRadius)} 0 ${boxLargeArcFlag} 0 ${startInnerX} ${startInnerY} ` +
+            `Z`;
+        
+        svg += `<path class="rt-backdrop-box" d="${boxPath}" />`;
+
         // 3. Repeating Text
         const title = seg.scene.title || 'Untitled';
-        // Arc Length = radius * angle
-        const arcLen = textRadius * (seg.endAngle - seg.startAngle);
+        // Arc Length = radius * angle, minus padding (8px at each end = 16px total)
+        const textPadding = 8;
+        const arcLen = textRadius * (seg.endAngle - seg.startAngle) - (textPadding * 2);
         // Estimate char width: font-size 20px is ~14px wide for this monospace font
         const content = (title + ' • ').repeat(Math.ceil(arcLen / (title.length * 14 + 30)));
 
         svg += `<text class="rt-backdrop-label">
-            <textPath href="#${pathId}" startOffset="0" spacing="auto">
+            <textPath href="#${pathId}" startOffset="${textPadding}" spacing="auto">
                 ${content}
             </textPath>
         </text>`;
