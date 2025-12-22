@@ -21,6 +21,7 @@ try {
   // Run the actual build steps
   console.log('\n[build] Running build steps...\n');
   run('node show-scripts.mjs');
+  run('node scripts/bundle-css.mjs'); // Generate CSS before checking it
   run('npx tsc --noEmit');
   run('node code-quality-check.mjs src/main.ts --quiet');
   run('node check-css-duplicates.mjs --quiet');

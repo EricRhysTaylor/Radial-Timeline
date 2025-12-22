@@ -32,9 +32,14 @@ export function generateSceneContent(template: string, data: SceneCreationData):
     // {{SceneNumber}}
     content = content.replace(/{{SceneNumber}}/g, data.sceneNumber.toString());
 
-    // {{Subplot}} - inline comma separated
-    const subplotString = data.subplots.join(', ');
-    content = content.replace(/{{Subplot}}/g, subplotString);
+    // {{Subplot}} - inline YAML (string for 1, array for >1)
+    const yamlEscapeDoubleQuoted = (value: string) =>
+        value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const yamlInlineArray = (values: string[]) =>
+        `[${values.map(v => `"${yamlEscapeDoubleQuoted(v)}"`).join(', ')}]`;
+    const subplotInline =
+        data.subplots.length <= 1 ? (data.subplots[0] ?? '') : yamlInlineArray(data.subplots);
+    content = content.replace(/{{Subplot}}/g, subplotInline);
 
     // {{SubplotList}} - YAML array format
     // Indent with 2 spaces for nested list

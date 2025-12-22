@@ -23,7 +23,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     // Intro Paragraph
     const intro = body.createEl('p', { cls: 'rt-welcome-paragraph' });
-    intro.createSpan({ text: 'Radial Timeline is a visual map of your story in a concise radial format, revealing structure, rhythm, and scope. It works in four focused modes, each answering a different creative question.' });
+    intro.createSpan({ text: 'Radial Timeline is a visual map of your story in a concise radial format, revealing structure, status, and meta. It works in four focused modes, each answering a different creative question.' });
 
     const modesList = body.createEl('ul', { cls: 'rt-welcome-list' });
     const addMode = (label: string, description: string) => {
@@ -49,7 +49,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const cta = body.createEl('p', {
         cls: 'rt-welcome-paragraph',
-        text: 'Bug reporting & Get Help buttons in the bottom corners of the Radial Timeline window are always available. To get started, you need to create your first scene.'
+        text: 'Bug reporting & Get Help buttons in the bottom corners of the Radial Timeline window are always available. The Book Designer can help you get started by setting up scenes and subplots.'
     });
 
     // Button Container
@@ -57,7 +57,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     // Book Designer only
     const bookBtn = new ButtonComponent(buttonContainer)
-        .setButtonText('Book designer')
+        .setButtonText('Book Designer')
         .setCta()
         .onClick(() => {
             new BookDesignerModal(plugin.app, plugin).open();

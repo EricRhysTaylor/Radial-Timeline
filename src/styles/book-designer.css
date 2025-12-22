@@ -44,6 +44,35 @@
     min-height: unset;
 }
 
+/* Stacked Setting (Label top, Input bottom) */
+.rt-book-designer-modal .rt-setting-stacked {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.rt-book-designer-modal .rt-setting-stacked .setting-item-info {
+    flex: 0 0 auto;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.rt-book-designer-modal .rt-setting-stacked .setting-item-control {
+    flex: 1 1 auto;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: flex;
+}
+
+.rt-book-designer-modal .rt-setting-stacked .setting-item-control textarea {
+    width: 100%;
+    resize: none;
+    min-height: 100px; /* Ensure enough height for the textarea */
+}
+
 .rt-book-designer-modal .rt-manuscript-pill-row {
     gap: 8px;
 }
@@ -63,6 +92,90 @@
 @media (max-width: 760px) {
     .rt-book-designer-modal .rt-manuscript-duo-row {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Grouped blocks (single border spanning multiple columns) */
+.rt-book-designer-modal .rt-manuscript-group-block {
+    width: 100%;
+}
+
+.rt-book-designer-modal .rt-manuscript-duo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    align-items: stretch;
+    width: 100%;
+}
+
+.rt-book-designer-modal .rt-manuscript-trio-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 200px;
+    gap: 0;
+    align-items: start;
+    width: 100%;
+}
+
+@media (max-width: 860px) {
+    .rt-book-designer-modal .rt-manuscript-trio-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Inner settings inside grouped blocks: remove their own borders so the group border is the one you see */
+.rt-book-designer-modal .rt-manuscript-group-setting {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding: 0 12px;
+    height: 100%;
+    margin: 0 !important;
+}
+
+/* Specific padding for Trio grid to space away from vertical borders */
+/* Col 1 (Subplots): Padding right for border space */
+.rt-book-designer-modal .rt-manuscript-trio-grid > .rt-manuscript-group-setting:nth-child(1) {
+    padding-right: 18px;
+    padding-left: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Col 2 (Characters): Padding left/right for border space */
+.rt-book-designer-modal .rt-manuscript-trio-grid > .rt-manuscript-group-setting:nth-child(2) {
+    padding-left: 18px;
+    padding-right: 18px;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+
+/* Force removal of top borders that might come from Obsidian theme */
+.rt-book-designer-modal .rt-manuscript-group-setting.setting-item {
+    border-top: none !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+/* Specific padding for Duo grid to space away from vertical borders */
+/* Col 1: Padding right for border space */
+.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(1) {
+    padding-right: 18px;
+    padding-left: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Col 2: Padding left for border space */
+.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
+    padding-left: 18px;
+    padding-right: 0;
+}
+
+@media (max-width: 860px) {
+    .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:first-child,
+    .rt-book-designer-modal .rt-manuscript-trio-grid > .rt-manuscript-group-setting:nth-child(1),
+    .rt-book-designer-modal .rt-manuscript-trio-grid > .rt-manuscript-group-setting:nth-child(2) {
+        border-right: none;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 }
 
@@ -124,3 +237,50 @@
     min-width: 150px;
 }
 
+/* Preview column */
+.rt-book-designer-modal .rt-manuscript-preview-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+    /* Combine padding here to avoid duplicate selector rules */
+    padding-left: 18px;
+    padding-right: 0;
+}
+
+.rt-book-designer-modal .rt-manuscript-preview-title {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.rt-book-designer-modal .rt-manuscript-preview-host {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.rt-book-designer-modal .rt-manuscript-preview-svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.rt-book-designer-modal .rt-manuscript-preview-guide {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.10);
+    stroke-width: 1;
+}
+
+.rt-book-designer-modal .rt-manuscript-preview-slice {
+    stroke: rgba(0, 0, 0, 0.25);
+    stroke-width: 0.8;
+}
+
+.rt-book-designer-modal .rt-manuscript-preview-core {
+    fill: rgba(0, 0, 0, 0.0);
+    stroke: rgba(255, 255, 255, 0.10);
+    stroke-width: 1;
+}
