@@ -9,6 +9,8 @@ export interface SceneCreationData {
     subplots: string[];
     character: string;
     place: string;
+    characterList?: string[];
+    placeList?: string[];
 }
 
 /**
@@ -51,6 +53,20 @@ export function generateSceneContent(template: string, data: SceneCreationData):
 
     // {{Place}}
     content = content.replace(/{{Place}}/g, data.place);
+
+    // {{CharacterList}} - YAML array format (list)
+    const characterListString = (data.characterList && data.characterList.length > 0
+        ? data.characterList
+        : [data.character].filter(Boolean)
+    ).map(c => `  - "${c}"`).join('\n');
+    content = content.replace(/{{CharacterList}}/g, characterListString);
+
+    // {{PlaceList}} - YAML array format (list)
+    const placeListString = (data.placeList && data.placeList.length > 0
+        ? data.placeList
+        : [data.place].filter(Boolean)
+    ).map(p => `  - "${p}"`).join('\n');
+    content = content.replace(/{{PlaceList}}/g, placeListString);
 
     return content;
 }

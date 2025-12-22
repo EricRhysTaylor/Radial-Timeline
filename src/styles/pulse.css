@@ -971,6 +971,7 @@
   gap: 12px;
   justify-content: flex-end;
   margin-top: 26px;
+  padding-right: 18px; /* Align with content padding */
 }
 
 .rt-success-text {

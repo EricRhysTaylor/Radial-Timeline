@@ -132,22 +132,21 @@ Duration: 6 hours
 Synopsis: What happens in a few lines.
 Subplot:
 {{SubplotList}}
-
 Character:
-  - "[[{{Character}}]]"
+{{CharacterList}}
 Place:
-  - "[[{{Place}}]]"
-Questions:                           #Analysis Block
+{{PlaceList}}
+Questions:                           # Analysis Block
 Reader Emotion:
 Internal: How do the characters change?
 Type:
 Shift:
 Publish Stage: Zero
 Status: Todo
-Due:                                  #Target completion date (YYYY-MM-DD).
-Words:                                #Statistics
-Total Time:                           #Tracked time spent writing scene
-Revision:                             #Revision count (suggest leaving blank until stage > Zero)
+Due:                                  # Target completion date (YYYY-MM-DD).
+Words:                                # Statistics
+Total Time:                           # Tracked time spent writing scene
+Revision:                             # Revision count (suggest leaving blank until stage > Zero)
 Pending Edits:
 Pulse Update: No`
     },

@@ -49,7 +49,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const cta = body.createEl('p', {
         cls: 'rt-welcome-paragraph',
-        text: 'Bug reporting & Get Help buttons in the bottom corners of the Radial Timeline window are always available. The Book Designer can help you get started by setting up scenes and subplots.'
+        text: 'Bug reporting & Get Help buttons in the bottom corners of the Radial Timeline window are always available. The Book Designer can help you begin by setting up a starter set of scenes.'
     });
 
     // Button Container
