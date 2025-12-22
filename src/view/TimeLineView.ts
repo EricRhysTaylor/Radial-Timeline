@@ -4,13 +4,12 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 // --- Imports and constants added for standalone module ---
-import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice, normalizePath, ButtonComponent } from 'obsidian';
+import { ItemView, WorkspaceLeaf, MarkdownView, TFile, TAbstractFile, Notice, normalizePath } from 'obsidian';
 import RadialTimelinePlugin from '../main';
 import { escapeRegExp } from '../utils/regex';
 import type { TimelineItem } from '../types';
 import { SceneNumberInfo } from '../utils/constants';
 import ZeroDraftModal from '../modals/ZeroDraftModal';
-import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
 import { renderSvgFromString } from '../utils/svgDom';
 import { openOrRevealFile } from '../utils/fileUtils';
@@ -19,6 +18,7 @@ import { isShiftModeActive } from './interactions/ChronologueShiftController';
 import { RendererService } from '../services/RendererService';
 import { ModeManager, createModeManager } from '../modes/ModeManager';
 import { ModeInteractionController, createInteractionController } from '../modes/ModeInteractionController';
+import { renderWelcomeScreen } from './WelcomeScreen';
 import { 
     createSnapshot, 
     detectChanges, 
@@ -559,76 +559,11 @@ export class RadialTimelineView extends ItemView {
         container.empty();
         
         if (!scenes || scenes.length === 0) {
-            container.addClass('rt-welcome-view');
-            // SAFE: inline style used for welcome screen layout
-            container.style.setProperty('display', 'flex');
-            // SAFE: inline style used for welcome screen layout
-            container.style.setProperty('flex-direction', 'column');
-            // SAFE: inline style used for welcome screen layout
-            container.style.setProperty('align-items', 'center');
-            // SAFE: inline style used for welcome screen layout
-            container.style.setProperty('justify-content', 'center');
-            // SAFE: inline style used for welcome screen layout
-            container.style.setProperty('height', '100%');
-            // SAFE: inline style used for welcome screen layout
-            container.style.setProperty('text-align', 'center');
-
-            // Huge Welcome Title
-            const title = container.createEl('h1', { text: 'Welcome' });
-            // SAFE: inline style used for welcome screen typography
-            title.style.setProperty('font-size', '100px');
-            // SAFE: inline style used for welcome screen typography
-            title.style.setProperty('margin', '0 0 20px 0');
-            // SAFE: inline style used for welcome screen typography
-            title.style.setProperty('line-height', '1.2');
-            // SAFE: inline style used for welcome screen typography
-            title.style.setProperty('font-weight', '900');
-            // SAFE: inline style used for welcome screen typography
-            title.style.setProperty('opacity', '0.2');
-
-            // Intro Paragraph
-            const intro = container.createEl('p', {
-                text: 'Welcome to Radial Timeline. This plugin helps you visualize your novel\'s structure using a circular timeline. To get started, you need to create your first scene.'
+            renderWelcomeScreen({
+                container,
+                plugin: this.plugin,
+                refreshTimeline: () => this.refreshTimeline()
             });
-            // SAFE: inline style used for welcome screen typography
-            intro.style.setProperty('font-size', '18px');
-            // SAFE: inline style used for welcome screen typography
-            intro.style.setProperty('max-width', '600px');
-            // SAFE: inline style used for welcome screen typography
-            intro.style.setProperty('margin-bottom', '40px');
-            // SAFE: inline style used for welcome screen typography
-            intro.style.setProperty('line-height', '1.6');
-            // SAFE: inline style used for welcome screen typography
-            intro.style.setProperty('color', 'var(--text-muted)');
-
-            // Button Container
-            const buttonContainer = container.createDiv();
-            // SAFE: inline style used for layout
-            buttonContainer.style.setProperty('display', 'flex');
-            // SAFE: inline style used for layout
-            buttonContainer.style.setProperty('gap', '20px');
-
-            // Option 1: Simple Scene
-            new ButtonComponent(buttonContainer)
-                .setButtonText('Create single scene')
-                .setCta() 
-                .onClick(async () => {
-                    const { createTemplateScene } = await import('../SceneAnalysisCommands');
-                    await createTemplateScene(this.plugin, this.plugin.app.vault);
-                    // Refresh the timeline after a short delay
-                    window.setTimeout(() => {
-                        this.refreshTimeline();
-                    }, 500);
-                });
-
-            // Option 2: Book Designer
-            new ButtonComponent(buttonContainer)
-                .setButtonText('Open Book Designer')
-                .setCta()
-                .onClick(() => {
-                    new BookDesignerModal(this.plugin.app, this.plugin).open();
-                });
-
             return;
         }
         

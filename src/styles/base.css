@@ -13,6 +13,84 @@
   --rt-number-font-scale: 1.15;
 }
 
+.rt-welcome-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+}
+
+.rt-welcome-title {
+  font-size: 200px;
+  margin: 0 0 16px 0;
+  line-height: 0.9;
+  font-weight: 900;
+  letter-spacing: -12px;
+  opacity: 0.15;
+}
+
+.rt-welcome-body {
+  width: 100%;
+  max-width: clamp(520px, 60vw, 780px);
+  margin: 0 auto 28px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.rt-welcome-body p {
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+.rt-welcome-list {
+  text-align: left;
+  padding-left: 24px;
+  margin: 0;
+  width: 100%;
+  color: var(--text-normal);
+  font-size: 18px;
+  line-height: 1.6;
+  display: grid;
+  row-gap: 8px;
+}
+
+.rt-welcome-list li {
+  margin: 0;
+}
+
+.rt-welcome-list strong {
+  color: var(--text-accent);
+}
+
+.rt-welcome-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.rt-welcome-link-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rt-welcome-link-row::before {
+  content: "→";
+}
+
+.rt-welcome-actions {
+  display: flex;
+  gap: 20px;
+}
+
 /* Stage-specific fill should be applied to the bold title tspans, not the parent text. */
 .radial-timeline-container {
   display: flex;

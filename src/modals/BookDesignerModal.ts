@@ -11,7 +11,7 @@ export class BookDesignerModal extends Modal {
     private targetPath: string;
     private scenesToGenerate: number = 10;
     private targetRangeMax: number = 100;
-    private acts: number = 3;
+    private selectedActs: number[] = [1, 2, 3];
     private subplots: string = "Main Plot\nSubplot A\nSubplot B";
     private character: string = "Character 1";
     private templateType: 'base' | 'advanced';
@@ -64,8 +64,10 @@ export class BookDesignerModal extends Modal {
                 .onChange(value => this.targetPath = value));
         locationSetting.settingEl.addClass('rt-manuscript-card-block');
 
-        // Scenes to Generate
-        const scenesSetting = new Setting(structCard)
+        // Side-by-side row for counts/length
+        const countsRow = structCard.createDiv({ cls: 'rt-manuscript-duo-row' });
+
+        const scenesSetting = new Setting(countsRow)
             .setName('Scenes to generate')
             .setDesc('Number of actual scene files to create now.')
             .addText(text => text
@@ -76,8 +78,7 @@ export class BookDesignerModal extends Modal {
                 }));
         scenesSetting.settingEl.addClass('rt-manuscript-card-block');
 
-        // Target Max Range
-        const lengthSetting = new Setting(structCard)
+        const lengthSetting = new Setting(countsRow)
             .setName('Target book length')
             .setDesc('Used for numbering distribution (e.g. if 100, scenes will be numbered 10, 20, 30...).')
             .addText(text => text
@@ -88,22 +89,30 @@ export class BookDesignerModal extends Modal {
                 }));
         lengthSetting.settingEl.addClass('rt-manuscript-card-block');
 
-        // Acts Selection (Pills)
+        // Acts Selection (Checkboxes)
         const actSetting = structCard.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
-        actSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: 'Number of acts' });
-        const actPills = actSetting.createDiv({ cls: 'rt-manuscript-pill-row' });
-        
+        actSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: 'Acts to distribute scenes across' });
+        const actChecks = actSetting.createDiv({ cls: 'rt-manuscript-checkbox-row' });
+
         [1, 2, 3].forEach(num => {
-            const pill = actPills.createDiv({ cls: 'rt-manuscript-pill' });
-            pill.setText(`${num} Act${num > 1 ? 's' : ''}`);
-            if (this.acts === num) pill.addClass('rt-is-active');
-            pill.onclick = () => {
-                actPills.querySelectorAll('.rt-manuscript-pill').forEach(p => p.removeClass('rt-is-active'));
-                pill.addClass('rt-is-active');
-                this.acts = num;
+            const item = actChecks.createDiv({ cls: 'rt-manuscript-checkbox-item' });
+            const input = item.createEl('input', { type: 'checkbox' });
+            input.checked = this.selectedActs.includes(num);
+            input.onchange = () => {
+                if (input.checked) {
+                    if (!this.selectedActs.includes(num)) this.selectedActs.push(num);
+                } else {
+                    this.selectedActs = this.selectedActs.filter(a => a !== num);
+                }
+                if (this.selectedActs.length === 0) this.selectedActs = [num]; // ensure at least one
+            };
+            const label = item.createEl('label');
+            label.setText(`Act ${num}`);
+            label.onclick = () => {
+                input.click();
             };
         });
-        structCard.createDiv({ cls: 'rt-manuscript-card-note', text: 'Scenes will be distributed evenly across acts.' });
+        structCard.createDiv({ cls: 'rt-manuscript-card-note', text: 'Scenes distribute across checked acts. If only Act 3 is checked, all scenes go to Act 3.' });
 
 
         // SECTION 2: CONTENT CONFIGURATION
@@ -285,7 +294,9 @@ export class BookDesignerModal extends Modal {
             }
 
             // Act Distribution (based on progress through the *generated* set, not the number)
-            const act = Math.ceil((i / this.scenesToGenerate) * this.acts);
+            const actsList = this.selectedActs.length > 0 ? [...this.selectedActs].sort() : [1];
+            const actIndex = Math.floor(((i - 1) / this.scenesToGenerate) * actsList.length);
+            const act = actsList[Math.min(actIndex, actsList.length - 1)];
 
             // Subplot Distribution
             let assignedSubplots: string[] = [];

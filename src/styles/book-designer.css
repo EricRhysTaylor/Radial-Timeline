@@ -47,6 +47,32 @@
     margin-top: 4px;
 }
 
+.rt-book-designer-modal .rt-manuscript-duo-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px;
+}
+
+.rt-book-designer-modal .rt-manuscript-checkbox-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.rt-book-designer-modal .rt-manuscript-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.rt-book-designer-modal .rt-manuscript-checkbox-item input {
+    accent-color: var(--interactive-accent);
+}
+
 /* Enhancing textarea in modal */
 .rt-book-designer-modal textarea {
     font-family: var(--font-monospace);

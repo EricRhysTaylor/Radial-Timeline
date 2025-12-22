@@ -1,7 +1,6 @@
 import type { App, TextComponent } from 'obsidian';
 import { Setting as ObsidianSetting, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
-import { renderMetadataSection } from './MetadataSection';
 
 export function renderGeneralSection(params: {
     app: App;
@@ -91,7 +90,4 @@ export function renderGeneralSection(params: {
                     plugin.refreshTimelineIfNeeded(null);
                 });
         });
-
-    // --- Custom Metadata Mapping (Moved from separate section) ---
-    renderMetadataSection({ app, plugin, containerEl });
 }
