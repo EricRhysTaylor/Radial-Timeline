@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 const srcDir = path.join(process.cwd(), 'src');
 const stylesDir = path.join(srcDir, 'styles');
-const outputFile = path.join(srcDir, 'styles.css');
+const outputFile = path.join(process.cwd(), 'styles.css');
 
 const files = [
     'font.css',

@@ -109,7 +109,7 @@ export function renderStoryBeatsSection(params: {
 
     new Settings(containerEl)
         .setName('Advanced YAML editor')
-        .setDesc('Enable editing of custom YAML keys for the Advanced scene template.')
+        .setDesc('Enable editing of custom YAML keys for the advanced scene template.')
         .addToggle(toggle => {
             toggle
                 .setValue(plugin.settings.enableAdvancedYamlEditor ?? false)

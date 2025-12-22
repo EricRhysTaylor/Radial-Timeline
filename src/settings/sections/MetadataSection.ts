@@ -14,7 +14,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
     // Toggle for Metadata Mapping - Combined with Heading semantics but as a toggle
     new Settings(containerEl)
         .setName('Custom Metadata Mapping')
-        .setDesc('Map your custom frontmatter keys to system keys. Useful for legacy data or non-standard naming conventions.')
+        .setDesc('Map your custom frontmatter keys to Radial Timeline keys. Useful for pre-existing notes.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.enableCustomMetadataMapping ?? false)
             .onChange(async (value) => {

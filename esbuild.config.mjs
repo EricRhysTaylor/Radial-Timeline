@@ -85,33 +85,48 @@ destDirs.forEach(dir => verifyWritableDir(dir));
 // Files to copy from src/ (in addition to the built JS)
 const filesToCopy = [
 	"manifest.json",
-	"styles.css",
 	// "screenshot.jpeg" // Removed as it should be referenced via absolute URL in README
 ];
 
-// Function to copy build assets to destination directories
-async function copyBuildAssets() {
-	try {
-		await bundleCSS();
-	} catch (err) {
-		logErrorDetails('Error bundling CSS:', err);
-	}
-
-	for (const destDir of destDirs) {
-		// Ensure the destination directory exists
+	// Function to copy build assets to destination directories
+	async function copyBuildAssets() {
 		try {
-			if (!fs.existsSync(destDir)) {
-				fs.mkdirSync(destDir, { recursive: true });
-			}
+			// Generate styles.css directly to the project root first
+			await bundleCSS();
 		} catch (err) {
-			logErrorDetails(`Error ensuring destination directory ${destDir}`, err);
-			continue;
+			logErrorDetails('Error bundling CSS:', err);
 		}
 
-		// --- Copy individual files from src/ ---
-		for (const file of filesToCopy) {
-			const sourcePath = path.join(sourceDir, "src", file);
-			const destPath = path.join(destDir, file);
+		// Copy the generated styles.css from root to all destination folders
+		const stylesSource = path.join(sourceDir, "styles.css");
+
+		for (const destDir of destDirs) {
+			// Ensure the destination directory exists
+			try {
+				if (!fs.existsSync(destDir)) {
+					fs.mkdirSync(destDir, { recursive: true });
+				}
+			} catch (err) {
+				logErrorDetails(`Error ensuring destination directory ${destDir}`, err);
+				continue;
+			}
+
+			// --- Copy styles.css (Generated Artifact) ---
+			if (fs.existsSync(stylesSource)) {
+				try {
+					fs.copyFileSync(stylesSource, path.join(destDir, "styles.css"));
+				} catch (err) {
+					logErrorDetails(`Error copying styles.css to ${destDir}:`, err);
+				}
+			} else {
+				console.warn(`Warning: styles.css not found at ${stylesSource}`);
+			}
+
+			// --- Copy individual files from src/ ---
+			for (const file of filesToCopy) {
+				const sourcePath = path.join(sourceDir, "src", file);
+				const destPath = path.join(destDir, file);
+
 
 			// Check if source file exists
 			if (fs.existsSync(sourcePath)) {

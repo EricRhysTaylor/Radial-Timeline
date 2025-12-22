@@ -213,6 +213,7 @@
 
 .rt-template-add-btn {
   justify-self: end;
+  cursor: pointer;
 }
 
 .rt-input-full {
@@ -236,6 +237,15 @@
   justify-content: flex-end;
 }
 
+.rt-template-input {
+  background-color: var(--background-modifier-form-field);
+  border: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  border-radius: 6px;
+  padding: 8px 10px;
+  height: 36px;
+}
+
 .rt-template-icon-btn {
   width: 34px;
   height: 34px;
@@ -243,6 +253,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
+  cursor: pointer;
 }
 
 .rt-template-add-row {
@@ -983,6 +994,13 @@
   margin-left: 8px;
   border-left: 1px solid rgba(255, 255, 255, 0.3);
   opacity: 0.9;
+}
+
+/* Ensure all settings buttons/toggles use pointer cursor (match Patreon CTA feel) */
+.setting-item-control button,
+.setting-item-control .clickable-icon,
+.setting-item-control input[type="checkbox"] {
+  cursor: pointer;
 }
 
 /* Story structure description styling in settings */

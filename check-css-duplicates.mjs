@@ -11,7 +11,7 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const cssPath = join(__dirname, 'src', 'styles.css');
+const cssPath = join(process.cwd(), 'styles.css');
 const quiet = process.argv.includes('--quiet');
 
 try {

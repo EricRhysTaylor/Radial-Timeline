@@ -33,7 +33,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     };
     addMode('Narrative', 'Color coded subplots and All Scenes outer ring plus Story Beats.');
     addMode('Subplot', 'Isolates individual subplots with a project-management focus.');
-    addMode('Chronologue', 'Shows how scenes unfold in time with shift-mode. This is the default mode.');
+    addMode('Chronologue', 'Shows how scenes unfold in time with shift-mode.');
     addMode('Gossamer', 'Steps back to give you a birds-eye view of pacing and momentum.');
 
     const links = body.createEl('p', { cls: 'rt-welcome-links' });
