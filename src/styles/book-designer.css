@@ -1,0 +1,70 @@
+/* Book Designer Modal Styles - inheriting and extending pulse/gossamer styles */
+
+.rt-book-designer-modal .rt-manuscript-card-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.rt-book-designer-modal .rt-pulse-glass-card.rt-manuscript-card {
+    box-shadow: none;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 14px 16px;
+}
+
+.rt-book-designer-modal .rt-manuscript-card {
+    gap: 10px;
+}
+
+.rt-book-designer-modal .rt-manuscript-card-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.rt-book-designer-modal .rt-manuscript-card-block + .rt-manuscript-card-block {
+    margin-top: 8px;
+}
+
+.rt-book-designer-modal .setting-item {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    min-height: unset;
+}
+
+.rt-book-designer-modal .rt-manuscript-pill-row {
+    gap: 8px;
+}
+
+.rt-book-designer-modal .rt-manuscript-card-note {
+    margin-top: 4px;
+}
+
+/* Enhancing textarea in modal */
+.rt-book-designer-modal textarea {
+    font-family: var(--font-monospace);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    padding: 8px;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+}
+
+.rt-book-designer-modal textarea:focus {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+/* Override dropdown width */
+.rt-book-designer-modal .dropdown {
+    min-width: 150px;
+}
+

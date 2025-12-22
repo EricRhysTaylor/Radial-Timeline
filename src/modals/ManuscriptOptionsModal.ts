@@ -1,7 +1,7 @@
 /*
  * Manuscript Options Modal
  */
-import { App, ButtonComponent, Modal, Notice } from 'obsidian';
+import { App, ButtonComponent, DropdownComponent, Modal, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
@@ -11,6 +11,7 @@ export interface ManuscriptModalResult {
     tocMode: TocMode;
     rangeStart?: number;
     rangeEnd?: number;
+    subplot?: string;
 }
 
 type DragHandle = 'start' | 'end' | null;
@@ -21,6 +22,7 @@ export class ManuscriptOptionsModal extends Modal {
 
     private order: ManuscriptOrder = 'narrative';
     private tocMode: TocMode = 'markdown';
+    private subplot: string = 'All Subplots';
 
     private sceneTitles: string[] = [];
     private sceneWhenDates: (string | null)[] = [];
@@ -38,6 +40,8 @@ export class ManuscriptOptionsModal extends Modal {
     private rangeCardContainer?: HTMLElement;
     private loadingEl?: HTMLElement;
     private actionButton?: ButtonComponent;
+    private subplotDropdown?: DropdownComponent;
+    private orderPills: { el: HTMLElement, order: ManuscriptOrder }[] = [];
 
     private activeHandle: DragHandle = null;
     private detachEvents?: () => void;
@@ -65,6 +69,7 @@ export class ManuscriptOptionsModal extends Modal {
         contentEl.classList.add('rt-pulse-modal');
 
         this.renderSkeleton(contentEl);
+        await this.loadSubplots();
         await this.loadScenesForOrder();
     }
 
@@ -107,6 +112,25 @@ export class ManuscriptOptionsModal extends Modal {
             cls: 'rt-manuscript-card-note',
             text: t('manuscriptModal.tocNote')
         });
+
+        // Subplot Filter Card
+        const filterCard = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
+        filterCard.createDiv({ cls: 'rt-manuscript-card-head', text: 'Subplot Filter' });
+        const filterContainer = filterCard.createDiv({ cls: 'rt-manuscript-input-container' });
+        this.subplotDropdown = new DropdownComponent(filterContainer)
+            .addOption('All Subplots', 'All Subplots')
+            .setValue('All Subplots')
+            .onChange(async (value) => {
+                this.subplot = value;
+                if (value !== 'All Subplots') {
+                    // Force non-reverse order when specific subplot is selected
+                    if (this.isReverseOrder()) {
+                        this.order = 'narrative';
+                    }
+                }
+                this.updateOrderPillsState();
+                await this.loadScenesForOrder();
+            });
 
         const orderCard = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
         orderCard.createDiv({ cls: 'rt-manuscript-card-head', text: t('manuscriptModal.orderHeading') });
@@ -180,12 +204,34 @@ export class ManuscriptOptionsModal extends Modal {
     private createOrderPill(parent: HTMLElement, label: string, order: ManuscriptOrder): void {
         const pill = parent.createDiv({ cls: 'rt-manuscript-pill' });
         pill.createSpan({ text: label });
+        this.orderPills.push({ el: pill, order });
+        
         if (this.order === order) pill.classList.add('rt-is-active');
+        
         pill.onClickEvent(async () => {
-            parent.querySelectorAll('.rt-manuscript-pill').forEach(el => el.removeClass('rt-is-active'));
+            if (pill.hasClass('rt-is-disabled')) return;
+            
+            this.orderPills.forEach(p => p.el.removeClass('rt-is-active'));
             pill.classList.add('rt-is-active');
             this.order = order;
             await this.loadScenesForOrder();
+        });
+    }
+
+    private updateOrderPillsState(): void {
+        const isFiltered = this.subplot !== 'All Subplots';
+        
+        this.orderPills.forEach(p => {
+            const isReverse = p.order === 'reverse-narrative' || p.order === 'reverse-chronological';
+            if (isFiltered && isReverse) {
+                p.el.addClass('rt-is-disabled');
+                p.el.removeClass('rt-is-active');
+            } else {
+                p.el.removeClass('rt-is-disabled');
+                if (this.order === p.order) {
+                    p.el.addClass('rt-is-active');
+                }
+            }
         });
     }
 
@@ -246,19 +292,57 @@ export class ManuscriptOptionsModal extends Modal {
     }
 
     // Data loading -----------------------------------------------------------
+    private async loadSubplots(): Promise<void> {
+        if (!this.subplotDropdown) return;
+        
+        try {
+            const scenes = await this.plugin.getSceneData();
+            const subplotCounts = new Map<string, number>();
+            
+            scenes.forEach(scene => {
+                if (scene.itemType !== 'Scene') return;
+                const sub = scene.subplot && scene.subplot.trim() ? scene.subplot : 'Main Plot';
+                subplotCounts.set(sub, (subplotCounts.get(sub) || 0) + 1);
+            });
+
+            const sortedSubplots = Array.from(subplotCounts.keys()).sort((a, b) => {
+                if (a === 'Main Plot') return -1;
+                if (b === 'Main Plot') return 1;
+                const countA = subplotCounts.get(a) || 0;
+                const countB = subplotCounts.get(b) || 0;
+                if (countA !== countB) return countB - countA; // Descending count
+                return a.localeCompare(b);
+            });
+
+            this.subplotDropdown.selectEl.textContent = '';
+            this.subplotDropdown.addOption('All Subplots', 'All Subplots');
+            sortedSubplots.forEach(sub => {
+                this.subplotDropdown?.addOption(sub, sub);
+            });
+            this.subplotDropdown.setValue('All Subplots');
+        } catch (e) {
+            console.error('Failed to load subplots', e);
+        }
+    }
+
     private async loadScenesForOrder(): Promise<void> {
         try {
-            const { titles, whenDates, sceneNumbers } = await getSceneFilesByOrder(this.plugin, this.order);
+            const { titles, whenDates, sceneNumbers } = await getSceneFilesByOrder(this.plugin, this.order, this.subplot);
             this.sceneTitles = titles;
             this.sceneWhenDates = whenDates;
             this.sceneNumbers = sceneNumbers;
             this.totalScenes = titles.length;
             this.rangeStart = 1;
             this.rangeEnd = Math.max(1, this.totalScenes);
-            this.renderHeroMeta([
-                `${this.totalScenes} scenes available`,
-                t('manuscriptModal.heroNarrativeMeta')
-            ]);
+            
+            const meta = [`${this.totalScenes} scenes available`];
+            if (this.subplot !== 'All Subplots') {
+                meta.push(`Filtered by: ${this.subplot}`);
+            } else {
+                meta.push(t('manuscriptModal.heroNarrativeMeta'));
+            }
+            this.renderHeroMeta(meta);
+            
             this.loadingEl?.remove();
             this.updateRangeUI();
             this.syncRangeAvailability();
@@ -390,7 +474,8 @@ export class ManuscriptOptionsModal extends Modal {
                 order: this.order,
                 tocMode: this.tocMode,
                 rangeStart: this.rangeStart,
-                rangeEnd: this.rangeEnd
+                rangeEnd: this.rangeEnd,
+                subplot: this.subplot === 'All Subplots' ? undefined : this.subplot
             });
             this.close();
         } catch (err) {

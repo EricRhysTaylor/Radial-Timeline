@@ -566,7 +566,7 @@ function runChecks(filePath, text) {
 
   if (issues.length === 0) {
     console.log('✅ Obsidian compliance checks passed.');
-    console.log('📖 See CODE_STANDARDS.md for full guidelines.');
+    console.log('📖 See STANDARDS_CODE.md for full guidelines.');
     process.exit(0);
   }
 
@@ -595,11 +595,11 @@ function runChecks(filePath, text) {
       if (issue.snippet) console.error(`  ${issue.snippet}`);
       if (issue.suggestion) console.error(`  ↳ Suggestion: ${issue.suggestion}`);
     }
-    console.error('\n📖 See CODE_STANDARDS.md for detailed guidelines and best practices.');
+    console.error('\n📖 See STANDARDS_CODE.md for detailed guidelines and best practices.');
     process.exit(1);
   } else {
     // Only warnings
-    console.log('📖 See CODE_STANDARDS.md for full guidelines.');
+    console.log('📖 See STANDARDS_CODE.md for full guidelines.');
     process.exit(0);
   }
 })();

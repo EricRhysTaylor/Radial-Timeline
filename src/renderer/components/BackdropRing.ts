@@ -240,10 +240,18 @@ export function renderBackdropRing({
 
     // Background Circle for the whole ring (Void Style)
     // Use a specific class to avoid global 'rt-void-cell' fill behavior
-    // UPDATED: User requested 18px stroke to create a border effect within the 20px reserved slot.
-    // The "thin white border" is created by the 1px gap on each side (20px slot - 18px stroke).
-    const RENDER_STROKE_WIDTH = 18;
-    svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${RENDER_STROKE_WIDTH}" pointer-events="none" fill="none" />`;
+    // UPDATED: User requested to match Subplot ring architecture.
+    // 1. Base layer: Solid white/theme-bg stroke for the full 20px height
+    // 2. Borders: Thin 1px strokes at inner and outer edges
+    
+    // Base "Body" of the ring
+    svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" fill="none" />`;
+
+    // Inner and Outer borders (mimic subplot ring edges)
+    const innerBorderR = availableRadius - (BACKDROP_RING_HEIGHT / 2);
+    const outerBorderR = availableRadius + (BACKDROP_RING_HEIGHT / 2);
+    svg += `<circle cx="0" cy="0" r="${formatNumber(innerBorderR)}" class="rt-backdrop-border" fill="none" />`;
+    svg += `<circle cx="0" cy="0" r="${formatNumber(outerBorderR)}" class="rt-backdrop-border" fill="none" />`;
 
     segments.forEach((seg, idx) => {
         const isOverlapping = overlaps.has(idx);
@@ -291,7 +299,10 @@ export function renderBackdropRing({
         // 1. Definition Path (invisible, for text)
         svg += `<defs><path id="${pathId}" d="${td}" /></defs>`;
 
-        const halfHeight = RENDER_STROKE_WIDTH / 2;
+        // Use slightly smaller height for the segment to show the borders clearly (1px inset)
+        const segmentHeight = BACKDROP_RING_HEIGHT - 2; 
+        const halfHeight = segmentHeight / 2;
+        
         // Use full height geometry without inset for solid fill
         const boxInnerRadius = availableRadius - halfHeight;
         const boxOuterRadius = availableRadius + halfHeight;

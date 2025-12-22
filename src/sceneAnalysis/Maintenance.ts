@@ -3,13 +3,15 @@
  * Scene maintenance utilities (template creation, YAML test, purge helpers)
  */
 
-import { App, Notice, stringifyYaml, Modal, ButtonComponent, TFile, getFrontMatterInfo, parseYaml, type Vault } from 'obsidian';
+import { App, Notice, stringifyYaml, Modal, ButtonComponent, TFile, getFrontMatterInfo, parseYaml, type Vault, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { sanitizeSourcePath, buildInitialSceneFilename } from '../utils/sceneCreation';
 import { openOrRevealFileByPath } from '../utils/fileUtils';
 import { getAllSceneData, getSubplotNamesFromFM } from './data';
 import type { SceneData, ParsedSceneAnalysis } from './types';
 import { parseGptResult } from './responseParsing';
+import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
+import { DEFAULT_SETTINGS } from '../settings/defaults';
 
 type FMInfo = {
     exists: boolean;
@@ -198,31 +200,23 @@ export async function createTemplateScene(
             targetPath = buildInitialSceneFilename(folderPath, `${sceneNumber} Template Scene.md`);
         }
 
-        const frontmatter = {
-            Class: 'Scene',
-            Act: 1,
-            When: isoDate,
-            Duration: '2 hours',
-            Synopsis: 'Write a one-sentence summary of this scene.',
-            Status: 'Todo',
-            Subplot: ['Main Plot', 'Romance Arc'],
-            Character: ['Protagonist', 'Mentor'],
-            Place: '',
-            POV: 'first',
-            Due: isoDate,
-            'Publish Stage': 'Zero',
-            Revision: 0,
-            'Pending Edits': '',
-            Words: 0,
-            'Pulse Update': ''
-        } as Record<string, unknown>;
+        // Use selected template
+        const templateType = plugin.settings.defaultSceneTemplate || 'base';
+        const templateString = plugin.settings.sceneTemplates?.[templateType] || DEFAULT_SETTINGS.sceneTemplates![templateType];
 
-        const body = '\nWrite your scene here. Fill in Character and Subplot fields as needed. Use array format for multiple items.';
-        let yamlContent = stringifyYaml(frontmatter);
-        yamlContent = yamlContent.replace(/^POV: (.+)$/m, 'POV: $1 # first | second | third | omni | objective | two | count | all');
-        const content = `---\n${yamlContent}---\n${body}\n`;
+        const data: SceneCreationData = {
+            act: 1,
+            when: isoDate,
+            sceneNumber,
+            subplots: ['Main Plot'],
+            character: 'Protagonist',
+            place: 'Location'
+        };
 
-        await vault.create(targetPath, content);
+        const content = generateSceneContent(templateString, data);
+        const fileContent = `---\n${content}\n---\n\nWrite your scene here.`;
+
+        await vault.create(targetPath, fileContent);
         new Notice(`Created template scene: ${targetPath}`);
         await openOrRevealFileByPath(plugin.app, targetPath, false);
     } catch (error) {

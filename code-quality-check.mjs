@@ -235,13 +235,13 @@ function main() {
     console.error('  // SAFE: Modal sizing via inline styles (Obsidian pattern)');
     console.error('  // SAFE: any type used for <reason>');
     console.error('  // SAFE: openFile used for <reason>');
-    console.error('\n📖 See CODE_STANDARDS.md for detailed guidelines and best practices.\n');
+    console.error('\n📖 See STANDARDS_CODE.md for detailed guidelines and best practices.\n');
     process.exit(1);
   }
 
   if (!quiet) {
     console.log('\x1b[32m✅ Code quality check passed!\x1b[0m');
-    console.log('📖 See CODE_STANDARDS.md for full guidelines.');
+    console.log('📖 See STANDARDS_CODE.md for full guidelines.');
   }
 }
 

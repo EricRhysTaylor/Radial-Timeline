@@ -11,6 +11,7 @@ import { createTemplateScene } from '../SceneAnalysisCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult } from '../modals/ManuscriptOptionsModal';
 import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
+import { BookDesignerModal } from '../modals/BookDesignerModal';
 
 export class CommandRegistrar {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -44,6 +45,14 @@ export class CommandRegistrar {
             name: 'Manage subplots',
             callback: () => {
                 new ManageSubplotsModal(this.app, this.plugin).open();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'open-book-designer',
+            name: 'Open book designer',
+            callback: () => {
+                new BookDesignerModal(this.app, this.plugin).open();
             }
         });
 
@@ -134,7 +143,7 @@ export class CommandRegistrar {
     private async handleManuscriptSubmission(options: ManuscriptModalResult): Promise<void> {
         try {
             new Notice('Assembling manuscript...');
-            const { files, sortOrder } = await getSceneFilesByOrder(this.plugin, options.order);
+            const { files, sortOrder } = await getSceneFilesByOrder(this.plugin, options.order, options.subplot);
             if (files.length === 0) {
                 new Notice('No scenes found in source path.');
                 return;
@@ -153,7 +162,9 @@ export class CommandRegistrar {
             const rangeSuffix = hasCustomRange
                 ? ` · Scenes ${options.rangeStart}-${options.rangeEnd}`
                 : '';
-            const sortLabelWithRange = `${sortOrder}${rangeSuffix}`;
+            
+            const subplotSuffix = options.subplot ? ` · ${options.subplot}` : '';
+            const sortLabelWithRange = `${sortOrder}${subplotSuffix}${rangeSuffix}`;
 
             const includeToc = options.tocMode !== 'none';
             const useMarkdownToc = options.tocMode === 'markdown';
@@ -191,7 +202,9 @@ export class CommandRegistrar {
             const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
             const timeDisplayStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
             const timeFileStr = timeDisplayStr.replace(/:/g, '.');
-            const manuscriptPath = `AI/Manuscript ${orderLabel} ${dateStr} ${timeFileStr}.md`;
+            
+            const fileSubplotLabel = options.subplot ? ` (${options.subplot})` : '';
+            const manuscriptPath = `AI/Manuscript ${orderLabel}${fileSubplotLabel} ${dateStr} ${timeFileStr}.md`;
             try {
                 await this.app.vault.createFolder('AI');
             } catch { }

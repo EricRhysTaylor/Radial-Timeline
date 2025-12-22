@@ -1,9 +1,10 @@
-import { App, Notice, Setting as Settings } from 'obsidian';
+import { App, Notice, Setting as Settings, TextAreaComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem } from '../../utils/beatsSystems';
 import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
 import { AiContextModal } from '../AiContextModal';
+import { DEFAULT_SETTINGS } from '../defaults';
 
 export function renderStoryBeatsSection(params: {
     app: App;
@@ -90,6 +91,114 @@ export function renderStoryBeatsSection(params: {
                 });
                 modal.open();
             }));
+
+    // Scene Templates Section
+    new Settings(containerEl)
+        .setName('Scene templates')
+        .setHeading();
+
+    new Settings(containerEl)
+        .setName('Default scene template')
+        .setDesc('Select which template to use when creating new scenes via commands or the Book Designer.')
+        .addDropdown(dropdown => {
+            dropdown
+                .addOption('base', 'Base (Minimal)')
+                .addOption('advanced', 'Advanced (Comprehensive)')
+                .setValue(plugin.settings.defaultSceneTemplate || 'base')
+                .onChange(async (value) => {
+                    plugin.settings.defaultSceneTemplate = value as 'base' | 'advanced';
+                    await plugin.saveSettings();
+                });
+        });
+
+    const baseTemplateSetting = new Settings(containerEl)
+        .setName('Base template (Minimal)')
+        .setDesc('Used for quick, simple scene notes.')
+        .addTextArea(text => {
+            text
+                .setValue(plugin.settings.sceneTemplates?.base || DEFAULT_SETTINGS.sceneTemplates!.base)
+                .onChange(async (value) => {
+                    if (!plugin.settings.sceneTemplates) plugin.settings.sceneTemplates = { base: '', advanced: '' };
+                    plugin.settings.sceneTemplates.base = value;
+                    await plugin.saveSettings();
+                });
+            text.inputEl.rows = 10;
+            // SAFE: inline style used for monospace font
+            text.inputEl.style.setProperty('width', '100%');
+            // SAFE: inline style used for monospace font
+            text.inputEl.style.fontFamily = 'monospace';
+            // SAFE: inline style used for monospace font
+            text.inputEl.style.setProperty('font-size', '0.8em');
+        })
+        .addExtraButton(btn => {
+            btn.setIcon('reset')
+                .setTooltip('Restore default base template')
+                .onClick(async () => {
+                    if (!plugin.settings.sceneTemplates) plugin.settings.sceneTemplates = { base: '', advanced: '' };
+                    plugin.settings.sceneTemplates.base = DEFAULT_SETTINGS.sceneTemplates!.base;
+                    await plugin.saveSettings();
+                    // Force refresh of text area
+                    const ta = baseTemplateSetting.controlEl.querySelector('textarea');
+                    if (ta) ta.value = DEFAULT_SETTINGS.sceneTemplates!.base;
+                });
+        });
+    // SAFE: inline style used for layout
+    baseTemplateSetting.settingEl.style.setProperty('display', 'block');
+    // SAFE: inline style used for layout
+    baseTemplateSetting.controlEl.style.setProperty('width', '100%');
+
+    const advancedTemplateSetting = new Settings(containerEl)
+        .setName('Advanced template (Comprehensive)')
+        .setDesc('Used for detailed analysis and tracking.')
+        .addTextArea(text => {
+            text
+                .setValue(plugin.settings.sceneTemplates?.advanced || DEFAULT_SETTINGS.sceneTemplates!.advanced)
+                .onChange(async (value) => {
+                    if (!plugin.settings.sceneTemplates) plugin.settings.sceneTemplates = { base: '', advanced: '' };
+                    plugin.settings.sceneTemplates.advanced = value;
+                    await plugin.saveSettings();
+                });
+            text.inputEl.rows = 15;
+            // SAFE: inline style used for monospace font
+            text.inputEl.style.setProperty('width', '100%');
+            // SAFE: inline style used for monospace font
+            text.inputEl.style.fontFamily = 'monospace';
+            // SAFE: inline style used for monospace font
+            text.inputEl.style.setProperty('font-size', '0.8em');
+        })
+        .addExtraButton(btn => {
+            btn.setIcon('reset')
+                .setTooltip('Restore default advanced template')
+                .onClick(async () => {
+                    if (!plugin.settings.sceneTemplates) plugin.settings.sceneTemplates = { base: '', advanced: '' };
+                    plugin.settings.sceneTemplates.advanced = DEFAULT_SETTINGS.sceneTemplates!.advanced;
+                    await plugin.saveSettings();
+                    const ta = advancedTemplateSetting.controlEl.querySelector('textarea');
+                    if (ta) ta.value = DEFAULT_SETTINGS.sceneTemplates!.advanced;
+                });
+        });
+    // SAFE: inline style used for layout
+    advancedTemplateSetting.settingEl.style.setProperty('display', 'block');
+    // SAFE: inline style used for layout
+    advancedTemplateSetting.controlEl.style.setProperty('width', '100%');
+
+    // Helper text
+    const helperDiv = containerEl.createDiv({ cls: 'rt-template-helper-text setting-item-description' });
+    // SAFE: inline style used for layout
+    helperDiv.style.marginTop = '10px';
+    // SAFE: inline style used for layout
+    helperDiv.style.marginBottom = '20px';
+    // SAFE: innerHTML used for rich text description
+    helperDiv.insertAdjacentHTML('beforeend', `
+        <strong>Available Variables:</strong><br>
+        <code>{{Act}}</code> - Act number<br>
+        <code>{{When}}</code> - Date/Time string<br>
+        <code>{{SceneNumber}}</code> - Scene number<br>
+        <code>{{Subplot}}</code> - Comma-separated list of subplots<br>
+        <code>{{SubplotList}}</code> - YAML-formatted list of subplots (e.g. <br>&nbsp;&nbsp;- Subplot A<br>&nbsp;&nbsp;- Subplot B)<br>
+        <code>{{Character}}</code> - Character name(s)<br>
+        <code>{{Place}}</code> - Location name
+    `);
 
     function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
         const descriptions: Record<string, string> = {

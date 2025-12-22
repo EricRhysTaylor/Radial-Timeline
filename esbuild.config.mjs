@@ -75,6 +75,7 @@ if (isCI) {
 	// Local development paths
 	destDirs = [
 		"/Users/ericrhystaylor/Documents/Author/Author Obsidian Vault .nosync/.obsidian/plugins/radial-timeline",
+		"/Users/ericrhystaylor/Documents/Code Projects/Obsidian Vault Fresh/.obsidian/plugins/radial-timeline",
 		"./release"  // Add release folder for distribution
 	];
 }

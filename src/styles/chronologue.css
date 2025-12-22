@@ -110,9 +110,17 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 .rt-backdrop-ring-background {
-  stroke: #666666; /* Fixed gray as requested */
+  stroke: var(--rt-color-empty); /* Changed to use theme empty color (white/dark-bg) */
   stroke-opacity: 1; /* Fully opaque */
   fill: none !important;
+}
+
+/* New border class for inner/outer edges */
+.rt-backdrop-border {
+  stroke: var(--rt-color-empty); /* Match scene borders (usually white or bg color) */
+  stroke-width: 1px;
+  fill: none;
+  opacity: 1;
 }
 
 .radial-timeline-container .rt-backdrop-segment {
@@ -121,7 +129,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   opacity: 1;
   /* transition: fill-opacity 0.2s ease, opacity 0.2s ease; */
   cursor: pointer;
-  stroke: none !important;
+  stroke: none !important; /* No stroke on the segment itself, handled by borders */
   pointer-events: fill !important;
 }
 

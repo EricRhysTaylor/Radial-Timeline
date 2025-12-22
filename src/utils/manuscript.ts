@@ -130,12 +130,19 @@ export async function getSortedSceneFiles(plugin: RadialTimelinePlugin): Promise
  */
 export async function getSceneFilesByOrder(
   plugin: RadialTimelinePlugin,
-  order: ManuscriptOrder
+  order: ManuscriptOrder,
+  subplotFilter?: string
 ): Promise<ManuscriptSceneSelection> {
   const allScenes = await plugin.getSceneData();
 
   const uniquePaths = new Set<string>();
   const uniqueScenes = allScenes.filter((scene: TimelineItem) => {
+    // Filter by subplot if specified
+    if (subplotFilter && subplotFilter !== 'All Subplots') {
+      const sceneSubplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
+      if (sceneSubplot !== subplotFilter) return false;
+    }
+
     if (scene.itemType === 'Scene' && scene.path && !uniquePaths.has(scene.path)) {
       uniquePaths.add(scene.path);
       return true;
