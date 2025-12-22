@@ -7,7 +7,6 @@ import { App, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { assembleManuscript, getSceneFilesByOrder, sliceScenesByRange } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
-import { createTemplateScene } from '../SceneAnalysisCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult } from '../modals/ManuscriptOptionsModal';
 import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
@@ -95,12 +94,6 @@ export class CommandRegistrar {
             id: 'gossamer-generate-manuscript',
             name: 'Generate manuscript',
             callback: async () => this.generateManuscript()
-        });
-
-        this.plugin.addCommand({
-            id: 'create-template-scene',
-            name: 'Create template scene note',
-            callback: async () => createTemplateScene(this.plugin, this.app.vault)
         });
 
         this.plugin.addCommand({

@@ -215,6 +215,40 @@
   justify-self: end;
 }
 
+.rt-input-full {
+  width: 100%;
+}
+
+.rt-template-indent {
+  padding-left: 20px;
+  border-left: 2px solid var(--background-modifier-border);
+  margin-left: 4px;
+}
+
+.rt-template-grid .rt-template-input {
+  width: 100%;
+}
+
+.rt-template-grid .rt-template-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.rt-template-icon-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.rt-template-add-row {
+  column-gap: 12px;
+}
+
 .rt-color-grid-controls .rt-swatch-trigger.rt-stage-Author {
   background: var(--rt-publishStageColors-Author);
 }

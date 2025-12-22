@@ -23,6 +23,7 @@ const files = [
     'chronologue.css',
     'modals.css',
     'pulse.css',
+    'book-designer.css',
     'settings.css',
     'drag.css'
 ];

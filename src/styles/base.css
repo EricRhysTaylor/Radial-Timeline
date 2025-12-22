@@ -100,6 +100,25 @@
   gap: 20px;
 }
 
+.rt-welcome-book-btn {
+  font-size: 20px;
+  line-height: 1.1;
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  min-height: 0;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+
+.rt-welcome-book-btn:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  filter: brightness(1.05);
+}
+
 /* Stage-specific fill should be applied to the bold title tspans, not the parent text. */
 .radial-timeline-container {
   display: flex;

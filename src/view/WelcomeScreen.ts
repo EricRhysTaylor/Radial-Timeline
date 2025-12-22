@@ -23,9 +23,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     // Intro Paragraph
     const intro = body.createEl('p', { cls: 'rt-welcome-paragraph' });
-    intro.createSpan({ text: 'Radial Timeline is a visual map of your story across time.' });
-    intro.createEl('br');
-    intro.createSpan({ text: 'It works in four focused modes, each answering a different creative question.' });
+    intro.createSpan({ text: 'Radial Timeline is a visual map of your story in a concise radial format, revealing structure, rhythm, and scope. It works in four focused modes, each answering a different creative question.' });
 
     const modesList = body.createEl('ul', { cls: 'rt-welcome-list' });
     const addMode = (label: string, description: string) => {
@@ -34,8 +32,8 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         li.createSpan({ text: description });
     };
     addMode('Narrative', 'Color coded subplots and All Scenes outer ring plus Story Beats.');
-    addMode('Chronologue', 'Shows how scenes unfold in time with shift-mode.');
     addMode('Subplot', 'Isolates individual subplots with a project-management focus.');
+    addMode('Chronologue', 'Shows how scenes unfold in time with shift-mode. This is the default mode.');
     addMode('Gossamer', 'Steps back to give you a birds-eye view of pacing and momentum.');
 
     const links = body.createEl('p', { cls: 'rt-welcome-links' });
@@ -57,25 +55,13 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     // Button Container
     const buttonContainer = container.createDiv({ cls: 'rt-welcome-actions' });
 
-    // Option 1: Simple Scene
-    new ButtonComponent(buttonContainer)
-        .setButtonText('Create single scene')
-        .setCta()
-        .onClick(async () => {
-            const { createTemplateScene } = await import('../SceneAnalysisCommands');
-            await createTemplateScene(plugin, plugin.app.vault);
-            // Refresh the timeline after a short delay
-            window.setTimeout(() => {
-                refreshTimeline();
-            }, 500);
-        });
-
-    // Option 2: Book Designer
-    new ButtonComponent(buttonContainer)
+    // Book Designer only
+    const bookBtn = new ButtonComponent(buttonContainer)
         .setButtonText('Book designer')
         .setCta()
         .onClick(() => {
             new BookDesignerModal(plugin.app, plugin).open();
         });
+    bookBtn.buttonEl.classList.add('rt-welcome-book-btn');
 }
 

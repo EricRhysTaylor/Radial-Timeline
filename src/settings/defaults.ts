@@ -109,7 +109,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     activePlanetaryProfileId: undefined,
     frontmatterMappings: {},
     enableCustomMetadataMapping: false,
-    sceneTemplates: {
+    enableAdvancedYamlEditor: false,
+    sceneYamlTemplates: {
         base: `Class: Scene              # Type: Scene, Beat, Backdrop
 Act: {{Act}}              # Which act (1-3)
 When: {{When}}            # Story chronology date (YYYY-MM-DD 12:34pm)
@@ -118,6 +119,7 @@ Synopsis:                 # Brief description of what happens in this scene
 Subplot: {{Subplot}}      # Single subplot (or use array format below for multiple)
 Character: {{Character}}  # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
+Place: {{Place}}          # Location where scene takes place (use array format for multiple)
 Status: Todo              # Scene status (Todo/Working/Complete)
 Due: {{When}}             # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
 Publish Stage: Zero       # Revision stage (Zero/Author/House/Press)
@@ -133,7 +135,6 @@ Subplot:
 
 Character:
   - "[[{{Character}}]]"
-POV:                                 # blank, first, you, third, omni, narrator, two, all, count
 Place:
   - "[[{{Place}}]]"
 Questions:                           #Analysis Block
@@ -150,5 +151,4 @@ Revision:                             #Revision count (suggest leaving blank unt
 Pending Edits:
 Pulse Update: No`
     },
-    defaultSceneTemplate: 'base'
 };

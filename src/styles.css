@@ -259,6 +259,25 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
   gap: 20px;
 }
 
+.rt-welcome-book-btn {
+  font-size: 20px;
+  line-height: 1.1;
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  min-height: 0;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+
+.rt-welcome-book-btn:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  filter: brightness(1.05);
+}
+
 /* Stage-specific fill should be applied to the bold title tspans, not the parent text. */
 .radial-timeline-container {
   display: flex;
@@ -4470,6 +4489,135 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 
+/* --- book-designer.css --- */
+/* Book Designer Modal Styles - inheriting and extending pulse/gossamer styles */
+
+.rt-book-designer-modal .rt-manuscript-card-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.rt-book-designer-modal .rt-pulse-glass-card.rt-manuscript-card {
+    box-shadow: none;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 14px 16px;
+}
+
+.rt-book-designer-modal .rt-manuscript-card {
+    gap: 10px;
+}
+
+.rt-book-designer-modal .rt-manuscript-card-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    padding: 10px 12px;
+    height: 100%;
+}
+
+.rt-book-designer-modal .rt-manuscript-card-block + .rt-manuscript-card-block {
+    margin-top: 8px;
+}
+
+.rt-book-designer-modal .rt-manuscript-duo-row .rt-manuscript-card-block + .rt-manuscript-card-block {
+    margin-top: 0;
+}
+
+.rt-book-designer-modal .setting-item {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    min-height: unset;
+}
+
+.rt-book-designer-modal .rt-manuscript-pill-row {
+    gap: 8px;
+}
+
+.rt-book-designer-modal .rt-manuscript-card-note {
+    margin-top: 4px;
+}
+
+.rt-book-designer-modal .rt-manuscript-duo-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: stretch;
+    width: 100%;
+}
+
+@media (max-width: 760px) {
+    .rt-book-designer-modal .rt-manuscript-duo-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.rt-book-designer-modal .rt-manuscript-setting-row {
+    display: grid;
+    gap: 8px 12px;
+}
+
+.rt-book-designer-modal .rt-manuscript-acts-row {
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+    .rt-book-designer-modal .rt-manuscript-acts-row {
+        grid-template-columns: 220px 1fr;
+        align-items: center;
+    }
+}
+
+.rt-book-designer-modal .rt-manuscript-checkbox-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+}
+
+.rt-book-designer-modal .rt-manuscript-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    height: 100%;
+}
+
+.rt-book-designer-modal .rt-manuscript-checkbox-item input {
+    accent-color: var(--interactive-accent);
+}
+
+/* Enhancing textarea in modal */
+.rt-book-designer-modal textarea {
+    font-family: var(--font-monospace);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    padding: 8px;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+}
+
+.rt-book-designer-modal textarea:focus {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+/* Override dropdown width */
+.rt-book-designer-modal .dropdown {
+    min-width: 150px;
+}
+
+
+
 /* --- settings.css --- */
 .rt-settings-separator {
   margin: 1em 0 2em 0;
@@ -4686,6 +4834,40 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 
 .rt-template-add-btn {
   justify-self: end;
+}
+
+.rt-input-full {
+  width: 100%;
+}
+
+.rt-template-indent {
+  padding-left: 20px;
+  border-left: 2px solid var(--background-modifier-border);
+  margin-left: 4px;
+}
+
+.rt-template-grid .rt-template-input {
+  width: 100%;
+}
+
+.rt-template-grid .rt-template-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.rt-template-icon-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.rt-template-add-row {
+  column-gap: 12px;
 }
 
 .rt-color-grid-controls .rt-swatch-trigger.rt-stage-Author {

@@ -12,7 +12,6 @@ POV:                      # blank, first, you, third, omni, narrator, two, all, 
 Status: Todo              # Scene status (Todo/Working/Complete)
 Due:                      # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
 Publish Stage: Zero       # Revision stage (Zero/Author/House/Press)
-Revision:                 # Revision count (suggest leaving blank until stage > Zero)
 Pending Edits:            # Notes for next revision (especially for zero draft mode)
 Pulse Update:             # AI-generated scene pulse analysis flag
 ```

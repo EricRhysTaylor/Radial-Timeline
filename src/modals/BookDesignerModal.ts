@@ -13,7 +13,7 @@ export class BookDesignerModal extends Modal {
     private targetRangeMax: number = 100;
     private selectedActs: number[] = [1, 2, 3];
     private subplots: string = "Main Plot\nSubplot A\nSubplot B";
-    private character: string = "Character 1";
+    private character: string = "Hero\nAntagonist";
     private templateType: 'base' | 'advanced';
     private generateBeats: boolean = false;
 
@@ -21,7 +21,7 @@ export class BookDesignerModal extends Modal {
         super(app);
         this.plugin = plugin;
         this.targetPath = plugin.settings.sourcePath;
-        this.templateType = plugin.settings.defaultSceneTemplate || 'base';
+        this.templateType = 'base';
     }
 
     onOpen(): void {
@@ -32,8 +32,8 @@ export class BookDesignerModal extends Modal {
         // SAFE: Modal sizing via inline styles (Obsidian pattern)
         if (modalEl) {
             modalEl.classList.add('rt-pulse-modal-shell');
-            modalEl.style.width = '760px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.width = '860px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '96vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         contentEl.addClass('rt-pulse-modal');
@@ -62,7 +62,8 @@ export class BookDesignerModal extends Modal {
                 .setValue(this.targetPath)
                 .setPlaceholder('Example: Novels/Book 1')
                 .onChange(value => this.targetPath = value));
-        locationSetting.settingEl.addClass('rt-manuscript-card-block');
+        // Removed rt-manuscript-card-block to restore single line layout
+
 
         // Side-by-side row for counts/length
         const countsRow = structCard.createDiv({ cls: 'rt-manuscript-duo-row' });
@@ -70,23 +71,29 @@ export class BookDesignerModal extends Modal {
         const scenesSetting = new Setting(countsRow)
             .setName('Scenes to generate')
             .setDesc('Number of actual scene files to create now.')
-            .addText(text => text
-                .setValue(this.scenesToGenerate.toString())
-                .onChange(value => {
-                    const parsed = parseInt(value);
-                    if (!isNaN(parsed) && parsed > 0) this.scenesToGenerate = parsed;
-                }));
+            .addText(text => {
+                text
+                    .setValue(this.scenesToGenerate.toString())
+                    .onChange(value => {
+                        const parsed = parseInt(value);
+                        if (!isNaN(parsed) && parsed > 0) this.scenesToGenerate = parsed;
+                    });
+                text.inputEl.addClass('rt-input-full');
+            });
         scenesSetting.settingEl.addClass('rt-manuscript-card-block');
 
         const lengthSetting = new Setting(countsRow)
             .setName('Target book length')
             .setDesc('Used for numbering distribution (e.g. if 100, scenes will be numbered 10, 20, 30...).')
-            .addText(text => text
-                .setValue(this.targetRangeMax.toString())
-                .onChange(value => {
-                    const parsed = parseInt(value);
-                    if (!isNaN(parsed) && parsed > 0) this.targetRangeMax = parsed;
-                }));
+            .addText(text => {
+                text
+                    .setValue(this.targetRangeMax.toString())
+                    .onChange(value => {
+                        const parsed = parseInt(value);
+                        if (!isNaN(parsed) && parsed > 0) this.targetRangeMax = parsed;
+                    });
+                text.inputEl.addClass('rt-input-full');
+            });
         lengthSetting.settingEl.addClass('rt-manuscript-card-block');
 
         // Acts Selection (Checkboxes)
@@ -119,8 +126,10 @@ export class BookDesignerModal extends Modal {
         const contentCard = scrollContainer.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
         contentCard.createDiv({ cls: 'rt-manuscript-card-head', text: 'Content Configuration' });
 
+        const contentRow = contentCard.createDiv({ cls: 'rt-manuscript-duo-row' });
+
         // Subplots
-        const subplotsSetting = new Setting(contentCard)
+        const subplotsSetting = new Setting(contentRow)
             .setName('Subplots')
             .setDesc('Enter one subplot per line.')
             .addTextArea(text => {
@@ -132,13 +141,17 @@ export class BookDesignerModal extends Modal {
             });
         subplotsSetting.settingEl.addClass('rt-manuscript-card-block');
         
-        // Character
-        const characterSetting = new Setting(contentCard)
-            .setName('Default character')
-            .setDesc('Primary character for templates.')
-            .addText(text => text
-                .setValue(this.character)
-                .onChange(value => this.character = value));
+        // Characters
+        const characterSetting = new Setting(contentRow)
+            .setName('Characters')
+            .setDesc('Enter one character per line.')
+            .addTextArea(text => {
+                text
+                    .setValue(this.character)
+                    .onChange(value => this.character = value);
+                text.inputEl.rows = 4;
+                text.inputEl.classList.add('rt-manuscript-textarea');
+            });
         characterSetting.settingEl.addClass('rt-manuscript-card-block');
 
 
@@ -230,11 +243,10 @@ export class BookDesignerModal extends Modal {
 
         // Get template string
         const templateKey = this.templateType;
-        const userTemplates = this.plugin.settings.sceneTemplates;
-        const templateString = userTemplates?.[templateKey] || DEFAULT_SETTINGS.sceneTemplates![templateKey];
-        
+        const userTemplates = this.plugin.settings.sceneYamlTemplates;
+        const templateString = userTemplates?.[templateKey];
         if (!templateString) {
-            new Notice('Error: Could not load scene template.');
+            new Notice('Scene template not found in settings. Set a scene template before generating.');
             return;
         }
 
@@ -310,12 +322,16 @@ export class BookDesignerModal extends Modal {
                 assignedSubplots = [subplotList[index]];
             }
 
+            // Process characters: join lines with comma
+            const characterList = this.character.split('\n').map(c => c.trim()).filter(c => c.length > 0);
+            const characterString = characterList.length > 0 ? characterList.join(', ') : 'Hero';
+
             const data: SceneCreationData = {
                 act,
                 when: today,
                 sceneNumber: sceneNum,
                 subplots: assignedSubplots,
-                character: this.character,
+                character: characterString,
                 place: ''
             };
 

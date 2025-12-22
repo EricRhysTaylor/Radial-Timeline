@@ -180,51 +180,6 @@ export async function testYamlUpdateFormatting(
     }
 }
 
-export async function createTemplateScene(
-    plugin: RadialTimelinePlugin,
-    vault: Vault
-): Promise<void> {
-    try {
-        const today = new Date();
-        const isoDate = today.toISOString().slice(0, 10);
-        const folderPath = sanitizeSourcePath(plugin.settings.sourcePath);
-        if (folderPath) {
-            const f = vault.getAbstractFileByPath(folderPath);
-            if (!f) await vault.createFolder(folderPath);
-        }
-
-        let sceneNumber = 1;
-        let targetPath = buildInitialSceneFilename(folderPath, `${sceneNumber} Template Scene.md`);
-        while (vault.getAbstractFileByPath(targetPath)) {
-            sceneNumber++;
-            targetPath = buildInitialSceneFilename(folderPath, `${sceneNumber} Template Scene.md`);
-        }
-
-        // Use selected template
-        const templateType = plugin.settings.defaultSceneTemplate || 'base';
-        const templateString = plugin.settings.sceneTemplates?.[templateType] || DEFAULT_SETTINGS.sceneTemplates![templateType];
-
-        const data: SceneCreationData = {
-            act: 1,
-            when: isoDate,
-            sceneNumber,
-            subplots: ['Main Plot'],
-            character: 'Protagonist',
-            place: 'Location'
-        };
-
-        const content = generateSceneContent(templateString, data);
-        const fileContent = `---\n${content}\n---\n\nWrite your scene here.`;
-
-        await vault.create(targetPath, fileContent);
-        new Notice(`Created template scene: ${targetPath}`);
-        await openOrRevealFileByPath(plugin.app, targetPath, false);
-    } catch (error) {
-        console.error('[createTemplateScene] Failed:', error);
-        new Notice('Failed to create template scene. Check console for details.');
-    }
-}
-
 class PurgeConfirmationModal extends Modal {
     constructor(
         app: App,

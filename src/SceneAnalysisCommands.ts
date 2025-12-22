@@ -33,7 +33,6 @@ export { calculateSceneCount, calculateFlaggedCount, getDistinctSubplotNames } f
 export { processBySubplotOrder } from './sceneAnalysis/Processor';
 export {
     testYamlUpdateFormatting,
-    createTemplateScene,
     purgeBeatsByManuscriptOrder,
     purgeBeatsBySubplotName
 } from './sceneAnalysis/Maintenance';

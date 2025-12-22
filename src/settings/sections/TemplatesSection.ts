@@ -1,4 +1,4 @@
-import { App, Notice, Setting as Settings, parseYaml } from 'obsidian';
+import { App, Notice, Setting as Settings, parseYaml, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem } from '../../utils/beatsSystems';
@@ -101,27 +101,24 @@ export function renderStoryBeatsSection(params: {
         .setName('Scene YAML templates & remapping')
         .setHeading();
 
-    // Default template selector (keeps Base/Advanced choice; Base is not editable here)
-    let onTemplateSelectionChange: (() => void) | undefined;
-
-    new Settings(containerEl)
-        .setName('Default scene template')
-        .setDesc('Select which template to use when creating new scenes via commands or the Book Designer.')
-        .addDropdown(dropdown => {
-            dropdown
-                .addOption('base', 'Base (Minimal)')
-                .addOption('advanced', 'Advanced (Comprehensive)')
-                .setValue(plugin.settings.defaultSceneTemplate || 'base')
-                .onChange(async (value) => {
-                    plugin.settings.defaultSceneTemplate = value as 'base' | 'advanced';
-                    await plugin.saveSettings();
-                    onTemplateSelectionChange?.();
-                });
-        });
-
     // Frontmatter remapper (moved here) - separate from template editor visibility
     const remapContainer = containerEl.createDiv();
     renderMetadataSection({ app, plugin, containerEl: remapContainer });
+
+    let onAdvancedToggle: (() => void) | undefined;
+
+    new Settings(containerEl)
+        .setName('Advanced YAML editor')
+        .setDesc('Enable editing of custom YAML keys for the Advanced scene template.')
+        .addToggle(toggle => {
+            toggle
+                .setValue(plugin.settings.enableAdvancedYamlEditor ?? false)
+                .onChange(async (value) => {
+                    plugin.settings.enableAdvancedYamlEditor = value;
+                    await plugin.saveSettings();
+                    onAdvancedToggle?.();
+                });
+        });
 
     const templateSection = containerEl.createDiv({ cls: 'rt-scene-template-editor' });
 
@@ -130,18 +127,14 @@ export function renderStoryBeatsSection(params: {
     const renderAdvancedTemplateEditor = () => {
         advancedContainer.empty();
 
-        const isEnabled = (plugin.settings.defaultSceneTemplate || 'base') === 'advanced';
+        const isEnabled = plugin.settings.enableAdvancedYamlEditor ?? false;
         advancedContainer.toggleClass('rt-template-hidden', !isEnabled);
-        if (!isEnabled) {
-            const info = advancedContainer.createDiv({ cls: 'setting-item-description' });
-            info.setText('Switch the default scene template to Advanced to customize YAML.');
-            return;
-        }
+        if (!isEnabled) return;
 
         // Prepare template data
-        const defaultTemplate = DEFAULT_SETTINGS.sceneTemplates!.advanced;
-        const currentTemplate = plugin.settings.sceneTemplates?.advanced || defaultTemplate;
-        const baseTemplate = DEFAULT_SETTINGS.sceneTemplates!.base;
+        const defaultTemplate = DEFAULT_SETTINGS.sceneYamlTemplates!.advanced;
+        const currentTemplate = plugin.settings.sceneYamlTemplates?.advanced ?? '';
+        const baseTemplate = DEFAULT_SETTINGS.sceneYamlTemplates!.base;
 
         const requiredOrder = extractKeysInOrder(baseTemplate);
         const defaultObj = safeParseYaml(defaultTemplate);
@@ -168,8 +161,8 @@ export function renderStoryBeatsSection(params: {
         const saveEntries = (nextEntries: TemplateEntry[]) => {
             workingEntries = nextEntries;
             const yaml = buildYamlWithRequired(requiredOrder, requiredValues, nextEntries);
-            if (!plugin.settings.sceneTemplates) plugin.settings.sceneTemplates = { base: DEFAULT_SETTINGS.sceneTemplates!.base, advanced: '' };
-            plugin.settings.sceneTemplates.advanced = yaml;
+            if (!plugin.settings.sceneYamlTemplates) plugin.settings.sceneYamlTemplates = { base: DEFAULT_SETTINGS.sceneYamlTemplates!.base, advanced: '' };
+            plugin.settings.sceneYamlTemplates.advanced = yaml;
             void plugin.saveSettings();
         };
 
@@ -180,26 +173,7 @@ export function renderStoryBeatsSection(params: {
             advancedContainer.toggleClass('rt-template-hidden', !isEnabled);
             if (!isEnabled) return;
 
-            const headerRow = advancedContainer.createDiv({ cls: 'setting-item' });
-            headerRow.createEl('div', { text: 'Advanced template (bonus keys only)', cls: 'setting-item-name' });
-            headerRow.createEl('div', { text: 'Base keys are fixed; edit, rename, or delete bonus YAML keys.', cls: 'setting-item-description' });
-            const headerButtons = headerRow.createDiv({ cls: 'setting-item-control' });
-            const revertBtn = headerButtons.createEl('button', { text: 'Revert to default', cls: 'rt-mod-cta' });
-            revertBtn.onclick = async () => {
-                if (!plugin.settings.sceneTemplates) plugin.settings.sceneTemplates = { base: DEFAULT_SETTINGS.sceneTemplates!.base, advanced: '' };
-                plugin.settings.sceneTemplates.advanced = defaultTemplate;
-                await plugin.saveSettings();
-                const resetEntries = entriesFromTemplate(defaultTemplate, requiredOrder).filter(e => !e.required);
-                rerender(resetEntries);
-            };
-
-            const listEl = advancedContainer.createDiv({ cls: 'rt-template-entries' });
-
-            let previewPre: HTMLPreElement | null = null;
-            const updatePreview = (list: TemplateEntry[]) => {
-                if (!previewPre) return;
-                previewPre.textContent = buildYamlWithRequired(requiredOrder, requiredValues, list);
-            };
+            const listEl = advancedContainer.createDiv({ cls: 'rt-template-entries rt-template-indent' });
 
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
                 const row = listEl.createDiv({ cls: 'rt-template-entry-line setting-item rt-template-grid' });
@@ -242,7 +216,6 @@ export function renderStoryBeatsSection(params: {
                         const nextList = [...list];
                         nextList[idx] = { ...entry, value: input.value.split(',').map(s => s.trim()).filter(Boolean) };
                         saveEntries(nextList);
-                        updatePreview(nextList);
                     };
                 } else {
                     const input = valCol.createEl('input', { cls: 'rt-template-input' });
@@ -253,12 +226,12 @@ export function renderStoryBeatsSection(params: {
                         const nextList = [...list];
                         nextList[idx] = { ...entry, value: input.value };
                         saveEntries(nextList);
-                        updatePreview(nextList);
                     };
                 }
 
                 const actionCol = row.createDiv({ cls: 'setting-item-control rt-template-actions' });
-                const delBtn = actionCol.createEl('button', { text: 'Delete', cls: 'rt-template-delete' });
+                const delBtn = actionCol.createEl('button', { cls: 'rt-template-delete rt-template-icon-btn' });
+                setIcon(delBtn, 'trash');
                 delBtn.onclick = () => {
                     const nextList = list.filter((_, i) => i !== idx);
                     saveEntries(nextList);
@@ -268,12 +241,14 @@ export function renderStoryBeatsSection(params: {
 
             data.forEach((entry, idx, arr) => renderEntryRow(entry, idx, arr));
 
-            // Add new key/value
-            const addRow = advancedContainer.createDiv({ cls: 'rt-template-add-row setting-item rt-template-grid' });
+            // Add new key/value (includes revert on the same row)
+            const addRow = advancedContainer.createDiv({ cls: 'rt-template-add-row setting-item rt-template-grid rt-template-indent' });
 
-            const keyInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'New key (non-required)' } });
+            const keyInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'New key' } });
             const valInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'Value' } });
-            const addBtn = addRow.createEl('button', { text: 'Add key', cls: 'rt-mod-cta rt-template-add-btn' });
+            const actions = addRow.createDiv({ cls: 'rt-template-actions' });
+
+            const addBtn = actions.createEl('button', { text: 'Add key', cls: 'rt-mod-cta rt-template-add-btn' });
             addBtn.onclick = () => {
                 const k = (keyInput.value || '').trim();
                 if (!k) return;
@@ -290,11 +265,16 @@ export function renderStoryBeatsSection(params: {
                 rerender(nextList);
             };
 
-            const previewCard = advancedContainer.createDiv({ cls: 'setting-item rt-template-preview-card' });
-            previewCard.createEl('div', { text: 'YAML preview', cls: 'setting-item-name' });
-            const desc = previewCard.createEl('div', { text: 'Includes fixed base keys plus your bonus keys.', cls: 'setting-item-description' });
-            desc.style.marginBottom = '6px';
-            previewPre = previewCard.createEl('pre', { cls: 'rt-template-preview', text: buildYamlWithRequired(requiredOrder, requiredValues, data) });
+            const revertBtn = actions.createEl('button', { cls: 'rt-mod-cta rt-template-icon-btn', attr: { 'aria-label': 'Revert Advanced YAML to default', title: 'Revert Advanced YAML to default' } });
+            setIcon(revertBtn, 'rotate-ccw');
+            revertBtn.onclick = async () => {
+                if (!plugin.settings.sceneYamlTemplates) plugin.settings.sceneYamlTemplates = { base: DEFAULT_SETTINGS.sceneYamlTemplates!.base, advanced: '' };
+                plugin.settings.sceneYamlTemplates.advanced = defaultTemplate;
+                await plugin.saveSettings();
+                const resetEntries = entriesFromTemplate(defaultTemplate, requiredOrder).filter(e => !e.required);
+                rerender(resetEntries);
+            };
+
         };
 
         rerender(entries);
@@ -305,7 +285,7 @@ export function renderStoryBeatsSection(params: {
     const refreshVisibility = () => {
         renderAdvancedTemplateEditor();
     };
-    onTemplateSelectionChange = refreshVisibility;
+    onAdvancedToggle = refreshVisibility;
     refreshVisibility();
 
     function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
