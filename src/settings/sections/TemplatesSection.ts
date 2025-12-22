@@ -1,4 +1,4 @@
-import { App, Notice, Setting as Settings, parseYaml, stringifyYaml } from 'obsidian';
+import { App, Notice, Setting as Settings, parseYaml } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem } from '../../utils/beatsSystems';
@@ -96,12 +96,14 @@ export function renderStoryBeatsSection(params: {
                 modal.open();
             }));
 
-    // Scene Templates Section
+    // Scene YAML Templates Section
     new Settings(containerEl)
-        .setName('Scene templates & metadata')
+        .setName('Scene YAML templates & remapping')
         .setHeading();
 
     // Default template selector (keeps Base/Advanced choice; Base is not editable here)
+    let onTemplateSelectionChange: (() => void) | undefined;
+
     new Settings(containerEl)
         .setName('Default scene template')
         .setDesc('Select which template to use when creating new scenes via commands or the Book Designer.')
@@ -113,150 +115,172 @@ export function renderStoryBeatsSection(params: {
                 .onChange(async (value) => {
                     plugin.settings.defaultSceneTemplate = value as 'base' | 'advanced';
                     await plugin.saveSettings();
+                    onTemplateSelectionChange?.();
                 });
         });
 
-    // Frontmatter remapper (moved here) - drives visibility of template editor
+    // Frontmatter remapper (moved here) - separate from template editor visibility
     const remapContainer = containerEl.createDiv();
     renderMetadataSection({ app, plugin, containerEl: remapContainer });
 
     const templateSection = containerEl.createDiv({ cls: 'rt-scene-template-editor' });
-
-    // Helper text
-    const helperDiv = templateSection.createDiv({ cls: 'rt-template-helper-text setting-item-description' });
-    // SAFE: inline style used for layout
-    helperDiv.style.marginTop = '10px';
-    // SAFE: inline style used for layout
-    helperDiv.style.marginBottom = '12px';
-    // SAFE: innerHTML used for rich text description
-    helperDiv.insertAdjacentHTML('beforeend', `
-        <strong>Available Variables:</strong><br>
-        <code>{{Act}}</code> - Act number<br>
-        <code>{{When}}</code> - Date/Time string<br>
-        <code>{{SceneNumber}}</code> - Scene number<br>
-        <code>{{Subplot}}</code> - Comma-separated list of subplots<br>
-        <code>{{SubplotList}}</code> - YAML-formatted list of subplots (array)<br>
-        <code>{{Character}}</code> - Character name(s)<br>
-        <code>{{Place}}</code> - Location name<br>
-        <em>Reordering keys is not supported. Use the remapper for key name changes.</em>
-    `);
 
     const advancedContainer = templateSection.createDiv({ cls: 'rt-advanced-template-card' });
 
     const renderAdvancedTemplateEditor = () => {
         advancedContainer.empty();
 
-        const isEnabled = plugin.settings.enableCustomMetadataMapping ?? false;
+        const isEnabled = (plugin.settings.defaultSceneTemplate || 'base') === 'advanced';
         advancedContainer.toggleClass('rt-template-hidden', !isEnabled);
-        if (!isEnabled) return;
-
-        const header = advancedContainer.createDiv({ cls: 'setting-item' });
-        header.createEl('div', { text: 'Advanced template (per-key)', cls: 'setting-item-name' });
-        header.createEl('div', { text: 'Edit values; required keys cannot be removed.', cls: 'setting-item-description' });
-
-        const entriesContainer = advancedContainer.createDiv({ cls: 'rt-template-entries' });
+        if (!isEnabled) {
+            const info = advancedContainer.createDiv({ cls: 'setting-item-description' });
+            info.setText('Switch the default scene template to Advanced to customize YAML.');
+            return;
+        }
 
         // Prepare template data
         const defaultTemplate = DEFAULT_SETTINGS.sceneTemplates!.advanced;
         const currentTemplate = plugin.settings.sceneTemplates?.advanced || defaultTemplate;
+        const baseTemplate = DEFAULT_SETTINGS.sceneTemplates!.base;
 
-        const requiredOrder = extractKeysInOrder(defaultTemplate);
+        const requiredOrder = extractKeysInOrder(baseTemplate);
         const defaultObj = safeParseYaml(defaultTemplate);
         const currentObj = safeParseYaml(currentTemplate);
 
-        // Merge keys preserving current order first, then required defaults
-        const order = mergeOrders(extractKeysInOrder(currentTemplate), requiredOrder);
-
-        const entries: TemplateEntry[] = order.map((key) => {
-            const value = currentObj[key] ?? defaultObj[key] ?? '';
-            const required = requiredOrder.includes(key);
-            return { key, value, required };
-        });
-
-        // Ensure required keys exist even if missing
+        const requiredValues: Record<string, TemplateEntryValue> = {};
         requiredOrder.forEach((key) => {
-            if (!entries.find(e => e.key === key)) {
-                entries.push({ key, value: defaultObj[key] ?? '', required: true });
-            }
+            requiredValues[key] = currentObj[key] ?? defaultObj[key] ?? '';
         });
+
+        // Only discretionary (non-required) keys are editable
+        const optionalOrder = mergeOrders(
+            extractKeysInOrder(currentTemplate).filter(k => !requiredOrder.includes(k)),
+            extractKeysInOrder(defaultTemplate).filter(k => !requiredOrder.includes(k))
+        );
+
+        const entries: TemplateEntry[] = optionalOrder.map((key) => {
+            const value = currentObj[key] ?? defaultObj[key] ?? '';
+            return { key, value, required: false };
+        });
+
+        let workingEntries = entries;
 
         const saveEntries = (nextEntries: TemplateEntry[]) => {
-            const yaml = buildYamlFromEntries(nextEntries);
+            workingEntries = nextEntries;
+            const yaml = buildYamlWithRequired(requiredOrder, requiredValues, nextEntries);
             if (!plugin.settings.sceneTemplates) plugin.settings.sceneTemplates = { base: DEFAULT_SETTINGS.sceneTemplates!.base, advanced: '' };
             plugin.settings.sceneTemplates.advanced = yaml;
             void plugin.saveSettings();
         };
 
         const rerender = (next?: TemplateEntry[]) => {
-            const data = next ?? entries;
+            const data = next ?? workingEntries;
+            workingEntries = data;
             advancedContainer.empty();
             advancedContainer.toggleClass('rt-template-hidden', !isEnabled);
             if (!isEnabled) return;
 
             const headerRow = advancedContainer.createDiv({ cls: 'setting-item' });
-            headerRow.createEl('div', { text: 'Advanced template (per-key)', cls: 'setting-item-name' });
-            headerRow.createEl('div', { text: 'Edit values; required keys cannot be removed.', cls: 'setting-item-description' });
+            headerRow.createEl('div', { text: 'Advanced template (bonus keys only)', cls: 'setting-item-name' });
+            headerRow.createEl('div', { text: 'Base keys are fixed; edit, rename, or delete bonus YAML keys.', cls: 'setting-item-description' });
             const headerButtons = headerRow.createDiv({ cls: 'setting-item-control' });
             const revertBtn = headerButtons.createEl('button', { text: 'Revert to default', cls: 'rt-mod-cta' });
             revertBtn.onclick = async () => {
                 if (!plugin.settings.sceneTemplates) plugin.settings.sceneTemplates = { base: DEFAULT_SETTINGS.sceneTemplates!.base, advanced: '' };
                 plugin.settings.sceneTemplates.advanced = defaultTemplate;
                 await plugin.saveSettings();
-                rerender(entriesFromTemplate(defaultTemplate, requiredOrder));
+                const resetEntries = entriesFromTemplate(defaultTemplate, requiredOrder).filter(e => !e.required);
+                rerender(resetEntries);
             };
 
             const listEl = advancedContainer.createDiv({ cls: 'rt-template-entries' });
 
+            let previewPre: HTMLPreElement | null = null;
+            const updatePreview = (list: TemplateEntry[]) => {
+                if (!previewPre) return;
+                previewPre.textContent = buildYamlWithRequired(requiredOrder, requiredValues, list);
+            };
+
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
-                const row = listEl.createDiv({ cls: 'rt-template-entry-row' });
-                const keyCol = row.createDiv({ cls: 'rt-template-key' });
-                const valCol = row.createDiv({ cls: 'rt-template-value' });
-                const actionCol = row.createDiv({ cls: 'rt-template-actions' });
+                const row = listEl.createDiv({ cls: 'rt-template-entry-line setting-item rt-template-grid' });
 
-                const keyLabel = keyCol.createEl('div', { text: entry.key });
-                keyLabel.classList.add('rt-template-key-label');
+                const keyCol = row.createDiv({ cls: 'setting-item-info' });
+                const keyInput = keyCol.createEl('input', { cls: 'rt-template-input' });
+                keyInput.type = 'text';
+                keyInput.value = entry.key;
+                keyInput.placeholder = 'Key';
+                keyInput.onchange = () => {
+                    const newKey = keyInput.value.trim();
+                    if (!newKey) {
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    if (requiredOrder.includes(newKey)) {
+                        new Notice(`"${newKey}" is a required base key and is auto-included. Choose another name.`);
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    if (list.some((e, i) => i !== idx && e.key === newKey)) {
+                        new Notice(`Key "${newKey}" already exists.`);
+                        keyInput.value = entry.key;
+                        return;
+                    }
+                    const nextList = [...list];
+                    nextList[idx] = { ...entry, key: newKey };
+                    saveEntries(nextList);
+                    rerender(nextList);
+                };
 
+                const valCol = row.createDiv({ cls: 'setting-item-control' });
                 const value = entry.value;
                 if (Array.isArray(value)) {
-                    const ta = valCol.createEl('textarea', { cls: 'rt-template-textarea' });
-                    ta.rows = Math.max(3, value.length);
-                    ta.value = value.join('\n');
-                    ta.onchange = () => {
-                        list[idx].value = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
-                        saveEntries(list);
+                    const input = valCol.createEl('input', { cls: 'rt-template-input' });
+                    input.type = 'text';
+                    input.value = value.join(', ');
+                    input.placeholder = 'Comma-separated values';
+                    input.onchange = () => {
+                        const nextList = [...list];
+                        nextList[idx] = { ...entry, value: input.value.split(',').map(s => s.trim()).filter(Boolean) };
+                        saveEntries(nextList);
+                        updatePreview(nextList);
                     };
                 } else {
                     const input = valCol.createEl('input', { cls: 'rt-template-input' });
                     input.type = 'text';
                     input.value = value ?? '';
+                    input.placeholder = 'Value';
                     input.onchange = () => {
-                        list[idx].value = input.value;
-                        saveEntries(list);
+                        const nextList = [...list];
+                        nextList[idx] = { ...entry, value: input.value };
+                        saveEntries(nextList);
+                        updatePreview(nextList);
                     };
                 }
 
-                if (!entry.required) {
-                    const delBtn = actionCol.createEl('button', { text: 'Delete', cls: 'rt-template-delete' });
-                    delBtn.onclick = () => {
-                        const nextList = list.filter((_, i) => i !== idx);
-                        saveEntries(nextList);
-                        rerender(nextList);
-                    };
-                } else {
-                    actionCol.createEl('div', { text: 'Required', cls: 'rt-template-required' });
-                }
+                const actionCol = row.createDiv({ cls: 'setting-item-control rt-template-actions' });
+                const delBtn = actionCol.createEl('button', { text: 'Delete', cls: 'rt-template-delete' });
+                delBtn.onclick = () => {
+                    const nextList = list.filter((_, i) => i !== idx);
+                    saveEntries(nextList);
+                    rerender(nextList);
+                };
             };
 
             data.forEach((entry, idx, arr) => renderEntryRow(entry, idx, arr));
 
             // Add new key/value
-            const addRow = advancedContainer.createDiv({ cls: 'rt-template-add-row' });
-            const keyInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'New key' } });
+            const addRow = advancedContainer.createDiv({ cls: 'rt-template-add-row setting-item rt-template-grid' });
+
+            const keyInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'New key (non-required)' } });
             const valInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'Value' } });
-            const addBtn = addRow.createEl('button', { text: 'Add key', cls: 'rt-mod-cta' });
+            const addBtn = addRow.createEl('button', { text: 'Add key', cls: 'rt-mod-cta rt-template-add-btn' });
             addBtn.onclick = () => {
                 const k = (keyInput.value || '').trim();
                 if (!k) return;
+                if (requiredOrder.includes(k)) {
+                    new Notice(`"${k}" is required and already present via the base template.`);
+                    return;
+                }
                 if (data.some(e => e.key === k)) {
                     new Notice(`Key "${k}" already exists.`);
                     return;
@@ -265,6 +289,12 @@ export function renderStoryBeatsSection(params: {
                 saveEntries(nextList);
                 rerender(nextList);
             };
+
+            const previewCard = advancedContainer.createDiv({ cls: 'setting-item rt-template-preview-card' });
+            previewCard.createEl('div', { text: 'YAML preview', cls: 'setting-item-name' });
+            const desc = previewCard.createEl('div', { text: 'Includes fixed base keys plus your bonus keys.', cls: 'setting-item-description' });
+            desc.style.marginBottom = '6px';
+            previewPre = previewCard.createEl('pre', { cls: 'rt-template-preview', text: buildYamlWithRequired(requiredOrder, requiredValues, data) });
         };
 
         rerender(entries);
@@ -272,12 +302,10 @@ export function renderStoryBeatsSection(params: {
 
     renderAdvancedTemplateEditor();
 
-    // React to remapper toggle visibility
     const refreshVisibility = () => {
-        const enabled = plugin.settings.enableCustomMetadataMapping ?? false;
-        templateSection.toggleClass('rt-template-hidden', !enabled);
         renderAdvancedTemplateEditor();
     };
+    onTemplateSelectionChange = refreshVisibility;
     refreshVisibility();
 
     function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
@@ -417,6 +445,22 @@ function buildYamlFromEntries(entries: TemplateEntry[]): string {
         }
     });
     return lines.join('\n');
+}
+
+function buildYamlWithRequired(
+    requiredOrder: string[],
+    requiredValues: Record<string, TemplateEntryValue>,
+    optionalEntries: TemplateEntry[]
+): string {
+    const combined: TemplateEntry[] = [
+        ...requiredOrder.map(key => ({
+            key,
+            value: requiredValues[key] ?? '',
+            required: true
+        })),
+        ...optionalEntries
+    ];
+    return buildYamlFromEntries(combined);
 }
 
 function entriesFromTemplate(template: string, requiredOrder: string[]): TemplateEntry[] {

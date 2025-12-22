@@ -22,10 +22,10 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     const body = container.createDiv({ cls: 'rt-welcome-body' });
 
     // Intro Paragraph
-    const intro = body.createEl('p', {
-        cls: 'rt-welcome-paragraph',
-        text: 'Radial Timeline is a visual map of your story across time. It works in four focused modes, each answering a different creative question.'
-    });
+    const intro = body.createEl('p', { cls: 'rt-welcome-paragraph' });
+    intro.createSpan({ text: 'Radial Timeline is a visual map of your story across time.' });
+    intro.createEl('br');
+    intro.createSpan({ text: 'It works in four focused modes, each answering a different creative question.' });
 
     const modesList = body.createEl('ul', { cls: 'rt-welcome-list' });
     const addMode = (label: string, description: string) => {
@@ -33,10 +33,10 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
         li.createEl('strong', { text: `${label}: ` });
         li.createSpan({ text: description });
     };
-    addMode('Narrative', 'Shows how threads are presented to the reader using the All Scenes outer ring and Story Beats.');
-    addMode('Chronologue', 'Shows how scenes unfold in time.');
-    addMode('Subplot', 'Isolates individual subplots with a project-management focus, making it easy to track scene Status and Publish Stage across a manuscript.');
-    addMode('Gossamer', 'Steps back to give you a birds-eye view of pacing and momentum according to your story beats systems such as Save the Cat or Hero’s Journey.');
+    addMode('Narrative', 'Color coded subplots and All Scenes outer ring plus Story Beats.');
+    addMode('Chronologue', 'Shows how scenes unfold in time with shift-mode.');
+    addMode('Subplot', 'Isolates individual subplots with a project-management focus.');
+    addMode('Gossamer', 'Steps back to give you a birds-eye view of pacing and momentum.');
 
     const links = body.createEl('p', { cls: 'rt-welcome-links' });
 
@@ -51,7 +51,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     const cta = body.createEl('p', {
         cls: 'rt-welcome-paragraph',
-        text: 'Use the onscreen bug reporting tool or the Get Help buttons in the bottom corners of the Radial Timeline window. To get started, you need to create your first scene.'
+        text: 'Bug reporting & Get Help buttons in the bottom corners of the Radial Timeline window are always available. To get started, you need to create your first scene.'
     });
 
     // Button Container
@@ -72,7 +72,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
 
     // Option 2: Book Designer
     new ButtonComponent(buttonContainer)
-        .setButtonText('Open Book Designer')
+        .setButtonText('Book designer')
         .setCta()
         .onClick(() => {
             new BookDesignerModal(plugin.app, plugin).open();

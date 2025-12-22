@@ -198,6 +198,23 @@
   background: var(--rt-publishStageColors-Zero);
 }
 
+/* Scene template editor grids */
+.rt-template-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.8fr auto;
+  column-gap: 12px;
+  align-items: center;
+}
+
+.rt-template-actions {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.rt-template-add-btn {
+  justify-self: end;
+}
+
 .rt-color-grid-controls .rt-swatch-trigger.rt-stage-Author {
   background: var(--rt-publishStageColors-Author);
 }

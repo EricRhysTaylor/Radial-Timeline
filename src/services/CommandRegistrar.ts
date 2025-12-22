@@ -49,8 +49,8 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
-            id: 'open-book-designer',
-            name: 'Open book designer',
+            id: 'book-designer',
+            name: 'Book designer',
             callback: () => {
                 new BookDesignerModal(this.app, this.plugin).open();
             }

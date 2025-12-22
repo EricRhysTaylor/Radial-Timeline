@@ -90,7 +90,7 @@ export class BookDesignerModal extends Modal {
         lengthSetting.settingEl.addClass('rt-manuscript-card-block');
 
         // Acts Selection (Checkboxes)
-        const actSetting = structCard.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
+        const actSetting = structCard.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block rt-manuscript-acts-row' });
         actSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: 'Acts to distribute scenes across' });
         const actChecks = actSetting.createDiv({ cls: 'rt-manuscript-checkbox-row' });
 
@@ -146,8 +146,10 @@ export class BookDesignerModal extends Modal {
         const extraCard = scrollContainer.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
         extraCard.createDiv({ cls: 'rt-manuscript-card-head', text: 'Templates & Extras' });
 
+        const extraRow = extraCard.createDiv({ cls: 'rt-manuscript-duo-row' });
+
         // Template Selection (Pills)
-        const templSetting = extraCard.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
+        const templSetting = extraRow.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
         templSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: 'Scene template' });
         const templPills = templSetting.createDiv({ cls: 'rt-manuscript-pill-row' });
 
@@ -171,7 +173,7 @@ export class BookDesignerModal extends Modal {
         const beatSystem = this.plugin.settings.beatSystem || 'Custom';
         const beatLabel = beatSystem === 'Custom' ? 'Custom beats' : `${beatSystem} beats`;
         
-        const beatSetting = extraCard.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
+        const beatSetting = extraRow.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
         beatSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: `Generate ${beatLabel}` });
         const beatPills = beatSetting.createDiv({ cls: 'rt-manuscript-pill-row' });
         

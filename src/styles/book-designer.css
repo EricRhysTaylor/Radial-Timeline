@@ -25,10 +25,15 @@
     background: rgba(255, 255, 255, 0.02);
     border-radius: 10px;
     padding: 10px 12px;
+    height: 100%;
 }
 
 .rt-book-designer-modal .rt-manuscript-card-block + .rt-manuscript-card-block {
     margin-top: 8px;
+}
+
+.rt-book-designer-modal .rt-manuscript-duo-row .rt-manuscript-card-block + .rt-manuscript-card-block {
+    margin-top: 0;
 }
 
 .rt-book-designer-modal .setting-item {
@@ -49,13 +54,30 @@
 
 .rt-book-designer-modal .rt-manuscript-duo-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 12px;
+    align-items: stretch;
+}
+
+.rt-book-designer-modal .rt-manuscript-setting-row {
+    display: grid;
+    gap: 8px 12px;
+}
+
+.rt-book-designer-modal .rt-manuscript-acts-row {
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+    .rt-book-designer-modal .rt-manuscript-acts-row {
+        grid-template-columns: 220px 1fr;
+        align-items: center;
+    }
 }
 
 .rt-book-designer-modal .rt-manuscript-checkbox-row {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 10px;
 }
 
@@ -67,6 +89,7 @@
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.04);
+    height: 100%;
 }
 
 .rt-book-designer-modal .rt-manuscript-checkbox-item input {

@@ -184,10 +184,18 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
 .rt-welcome-title {
   font-size: 200px;
   margin: 0 0 16px 0;
-  line-height: 0.9;
+  line-height: 0.85;
   font-weight: 900;
-  letter-spacing: -12px;
-  opacity: 0.15;
+  letter-spacing: -10px;
+  padding: 0 12px;
+  color: transparent;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 .rt-welcome-body {
@@ -197,15 +205,16 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .rt-welcome-body p {
   font-size: 18px;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--text-muted);
   margin: 0;
-  text-align: center;
+  text-align: left;
+  width: 100%;
 }
 
 .rt-welcome-list {
@@ -215,9 +224,9 @@ url('data:font/ttf;base64,AAEAAAAOADAAAwCwT1MvMoL2QGcAAL3gAAAATmNtYXAFtByVAACp5A
   width: 100%;
   color: var(--text-normal);
   font-size: 18px;
-  line-height: 1.6;
+  line-height: 1.4;
   display: grid;
-  row-gap: 8px;
+  row-gap: 4px;
 }
 
 .rt-welcome-list li {
@@ -4660,6 +4669,23 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 /* Stage swatch backgrounds map to CSS variables that the plugin updates */
 .rt-color-grid-controls .rt-swatch-trigger.rt-stage-Zero {
   background: var(--rt-publishStageColors-Zero);
+}
+
+/* Scene template editor grids */
+.rt-template-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.8fr auto;
+  column-gap: 12px;
+  align-items: center;
+}
+
+.rt-template-actions {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.rt-template-add-btn {
+  justify-self: end;
 }
 
 .rt-color-grid-controls .rt-swatch-trigger.rt-stage-Author {
