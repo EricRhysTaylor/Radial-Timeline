@@ -212,8 +212,8 @@ export function renderBackdropRing({
 
     // Define diagonal pattern for overlaps
     svg += `<defs>
-        <pattern id="rt-backdrop-diagonal" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="10" stroke="#666666" stroke-width="2" opacity="0.4" />
+        <pattern id="rt-backdrop-diagonal" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="40" stroke="#ffffff" stroke-width="20" opacity="0.4" />
         </pattern>
     </defs>`;
 

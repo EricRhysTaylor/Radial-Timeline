@@ -155,9 +155,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 /* Overlap pattern: Diagonal gray stripes on darker gray background */
 .radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap {
   fill: url(#rt-backdrop-diagonal);
-  stroke: #444;
-  stroke-width: 1px;
-  stroke-opacity: 0.5;
+  stroke: none; /* No border for overlap box */
   fill-opacity: 1; /* Pattern handles opacity */
   opacity: 1;
   mix-blend-mode: normal; /* Normal blend so pattern shows clearly over base */
@@ -168,9 +166,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 .radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-odd {
   /* Common styling for pattern approach */
   stroke-dasharray: none;
-  stroke: #444 !important;
-  stroke-width: 1px !important;
-  stroke-opacity: 0.5 !important;
+  stroke: none !important; /* No border */
   fill-opacity: 1;
   fill: url(#rt-backdrop-diagonal) !important;
 }
