@@ -148,6 +148,7 @@ export function createTimelineSVG(
     const {
         scenesByActAndSubplot,
         masterSubplotOrder,
+        colorIndexBySubplot,
         totalPlotNotes,
         plotIndexByKey,
         plotsBySubplot,
@@ -161,19 +162,23 @@ export function createTimelineSVG(
     const NUM_RINGS = masterSubplotOrder.length;
     const currentMode = (plugin.settings as any).currentMode || 'narrative';
     const shouldApplyNumberSquareColors = currentMode !== 'gossamer';
+
+    const resolveSubplotColorIndex = (subplotName: string): number => {
+        const key = subplotName && subplotName.trim().length > 0 ? subplotName : 'Main Plot';
+        if (colorIndexBySubplot.has(key)) return colorIndexBySubplot.get(key)!;
+        const fallback = colorIndexBySubplot.get('Main Plot');
+        return fallback !== undefined ? fallback : 0;
+    };
+
     const numberSquareVisualResolver = shouldApplyNumberSquareColors
-        ? (scene: TimelineItem) => {
-            const subplotName = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
-            const idx = masterSubplotOrder.indexOf(subplotName);
-            const normalized = idx >= 0 ? (idx % 16) : 0;
-            return {
-                subplotIndex: normalized
-            };
-        }
+        ? (scene: TimelineItem) => ({
+            subplotIndex: resolveSubplotColorIndex(scene.subplot || 'Main Plot')
+        })
         : null;
+
     const subplotColorFor = (subplotName: string) => {
-        const idx = masterSubplotOrder.indexOf(subplotName);
-        const normalized = idx >= 0 ? idx % 16 : 0;
+        const idx = resolveSubplotColorIndex(subplotName);
+        const normalized = idx % 16;
         const varName = `--rt-subplot-colors-${normalized}`;
         const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         return computed || '#EFBDEB';
@@ -417,6 +422,7 @@ export function createTimelineSVG(
         isChronologueMode,
         forceChronological,
         masterSubplotOrder,
+        colorIndexBySubplot,
         ringStartRadii,
         ringWidths,
         scenesByActAndSubplot,

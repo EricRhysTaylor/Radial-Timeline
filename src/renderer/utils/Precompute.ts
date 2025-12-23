@@ -26,6 +26,7 @@ const BACKDROP_RING_HEIGHT = 20; // px
 export interface PrecomputedRenderValues {
     scenesByActAndSubplot: { [act: number]: { [subplot: string]: TimelineItem[] } };
     masterSubplotOrder: string[];
+    colorIndexBySubplot: Map<string, number>;
     totalPlotNotes: number;
     plotIndexByKey: Map<string, number>;
     plotsBySubplot: Map<string, TimelineItem[]>;
@@ -138,7 +139,15 @@ export function computeCacheableValues(
         return a.subplot.localeCompare(b.subplot);
     });
 
-    let masterSubplotOrder = subplotCounts.map(item => item.subplot);
+    const baseSubplotOrder = subplotCounts.map(item => item.subplot);
+
+    // Stable color index map (pre-reorder) so colors remain consistent across modes
+    const colorIndexBySubplot = new Map<string, number>();
+    baseSubplotOrder.forEach((subplot, idx) => {
+        colorIndexBySubplot.set(subplot, idx % 16);
+    });
+
+    let masterSubplotOrder = [...baseSubplotOrder];
 
     // For Chronologue mode, ensure 'Backdrop' is the second ring from the outside
     // Outer Ring (ringOffset=0) is typically Main Plot or All Scenes.
@@ -190,6 +199,7 @@ export function computeCacheableValues(
     return {
         scenesByActAndSubplot,
         masterSubplotOrder,
+        colorIndexBySubplot,
         totalPlotNotes,
         plotIndexByKey,
         plotsBySubplot,

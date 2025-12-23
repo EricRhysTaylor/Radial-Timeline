@@ -147,17 +147,24 @@ export function renderNumberSquaresUnified(params: {
 
     const subplotVisual = enableSubplotColors && resolveSubplotVisual ? resolveSubplotVisual(scene) : null;
 
+    const baseDataAttrs = subplotVisual
+      ? {
+        'data-subplot-color-index': subplotVisual.subplotIndex,
+        'data-subplot-index': subplotVisual.subplotIndex
+      }
+      : undefined;
+
     const dataAttrs = posForOuter
       ? {
+        ...baseDataAttrs,
         'data-outer-ring': 'true',
         'data-scene-order': idx,
         'data-act': act,
         'data-ring': ringOuter,
         'data-start-angle': formatNumber(posForOuter.startAngle),
-        'data-end-angle': formatNumber(posForOuter.endAngle),
-        'data-subplot-index': subplotVisual?.subplotIndex
+        'data-end-angle': formatNumber(posForOuter.endAngle)
       }
-      : undefined;
+      : baseDataAttrs;
 
     svg += generateNumberSquareGroup(
       squareX,

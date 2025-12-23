@@ -36,6 +36,7 @@ export interface RingRenderContext {
     isChronologueMode: boolean;
     forceChronological: boolean;
     masterSubplotOrder: string[];
+    colorIndexBySubplot: Map<string, number>;
     ringStartRadii: number[];
     ringWidths: number[];
     scenesByActAndSubplot: Record<number, Record<string, TimelineItem[]>>;
@@ -55,6 +56,7 @@ export function renderRings(ctx: RingRenderContext): string {
         isChronologueMode,
         forceChronological,
         masterSubplotOrder,
+        colorIndexBySubplot,
         ringStartRadii,
         ringWidths,
         scenesByActAndSubplot,
@@ -72,10 +74,16 @@ export function renderRings(ctx: RingRenderContext): string {
     // Use the value from constant, handling the structure
     const beatTextRadius = BEAT_TEXT_RADIUS[readabilityScale as keyof typeof BEAT_TEXT_RADIUS] || BEAT_TEXT_RADIUS.normal;
 
+    const resolveSubplotColorIndex = (subplotName: string): number => {
+        const key = subplotName && subplotName.trim().length > 0 ? subplotName : 'Main Plot';
+        if (colorIndexBySubplot.has(key)) return colorIndexBySubplot.get(key)!;
+        const fallback = colorIndexBySubplot.get('Main Plot');
+        return fallback !== undefined ? fallback : 0;
+    };
+
     // Helper for subplot color check
     const subplotColorFor = (subplotName: string) => {
-        const idx = masterSubplotOrder.indexOf(subplotName);
-        const normalized = idx >= 0 ? idx % 16 : 0;
+        const normalized = resolveSubplotColorIndex(subplotName) % 16;
         const varName = `--rt-subplot-colors-${normalized}`;
         // Note: getComputedStyle is DOM-dependent, might not be ideal in all contexts but keeping extracted logic same
         try {
@@ -264,6 +272,7 @@ export function renderRings(ctx: RingRenderContext): string {
                         const name = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
                         return Math.max(0, masterSubplotOrder.indexOf(name));
                     })();
+                    const subplotColorIdxAttr = resolveSubplotColorIndex(scene.subplot || 'Main Plot');
 
                     const plotStrokeAttr = (() => {
                         if (isBeatNote(scene)) {
@@ -275,7 +284,19 @@ export function renderRings(ctx: RingRenderContext): string {
                     })();
 
                     svg += `
-                        ${renderSceneGroup({ scene, act, ring, idx, innerR, outerR: effectiveOuterR, startAngle: sceneStartAngle, endAngle: sceneEndAngle, subplotIdxAttr, titleInset: sceneTitleInset })}
+                        ${renderSceneGroup({
+                            scene,
+                            act,
+                            ring,
+                            idx,
+                            innerR,
+                            outerR: effectiveOuterR,
+                            startAngle: sceneStartAngle,
+                            endAngle: sceneEndAngle,
+                            subplotIdxAttr,
+                            subplotColorIdxAttr,
+                            titleInset: sceneTitleInset
+                        })}
                             <path id="${sceneId}"
                                   d="${arcPathStr}" 
                                   fill="${color}" 
@@ -355,6 +376,7 @@ export function renderRings(ctx: RingRenderContext): string {
                         const name = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
                         return Math.max(0, masterSubplotOrder.indexOf(name));
                     })();
+                    const subplotColorIdxAttr = resolveSubplotColorIndex(scene.subplot || 'Main Plot');
 
                     let sceneClasses = "rt-scene-path rt-scene-arc";
                     if (scene.path && plugin.openScenePaths.has(scene.path)) sceneClasses += " rt-scene-is-open";
@@ -362,7 +384,19 @@ export function renderRings(ctx: RingRenderContext): string {
                     const dyOffset = 0;
 
                     svg += `
-                        ${renderSceneGroup({ scene, act, ring, idx, innerR, outerR, startAngle: sceneStartAngle, endAngle: sceneEndAngle, subplotIdxAttr, titleInset: sceneTitleInset })}
+                        ${renderSceneGroup({
+                            scene,
+                            act,
+                            ring,
+                            idx,
+                            innerR,
+                            outerR,
+                            startAngle: sceneStartAngle,
+                            endAngle: sceneEndAngle,
+                            subplotIdxAttr,
+                            subplotColorIdxAttr,
+                            titleInset: sceneTitleInset
+                        })}
                             <path id="${sceneId}"
                                   d="${arcPathStr}" 
                                   fill="${color}" 

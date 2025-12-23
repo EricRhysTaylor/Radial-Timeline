@@ -273,7 +273,7 @@ export default class SynopsisManager {
         if (!sceneGroup) {
           throw new Error(`Scene group not found for synopsis ${sceneIdentifier}.`);
         }
-        const idxAttr = sceneGroup.getAttribute('data-subplot-index');
+        const idxAttr = sceneGroup.getAttribute('data-subplot-color-index') || sceneGroup.getAttribute('data-subplot-index');
         if (!idxAttr) {
           throw new Error(`Scene group for ${sceneIdentifier} is missing data-subplot-index.`);
         }

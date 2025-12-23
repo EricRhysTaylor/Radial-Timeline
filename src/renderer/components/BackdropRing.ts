@@ -210,6 +210,13 @@ export function renderBackdropRing({
     // Base "Body" of the ring
     svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" fill="none" />`;
 
+    // Define diagonal pattern for overlaps
+    svg += `<defs>
+        <pattern id="rt-backdrop-diagonal" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="10" stroke="#666666" stroke-width="2" opacity="0.4" />
+        </pattern>
+    </defs>`;
+
     // Inner and Outer borders (mimic subplot ring edges)
     const innerBorderR = availableRadius - (BACKDROP_RING_HEIGHT / 2);
     const outerBorderR = availableRadius + (BACKDROP_RING_HEIGHT / 2);
@@ -382,16 +389,22 @@ export function renderBackdropRing({
             `Z`;
     };
 
-    intervals.forEach((interval, intervalIdx) => {
+    // Render overlays AFTER base ring so they sit above bases,
+    // but insert them immediately before closing the base ring so hover order stays consistent.
+    const overlayPaths: string[] = [];
+    intervals.forEach((interval) => {
         const { start, end, active: activeSegments } = interval;
         activeSegments.forEach((segIdx, depth) => {
             const hueClass = `rt-backdrop-hue-${depth % 8}`; // map depth to a finite hue set
             const parityClass = depth % 2 === 0 ? 'rt-backdrop-overlap-even' : 'rt-backdrop-overlap-odd';
             const overlayClass = `rt-backdrop-segment rt-backdrop-overlap ${parityClass} ${hueClass}`;
             const path = buildBoxPath(start, end);
-            svg += `<path d="${path}" class="${overlayClass}" pointer-events="none" />`;
+            overlayPaths.push(`<path d="${path}" class="${overlayClass}" pointer-events="none" />`);
         });
     });
+
+    // Append overlays at the very end (above bases)
+    overlayPaths.forEach(p => { svg += p; });
 
     svg += `</g>`;
     return svg;

@@ -22,9 +22,9 @@ export function updateSynopsisTitleColor(synopsis: Element, sceneId: string, mod
                 // Use the max publish stage color for Backdrops
                 color = getComputedStyle(document.documentElement).getPropertyValue('--rt-max-publish-stage-color').trim();
             } else {
-                const subplotIndex = sceneGroup.getAttribute('data-subplot-index');
+                const subplotIndex = sceneGroup.getAttribute('data-subplot-color-index') || sceneGroup.getAttribute('data-subplot-index');
                 if (subplotIndex) {
-                    const idx = parseInt(subplotIndex, 10) % 15;
+                    const idx = ((parseInt(subplotIndex, 10) % 16) + 16) % 16;
                     const varName = `--rt-subplot-colors-${idx}`;
                     color = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
                 }

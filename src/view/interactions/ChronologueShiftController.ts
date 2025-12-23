@@ -139,7 +139,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             sceneGroupBySceneId.set(sceneId, group);
             
             // Cache subplot index
-            const subplotIndexAttr = group.getAttribute('data-subplot-index');
+            const subplotIndexAttr = group.getAttribute('data-subplot-color-index') || group.getAttribute('data-subplot-index');
             if (subplotIndexAttr) {
                 const subplotIndex = parseInt(subplotIndexAttr, 10);
                 if (!isNaN(subplotIndex)) {

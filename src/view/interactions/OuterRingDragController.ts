@@ -404,7 +404,7 @@ export class OuterRingDragController {
     }
 
     private resolveSubplotColorFromGroup(group: SVGGElement): string | undefined {
-        const subplotIdxAttr = group.getAttribute('data-subplot-index');
+        const subplotIdxAttr = group.getAttribute('data-subplot-color-index') || group.getAttribute('data-subplot-index');
         if (!subplotIdxAttr) return undefined;
         const idx = Number(subplotIdxAttr);
         if (!Number.isFinite(idx)) return undefined;

@@ -12,11 +12,13 @@ export function renderSceneGroup(params: {
   startAngle: number;
   endAngle: number;
   subplotIdxAttr: string | number;
+  subplotColorIdxAttr?: string | number;
   titleInset: number;
 }): string {
-  const { scene, act, ring, idx, innerR, outerR, startAngle, endAngle, subplotIdxAttr, titleInset } = params;
+  const { scene, act, ring, idx, innerR, outerR, startAngle, endAngle, subplotIdxAttr, subplotColorIdxAttr, titleInset } = params;
   const groupId = `scene-group-${act}-${ring}-${idx}`;
+  const colorAttr = subplotColorIdxAttr !== undefined ? ` data-subplot-color-index="${String(subplotColorIdxAttr)}"` : '';
   return `
-    <g class="rt-scene-group${isBeatNote(scene) ? ' beats' : ''}" data-item-type="${isBeatNote(scene) ? 'Beat' : 'Scene'}" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(startAngle)}" data-end-angle="${formatNumber(endAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${String(subplotIdxAttr)}" data-title-inset="${formatNumber(titleInset)}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="${groupId}">
+    <g class="rt-scene-group${isBeatNote(scene) ? ' beats' : ''}" data-item-type="${isBeatNote(scene) ? 'Beat' : 'Scene'}" data-act="${act}" data-ring="${ring}" data-idx="${idx}" data-start-angle="${formatNumber(startAngle)}" data-end-angle="${formatNumber(endAngle)}" data-inner-r="${formatNumber(innerR)}" data-outer-r="${formatNumber(outerR)}" data-subplot-index="${String(subplotIdxAttr)}"${colorAttr} data-title-inset="${formatNumber(titleInset)}" data-path="${scene.path ? encodeURIComponent(scene.path) : ''}" id="${groupId}">
   `;
 }

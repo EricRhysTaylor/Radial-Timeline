@@ -152,47 +152,47 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   stroke: transparent;
 }
 
-/* Overlap pattern: alternating solid/outline with hue cycling */
+/* Overlap pattern: Diagonal gray stripes on darker gray background */
 .radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap {
-  --rt-backdrop-overlap-hue: var(--rt-backdrop-hue, 210);
-  fill: hsl(var(--rt-backdrop-overlap-hue), 65%, 58%);
-  stroke: hsl(var(--rt-backdrop-overlap-hue), 65%, 42%);
-  stroke-width: 2px;
-  fill-opacity: 0.4;
+  fill: url(#rt-backdrop-diagonal);
+  stroke: #444;
+  stroke-width: 1px;
+  stroke-opacity: 0.5;
+  fill-opacity: 1; /* Pattern handles opacity */
   opacity: 1;
-  mix-blend-mode: multiply;
+  mix-blend-mode: normal; /* Normal blend so pattern shows clearly over base */
 }
 
-/* Hue classes for overlap depth (used instead of inline styles) */
-.rt-backdrop-hue-0 { --rt-backdrop-hue: 210; } /* blue */
-.rt-backdrop-hue-1 { --rt-backdrop-hue: 20; }  /* orange */
-.rt-backdrop-hue-2 { --rt-backdrop-hue: 120; } /* green */
-.rt-backdrop-hue-3 { --rt-backdrop-hue: 280; } /* purple */
-.rt-backdrop-hue-4 { --rt-backdrop-hue: 60; }  /* yellow */
-.rt-backdrop-hue-5 { --rt-backdrop-hue: 320; } /* magenta */
-.rt-backdrop-hue-6 { --rt-backdrop-hue: 140; } /* teal */
-.rt-backdrop-hue-7 { --rt-backdrop-hue: 260; } /* indigo */
-
-/* When hovering a specific backdrop segment, hide overlap overlays (rendered after bases) */
+/* Base style for overlap segments (resetting hue/parity specific styles) */
+.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-even,
+.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-odd {
+  /* Common styling for pattern approach */
+  stroke-dasharray: none;
+  stroke: #444 !important;
+  stroke-width: 1px !important;
+  stroke-opacity: 0.5 !important;
+  fill-opacity: 1;
+  fill: url(#rt-backdrop-diagonal) !important;
+}
 .radial-timeline-container .rt-backdrop-segment:hover ~ .rt-backdrop-segment.rt-backdrop-overlap,
 .radial-timeline-container .rt-backdrop-segment.rt-selected ~ .rt-backdrop-segment.rt-backdrop-overlap {
   opacity: 0;
 }
 
-.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-even {
-  /* Keep the fill, hide stroke for clean solid */
-  stroke: none !important;
-  fill-opacity: 0.65;
+/* When hovering anywhere on the backdrop ring, also hide overlap overlays so base highlights are unobstructed */
+.radial-timeline-container .rt-backdrop-ring:hover .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0;
 }
 
-.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-odd {
-  /* Outline-only with dash for contrast */
-  fill: none !important;
-  stroke: hsl(var(--rt-backdrop-overlap-hue), 70%, 48%) !important;
-  stroke-width: 2.5px !important;
-  stroke-dasharray: 10 6;
-  stroke-linecap: round;
+/* Enhanced z-order handling for overlapping backdrops */
+.radial-timeline-container .rt-scene-group[data-item-type="Backdrop"]:hover ~ .rt-scene-group[data-item-type="Backdrop"],
+.radial-timeline-container .rt-scene-group[data-item-type="Backdrop"]:hover ~ .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
+
+/* REMOVED DUPLICATE BLOCK: .radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-even */
+/* REMOVED DUPLICATE BLOCK: .radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-odd */
 
 /* Repeating text label along the arc */
 .rt-backdrop-label {
@@ -214,15 +214,14 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 .rt-backdrop-overlap-label {
-  fill: hsl(var(--rt-backdrop-overlap-hue, 210), 70%, 55%);
-  fill-opacity: 0.7;
+  fill: #444; /* Dark gray text for pattern */
+  fill-opacity: 1;
+  stroke: none;
 }
 
 .rt-backdrop-overlap-label.rt-backdrop-overlap-odd {
-  fill: none !important;
-  stroke: hsl(var(--rt-backdrop-overlap-hue, 210), 70%, 55%);
-  stroke-width: 0.9px;
-  stroke-opacity: 0.7;
+  fill: #444 !important;
+  stroke: none !important;
 }
 
 /* Ensure textPath inherits label styling and has no decoration */
@@ -255,6 +254,11 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   stroke: none !important;
 }
 
+/* Hide overlap segments when any scene is hovered to reduce noise */
+.radial-timeline-container .radial-timeline-svg.scene-hover .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0 !important;
+}
+
 /* Backdrop labels during scene-hover: stay visible white, no stroke */
 .radial-timeline-svg.scene-hover .rt-backdrop-label {
   fill: var(--rt-color-empty) !important;
@@ -275,6 +279,17 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   /* transition: opacity 0.2s ease; */
 }
 
+/* Ensure backdrop labels are hidden during shift mode (unless hovered) */
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-label {
+  opacity: 0;
+}
+
+/* Hide overlap segments during shift mode */
+.radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Ensure backdrop segments never get fill during shift mode.
    But normal backdrop segments DO have fill now. Only Shift Mode should hide/dim it. */
 .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment {
@@ -289,6 +304,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 /* Re-brighten on hover during shift mode */
 .radial-timeline-container .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment:hover {
   opacity: 1;
+  cursor: default; /* Ensure no pointer cursor on backdrop during shift mode */
 }
 
 /* Shift mode: brighten label when hovering backdrop */
