@@ -537,7 +537,9 @@ export class BookDesignerModal extends Modal {
             return;
         }
 
-        const today = new Date().toISOString().slice(0, 10);
+        // Anchor generated scenes to today and advance each by one day for Chronologue
+        const sceneBaseDate = new Date();
+        sceneBaseDate.setHours(0, 0, 0, 0);
         let createdScenes = 0;
         let skippedScenes = 0;
 
@@ -570,6 +572,11 @@ export class BookDesignerModal extends Modal {
         // Let's try to map the *index* (1-based) to the *target range*.
         
         for (let i = 1; i <= this.scenesToGenerate; i++) {
+            // Increment day for each successive scene
+            const sceneDate = new Date(sceneBaseDate);
+            sceneDate.setDate(sceneBaseDate.getDate() + (i - 1));
+            const when = sceneDate.toISOString().slice(0, 10);
+
             // Calculate distributed scene number
             // Force at least 1, max at targetRangeMax.
             // Spread i from [1..N] to [1..Range]
@@ -646,7 +653,7 @@ export class BookDesignerModal extends Modal {
 
             const data: SceneCreationData = {
                 act,
-                when: today,
+                when,
                 sceneNumber: sceneNum,
                 subplots: assignedSubplots,
                 character: characterString,

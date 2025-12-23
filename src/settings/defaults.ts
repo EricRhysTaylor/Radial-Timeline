@@ -113,7 +113,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     sceneYamlTemplates: {
         base: `Class: Scene              # Type: Scene, Beat, Backdrop
 Act: {{Act}}              # Which act (1-3)
-When: {{When}}            # Story chronology date (YYYY-MM-DD 12:34pm)
+When: {{When}}            # Story chronology date (YYYY-MM-DD 12:30pm)
 Duration: 1 hour         # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
 Synopsis: Short scene summary.                # Brief description of what happens in this scene
 Subplot: {{Subplot}}      # Single subplot (or use array format below for multiple)

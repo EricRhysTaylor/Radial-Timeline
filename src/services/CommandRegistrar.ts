@@ -202,7 +202,8 @@ export class CommandRegistrar {
             }
 
             const start = new Date();
-            const end = new Date(start.getTime() + 60 * 60 * 1000);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
             const filledTemplate = template
                 .replace(/{{When}}/g, this.formatDateTime(start))
                 .replace(/{{End}}/g, this.formatDateTime(end));
