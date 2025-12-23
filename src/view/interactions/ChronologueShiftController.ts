@@ -5,6 +5,7 @@
  */
 
 import type { TimelineItem } from '../../types';
+import { getActivePlanetaryProfile, validatePlanetaryProfile } from '../../utils/planetaryTime';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
 import {
@@ -22,9 +23,9 @@ const SHIFT_BUTTON_BASE_HEIGHT = 68; // Base height from SVG path
 const SHIFT_BUTTON_INACTIVE_WIDTH = 106; // Target width when inactive
 const SHIFT_BUTTON_ACTIVE_WIDTH = 128; // Target width when active (20% larger)
 
-// Calculate scale factors (scaling UP from base size)
-const SHIFT_BUTTON_BASE_SCALE = SHIFT_BUTTON_INACTIVE_WIDTH / SHIFT_BUTTON_BASE_WIDTH; // ~0.797 - inactive
-const SHIFT_BUTTON_ACTIVE_SCALE = SHIFT_BUTTON_ACTIVE_WIDTH / SHIFT_BUTTON_BASE_WIDTH; // ~0.962 - active
+// Button Scaling Constants
+const BUTTON_BASE_SCALE = 1.0;
+const BUTTON_ACTIVE_SCALE = 1.2;
 
 const ELAPSED_ARC_STROKE_WIDTH = 3;
 
@@ -187,12 +188,21 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     });
 
     // Create shift button (top-left quadrant)
+    // Create buttons logic (Shift is always created, ALT is conditional)
     const shiftButton = createShiftButton();
     svg.appendChild(shiftButton);
 
-    // Create ALT button (right of shift button)
-    const altButton = createAltButton();
-    svg.appendChild(altButton);
+    let altButton: SVGGElement | null = null;
+
+    // Check if Planetary Time is enabled and active profile is valid
+    const activeProfile = getActivePlanetaryProfile(view.plugin.settings);
+    const isProfileValid = activeProfile ? validatePlanetaryProfile(activeProfile).ok : false;
+    const shouldShowAlt = view.plugin.settings.enablePlanetaryTime && isProfileValid;
+
+    if (shouldShowAlt) {
+        altButton = createAltButton();
+        svg.appendChild(altButton);
+    }
 
     // Function to activate shift mode
     const activateShiftMode = (enableAlien: boolean = false) => {
@@ -203,7 +213,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
 
         // Handle Alien Logic overlap
-        if (enableAlien) {
+        if (enableAlien && altButton) {
             if (!alienModeActive) {
                 alienModeActive = true;
                 globalAlienModeActive = true;
@@ -252,9 +262,10 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             updateShiftButtonState(shiftButton, false);
 
             // Also kill Alien Mode
+            // Also kill Alien Mode
             alienModeActive = false;
             globalAlienModeActive = false;
-            updateAltButtonState(altButton, false);
+            if (altButton) updateAltButtonState(altButton, false);
 
             selectedScenes = [];
             rebuildSelectedPathsSet(); // Rebuild Set after clearing
@@ -287,6 +298,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     };
 
     const toggleAlienMode = () => {
+        if (!altButton) return; // Guard clause
+
         if (alienModeActive) {
             // Turn OFF Alien Mode
             alienModeActive = false;
@@ -322,10 +335,12 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     });
 
     // Register ALT button click handler
-    view.registerDomEvent(altButton as unknown as HTMLElement, 'click', (e: MouseEvent) => {
-        e.stopPropagation();
-        toggleAlienMode();
-    });
+    if (altButton) {
+        view.registerDomEvent(altButton as unknown as HTMLElement, 'click', (e: MouseEvent) => {
+            e.stopPropagation();
+            toggleAlienMode();
+        });
+    }
 
     let capsLockState = false;
     let pendingCapsLockSync = false;
@@ -362,7 +377,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             activateShiftMode(e.altKey); // Enable Alien if Alt is held
         } else if (e.key === 'Alt') {
             // If Shift is already held or active via caps lock, toggle Alien visual
-            if (shiftModeActive && !alienModeActive) {
+            if (shiftModeActive && !alienModeActive && altButton) {
                 // Temporary Alien Peek?
                 // Let's just create a temporary toggle behavior if they hold Alt while Shift is active/held
                 alienModeActive = true;
@@ -620,7 +635,7 @@ function createShiftButton(): SVGGElement {
     button.setAttribute('class', 'rt-shift-mode-button');
     button.setAttribute('id', 'shift-mode-toggle');
 
-    button.setAttribute('transform', `translate(${SHIFT_BUTTON_POS_X}, ${SHIFT_BUTTON_POS_Y}) scale(${SHIFT_BUTTON_BASE_SCALE})`);
+    button.setAttribute('transform', `translate(${SHIFT_BUTTON_POS_X}, ${SHIFT_BUTTON_POS_Y}) scale(${BUTTON_BASE_SCALE})`);
 
     // Create path element
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -663,35 +678,39 @@ function updateShiftButtonState(button: SVGGElement, active: boolean): void {
 
     if (active) {
         // Scale up when active (like mode pages) - CSS handles colors
-        button.setAttribute('transform', `${baseTransform} scale(${SHIFT_BUTTON_ACTIVE_SCALE})`);
+        button.setAttribute('transform', `${baseTransform} scale(${BUTTON_ACTIVE_SCALE})`);
         button.classList.add('rt-shift-mode-active');
     } else {
         // Normal scale when inactive - CSS handles colors
-        button.setAttribute('transform', `${baseTransform} scale(${SHIFT_BUTTON_BASE_SCALE})`);
+        button.setAttribute('transform', `${baseTransform} scale(${BUTTON_BASE_SCALE})`);
         button.classList.remove('rt-shift-mode-active');
     }
 }
 
 /**
- * Create the ALT button element (Next to Shift)
+ * Create the ALT button element (Left of Shift)
  */
 function createAltButton(): SVGGElement {
     const button = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    button.setAttribute('class', 'rt-shift-mode-button rt-alt-button'); // Reuse shift styling basics
+    button.setAttribute('class', 'rt-shift-mode-button rt-alt-button');
     button.setAttribute('id', 'alt-mode-toggle');
 
-    // Position it to the right of the shift button
-    // Shift Width ~106 (inactive) -> Gap 10 -> Alt
-    const altX = SHIFT_BUTTON_POS_X + SHIFT_BUTTON_INACTIVE_WIDTH + 15;
-    const altY = SHIFT_BUTTON_POS_Y + 10; // Slightly lower? Or same baseline? 
-    // Shift is fairly large height. Let's align top or center.
-    // Let's make it smaller.
+    // Position to the LEFT of Shift button.
+    // Shift is at SHIFT_BUTTON_POS_X (-700).
+    // Space 10px.
+    // Alt Button Native Width = 70px (Scale 1.0).
+    // New X = -700 - 10 - 70 = -780.
 
-    button.setAttribute('transform', `translate(${altX}, ${altY}) scale(0.6)`); // 60% size
+    // Native Scale = BUTTON_BASE_SCALE
+    const scale = BUTTON_BASE_SCALE;
+    const nativeWidth = 70;
+    const posX = SHIFT_BUTTON_POS_X - 10 - nativeWidth;
 
-    // Create path element (Reuse shape or simple rect? Shape looks cool)
+    button.setAttribute('transform', `translate(${posX}, ${SHIFT_BUTTON_POS_Y}) scale(${scale})`);
+
+    // Create path element with custom narrow shape
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', createShiftButtonShape()); // Reuse the hex/tab shape
+    path.setAttribute('d', createAltButtonShape()); // Custom narrower shape
     path.setAttribute('class', 'rt-shift-button-bg');
     path.setAttribute('fill', 'var(--interactive-normal)');
     path.setAttribute('stroke', 'var(--text-normal)');
@@ -699,13 +718,12 @@ function createAltButton(): SVGGElement {
 
     // Create text element
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', '66.5');
-    text.setAttribute('y', '52');
+    text.setAttribute('x', '35'); // Center of 70
+    text.setAttribute('y', '52'); // Native baseline
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('class', 'rt-shift-button-text');
     text.textContent = 'ALT';
-    // Override font size logic in CSS via class? Or here?
 
     // Create title for tooltip
     const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
@@ -719,18 +737,38 @@ function createAltButton(): SVGGElement {
 }
 
 /**
+ * Create a narrower button shape for ALT (Base Width ~70)
+ * Derived from Shift Button (Base Width 133)
+ * Adjusts the horizontal segments to shrink width.
+ */
+function createAltButtonShape(): string {
+    // Original: M0 11 C0 4.9.. 11 0 H103 C119.. 133 13.. 133 30 V57 .. 122 68 H11 ..
+    // We want to reduce width by (133 - 70) = 63.
+    // H103 -> H40 (103 - 63)
+    // C119.. -> Start is 40. Control 1 was 103+16=119. New C1 = 40+16=56.
+    // End X was 133. New End X = 70.
+    // V57 (Height) unchanged.
+    // Bottom H122 -> H59 (122 - 63).
+    // Let's verify curve math roughly.
+
+    return 'M0 11C0 4.92487 4.92487 0 11 0H40C56.569 0 70 13.4315 70 30V57C70 63.0751 65.075 68 59 68H11C4.92487 68 0 63.0751 0 57V11Z';
+}
+
+/**
  * Update ALT button visual state
  */
 function updateAltButtonState(button: SVGGElement, active: boolean): void {
-    // Reusing standard update logic but keeping simple scale
     const currentTransform = button.getAttribute('transform') || '';
     const baseTransform = currentTransform.replace(/scale\([^)]+\)/, '').trim();
 
+    // Native Scale = 1.0.
+    // Shift Button grows ~20% (0.8 -> 0.96).
+    // So Alt Button Active should be 1.2.
     if (active) {
-        button.setAttribute('transform', `${baseTransform} scale(0.7)`); // Pop up slightly
-        button.classList.add('rt-shift-mode-active'); // Reuses the active color styling
+        button.setAttribute('transform', `${baseTransform} scale(${BUTTON_ACTIVE_SCALE})`);
+        button.classList.add('rt-shift-mode-active');
     } else {
-        button.setAttribute('transform', `${baseTransform} scale(0.6)`);
+        button.setAttribute('transform', `${baseTransform} scale(${BUTTON_BASE_SCALE})`);
         button.classList.remove('rt-shift-mode-active');
     }
 }

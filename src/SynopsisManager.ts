@@ -20,6 +20,7 @@ import { adjustBeatLabelsAfterRender } from './renderer/dom/BeatLabelAdjuster';
 import { sortScenes, isBeatNote, shouldDisplayMissingWhenWarning } from './utils/sceneHelpers';
 import { parseWhenField } from './utils/date';
 import { getReadabilityMultiplier, getReadabilityScale } from './utils/readability';
+import { isAlienModeActive } from './view/interactions/ChronologueShiftController';
 
 /**
  * Handles generating synopsis SVG/HTML blocks and positioning logic.
@@ -319,7 +320,22 @@ export default class SynopsisManager {
     const isBackdrop = scene.itemType === 'Backdrop';
     const shouldShowDate = scene.when && !(scene.itemType === 'Plot' && isGossamerMode);
 
-    const formattedDate = shouldShowDate ? this.formatDateForDisplay(scene.when) : undefined;
+    let formattedDate: string | undefined;
+    if (shouldShowDate && scene.when) {
+      if (isAlienModeActive()) {
+        const settings = this.plugin.settings as any;
+        const profile = getActivePlanetaryProfile(settings);
+        const conversion = profile ? convertFromEarth(scene.when, profile) : null;
+        if (conversion) {
+          // Use Alien Date Format
+          formattedDate = conversion.formatted;
+        } else {
+          formattedDate = this.formatDateForDisplay(scene.when);
+        }
+      } else {
+        formattedDate = this.formatDateForDisplay(scene.when);
+      }
+    }
 
     let duration = scene.Duration ? scene.Duration : undefined;
     if (isBackdrop && (scene as any).End) {

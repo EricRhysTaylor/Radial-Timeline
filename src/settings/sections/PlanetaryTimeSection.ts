@@ -1,4 +1,4 @@
-import { App, Setting as Settings, TextComponent, DropdownComponent } from 'obsidian';
+import { App, Setting as Settings, TextComponent, DropdownComponent, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { PlanetaryProfile } from '../../types';
 import { convertFromEarth, parseCommaNames, validatePlanetaryProfile } from '../../utils/planetaryTime';
@@ -58,6 +58,23 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         .setDesc(t('planetary.active.desc'));
 
     let selector: DropdownComponent | undefined;
+
+    // Add validation icon container
+    // Add validation icon container
+    const validationIcon = bodyEl.createDiv({ cls: 'rt-planetary-validation-icon' });
+    setIcon(validationIcon, 'orbit');
+
+    const updateValidationIcon = () => {
+        const profile = profiles.find(p => p.id === activeProfileId) || profiles[0]; // refresh lookup
+        if (!profile) return;
+        const valid = validatePlanetaryProfile(profile).ok;
+
+        validationIcon.classList.toggle('rt-valid', valid);
+        validationIcon.classList.toggle('rt-invalid', !valid);
+
+        validationIcon.setAttribute('title', valid ? 'Profile Valid' : 'Profile Invalid');
+    };
+
     const renderSelector = () => {
         selectorSetting.clear();
         selectorSetting.setName(t('planetary.active.name'));
@@ -105,6 +122,9 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
                 renderPreview();
             });
         });
+        // Append icon to the setting control
+        selectorSetting.controlEl.prepend(validationIcon);
+        updateValidationIcon();
     };
 
     renderSelector();
@@ -139,6 +159,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         await plugin.saveSettings();
         if (input) flash(input, 'success');
         renderPreview();
+        updateValidationIcon();
     };
 
     const getActiveProfile = (): PlanetaryProfile | null => {

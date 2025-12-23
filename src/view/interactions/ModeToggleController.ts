@@ -38,17 +38,15 @@ const MODE_OPTIONS = buildModeOptions();
 const ICON_BASE_WIDTH = 92; // Original width for SVG path
 const ICON_BASE_HEIGHT = 126; // Original height of icon
 
-// Target visual sizes (native size - no scaling, prevents stroke distortion)
-const INACTIVE_VISUAL_WIDTH = 46; // Native size for inactive icons
-const ACTIVE_VISUAL_WIDTH = 55; // Native size for active icon
+// Standardized Scaling (Target ~100px native path)
+const ICON_BASE_SCALE = 0.5; // Mode icons are drawn large (200px), scale down to ~100px
+const ICON_ACTIVE_SCALE = 0.6; // 20% larger when active
 
-// Scale factors to convert base coordinates to target sizes
-const INACTIVE_SCALE = INACTIVE_VISUAL_WIDTH / ICON_BASE_WIDTH; // ~0.5
-const ACTIVE_SCALE = ACTIVE_VISUAL_WIDTH / ICON_BASE_WIDTH; // ~0.598
+const INACTIVE_VISUAL_WIDTH = ICON_BASE_WIDTH * ICON_BASE_SCALE;
+const ACTIVE_VISUAL_WIDTH = ICON_BASE_WIDTH * ICON_ACTIVE_SCALE;
 
-// Calculated heights from scaled base height
-const INACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT * INACTIVE_SCALE; // ~63
-const ACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT * ACTIVE_SCALE; // ~75.4
+const INACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT * ICON_BASE_SCALE;
+const ACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT * ICON_ACTIVE_SCALE;
 
 // Visual spacing
 const ICON_VISUAL_GAP_INACTIVE = 4; // Gap between non-active icons
@@ -78,14 +76,14 @@ const ORIGINAL_DOCUMENT_PATH = 'M0.0740741 108.5C0.0740711 118 3.35321 126 18.85
  * Create SVG path for document shape scaled to inactive size (46px width)
  */
 function createInactiveDocumentShape(): string {
-    return scalePath(ORIGINAL_DOCUMENT_PATH, INACTIVE_SCALE);
+    return scalePath(ORIGINAL_DOCUMENT_PATH, ICON_BASE_SCALE);
 }
 
 /**
  * Create SVG path for document shape scaled to active size (55px width)
  */
 function createActiveDocumentShape(): string {
-    return scalePath(ORIGINAL_DOCUMENT_PATH, ACTIVE_SCALE);
+    return scalePath(ORIGINAL_DOCUMENT_PATH, ICON_ACTIVE_SCALE);
 }
 
 /**
@@ -95,55 +93,55 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
     const grid = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     grid.setAttribute('class', 'rt-mode-selector-grid');
     grid.setAttribute('id', 'mode-selector');
-    
+
     // Initial positioning with inactive gaps (will be adjusted in updateState)
     const spacePerIcon = INACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_INACTIVE;
     const totalWidth = MODE_OPTIONS.length * INACTIVE_VISUAL_WIDTH + (MODE_OPTIONS.length - 1) * ICON_VISUAL_GAP_INACTIVE;
     const startX = MODE_SELECTOR_POS_X - totalWidth / 2 + INACTIVE_VISUAL_WIDTH / 2;
-    
+
     MODE_OPTIONS.forEach((mode, index) => {
         const x = startX + index * spacePerIcon;
-        
+
         // Create outer group for positioning (translate only)
         const optionGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         optionGroup.setAttribute('class', 'rt-mode-option');
         optionGroup.setAttribute('data-mode', mode.id);
         optionGroup.setAttribute('transform', `translate(${x}, ${MODE_SELECTOR_POS_Y})`);
-        
+
         // Create inner group for hover scaling (CSS transform will apply here)
         const innerGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         innerGroup.setAttribute('class', 'rt-mode-option-content');
-        
+
         // Create path element - scaled to inactive size (native)
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('class', 'rt-document-bg');
         path.setAttribute('d', createInactiveDocumentShape());
-        
+
         // Create text element (acronym) - coordinates scaled to inactive size
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('class', 'rt-mode-acronym-text');
-        text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * INACTIVE_SCALE));
-        text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * INACTIVE_SCALE));
+        text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * ICON_BASE_SCALE));
+        text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * ICON_BASE_SCALE));
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('dominant-baseline', 'middle');
         text.textContent = mode.acronym;
-        
+
         // Create number label (1, 2, 3, 4) at top left corner - coordinates scaled
         const numberLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         numberLabel.setAttribute('class', 'rt-mode-number-label');
-        numberLabel.setAttribute('x', String(12 * INACTIVE_SCALE));
-        numberLabel.setAttribute('y', String(20 * INACTIVE_SCALE));
+        numberLabel.setAttribute('x', String(12 * ICON_BASE_SCALE));
+        numberLabel.setAttribute('y', String(20 * ICON_BASE_SCALE));
         numberLabel.setAttribute('text-anchor', 'start');
         numberLabel.setAttribute('dominant-baseline', 'middle');
         numberLabel.textContent = String(index + 1);
-        
+
         innerGroup.appendChild(path);
         innerGroup.appendChild(text);
         innerGroup.appendChild(numberLabel);
         optionGroup.appendChild(innerGroup);
         grid.appendChild(optionGroup);
     });
-    
+
     // Determine book title based on setting
     const showSourcePathAsTitle = view.plugin.settings.showSourcePathAsTitle !== false;
     let bookTitle = 'Work in Progress';
@@ -156,7 +154,7 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
     }
     // Convert to title case
     bookTitle = bookTitle.replace(/\b\w/g, c => c.toUpperCase());
-    
+
     // Add book title text above the mode title (10px higher)
     if (bookTitle) {
         const bookTitleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -167,10 +165,10 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         bookTitleText.setAttribute('dominant-baseline', 'baseline');
         bookTitleText.setAttribute('id', 'book-title');
         bookTitleText.textContent = bookTitle;
-        
+
         grid.appendChild(bookTitleText);
     }
-    
+
     // Add mode title text above the first icon
     const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     titleText.setAttribute('class', 'rt-mode-title-text');
@@ -183,9 +181,9 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
     if (MODE_OPTIONS.length > 0) {
         titleText.textContent = MODE_OPTIONS[0].label;
     }
-    
+
     grid.appendChild(titleText);
-    
+
     return grid;
 }
 
@@ -198,7 +196,7 @@ async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: 
 
     // Update UI immediately for instant visual feedback
     updateModeSelectorState(modeSelector, modeId);
-    
+
     if (modeManager) {
         await modeManager.switchMode(modeId as TimelineMode as any);
         // Re-sync UI to the actual active mode (guarded switches may no-op)
@@ -211,7 +209,7 @@ async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: 
         view.plugin.settings.currentMode = modeId;
         await view.plugin.saveSettings();
         resetGossamerModeState();
-        
+
         // Use direct refresh if available (bypasses 400ms debounce)
         if (typeof (view as any).refreshTimeline === 'function') {
             (view as any).refreshTimeline();
@@ -226,14 +224,14 @@ async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: 
  */
 function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string): void {
     const activeIndex = MODE_OPTIONS.findIndex(m => m.id === currentMode);
-    
+
     // Calculate positions with different gaps
     let x = MODE_SELECTOR_POS_X;
     const positions: number[] = [];
-    
+
     for (let i = 0; i < MODE_OPTIONS.length; i++) {
         positions.push(x);
-        
+
         if (i === activeIndex) {
             // After active icon, add larger gap
             x += ACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_ACTIVE;
@@ -245,21 +243,21 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             x += INACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_INACTIVE;
         }
     }
-    
+
     // Center the group
     const totalWidth = positions[positions.length - 1] + INACTIVE_VISUAL_WIDTH - positions[0];
     const offset = MODE_SELECTOR_POS_X - (positions[0] + positions[positions.length - 1]) / 2;
-    
+
     MODE_OPTIONS.forEach((mode, index) => {
         const modeElement = modeSelector.querySelector(`[data-mode="${mode.id}"]`);
         if (!modeElement) return;
-        
+
         const bg = modeElement.querySelector('.rt-document-bg') as SVGElement;
         const text = modeElement.querySelector('.rt-mode-acronym-text') as SVGElement;
         const numberLabel = modeElement.querySelector('.rt-mode-number-label') as SVGElement;
-        
+
         const finalX = positions[index] + offset;
-        
+
         if (mode.id === currentMode) {
             // Active mode - no scale transform, use native active size path
             modeElement.setAttribute('transform', `translate(${finalX}, ${MODE_SELECTOR_POS_Y})`);
@@ -267,16 +265,16 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             bg.classList.add('rt-active');
             text.classList.add('rt-active');
             if (numberLabel) numberLabel.classList.add('rt-active');
-            
+
             // Update path to active size (native)
             bg.setAttribute('d', createActiveDocumentShape());
-            
+
             // Update text positions to active size
-            text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * ACTIVE_SCALE));
-            text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * ACTIVE_SCALE));
+            text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * ICON_ACTIVE_SCALE));
+            text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * ICON_ACTIVE_SCALE));
             if (numberLabel) {
-                numberLabel.setAttribute('x', String(12 * ACTIVE_SCALE));
-                numberLabel.setAttribute('y', String(20 * ACTIVE_SCALE));
+                numberLabel.setAttribute('x', String(12 * ICON_ACTIVE_SCALE));
+                numberLabel.setAttribute('y', String(20 * ICON_ACTIVE_SCALE));
             }
         } else {
             // Inactive mode - no scale transform, use native inactive size path
@@ -285,20 +283,20 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             bg.classList.remove('rt-active');
             text.classList.remove('rt-active');
             if (numberLabel) numberLabel.classList.remove('rt-active');
-            
+
             // Update path to inactive size (native)
             bg.setAttribute('d', createInactiveDocumentShape());
-            
+
             // Update text positions to inactive size
-            text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * INACTIVE_SCALE));
-            text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * INACTIVE_SCALE));
+            text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * ICON_BASE_SCALE));
+            text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * ICON_BASE_SCALE));
             if (numberLabel) {
-                numberLabel.setAttribute('x', String(12 * INACTIVE_SCALE));
-                numberLabel.setAttribute('y', String(20 * INACTIVE_SCALE));
+                numberLabel.setAttribute('x', String(12 * ICON_BASE_SCALE));
+                numberLabel.setAttribute('y', String(20 * ICON_BASE_SCALE));
             }
         }
     });
-    
+
     // Update mode title text content only (position stays fixed)
     const titleText = modeSelector.querySelector('#mode-title') as SVGTextElement;
     if (titleText && activeIndex >= 0) {
@@ -310,14 +308,14 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
  * Initialize mode selector controls for a view
  */
 export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGElement): void {
-    
+
     // Create mode selector grid
     const modeSelector = createModeSelectorGrid(view);
     svg.appendChild(modeSelector);
-    
+
     // Update initial state
     updateModeSelectorState(modeSelector, view.currentMode || 'narrative');
-    
+
     // Register click handlers for each mode option
     MODE_OPTIONS.forEach(mode => {
         const modeElement = modeSelector.querySelector(`[data-mode="${mode.id}"]`);
@@ -328,7 +326,7 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
             });
         }
     });
-    
+
     // Register keyboard shortcuts (1, 2, 3, 4)
     const handleKeyPress = async (e: KeyboardEvent) => {
         // Only handle shortcuts when the radial timeline is the active view
@@ -344,7 +342,7 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
                 return; // Let the input handle the keystroke
             }
         }
-        
+
         const key = parseInt(e.key);
         if (key >= 1 && key <= 4 && key <= MODE_OPTIONS.length) {
             e.preventDefault();
@@ -352,15 +350,15 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
             await switchToMode(view, modeId, modeSelector);
         }
     };
-    
+
     // SAFE: Manual cleanup registered in view.onClose() via _modeToggleCleanup
     document.addEventListener('keydown', handleKeyPress);
-    
+
     // Store cleanup function
     (view as any)._modeToggleCleanup = () => {
         document.removeEventListener('keydown', handleKeyPress);
     };
-    
+
     // Register hover handlers for visual feedback (color changes only, no scaling)
     MODE_OPTIONS.forEach(mode => {
         const modeElement = modeSelector.querySelector(`[data-mode="${mode.id}"]`);
@@ -368,7 +366,7 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
             view.registerDomEvent(modeElement as unknown as HTMLElement, 'mouseenter', (e: MouseEvent) => {
                 modeElement.classList.add('rt-mode-hover');
             });
-            
+
             view.registerDomEvent(modeElement as unknown as HTMLElement, 'mouseleave', (e: MouseEvent) => {
                 modeElement.classList.remove('rt-mode-hover');
             });

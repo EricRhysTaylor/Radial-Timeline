@@ -3,7 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { GlobalPovMode } from '../../types/settings';
 
 const POV_MODE_OPTIONS: Record<GlobalPovMode, string> = {
-    off: 'Legacy (first listed character, “pov” superscript)',
+    off: 'first listed character, “pov” superscript',
     first: 'First-person voice (¹ marker on characters)',
     second: 'Second-person voice (You² label)',
     third: 'Third-person limited (³ marker on characters)',

@@ -121,6 +121,7 @@
 .radial-timeline-container .rt-scene-title-large {
   font-size: calc(18px * var(--rt-font-scale, 1));
 }
+
 .subplot-ring-label-path {
   fill: none;
   stroke: none;
@@ -476,6 +477,7 @@
   stroke-linecap: round;
   pointer-events: none;
 }
+
 /* When field warning tooltip */
 .rt-when-field-warning {
   pointer-events: none;
@@ -492,4 +494,155 @@
   font-size: 10px;
   font-weight: 600;
   fill: var(--text-error);
+}
+
+/* -------------------------------------------------------------------------- */
+/* ALIEN SHIFT MODE ([data-shift-mode="alien"])                              */
+/* -------------------------------------------------------------------------- */
+
+/* 1. Base State: Scenes fade out, but use Red tint */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] {
+  opacity: 0.15;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
+  fill: var(--text-error) !important;
+  /* Red Fill */
+  stroke: var(--text-error) !important;
+  /* Red Border */
+  stroke-width: 1px;
+}
+
+/* 2. Base State: Number Squares match the red theme */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square {
+  fill: var(--text-error) !important;
+  stroke: none !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-text {
+  fill: var(--background-primary) !important;
+  /* Contrast against red */
+  opacity: 0.8;
+}
+
+/* 3. SPOKES: Visible and Red in Alien Mode (Override opacity: 0) */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-subplot-ring-label-text {
+  opacity: 1 !important;
+  /* FORCE VISIBLE */
+  fill: var(--text-error) !important;
+  font-weight: bold;
+}
+
+/* Settings Validation Icon */
+.rt-planetary-validation-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 10px;
+  margin-right: 8px;
+  color: var(--text-muted);
+}
+
+.rt-planetary-validation-icon.rt-valid {
+  color: var(--text-success);
+}
+
+.rt-planetary-validation-icon.rt-invalid {
+  color: var(--text-error);
+}
+
+/* 4. Hover State: Full Opacity, Brighter Red */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:hover,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:has(.rt-shift-locked) {
+  opacity: 1 !important;
+  transition: none !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:hover .rt-scene-path,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-scene-path,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path.rt-shift-locked {
+  fill: var(--text-error) !important;
+  filter: brightness(1.3) drop-shadow(0 0 5px var(--text-error));
+}
+
+/* 5. Active Number Square in Alien Mode */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active {
+  fill: var(--interactive-accent) !important;
+  /* Default if no subplot */
+}
+
+/* Re-apply per-subplot colors for active squares in Alien Mode */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="0"] {
+  fill: var(--rt-subplot-colors-0) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="1"] {
+  fill: var(--rt-subplot-colors-1) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="2"] {
+  fill: var(--rt-subplot-colors-2) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="3"] {
+  fill: var(--rt-subplot-colors-3) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="4"] {
+  fill: var(--rt-subplot-colors-4) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="5"] {
+  fill: var(--rt-subplot-colors-5) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="6"] {
+  fill: var(--rt-subplot-colors-6) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="7"] {
+  fill: var(--rt-subplot-colors-7) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="8"] {
+  fill: var(--rt-subplot-colors-8) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="9"] {
+  fill: var(--rt-subplot-colors-9) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="10"] {
+  fill: var(--rt-subplot-colors-10) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="11"] {
+  fill: var(--rt-subplot-colors-11) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="12"] {
+  fill: var(--rt-subplot-colors-12) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="13"] {
+  fill: var(--rt-subplot-colors-13) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="14"] {
+  fill: var(--rt-subplot-colors-14) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="15"] {
+  fill: var(--rt-subplot-colors-15) !important;
+}
+
+/* 6. ALT Button Active State */
+.rt-alt-button.rt-shift-mode-active .rt-shift-button-bg {
+  fill: var(--text-error) !important;
+  stroke: var(--text-error) !important;
+}
+
+.rt-alt-button.rt-shift-mode-active .rt-shift-button-text {
+  fill: var(--background-primary) !important;
+  font-weight: bold;
 }
