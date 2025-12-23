@@ -19,7 +19,7 @@ export function renderGeneralSection(params: {
     sourcePathSetting.addText(text => {
         textInput = text;
         text
-            .setPlaceholder('Example: Manuscript/Scenes')
+            .setPlaceholder('Example: Book 1')
             .setValue(plugin.settings.sourcePath);
 
         attachFolderSuggest(text);

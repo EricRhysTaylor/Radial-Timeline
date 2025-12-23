@@ -57,20 +57,6 @@ export function renderBackdropRing({
         .map(s => s.when)
         .filter((d): d is Date => d instanceof Date && !isNaN(d.getTime()));
 
-    // DEBUG: Range Calculation
-    if (allValidDates.length > 0) {
-        const sorted = allValidDates.slice().sort((a, b) => a.getTime() - b.getTime());
-        console.log('[BackdropRing] Time Span Range:', {
-            start: sorted[0].toLocaleString(),
-            startMs: sorted[0].getTime(),
-            end: sorted[sorted.length - 1].toLocaleString(),
-            endMs: sorted[sorted.length - 1].getTime(),
-            count: allValidDates.length
-        });
-    } else {
-        console.log('[BackdropRing] No valid dates found for range.');
-    }
-
     if (allValidDates.length === 0) {
         return '';
     }
@@ -187,13 +173,6 @@ export function renderBackdropRing({
 
         const computedStartAngle = mapTimestampToSceneIndexAngle(clampedStartMs);
         const computedEndAngle = mapTimestampToSceneIndexAngle(clampedEndMs);
-
-        console.log(`[BackdropRing] Item "${item.title}" mapped`, {
-             start: new Date(clampedStartMs).toLocaleString(),
-             end: new Date(clampedEndMs).toLocaleString(),
-             startAngleDeg: (computedStartAngle * 180 / Math.PI).toFixed(1),
-             endAngleDeg: (computedEndAngle * 180 / Math.PI).toFixed(1)
-        });
 
         return {
             scene: item,

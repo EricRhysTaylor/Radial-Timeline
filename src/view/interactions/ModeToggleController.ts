@@ -193,13 +193,19 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
  * Switch to the specified mode
  */
 async function switchToMode(view: ModeToggleView, modeId: string, modeSelector: SVGGElement): Promise<void> {
+    const modeManager = view.getModeManager?.();
+    const previousMode = modeManager?.getCurrentMode?.() ?? view.plugin.settings.currentMode;
+
     // Update UI immediately for instant visual feedback
     updateModeSelectorState(modeSelector, modeId);
     
-    const modeManager = view.getModeManager?.();
-    
     if (modeManager) {
         await modeManager.switchMode(modeId as TimelineMode as any);
+        // Re-sync UI to the actual active mode (guarded switches may no-op)
+        const finalMode = modeManager.getCurrentMode();
+        if (finalMode !== modeId) {
+            updateModeSelectorState(modeSelector, finalMode);
+        }
     } else {
         // Fallback: try direct refresh first, then debounced
         view.plugin.settings.currentMode = modeId;
