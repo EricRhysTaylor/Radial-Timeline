@@ -3,12 +3,13 @@ import type RadialTimelinePlugin from '../main';
 import { createBeatTemplateNotes } from '../utils/beatsTemplates';
 import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { parseDuration, parseDurationDetail } from '../utils/date';
 
 export class BookDesignerModal extends Modal {
     private plugin: RadialTimelinePlugin;
     
     // Form values
-    private targetPath: string;
+    private timeIncrement: string = "1 day";
     private scenesToGenerate: number = 1;
     private targetRangeMax: number = 60;
     private selectedActs: number[] = [1, 2, 3];
@@ -24,7 +25,6 @@ export class BookDesignerModal extends Modal {
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app);
         this.plugin = plugin;
-        this.targetPath = plugin.settings.sourcePath;
         this.templateType = 'base';
     }
 
@@ -46,8 +46,15 @@ export class BookDesignerModal extends Modal {
         // Hero Header (Gossamer Pulse Standard)
         const hero = contentEl.createDiv({ cls: 'rt-gossamer-simple-header' });
         hero.createSpan({ cls: 'rt-gossamer-simple-badge', text: 'SETUP' });
-        hero.createDiv({ cls: 'rt-gossamer-hero-system', text: 'Book Designer' });
-        hero.createDiv({ cls: 'rt-gossamer-score-subtitle', text: 'Configure and generate the skeleton for your new novel. Relies on Settings YAML templates Basic and Advanced.' });
+        hero.createDiv({ cls: 'rt-gossamer-hero-system', text: 'Book designer' });
+        hero.createDiv({ cls: 'rt-gossamer-score-subtitle', text: 'Configure and generate the skeleton for your new novel. Relies on settings YAML templates basic and advanced.' });
+        
+        const sourcePath = this.plugin.settings.sourcePath || 'vault root';
+        hero.createDiv({ 
+            cls: 'rt-gossamer-score-subtitle rt-source-path-label', 
+            text: `Source path from settings will place book at... ${sourcePath}` 
+        });
+        
         const heroMeta = hero.createDiv({ cls: 'rt-gossamer-simple-meta' });
         heroMeta.createSpan({ cls: 'rt-pulse-hero-meta-item', text: 'Scenes + Subplots' });
         heroMeta.createSpan({ cls: 'rt-pulse-hero-meta-item', text: 'Acts + Beats' });
@@ -58,16 +65,33 @@ export class BookDesignerModal extends Modal {
         const structCard = scrollContainer.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
         structCard.createDiv({ cls: 'rt-manuscript-card-head', text: 'Location & Structure' });
 
-        // Target Location
-        const locationSetting = new Setting(structCard)
-            .setName('Target location')
-            .setDesc('Folder path where the new book will be created.')
-            .addText(text => text
-                .setValue(this.targetPath)
-                .setPlaceholder('Example:Book 1')
-                .onChange(value => this.targetPath = value));
-        // Removed rt-manuscript-card-block to restore single line layout
-
+        // Time Increment Setting
+        new Setting(structCard)
+            .setName('Time increment per scene')
+            .setDesc('Duration between scenes (e.g. 1 hour, 1 day, 1 week).')
+            .addText(text => {
+                text.setValue(this.timeIncrement)
+                    .setPlaceholder('1 day');
+                
+                // Use blur to validate
+                text.inputEl.addEventListener('blur', () => {
+                    const raw = text.getValue().trim();
+                    if (!raw) {
+                        this.timeIncrement = '1 day';
+                        text.setValue('1 day');
+                        return;
+                    }
+                    const valid = parseDurationDetail(raw);
+                    if (valid) {
+                        this.timeIncrement = raw;
+                        text.inputEl.removeClass('rt-setting-input-error');
+                    } else {
+                        new Notice(`Invalid duration: "${raw}". Reverting to ${this.timeIncrement}.`);
+                        text.setValue(this.timeIncrement);
+                        text.inputEl.addClass('rt-setting-input-error');
+                    }
+                });
+            });
 
         // Scenes + target range group (single border spanning both columns)
         const countsGroup = structCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block' });
@@ -512,7 +536,8 @@ export class BookDesignerModal extends Modal {
 
     async generateBook(): Promise<void> {
         const vault = this.plugin.app.vault;
-        const targetFolder = normalizePath(this.targetPath.trim());
+        const targetPath = this.plugin.settings.sourcePath;
+        const targetFolder = targetPath ? normalizePath(targetPath.trim()) : '';
 
         // Ensure folder exists
         if (targetFolder && !vault.getAbstractFileByPath(targetFolder)) {
@@ -537,9 +562,11 @@ export class BookDesignerModal extends Modal {
             return;
         }
 
-        // Anchor generated scenes to today and advance each by one day for Chronologue
+        // Anchor generated scenes to today and advance each by time increment
         const sceneBaseDate = new Date();
         sceneBaseDate.setHours(0, 0, 0, 0);
+        const incrementMs = parseDuration(this.timeIncrement) || (24 * 60 * 60 * 1000); // Default 1 day
+
         let createdScenes = 0;
         let skippedScenes = 0;
 
@@ -572,10 +599,15 @@ export class BookDesignerModal extends Modal {
         // Let's try to map the *index* (1-based) to the *target range*.
         
         for (let i = 1; i <= this.scenesToGenerate; i++) {
-            // Increment day for each successive scene
-            const sceneDate = new Date(sceneBaseDate);
-            sceneDate.setDate(sceneBaseDate.getDate() + (i - 1));
-            const when = sceneDate.toISOString().slice(0, 10);
+            // Increment time for each successive scene
+            const sceneDate = new Date(sceneBaseDate.getTime() + (incrementMs * (i - 1)));
+            let when = sceneDate.toISOString().slice(0, 10);
+            
+            if (incrementMs < (24 * 60 * 60 * 1000)) {
+                 const hours = sceneDate.getHours().toString().padStart(2, '0');
+                 const mins = sceneDate.getMinutes().toString().padStart(2, '0');
+                 when = `${when} ${hours}:${mins}`;
+            }
 
             // Calculate distributed scene number
             // Force at least 1, max at targetRangeMax.
@@ -648,7 +680,7 @@ export class BookDesignerModal extends Modal {
                 : yamlInlineArray(characterList);
 
             // Place list fallback
-            const placeListRaw = this.targetPath ? [this.targetPath] : [];
+            const placeListRaw = targetPath ? [targetPath] : [];
             const placeList = placeListRaw.length > 0 ? placeListRaw : ['Unknown'];
 
             const data: SceneCreationData = {
