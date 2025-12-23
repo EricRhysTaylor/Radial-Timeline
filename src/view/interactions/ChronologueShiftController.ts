@@ -698,19 +698,24 @@ function createAltButton(): SVGGElement {
     // Position to the LEFT of Shift button.
     // Shift is at SHIFT_BUTTON_POS_X (-700).
     // Space 10px.
-    // Alt Button Native Width = 70px (Scale 1.0).
-    // New X = -700 - 10 - 70 = -780.
+    // Alt Button Native Width = 41px (Scale 1.0).
+    // New X = -700 - 10 - 41 = -751.
 
     // Native Scale = BUTTON_BASE_SCALE
     const scale = BUTTON_BASE_SCALE;
-    const nativeWidth = 70;
+    const nativeWidth = 41;
+    const nativeHeight = 42;
+    // Center vertically relative to Shift button
+    const yOffset = (SHIFT_BUTTON_BASE_HEIGHT - nativeHeight) / 2;
+
     const posX = SHIFT_BUTTON_POS_X - 10 - nativeWidth;
+    const posY = SHIFT_BUTTON_POS_Y + yOffset;
 
-    button.setAttribute('transform', `translate(${posX}, ${SHIFT_BUTTON_POS_Y}) scale(${scale})`);
+    button.setAttribute('transform', `translate(${posX}, ${posY}) scale(${scale})`);
 
-    // Create path element with custom narrow shape
+    // Create path element
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', createAltButtonShape()); // Custom narrower shape
+    path.setAttribute('d', createAltButtonShape()); 
     path.setAttribute('class', 'rt-shift-button-bg');
     path.setAttribute('fill', 'var(--interactive-normal)');
     path.setAttribute('stroke', 'var(--text-normal)');
@@ -718,11 +723,12 @@ function createAltButton(): SVGGElement {
 
     // Create text element
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', '35'); // Center of 70
-    text.setAttribute('y', '52'); // Native baseline
+    text.setAttribute('x', '20.5'); // Center of 41
+    text.setAttribute('y', '21'); // Center of 42
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('class', 'rt-shift-button-text');
+    text.setAttribute('font-size', '11px');
     text.textContent = 'ALT';
 
     // Create title for tooltip
@@ -737,21 +743,11 @@ function createAltButton(): SVGGElement {
 }
 
 /**
- * Create a narrower button shape for ALT (Base Width ~70)
- * Derived from Shift Button (Base Width 133)
- * Adjusts the horizontal segments to shrink width.
+ * Create a narrower button shape for ALT (Base Width 41)
+ * Uses the new Alt Key SVG path provided
  */
 function createAltButtonShape(): string {
-    // Original: M0 11 C0 4.9.. 11 0 H103 C119.. 133 13.. 133 30 V57 .. 122 68 H11 ..
-    // We want to reduce width by (133 - 70) = 63.
-    // H103 -> H40 (103 - 63)
-    // C119.. -> Start is 40. Control 1 was 103+16=119. New C1 = 40+16=56.
-    // End X was 133. New End X = 70.
-    // V57 (Height) unchanged.
-    // Bottom H122 -> H59 (122 - 63).
-    // Let's verify curve math roughly.
-
-    return 'M0 11C0 4.92487 4.92487 0 11 0H40C56.569 0 70 13.4315 70 30V57C70 63.0751 65.075 68 59 68H11C4.92487 68 0 63.0751 0 57V11Z';
+    return 'M40.9901 32.4693C40.977 37.4362 39.2568 42 31.0368 42H8.87197C2.72023 42 0.0431366 35.2491 0.00452042 31.3278C-0.00564957 30.295 0.00452042 26.5082 0.00452042 25.2416C0.00452042 23.4098 0.376205 17.6413 7.51921 9.29508C14.6786 0.929723 21.8734 0 23.8775 3.29984e-06H31.9888C38.4698 3.58188e-06 40.9702 4.85099 40.9958 9.29508C41.0057 11.0164 40.9958 30.295 40.9901 32.4693Z';
 }
 
 /**
