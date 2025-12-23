@@ -171,8 +171,20 @@ export function renderBackdropRing({
         // Actually, if clampedStart == clampedEnd, it's a point. Backdrop usually implies duration.
         // Let's allow it.
 
-        const computedStartAngle = mapTimestampToSceneIndexAngle(clampedStartMs);
-        const computedEndAngle = mapTimestampToSceneIndexAngle(clampedEndMs);
+        let computedStartAngle = mapTimestampToSceneIndexAngle(clampedStartMs);
+        let computedEndAngle = mapTimestampToSceneIndexAngle(clampedEndMs);
+
+        // Guard: if the backdrop spans the entire scene range (start == end == full circle),
+        // the arc would collapse to a point because start/end coordinates are identical.
+        // Nudge the end angle slightly so we still render a visible segment and label.
+        const epsilon = 0.002; // small angle to avoid zero-length paths
+        const span = computedEndAngle - computedStartAngle;
+        const fullCircleSpan = totalAngle - epsilon;
+        if (span <= 0) {
+            computedEndAngle = computedStartAngle + epsilon;
+        } else if (span >= totalAngle - 1e-4) {
+            computedEndAngle = computedStartAngle + fullCircleSpan;
+        }
 
         return {
             scene: item,
@@ -182,38 +194,10 @@ export function renderBackdropRing({
     }).filter((seg): seg is BackdropSegment => seg !== null);
 
     // 4. Render Segments
-    // Strategy for overlaps: 
-    // Render ALL segments.
-    // If a segment overlaps with another, apply a dash pattern to the *overlapping* ones (or all).
-    // User requested "alternating pattern".
-    // Simple implementation: dashed lines for all, offset by index?
-    // Let's try: Base layer solid (if single). If overlap, dash.
-
-    // Actually, just render them as arcs. The user wants to see *what* is overlapping.
-    // If Item A and Item B overlap:
-    // Render Item A. Render Item B.
-    // If they are both solid, B covers A.
-    // We will use stroke-dasharray for ALL context arcs to allow "mixing".
-    // Or, we can detect overlaps and only dash then.
-    // For now, let's implement the "solid" arc with a repeating text label.
-    // We'll add a class `rt-backdrop-overlap` if it overlaps.
-
-    // Detection of overlaps for styling
-    // Simple N^2 check is fine for typical number of contexts
-    const overlaps = new Set<number>();
-    for (let i = 0; i < segments.length; i++) {
-        for (let j = i + 1; j < segments.length; j++) {
-            const s1 = segments[i];
-            const s2 = segments[j];
-
-            // Angular overlap check (handle wrap-around? Time is linear here mostly)
-            // But angles go -PI/2 to 3PI/2.
-            if (Math.max(s1.startAngle, s2.startAngle) < Math.min(s1.endAngle, s2.endAngle)) {
-                overlaps.add(i);
-                overlaps.add(j);
-            }
-        }
-    }
+    // Strategy:
+    // - Render base arc for each backdrop (solid style).
+    // - Separately render overlay arcs only for the angular portions that actually overlap (>=2 active).
+    //   Overlays alternate outline/solid and cycle hue based on overlap depth within that interval.
 
     let svg = `<g class="rt-backdrop-ring">`;
 
@@ -232,8 +216,33 @@ export function renderBackdropRing({
     svg += `<circle cx="0" cy="0" r="${formatNumber(innerBorderR)}" class="rt-backdrop-border" fill="none" />`;
     svg += `<circle cx="0" cy="0" r="${formatNumber(outerBorderR)}" class="rt-backdrop-border" fill="none" />`;
 
+    // Precompute overlap intervals (where 2+ arcs are active)
+    type Interval = { start: number; end: number; active: number[] };
+    const events: Array<{ angle: number; type: 'start' | 'end'; idx: number }> = [];
     segments.forEach((seg, idx) => {
-        const isOverlapping = overlaps.has(idx);
+        events.push({ angle: seg.startAngle, type: 'start', idx });
+        events.push({ angle: seg.endAngle, type: 'end', idx });
+    });
+    // Sort: end before start at same angle
+    events.sort((a, b) => a.angle === b.angle ? (a.type === 'end' ? -1 : 1) : a.angle - b.angle);
+
+    const intervals: Interval[] = [];
+    const active: number[] = [];
+    let prevAngle: number | null = null;
+    for (const ev of events) {
+        if (prevAngle !== null && ev.angle > prevAngle && active.length > 1) {
+            intervals.push({ start: prevAngle, end: ev.angle, active: [...active] });
+        }
+        if (ev.type === 'start') {
+            active.push(ev.idx);
+        } else {
+            const pos = active.indexOf(ev.idx);
+            if (pos >= 0) active.splice(pos, 1);
+        }
+        prevAngle = ev.angle;
+    }
+
+    segments.forEach((seg, idx) => {
         const largeArcFlag = (seg.endAngle - seg.startAngle) > Math.PI ? 1 : 0;
 
         // Arc Geometry
@@ -272,7 +281,8 @@ export function renderBackdropRing({
 
         // Create a standard scene group wrapper so interactions (Synopsis, Click) work automatically
         const encodedPath = encodeURIComponent(seg.scene.path || '');
-        const currentSegmentClass = `rt-backdrop-segment ${isOverlapping ? 'rt-backdrop-overlap' : ''}`;
+        const currentSegmentClass = `rt-backdrop-segment`;
+        const labelClass = `rt-backdrop-label`;
         svg += `<g class="rt-scene-group" data-item-type="Backdrop" data-path="${encodedPath}">`;
 
         // 1. Definition Path (invisible, for text)
@@ -324,7 +334,7 @@ export function renderBackdropRing({
         
         const content = (title + ' • ').repeat(repeatCount);
 
-        svg += `<text class="rt-backdrop-label">
+        svg += `<text class="${labelClass}">
             <textPath href="#${pathId}" startOffset="${textPadding}" spacing="auto" method="align">
                 ${content}
             </textPath>
@@ -346,6 +356,41 @@ export function renderBackdropRing({
         // Wait, main renderer renders RINGS based on subplots. 
         // If "Backdrop" is a subplot, it might try to render a normal ring for it!
         // We probably want to EXCLUDE Backdrop items from the standard ring loop.
+    });
+
+    // 4b. Overlay only the truly overlapping angular slices
+    const overlayRadius = availableRadius;
+    const boxHeight = BACKDROP_RING_HEIGHT - 2;
+    const halfHeight = boxHeight / 2;
+    const overlayInnerR = overlayRadius - halfHeight;
+    const overlayOuterR = overlayRadius + halfHeight;
+
+    const buildBoxPath = (start: number, end: number) => {
+        const boxLargeArcFlag = (end - start) > Math.PI ? 1 : 0;
+        const startInnerX = formatNumber(overlayInnerR * Math.cos(start));
+        const startInnerY = formatNumber(overlayInnerR * Math.sin(start));
+        const startOuterX = formatNumber(overlayOuterR * Math.cos(start));
+        const startOuterY = formatNumber(overlayOuterR * Math.sin(start));
+        const endInnerX = formatNumber(overlayInnerR * Math.cos(end));
+        const endInnerY = formatNumber(overlayInnerR * Math.sin(end));
+        const endOuterX = formatNumber(overlayOuterR * Math.cos(end));
+        const endOuterY = formatNumber(overlayOuterR * Math.sin(end));
+        return `M ${startOuterX} ${startOuterY} ` +
+            `A ${formatNumber(overlayOuterR)} ${formatNumber(overlayOuterR)} 0 ${boxLargeArcFlag} 1 ${endOuterX} ${endOuterY} ` +
+            `L ${endInnerX} ${endInnerY} ` +
+            `A ${formatNumber(overlayInnerR)} ${formatNumber(overlayInnerR)} 0 ${boxLargeArcFlag} 0 ${startInnerX} ${startInnerY} ` +
+            `Z`;
+    };
+
+    intervals.forEach((interval, intervalIdx) => {
+        const { start, end, active: activeSegments } = interval;
+        activeSegments.forEach((segIdx, depth) => {
+            const hueClass = `rt-backdrop-hue-${depth % 8}`; // map depth to a finite hue set
+            const parityClass = depth % 2 === 0 ? 'rt-backdrop-overlap-even' : 'rt-backdrop-overlap-odd';
+            const overlayClass = `rt-backdrop-segment rt-backdrop-overlap ${parityClass} ${hueClass}`;
+            const path = buildBoxPath(start, end);
+            svg += `<path d="${path}" class="${overlayClass}" pointer-events="none" />`;
+        });
     });
 
     svg += `</g>`;

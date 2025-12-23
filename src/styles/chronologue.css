@@ -124,7 +124,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 .radial-timeline-container .rt-backdrop-segment {
-  fill: #cccccc; /* Fixed lighter gray as requested */
+  fill: #cccccc; /* Default lighter gray */
   fill-opacity: 1; /* Fully opaque */
   opacity: 1;
   /* transition: fill-opacity 0.2s ease, opacity 0.2s ease; */
@@ -152,9 +152,46 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   stroke: transparent;
 }
 
-/* Overlap pattern: Alternating visual style (stroke-dasharray handled inline for offset) */
-.radial-timeline-container .rt-backdrop-overlap {
+/* Overlap pattern: alternating solid/outline with hue cycling */
+.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap {
+  --rt-backdrop-overlap-hue: var(--rt-backdrop-hue, 210);
+  fill: hsl(var(--rt-backdrop-overlap-hue), 65%, 58%);
+  stroke: hsl(var(--rt-backdrop-overlap-hue), 65%, 42%);
+  stroke-width: 2px;
+  fill-opacity: 0.4;
   opacity: 1;
+  mix-blend-mode: multiply;
+}
+
+/* Hue classes for overlap depth (used instead of inline styles) */
+.rt-backdrop-hue-0 { --rt-backdrop-hue: 210; } /* blue */
+.rt-backdrop-hue-1 { --rt-backdrop-hue: 20; }  /* orange */
+.rt-backdrop-hue-2 { --rt-backdrop-hue: 120; } /* green */
+.rt-backdrop-hue-3 { --rt-backdrop-hue: 280; } /* purple */
+.rt-backdrop-hue-4 { --rt-backdrop-hue: 60; }  /* yellow */
+.rt-backdrop-hue-5 { --rt-backdrop-hue: 320; } /* magenta */
+.rt-backdrop-hue-6 { --rt-backdrop-hue: 140; } /* teal */
+.rt-backdrop-hue-7 { --rt-backdrop-hue: 260; } /* indigo */
+
+/* When hovering a specific backdrop segment, hide overlap overlays (rendered after bases) */
+.radial-timeline-container .rt-backdrop-segment:hover ~ .rt-backdrop-segment.rt-backdrop-overlap,
+.radial-timeline-container .rt-backdrop-segment.rt-selected ~ .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0;
+}
+
+.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-even {
+  /* Keep the fill, hide stroke for clean solid */
+  stroke: none !important;
+  fill-opacity: 0.65;
+}
+
+.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-odd {
+  /* Outline-only with dash for contrast */
+  fill: none !important;
+  stroke: hsl(var(--rt-backdrop-overlap-hue), 70%, 48%) !important;
+  stroke-width: 2.5px !important;
+  stroke-dasharray: 10 6;
+  stroke-linecap: round;
 }
 
 /* Repeating text label along the arc */
@@ -174,6 +211,18 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   letter-spacing: 1px;
   text-transform: uppercase;
   /* transition: fill 0.2s ease, opacity 0.2s ease, stroke 0.2s ease; */
+}
+
+.rt-backdrop-overlap-label {
+  fill: hsl(var(--rt-backdrop-overlap-hue, 210), 70%, 55%);
+  fill-opacity: 0.7;
+}
+
+.rt-backdrop-overlap-label.rt-backdrop-overlap-odd {
+  fill: none !important;
+  stroke: hsl(var(--rt-backdrop-overlap-hue, 210), 70%, 55%);
+  stroke-width: 0.9px;
+  stroke-opacity: 0.7;
 }
 
 /* Ensure textPath inherits label styling and has no decoration */

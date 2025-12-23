@@ -245,7 +245,8 @@ export class CommandRegistrar {
         const day = pad(date.getDate());
         const hours = pad(date.getHours());
         const minutes = pad(date.getMinutes());
-        return `${year}-${month}-${day} ${hours}:${minutes}`;
+        // Use ISO-like separator with seconds so Obsidian treats it as datetime
+        return `${year}-${month}-${day}T${hours}:${minutes}:00`;
     }
 
     private getBeatSystemDisplayName(): string {

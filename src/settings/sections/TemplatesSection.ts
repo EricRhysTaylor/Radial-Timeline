@@ -1,4 +1,4 @@
-import { App, Notice, Setting as Settings, parseYaml, setIcon } from 'obsidian';
+import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem } from '../../utils/beatsSystems';
@@ -265,9 +265,10 @@ export function renderStoryBeatsSection(params: {
                 rerender(nextList);
             };
 
-            // Revert button (no tooltip to avoid double hover text)
+            // Revert button with tooltip for clarity
             const revertBtn = actions.createEl('button', { cls: 'rt-mod-cta rt-template-icon-btn' });
             setIcon(revertBtn, 'rotate-ccw');
+            setTooltip(revertBtn, 'Revert to original template');
             revertBtn.onclick = async () => {
                 if (!plugin.settings.sceneYamlTemplates) plugin.settings.sceneYamlTemplates = { base: DEFAULT_SETTINGS.sceneYamlTemplates!.base, advanced: '' };
                 plugin.settings.sceneYamlTemplates.advanced = defaultTemplate;
