@@ -11,6 +11,9 @@ import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult } from '../modals/ManuscriptOptionsModal';
 import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
+import { generateSceneContent } from '../utils/sceneGenerator';
+import { sanitizeSourcePath, buildInitialSceneFilename } from '../utils/sceneCreation';
+import { DEFAULT_SETTINGS } from '../settings/defaults';
 
 export class CommandRegistrar {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -44,6 +47,22 @@ export class CommandRegistrar {
             name: 'Manage subplots',
             callback: () => {
                 new ManageSubplotsModal(this.app, this.plugin).open();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'create-template-scene-note',
+            name: 'Create template scene note',
+            callback: () => {
+                void this.createSceneTemplateNote();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'create-backdrop-template-note',
+            name: 'Create backdrop template note',
+            callback: () => {
+                void this.createBackdropTemplateNote();
             }
         });
 
@@ -118,6 +137,114 @@ export class CommandRegistrar {
                 return true;
             }
         });
+    }
+
+    private async createSceneTemplateNote(): Promise<void> {
+        try {
+            const vault = this.app.vault;
+            const sourcePath = sanitizeSourcePath(this.plugin.settings.sourcePath);
+
+            if (sourcePath && !vault.getAbstractFileByPath(sourcePath)) {
+                await vault.createFolder(sourcePath);
+            }
+
+            const template = (this.plugin.settings.sceneYamlTemplates?.base
+                ?? DEFAULT_SETTINGS.sceneYamlTemplates?.base
+                ?? '').trim();
+
+            if (!template) {
+                new Notice('Basic scene template not found. Set a scene template in Settings.');
+                return;
+            }
+
+            const today = new Date().toISOString().slice(0, 10);
+            const content = generateSceneContent(template, {
+                act: 1,
+                when: today,
+                sceneNumber: 1,
+                subplots: ['Main Plot'],
+                character: 'Hero',
+                place: 'Unknown',
+                characterList: ['Hero'],
+                placeList: ['Unknown']
+            });
+
+            const fileBody = `---\n${content}\n---\n\nWrite your scene here...`;
+            const initialPath = buildInitialSceneFilename(sourcePath, '1 Template Scene.md');
+            const filePath = this.getAvailableFilePath(initialPath);
+
+            const createdFile = await vault.create(filePath, fileBody);
+            const leaf = this.app.workspace.getLeaf('tab');
+            await leaf.openFile(createdFile);
+            new Notice(`Template scene created at ${filePath}`);
+        } catch (error) {
+            console.error('[CreateSceneTemplateNote] Failed to create template scene note:', error);
+            new Notice('Failed to create template scene note.');
+        }
+    }
+
+    private async createBackdropTemplateNote(): Promise<void> {
+        try {
+            const vault = this.app.vault;
+            const sourcePath = sanitizeSourcePath(this.plugin.settings.sourcePath);
+
+            if (sourcePath && !vault.getAbstractFileByPath(sourcePath)) {
+                await vault.createFolder(sourcePath);
+            }
+
+            const template = (this.plugin.settings.backdropYamlTemplate
+                ?? DEFAULT_SETTINGS.backdropYamlTemplate
+                ?? '').trim();
+
+            if (!template) {
+                new Notice('Backdrop template not found. Add one in Settings.');
+                return;
+            }
+
+            const start = new Date();
+            const end = new Date(start.getTime() + 60 * 60 * 1000);
+            const filledTemplate = template
+                .replace(/{{When}}/g, this.formatDateTime(start))
+                .replace(/{{End}}/g, this.formatDateTime(end));
+
+            const fileBody = `---\n${filledTemplate}\n---\n\nDescribe how this backdrop shapes your scenes.`;
+            const filePath = this.getAvailableFilePath(`${sourcePath ? `${sourcePath}/` : ''}Backdrop Template.md`);
+
+            const createdFile = await vault.create(filePath, fileBody);
+            const leaf = this.app.workspace.getLeaf('tab');
+            await leaf.openFile(createdFile);
+            new Notice(`Backdrop template created at ${filePath}`);
+        } catch (error) {
+            console.error('[CreateBackdropTemplateNote] Failed to create backdrop template note:', error);
+            new Notice('Failed to create backdrop template note.');
+        }
+    }
+
+    private getAvailableFilePath(initialPath: string): string {
+        const vault = this.app.vault;
+        if (!vault.getAbstractFileByPath(initialPath)) return initialPath;
+
+        const dotIndex = initialPath.lastIndexOf('.');
+        const base = dotIndex >= 0 ? initialPath.slice(0, dotIndex) : initialPath;
+        const ext = dotIndex >= 0 ? initialPath.slice(dotIndex) : '';
+
+        let counter = 2;
+        let candidate = `${base} (${counter})${ext}`;
+        while (vault.getAbstractFileByPath(candidate)) {
+            counter += 1;
+            candidate = `${base} (${counter})${ext}`;
+        }
+        return candidate;
+    }
+
+    private formatDateTime(date: Date): string {
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const year = date.getFullYear();
+        const month = pad(date.getMonth() + 1);
+        const day = pad(date.getDate());
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
     }
 
     private getBeatSystemDisplayName(): string {

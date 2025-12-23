@@ -74,6 +74,7 @@ export interface RadialTimelineSettings {
         base: string;
         advanced: string;
     };
+    backdropYamlTemplate?: string;
 }
 
 export interface PlanetaryProfile {

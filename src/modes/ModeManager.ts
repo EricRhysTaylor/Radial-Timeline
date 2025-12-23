@@ -64,7 +64,7 @@ export class ModeManager {
             const beatNotes = scenes.filter((s: { itemType?: string }) => s.itemType === 'Beat' || s.itemType === 'Plot');
             
             if (beatNotes.length === 0) {
-                new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
+                new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat".');
                 return; // Stay in the current mode without triggering lifecycle changes
             }
         }

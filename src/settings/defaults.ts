@@ -119,7 +119,6 @@ Synopsis: Short scene summary.                # Brief description of what happen
 Subplot: {{Subplot}}      # Single subplot (or use array format below for multiple)
 Character: {{Character}}  # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
-Place: {{Place}}          # Location where scene takes place (use array format for multiple)
 Status: Todo              # Scene status (Todo/Working/Complete)
 Due: {{When}}             # Target completion date (YYYY-MM-DD). When setting Scene to Complete, change this to that day's date for better novel completion estimate
 Publish Stage: Zero       # Revision stage (Zero/Author/House/Press)
@@ -150,4 +149,8 @@ Revision:                             # Revision count (suggest leaving blank un
 Pending Edits:
 Pulse Update: No`
     },
+    backdropYamlTemplate: `Class: Backdrop                   # Backdrop events appear below the outer ring in Chronologue Mode
+When: {{When}}                       # Start Date/Time (YYYY-MM-DD HH:MM)
+End: {{End}}                         # End Date/Time (YYYY-MM-DD HH:MM)
+Synopsis: What this backdrop represents and how it shapes the story.`,
 };

@@ -124,7 +124,7 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 .radial-timeline-container .rt-backdrop-segment {
-  fill: #999999; /* Fixed lighter gray as requested */
+  fill: #cccccc; /* Fixed lighter gray as requested */
   fill-opacity: 1; /* Fully opaque */
   opacity: 1;
   /* transition: fill-opacity 0.2s ease, opacity 0.2s ease; */
