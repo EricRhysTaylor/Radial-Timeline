@@ -82,7 +82,7 @@ export class VersionCheckService {
             this.updateAvailable = this.isNewerVersion(this.latestVersion, this.currentVersion);
             
             if (this.updateAvailable) {
-                console.log(`[VersionCheck] Update available: ${this.latestVersion} (Current: ${this.currentVersion})`);
+                // Update available; handled by caller
             }
 
             return this.updateAvailable;

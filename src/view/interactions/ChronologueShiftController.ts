@@ -51,17 +51,25 @@ interface SceneGeometryInfo {
 }
 
 // Export function to check if shift mode is active (for use in other modules)
+// Export function to check if shift mode is active (for use in other modules)
 let globalShiftModeActive = false;
 export function isShiftModeActive(): boolean {
     return globalShiftModeActive;
 }
 
+// Export function to check if alien mode is active
+let globalAlienModeActive = false;
+export function isAlienModeActive(): boolean {
+    return globalAlienModeActive;
+}
+
 /**
- * Reset the global shift mode state
+ * Reset the global shift/alien mode state
  * Called when exiting Chronologue mode to ensure clean state
  */
 export function resetShiftModeState(): void {
     globalShiftModeActive = false;
+    globalAlienModeActive = false;
 }
 
 /**
@@ -73,12 +81,13 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     if (view.currentMode !== 'chronologue') {
         return;
     }
-    
+
     let shiftModeActive = false;
+    let alienModeActive = false;
     let selectedScenes: TimelineItem[] = []; // Locked scenes (stay selected)
     let hoveredScenePath: string | null = null; // Currently hovered scene (encoded path)
     let elapsedTimeClickCount = 0;
-    
+
     // Calculate outerRadius from SVG viewBox or use default
     const viewBox = svg.getAttribute('viewBox');
     let outerRadius = 300; // Default fallback
@@ -87,15 +96,15 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         const size = Math.min(width, height);
         outerRadius = size / 2 - 50; // Approximate outer radius (adjust margin as needed)
     }
-    
+
     const sceneGeometry = new Map<string, SceneGeometryInfo>(); // Map scene path (encoded) to outer ring geometry
-    
+
     // Cache scene groups by scene ID for O(1) lookup
     const sceneGroupBySceneId = new Map<string, Element>();
     const sceneSubplotIndexBySceneId = new Map<string, number>();
     const numberSquareBySceneId = new Map<string, SVGElement>();
     const numberTextBySceneId = new Map<string, SVGElement>();
-    
+
     // Pre-compute and cache all subplot colors to avoid getComputedStyle() calls
     const subplotColors: string[] = [];
     for (let i = 0; i < 16; i++) {
@@ -103,7 +112,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
         subplotColors[i] = computed || '#EFBDEB';
     }
-    
+
     // Cache synopsis elements for fast lookup (avoiding querySelectorAll on every hover)
     const allSynopsisElements: Element[] = Array.from(svg.querySelectorAll('.rt-scene-info'));
     const synopsisBySceneId = new Map<string, Element>();
@@ -113,7 +122,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             synopsisBySceneId.set(sceneId, synopsis);
         }
     });
-    
+
     // Cache scene ID lookups for fast access
     const sceneIdCache = new WeakMap<Element, string>();
     const getSceneIdFromGroup = (group: Element): string | null => {
@@ -127,17 +136,17 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
         return sceneId;
     };
-    
+
     // Extract scene start angles from SVG data attributes
     // Each scene group has data-start-angle attribute set during rendering
     const sceneGroups = Array.from(svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]'));
-    
+
     sceneGroups.forEach((group) => {
         // Cache scene group by scene ID for fast lookup
         const sceneId = getSceneIdFromGroup(group);
         if (sceneId) {
             sceneGroupBySceneId.set(sceneId, group);
-            
+
             // Cache subplot index
             const subplotIndexAttr = group.getAttribute('data-subplot-color-index') || group.getAttribute('data-subplot-index');
             if (subplotIndexAttr) {
@@ -146,20 +155,20 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                     sceneSubplotIndexBySceneId.set(sceneId, subplotIndex);
                 }
             }
-            
+
             // Cache number squares and text for this scene
             const square = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`) as SVGElement | null;
             const text = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`) as SVGElement | null;
             if (square) numberSquareBySceneId.set(sceneId, square);
             if (text) numberTextBySceneId.set(sceneId, text);
         }
-        
+
         const scenePath = group.getAttribute('data-path'); // Already URL-encoded
         if (!scenePath) return;
 
         const ringAttr = group.getAttribute('data-ring');
         const ringIndex = ringAttr ? parseInt(ringAttr, 10) : 0;
-        
+
         const startAngleAttr = group.getAttribute('data-start-angle');
         const outerRadiusAttr = group.getAttribute('data-outer-r');
         const angle = startAngleAttr ? parseFloat(startAngleAttr) : NaN;
@@ -176,50 +185,77 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             });
         }
     });
-    
+
     // Create shift button (top-left quadrant)
     const shiftButton = createShiftButton();
     svg.appendChild(shiftButton);
-    
+
+    // Create ALT button (right of shift button)
+    const altButton = createAltButton();
+    svg.appendChild(altButton);
+
     // Function to activate shift mode
-    const activateShiftMode = () => {
+    const activateShiftMode = (enableAlien: boolean = false) => {
         if (!shiftModeActive) {
             shiftModeActive = true;
             globalShiftModeActive = true;
             updateShiftButtonState(shiftButton, true);
-            // Mark SVG to indicate shift mode is active (also shows discontinuity markers via CSS)
-            svg.setAttribute('data-shift-mode', 'active');
-            // Make all scenes non-select (gray) - CSS handles this automatically
-            applyShiftModeToAllScenes(svg);
-            // Hide all synopsis elements in shift mode using cached array
-            allSynopsisElements.forEach(syn => {
-                if (syn.classList.contains('rt-visible')) {
-                    syn.classList.remove('rt-visible');
-                }
-            });
-            
-            // Check if there's a currently hovered scene and apply shift styling to it
-            const hoveredGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]:hover');
-            if (hoveredGroups.length > 0) {
-                const hoveredGroup = hoveredGroups[0];
-                const scenePathEncoded = hoveredGroup.getAttribute('data-path');
-                if (scenePathEncoded) {
-                    hoveredScenePath = scenePathEncoded;
-                    hoveredGroup.classList.add('rt-shift-hover');
-                    // Activate matching number square with subplot color
-                    const sid = getSceneIdFromGroup(hoveredGroup);
-                    setNumberSquareActiveBySceneId(sid, true, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
-                }
+        }
+
+        // Handle Alien Logic overlap
+        if (enableAlien) {
+            if (!alienModeActive) {
+                alienModeActive = true;
+                globalAlienModeActive = true;
+                updateAltButtonState(altButton, true);
+            }
+        } else {
+            // Standard Shift activation (Alien might be on or off, usually off unless locked? 
+            // Logic: If we just activate Shift (key/button), should we kill Alien? 
+            // If dragging shift, we want normal. If ALT is locked, we want Alien.
+            // Let's say explicit Shift activation (key) doesn't force Alien unless Alt is held.
+        }
+
+        // Visual Updates
+        const modeAttr = alienModeActive ? 'alien' : 'active';
+        svg.setAttribute('data-shift-mode', modeAttr);
+
+        // Make all scenes non-select (gray) - CSS handles this automatically
+        applyShiftModeToAllScenes(svg);
+        // Hide all synopsis elements in shift mode using cached array
+        allSynopsisElements.forEach(syn => {
+            if (syn.classList.contains('rt-visible')) {
+                syn.classList.remove('rt-visible');
+            }
+        });
+
+        // Check if there's a currently hovered scene and apply shift styling to it
+        const hoveredGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]:hover');
+        if (hoveredGroups.length > 0) {
+            const hoveredGroup = hoveredGroups[0];
+            const scenePathEncoded = hoveredGroup.getAttribute('data-path');
+            if (scenePathEncoded) {
+                hoveredScenePath = scenePathEncoded;
+                hoveredGroup.classList.add('rt-shift-hover');
+                // Activate matching number square with subplot color
+                const sid = getSceneIdFromGroup(hoveredGroup);
+                setNumberSquareActiveBySceneId(sid, true, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
             }
         }
     };
-    
+
     // Function to deactivate shift mode
     const deactivateShiftMode = () => {
         if (shiftModeActive) {
             shiftModeActive = false;
             globalShiftModeActive = false;
             updateShiftButtonState(shiftButton, false);
+
+            // Also kill Alien Mode
+            alienModeActive = false;
+            globalAlienModeActive = false;
+            updateAltButtonState(altButton, false);
+
             selectedScenes = [];
             rebuildSelectedPathsSet(); // Rebuild Set after clearing
             hoveredScenePath = null;
@@ -230,18 +266,18 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             // Remove shift mode marker (also hides discontinuity markers via CSS)
             svg.removeAttribute('data-shift-mode');
             svg.classList.remove('rt-global-fade');
-            
+
             // Clear all regular Chronologue hover states (from normal mode)
             // This ensures we return to a clean state with no highlights
             svg.querySelectorAll('.rt-scene-path, .rt-number-square, .rt-number-text, .rt-scene-title, .rt-discontinuity-marker').forEach(el => {
                 el.classList.remove('rt-selected', 'rt-non-selected');
             });
-            
+
             // Hide all synopses
             svg.querySelectorAll('.rt-scene-info.rt-visible').forEach(syn => {
                 syn.classList.remove('rt-visible');
             });
-            
+
             // Remove scene-hover class from SVG if present
             svg.classList.remove('scene-hover');
 
@@ -249,17 +285,48 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             const hoveredSceneGroup = svg.querySelector('.rt-scene-group[data-item-type="Scene"]:hover');
         }
     };
-    
+
+    const toggleAlienMode = () => {
+        if (alienModeActive) {
+            // Turn OFF Alien Mode
+            alienModeActive = false;
+            globalAlienModeActive = false;
+            updateAltButtonState(altButton, false);
+            // Revert strict Shift Mode (if active) or turn off? 
+            // Proposal: Toggling ALT off leaves Shift ON (standard behavior)
+            if (shiftModeActive) {
+                svg.setAttribute('data-shift-mode', 'active');
+            }
+        } else {
+            // Turn ON Alien Mode
+            // Must ensure Shift is Active
+            if (!shiftModeActive) {
+                activateShiftMode(true); // Will set alien flags
+            } else {
+                alienModeActive = true;
+                globalAlienModeActive = true;
+                updateAltButtonState(altButton, true);
+                svg.setAttribute('data-shift-mode', 'alien');
+            }
+        }
+    };
+
     // Register shift button click handler
     view.registerDomEvent(shiftButton as unknown as HTMLElement, 'click', (e: MouseEvent) => {
         e.stopPropagation();
         if (shiftModeActive) {
             deactivateShiftMode();
         } else {
-            activateShiftMode();
+            activateShiftMode(false); // Normal shift
         }
     });
-    
+
+    // Register ALT button click handler
+    view.registerDomEvent(altButton as unknown as HTMLElement, 'click', (e: MouseEvent) => {
+        e.stopPropagation();
+        toggleAlienMode();
+    });
+
     let capsLockState = false;
     let pendingCapsLockSync = false;
 
@@ -269,12 +336,12 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
         capsLockState = isActive;
         if (isActive) {
-            if (!shiftModeActive) activateShiftMode();
+            if (!shiftModeActive) activateShiftMode(false);
         } else {
             if (shiftModeActive) deactivateShiftMode();
         }
     };
-    
+
     // Keyboard event handlers for Shift and Caps Lock
     const handleKeyDown = (e: KeyboardEvent) => {
         // Only handle when radial timeline is active and in chronologue mode
@@ -290,9 +357,19 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 return; // Let the input handle the keystroke (typing numbers, shift, etc.)
             }
         }
-        
+
         if (e.key === 'Shift') {
-            activateShiftMode();
+            activateShiftMode(e.altKey); // Enable Alien if Alt is held
+        } else if (e.key === 'Alt') {
+            // If Shift is already held or active via caps lock, toggle Alien visual
+            if (shiftModeActive && !alienModeActive) {
+                // Temporary Alien Peek?
+                // Let's just create a temporary toggle behavior if they hold Alt while Shift is active/held
+                alienModeActive = true;
+                globalAlienModeActive = true;
+                updateAltButtonState(altButton, true);
+                svg.setAttribute('data-shift-mode', 'alien');
+            }
         } else if (e.key === 'CapsLock') {
             if (e.repeat) {
                 return;
@@ -308,7 +385,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             }
         }
     };
-    
+
     const handleKeyUp = (e: KeyboardEvent) => {
         // Only handle when radial timeline is active and in chronologue mode
         const activeView = (view as any).app?.workspace?.activeLeaf?.view;
@@ -323,9 +400,21 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 return; // Let the input handle keyup
             }
         }
-        
+
         if (e.key === 'Shift') {
             deactivateShiftMode();
+        } else if (e.key === 'Alt') {
+            // If we were temporarily holding Alt for Alien peek, revert
+            // BUT NOT if it was latched via button! 
+            // Logic: If button latch is OFF, then keyup Alt turns off Alien
+            // Current logic: I don't track latch vs key. 
+            // Simple approach: Alt Key UP turns off Alien Mode IF Shift is active.
+            if (shiftModeActive && alienModeActive) {
+                // Check if button latch logic is needed?
+                // For now, simpler: Alt Key Up turns off Alien Mode. 
+                // If user clicked the button, they shouldn't be holding the key anyway.
+                toggleAlienMode(); // Will turn OFF logic
+            }
         } else if (e.key === 'CapsLock') {
             const reportedState = e.getModifierState('CapsLock');
             if (pendingCapsLockSync || reportedState !== capsLockState) {
@@ -334,23 +423,23 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             }
         }
     };
-    
+
     // Add keyboard listeners - SAFE: Manual cleanup registered in view.onClose() via _chronologueShiftCleanup
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp); // SAFE: Manual cleanup in onClose
-    
+
     // Store cleanup function on view for later removal
     (view as any)._chronologueShiftCleanup = () => {
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
     };
-    
+
     // Helper function to find scene by path - use view.sceneData if available
     // path parameter is already URL-encoded (from data-path attribute)
     const findSceneByPath = (path: string): TimelineItem | null => {
         // Decode path for comparison with Scene.path (which is decoded)
         const decodedPath = decodeURIComponent(path);
-        
+
         // First try to find in view.sceneData or view.scenes (full Scene objects)
         const allScenes = (view as any).sceneData || (view as any).scenes;
         if (allScenes && Array.isArray(allScenes)) {
@@ -359,11 +448,11 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 return scene;
             }
         }
-        
+
         // Fallback: verify scene group exists
         const sceneGroup = svg.querySelector(`.rt-scene-group[data-path="${path}"]`);
         if (!sceneGroup) return null;
-        
+
         // If we can't find in sceneData, create minimal scene object
         // This shouldn't normally happen, but provides fallback
         return {
@@ -374,100 +463,100 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             itemType: 'Scene' as const,
         } as TimelineItem;
     };
-    
+
     // Setup shift mode hover handlers - MUST run before other handlers
     const setupShiftModeHover = () => {
         // Build selected paths Set for O(1) lookups (rebuilt when scenes selected/deselected)
         let selectedPathsSet = new Set<string>();
-        
+
         const rebuildSelectedPathsSet = () => {
             selectedPathsSet = new Set(selectedScenes.map(s => s.path ? encodeURIComponent(s.path) : '').filter(p => p));
         };
-        
+
         // Use capture phase to run before other handlers
         view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
             if (!shiftModeActive) return;
-            
+
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
             if (!g) return;
-            
+
             // Stop ALL event handlers (including other listeners on same element)
             e.stopImmediatePropagation();
             e.preventDefault();
-            
+
             const scenePathEncoded = g.getAttribute('data-path');
             if (!scenePathEncoded) return;
-            
+
             // Check if this scene is locked - O(1) lookup with Set
             const isLocked = selectedPathsSet.has(scenePathEncoded);
-            
+
             if (!isLocked) {
                 // Add hover class - CSS handles the visual styling
                 hoveredScenePath = scenePathEncoded;
                 g.classList.add('rt-shift-hover');
-                
+
                 // Activate number square
                 const sid = getSceneIdFromGroup(g);
                 setNumberSquareActiveBySceneId(sid, true, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
             }
         }, { capture: true }); // Use capture phase
-        
+
         // Use capture phase for pointerout too
         view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
             if (!shiftModeActive) return;
-            
+
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
             if (!g) return;
-            
+
             // Stop ALL event handlers
             e.stopImmediatePropagation();
             e.preventDefault();
-            
+
             const scenePathEncoded = g.getAttribute('data-path');
             if (!scenePathEncoded) return;
-            
+
             // Check if this scene is locked - O(1) lookup with Set
             const isLocked = selectedPathsSet.has(scenePathEncoded);
-            
+
             if (!isLocked) {
                 // Remove hover class
                 hoveredScenePath = null;
                 g.classList.remove('rt-shift-hover');
-                
+
                 // Deactivate number square
                 const sid = getSceneIdFromGroup(g);
                 setNumberSquareActiveBySceneId(sid, false, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
             }
         }, { capture: true }); // Use capture phase
-        
+
         // Return function to rebuild Set when selected scenes change
         return rebuildSelectedPathsSet;
     };
-    
+
     const rebuildSelectedPathsSet = setupShiftModeHover();
-    
+
     // Export click handler for external use (called from ChronologueMode)
     (view as any).handleShiftModeClick = (e: MouseEvent, sceneGroup: Element) => {
         if (!shiftModeActive) return false;
-        
+
         // Prevent default scene opening behavior when in shift mode
         e.preventDefault();
         e.stopPropagation();
-        
+
         // Get scene data from the group (path is already URL-encoded)
         const scenePathEncoded = sceneGroup.getAttribute('data-path');
         if (!scenePathEncoded) return true;
-        
+
         // Find the actual scene object (pass encoded path)
         const scene = findSceneByPath(scenePathEncoded);
         if (!scene) return true;
-        
+
         // Check if this scene is already locked (compare encoded paths)
         const isAlreadyLocked = selectedScenes.some(s => {
             const encoded = s.path ? encodeURIComponent(s.path) : '';
             return encoded === scenePathEncoded;
         });
-        
+
         if (isAlreadyLocked) {
             // If clicking a locked scene, unlock it
             selectedScenes = selectedScenes.filter(s => {
@@ -483,34 +572,34 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             }
             return true;
         }
-        
+
         // Add to selected scenes (keep only the 2 most recent)
         selectedScenes.push(scene);
         if (selectedScenes.length > 2) {
             selectedScenes = selectedScenes.slice(-2); // Keep only last 2
         }
-        
+
         rebuildSelectedPathsSet(); // Rebuild Set after change
         updateSceneSelection(svg, selectedScenes, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
-        
+
         // If we have 2 scenes, show elapsed time
         if (selectedScenes.length === 2) {
             showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius);
         }
-        
+
         return true; // Indicate we handled the click
     };
-    
+
     // Register elapsed time text click handler
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', (e: MouseEvent) => {
         if (!shiftModeActive || selectedScenes.length !== 2) return;
-        
+
         const elapsedTimeLabel = (e.target as Element).closest('.rt-elapsed-time-label');
         if (!elapsedTimeLabel) return;
-        
+
         e.preventDefault();
         e.stopPropagation();
-        
+
         elapsedTimeClickCount++;
         showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius);
     });
@@ -530,9 +619,9 @@ function createShiftButton(): SVGGElement {
     const button = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     button.setAttribute('class', 'rt-shift-mode-button');
     button.setAttribute('id', 'shift-mode-toggle');
-    
+
     button.setAttribute('transform', `translate(${SHIFT_BUTTON_POS_X}, ${SHIFT_BUTTON_POS_Y}) scale(${SHIFT_BUTTON_BASE_SCALE})`);
-    
+
     // Create path element
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', createShiftButtonShape());
@@ -540,7 +629,7 @@ function createShiftButton(): SVGGElement {
     path.setAttribute('fill', 'var(--interactive-normal)');
     path.setAttribute('stroke', 'var(--text-normal)');
     path.setAttribute('stroke-width', '2');
-    
+
     // Create text element with up arrow
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', '66.5'); // Center of button (133/2)
@@ -549,15 +638,15 @@ function createShiftButton(): SVGGElement {
     text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('class', 'rt-shift-button-text');
     text.textContent = '↑ SHIFT';
-    
+
     // Create title for tooltip
     const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
     title.textContent = 'Toggle Shift Mode for elapsed time comparison';
-    
+
     button.appendChild(path);
     button.appendChild(text);
     button.appendChild(title);
-    
+
     return button;
 }
 
@@ -567,11 +656,11 @@ function createShiftButton(): SVGGElement {
 function updateShiftButtonState(button: SVGGElement, active: boolean): void {
     const bg = button.querySelector('.rt-shift-button-bg') as SVGElement;
     const text = button.querySelector('.rt-shift-button-text') as SVGElement;
-    
+
     // Get current transform to preserve position
     const currentTransform = button.getAttribute('transform') || '';
     const baseTransform = currentTransform.replace(/scale\([^)]+\)/, '').trim();
-    
+
     if (active) {
         // Scale up when active (like mode pages) - CSS handles colors
         button.setAttribute('transform', `${baseTransform} scale(${SHIFT_BUTTON_ACTIVE_SCALE})`);
@@ -584,23 +673,86 @@ function updateShiftButtonState(button: SVGGElement, active: boolean): void {
 }
 
 /**
+ * Create the ALT button element (Next to Shift)
+ */
+function createAltButton(): SVGGElement {
+    const button = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    button.setAttribute('class', 'rt-shift-mode-button rt-alt-button'); // Reuse shift styling basics
+    button.setAttribute('id', 'alt-mode-toggle');
+
+    // Position it to the right of the shift button
+    // Shift Width ~106 (inactive) -> Gap 10 -> Alt
+    const altX = SHIFT_BUTTON_POS_X + SHIFT_BUTTON_INACTIVE_WIDTH + 15;
+    const altY = SHIFT_BUTTON_POS_Y + 10; // Slightly lower? Or same baseline? 
+    // Shift is fairly large height. Let's align top or center.
+    // Let's make it smaller.
+
+    button.setAttribute('transform', `translate(${altX}, ${altY}) scale(0.6)`); // 60% size
+
+    // Create path element (Reuse shape or simple rect? Shape looks cool)
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', createShiftButtonShape()); // Reuse the hex/tab shape
+    path.setAttribute('class', 'rt-shift-button-bg');
+    path.setAttribute('fill', 'var(--interactive-normal)');
+    path.setAttribute('stroke', 'var(--text-normal)');
+    path.setAttribute('stroke-width', '2');
+
+    // Create text element
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', '66.5');
+    text.setAttribute('y', '52');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('class', 'rt-shift-button-text');
+    text.textContent = 'ALT';
+    // Override font size logic in CSS via class? Or here?
+
+    // Create title for tooltip
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = 'Toggle Alien Calendar (Muted Red View)';
+
+    button.appendChild(path);
+    button.appendChild(text);
+    button.appendChild(title);
+
+    return button;
+}
+
+/**
+ * Update ALT button visual state
+ */
+function updateAltButtonState(button: SVGGElement, active: boolean): void {
+    // Reusing standard update logic but keeping simple scale
+    const currentTransform = button.getAttribute('transform') || '';
+    const baseTransform = currentTransform.replace(/scale\([^)]+\)/, '').trim();
+
+    if (active) {
+        button.setAttribute('transform', `${baseTransform} scale(0.7)`); // Pop up slightly
+        button.classList.add('rt-shift-mode-active'); // Reuses the active color styling
+    } else {
+        button.setAttribute('transform', `${baseTransform} scale(0.6)`);
+        button.classList.remove('rt-shift-mode-active');
+    }
+}
+
+/**
  * Toggle number square and its text for a given sceneId
  * sceneId corresponds to the id of the scene path (e.g. "scene-path-0-2-5")
  */
 function setNumberSquareActiveBySceneId(
-    sceneId: string | null | undefined, 
-    active: boolean, 
+    sceneId: string | null | undefined,
+    active: boolean,
     numberSquareBySceneId: Map<string, SVGElement>,
     numberTextBySceneId: Map<string, SVGElement>,
     sceneSubplotIndexBySceneId: Map<string, number>,
     subplotColors: string[]
 ): void {
     if (!sceneId) return;
-    
+
     // Use cached elements instead of querySelector
     const square = numberSquareBySceneId.get(sceneId);
     const text = numberTextBySceneId.get(sceneId);
-    
+
     if (square) {
         square.classList.toggle('rt-shift-active', active);
         // Set subplot index as data attribute for CSS to use
@@ -614,7 +766,7 @@ function setNumberSquareActiveBySceneId(
             square.removeAttribute('data-subplot-idx');
         }
     }
-    
+
     if (text) text.classList.toggle('rt-shift-active', active);
 }
 
@@ -659,8 +811,8 @@ function removeShiftModeFromAllScenes(svg: SVGSVGElement): void {
  * Update scene selection highlights (locked scenes stay active)
  */
 function updateSceneSelection(
-    svg: SVGSVGElement, 
-    selectedScenes: TimelineItem[], 
+    svg: SVGSVGElement,
+    selectedScenes: TimelineItem[],
     numberSquareBySceneId: Map<string, SVGElement>,
     numberTextBySceneId: Map<string, SVGElement>,
     sceneSubplotIndexBySceneId: Map<string, number>,
@@ -668,7 +820,7 @@ function updateSceneSelection(
 ): void {
     // Build a Set for O(1) lookup instead of O(n) .some()
     const selectedPaths = new Set(selectedScenes.map(s => s.path ? encodeURIComponent(s.path) : '').filter(p => p));
-    
+
     // Remove existing locked highlights
     const allSceneGroups = svg.querySelectorAll('.rt-scene-group[data-item-type="Scene"]');
     allSceneGroups.forEach(group => {
@@ -685,13 +837,13 @@ function updateSceneSelection(
         const sid = group.querySelector('.rt-scene-path')?.id || null;
         setNumberSquareActiveBySceneId(sid, false, numberSquareBySceneId, numberTextBySceneId, sceneSubplotIndexBySceneId, subplotColors);
     });
-    
+
     // Add locked state to selected scenes
     selectedScenes.forEach(scene => {
         // Scene.path is decoded, but data-path is encoded
         const encodedPath = scene.path ? encodeURIComponent(scene.path) : '';
         if (!encodedPath) return;
-        
+
         const sceneGroup = svg.querySelector(`.rt-scene-group[data-path="${encodedPath}"]`);
         if (sceneGroup) {
             const path = sceneGroup.querySelector('.rt-scene-path');
@@ -798,7 +950,7 @@ function showElapsedTime(
         arcPathElement.setAttribute('d', arcPath);
         arcPathElement.setAttribute('class', 'rt-elapsed-arc-path');
         arcGroup.appendChild(arcPathElement);
-        
+
         // Add endpoint markers to the elapsed time arc
         const addEndpointMarker = (angle: number) => {
             const innerRadius = arcRadius;
@@ -818,13 +970,13 @@ function showElapsedTime(
 
         addEndpointMarker(startAngle);
         addEndpointMarker(endAngle);
-        
+
         // Hide chronological ticks that overlap with the endpoint markers
         hideOverlappingTicks(svg, startAngle, endAngle);
 
         const midpointNormalized = normalizedStart + sweep / 2;
         const midpointAngle = normalizeAngle(midpointNormalized);
-        const labelRadius = arcRadius + 24; 
+        const labelRadius = arcRadius + 24;
         const labelX = labelRadius * Math.cos(midpointAngle);
         const labelY = labelRadius * Math.sin(midpointAngle);
 
@@ -911,10 +1063,10 @@ function normalizeAngle(angle: number): number {
 function removeElapsedTimeArc(svg: SVGSVGElement): void {
     const existingArc = svg.querySelector('.rt-elapsed-time-arc');
     const existingGroup = svg.querySelector('.rt-elapsed-time-group');
-    
+
     if (existingArc) existingArc.remove();
     if (existingGroup) existingGroup.remove();
-    
+
     // Restore any hidden chronological ticks
     restoreHiddenTicks(svg);
 }
@@ -925,22 +1077,22 @@ function removeElapsedTimeArc(svg: SVGSVGElement): void {
  */
 function hideOverlappingTicks(svg: SVGSVGElement, angle1: number, angle2: number): void {
     const ANGLE_TOLERANCE = 0.01; // Radians (~0.6 degrees)
-    
+
     const ticks = Array.from(svg.querySelectorAll<SVGLineElement>('.rt-chronological-tick'));
-    
+
     ticks.forEach(tick => {
         // Get the tick's position from its x1, y1 coordinates (start point)
         const x1Str = tick.getAttribute('x1');
         const y1Str = tick.getAttribute('y1');
-        
+
         if (!x1Str || !y1Str) return;
-        
+
         const x1 = parseFloat(x1Str);
         const y1 = parseFloat(y1Str);
-        
+
         // Calculate angle from coordinates
         const tickAngle = Math.atan2(y1, x1);
-        
+
         // Normalize angles to [-π, π] range for comparison
         const normalizeAngle = (angle: number): number => {
             let normalized = angle;
@@ -948,15 +1100,15 @@ function hideOverlappingTicks(svg: SVGSVGElement, angle1: number, angle2: number
             while (normalized < -Math.PI) normalized += 2 * Math.PI;
             return normalized;
         };
-        
+
         const normalizedTickAngle = normalizeAngle(tickAngle);
         const normalizedAngle1 = normalizeAngle(angle1);
         const normalizedAngle2 = normalizeAngle(angle2);
-        
+
         // Check if tick angle matches either of the endpoint angles
         const matchesAngle1 = Math.abs(normalizedTickAngle - normalizedAngle1) < ANGLE_TOLERANCE;
         const matchesAngle2 = Math.abs(normalizedTickAngle - normalizedAngle2) < ANGLE_TOLERANCE;
-        
+
         if (matchesAngle1 || matchesAngle2) {
             tick.classList.add('rt-tick-hidden');
         }

@@ -241,7 +241,6 @@ export default class RadialTimelinePlugin extends Plugin {
         // Check for updates asynchronously (don't block plugin load)
         versionService.checkForUpdates().then(hasUpdate => {
             if (hasUpdate) {
-                console.log('[RadialTimeline] Update detected on startup.');
                 // Refresh timeline to show update indicator
                 this.refreshTimelineIfNeeded(null);
             }
