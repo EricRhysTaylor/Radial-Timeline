@@ -15,7 +15,9 @@ Type "Radial Timeline" to filter the list.
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
 | **Open** | Opens the main Radial Timeline view. | [[Home#quick-start]] |
-| **Create template scene note** | Creates a new scene file using the default template. | [[Core Workflows#create-scenes]] |
+| **Create scene note** | Creates a new scene file using the active template. | [[Core Workflows#create-scenes]] |
+| **Create backdrop note** | Creates a new backdrop file for contextual events that impact the plot. | [[Chronologue Mode]] |
+| **Book designer** | Opens the Book Designer to generate a manuscript template. | [[Book Designer]] |
 | **Search timeline** | Opens the search bar in the timeline view to filter scenes. | [[How-to#search]] |
 | **Clear search** | Clears the active search filter. | [[How-to#search]] |
 | **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all files. | [[How-to#manage-subplots-in-bulk]] |

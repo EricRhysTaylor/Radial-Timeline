@@ -1,6 +1,7 @@
 *   [[Home]]
 *   **User Guide**
-    *   [[Core Workflows]]   
+    *   [[Core Workflows]]
+    *   [[Book Designer]]
     *   [[Narrative Mode]]
     *   [[Subplot Mode]]
     *   [[Chronologue Mode]]

@@ -50,3 +50,9 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode - SHIFT</div>
   </div>
 </div>
+
+### Getting Started
+
+*   **[[Book Designer]]**: Instantly generate a manuscript template with acts, subplots, and beats.
+*   **[[Core Workflows]]**: Learn the basics of Radial Timeline.
+

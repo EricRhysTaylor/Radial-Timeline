@@ -10,10 +10,6 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
     *   **Pending Edits**: The dialog lets you capture quick notes or edits into a `Pending Edits` frontmatter field without getting sucked into a full revision.
     *   **Override**: You can click the "Override" button (red) to force open the note if absolutely necessary.
 
-### Metadata and mapping
-*   **Enable custom metadata mapping**: Map your own frontmatter keys (e.g., `StoryLine`) to system keys (`Subplot`).
-*   **Mappings**: Define multiple key pairs for legacy data support.
-
 ### Chronologue mode settings
 *   **Chronologue duration arc cap**: Select maximum duration to display on scene duration arcs, or use "auto".
 *   **Discontinuity gap threshold**: Controls when the ∞ symbol appears in shift mode. Auto-calculated as 3× the median time gap.
@@ -21,6 +17,15 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 ### Gossamer story beats system
 *   **Story beats system**: Select story structure model (Save The Cat, Hero's Journey, Story Grid, or Custom).
 *   **Create story beat template notes**: Generate template beat notes with YAML frontmatter.
+
+### Metadata Mapping
+*   **Enable custom metadata mapping**: Map your own custom frontmatter keys (e.g., use `StoryLine` instead of `Subplot`) to system keys.
+*   **Mappings**: Define multiple key pairs to support legacy data or preferred naming conventions.
+
+### Scene Templates & Frontmatter
+*   **Advanced YAML editor**: Enable to fully customize the Advanced YAML structure used when creating scenes with the Advanced template.
+*   **New Keys**: Add your own keys to the Advanced template. Or reset all keys back to the default.
+
 
 ### AI features
 *   **AI Provider**: Choose Anthropic, Gemini, OpenAI, or Local/OpenAI Compatible.

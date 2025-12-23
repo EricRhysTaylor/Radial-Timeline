@@ -110,13 +110,13 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 **Get your first timeline in 3 steps:**
 
 1. **Install the plugin**: Settings → Community plugins → Browse → "Radial Timeline"
-2. **Create your first scene**: Use command palette (`Cmd/Ctrl + P`) → "Radial Timeline: Create template scene note"
-3. **Open the timeline**: Click the timeline ribbon icon or use command palette → "Radial Timeline: Open timeline view"
-
-That's it! Your first scene appears on the timeline. Create more scenes by:
-- Duplicating the template scene
-- Using command palette → "Create template scene note"
-- Use Obsidian's core templates plugin
+2. **Open the timeline**: Click the radial timeline ribbon icon or use command palette → "Radial Timeline: Open timeline view" 
+3. **Welcome screen**: For any empty vault, you will be greeted by a Welcome screen with introductory details and a button to open the Book designer. Create a single scene or a fully fleshed novel template. 
+Create more scenes by:
+- Using Book Designer again and again via command palette → "Book Designer"
+- Using command palette → "Create scene note"
+- Duplicating the template scenes using Obsidian duplicate (`right click` on scene → duplicate)
+- Use Obsidian's core templates plugin to directly insert yaml into notes **Settings** → Core Plugins → Templates
 
 ## Scene Naming & Ordering
 
