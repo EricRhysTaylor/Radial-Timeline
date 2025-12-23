@@ -11,6 +11,7 @@
  * Handles transitions between timeline modes cleanly and predictably.
  */
 
+import { Notice } from 'obsidian';
 import type { RadialTimelineView } from '../view/TimeLineView';
 import type RadialTimelinePlugin from '../main';
 import { TimelineMode, isTimelineMode } from './ModeDefinition';
@@ -55,6 +56,17 @@ export class ModeManager {
         // No-op if already in this mode
         if (currentMode === newMode) {
             return;
+        }
+
+        // Guard: ensure prerequisites before exiting current mode
+        if (newMode === TimelineMode.GOSSAMER) {
+            const scenes = await this.plugin.getSceneData();
+            const beatNotes = scenes.filter((s: { itemType?: string }) => s.itemType === 'Beat' || s.itemType === 'Plot');
+            
+            if (beatNotes.length === 0) {
+                new Notice('Cannot enter Gossamer mode: No story beats found. Create notes with frontmatter "Class: Beat" (or "Class: Plot" for backward compatibility).');
+                return; // Stay in the current mode without triggering lifecycle changes
+            }
         }
         
         const currentModeDefinition = getModeDefinition(currentMode);

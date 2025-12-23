@@ -114,8 +114,8 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
         base: `Class: Scene              # Type: Scene, Beat, Backdrop
 Act: {{Act}}              # Which act (1-3)
 When: {{When}}            # Story chronology date (YYYY-MM-DD 12:34pm)
-Duration: 2 hours         # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
-Synopsis:                 # Brief description of what happens in this scene
+Duration: 1 hour         # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
+Synopsis: Short scene summary.                # Brief description of what happens in this scene
 Subplot: {{Subplot}}      # Single subplot (or use array format below for multiple)
 Character: {{Character}}  # Characters in the scene (use array format below for multiple)
 POV:                      # blank, first, you, third, omni, narrator, two, all, count
@@ -128,8 +128,8 @@ Pulse Update:             # AI-generated scene pulse analysis flag`,
         advanced: `Class: Scene
 Act: {{Act}}
 When: {{When}}
-Duration: 6 hours
-Synopsis: What happens in a few lines.
+Duration: 1 hours
+Synopsis: Short scene summary.
 Subplot:
 {{SubplotList}}
 Character:

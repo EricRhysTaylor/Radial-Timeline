@@ -640,8 +640,9 @@ export class BookDesignerModal extends Modal {
                 : characterList.length === 1 ? characterList[0]
                 : yamlInlineArray(characterList);
 
-            // Place list (currently single placeholder; keep empty string if none)
-            const placeList = this.targetPath ? [this.targetPath] : [];
+            // Place list fallback
+            const placeListRaw = this.targetPath ? [this.targetPath] : [];
+            const placeList = placeListRaw.length > 0 ? placeListRaw : ['Unknown'];
 
             const data: SceneCreationData = {
                 act,
@@ -649,7 +650,7 @@ export class BookDesignerModal extends Modal {
                 sceneNumber: sceneNum,
                 subplots: assignedSubplots,
                 character: characterString,
-                place: '',
+                place: 'Unknown',
                 characterList,
                 placeList
             };

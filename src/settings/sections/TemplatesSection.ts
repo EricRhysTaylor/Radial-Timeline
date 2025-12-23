@@ -265,7 +265,8 @@ export function renderStoryBeatsSection(params: {
                 rerender(nextList);
             };
 
-            const revertBtn = actions.createEl('button', { cls: 'rt-mod-cta rt-template-icon-btn', attr: { 'aria-label': 'Revert Advanced YAML to default', title: 'Revert Advanced YAML to default' } });
+            // Revert button (no tooltip to avoid double hover text)
+            const revertBtn = actions.createEl('button', { cls: 'rt-mod-cta rt-template-icon-btn' });
             setIcon(revertBtn, 'rotate-ccw');
             revertBtn.onclick = async () => {
                 if (!plugin.settings.sceneYamlTemplates) plugin.settings.sceneYamlTemplates = { base: DEFAULT_SETTINGS.sceneYamlTemplates!.base, advanced: '' };

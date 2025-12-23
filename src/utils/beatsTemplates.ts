@@ -5,14 +5,12 @@ import { Vault, TFile, normalizePath } from 'obsidian';
 import { PLOT_SYSTEMS, PlotSystemTemplate, PlotBeatInfo } from './beatsSystems';
 
 /**
- * Convert momentum range to Range field value
- * Examples: "0-10" → "0-10", "60-70" → "60-70"
+ * Convert beatInfo.range to Range field value (0-100 scale).
  */
-function getMomentumRange(beatInfo: PlotBeatInfo): string {
-  if (beatInfo.momentumRange) {
-    return beatInfo.momentumRange;
+function getRangeValue(beatInfo: PlotBeatInfo): string {
+  if (beatInfo.range) {
+    return beatInfo.range;
   }
-  // Fallback to empty if not defined
   return '';
 }
 
@@ -24,13 +22,15 @@ function generatePlotNoteContent(
   act: number,
   beatSystem: string
 ): string {
-  const rangeValue = getMomentumRange(beatInfo);
+  const rangeValue = getRangeValue(beatInfo);
+  const yamlEscape = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const desc = beatInfo.description ? `"${yamlEscape(beatInfo.description)}"` : '""';
   
   const frontmatter = [
     '---',
     'Class: Beat',
     `Act: ${act}`,
-    `Description: ${beatInfo.description}`,
+    `Description: ${desc}`,
     `Beat Model: ${beatSystem}`,
     rangeValue ? `Range: ${rangeValue}` : 'Range:',
     'When:',
@@ -39,16 +39,16 @@ function generatePlotNoteContent(
     ''
   ].join('\n');
 
-  // Build the body with description and percentage range
+  // Build the body with description and optional placement
   const bodyParts: string[] = [];
   
   if (beatInfo.description) {
     bodyParts.push(beatInfo.description);
   }
   
-  if (beatInfo.percentageRange) {
+  if (beatInfo.placement) {
     bodyParts.push('');
-    bodyParts.push(`**Manuscript Position:** ${beatInfo.percentageRange}`);
+    bodyParts.push(`**Manuscript Position:** ${beatInfo.placement}`);
   }
   
   const body = bodyParts.length > 0 ? '\n' + bodyParts.join('\n') + '\n' : '';
@@ -100,14 +100,24 @@ export async function createBeatTemplateNotes(
     }
   }
 
+  const stripActPrefix = (name: string): string => {
+    const m = name.match(/^Act\s*\d+\s*:\s*(.+)$/i);
+    return m ? m[1].trim() : name.trim();
+  };
+
+  const sanitize = (s: string) =>
+    s.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+
   for (let i = 0; i < beatSystem.beats.length; i++) {
     const beatName = beatSystem.beats[i];
     const beatInfo = beatSystem.beatDetails[i];
     const beatNumber = i + 1;
     const act = getBeatAct(i, beatSystem.beats.length);
     
-    // Filename: "1 Opening Image.md"
-    const filename = `${beatNumber} ${beatName}.md`;
+    // Use canonical title without "Act X:" prefix for filename
+    const displayName = stripActPrefix(beatName);
+    const safeBeatName = sanitize(displayName);
+    const filename = `${beatNumber} ${safeBeatName}.md`;
     const filePath = targetFolder ? `${targetFolder}/${filename}` : filename;
     const normalizedPath = normalizePath(filePath);
 
