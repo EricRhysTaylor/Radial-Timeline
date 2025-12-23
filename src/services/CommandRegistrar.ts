@@ -51,16 +51,16 @@ export class CommandRegistrar {
         });
 
         this.plugin.addCommand({
-            id: 'create-template-scene-note',
-            name: 'Create template scene note',
+            id: 'create-scene-note',
+            name: 'Create scene note',
             callback: () => {
                 void this.createSceneTemplateNote();
             }
         });
 
         this.plugin.addCommand({
-            id: 'create-backdrop-template-note',
-            name: 'Create backdrop template note',
+            id: 'create-backdrop-note',
+            name: 'Create backdrop note',
             callback: () => {
                 void this.createBackdropTemplateNote();
             }
