@@ -75,3 +75,4 @@ Reference `src/modals/ManuscriptOptionsModal.ts` for the gold standard implement
    - Horizontal trackers belong inside `.rt-pulse-ruler-scroll`.
 
 
+

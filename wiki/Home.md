@@ -34,13 +34,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
     <img src="images/screenshot3.jpeg" alt="Subplot Mode author workflow colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Mode — Author & publishing progress</div>
   </div>
-  <div style="text-align: center;">
-    <img src="images/screenshot4.jpeg" alt="Gossamer View" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer View</div>
-  </div>
-</div>
-
-<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
+  <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
     <img src="images/screenshot6.jpeg" alt="Chronologue Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode</div>
@@ -50,6 +44,13 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode - SHIFT</div>
   </div>
 </div>
+  <div style="text-align: center;">
+    <img src="images/screenshot4.jpeg" alt="Gossamer View" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer View</div>
+  </div>
+</div>
+
+
 
 ### Getting Started
 

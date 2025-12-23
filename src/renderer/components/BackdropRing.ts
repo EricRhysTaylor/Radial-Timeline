@@ -7,7 +7,7 @@ import type { TimelineItem } from '../../types/timeline';
 import { parseDuration, calculateTimeSpan, parseWhenField } from '../../utils/date';
 import { formatNumber } from '../../utils/svg';
 import { BACKDROP_RING_HEIGHT, BACKDROP_TITLE_RADIUS_OFFSET } from '../layout/LayoutConstants';
-import { isBeatNote, type PluginRendererFacade } from '../../utils/sceneHelpers';
+import { isBeatNote, sortScenes, type PluginRendererFacade } from '../../utils/sceneHelpers';
 import { appendSynopsisElementForScene } from '../utils/SynopsisBuilder';
 import { makeSceneId } from '../../utils/numberSquareHelpers';
 
@@ -48,47 +48,35 @@ export function renderBackdropRing({
     const backdropItems = scenes.filter(s => s.itemType === 'Backdrop' && s.when && (s.Duration || s.End));
     if (backdropItems.length === 0) return '';
 
-    // 2. Identify Time Span of the *entire* View
-    // IMPORTANT: Per user request, Backdrop items must NOT influence the timeline range.
-    // However, we must use the exact same filtering as Chronologue.ts to ensure alignment.
-    // This allows scenes with undefined itemType (which default to Scene) to define the range.
-    const allValidDates = scenes
-        .filter(s => !isBeatNote(s) && s.itemType !== 'Backdrop')
-        .map(s => s.when)
-        .filter((d): d is Date => d instanceof Date && !isNaN(d.getTime()));
+    // 2. Prepare scenes for Outer Ring Alignment
+    // IMPORTANT: We must replicate the EXACT deduplication and sorting logic used by Chronologue.ts
+    // to ensure our angular calculations align perfectly with the scene squares on the outer ring.
 
-    if (allValidDates.length === 0) {
-        return '';
-    }
+    const seenPaths = new Set<string>();
+    const candidates: TimelineItem[] = [];
 
-    const timeSpan = calculateTimeSpan(allValidDates);
-    // calculateTimeSpan does not return start/end dates, so compute them locally
-    const sortedDates = allValidDates.slice().sort((a, b) => a.getTime() - b.getTime());
-    const earliest = sortedDates[0];
-    const latest = sortedDates[sortedDates.length - 1];
+    scenes.forEach(s => {
+        // Exclude non-scene items (Beat, Plot) and Backdrops
+        if (isBeatNote(s) || s.itemType === 'Backdrop') return;
+        
+        // Deduplicate by path or title+date (same key as Chronologue.ts)
+        const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
+        
+        if (!seenPaths.has(key)) {
+            // Must have a valid date to be on the Chronologue ring
+            if (s.when && s.when instanceof Date && !isNaN(s.when.getTime())) {
+                seenPaths.add(key);
+                candidates.push(s);
+            }
+        }
+    });
 
-    const startMs = earliest.getTime();
-    const endMs = latest.getTime();
-
-    // Removed unused totalDuration check to fix linting error
-    // const totalDuration = endMs - startMs;
-    // if (totalDuration <= 0) return '';
-
-    // 3. Process segments
-    // IMPORTANT: The `Chronologue.ts` and `generateChronologicalTicks` logic positions scenes evenly around the circle
-    // based on their index (equal angular spacing), NOT proportional to time.
-    // Therefore, mapping Backdrop time directly to angle using `mapTimeToAngle` (linear time interpolation) is INCORRECT
-    // because the scene ring is NOT linear time. It is index-based.
-
-    // To align the Backdrop with the scenes, we must find where the Backdrop's start/end dates fall within the
-    // sorted list of scenes and interpolate between the angular positions of those scenes.
-
-    // Sort valid dates/scenes chronologically to match the ring layout
-    const sortedScenes = scenes
-        .filter(s => !isBeatNote(s) && s.itemType !== 'Backdrop' && s.when && !isNaN(s.when.getTime()))
-        .sort((a, b) => a.when!.getTime() - b.when!.getTime());
+    // Use shared sort helper with forceChronological=true to match Chronologue mode
+    const sortedScenes = sortScenes(candidates, true, true);
 
     if (sortedScenes.length === 0) return '';
+
+    // 3. Process segments
 
     // Helper: Map a timestamp to an angle by interpolating between scene indices
     // The scene ring maps scenes to angles: Start = -PI/2, End = 3PI/2.
@@ -99,11 +87,18 @@ export function renderBackdropRing({
     const totalAngle = endAngle - startAngle;
     const angularSize = totalAngle / sortedScenes.length;
 
-    function mapTimestampToSceneIndexAngle(timeMs: number): number {
+    function mapTimestampToSceneIndexAngle(timeMs: number, bias: 'start' | 'end' = 'end'): number {
         // Find the index of the scene just before this time
         let prevIndex = -1;
         for (let i = 0; i < sortedScenes.length; i++) {
-            if (sortedScenes[i].when!.getTime() <= timeMs) {
+            const sceneTime = sortedScenes[i].when!.getTime();
+            // For 'start' bias, we stop as soon as we hit the time (strict less than)
+            // This maps to the FIRST scene at that time.
+            // For 'end' bias, we continue through all scenes at that time (less or equal)
+            // This maps to the LAST scene at that time.
+            const condition = bias === 'start' ? sceneTime < timeMs : sceneTime <= timeMs;
+            
+            if (condition) {
                 prevIndex = i;
             } else {
                 break;
@@ -171,8 +166,8 @@ export function renderBackdropRing({
         // Actually, if clampedStart == clampedEnd, it's a point. Backdrop usually implies duration.
         // Let's allow it.
 
-        let computedStartAngle = mapTimestampToSceneIndexAngle(clampedStartMs);
-        let computedEndAngle = mapTimestampToSceneIndexAngle(clampedEndMs);
+        let computedStartAngle = mapTimestampToSceneIndexAngle(clampedStartMs, 'start');
+        let computedEndAngle = mapTimestampToSceneIndexAngle(clampedEndMs, 'end');
 
         // Guard: if the backdrop spans the entire scene range (start == end == full circle),
         // the arc would collapse to a point because start/end coordinates are identical.

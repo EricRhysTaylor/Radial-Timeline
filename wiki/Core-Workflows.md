@@ -1,11 +1,7 @@
 ### Planning Your Novel
-*   **Story Beats**: Use any story beat system (Save the Cat, Hero's Journey, Story Grid, or Custom) to lay out the story momentum scaffolding.
 *   **Act Structure**: Create and distribute scenes by act (1-3) to see your three-act structure take shape as scene ideas come to you.
-*   **Subplot Tracking**: Each ring represents a different subplot—see how plot threads interweave.
-*   **Beat Templates**: Generate complete story beat sets like Save the Cat using Settings → Story beat system.
-
-**Command**: `Create template scene note`
-**Settings**: `Story beat system`
+*   **Subplot Tracking**: Each ring represents a different subplot—see how plot threads interweave with thoughtful scene subplot placement.
+*   **Story Beats**: Use story beat systems (Save the Cat, Hero's Journey, Story Grid, or Custom) to lay out the momentum scaffolding.
 
 ### Tracking Progress
 *   **Status Colors**: In **Subplot Mode**, scenes are color-coded by status (Todo = plaid, Working = pink, Overdue = red, Complete = publish stage color customizable in settings). In Narrative and Chronologue modes, scenes display their subplot color.
