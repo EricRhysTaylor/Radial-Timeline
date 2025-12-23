@@ -43,17 +43,14 @@ export class BookDesignerModal extends Modal {
         contentEl.addClass('rt-pulse-modal');
         contentEl.addClass('rt-book-designer-modal');
 
+           
+        const sourcePath = this.plugin.settings.sourcePath || 'vault root';
         // Hero Header (Gossamer Pulse Standard)
         const hero = contentEl.createDiv({ cls: 'rt-gossamer-simple-header' });
         hero.createSpan({ cls: 'rt-gossamer-simple-badge', text: 'SETUP' });
         hero.createDiv({ cls: 'rt-gossamer-hero-system', text: 'Book designer' });
-        hero.createDiv({ cls: 'rt-gossamer-score-subtitle', text: 'Configure and generate the skeleton for your new novel. Relies on settings YAML templates basic and advanced.' });
-        
-        const sourcePath = this.plugin.settings.sourcePath || 'vault root';
-        hero.createDiv({ 
-            cls: 'rt-gossamer-score-subtitle rt-source-path-label', 
-            text: `Source path from settings will place book at... ${sourcePath}` 
-        });
+        hero.createDiv({ cls: 'rt-gossamer-score-subtitle', text: `Configure and generate the skeleton for your new novel. Source path from settings will place book at... ${sourcePath}` });
+    
         
         const heroMeta = hero.createDiv({ cls: 'rt-gossamer-simple-meta' });
         heroMeta.createSpan({ cls: 'rt-pulse-hero-meta-item', text: 'Scenes + Subplots' });
@@ -76,19 +73,27 @@ export class BookDesignerModal extends Modal {
                 // Use blur to validate
                 text.inputEl.addEventListener('blur', () => {
                     const raw = text.getValue().trim();
+                    // Clear previous animation classes to allow re-triggering
+                    text.inputEl.removeClass('rt-input-flash-success');
+                    text.inputEl.removeClass('rt-input-flash-error');
+                    
+                    // Force a reflow to restart animation if class is re-added immediately (though we clear above)
+                    void text.inputEl.offsetWidth;
+
                     if (!raw) {
                         this.timeIncrement = '1 day';
                         text.setValue('1 day');
+                        text.inputEl.addClass('rt-input-flash-success');
                         return;
                     }
                     const valid = parseDurationDetail(raw);
                     if (valid) {
                         this.timeIncrement = raw;
-                        text.inputEl.removeClass('rt-setting-input-error');
+                        text.inputEl.addClass('rt-input-flash-success');
                     } else {
                         new Notice(`Invalid duration: "${raw}". Reverting to ${this.timeIncrement}.`);
                         text.setValue(this.timeIncrement);
-                        text.inputEl.addClass('rt-setting-input-error');
+                        text.inputEl.addClass('rt-input-flash-error');
                     }
                 });
             });
@@ -175,8 +180,6 @@ export class BookDesignerModal extends Modal {
                 input.click();
             };
         });
-        structCard.createDiv({ cls: 'rt-manuscript-card-note', text: 'Scenes distribute across checked acts. If only Act 3 is checked, all scenes go to Act 3.' });
-
 
         // SECTION 2: CONTENT CONFIGURATION
         const contentCard = scrollContainer.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
@@ -314,7 +317,7 @@ export class BookDesignerModal extends Modal {
         
         // Calculate example numbers
         let examples: number[] = [];
-        if (scenes <= 1) examples = [max];
+        if (scenes <= 1) examples = [1];
         else if (scenes <= 3) {
             // e.g. 1, 50, 100
             for (let i=1; i<=scenes; i++) {

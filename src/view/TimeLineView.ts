@@ -558,7 +558,11 @@ export class RadialTimelineView extends ItemView {
         // Clear existing content
         container.empty();
         
-        if (!scenes || scenes.length === 0) {
+        // Check if there are any actual scenes (not just backdrops or beats)
+        // The user wants to see the Welcome Screen until they have at least one Scene note.
+        const hasScenes = scenes && scenes.some(item => item.itemType === 'Scene');
+        
+        if (!scenes || scenes.length === 0 || !hasScenes) {
             renderWelcomeScreen({
                 container,
                 plugin: this.plugin,

@@ -40,7 +40,19 @@ export async function callProvider(plugin: RadialTimelinePlugin, args: ProviderC
     const apiKey = plugin.settings.localApiKey || '';
     const modelId = plugin.settings.localModelId || 'llama3';
     const baseUrl = plugin.settings.localBaseUrl || 'http://localhost:11434/v1';
-    const resp: OpenAiApiResponse = await callOpenAiApi(apiKey, modelId, args.systemPrompt || null, args.userPrompt, max, baseUrl, undefined, temp);
+    
+    // Enforce JSON mode for local models to improve formatting reliability
+    // The API client handles fallback if the server doesn't support it.
+    const resp: OpenAiApiResponse = await callOpenAiApi(
+        apiKey, 
+        modelId, 
+        args.systemPrompt || null, 
+        args.userPrompt, 
+        max, 
+        baseUrl, 
+        { type: 'json_object' }, 
+        temp
+    );
     return { success: resp.success, content: resp.content, responseData: resp.responseData, provider, modelId };
   } else {
     const apiKey = plugin.settings.openaiApiKey || '';

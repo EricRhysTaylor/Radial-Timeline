@@ -112,8 +112,9 @@ export async function callOpenAiApi(
         if (response.status >= 400) {
             const errorDetails = responseData as OpenAiErrorResponse;
             const msg = errorDetails?.error?.message ?? response.text ?? `OpenAI error (${response.status})`;
-            if (responseFormat && allowFormatFallback && /response_format/i.test(msg)) {
-                console.warn('[OpenAI API] response_format not supported by server, retrying without enforcement.');
+            // Broaden check to catch "JSON mode" errors from various local servers (Ollama, etc.)
+            if (responseFormat && allowFormatFallback && /(response_format|json)/i.test(msg)) {
+                console.warn('[OpenAI API] JSON mode not supported by server/model, retrying without enforcement.');
                 return callOpenAiApi(apiKey, modelId, systemPrompt, userPrompt, maxTokens, baseUrl, undefined, temperature, false);
             }
             return { success: false, content: null, responseData, error: msg };

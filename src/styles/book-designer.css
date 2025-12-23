@@ -1,4 +1,11 @@
-/* Book Designer Modal Styles - inheriting and extending pulse/gossamer styles */
+/* Book Designer Modal Styles - Simplified */
+
+/* --- Container & Layout --- */
+.rt-book-designer-modal {
+    /* Grid column defaults (overridable in media queries) */
+    --rt-duo-grid-cols: repeat(2, minmax(0, 1fr));
+    --rt-trio-grid-cols: minmax(0, 1fr) minmax(0, 1fr) 200px;
+}
 
 .rt-book-designer-modal .rt-manuscript-card-stack {
     display: flex;
@@ -7,16 +14,15 @@
     margin-top: 6px;
 }
 
+/* Glass Card Base */
 .rt-book-designer-modal .rt-pulse-glass-card.rt-manuscript-card {
     box-shadow: none;
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 14px 16px;
-}
-
-.rt-book-designer-modal .rt-manuscript-card {
     gap: 10px;
 }
 
+/* Inner Block (Group) */
 .rt-book-designer-modal .rt-manuscript-card-block {
     display: flex;
     flex-direction: column;
@@ -36,6 +42,9 @@
     margin-top: 0;
 }
 
+/* --- Settings Components Resets & Defaults --- */
+
+/* Reset Obsidian default setting item styles */
 .rt-book-designer-modal .setting-item {
     background: transparent;
     border: none;
@@ -44,7 +53,32 @@
     min-height: unset;
 }
 
-/* Stacked Setting (Label top, Input bottom) */
+/* Group Setting Cell (Used inside Grids) */
+.rt-book-designer-modal .rt-manuscript-group-setting {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding: 0; /* Handled by grid logic */
+    height: 100%;
+    margin: 0 !important;
+}
+
+/* Global snug fit for settings inside the designer */
+.rt-book-designer-modal .rt-manuscript-group-setting .setting-item-info,
+.rt-book-designer-modal .rt-manuscript-group-setting .setting-item-control {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: none !important;
+}
+
+/* Horizontal Layout (Default for Group Setting) - Top Aligned */
+.rt-book-designer-modal .rt-manuscript-group-setting:not(.rt-setting-stacked) {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+/* Stacked Layout */
 .rt-book-designer-modal .rt-setting-stacked {
     display: flex;
     flex-direction: column;
@@ -52,133 +86,79 @@
     gap: 8px;
 }
 
-.rt-book-designer-modal .rt-setting-stacked .setting-item-info {
-    flex: 0 0 auto;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-}
-
 .rt-book-designer-modal .rt-setting-stacked .setting-item-control {
-    flex: 1 1 auto;
     width: 100%;
-    margin: 0;
-    padding: 0;
     display: flex;
 }
 
-.rt-book-designer-modal .rt-setting-stacked .setting-item-control textarea {
+.rt-book-designer-modal .rt-setting-stacked textarea {
     width: 100%;
     resize: none;
-    min-height: 100px; /* Ensure enough height for the textarea */
+    min-height: 100px;
+    font-family: var(--font-monospace);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    padding: 8px;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
 }
 
-.rt-book-designer-modal .rt-manuscript-pill-row {
-    gap: 8px;
+.rt-book-designer-modal textarea:focus {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
 }
 
-.rt-book-designer-modal .rt-manuscript-card-note {
-    margin-top: 4px;
-}
+/* --- Grid System --- */
 
-.rt-book-designer-modal .rt-manuscript-duo-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    align-items: stretch;
-    width: 100%;
-}
-
-@media (max-width: 760px) {
-    .rt-book-designer-modal .rt-manuscript-duo-row {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Grouped blocks (single border spanning multiple columns) */
-.rt-book-designer-modal .rt-manuscript-group-block {
-    width: 100%;
-}
-
+/* Base Grid */
 .rt-book-designer-modal .rt-manuscript-duo-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0;
-    align-items: stretch;
+    align-items: start;
     width: 100%;
+    grid-template-columns: var(--rt-duo-grid-cols);
 }
 
 .rt-book-designer-modal .rt-manuscript-trio-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 200px;
     gap: 0;
     align-items: start;
     width: 100%;
+    grid-template-columns: var(--rt-trio-grid-cols);
 }
 
-@media (max-width: 860px) {
-    .rt-book-designer-modal .rt-manuscript-trio-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Inner settings inside grouped blocks: remove their own borders so the group border is the one you see */
-.rt-book-designer-modal .rt-manuscript-group-setting {
-    border: none;
-    background: transparent;
-    border-radius: 0;
-    padding: 0 12px;
-    height: 100%;
-    margin: 0 !important;
-}
-
-/* Specific padding for Trio grid to space away from vertical borders */
-/* Col 1 (Subplots): Padding right for border space */
-.rt-book-designer-modal .rt-manuscript-trio-grid > .rt-manuscript-group-setting:nth-child(1) {
-    padding-right: 18px;
-    padding-left: 0;
+/* Grid Separators & Spacing */
+/* Apply border to all direct children except the last one */
+.rt-book-designer-modal .rt-manuscript-duo-grid > div:not(:last-child),
+.rt-book-designer-modal .rt-manuscript-trio-grid > div:not(:last-child) {
     border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Col 2 (Characters): Padding left/right for border space */
-.rt-book-designer-modal .rt-manuscript-trio-grid > .rt-manuscript-group-setting:nth-child(2) {
+/* Apply spacing to all columns */
+.rt-book-designer-modal .rt-manuscript-duo-grid > div,
+.rt-book-designer-modal .rt-manuscript-trio-grid > div {
     padding-left: 18px;
     padding-right: 18px;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-
-/* Force removal of top borders that might come from Obsidian theme */
-.rt-book-designer-modal .rt-manuscript-group-setting.setting-item {
-    border-top: none !important;
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-}
-
-/* Specific padding for Duo grid to space away from vertical borders */
-/* Col 1: Padding right for border space */
-.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(1) {
-    padding-right: 18px;
+/* Remove outer padding */
+.rt-book-designer-modal .rt-manuscript-duo-grid > div:first-child,
+.rt-book-designer-modal .rt-manuscript-trio-grid > div:first-child {
     padding-left: 0;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Col 2: Padding left for border space */
-.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
-    padding-left: 18px;
+.rt-book-designer-modal .rt-manuscript-duo-grid > div:last-child,
+.rt-book-designer-modal .rt-manuscript-trio-grid > div:last-child {
     padding-right: 0;
 }
 
-@media (max-width: 860px) {
-    .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:first-child,
-    .rt-book-designer-modal .rt-manuscript-trio-grid > .rt-manuscript-group-setting:nth-child(1),
-    .rt-book-designer-modal .rt-manuscript-trio-grid > .rt-manuscript-group-setting:nth-child(2) {
-        border-right: none;
-        padding-bottom: 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
+/* Fix for vertical alignment of 'Target book length' (2nd item in Duo Grid) */
+.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
+    padding-bottom: 16px !important;
 }
 
+/* Standard Row Grid (e.g. Acts checkboxes) */
 .rt-book-designer-modal .rt-manuscript-setting-row {
     display: grid;
     gap: 8px 12px;
@@ -195,6 +175,49 @@
     }
 }
 
+.rt-book-designer-modal .rt-manuscript-duo-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: stretch;
+    width: 100%;
+}
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 860px) {
+    /* Collapse Grids via custom properties to avoid duplicate selectors */
+    .rt-book-designer-modal {
+        --rt-duo-grid-cols: 1fr;
+        --rt-trio-grid-cols: 1fr;
+    }
+
+    /* Reset borders and spacing for stack */
+    .rt-book-designer-modal .rt-manuscript-duo-grid > div,
+    .rt-book-designer-modal .rt-manuscript-trio-grid > div {
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 0 0 12px 0 !important;
+        margin-bottom: 12px !important;
+    }
+
+    /* Remove border from last item in stack */
+    .rt-book-designer-modal .rt-manuscript-duo-grid > div:last-child,
+    .rt-book-designer-modal .rt-manuscript-trio-grid > div:last-child {
+        border-bottom: none;
+        padding-bottom: 0 !important;
+        margin-bottom: 0 !important;
+    }
+}
+
+@media (max-width: 760px) {
+    .rt-book-designer-modal .rt-manuscript-duo-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Components --- */
+
+/* Checkboxes */
 .rt-book-designer-modal .rt-manuscript-checkbox-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -216,28 +239,27 @@
     accent-color: var(--interactive-accent);
 }
 
-/* Enhancing textarea in modal */
-.rt-book-designer-modal textarea {
-    font-family: var(--font-monospace);
-    font-size: 0.85rem;
-    line-height: 1.4;
-    padding: 8px;
-    background-color: var(--background-primary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
+/* Pills */
+.rt-book-designer-modal .rt-manuscript-pill-row {
+    gap: 8px;
 }
 
-.rt-book-designer-modal textarea:focus {
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+/* Card Note */
+.rt-book-designer-modal .rt-manuscript-card-note {
+    margin-top: 4px;
 }
 
-/* Override dropdown width */
+/* Dropdown */
 .rt-book-designer-modal .dropdown {
     min-width: 150px;
 }
 
-/* Preview column */
+/* Source Path Label */
+.rt-book-designer-modal .rt-source-path-label {
+    color: var(--text-muted);
+}
+
+/* --- Preview Column --- */
 .rt-book-designer-modal .rt-manuscript-preview-col {
     display: flex;
     flex-direction: column;
@@ -245,9 +267,6 @@
     align-items: center;
     justify-content: flex-start;
     height: 100%;
-    /* Combine padding here to avoid duplicate selector rules */
-    padding-left: 18px;
-    padding-right: 0;
 }
 
 .rt-book-designer-modal .rt-manuscript-preview-title {
@@ -285,7 +304,23 @@
     stroke-width: 1;
 }
 
-/* Source Path Label */
-.rt-book-designer-modal .rt-source-path-label {
-    color: var(--text-muted);
+/* --- Animations --- */
+@keyframes rt-flash-error {
+    0% { border-color: var(--text-error); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.4); }
+    50% { border-color: var(--text-error); box-shadow: 0 0 0 4px rgba(255, 0, 0, 0.1); }
+    100% { border-color: var(--background-modifier-border); box-shadow: none; }
+}
+
+@keyframes rt-flash-success {
+    0% { border-color: var(--interactive-success); background-color: rgba(var(--interactive-success-rgb), 0.1); box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.4); }
+    50% { border-color: var(--interactive-success); background-color: rgba(var(--interactive-success-rgb), 0.2); box-shadow: 0 0 0 4px rgba(0, 255, 0, 0.1); }
+    100% { border-color: var(--background-modifier-border); background-color: var(--background-primary); box-shadow: none; }
+}
+
+.rt-book-designer-modal .rt-input-flash-error {
+    animation: rt-flash-error 0.5s ease-out;
+}
+
+.rt-book-designer-modal .rt-input-flash-success {
+    animation: rt-flash-success 0.5s ease-out;
 }
