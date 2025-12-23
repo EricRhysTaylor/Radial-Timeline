@@ -35,17 +35,16 @@ function buildModeOptions() {
 const MODE_OPTIONS = buildModeOptions();
 
 // Base SVG dimensions (source viewBox size - original path coordinates)
-const ICON_BASE_WIDTH = 92; // Original width for SVG path
-const ICON_BASE_HEIGHT = 126; // Original height of icon
+const ICON_BASE_WIDTH = 58; // Original width for SVG path
+const ICON_BASE_HEIGHT = 81; // Original height of icon
 
-// Standardized Scaling (Target ~100px native path)
-const ICON_BASE_SCALE = 0.5; // Mode icons are drawn large (200px), scale down to ~100px
-const ICON_ACTIVE_SCALE = 0.6; // 20% larger when active
+// Standardized Scaling (Target ~Native Size)
+const ICON_ACTIVE_SCALE = 1.2; // 20% larger when active
 
-const INACTIVE_VISUAL_WIDTH = ICON_BASE_WIDTH * ICON_BASE_SCALE;
+const INACTIVE_VISUAL_WIDTH = ICON_BASE_WIDTH;
 const ACTIVE_VISUAL_WIDTH = ICON_BASE_WIDTH * ICON_ACTIVE_SCALE;
 
-const INACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT * ICON_BASE_SCALE;
+const INACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT;
 const ACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT * ICON_ACTIVE_SCALE;
 
 // Visual spacing
@@ -68,15 +67,15 @@ function scalePath(pathData: string, scale: number): string {
 
 /**
  * Original SVG path for document shape with folded corner
- * Based on viewBox 0 0 92 126
+ * Based on viewBox 0 0 58 81
  */
-const ORIGINAL_DOCUMENT_PATH = 'M0.0740741 108.5C0.0740711 118 3.35321 126 18.8532 126H74.3532C85.9532 126 91.0013 112.5 91.0741 105C91.2407 87.8333 91.0741 55.2111 91.0741 48C91.0741 43 87.8224 33.4634 74.3532 17.5C60.8532 1.5 49.8532 0 46.0741 0H17.0741C4.85322 0 0.12237 9 0.0740749 17.5C-0.0925918 46.8333 0.0740765 100.49 0.0740741 108.5Z';
+const ORIGINAL_DOCUMENT_PATH = 'M0.0471353 69.75C0.0471334 75.8571 2.13374 81 11.9968 81H47.3129C54.6943 81 57.9065 72.3214 57.9529 67.5C58.0589 56.4643 57.9529 35.4929 57.9529 30.8571C57.9529 27.6429 55.8837 21.5122 47.3129 11.25C38.7225 0.964286 31.7229 0 29.3182 0H10.8647C3.08823 0 0.0778675 5.78571 0.0471358 11.25C-0.0589186 30.1071 0.0471369 64.6007 0.0471353 69.75Z';
 
 /**
- * Create SVG path for document shape scaled to inactive size (46px width)
+ * Create SVG path for document shape (Native Size)
  */
 function createInactiveDocumentShape(): string {
-    return scalePath(ORIGINAL_DOCUMENT_PATH, ICON_BASE_SCALE);
+    return ORIGINAL_DOCUMENT_PATH;
 }
 
 /**
@@ -117,20 +116,20 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         path.setAttribute('class', 'rt-document-bg');
         path.setAttribute('d', createInactiveDocumentShape());
 
-        // Create text element (acronym) - coordinates scaled to inactive size
+        // Create text element (acronym) - Native Size
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('class', 'rt-mode-acronym-text');
-        text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * ICON_BASE_SCALE));
-        text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * ICON_BASE_SCALE));
+        text.setAttribute('x', String(ICON_BASE_WIDTH / 2));
+        text.setAttribute('y', String(ICON_BASE_HEIGHT - 12));
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('dominant-baseline', 'middle');
         text.textContent = mode.acronym;
 
-        // Create number label (1, 2, 3, 4) at top left corner - coordinates scaled
+        // Create number label (1, 2, 3, 4) at top left corner - Native Size
         const numberLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         numberLabel.setAttribute('class', 'rt-mode-number-label');
-        numberLabel.setAttribute('x', String(12 * ICON_BASE_SCALE));
-        numberLabel.setAttribute('y', String(20 * ICON_BASE_SCALE));
+        numberLabel.setAttribute('x', '8');
+        numberLabel.setAttribute('y', '14');
         numberLabel.setAttribute('text-anchor', 'start');
         numberLabel.setAttribute('dominant-baseline', 'middle');
         numberLabel.textContent = String(index + 1);
@@ -271,10 +270,10 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
 
             // Update text positions to active size
             text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * ICON_ACTIVE_SCALE));
-            text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * ICON_ACTIVE_SCALE));
+            text.setAttribute('y', String((ICON_BASE_HEIGHT - 12) * ICON_ACTIVE_SCALE));
             if (numberLabel) {
-                numberLabel.setAttribute('x', String(12 * ICON_ACTIVE_SCALE));
-                numberLabel.setAttribute('y', String(20 * ICON_ACTIVE_SCALE));
+                numberLabel.setAttribute('x', String(8 * ICON_ACTIVE_SCALE));
+                numberLabel.setAttribute('y', String(14 * ICON_ACTIVE_SCALE));
             }
         } else {
             // Inactive mode - no scale transform, use native inactive size path
@@ -287,12 +286,12 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             // Update path to inactive size (native)
             bg.setAttribute('d', createInactiveDocumentShape());
 
-            // Update text positions to inactive size
-            text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * ICON_BASE_SCALE));
-            text.setAttribute('y', String((ICON_BASE_HEIGHT - 16) * ICON_BASE_SCALE));
+            // Update text positions to inactive size (Native)
+            text.setAttribute('x', String(ICON_BASE_WIDTH / 2));
+            text.setAttribute('y', String(ICON_BASE_HEIGHT - 12));
             if (numberLabel) {
-                numberLabel.setAttribute('x', String(12 * ICON_BASE_SCALE));
-                numberLabel.setAttribute('y', String(20 * ICON_BASE_SCALE));
+                numberLabel.setAttribute('x', '8');
+                numberLabel.setAttribute('y', '14');
             }
         }
     });

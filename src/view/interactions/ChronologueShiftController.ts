@@ -16,15 +16,10 @@ import {
 } from '../../renderer/layout/LayoutConstants';
 
 // Base SVG dimensions (source viewBox size)
-const SHIFT_BUTTON_BASE_WIDTH = 133; // Base width from SVG path
-const SHIFT_BUTTON_BASE_HEIGHT = 68; // Base height from SVG path
-
-// Target visual sizes (scale UP from smaller base to preserve stroke width)
-const SHIFT_BUTTON_INACTIVE_WIDTH = 106; // Target width when inactive
-const SHIFT_BUTTON_ACTIVE_WIDTH = 128; // Target width when active (20% larger)
+const SHIFT_BUTTON_BASE_WIDTH = 108; // Base width from SVG path
+const SHIFT_BUTTON_BASE_HEIGHT = 55; // Base height from SVG path
 
 // Button Scaling Constants
-const BUTTON_BASE_SCALE = 1.0;
 const BUTTON_ACTIVE_SCALE = 1.2;
 
 const ELAPSED_ARC_STROKE_WIDTH = 3;
@@ -624,7 +619,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
  * Create the shift button SVG path
  */
 function createShiftButtonShape(): string {
-    return 'M0 11C0 4.92487 4.92487 0 11 0H103C119.569 0 133 13.4315 133 30V57C133 63.0751 128.075 68 122 68H11C4.92487 68 0 63.0751 0 57V11Z';
+    return 'M0 11C0 4.92487 4.92487 0 11 0H78C94.5685 0 108 13.4315 108 30V44C108 50.0751 103.075 55 97 55H11C4.92487 55 0 50.0751 0 44V11Z';
 }
 
 /**
@@ -635,7 +630,7 @@ function createShiftButton(): SVGGElement {
     button.setAttribute('class', 'rt-shift-mode-button');
     button.setAttribute('id', 'shift-mode-toggle');
 
-    button.setAttribute('transform', `translate(${SHIFT_BUTTON_POS_X}, ${SHIFT_BUTTON_POS_Y}) scale(${BUTTON_BASE_SCALE})`);
+    button.setAttribute('transform', `translate(${SHIFT_BUTTON_POS_X}, ${SHIFT_BUTTON_POS_Y})`);
 
     // Create path element
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -647,8 +642,8 @@ function createShiftButton(): SVGGElement {
 
     // Create text element with up arrow
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', '66.5'); // Center of button (133/2)
-    text.setAttribute('y', '52'); // Near bottom like mode pages
+    text.setAttribute('x', '54'); // Center of button (108/2)
+    text.setAttribute('y', '36'); // Approx 65% down for visual balance
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('class', 'rt-shift-button-text');
@@ -682,7 +677,7 @@ function updateShiftButtonState(button: SVGGElement, active: boolean): void {
         button.classList.add('rt-shift-mode-active');
     } else {
         // Normal scale when inactive - CSS handles colors
-        button.setAttribute('transform', `${baseTransform} scale(${BUTTON_BASE_SCALE})`);
+        button.setAttribute('transform', `${baseTransform}`);
         button.classList.remove('rt-shift-mode-active');
     }
 }
@@ -696,22 +691,20 @@ function createAltButton(): SVGGElement {
     button.setAttribute('id', 'alt-mode-toggle');
 
     // Position to the LEFT of Shift button.
-    // Shift is at SHIFT_BUTTON_POS_X (-700).
+    // Shift is at SHIFT_BUTTON_POS_X.
     // Space 10px.
-    // Alt Button Native Width = 41px (Scale 1.0).
-    // New X = -700 - 10 - 41 = -751.
+    // Alt Button Native Width = 45px (Scale 1.0).
+    // New X = SHIFT_BUTTON_POS_X - 10 - 45.
 
-    // Native Scale = BUTTON_BASE_SCALE
-    const scale = BUTTON_BASE_SCALE;
-    const nativeWidth = 41;
-    const nativeHeight = 42;
+    const nativeWidth = 45;
+    const nativeHeight = 46;
     // Center vertically relative to Shift button
     const yOffset = (SHIFT_BUTTON_BASE_HEIGHT - nativeHeight) / 2;
 
     const posX = SHIFT_BUTTON_POS_X - 10 - nativeWidth;
     const posY = SHIFT_BUTTON_POS_Y + yOffset;
 
-    button.setAttribute('transform', `translate(${posX}, ${posY}) scale(${scale})`);
+    button.setAttribute('transform', `translate(${posX}, ${posY})`);
 
     // Create path element
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -723,8 +716,8 @@ function createAltButton(): SVGGElement {
 
     // Create text element
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', '20.5'); // Center of 41
-    text.setAttribute('y', '21'); // Center of 42
+    text.setAttribute('x', '22.5'); // Center of 45
+    text.setAttribute('y', '26'); // Slightly below center
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('class', 'rt-shift-button-text');
@@ -743,11 +736,11 @@ function createAltButton(): SVGGElement {
 }
 
 /**
- * Create a narrower button shape for ALT (Base Width 41)
+ * Create a narrower button shape for ALT (Base Width 45)
  * Uses the new Alt Key SVG path provided
  */
 function createAltButtonShape(): string {
-    return 'M40.9901 32.4693C40.977 37.4362 39.2568 42 31.0368 42H8.87197C2.72023 42 0.0431366 35.2491 0.00452042 31.3278C-0.00564957 30.295 0.00452042 26.5082 0.00452042 25.2416C0.00452042 23.4098 0.376205 17.6413 7.51921 9.29508C14.6786 0.929723 21.8734 0 23.8775 3.29984e-06H31.9888C38.4698 3.58188e-06 40.9702 4.85099 40.9958 9.29508C41.0057 11.0164 40.9958 30.295 40.9901 32.4693Z';
+    return 'M44.9891 35.5616C44.9748 41.0016 43.0867 46 34.0648 46H9.73753C2.98562 46 0.0473442 38.6061 0.00496292 34.3114C-0.0062027 33.1802 0.00496292 29.0328 0.00496292 27.6455C0.00496292 25.6393 0.412907 19.3215 8.25279 10.1803C16.1106 1.01827 24.0073 0 26.207 3.61411e-06H35.1096C42.2229 3.92301e-06 44.9673 5.31298 44.9954 10.1803C45.0063 12.0656 44.9954 33.1802 44.9891 35.5616Z';
 }
 
 /**
@@ -764,7 +757,7 @@ function updateAltButtonState(button: SVGGElement, active: boolean): void {
         button.setAttribute('transform', `${baseTransform} scale(${BUTTON_ACTIVE_SCALE})`);
         button.classList.add('rt-shift-mode-active');
     } else {
-        button.setAttribute('transform', `${baseTransform} scale(${BUTTON_BASE_SCALE})`);
+        button.setAttribute('transform', `${baseTransform}`);
         button.classList.remove('rt-shift-mode-active');
     }
 }
