@@ -4,9 +4,9 @@
       "version": "4.6.1",
       "title": "4.6.1",
       "body": "## What's Changed\r\n\r\n### Bug\r\n- Revised release script included a bug that prevented detection of new release\r\n- Update Now text above icon was overlapping text animation making it hard to read",
-      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-8d720aa36a46b6058b23",
-      "publishedAt": "2025-12-23T05:50:34.465Z",
-      "isDraft": true
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.6.1",
+      "publishedAt": "2025-12-23T05:50:55Z",
+      "isDraft": false
     },
     {
       "version": "4.6.0",
@@ -118,9 +118,9 @@
     "version": "4.6.1",
     "title": "4.6.1",
     "body": "## What's Changed\r\n\r\n### Bug\r\n- Revised release script included a bug that prevented detection of new release\r\n- Update Now text above icon was overlapping text animation making it hard to read",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-8d720aa36a46b6058b23",
-    "publishedAt": "2025-12-23T05:50:34.465Z",
-    "isDraft": true
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.6.1",
+    "publishedAt": "2025-12-23T05:50:55Z",
+    "isDraft": false
   },
   "patches": [
     {
