@@ -365,6 +365,19 @@ function injectEmbeddedFontsIntoReleaseCss() {
 }
 
 async function performBuildAndUpload(version, isDraft = false) {
+    // 0. Verify manifest version matches target version (Critical for Obsidian detection)
+    const manifestPath = 'src/manifest.json';
+    try {
+        const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+        if (manifest.version !== version) {
+            console.log(`\n⚠️  Manifest version mismatch: Found ${manifest.version}, expected ${version}`);
+            console.log(`🔄 Syncing manifest.json and versions.json to ${version}...`);
+            updateManifestAndVersions(version);
+        }
+    } catch (e) {
+        console.warn(`⚠️  Could not verify manifest version: ${e.message}`);
+    }
+
     // 1. Sync release notes from GitHub to ensure local bundle is current
     console.log('\n🔄 Syncing release notes from GitHub...');
     try {

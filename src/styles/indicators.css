@@ -107,7 +107,15 @@
 }
 
 /* "NEW RELEASE" text animation when update available */
-.rt-has-update .rt-version-text {
+.rt-has-update .rt-version-number {
+  animation: rt-new-release-pulse 2s ease-in-out infinite;
+}
+
+.rt-has-update:hover .rt-version-number {
+  animation: none;
+}
+
+.rt-has-update:hover .rt-version-action {
   animation: rt-new-release-pulse 2s ease-in-out infinite;
 }
 

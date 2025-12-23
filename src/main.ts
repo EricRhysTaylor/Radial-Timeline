@@ -237,14 +237,16 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // Initialize version check service and check for updates in background
         const versionService = initVersionCheckService(this.manifest.version);
+        
         // Check for updates asynchronously (don't block plugin load)
         versionService.checkForUpdates().then(hasUpdate => {
             if (hasUpdate) {
+                console.log('[RadialTimeline] Update detected on startup.');
                 // Refresh timeline to show update indicator
                 this.refreshTimelineIfNeeded(null);
             }
-        }).catch(() => {
-            // Silently ignore version check errors
+        }).catch((err) => {
+            console.warn('[RadialTimeline] Version check failed on startup:', err);
         });
 
         // Initial status bar update (placeholder for future stats)

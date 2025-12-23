@@ -81,6 +81,10 @@ export class VersionCheckService {
             // Compare versions
             this.updateAvailable = this.isNewerVersion(this.latestVersion, this.currentVersion);
             
+            if (this.updateAvailable) {
+                console.log(`[VersionCheck] Update available: ${this.latestVersion} (Current: ${this.currentVersion})`);
+            }
+
             return this.updateAvailable;
         } catch (error) {
             console.warn('[VersionCheck] Error checking for updates:', error);

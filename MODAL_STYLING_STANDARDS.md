@@ -74,3 +74,4 @@ Reference `src/modals/ManuscriptOptionsModal.ts` for the gold standard implement
    - Never apply fixed pixel heights to scroll areas. Use flex containers with `overflow-y:auto`.
    - Horizontal trackers belong inside `.rt-pulse-ruler-scroll`.
 
+

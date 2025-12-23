@@ -39,6 +39,13 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 
 ---
 
+### Backdrop Notes
+Backdrop notes allow you to visualize contextual events—historical wars, planetary alignments, or seasonal changes—that drive your plot but aren't specific scenes.
+
+*   **Create**: Use the command **Create backdrop note** to generate a file with start/end times.
+*   **Visualize**: These appear as a dedicated ring in Chronologue mode, grounding your scenes in their temporal context.
+*   **Overlaps**: Two backdrops may overlap partially via visual plaid pattern
+
 ### Planetary Time (Experimental)
 
 For sci-fi and fantasy authors, Chronologue mode includes an experimental **Planetary Time** system. While Radial Timeline requires Earth time (Gregorian calendar) for its internal logic and physics, you can create custom "Local Time" profiles to translate these dates into your world's calendar.
@@ -50,7 +57,8 @@ For sci-fi and fantasy authors, Chronologue mode includes an experimental **Plan
     *   **Days per year** (e.g., 400 days)
     *   **Epoch Offset**: Shift the start date of your calendar relative to Earth's Unix Epoch (1970-01-01).
     *   **Custom Labels**: Define custom names for months and days of the week.
-*   **Synopsis Hover**: In Chronologue Mode, hover over a scene to see its date converted to your active planetary profile. The date appears in the synopsis window with a dashed border matching the publishing stage color.
-*   **Calculator**: Use the command palette (`Cmd/Ctrl + P`) and search for **"Radial Timeline: Planetary time converter"** to open a calculator. Enter any Earth date/time to see the corresponding planetary date/time, or use the "Now" button.
+*   **Synopsis Hover**: In Chronologue Mode, hover over a scene to see its date converted to your active planetary profile.
+*   **Calculator**: Use the command palette (`Cmd/Ctrl + P`) and search for **"Radial Timeline: Planetary time converter"** to open a calculator. Enter any Earth date/time to see the corresponding planetary date/time.
+*   **Coming Soon**: A special Alt+Shift wireframe view for deep planetary analysis.
 
 > **Note**: You must still plan and enter metadata using standard Earth format (`When: 2045-05-20`). This feature provides a "translation layer" to help you write scene content (e.g., "The sun set at 19:00 local time") without breaking the timeline's chronological structure.

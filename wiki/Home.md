@@ -53,6 +53,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 ### Getting Started
 
+*   **Welcome Screen**: Opening Radial Timeline in an empty vault now greets you with a quick-start guide.
 *   **[[Book Designer]]**: Instantly generate a manuscript template with acts, subplots, and beats.
 *   **[[Core Workflows]]**: Learn the basics of Radial Timeline.
 

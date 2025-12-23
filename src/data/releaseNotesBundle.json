@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "version": "4.6.1",
+      "title": "4.6.1",
+      "body": "## What's Changed\n\nNo changes since last release.",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.6.1",
+      "publishedAt": "2025-12-23T05:46:46.885Z"
+    },
+    {
       "version": "4.6.0",
       "title": "4.6.0",
       "body": "## What's Changed\r\n\r\n### New Features\r\n- New welcome screen when opening Radial Timeline in an empty vault (no scenes)\r\n- Book designer: novel scene template designer with a full set of options + donut chart preview ([ff11023](https://github.com/EricRhysTaylor/Radial-Timeline/commit/ff110231a1fac2aa0c3410e83d2898242fad96ed))\r\n- Backdrop note: Create a new type of note to appear in dedicated timeline ring for plot driving temporal contexts in Chronologue mode ([dc2a5b6](https://github.com/EricRhysTaylor/Radial-Timeline/commit/dc2a5b625e2a0e52e0e409cc2f90bb734a3891e5))\r\n- Revamped Generate Manuscript: Manuscript, Chronologue with reverse order and subplot with a start and end range drag bar\r\n- YAML settings: remapping and advanced yaml template customization including adding new keys and reset to default template\r\n- Planetary or other alternate calendar system configured in settings with peek views in scene synopsis and command palette calculator modal. Coming soon, special alt-shift Chronologue view (in red wireframe)\r\n \r\n### Docs\r\n- Drag illustrations to wiki ([ffbb661](https://github.com/EricRhysTaylor/Radial-Timeline/commit/ffbb661612306d26d538fd31e7b0dee8c1fbdebb))\r\n- Various additions and corrections\r\n\r\n### Bug Fixes\r\n- Revised basic and advanced yaml templates\r\n- Story Grid beats template bug fixes. Tested create template for all 3 beat systems in settings\r\n- Chronologue with Backdrop ring subplot color complete ([11abc0f](https://github.com/EricRhysTaylor/Radial-Timeline/commit/11abc0f37a0211b0cbdd71c16b2b73befc3f06c8))\r\n- Generate manuscript modal drag bar reverse order usability issues ([86fe683](https://github.com/EricRhysTaylor/Radial-Timeline/commit/86fe68322da49cb9cc8b35583369dbb38c437a17))\r\n- Refactor bugs corrected ([f11ff4b](https://github.com/EricRhysTaylor/Radial-Timeline/commit/f11ff4bf7e08c556f2d752f047227927a76cea80))",
@@ -107,14 +114,28 @@
     "isDraft": false
   },
   "latest": {
-    "version": "4.6.0",
-    "title": "4.6.0",
-    "body": "## What's Changed\r\n\r\n### New Features\r\n- New welcome screen when opening Radial Timeline in an empty vault (no scenes)\r\n- Book designer: novel scene template designer with a full set of options + donut chart preview ([ff11023](https://github.com/EricRhysTaylor/Radial-Timeline/commit/ff110231a1fac2aa0c3410e83d2898242fad96ed))\r\n- Backdrop note: Create a new type of note to appear in dedicated timeline ring for plot driving temporal contexts in Chronologue mode ([dc2a5b6](https://github.com/EricRhysTaylor/Radial-Timeline/commit/dc2a5b625e2a0e52e0e409cc2f90bb734a3891e5))\r\n- Revamped Generate Manuscript: Manuscript, Chronologue with reverse order and subplot with a start and end range drag bar\r\n- YAML settings: remapping and advanced yaml template customization including adding new keys and reset to default template\r\n- Planetary or other alternate calendar system configured in settings with peek views in scene synopsis and command palette calculator modal. Coming soon, special alt-shift Chronologue view (in red wireframe)\r\n \r\n### Docs\r\n- Drag illustrations to wiki ([ffbb661](https://github.com/EricRhysTaylor/Radial-Timeline/commit/ffbb661612306d26d538fd31e7b0dee8c1fbdebb))\r\n- Various additions and corrections\r\n\r\n### Bug Fixes\r\n- Revised basic and advanced yaml templates\r\n- Story Grid beats template bug fixes. Tested create template for all 3 beat systems in settings\r\n- Chronologue with Backdrop ring subplot color complete ([11abc0f](https://github.com/EricRhysTaylor/Radial-Timeline/commit/11abc0f37a0211b0cbdd71c16b2b73befc3f06c8))\r\n- Generate manuscript modal drag bar reverse order usability issues ([86fe683](https://github.com/EricRhysTaylor/Radial-Timeline/commit/86fe68322da49cb9cc8b35583369dbb38c437a17))\r\n- Refactor bugs corrected ([f11ff4b](https://github.com/EricRhysTaylor/Radial-Timeline/commit/f11ff4bf7e08c556f2d752f047227927a76cea80))",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-32e4ae096162c843b8b5",
-    "publishedAt": "2025-12-23T05:21:04.809Z",
-    "isDraft": true
+    "version": "4.6.1",
+    "title": "4.6.1",
+    "body": "## What's Changed\n\nNo changes since last release.",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.6.1",
+    "publishedAt": "2025-12-23T05:46:46.885Z"
   },
   "patches": [
+    {
+      "version": "4.6.1",
+      "title": "4.6.1",
+      "body": "## What's Changed\n\nNo changes since last release.",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.6.1",
+      "publishedAt": "2025-12-23T05:46:46.885Z"
+    },
+    {
+      "version": "4.6.0",
+      "title": "4.6.0",
+      "body": "## What's Changed\r\n\r\n### New Features\r\n- New welcome screen when opening Radial Timeline in an empty vault (no scenes)\r\n- Book designer: novel scene template designer with a full set of options + donut chart preview ([ff11023](https://github.com/EricRhysTaylor/Radial-Timeline/commit/ff110231a1fac2aa0c3410e83d2898242fad96ed))\r\n- Backdrop note: Create a new type of note to appear in dedicated timeline ring for plot driving temporal contexts in Chronologue mode ([dc2a5b6](https://github.com/EricRhysTaylor/Radial-Timeline/commit/dc2a5b625e2a0e52e0e409cc2f90bb734a3891e5))\r\n- Revamped Generate Manuscript: Manuscript, Chronologue with reverse order and subplot with a start and end range drag bar\r\n- YAML settings: remapping and advanced yaml template customization including adding new keys and reset to default template\r\n- Planetary or other alternate calendar system configured in settings with peek views in scene synopsis and command palette calculator modal. Coming soon, special alt-shift Chronologue view (in red wireframe)\r\n \r\n### Docs\r\n- Drag illustrations to wiki ([ffbb661](https://github.com/EricRhysTaylor/Radial-Timeline/commit/ffbb661612306d26d538fd31e7b0dee8c1fbdebb))\r\n- Various additions and corrections\r\n\r\n### Bug Fixes\r\n- Revised basic and advanced yaml templates\r\n- Story Grid beats template bug fixes. Tested create template for all 3 beat systems in settings\r\n- Chronologue with Backdrop ring subplot color complete ([11abc0f](https://github.com/EricRhysTaylor/Radial-Timeline/commit/11abc0f37a0211b0cbdd71c16b2b73befc3f06c8))\r\n- Generate manuscript modal drag bar reverse order usability issues ([86fe683](https://github.com/EricRhysTaylor/Radial-Timeline/commit/86fe68322da49cb9cc8b35583369dbb38c437a17))\r\n- Refactor bugs corrected ([f11ff4b](https://github.com/EricRhysTaylor/Radial-Timeline/commit/f11ff4bf7e08c556f2d752f047227927a76cea80))",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-32e4ae096162c843b8b5",
+      "publishedAt": "2025-12-23T05:21:04.809Z",
+      "isDraft": true
+    },
     {
       "version": "4.5.0",
       "title": "4.5.0",
