@@ -59,6 +59,8 @@ export class BeatPlacementModal extends Modal {
         }
         
         contentEl.classList.add('rt-beat-placement-modal');
+        contentEl.classList.add('rt-pulse-modal');
+        contentEl.classList.add('rt-manuscript-surface');
         
         // Show confirmation view first
         this.showConfirmationView();

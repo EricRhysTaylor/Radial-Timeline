@@ -69,6 +69,7 @@ export class GossamerProcessingModal extends Modal {
         }
 
         contentEl.addClass('rt-gossamer-score-modal');
+        contentEl.addClass('rt-manuscript-surface');
 
         // Show confirmation view first
         this.showConfirmationView();

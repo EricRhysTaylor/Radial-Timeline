@@ -42,6 +42,7 @@ export class BookDesignerModal extends Modal {
         }
         contentEl.addClass('rt-pulse-modal');
         contentEl.addClass('rt-book-designer-modal');
+        contentEl.addClass('rt-manuscript-surface');
 
            
         const sourcePath = this.plugin.settings.sourcePath || 'vault root';

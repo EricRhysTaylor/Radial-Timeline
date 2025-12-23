@@ -67,6 +67,7 @@ export class ManuscriptOptionsModal extends Modal {
             modalEl.classList.add('rt-pulse-modal-shell');
         }
         contentEl.classList.add('rt-pulse-modal');
+        contentEl.classList.add('rt-manuscript-surface');
 
         this.renderSkeleton(contentEl);
         await this.loadSubplots();

@@ -120,7 +120,10 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl, titleEl } = this;
+        const { contentEl, titleEl, modalEl } = this;
+        if (modalEl) modalEl.classList.add('rt-pulse-modal-shell');
+        contentEl.addClass('rt-pulse-modal');
+        contentEl.addClass('rt-manuscript-surface');
         titleEl.setText('');
 
         // If we're already processing (reopening), show progress view

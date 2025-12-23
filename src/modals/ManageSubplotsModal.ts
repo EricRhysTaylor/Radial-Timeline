@@ -37,6 +37,7 @@ export class ManageSubplotsModal extends Modal {
         // Add Pulse styles
         modalEl.classList.add('rt-pulse-modal-shell', 'rt-subplot-modal-shell');
         contentEl.addClass('rt-subplot-modal');
+        contentEl.addClass('rt-manuscript-surface');
 
         // Hero Section
         const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });

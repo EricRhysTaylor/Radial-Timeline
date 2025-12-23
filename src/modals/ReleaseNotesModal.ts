@@ -56,9 +56,12 @@ export class ReleaseNotesModal extends Modal {
     }
 
     async onOpen(): Promise<void> {
-        const { contentEl, titleEl } = this;
+        const { contentEl, titleEl, modalEl } = this;
         this.modalEl.addClass('rt-release-notes-modal');
         contentEl.empty();
+        if (modalEl) modalEl.classList.add('rt-pulse-modal-shell');
+        contentEl.addClass('rt-pulse-modal');
+        contentEl.addClass('rt-manuscript-surface');
 
         titleEl.setText("What's New");
 

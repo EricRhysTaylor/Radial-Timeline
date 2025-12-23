@@ -137,6 +137,7 @@ export class GossamerScoreModal extends Modal {
 
     contentEl.addClass('rt-gossamer-score-modal');
     contentEl.addClass('rt-pulse-modal');
+    contentEl.addClass('rt-manuscript-surface');
 
     // Use settings as source of truth for beat system
     const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';

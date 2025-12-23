@@ -22,8 +22,11 @@ export class CreateBeatsTemplatesModal extends Modal {
   }
 
   onOpen(): void {
-    const { contentEl } = this;
+    const { contentEl, modalEl } = this;
     contentEl.empty();
+    if (modalEl) modalEl.classList.add('rt-pulse-modal-shell');
+    contentEl.addClass('rt-pulse-modal');
+    contentEl.addClass('rt-manuscript-surface');
     contentEl.addClass('rt-create-plot-templates-modal');
 
     // Title

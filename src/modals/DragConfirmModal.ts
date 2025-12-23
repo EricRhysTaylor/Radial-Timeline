@@ -22,6 +22,7 @@ export class DragConfirmModal extends Modal {
         contentEl.addClass('rt-pulse-modal');
         contentEl.addClass('rt-pulse-glass-card');
         contentEl.addClass('rt-confirm-modal');
+        contentEl.addClass('rt-manuscript-surface');
         modalEl.style.setProperty('width', 'min(560px, 90vw)');
         modalEl.style.setProperty('max-height', '90vh');
         

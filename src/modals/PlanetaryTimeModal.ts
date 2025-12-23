@@ -28,6 +28,7 @@ export class PlanetaryTimeModal extends Modal {
         contentEl.empty();
         modalEl.classList.add('rt-pulse-modal-shell', 'rt-planetary-modal-shell');
         contentEl.addClass('rt-pulse-modal');
+        contentEl.addClass('rt-manuscript-surface');
 
         contentEl.createEl('h2', { text: t('planetary.modal.title') });
 
