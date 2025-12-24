@@ -882,6 +882,7 @@ export interface ChronologicalTickInfo {
     isFirst?: boolean;  // Optional: true for first scene label (beginning date)
     isLast?: boolean;   // Optional: true for last scene label (ending date)
     sceneIndex?: number; // Optional: sorted scene index for matching with elapsed markers
+    earthDate?: string; // Optional: ISO date string for alien mode conversion
 }
 
 /**
@@ -1119,7 +1120,8 @@ export function generateChronologicalTicks(
                 shortName: labels.shortName,
                 isMajor: true,
                 isFirst: true,
-                sceneIndex: scene.sortedIndex
+                sceneIndex: scene.sortedIndex,
+                earthDate: scene.date.toISOString()
             });
             lastLabeledSceneDate = scene.date; // Update last labeled scene
         } else if (i === numScenes - 1) {
@@ -1139,7 +1141,8 @@ export function generateChronologicalTicks(
                 shortName: labels.shortName,
                 isMajor: true,
                 isLast: true,
-                sceneIndex: scene.sortedIndex
+                sceneIndex: scene.sortedIndex,
+                earthDate: scene.date.toISOString()
             });
             lastLabeledSceneDate = scene.date; // Update last labeled scene
         } else if (promoteSet.has(i)) {

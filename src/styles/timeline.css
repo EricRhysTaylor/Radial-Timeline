@@ -200,7 +200,7 @@
   text-anchor: middle;
   dominant-baseline: middle;
   font-family: var(--font-interface);
-  font-size: 13px;
+  font-size: 12px;
   /* Beat titles are 12px, this is slightly larger */
   font-weight: normal;
   letter-spacing: 0.03em;
@@ -227,14 +227,14 @@
 
 .rt-mode-option .rt-active.rt-mode-acronym-text {
   fill: var(--text-on-accent) !important;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 300;
   letter-spacing: 0.1em;
 }
 
 .rt-mode-option .rt-active.rt-mode-number-label {
   fill: var(--text-on-accent) !important;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 300;
 
 }
@@ -282,7 +282,7 @@
   text-anchor: middle;
   dominant-baseline: middle;
   font-family: var(--font-interface);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -300,6 +300,17 @@
   fill: var(--text-on-accent);
 }
 
+/* Alt button reddish hover/click styles */
+.rt-alt-button:hover .rt-shift-button-bg {
+  fill: rgba(180, 60, 60, 0.8);
+  stroke: rgba(200, 80, 80, 1);
+  stroke-width: 2px;
+}
+
+.rt-alt-button:hover .rt-shift-button-text {
+  fill: var(--text-on-accent);
+}
+
 .rt-shift-mode-active .rt-shift-button-bg {
   fill: var(--interactive-accent) !important;
   stroke: var(--text-normal) !important;
@@ -308,8 +319,9 @@
 
 .rt-shift-mode-active .rt-shift-button-text {
   fill: var(--text-on-accent) !important;
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
 }
 
 /* Shift mode scene selection */
@@ -511,15 +523,16 @@
   stroke-width: 1px;
 }
 
-/* 2. Base State: Number Squares muted red */
+/* 2. Base State: Number Squares very muted (like shift mode but with slight red tint) */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square {
-  fill: rgba(180, 60, 60, 0.3) !important;
+  fill: var(--interactive-normal) !important;
   stroke: none !important;
+  opacity: 0.5;
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-text {
-  fill: rgba(180, 60, 60, 0.5) !important;
-  opacity: 0.8;
+  fill: rgba(200, 50, 50, 0.8) !important;
+  opacity: 0.7;
 }
 
 /* 3. Scene Text: Muted reddish */
@@ -535,10 +548,12 @@
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-month-label,
-.radial-timeline-svg[data-shift-mode="alien"] .rt-month-label-outer,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-month-label-outer:not(.rt-date-boundary),
 .radial-timeline-svg[data-shift-mode="alien"] .rt-act-label {
   fill: rgba(180, 60, 60, 0.5) !important;
 }
+
+/* Boundary date labels (start/end dates at top) unchanged in alien mode - no override needed */
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-chronological-tick-major,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-chronological-tick-minor {
@@ -586,12 +601,13 @@
 /* 7. Active Number Square in Alien Mode */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active {
   fill: var(--interactive-accent) !important;
+  opacity: 1 !important;
   /* Default if no subplot */
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-text.rt-shift-active {
   fill: var(--background-primary) !important;
-  opacity: 1;
+  opacity: 1 !important;
 }
 
 /* Re-apply per-subplot colors for active squares in Alien Mode */
@@ -659,13 +675,16 @@
   fill: var(--rt-subplot-colors-15) !important;
 }
 
-/* 6. ALT Button Active State */
+/* 8. ALT Button Active State - reddish tint */
 .rt-alt-button.rt-shift-mode-active .rt-shift-button-bg {
-  fill: var(--text-error) !important;
-  stroke: var(--text-error) !important;
+  fill: rgba(180, 60, 60, 0.9) !important;
+  stroke: rgba(200, 80, 80, 1) !important;
+  stroke-width: 2px !important;
 }
 
 .rt-alt-button.rt-shift-mode-active .rt-shift-button-text {
-  fill: var(--background-primary) !important;
-  font-weight: bold;
+  fill: var(--text-on-accent) !important;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
 }

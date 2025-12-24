@@ -22,6 +22,7 @@ export type ChronologueLabel = {
     isFirst?: boolean;
     isLast?: boolean;
     sceneIndex?: number;
+    earthDate?: string;
 };
 
 export function buildChronologueOuterLabels(
@@ -75,7 +76,8 @@ export function buildChronologueOuterLabels(
         isMajor: tick.isMajor,
         isFirst: tick.isFirst,
         isLast: tick.isLast,
-        sceneIndex: tick.sceneIndex
+        sceneIndex: tick.sceneIndex,
+        earthDate: tick.earthDate
     }));
     stopChronoLabels();
     return outerLabels;
@@ -187,7 +189,7 @@ export function renderOuterLabelTexts({
     let labelsSvg = '';
     let boundaryLabelsHtml = '';
 
-    outerLabels.forEach(({ shortName, isFirst, isLast }, index) => {
+    outerLabels.forEach(({ shortName, isFirst, isLast, earthDate }, index) => {
         const pathId = `monthLabelPath-${index}`;
 
         // Only apply past month dimming in non-chronologue modes
@@ -208,8 +210,11 @@ export function renderOuterLabelTexts({
                 .join('');
         }
 
+        // Add data-earth-date for boundary labels to support alien mode conversion
+        const earthDateAttr = (isFirst || isLast) && earthDate ? ` data-earth-date="${earthDate}"` : '';
+
         const labelHtml = `
-            <text class="${labelClass}" ${isPastMonth ? 'opacity="0.5"' : ''}>
+            <text class="${labelClass}"${earthDateAttr} ${isPastMonth ? 'opacity="0.5"' : ''}>
                 <textPath href="#${pathId}" startOffset="0" text-anchor="start">
                     ${labelContent}
                 </textPath>

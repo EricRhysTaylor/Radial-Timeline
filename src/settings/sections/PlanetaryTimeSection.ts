@@ -22,6 +22,22 @@ const DEFAULT_PROFILE = (): PlanetaryProfile => ({
     weekdayNames: undefined,
 });
 
+// Mars template - built-in for fun! Based on the Darian calendar
+const MARS_TEMPLATE_ID = 'mars-template';
+const MARS_PROFILE = (): PlanetaryProfile => ({
+    id: MARS_TEMPLATE_ID,
+    label: 'Mars',
+    hoursPerDay: 25,
+    daysPerWeek: 7,
+    daysPerYear: 668,
+    epochOffsetDays: 0,
+    epochLabel: 'Sol',
+    // 24 numbered months (~28 sols each)
+    monthNames: ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24'],
+    // Darian calendar weekday names
+    weekdayNames: ['Solis', 'Lunae', 'Martis', 'Mercurii', 'Jovis', 'Veneris', 'Saturni'],
+});
+
 export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParams): void {
     const profiles = plugin.settings.planetaryProfiles || [];
     if (!plugin.settings.planetaryProfiles) {
@@ -65,8 +81,13 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     setIcon(validationIcon, 'orbit');
 
     const updateValidationIcon = () => {
-        const profile = profiles.find(p => p.id === activeProfileId) || profiles[0]; // refresh lookup
-        if (!profile) return;
+        const profile = profiles.find(p => p.id === activeProfileId);
+        // Hide icon when no profile is selected
+        if (!profile || !activeProfileId) {
+            validationIcon.classList.add('rt-planetary-hidden');
+            return;
+        }
+        validationIcon.classList.remove('rt-planetary-hidden');
         const valid = validatePlanetaryProfile(profile).ok;
 
         validationIcon.classList.toggle('rt-valid', valid);
@@ -81,14 +102,37 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         selectorSetting.setDesc(t('planetary.active.desc'));
         selectorSetting.addDropdown(dropdown => {
             selector = dropdown;
+            // Add empty placeholder option when nothing selected
+            if (profiles.length === 0 || !activeProfileId) {
+                dropdown.addOption('', '— Make a selection —');
+            }
+            // Add Mars template option
+            const hasMars = profiles.some(p => p.id === MARS_TEMPLATE_ID);
+            if (!hasMars) {
+                dropdown.addOption(MARS_TEMPLATE_ID, 'Mars (template)');
+            }
+            // Add user profiles
             profiles.forEach(p => dropdown.addOption(p.id, p.label || 'Unnamed'));
-            dropdown.setValue(activeProfileId || profiles[0]?.id || '');
+            dropdown.setValue(activeProfileId || '');
             dropdown.onChange(async (value) => {
+                // Handle Mars template selection
+                if (value === MARS_TEMPLATE_ID && !profiles.some(p => p.id === MARS_TEMPLATE_ID)) {
+                    const marsProfile = MARS_PROFILE();
+                    profiles.push(marsProfile);
+                    activeProfileId = marsProfile.id;
+                    plugin.settings.activePlanetaryProfileId = activeProfileId;
+                    await plugin.saveSettings();
+                    renderSelector();
+                    renderFields();
+                    renderPreview();
+                    return;
+                }
                 activeProfileId = value;
                 plugin.settings.activePlanetaryProfileId = value;
                 await plugin.saveSettings();
                 renderFields();
                 renderPreview();
+                updateValidationIcon();
             });
         });
         selectorSetting.addExtraButton(btn => {
@@ -103,6 +147,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
                 renderSelector();
                 renderFields();
                 renderPreview();
+                updateValidationIcon();
             });
         });
         selectorSetting.addExtraButton(btn => {
@@ -181,8 +226,12 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
                 text.inputEl.type = 'number';
                 text.inputEl.min = '0';
                 const current = (profile as any)[key];
-                text.setValue(current !== undefined ? String(current) : '');
-                text.onChange(async (value) => {
+                const originalValue = current !== undefined ? String(current) : '';
+                text.setValue(originalValue);
+                // Validate on blur instead of every keystroke
+                text.inputEl.addEventListener('blur', async () => {
+                    const value = text.getValue();
+                    if (value === originalValue) return; // No change
                     const num = parseFloat(value);
                     if (!Number.isFinite(num)) {
                         flash(text.inputEl, 'error');
@@ -199,8 +248,12 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             if (placeholder) setting.setDesc(placeholder);
             setting.addText((text: TextComponent) => {
                 const current = (profile as any)[key];
-                text.setValue(current ?? '');
-                text.onChange(async (value) => {
+                const originalValue = current ?? '';
+                text.setValue(originalValue);
+                // Validate on blur instead of every keystroke
+                text.inputEl.addEventListener('blur', async () => {
+                    const value = text.getValue();
+                    if (value === originalValue) return; // No change
                     (profile as any)[key] = value;
                     await saveProfile(profile, text.inputEl);
                 });
@@ -208,22 +261,25 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         };
 
         addTextField(t('planetary.fields.profileName'), 'label');
-        addNumberField(t('planetary.fields.hoursPerDay'), 'hoursPerDay', 'Length of a local day in Earth hours (e.g., 17 or 30).');
-        addNumberField(t('planetary.fields.daysPerWeek'), 'daysPerWeek', 'Local days in a week (e.g., 12).');
-        addNumberField(t('planetary.fields.daysPerYear'), 'daysPerYear', 'Local days in a year (e.g., 480).');
+        addNumberField(t('planetary.fields.hoursPerDay'), 'hoursPerDay', 'Length of a local day in Earth hours (Earth = 24).');
+        addNumberField(t('planetary.fields.daysPerWeek'), 'daysPerWeek', 'Local days in a week (Earth = 7).');
+        addNumberField(t('planetary.fields.daysPerYear'), 'daysPerYear', 'Local days in a year (Earth = 365).');
         addNumberField(
             t('planetary.fields.epochOffset'),
             'epochOffsetDays',
-            'Shift Year 1, Day 1 by Earth days (0 = 1970-01-01, +365 ≈ 1971-01-01, -30 ≈ 1969-12-02, today 2025-12-17 ≈ 20,449). 1970 is the Unix epoch reference point.'
+            'Shift Year 1, Day 1 by Earth days (Earth = 0, which is 1970-01-01). Use +365 for 1971, or ~20,449 for today.'
         );
-        addTextField(t('planetary.fields.epochLabel'), 'epochLabel', 'Shown before YEAR (e.g., “CF”, “Era of Storms”).');
+        addTextField(t('planetary.fields.epochLabel'), 'epochLabel', 'Shown before YEAR (e.g., "AD", "CE", "Sol").');
 
         new Settings(fieldsContainer)
             .setName(t('planetary.fields.monthNames'))
             .setDesc('Optional. Determines how the year is divided. Provide names to set the month count (e.g. 4 names = 4 months). Leave blank for 12 numbered months.')
             .addText((text: TextComponent) => {
-                text.setValue((profile.monthNames || []).join(', '));
-                text.onChange(async (value) => {
+                const originalValue = (profile.monthNames || []).join(', ');
+                text.setValue(originalValue);
+                text.inputEl.addEventListener('blur', async () => {
+                    const value = text.getValue();
+                    if (value === originalValue) return;
                     profile.monthNames = parseCommaNames(value);
                     await saveProfile(profile, text.inputEl);
                 });
@@ -233,8 +289,11 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             .setName(t('planetary.fields.weekdayNames'))
             .setDesc('Optional. Sets weekday labels; leave blank for numbered weekdays.')
             .addText((text: TextComponent) => {
-                text.setValue((profile.weekdayNames || []).join(', '));
-                text.onChange(async (value) => {
+                const originalValue = (profile.weekdayNames || []).join(', ');
+                text.setValue(originalValue);
+                text.inputEl.addEventListener('blur', async () => {
+                    const value = text.getValue();
+                    if (value === originalValue) return;
                     profile.weekdayNames = parseCommaNames(value);
                     await saveProfile(profile, text.inputEl);
                 });

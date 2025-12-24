@@ -133,3 +133,73 @@ function abbreviate(label: string): string {
     const token = trimmed.split(/\s+/)[0];
     return token.slice(0, 3).toUpperCase();
 }
+
+/**
+ * Format elapsed time using planetary units
+ * @param ms Earth milliseconds elapsed
+ * @param profile Planetary profile with hoursPerDay, daysPerWeek, daysPerYear
+ * @param clickCount Which unit to display (cycles through options)
+ */
+export function formatElapsedTimePlanetary(ms: number, profile: PlanetaryProfile, clickCount: number = 0): string {
+    if (!Number.isFinite(ms) || ms === 0) {
+        return '0 local minutes';
+    }
+    
+    const safeMs = Math.max(0, Math.abs(ms));
+    const { hoursPerDay, daysPerWeek, daysPerYear } = profile;
+    
+    // Calculate local time units in Earth milliseconds
+    const localMinuteMs = (hoursPerDay * 60 * 60 * 1000) / (hoursPerDay * 60); // Same as Earth minute
+    const localHourMs = hoursPerDay * 60 * 60 * 1000 / hoursPerDay; // Same as Earth hour
+    const localDayMs = hoursPerDay * 60 * 60 * 1000;
+    const localWeekMs = localDayMs * daysPerWeek;
+    const localMonthMs = localDayMs * (daysPerYear / 12); // Approximate local month
+    const localYearMs = localDayMs * daysPerYear;
+    
+    const unitIndex = ((clickCount % 5) + 5) % 5;
+    
+    // Auto-pick best unit
+    const pickAutoUnit = (): string => {
+        if (safeMs >= localYearMs * 2) {
+            const years = safeMs / localYearMs;
+            return `${years.toFixed(1)} local years`;
+        } else if (safeMs >= localMonthMs * 2) {
+            const months = safeMs / localMonthMs;
+            return `${months.toFixed(1)} local months`;
+        } else if (safeMs >= localWeekMs * 2) {
+            const weeks = safeMs / localWeekMs;
+            return `${weeks.toFixed(1)} local weeks`;
+        } else if (safeMs >= localDayMs * 2) {
+            const days = safeMs / localDayMs;
+            return `${days.toFixed(1)} local days`;
+        } else if (safeMs >= localHourMs * 2) {
+            const hours = safeMs / localHourMs;
+            return `${hours.toFixed(1)} local hours`;
+        } else {
+            const minutes = safeMs / localMinuteMs;
+            return `${Math.round(minutes)} local minutes`;
+        }
+    };
+    
+    switch (unitIndex) {
+        case 0:
+            return pickAutoUnit();
+        case 1: {
+            const hours = safeMs / localHourMs;
+            return `${hours.toFixed(1)} local hours`;
+        }
+        case 2: {
+            const days = safeMs / localDayMs;
+            return `${days.toFixed(1)} local days`;
+        }
+        case 3: {
+            const weeks = safeMs / localWeekMs;
+            return `${weeks.toFixed(1)} local weeks`;
+        }
+        case 4:
+        default: {
+            const months = safeMs / localMonthMs;
+            return `${months.toFixed(1)} local months`;
+        }
+    }
+}

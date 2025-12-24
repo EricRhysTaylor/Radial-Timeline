@@ -5,7 +5,8 @@
  */
 
 import type { TimelineItem } from '../../types';
-import { getActivePlanetaryProfile, validatePlanetaryProfile } from '../../utils/planetaryTime';
+import type { PlanetaryProfile } from '../../types/settings';
+import { getActivePlanetaryProfile, validatePlanetaryProfile, convertFromEarth, formatElapsedTimePlanetary } from '../../utils/planetaryTime';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
 import {
@@ -218,6 +219,11 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         // Visual Updates
         const modeAttr = alienModeActive ? 'alien' : 'active';
         svg.setAttribute('data-shift-mode', modeAttr);
+        
+        // Update boundary labels for alien mode
+        if (alienModeActive) {
+            updateBoundaryLabelsForAlienMode(true);
+        }
 
         // Make all scenes non-select (gray) - CSS handles this automatically
         applyShiftModeToAllScenes(svg);
@@ -251,10 +257,12 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             updateShiftButtonState(shiftButton, false);
 
             // Also kill Alien Mode
-            // Also kill Alien Mode
             alienModeActive = false;
             globalAlienModeActive = false;
             if (altButton) updateAltButtonState(altButton, false);
+            
+            // Restore Earth labels
+            updateBoundaryLabelsForAlienMode(false);
 
             selectedScenes = [];
             rebuildSelectedPathsSet(); // Rebuild Set after clearing
@@ -286,6 +294,65 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
     };
 
+    // Update boundary date labels for alien mode (planetary time conversion)
+    const updateBoundaryLabelsForAlienMode = (enableAlien: boolean) => {
+        const boundaryLabels = svg.querySelectorAll('.rt-date-boundary[data-earth-date]');
+        const profile = getActivePlanetaryProfile(view.plugin.settings);
+        
+        boundaryLabels.forEach(label => {
+            const textPath = label.querySelector('textPath');
+            if (!textPath) return;
+            
+            if (enableAlien && profile) {
+                // Convert to planetary time
+                const earthDateStr = label.getAttribute('data-earth-date');
+                if (!earthDateStr) return;
+                
+                // Store original Earth label if not already stored
+                if (!label.getAttribute('data-earth-label')) {
+                    label.setAttribute('data-earth-label', textPath.textContent || '');
+                }
+                
+                const earthDate = new Date(earthDateStr);
+                const conversion = convertFromEarth(earthDate, profile);
+                if (conversion) {
+                    // Format: "YEAR 55\nMON 3" style (matching boundary label format)
+                    const epochLabel = profile.epochLabel || '';
+                    const monthName = profile.monthNames?.[conversion.localMonthIndex] || String(conversion.localMonthIndex + 1);
+                    const alienLabel = `${epochLabel} YEAR ${conversion.localYear}\n${monthName} ${conversion.localDayOfMonth}`;
+                    // Clear existing content and create tspan elements
+                    while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
+                    alienLabel.split('\n').forEach((line, i) => {
+                        const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                        tspan.setAttribute('x', '0');
+                        tspan.setAttribute('dy', i === 0 ? '0' : '0.9em');
+                        tspan.textContent = line;
+                        textPath.appendChild(tspan);
+                    });
+                }
+            } else {
+                // Restore Earth label
+                const earthLabel = label.getAttribute('data-earth-label');
+                if (earthLabel) {
+                    // Clear existing content
+                    while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
+                    // Check if it had multiple lines
+                    if (earthLabel.includes('\n')) {
+                        earthLabel.split('\n').forEach((line, i) => {
+                            const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                            tspan.setAttribute('x', '0');
+                            tspan.setAttribute('dy', i === 0 ? '0' : '0.9em');
+                            tspan.textContent = line;
+                            textPath.appendChild(tspan);
+                        });
+                    } else {
+                        textPath.textContent = earthLabel;
+                    }
+                }
+            }
+        });
+    };
+
     const toggleAlienMode = () => {
         if (!altButton) return; // Guard clause
 
@@ -302,6 +369,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 globalAlienModeActive = true;
                 updateAltButtonState(altButton, true);
                 svg.setAttribute('data-shift-mode', 'alien');
+                updateBoundaryLabelsForAlienMode(true);
             }
         }
     };
@@ -565,7 +633,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             if (selectedScenes.length < 2) {
                 removeElapsedTimeArc(svg);
             } else {
-                showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius);
+                showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings);
             }
             return true;
         }
@@ -581,7 +649,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
         // If we have 2 scenes, show elapsed time
         if (selectedScenes.length === 2) {
-            showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius);
+            showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings);
         }
 
         return true; // Indicate we handled the click
@@ -598,7 +666,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         e.stopPropagation();
 
         elapsedTimeClickCount++;
-        showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius);
+        showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings);
     });
 }
 
@@ -682,8 +750,9 @@ function createAltButton(): SVGGElement {
     // Space 10px.
     // Alt Button Native Width = 43px.
     const posX = SHIFT_BUTTON_POS_X - 10 - 43;
-    // Center vertically relative to Shift button (55 - 46) / 2 = 4.5
-    const posY = SHIFT_BUTTON_POS_Y + 4.5;
+    // Align bottom of Alt button with bottom of Shift button
+    // Shift height = 55, Alt height = 46, so offset = 55 - 46 = 9
+    const posY = SHIFT_BUTTON_POS_Y + 9;
 
     button.setAttribute('transform', `translate(${posX}, ${posY})`);
 
@@ -726,17 +795,32 @@ function createAltButtonShape(): string {
  * Update ALT button visual state
  */
 function updateAltButtonState(button: SVGGElement, active: boolean): void {
-    const currentTransform = button.getAttribute('transform') || '';
-    const baseTransform = currentTransform.replace(/scale\([^)]+\)/, '').trim();
-
-    // Native Scale = 1.0.
-    // Shift Button grows ~20% (0.8 -> 0.96).
-    // So Alt Button Active should be 1.2.
+    // Button dimensions
+    const ALT_WIDTH = 43;
+    const ALT_HEIGHT = 46;
+    const SHIFT_HEIGHT = 55;
+    
+    // Calculate base position (same as in createAltButton)
+    // Y offset = SHIFT_HEIGHT - ALT_HEIGHT = 9 (bottom-aligned)
+    const basePosX = SHIFT_BUTTON_POS_X - 10 - ALT_WIDTH;
+    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - ALT_HEIGHT);
+    
     if (active) {
-        button.setAttribute('transform', `${baseTransform} scale(${BUTTON_ACTIVE_SCALE})`);
+        // Scale from top-right edge: offset left by the expansion amount
+        const expansionX = ALT_WIDTH * (BUTTON_ACTIVE_SCALE - 1);
+        const scaledPosX = basePosX - expansionX;
+        
+        // Keep bottoms aligned when scaled:
+        // Shift scaled bottom = SHIFT_BUTTON_POS_Y + SHIFT_HEIGHT * scale
+        // Alt scaled bottom should match, so:
+        // scaledPosY + ALT_HEIGHT * scale = SHIFT_BUTTON_POS_Y + SHIFT_HEIGHT * scale
+        // scaledPosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - ALT_HEIGHT) * scale
+        const scaledPosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - ALT_HEIGHT) * BUTTON_ACTIVE_SCALE;
+        
+        button.setAttribute('transform', `translate(${scaledPosX}, ${scaledPosY}) scale(${BUTTON_ACTIVE_SCALE})`);
         button.classList.add('rt-shift-mode-active');
     } else {
-        button.setAttribute('transform', `${baseTransform}`);
+        button.setAttribute('transform', `translate(${basePosX}, ${basePosY})`);
         button.classList.remove('rt-shift-mode-active');
     }
 }
@@ -891,7 +975,8 @@ function showElapsedTime(
     scenes: TimelineItem[],
     clickCount: number,
     sceneGeometry: Map<string, SceneGeometryInfo>,
-    defaultOuterRadius: number
+    defaultOuterRadius: number,
+    settings?: { enablePlanetaryTime?: boolean; planetaryProfiles?: PlanetaryProfile[]; activePlanetaryProfileId?: string }
 ): void {
     removeElapsedTimeArc(svg);
 
@@ -919,7 +1004,13 @@ function showElapsedTime(
     }
 
     const elapsedMs = Math.abs(date2.getTime() - date1.getTime());
-    const elapsedTimeText = formatElapsedTime(elapsedMs, clickCount);
+    
+    // Use planetary time formatting if in alien mode
+    const isAlienMode = svg.getAttribute('data-shift-mode') === 'alien';
+    const profile = settings ? getActivePlanetaryProfile(settings as any) : null;
+    const elapsedTimeText = (isAlienMode && profile) 
+        ? formatElapsedTimePlanetary(elapsedMs, profile, clickCount)
+        : formatElapsedTime(elapsedMs, clickCount);
 
     if (geometry1 && geometry2) {
         const startAngleScene1 = geometry1.startAngle;
@@ -986,7 +1077,7 @@ function showElapsedTime(
         const labelX = labelRadius * Math.cos(midpointAngle);
         const labelY = labelRadius * Math.sin(midpointAngle);
 
-        const labelGroup = createElapsedTimeLabel(labelX, labelY, elapsedTimeText);
+        const labelGroup = createElapsedTimeLabel(labelX, labelY, elapsedTimeText, midpointAngle);
 
         // Append to chronologue layer and move to end (SVG rendering order = z-index)
         const chronologueArcLayer = svg.querySelector<SVGGElement>('.rt-chronologue-timeline-arc');
@@ -1021,7 +1112,7 @@ function showElapsedTime(
     const labelX = labelRadius * Math.cos(midpointAngle);
     const labelY = labelRadius * Math.sin(midpointAngle);
 
-    const labelGroup = createElapsedTimeLabel(labelX, labelY, elapsedTimeText);
+    const labelGroup = createElapsedTimeLabel(labelX, labelY, elapsedTimeText, midpointAngle);
 
     const chronologueArcLayer = svg.querySelector<SVGGElement>('.rt-chronologue-timeline-arc');
     if (chronologueArcLayer) {
@@ -1037,18 +1128,39 @@ function showElapsedTime(
     }
 }
 
-function createElapsedTimeLabel(x: number, y: number, value: string): SVGGElement {
+function createElapsedTimeLabel(x: number, y: number, value: string, midpointAngle?: number): SVGGElement {
     const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     labelGroup.setAttribute('class', 'rt-elapsed-time-group');
 
     const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    labelText.setAttribute('x', `${x}`);
     labelText.setAttribute('y', `${y}`);
-    labelText.setAttribute('text-anchor', 'middle');
     labelText.setAttribute('dominant-baseline', 'middle');
     labelText.setAttribute('fill', 'var(--interactive-accent)');
     labelText.setAttribute('class', 'rt-elapsed-time-label');
     labelText.textContent = value;
+    
+    // Adjust text-anchor based on angle to prevent clipping at boundaries
+    // Angles: -π/2 = top, 0 = right, π/2 = bottom, ±π = left
+    let textAnchor = 'middle';
+    let adjustedX = x;
+    
+    if (midpointAngle !== undefined) {
+        const normalizedAngle = ((midpointAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+        
+        // Right edge (around 0 radians) - anchor to end, shift left
+        if (normalizedAngle > 5.5 || normalizedAngle < 0.8) {
+            textAnchor = 'end';
+            adjustedX = x - 10;
+        }
+        // Left edge (around π radians) - anchor to start, shift right
+        else if (normalizedAngle > 2.4 && normalizedAngle < 3.9) {
+            textAnchor = 'start';
+            adjustedX = x + 10;
+        }
+    }
+    
+    labelText.setAttribute('x', `${adjustedX}`);
+    labelText.setAttribute('text-anchor', textAnchor);
 
     labelGroup.appendChild(labelText);
     return labelGroup;

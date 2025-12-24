@@ -313,3 +313,28 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Backdrop"] * {
   pointer-events: none !important;
 }
+
+/* Alien mode: Same backdrop treatment as shift mode */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-ring {
+  opacity: 0.15;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-label {
+  opacity: 0;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-segment {
+  fill: none !important;
+  stroke: rgba(180, 60, 60, 0.3);
+  stroke-width: 1px;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Backdrop"],
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Backdrop"] * {
+  pointer-events: none !important;
+}
