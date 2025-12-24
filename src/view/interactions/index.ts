@@ -4,5 +4,6 @@ export { setupModeToggleController } from './ModeToggleController';
 export { setupChronologueShiftController } from './ChronologueShiftController';
 export { setupVersionIndicatorController } from './VersionIndicatorController';
 export { setupHelpIconController } from './HelpIconController';
+export { setupTooltips } from './TooltipController';
 
 

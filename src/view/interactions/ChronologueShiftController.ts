@@ -704,13 +704,13 @@ function createShiftButton(): SVGGElement {
     text.setAttribute('class', 'rt-shift-button-text');
     text.textContent = '↑ SHIFT';
 
-    // Create title for tooltip
-    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-    title.textContent = 'Toggle Shift Mode for elapsed time comparison';
+    // Add tooltip data attributes for Obsidian setTooltip
+    button.classList.add('rt-tooltip-target');
+    button.setAttribute('data-tooltip', 'Toggle Shift Mode for elapsed time comparison');
+    button.setAttribute('data-tooltip-placement', 'bottom');
 
     button.appendChild(path);
     button.appendChild(text);
-    button.appendChild(title);
 
     return button;
 }
@@ -773,13 +773,13 @@ function createAltButton(): SVGGElement {
     text.setAttribute('class', 'rt-shift-button-text');
     text.textContent = 'ALT';
 
-    // Create title for tooltip
-    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-    title.textContent = 'Toggle Alien Calendar (Muted Red View)';
+    // Add tooltip data attributes for Obsidian setTooltip
+    button.classList.add('rt-tooltip-target');
+    button.setAttribute('data-tooltip', 'Toggle Alien Calendar (Muted Red View)');
+    button.setAttribute('data-tooltip-placement', 'bottom');
 
     button.appendChild(path);
     button.appendChild(text);
-    button.appendChild(title);
 
     return button;
 }

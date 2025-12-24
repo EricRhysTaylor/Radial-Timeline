@@ -228,7 +228,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
                 const current = (profile as any)[key];
                 const originalValue = current !== undefined ? String(current) : '';
                 text.setValue(originalValue);
-                // Validate on blur instead of every keystroke
+                // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
                 text.inputEl.addEventListener('blur', async () => {
                     const value = text.getValue();
                     if (value === originalValue) return; // No change
@@ -250,7 +250,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
                 const current = (profile as any)[key];
                 const originalValue = current ?? '';
                 text.setValue(originalValue);
-                // Validate on blur instead of every keystroke
+                // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
                 text.inputEl.addEventListener('blur', async () => {
                     const value = text.getValue();
                     if (value === originalValue) return; // No change
@@ -277,6 +277,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             .addText((text: TextComponent) => {
                 const originalValue = (profile.monthNames || []).join(', ');
                 text.setValue(originalValue);
+                // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
                 text.inputEl.addEventListener('blur', async () => {
                     const value = text.getValue();
                     if (value === originalValue) return;
@@ -291,6 +292,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             .addText((text: TextComponent) => {
                 const originalValue = (profile.weekdayNames || []).join(', ');
                 text.setValue(originalValue);
+                // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
                 text.inputEl.addEventListener('blur', async () => {
                     const value = text.getValue();
                     if (value === originalValue) return;

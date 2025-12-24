@@ -111,11 +111,9 @@ export function renderCenterGrid(params: {
         const y = headerY;
         const tip = params.statusTooltips[status] || status;
         return `
-          <g class="status-header">
+          <g class="status-header rt-tooltip-target" data-tooltip="${tip}" data-tooltip-placement="bottom">
             <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="alphabetic" class="center-key-text status-header-letter">${label}</text>
-            <rect x="${x - 18}" y="${y - 18}" width="36" height="24" fill="transparent" pointer-events="all">
-              <title>${tip}</title>
-            </rect>
+            <rect x="${x - 18}" y="${y - 18}" width="36" height="24" fill="transparent" pointer-events="all" />
           </g>
         `;
       }).join('')}
@@ -143,11 +141,9 @@ export function renderCenterGrid(params: {
     const yh = startYGrid + r * (cellHeight + cellGapY) + (cellHeight / 2 + 1);
     const stageTip = params.stageTooltips[stage] || stage;
     const stageHeader = `
-      <g class="stage-header">
+      <g class="stage-header rt-tooltip-target" data-tooltip="${stageTip}" data-tooltip-placement="right">
         <text x="${xh}" y="${yh}" text-anchor="end" dominant-baseline="middle" class="center-key-text stage-header-letter">${stage === 'Zero' ? 'Z' : stage === 'Author' ? 'A' : stage === 'House' ? 'H' : 'P'}</text>
-        <rect x="${xh - 14}" y="${yh - 14}" width="28" height="28" fill="transparent" pointer-events="all">
-          <title>${stageTip}</title>
-        </rect>
+        <rect x="${xh - 14}" y="${yh - 14}" width="28" height="28" fill="transparent" pointer-events="all" />
       </g>
     `;
     const cells = statusesForGrid.map((status, c) => {
