@@ -133,6 +133,7 @@ export class BookDesignerModal extends Modal {
                 text.inputEl.addClass('rt-input-full');
             });
         scenesSetting.settingEl.addClass('rt-manuscript-group-setting');
+        scenesSetting.settingEl.addClass('rt-scenes-generate-setting');
 
         const lengthSetting = new Setting(countsGrid)
             .setName('Target book length')
@@ -151,6 +152,7 @@ export class BookDesignerModal extends Modal {
                 text.inputEl.addClass('rt-input-full');
             });
         lengthSetting.settingEl.addClass('rt-manuscript-group-setting');
+        lengthSetting.settingEl.addClass('rt-book-length-setting');
         lengthSettingRef = lengthSetting; // Assign ref
         this.updateTargetDesc(lengthSetting);
 

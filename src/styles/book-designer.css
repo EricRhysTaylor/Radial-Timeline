@@ -96,6 +96,11 @@
     gap: 8px;
 }
 
+/* Scoped padding for stacked settings inside Book Designer (e.g., Subplots) */
+.rt-book-designer-modal .rt-setting-stacked.rt-manuscript-group-setting {
+    padding: 12px 16px 16px 16px !important;
+}
+
 .rt-manuscript-surface .rt-setting-stacked .setting-item-control {
     width: 100%;
     display: flex;
@@ -128,6 +133,8 @@
     align-items: start;
     width: 100%;
     grid-template-columns: var(--rt-duo-grid-cols);
+    column-gap: 0;
+    row-gap: 16px;
 }
 
 .rt-manuscript-surface .rt-manuscript-trio-grid {
@@ -138,34 +145,21 @@
     grid-template-columns: var(--rt-trio-grid-cols);
 }
 
-/* Grid Separators & Spacing */
-/* Apply border to all direct children except the last one */
-.rt-manuscript-surface .rt-manuscript-duo-grid > div:not(:last-child),
-.rt-manuscript-surface .rt-manuscript-trio-grid > div:not(:last-child) {
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* Apply spacing to all columns */
-.rt-manuscript-surface .rt-manuscript-duo-grid > div,
-.rt-manuscript-surface .rt-manuscript-trio-grid > div {
-    padding-left: 18px;
-    padding-right: 18px;
-}
-
-/* Remove outer padding */
-.rt-manuscript-surface .rt-manuscript-duo-grid > div:first-child,
-.rt-manuscript-surface .rt-manuscript-trio-grid > div:first-child {
-    padding-left: 0;
-}
-
-.rt-manuscript-surface .rt-manuscript-duo-grid > div:last-child,
-.rt-manuscript-surface .rt-manuscript-trio-grid > div:last-child {
-    padding-right: 0;
-}
-
 /* Fix for vertical alignment of 'Target book length' (2nd item in Duo Grid) */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
     padding-bottom: 16px !important;
+}
+
+/* Scoped padding & divider only for Book Designer duo grid */
+.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-scenes-generate-setting {
+    padding-right: 16px !important;
+    padding-bottom: 16px !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.rt-book-designer-modal .rt-manuscript-duo-grid > .rt-book-length-setting {
+    padding-left: 16px !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
 /* Standard Row Grid (e.g. Acts checkboxes) */

@@ -103,6 +103,11 @@
   max-height: calc(92vh - 40px);
 }
 
+/* Flattened padding for Scene Pulse Analysis modal only */
+.rt-pulse-modal.rt-gossamer-score-modal {
+  padding: 18px 20px 18px;
+}
+
 .rt-pulse-modal::before {
   content: '';
   position: absolute;
@@ -127,6 +132,12 @@
   backdrop-filter: blur(14px);
 }
 
+.rt-gossamer-score-modal .rt-pulse-glass-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
 .rt-pulse-progress-hero {
   position: relative;
   border-radius: 20px;
@@ -136,6 +147,15 @@
   box-shadow: 0 26px 60px rgba(0, 0, 0, 0.4);
   overflow: hidden;
   flex-shrink: 0;
+}
+
+/* Flatter hero for Scene Pulse Analysis */
+.rt-gossamer-score-modal .rt-pulse-progress-hero {
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+  border-radius: 16px;
 }
 
 .rt-pulse-progress-hero::after {
@@ -586,12 +606,22 @@
   overflow-y: auto;
 }
 
+.rt-gossamer-score-modal .rt-pulse-progress-body {
+  gap: 12px;
+  margin-top: 14px;
+}
+
 .rt-pulse-progress-card {
   padding: 22px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   overflow: visible;
+}
+
+.rt-gossamer-score-modal .rt-pulse-progress-card {
+  padding: 16px 18px;
+  gap: 12px;
 }
 
 .rt-pulse-progress-container {
@@ -1415,6 +1445,16 @@
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--text-normal);
+}
+
+.rt-book-designer-modal .rt-gossamer-hero-system {
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(to right, #fff, #f0f0f0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.01em;
 }
 
 .rt-gossamer-score-subtitle {
