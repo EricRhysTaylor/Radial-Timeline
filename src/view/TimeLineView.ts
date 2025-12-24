@@ -649,9 +649,6 @@ export class RadialTimelineView extends ItemView {
                 // Attach help icon click behavior
                 setupHelpIconController(this, svgElement as unknown as SVGSVGElement);
 
-                // Attach Obsidian bubble tooltips to grid headers and buttons
-                setupTooltips(svgElement);
-
                 // Adjust story beat labels after render
                 const adjustLabels = () => this.rendererService?.adjustBeatLabelsAfterRender(timelineContainer);
                 const rafId1 = requestAnimationFrame(adjustLabels);
@@ -786,6 +783,13 @@ export class RadialTimelineView extends ItemView {
                 
             // Add the fragment to the container
             container.appendChild(fragment);
+            
+            // Attach Obsidian bubble tooltips to grid headers and buttons
+            // Must be done after fragment is in DOM for getBoundingClientRect to work
+            const svgForTooltips = container.querySelector('.radial-timeline-svg');
+            if (svgForTooltips) {
+                setupTooltips(svgForTooltips as SVGElement);
+            }
             
             // ============================================================================
             // MODE-SPECIFIC INTERACTIONS

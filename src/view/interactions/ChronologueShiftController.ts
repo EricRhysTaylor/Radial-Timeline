@@ -309,17 +309,27 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 if (!earthDateStr) return;
                 
                 // Store original Earth label if not already stored
+                // Extract text from tspan elements to preserve multiline format
                 if (!label.getAttribute('data-earth-label')) {
-                    label.setAttribute('data-earth-label', textPath.textContent || '');
+                    const tspans = textPath.querySelectorAll('tspan');
+                    if (tspans.length > 0) {
+                        const lines = Array.from(tspans).map(t => t.textContent || '');
+                        label.setAttribute('data-earth-label', lines.join('\n'));
+                    } else {
+                        label.setAttribute('data-earth-label', textPath.textContent || '');
+                    }
                 }
                 
                 const earthDate = new Date(earthDateStr);
                 const conversion = convertFromEarth(earthDate, profile);
                 if (conversion) {
-                    // Format: "YEAR 55\nMON 3" style (matching boundary label format)
+                    // Format: 3-line layout to prevent clipping
+                    // Line 1: Epoch label (e.g., "SOL")
+                    // Line 2: "YEAR" + year number
+                    // Line 3: Month + Day
                     const epochLabel = profile.epochLabel || '';
                     const monthName = profile.monthNames?.[conversion.localMonthIndex] || String(conversion.localMonthIndex + 1);
-                    const alienLabel = `${epochLabel} YEAR ${conversion.localYear}\n${monthName} ${conversion.localDayOfMonth}`;
+                    const alienLabel = `${epochLabel}\nYEAR ${conversion.localYear}\n${monthName} ${conversion.localDayOfMonth}`;
                     // Clear existing content and create tspan elements
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
                     alienLabel.split('\n').forEach((line, i) => {

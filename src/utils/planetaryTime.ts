@@ -105,7 +105,8 @@ export function formatPlanetaryDateTime(opts: {
     const timeStr = `${pad(localHours)}:${pad(localMinutes)}`;
     const weekdayAbbrev = abbreviate(weekdayLabel);
     const monthAbbrev = abbreviate(monthLabel);
-    return `${epochLabel}YEAR ${localYear}, ${weekdayAbbrev} ${monthAbbrev} ${localDayOfMonth} @ ${timeStr}`;
+    // Format: Year ☉ Weekday Month · Day @ Time
+    return `${epochLabel}Year ${localYear} ☉ ${weekdayAbbrev} ${monthAbbrev} · ${localDayOfMonth} @ ${timeStr}`;
 }
 
 export function parseCommaNames(input: string | undefined): string[] | undefined {

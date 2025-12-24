@@ -80,6 +80,9 @@ export function tooltipForComponent(
 
 /**
  * Setup tooltips for all elements with rt-tooltip-target class within a container.
+ * For SVG elements, creates invisible HTML overlays positioned over the SVG elements
+ * that capture mouse events and show Obsidian tooltips.
+ * 
  * Elements should have:
  * - class="rt-tooltip-target"
  * - data-tooltip="tooltip text"
@@ -90,6 +93,11 @@ export function tooltipForComponent(
 export function setupTooltipsFromDataAttributes(container: HTMLElement | SVGElement): void {
     const targets = container.querySelectorAll('.rt-tooltip-target[data-tooltip]');
     
+    // Find the SVG's parent container for positioning overlays
+    const svgParent = container instanceof SVGElement 
+        ? container.closest('.radial-timeline-container') 
+        : container.querySelector('.radial-timeline-container');
+    
     targets.forEach((target) => {
         const tooltipText = target.getAttribute('data-tooltip');
         const placement = (target.getAttribute('data-tooltip-placement') || 'bottom') as TooltipPlacement;
@@ -97,57 +105,101 @@ export function setupTooltipsFromDataAttributes(container: HTMLElement | SVGElem
         if (tooltipText) {
             if (target instanceof HTMLElement) {
                 setTooltip(target, tooltipText, { placement });
-            } else if (target instanceof SVGElement) {
-                setupSvgTooltip(target, tooltipText, placement);
+            } else if (target instanceof SVGElement && svgParent) {
+                createSvgTooltipOverlay(target, tooltipText, placement, svgParent as HTMLElement);
             }
         }
     });
 }
 
 /**
- * Internal: Setup tooltip for SVG elements.
- * Creates a temporary positioned HTML overlay since setTooltip requires HTMLElements.
+ * Internal: Create an HTML overlay positioned over an SVG element for tooltip support.
+ * The overlay captures mouse events and uses Obsidian's native tooltip.
  */
-function setupSvgTooltip(svgElement: SVGElement, text: string, placement: TooltipPlacement): void {
-    const showTooltip = () => {
-        const rect = svgElement.getBoundingClientRect();
-        
-        // Create an absolutely positioned div over the SVG element
-        const tooltipAnchor = document.createElement('div');
-        tooltipAnchor.classList.add('rt-tooltip-anchor');
-        tooltipAnchor.style.cssText = `
-            position: fixed;
-            left: ${rect.left}px;
-            top: ${rect.top}px;
-            width: ${rect.width}px;
-            height: ${rect.height}px;
+function createSvgTooltipOverlay(
+    svgElement: SVGElement, 
+    text: string, 
+    placement: TooltipPlacement,
+    parentContainer: HTMLElement
+): void {
+    // Get the SVG element for coordinate transformation
+    const svgRoot = svgElement.ownerSVGElement;
+    if (!svgRoot) return;
+    
+    // Create overlay container if it doesn't exist
+    let overlayContainer = parentContainer.querySelector('.rt-tooltip-overlay-container') as HTMLElement;
+    if (!overlayContainer) {
+        overlayContainer = document.createElement('div');
+        overlayContainer.classList.add('rt-tooltip-overlay-container');
+        overlayContainer.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
-            z-index: 9999;
+            overflow: hidden;
         `;
-        document.body.appendChild(tooltipAnchor);
+        parentContainer.style.position = 'relative'; // SAFE: inline style used for dynamic overlay positioning
+        parentContainer.appendChild(overlayContainer);
+    }
+    
+    // Create the tooltip overlay element
+    const overlay = document.createElement('div');
+    overlay.classList.add('rt-tooltip-overlay');
+    overlay.style.cssText = `
+        position: absolute;
+        pointer-events: all;
+        cursor: default;
+    `;
+    
+    // Position the overlay based on the SVG element's bounding box
+    const updatePosition = () => {
+        const svgRect = svgRoot.getBoundingClientRect();
+        const elementRect = svgElement.getBoundingClientRect();
         
-        // Set the tooltip on this anchor
-        setTooltip(tooltipAnchor, text, { placement });
+        // Calculate position relative to the container
+        const containerRect = parentContainer.getBoundingClientRect();
+        const left = elementRect.left - containerRect.left;
+        const top = elementRect.top - containerRect.top;
         
-        // Trigger the tooltip by dispatching mouseenter
-        tooltipAnchor.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
-        
-        // Clean up anchor when mouse leaves the SVG element
-        const cleanup = () => {
-            tooltipAnchor.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
-            window.setTimeout(() => {
-                if (tooltipAnchor.parentNode) {
-                    tooltipAnchor.remove();
-                }
-            }, 100);
-        };
-        
-        // SAFE: addEventListener used with { once: true } for automatic cleanup
-        svgElement.addEventListener('mouseleave', cleanup, { once: true });
+        overlay.style.left = `${left}px`; // SAFE: inline style used for dynamic positioning
+        overlay.style.top = `${top}px`; // SAFE: inline style used for dynamic positioning
+        overlay.style.width = `${elementRect.width}px`; // SAFE: inline style used for dynamic positioning
+        overlay.style.height = `${elementRect.height}px`; // SAFE: inline style used for dynamic positioning
     };
     
-    // SAFE: addEventListener used for utility function without class context; cleanup happens via { once: true } pattern
-    svgElement.addEventListener('mouseenter', showTooltip);
+    updatePosition();
+    overlayContainer.appendChild(overlay);
+    
+    // Set the Obsidian tooltip on the overlay
+    setTooltip(overlay, text, { placement });
+    
+    // Update position on scroll/resize (debounced)
+    let updateTimeout: number | null = null;
+    const debouncedUpdate = () => {
+        if (updateTimeout) window.clearTimeout(updateTimeout);
+        updateTimeout = window.setTimeout(updatePosition, 50);
+    };
+    
+    // SAFE: addEventListener used for utility function; cleanup handled when container is destroyed
+    parentContainer.addEventListener('scroll', debouncedUpdate);
+    window.addEventListener('resize', debouncedUpdate);
+}
+
+/**
+ * Internal: Setup tooltip for SVG elements using hover-triggered overlay.
+ * Used for individual SVG tooltip setup (not batch).
+ */
+function setupSvgTooltip(svgElement: SVGElement, text: string, placement: TooltipPlacement): void {
+    // Find the parent container
+    const svgRoot = svgElement.ownerSVGElement;
+    if (!svgRoot) return;
+    
+    const parentContainer = svgRoot.closest('.radial-timeline-container') as HTMLElement;
+    if (parentContainer) {
+        createSvgTooltipOverlay(svgElement, text, placement, parentContainer);
+    }
 }
 
 /**
@@ -167,4 +219,3 @@ export function addTooltipData(
     element.setAttribute('data-tooltip', text);
     element.setAttribute('data-tooltip-placement', placement);
 }
-

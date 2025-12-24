@@ -52,7 +52,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
 
     new Settings(containerEl)
         .setName(t('planetary.enable.name'))
-        .setDesc('Keep Earth as the planning source, use the profile label to match your world calendar, set epoch offset to align Year 1 to a story milestone, and jot orbital quirks in scene notes.')
+        .setDesc('Keep Earth as the planning source, use the profile label to match your planet or setting calendar. Set epoch offset to align Year 1 to a story milestone, and combine with the backdrop notes for complete context.')
         .addToggle(toggle => {
             toggle.setValue(!!plugin.settings.enablePlanetaryTime);
             toggle.onChange(async (value) => {
@@ -243,7 +243,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             });
         };
 
-        const addTextField = (label: string, key: keyof PlanetaryProfile, placeholder?: string) => {
+        const addTextField = (label: string, key: keyof PlanetaryProfile, placeholder?: string, onSave?: () => void) => {
             const setting = new Settings(fieldsContainer).setName(label);
             if (placeholder) setting.setDesc(placeholder);
             setting.addText((text: TextComponent) => {
@@ -256,18 +256,19 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
                     if (value === originalValue) return; // No change
                     (profile as any)[key] = value;
                     await saveProfile(profile, text.inputEl);
+                    if (onSave) onSave();
                 });
             });
         };
 
-        addTextField(t('planetary.fields.profileName'), 'label');
+        addTextField(t('planetary.fields.profileName'), 'label', undefined, renderSelector);
         addNumberField(t('planetary.fields.hoursPerDay'), 'hoursPerDay', 'Length of a local day in Earth hours (Earth = 24).');
         addNumberField(t('planetary.fields.daysPerWeek'), 'daysPerWeek', 'Local days in a week (Earth = 7).');
         addNumberField(t('planetary.fields.daysPerYear'), 'daysPerYear', 'Local days in a year (Earth = 365).');
         addNumberField(
             t('planetary.fields.epochOffset'),
             'epochOffsetDays',
-            'Shift Year 1, Day 1 by Earth days (Earth = 0, which is 1970-01-01). Use +365 for 1971, or ~20,449 for today.'
+            'Move your calendar\'s Year 1, Day 1 forward or back. Example: +18,000 starts your story\'s Year 1 around modern day. Leave at 0 if you don\'t need a real-world anchor.'
         );
         addTextField(t('planetary.fields.epochLabel'), 'epochLabel', 'Shown before YEAR (e.g., "AD", "CE", "Sol").');
 
@@ -308,7 +309,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         if (!profile) return;
         const result = convertFromEarth(new Date(), profile);
         const header = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
-        header.setText(t('planetary.preview.heading'));
+        header.setText(`Quick preview (Earth → ${profile.label || 'local'})`);
         const body = previewContainer.createDiv({ cls: 'rt-planetary-preview-body' });
         if (!result) {
             body.setText(t('planetary.preview.invalid'));
