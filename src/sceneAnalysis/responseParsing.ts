@@ -50,26 +50,48 @@ function validateSceneAnalysisPayload(payload: SceneAnalysisJsonResponse): void 
 
     const [firstCurrent, ...restCurrent] = payload.currentSceneAnalysis;
     if (!firstCurrent || !MAIN_GRADE_VALUES.has(firstCurrent.grade)) {
-        throw new Error('The first currentSceneAnalysis item must use grade A, B, or C.');
+        // Fallback: If the model gave a +/-/? for the main grade, map it to a letter
+        if (firstCurrent && LINK_GRADE_VALUES.has(firstCurrent.grade)) {
+             if (firstCurrent.grade === '+') firstCurrent.grade = 'A';
+             else if (firstCurrent.grade === '?') firstCurrent.grade = 'B';
+             else if (firstCurrent.grade === '-') firstCurrent.grade = 'C';
+        } else {
+             throw new Error('The first currentSceneAnalysis item must use grade A, B, or C.');
+        }
     }
 
-    restCurrent.forEach((item, index) => {
-        if (!LINK_GRADE_VALUES.has(item.grade)) {
-            throw new Error(`currentSceneAnalysis item #${index + 2} should use "+", "-", or "?" (additional insight).`);
-        }
-    });
+    // Validation for restCurrent is now handled by the shared ensureLinkGrades helper below
+    // restCurrent.forEach((item, index) => {
+    //    if (!LINK_GRADE_VALUES.has(item.grade)) {
+    //        throw new Error(`currentSceneAnalysis item #${index + 2} should use "+", "-", or "?" (additional insight).`);
+    //    }
+    // });
 
     const ensureLinkGrades = (items: BeatItem[] | undefined, label: string) => {
         if (!items) return;
         items.forEach((item, index) => {
+            // RELAXED VALIDATION: Map A/B/C to +/-/? for non-primary items to support smaller models
+            if (MAIN_GRADE_VALUES.has(item.grade) && !LINK_GRADE_VALUES.has(item.grade)) {
+                if (item.grade === 'A' || item.grade === 'B') item.grade = '+';
+                else if (item.grade === 'C') item.grade = '-';
+            }
+            
             if (!LINK_GRADE_VALUES.has(item.grade)) {
-                throw new Error(`${label} item #${index + 1} must use "+", "-", or "?".`);
+                // Last ditch effort: if it's not a valid grade, default to '?'
+                item.grade = '?'; 
+                // We could throw here, but for local LLMs it's better to be forgiving
+                // throw new Error(`${label} item #${index + 1} must use "+", "-", or "?".`);
             }
         });
     };
 
     ensureLinkGrades(payload.previousSceneAnalysis, 'previousSceneAnalysis');
     ensureLinkGrades(payload.nextSceneAnalysis, 'nextSceneAnalysis');
+
+    // Also fix up the REST of the current scene items (skipping the first one)
+    if (restCurrent.length > 0) {
+        ensureLinkGrades(restCurrent, 'currentSceneAnalysis (subsequent items)');
+    }
 }
 
 function sanitizeJsonControlCharacters(input: string): string {

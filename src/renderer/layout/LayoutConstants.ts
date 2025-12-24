@@ -127,16 +127,6 @@ export const BEAT_TEXT_RADIUS = {
 export const TEXTPATH_START_NUDGE_RAD = 0.02;
 
 // =============================================================================
-// DEPRECATED - TO BE REMOVED
-// =============================================================================
-
-/** @deprecated Not used anymore - month labels positioned explicitly */
-export const MONTH_TEXT_INSET = 13;
-
-/** @deprecated Not used anymore - tick marks positioned explicitly */
-export const MONTH_TICK_TERMINAL = 35;
-
-// =============================================================================
 // SIZING
 // =============================================================================
 

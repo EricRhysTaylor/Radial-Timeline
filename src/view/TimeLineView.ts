@@ -10,7 +10,7 @@ import { escapeRegExp } from '../utils/regex';
 import type { TimelineItem } from '../types';
 import { SceneNumberInfo } from '../utils/constants';
 import ZeroDraftModal from '../modals/ZeroDraftModal';
-import { parseSceneTitleComponents, renderSceneTitleComponents } from '../utils/text';
+import { parseSceneTitleComponents } from '../utils/text';
 import { renderSvgFromString } from '../utils/svgDom';
 import { openOrRevealFile } from '../utils/fileUtils';
 import { setupRotationController, setupSearchControls as setupSearchControlsExt, addHighlightRectangles as addHighlightRectanglesExt, setupModeToggleController, setupVersionIndicatorController, setupHelpIconController, setupTooltips } from './interactions';

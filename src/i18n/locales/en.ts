@@ -253,11 +253,11 @@ export const en: TranslationKeys = {
                 error: 'Please enter a non-negative number.',
             },
             resetSubplotColors: {
-                name: 'Reset subplot color precedence',
-                desc: 'Clear all saved subplot color precedence preferences for scenes that appear in multiple subplots. This resets to the default ordering (outermost to innermost rings based on subplot scene population).',
+                name: 'Reset subplot color dominance',
+                desc: 'Clear all saved subplot color dominance preferences for scenes that appear in multiple subplots. This resets to the default ordering (outermost to innermost rings based on subplot scene population).',
                 button: 'Reset to default',
                 clearedNotice: 'Cleared saved colors for {{count}} multi-subplot scene(s).',
-                nothingToReset: 'No subplot precedence preferences to reset.',
+                nothingToReset: 'No subplot dominance preferences to reset.',
             },
             sceneOrdering: {
                 name: 'Scene ordering based on When date',

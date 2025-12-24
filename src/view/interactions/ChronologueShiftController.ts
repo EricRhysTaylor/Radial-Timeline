@@ -436,14 +436,11 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         if (e.key === 'Shift') {
             activateShiftMode(e.altKey); // Enable Alien if Alt is held
         } else if (e.key === 'Alt') {
-            // If Shift is already held or active via caps lock, toggle Alien visual
-            if (shiftModeActive && !alienModeActive && altButton) {
-                // Temporary Alien Peek?
-                // Let's just create a temporary toggle behavior if they hold Alt while Shift is active/held
-                alienModeActive = true;
-                globalAlienModeActive = true;
-                updateAltButtonState(altButton, true);
-                svg.setAttribute('data-shift-mode', 'alien');
+            // Alt key toggles Alien mode (same behavior as clicking the Alt button)
+            // This also activates/deactivates Shift mode as needed
+            if (altButton) {
+                e.preventDefault(); // Prevent browser menu on Alt
+                toggleAlienMode();
             }
         } else if (e.key === 'CapsLock') {
             if (e.repeat) {
@@ -479,17 +476,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         if (e.key === 'Shift') {
             deactivateShiftMode();
         } else if (e.key === 'Alt') {
-            // If we were temporarily holding Alt for Alien peek, revert
-            // BUT NOT if it was latched via button! 
-            // Logic: If button latch is OFF, then keyup Alt turns off Alien
-            // Current logic: I don't track latch vs key. 
-            // Simple approach: Alt Key UP turns off Alien Mode IF Shift is active.
-            if (shiftModeActive && alienModeActive) {
-                // Check if button latch logic is needed?
-                // For now, simpler: Alt Key Up turns off Alien Mode. 
-                // If user clicked the button, they shouldn't be holding the key anyway.
-                toggleAlienMode(); // Will turn OFF logic
-            }
+            // Alt key uses toggle behavior (keydown toggles, keyup does nothing)
+            // State stays latched until Alt is pressed again or Shift is released
+            e.preventDefault(); // Prevent browser menu on Alt
         } else if (e.key === 'CapsLock') {
             const reportedState = e.getModifierState('CapsLock');
             if (pendingCapsLockSync || reportedState !== capsLockState) {
@@ -708,7 +697,7 @@ function createShiftButton(): SVGGElement {
     // Create text element with up arrow
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', '48.5'); // Center of button (97/2)
-    text.setAttribute('y', '43'); // Near bottom like page icons (55 - 12)
+    text.setAttribute('y', '45'); // Near bottom like page icons (55 - 12 + 2px offset)
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('class', 'rt-shift-button-text');
@@ -777,7 +766,7 @@ function createAltButton(): SVGGElement {
     // Create text element
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', '21.5'); // Center of 43
-    text.setAttribute('y', '34'); // Near bottom like page icons (46 - 12)
+    text.setAttribute('y', '36'); // Near bottom like page icons (46 - 12 + 2px offset)
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('class', 'rt-shift-button-text');

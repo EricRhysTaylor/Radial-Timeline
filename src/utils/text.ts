@@ -184,35 +184,6 @@ export function renderSceneMetadataFragment(
 }
 
 
-/**
- * @deprecated Use renderSceneTitleFragment and renderSceneMetadataFragment instead.
- * This function is kept for reference during refactoring and will be removed.
- */
-export function renderSceneTitleComponents(
-  title: SceneTitleParts,
-  searchTerm: string,
-  titleColor?: string
-): void {
-  // Don't use a container tspan - add elements directly to fragment as siblings
-  // This prevents the date from inheriting title styles
-  if (title.sceneNumber) {
-    const num = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-    num.classList.add('rt-scene-title-bold');
-    num.setAttribute("data-item-type", "title");
-    if (titleColor) {
-      (num as SVGTSpanElement).style.setProperty('--rt-dynamic-color', titleColor);
-    }
-    num.textContent = `${title.sceneNumber} `;
-    // The fragment is now handled by renderSceneTitleFragment
-  }
-  // The fragment is now handled by renderSceneTitleFragment
-  if (title.date) {
-    // Add spacing before date
-    const spacer = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-    spacer.textContent = '    ';
-    // The fragment is now handled by renderSceneMetadataFragment
-  }
-}
 
 /**
  * Splits arbitrary text into roughly balanced lines that fit typical SVG label widths.

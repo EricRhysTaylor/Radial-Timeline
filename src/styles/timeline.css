@@ -572,6 +572,7 @@
   margin-left: 10px;
   margin-right: 8px;
   color: var(--text-muted);
+  cursor: pointer;
 }
 
 .rt-planetary-validation-icon.rt-valid {

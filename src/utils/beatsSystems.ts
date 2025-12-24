@@ -273,22 +273,3 @@ export function getPlotSystem(name: string): PlotSystemTemplate | null {
   return PLOT_SYSTEMS[name] || null;
 }
 
-export function detectPlotSystemFromNotes(scenes: { itemType?: string; "Beat Model"?: string }[]): string {
-  // Find any Beat note with Beat Model field (prefer Beat over Plot for new templates)
-  const beatNote = scenes.find(s => s.itemType === 'Beat' && s["Beat Model"]);
-  const plotNote = scenes.find(s => s.itemType === 'Plot' && s["Beat Model"]);
-  
-  // Prefer Beat notes over Plot notes (legacy)
-  const targetNote = beatNote || plotNote;
-  
-  if (targetNote && targetNote["Beat Model"]) {
-    // Check if it's a recognized system
-    if (PLOT_SYSTEMS[targetNote["Beat Model"]]) {
-      return targetNote["Beat Model"];
-    }
-  }
-  
-  // Default to Save The Cat if not found or unrecognized
-  return "Save The Cat";
-}
-

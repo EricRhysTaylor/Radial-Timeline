@@ -503,22 +503,6 @@ export function extractBeatOrder(scenes: { itemType?: string; subplot?: string; 
 }
 
 /**
- * Detect the beat system being used from Beat Model field in Beat notes
- * Returns the detected system or empty string if none found (no forced defaults)
- */
-export function detectPlotSystem(scenes: { itemType?: string; "Beat Model"?: string }[]): string {
-  // Find any Beat note with Beat Model field (support both 'Beat' and 'Plot')
-  const plotNote = scenes.find(s => (s.itemType === 'Beat' || s.itemType === 'Plot') && s["Beat Model"]);
-  
-  if (plotNote && plotNote["Beat Model"]) {
-    return plotNote["Beat Model"];
-  }
-  
-  // Return empty string if no plot system detected - let users work with their own structure
-  return "";
-}
-
-/**
  * Shift Gossamer history down by one (Gossamer1 → Gossamer2, etc.)
  * Shifts both scores and justifications. Returns updated frontmatter.
  */

@@ -228,13 +228,6 @@ export default class SynopsisManager {
     return null; // No metadata to add
   }
 
-  /**
-   * Create a metadata text element with date and duration (two-row layout)
-   * DEPRECATED - No longer used
-   */
-  private createMetadataElement(sceneDate?: string, sceneDuration?: string): SVGTextElement | null {
-    return null;
-  }
 
   /**
    * Create a DOM element for a scene synopsis with consistent formatting

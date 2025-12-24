@@ -388,7 +388,7 @@ export function renderAiSection(params: {
 
     // API Logging toggle
     const apiLoggingSetting = new Settings(containerEl)
-        .setName('Log AI interactions to file')
+        .setName('Log AI interactions to file including sent and received payloads')
         .setDesc('If enabled, create a new note in the "AI" folder for each AI API request/response.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.logApiInteractions)

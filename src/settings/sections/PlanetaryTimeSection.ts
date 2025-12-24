@@ -1,4 +1,4 @@
-import { App, Setting as Settings, TextComponent, DropdownComponent, setIcon } from 'obsidian';
+import { App, Setting as Settings, TextComponent, DropdownComponent, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { PlanetaryProfile } from '../../types';
 import { convertFromEarth, parseCommaNames, validatePlanetaryProfile } from '../../utils/planetaryTime';
@@ -75,25 +75,21 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
 
     let selector: DropdownComponent | undefined;
 
-    // Add validation icon container
-    // Add validation icon container
-    const validationIcon = bodyEl.createDiv({ cls: 'rt-planetary-validation-icon' });
-    setIcon(validationIcon, 'orbit');
+    // Add active calendar icon (shows when a profile is selected)
+    const activeIcon = bodyEl.createDiv({ cls: 'rt-planetary-validation-icon' });
+    setIcon(activeIcon, 'orbit');
 
-    const updateValidationIcon = () => {
+    const updateActiveIcon = () => {
         const profile = profiles.find(p => p.id === activeProfileId);
         // Hide icon when no profile is selected
         if (!profile || !activeProfileId) {
-            validationIcon.classList.add('rt-planetary-hidden');
+            activeIcon.classList.add('rt-planetary-hidden');
             return;
         }
-        validationIcon.classList.remove('rt-planetary-hidden');
-        const valid = validatePlanetaryProfile(profile).ok;
-
-        validationIcon.classList.toggle('rt-valid', valid);
-        validationIcon.classList.toggle('rt-invalid', !valid);
-
-        validationIcon.setAttribute('title', valid ? 'Profile Valid' : 'Profile Invalid');
+        activeIcon.classList.remove('rt-planetary-hidden');
+        activeIcon.classList.add('rt-valid'); // Always show as active/valid
+        
+        setTooltip(activeIcon, `${profile.label} Calendar Active`, { placement: 'bottom' });
     };
 
     const renderSelector = () => {
@@ -132,7 +128,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
                 await plugin.saveSettings();
                 renderFields();
                 renderPreview();
-                updateValidationIcon();
+                updateActiveIcon();
             });
         });
         selectorSetting.addExtraButton(btn => {
@@ -147,7 +143,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
                 renderSelector();
                 renderFields();
                 renderPreview();
-                updateValidationIcon();
+                updateActiveIcon();
             });
         });
         selectorSetting.addExtraButton(btn => {
@@ -168,8 +164,8 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             });
         });
         // Append icon to the setting control
-        selectorSetting.controlEl.prepend(validationIcon);
-        updateValidationIcon();
+        selectorSetting.controlEl.prepend(activeIcon);
+        updateActiveIcon();
     };
 
     renderSelector();
@@ -204,7 +200,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
         await plugin.saveSettings();
         if (input) flash(input, 'success');
         renderPreview();
-        updateValidationIcon();
+        updateActiveIcon();
     };
 
     const getActiveProfile = (): PlanetaryProfile | null => {
