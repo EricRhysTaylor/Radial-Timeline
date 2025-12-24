@@ -86,55 +86,44 @@ This is where alien time becomes visible to the reader.
 
 ---
 
-#### 3. Maintain Optional Conversion Notes
-
-If internal consistency requires it, authors may keep a simple reference note, such as:
-
-- `1 local day ≈ 1.5 Earth days`
-- `1 orbital year = 112 Earth days`
-
-These references support worldbuilding but are not used directly by Radial Timeline for plotting.
-
----
-
-### Example
-
-#### Planning Layer
-
-- Monday: discovery  
-- Tuesday: investigation  
-- Wednesday: setback  
-- Thursday: breakthrough  
-- Friday: confrontation  
-
-#### Prose Layer
-
-> The evidence surfaced at first-light prayer.  
-> By the next dawn-cycle, she traced it to the station.  
-> The third rotation brought disaster.
-
-The underlying structure remains clear while the narrative surface reflects the fictional setting.
-
----
-
-### Why This Matters
-
-Timeline tools are most effective when they help authors answer structural questions quickly:
-
-- Are events too compressed?
-- Is there sufficient breathing room between major revelations?
-- Do subplots intersect at the right moments?
-
-Adding custom calendar complexity to the planning layer makes these questions harder to answer by introducing unnecessary conversion and abstraction.
-
-Radial Timeline is designed to expose structural relationships in a narrative, not to model fictional chronometry.
-
----
-
 ### Summary
 
 Radial Timeline focuses on the architecture of a story: sequencing, spacing, overlap, and escalation.
 
 Alien calendars, solar anomalies, and environmental cycles remain essential to worldbuilding and should appear in the prose, where they shape experience and meaning.
 
-They are intentionally excluded from the timeline’s computational layer to preserve clarity, speed, and intuitive reasoning during story development.
+They are intentionally excluded from the timeline's computational layer to preserve clarity, speed, and intuitive reasoning during story development.
+
+---
+
+## I Use the Snowflake Method
+
+**Q: I use the Snowflake Method and don't think the Radial Timeline will be useful to me.**
+
+**A:** Radial Timeline is structure-agnostic and works well with the Snowflake Method—particularly once you reach Steps 8–10 (scene spreadsheet, scene narratives, and first draft).
+
+The Snowflake Method is a *planning process* that expands a one-sentence idea into a full manuscript. Radial Timeline is a *visualization and analysis layer* that sits on top of your scenes regardless of how you developed them.
+
+Here's how the two complement each other:
+
+| Snowflake Step | What It Produces | Radial Timeline Feature |
+|---|---|---|
+| Step 8: Scene spreadsheet | List of discrete scenes | Core radial visualization |
+| Step 9: Scene narratives | Scene content | Scene notes with YAML metadata |
+| Step 10: First draft | Actual manuscript | Full manuscript support |
+
+### Why Radial Timeline Works for Snowflake Users
+
+1. **No beat system required** — Do not create beats notes or set the story structure to "Custom" and create your own. The timeline visualizes your scenes regardless of methodology or momentum milestones.
+
+2. **Snowflake is character-centric—so is Radial Timeline** — POV color-coding and subplot tracking align perfectly with Snowflake's emphasis on character storylines. Each character's arc can be tracked as a subplot with its own color.
+
+3. **Your scene spreadsheet becomes visual** — Step 8 of Snowflake creates a scene list. Radial Timeline transforms that flat list into a radial visualization where you can see pacing, gaps, and scene distribution at a glance.
+
+4. **Chronologue mode for timeline complexity** — If your story has non-linear time (flashbacks, multiple timelines), Chronologue tracks story-time vs manuscript-order—useful regardless of planning method.
+
+5. **AI analysis works on any scenes** — Scene triplet analysis provides concise pulse feedback on a scene level while Gossamer AI evalution takes your beat milestones and evaluates overall story punch.
+
+### Summary
+
+The Snowflake Method gets you from idea to scene list. Radial Timeline takes that scene list and gives you visual tools to analyze structure, track characters, manage subplots, and refine pacing. They work together rather than competing.

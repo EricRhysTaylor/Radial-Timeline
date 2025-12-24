@@ -41,6 +41,78 @@ For the best balance of speed and accuracy on consumer hardware (like a MacBook 
 *   **"JSON Parse Error"**: This usually means the model tried to "talk" to you instead of just giving the data. Try a different model or ensure you are using an "Instruct" version.
 *   **Incomplete Analysis**: If the analysis stops halfway through, your context window might be too small. Check your local server settings (e.g., in Ollama or LM Studio) to ensure the context limit isn't set to a low default like 2048 or 4096.
 
+### 5. Required JSON Response Format
+
+For users developing custom integrations or troubleshooting local LLM responses, here is the **exact JSON schema** the plugin expects. The LLM must return **only** this JSON structure with no additional text.
+
+```json
+{
+  "previousSceneAnalysis": [
+    {
+      "scene": "23",
+      "title": "Pulse point title",
+      "grade": "+",
+      "comment": "Editorial comment (max 10 words)"
+    }
+  ],
+  "currentSceneAnalysis": [
+    {
+      "scene": "24",
+      "title": "Overall Scene Grade",
+      "grade": "B",
+      "comment": "Instructions on how to improve it (max 15 words)"
+    },
+    {
+      "scene": "24",
+      "title": "Pulse point title",
+      "grade": "+",
+      "comment": "Concise editorial comment (max 10 words)"
+    }
+  ],
+  "nextSceneAnalysis": [
+    {
+      "scene": "25",
+      "title": "Pulse point title",
+      "grade": "+",
+      "comment": "Editorial comment (max 10 words)"
+    }
+  ]
+}
+```
+
+**Field Requirements:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `previousSceneAnalysis` | array | No | Analysis of how the previous scene sets up the current scene |
+| `currentSceneAnalysis` | array | **Yes** | Analysis of the current scene (at least one item required) |
+| `nextSceneAnalysis` | array | No | Analysis of how the next scene builds on the current scene |
+
+**Beat Item Structure:**
+
+Each array item must have:
+
+| Field | Type | Values | Notes |
+|-------|------|--------|-------|
+| `scene` | string | Scene number | e.g., "24" |
+| `title` | string | Short title | Brief description of the pulse point |
+| `grade` | string | `A`, `B`, `C` **or** `+`, `-`, `?` | See grading rules below |
+| `comment` | string | Max 10-15 words | Editorial feedback |
+
+**Grading Rules:**
+
+*   **First item in `currentSceneAnalysis`**: Must use **A**, **B**, or **C** (overall scene quality grade)
+    *   `A` = Nearly perfect scene
+    *   `B` = Good with minor improvements needed
+    *   `C` = Needs significant work
+*   **All other items** (including all `previousSceneAnalysis` and `nextSceneAnalysis`): Must use **+**, **-**, or **?**
+    *   `+` = Strong connection/effective element
+    *   `-` = Weak connection/needs improvement
+    *   `?` = Neutral/uncertain
+
+> [!IMPORTANT]
+> The response must be **pure JSON only**—no markdown code fences, no preamble like "Here is the analysis...", no trailing commentary. If the model wraps the JSON in \`\`\`json blocks, the plugin will attempt to strip them, but raw JSON is preferred.
+
 ---
 
 The cloud providers (Claude, Gemini, GPT-4) remain the recommended option as they have the highest intelligence and reliably follow the json return formatting.

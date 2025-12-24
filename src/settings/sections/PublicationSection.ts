@@ -17,7 +17,7 @@ export function renderPublicationSection(params: {
     // --- Target Completion Date ---
     new ObsidianSetting(containerEl)
         .setName('Target completion date')
-        .setDesc('Optional: Set a target date for project completion (YYYY-MM-DD). This will be shown on the timeline.')
+        .setDesc('Set a target date for project completion (YYYY-MM-DD). This will be shown on the timeline.')
         .addText(text => {
             text.inputEl.type = 'date';
             text.setValue(plugin.settings.targetCompletionDate || '')

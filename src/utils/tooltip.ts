@@ -132,9 +132,8 @@ export function setupTooltipsFromDataAttributes(container: HTMLElement | SVGElem
         tooltipAnchor.style.width = `${rect.width}px`; // SAFE: inline style used for dynamic positioning
         tooltipAnchor.style.height = `${rect.height}px`; // SAFE: inline style used for dynamic positioning
         
-        // Set the tooltip with delay: 0 to show immediately
-        // This prevents the tooltip from appearing in the wrong location if the cursor moves
-        setTooltip(tooltipAnchor, text, { placement, delay: 0 });
+        // Set the tooltip on the anchor element
+        setTooltip(tooltipAnchor, text, { placement });
         
         // Trigger tooltip display by dispatching mouseenter
         tooltipAnchor.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));

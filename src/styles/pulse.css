@@ -98,6 +98,9 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(92vh - 40px);
 }
 
 .rt-pulse-modal::before {
@@ -132,6 +135,7 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 26px 60px rgba(0, 0, 0, 0.4);
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .rt-pulse-progress-hero::after {
@@ -577,6 +581,9 @@
   flex-direction: column;
   gap: 18px;
   margin-top: 20px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .rt-pulse-progress-card {
@@ -828,6 +835,8 @@
   gap: 12px;
   justify-content: flex-end;
   margin-top: 24px;
+  flex-shrink: 0;
+  padding-bottom: 4px;
 }
 
 .rt-pulse-ruler-item.rt-is-complete {
