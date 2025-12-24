@@ -56,6 +56,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     sortByWhenDate: false, // Default: manuscript order (backward compatible)
     chronologueDurationCapSelection: 'auto',
     readabilityScale: 'normal',
+    shouldRestoreTimelineOnLoad: false,
     aiContextTemplates: [
         {
             id: "commercial_genre",

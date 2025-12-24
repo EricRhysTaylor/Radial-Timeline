@@ -348,6 +348,20 @@ export function renderAiSection(params: {
             });
     });
 
+    new Settings(localSection)
+        .setName('Custom Instructions')
+        .setDesc('Additional instructions added to the start of the prompt. Useful for fine-tuning local model behavior.')
+        .addTextArea(text => {
+            text
+                .setPlaceholder('e.g. Focus on emotional resonance...')
+                .setValue(plugin.settings.localLlmInstructions || '')
+                .onChange(async (value) => {
+                    plugin.settings.localLlmInstructions = value;
+                    await plugin.saveSettings();
+                });
+            text.inputEl.rows = 3;
+        });
+
     const apiKeySetting = new Settings(localSection)
         .setName('API Key (Optional)')
         .setDesc('Required by some servers. For local tools like Ollama, this is usually ignored.')

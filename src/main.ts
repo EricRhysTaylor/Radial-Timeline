@@ -17,6 +17,7 @@ import { RendererService } from './services/RendererService';
 import { RadialTimelineSettingsTab } from './settings/SettingsTab';
 import { parseWhenField } from './utils/date';
 import { normalizeBooleanValue } from './utils/sceneHelpers';
+import { cleanupTooltipAnchors } from './utils/tooltip';
 import type { RadialTimelineSettings, TimelineItem, EmbeddedReleaseNotesBundle, EmbeddedReleaseNotesEntry } from './types';
 import { ReleaseNotesService } from './services/ReleaseNotesService';
 import { CommandRegistrar } from './services/CommandRegistrar';
@@ -401,6 +402,8 @@ export default class RadialTimelinePlugin extends Plugin {
     onunload() {
         // Clean up any other resources
         this.hideBeatsStatusBar();
+        // Clean up tooltip anchors appended to document.body
+        cleanupTooltipAnchors();
         // Note: Do NOT detach leaves here - Obsidian handles this automatically
     }
 

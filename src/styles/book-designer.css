@@ -47,9 +47,9 @@
 /* Reset Obsidian default setting item styles */
 .rt-manuscript-surface .setting-item {
     background: transparent;
-    border: none;
-    padding: 0;
-    margin: 0;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
     min-height: unset;
 }
 
@@ -76,6 +76,16 @@
     display: flex;
     flex-direction: row;
     align-items: flex-start;
+}
+
+/* Duo grid: column-specific padding tweaks */
+.rt-manuscript-duo-grid > .rt-manuscript-group-setting:first-child {
+    padding-right: 16px;
+    padding-bottom: 16px;
+}
+
+.rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
+    padding-left: 16px;
 }
 
 /* Stacked Layout */

@@ -7,40 +7,30 @@
 /**
  * Unified Tooltip Utility for Radial Timeline
  * 
- * Uses Obsidian's native setTooltip API to provide consistent bubble tooltips
- * with pointers throughout the plugin.
+ * Provides consistent bubble tooltips throughout the plugin.
  * 
- * USAGE:
- * 
- * 1. For HTML elements (settings, modals):
- *    import { tooltip } from '../utils/tooltip';
- *    tooltip(element, 'Tooltip text', 'bottom');
- * 
- * 2. For SVG elements (non-blocking approach):
- *    Add data attributes: class="rt-tooltip-target" data-tooltip="text" data-tooltip-placement="bottom"
- *    Then call: setupTooltipsFromDataAttributes(container);
- * 
- * 3. For ButtonComponent (settings):
- *    button.setTooltip('Text') // Use Obsidian's built-in method
- *    // OR for custom placement:
- *    import { tooltipForComponent } from '../utils/tooltip';
- *    tooltipForComponent(button, 'Text', 'left');
+ * STRATEGY:
+ * 1. For HTML components (Settings, Modals): Uses Obsidian's native `setTooltip` or `component.setTooltip()`.
+ * 2. For SVG elements (Timeline View): Uses a CUSTOM DOM implementation (.rt-tooltip)
+ *    because Obsidian's API relies on getBoundingClientRect() which can be flaky with SVG transforms,
+ *    and the previous hack of creating anchor elements caused modal focus issues.
  */
 
 import { setTooltip, ButtonComponent, ExtraButtonComponent } from 'obsidian';
 
 export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
 
-// Store active tooltip anchor for cleanup
-let activeTooltipAnchor: HTMLElement | null = null;
+// Singleton tooltip element
+let customTooltipEl: HTMLElement | null = null;
+let currentTarget: Element | null = null;
+let hideTimeout: number | null = null;
 
 /**
- * Apply an Obsidian bubble tooltip to any element (HTML or SVG).
- * For SVG elements, uses a non-blocking delegated approach.
+ * Apply a tooltip to an element.
  * 
- * @param element - The target element
+ * @param element - The target element (HTML or SVG)
  * @param text - Tooltip text to display
- * @param placement - Where to show the tooltip: 'top' | 'bottom' | 'left' | 'right'
+ * @param placement - Where to show the tooltip
  */
 export function tooltip(
     element: HTMLElement | SVGElement,
@@ -48,20 +38,16 @@ export function tooltip(
     placement: TooltipPlacement = 'bottom'
 ): void {
     if (element instanceof HTMLElement) {
+        // Use native Obsidian tooltip for standard HTML UI elements
         setTooltip(element, text, { placement });
     } else if (element instanceof SVGElement) {
-        // For SVG, add data attributes for delegated handling
+        // Use data attributes for SVG delegation (handled by setupTooltipsFromDataAttributes)
         addTooltipData(element, text, placement);
     }
 }
 
 /**
- * Apply tooltip with custom placement to a ButtonComponent or ExtraButtonComponent.
- * Use this when you need a placement other than Obsidian's default.
- * 
- * @param component - ButtonComponent or ExtraButtonComponent
- * @param text - Tooltip text
- * @param placement - Tooltip placement
+ * Apply tooltip to an Obsidian Component (Button, etc.)
  */
 export function tooltipForComponent(
     component: ButtonComponent | ExtraButtonComponent,
@@ -73,119 +59,12 @@ export function tooltipForComponent(
     if (buttonEl) {
         setTooltip(buttonEl, text, { placement });
     } else {
-        // Fallback to default behavior
         component.setTooltip(text);
     }
 }
 
 /**
- * Setup delegated tooltip handling for SVG elements.
- * This approach doesn't block mouse events - tooltips appear on hover
- * while clicks and CSS :hover states still work on the SVG elements.
- * 
- * Elements should have:
- * - class="rt-tooltip-target"
- * - data-tooltip="tooltip text"
- * - data-tooltip-placement="top|bottom|left|right" (optional, defaults to bottom)
- * 
- * @param container - The container element (SVG or parent)
- */
-export function setupTooltipsFromDataAttributes(container: HTMLElement | SVGElement): void {
-    // Find the parent HTML container for positioning
-    const parentContainer = container instanceof SVGElement 
-        ? container.closest('.radial-timeline-container') as HTMLElement
-        : container.querySelector('.radial-timeline-container') as HTMLElement || container;
-    
-    if (!parentContainer) return;
-    
-    // Create a single reusable tooltip anchor element
-    let tooltipAnchor = parentContainer.querySelector('.rt-svg-tooltip-anchor') as HTMLElement;
-    if (!tooltipAnchor) {
-        tooltipAnchor = document.createElement('div');
-        tooltipAnchor.classList.add('rt-svg-tooltip-anchor');
-        tooltipAnchor.style.cssText = `
-            position: fixed;
-            pointer-events: none;
-            width: 1px;
-            height: 1px;
-            z-index: 9999;
-        `;
-        document.body.appendChild(tooltipAnchor);
-    }
-    
-    // Track current hovered element
-    let currentTarget: Element | null = null;
-    let hideTimeout: number | null = null;
-    
-    const showTooltip = (target: Element, text: string, placement: TooltipPlacement) => {
-        if (hideTimeout) {
-            window.clearTimeout(hideTimeout);
-            hideTimeout = null;
-        }
-        
-        const rect = target.getBoundingClientRect();
-        
-        // Position the anchor to match the target element's bounding box exactly
-        // This ensures the tooltip is anchored to the element, not the cursor
-        tooltipAnchor.style.left = `${rect.left}px`; // SAFE: inline style used for dynamic positioning
-        tooltipAnchor.style.top = `${rect.top}px`; // SAFE: inline style used for dynamic positioning
-        tooltipAnchor.style.width = `${rect.width}px`; // SAFE: inline style used for dynamic positioning
-        tooltipAnchor.style.height = `${rect.height}px`; // SAFE: inline style used for dynamic positioning
-        
-        // Set the tooltip on the anchor element
-        setTooltip(tooltipAnchor, text, { placement });
-        
-        // Trigger tooltip display by dispatching mouseenter
-        tooltipAnchor.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
-        activeTooltipAnchor = tooltipAnchor;
-    };
-    
-    const hideTooltip = () => {
-        if (activeTooltipAnchor) {
-            activeTooltipAnchor.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
-        }
-        currentTarget = null;
-    };
-    
-    // Delegated event handlers on the SVG
-    const svgElement = container instanceof SVGElement ? container : container.querySelector('svg');
-    if (!svgElement) return;
-    
-    const handleMouseOver = (e: Event) => {
-        const target = (e.target as Element).closest('.rt-tooltip-target[data-tooltip]');
-        if (target && target !== currentTarget) {
-            currentTarget = target;
-            const text = target.getAttribute('data-tooltip') || '';
-            const placement = (target.getAttribute('data-tooltip-placement') || 'bottom') as TooltipPlacement;
-            if (text) {
-                showTooltip(target, text, placement);
-            }
-        }
-    };
-    
-    const handleMouseOut = (e: Event) => {
-        const target = (e.target as Element).closest('.rt-tooltip-target[data-tooltip]');
-        const relatedTarget = (e as MouseEvent).relatedTarget as Element | null;
-        const newTarget = relatedTarget?.closest('.rt-tooltip-target[data-tooltip]');
-        
-        // Only hide if we're leaving a tooltip target and not entering another one
-        if (target && target === currentTarget && newTarget !== target) {
-            hideTimeout = window.setTimeout(hideTooltip, 100);
-        }
-    };
-    
-    // SAFE: addEventListener used for utility function; elements cleaned up when container is destroyed
-    svgElement.addEventListener('mouseover', handleMouseOver);
-    svgElement.addEventListener('mouseout', handleMouseOut);
-}
-
-/**
- * Convenience: Add tooltip data attributes to an element for later batch setup.
- * Useful when building elements programmatically.
- * 
- * @param element - Target element
- * @param text - Tooltip text
- * @param placement - Tooltip placement
+ * Helper to add data attributes to an element for batch setup.
  */
 export function addTooltipData(
     element: HTMLElement | SVGElement,
@@ -197,3 +76,131 @@ export function addTooltipData(
     element.setAttribute('data-tooltip-placement', placement);
 }
 
+/**
+ * Setup delegated tooltip handling for SVG elements.
+ * Uses a single custom .rt-tooltip DOM element for performance and compatibility.
+ */
+export function setupTooltipsFromDataAttributes(container: HTMLElement | SVGElement): void {
+    const svgElement = container instanceof SVGElement ? container : container.querySelector('svg');
+    if (!svgElement) return;
+
+    // Lazy initialization: singleton is created only when needed (in showCustomTooltip)
+
+    const handleMouseOver = (e: Event) => {
+        const target = (e.target as Element).closest('.rt-tooltip-target[data-tooltip]');
+        if (target && target !== currentTarget) {
+            currentTarget = target;
+            const text = target.getAttribute('data-tooltip') || '';
+            const placement = (target.getAttribute('data-tooltip-placement') || 'bottom') as TooltipPlacement;
+            
+            if (text) {
+                showCustomTooltip(target, text, placement);
+            }
+        }
+    };
+
+    const handleMouseOut = (e: Event) => {
+        const target = (e.target as Element).closest('.rt-tooltip-target[data-tooltip]');
+        const relatedTarget = (e as MouseEvent).relatedTarget as Element | null;
+        
+        // Check if we moved to a child or another valid target
+        // (Though typically SVGs don't nest tooltip targets this way)
+        const newTarget = relatedTarget?.closest('.rt-tooltip-target[data-tooltip]');
+
+        if (target && target === currentTarget && newTarget !== target) {
+            // Delay hiding to allow moving to tooltip (if interactive) or reducing flicker
+            hideTimeout = window.setTimeout(hideCustomTooltip, 50);
+        }
+    };
+
+    // Use standard event listeners (cleaned up when SVG is destroyed by virtue of being attached to it)
+    svgElement.addEventListener('mouseover', handleMouseOver);
+    svgElement.addEventListener('mouseout', handleMouseOut);
+}
+
+/**
+ * Clean up global tooltip element.
+ * Called from Plugin.onunload()
+ */
+export function cleanupTooltipAnchors(): void {
+    if (customTooltipEl) {
+        customTooltipEl.remove();
+        customTooltipEl = null;
+    }
+    currentTarget = null;
+    if (hideTimeout) {
+        window.clearTimeout(hideTimeout);
+        hideTimeout = null;
+    }
+}
+
+// --- Internal Implementation ---
+
+function ensureCustomTooltip() {
+    if (customTooltipEl) return;
+
+    customTooltipEl = document.createElement('div');
+    customTooltipEl.classList.add('rt-tooltip');
+    document.body.appendChild(customTooltipEl);
+}
+
+function showCustomTooltip(target: Element, text: string, placement: TooltipPlacement) {
+    if (!customTooltipEl) ensureCustomTooltip();
+    if (!customTooltipEl) return;
+
+    // Cancel pending hide
+    if (hideTimeout) {
+        window.clearTimeout(hideTimeout);
+        hideTimeout = null;
+    }
+
+    // Update content
+    customTooltipEl.setText(text);
+    
+    // Reset classes
+    customTooltipEl.className = 'rt-tooltip'; // reset placement classes
+    customTooltipEl.classList.add(`rt-placement-${placement}`);
+    
+    // Calculate Position
+    const rect = target.getBoundingClientRect();
+    const tooltipRect = customTooltipEl.getBoundingClientRect(); // May be 0 if hidden, but text is set so it should layout
+
+    // Default: Bottom
+    let top = 0;
+    let left = 0;
+
+    switch (placement) {
+        case 'bottom':
+            left = rect.left + (rect.width / 2);
+            top = rect.bottom;
+            break;
+        case 'top':
+            left = rect.left + (rect.width / 2);
+            top = rect.top - tooltipRect.height;
+            break;
+        case 'left':
+            left = rect.left - tooltipRect.width;
+            top = rect.top + (rect.height / 2);
+            break;
+        case 'right':
+            left = rect.right;
+            top = rect.top + (rect.height / 2);
+            break;
+    }
+
+    // Apply coordinates
+    // Note: transforms in CSS handle the centering (e.g. translate(-50%, 0))
+    // We just set the anchor point.
+    customTooltipEl.style.top = `${top}px`;
+    customTooltipEl.style.left = `${left}px`;
+
+    // Show
+    customTooltipEl.classList.add('rt-visible');
+}
+
+function hideCustomTooltip() {
+    if (customTooltipEl) {
+        customTooltipEl.classList.remove('rt-visible');
+        currentTarget = null;
+    }
+}

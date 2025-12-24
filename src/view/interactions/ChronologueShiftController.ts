@@ -774,7 +774,7 @@ function createAltButton(): SVGGElement {
 
     // Add tooltip data attributes for Obsidian setTooltip
     button.classList.add('rt-tooltip-target');
-    button.setAttribute('data-tooltip', 'Toggle Alien Calendar (Muted Red View)');
+    button.setAttribute('data-tooltip', 'Toggle Planetary Calendar');
     button.setAttribute('data-tooltip-placement', 'bottom');
 
     button.appendChild(path);

@@ -118,7 +118,8 @@ export async function processWithModal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+        const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
+        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
@@ -365,7 +366,8 @@ export async function processSubplotWithModal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+        const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
+        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
@@ -484,7 +486,8 @@ export async function processEntireSubplotWithModalInternal(
         }
 
         const contextPrompt = getActiveContextPrompt(plugin);
-        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+        const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
+        const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
 
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };

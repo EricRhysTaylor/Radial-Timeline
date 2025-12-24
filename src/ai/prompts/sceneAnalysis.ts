@@ -87,12 +87,17 @@ export function buildSceneAnalysisPrompt(
   prevNum: string,
   currentNum: string,
   nextNum: string,
-  contextPrompt?: string
+  contextPrompt?: string,
+  extraInstructions?: string
 ): string {
   // Build context prefix if provided
-  const contextPrefix = contextPrompt?.trim() 
+  let contextPrefix = contextPrompt?.trim() 
     ? `${contextPrompt.trim()}\n\n`
     : 'You are a developmental editor for fiction.\n\n';
+
+  if (extraInstructions?.trim()) {
+    contextPrefix = `${extraInstructions.trim()}\n\n${contextPrefix}`;
+  }
 
   const isPrevAvailable = !!prevBody;
   const isNextAvailable = !!nextBody;

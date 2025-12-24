@@ -43,6 +43,7 @@ export interface RadialTimelineSettings {
     localBaseUrl?: string;
     localModelId?: string;
     localApiKey?: string;
+    localLlmInstructions?: string;
     openaiModelId?: string;
     enableAiSceneAnalysis: boolean;
     enableZeroDraftMode?: boolean;
@@ -53,6 +54,7 @@ export interface RadialTimelineSettings {
     sortByWhenDate?: boolean;
     chronologueDurationCapSelection?: string;
     discontinuityThreshold?: string;
+    shouldRestoreTimelineOnLoad?: boolean;
     aiContextTemplates?: AiContextTemplate[];
     activeAiContextTemplateId?: string;
     beatSystem?: string;

@@ -49,7 +49,7 @@ For users developing custom integrations or troubleshooting local LLM responses,
 {
   "previousSceneAnalysis": [
     {
-      "scene": "23",
+      "scene": "38",
       "title": "Pulse point title",
       "grade": "+",
       "comment": "Editorial comment (max 10 words)"
@@ -57,21 +57,21 @@ For users developing custom integrations or troubleshooting local LLM responses,
   ],
   "currentSceneAnalysis": [
     {
-      "scene": "24",
+      "scene": "39",
       "title": "Overall Scene Grade",
       "grade": "B",
       "comment": "Instructions on how to improve it (max 15 words)"
     },
     {
-      "scene": "24",
+      "scene": "39",
       "title": "Pulse point title",
       "grade": "+",
-      "comment": "Concise editorial comment (max 10 words)"
+      "comment": "Editorial comment (max 10 words)"
     }
   ],
   "nextSceneAnalysis": [
     {
-      "scene": "25",
+      "scene": "40",
       "title": "Pulse point title",
       "grade": "+",
       "comment": "Editorial comment (max 10 words)"
@@ -95,7 +95,7 @@ Each array item must have:
 | Field | Type | Values | Notes |
 |-------|------|--------|-------|
 | `scene` | string | Scene number | e.g., "24" |
-| `title` | string | Short title | Brief description of the pulse point |
+| `title` | string | Short title or Grade | Brief description or Grade (A/B/C for first item) |
 | `grade` | string | `A`, `B`, `C` **or** `+`, `-`, `?` | See grading rules below |
 | `comment` | string | Max 10-15 words | Editorial feedback |
 
@@ -114,5 +114,24 @@ Each array item must have:
 > The response must be **pure JSON only**—no markdown code fences, no preamble like "Here is the analysis...", no trailing commentary. If the model wraps the JSON in \`\`\`json blocks, the plugin will attempt to strip them, but raw JSON is preferred.
 
 ---
+
+**Example from Pride & Prejudice**
+
+```YAML
+previousSceneAnalysis:
+  - 5 Matchmaking Focus + / Establishes the desperation driving Mrs. Bennet's rain scheme.
+  - Darcy's Pride + / Sets up the tension for Elizabeth's arrival at Netherfield.
+  - Lucas Foil ? / Charlotte's pragmatism contrasts with Elizabeth's muddy trek.
+currentSceneAnalysis:
+  - 7 A / Excellent pacing; the muddy walk perfectly characterizes Elizabeth.
+  - The Entail + / High stakes explain Mrs. Bennet's dangerous scheming.
+  - The Rain Scheme + / Pivotal plot device forcing the protagonists into proximity.
+  - Elizabeth's Walk + / Physicality defines her independence against social norms.
+  - Netherfield Reception + / Sharp contrast between Bingley's warmth and sisters' snobbery.
+nextSceneAnalysis:
+  - 9 Mrs. Bennet's Visit + / Direct consequence of the illness established in this scene.
+  - Social Embarrassment + / Elizabeth's anxiety here is fully realized by mother's behavior.
+  - Darcy's Attraction + / His interest in her 'fine eyes' escalates significantly.
+```
 
 The cloud providers (Claude, Gemini, GPT-4) remain the recommended option as they have the highest intelligence and reliably follow the json return formatting.
