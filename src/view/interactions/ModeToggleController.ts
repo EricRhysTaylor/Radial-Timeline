@@ -34,22 +34,12 @@ function buildModeOptions() {
 
 const MODE_OPTIONS = buildModeOptions();
 
-// Base SVG dimensions (source viewBox size - original path coordinates)
-const ICON_BASE_WIDTH = 58; // Original width for SVG path
-const ICON_BASE_HEIGHT = 81; // Original height of icon
-
-// Standardized Scaling (Target ~Native Size)
-const ICON_ACTIVE_SCALE = 1.2; // 20% larger when active
-
-const INACTIVE_VISUAL_WIDTH = ICON_BASE_WIDTH;
-const ACTIVE_VISUAL_WIDTH = ICON_BASE_WIDTH * ICON_ACTIVE_SCALE;
-
-const INACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT;
-const ACTIVE_VISUAL_HEIGHT = ICON_BASE_HEIGHT * ICON_ACTIVE_SCALE;
+// Scaling applied on click/activation
+const ICON_ACTIVE_SCALE = 1.2;
 
 // Visual spacing
-const ICON_VISUAL_GAP_INACTIVE = 4; // Gap between non-active icons
-const ICON_VISUAL_GAP_ACTIVE = 15; // Gap between active and non-active icons
+const ICON_VISUAL_GAP_INACTIVE = 4;
+const ICON_VISUAL_GAP_ACTIVE = 15;
 
 /**
  * Scale SVG path coordinates to target size
@@ -67,9 +57,9 @@ function scalePath(pathData: string, scale: number): string {
 
 /**
  * Original SVG path for document shape with folded corner
- * Based on viewBox 0 0 58 81
+ * Based on viewBox 0 0 43 60
  */
-const ORIGINAL_DOCUMENT_PATH = 'M0.0471353 69.75C0.0471334 75.8571 2.13374 81 11.9968 81H47.3129C54.6943 81 57.9065 72.3214 57.9529 67.5C58.0589 56.4643 57.9529 35.4929 57.9529 30.8571C57.9529 27.6429 55.8837 21.5122 47.3129 11.25C38.7225 0.964286 31.7229 0 29.3182 0H10.8647C3.08823 0 0.0778675 5.78571 0.0471358 11.25C-0.0589186 30.1071 0.0471369 64.6007 0.0471353 69.75Z';
+const ORIGINAL_DOCUMENT_PATH = 'M0.0349451 51.6667C0.0349438 56.1905 1.58191 60 8.89418 60H35.0768C40.5492 60 42.9307 53.5714 42.9651 50C43.0437 41.8254 42.9651 26.291 42.9651 22.8571C42.9651 20.4762 41.431 15.935 35.0768 8.33333C28.7081 0.714286 23.5187 0 21.7359 0H8.05486C2.28955 0 0.0577294 4.28571 0.0349455 8.33333C-0.043681 22.3016 0.0349463 47.8524 0.0349451 51.6667Z';
 
 /**
  * Create SVG path for document shape (Native Size)
@@ -94,9 +84,9 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
     grid.setAttribute('id', 'mode-selector');
 
     // Initial positioning with inactive gaps (will be adjusted in updateState)
-    const spacePerIcon = INACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_INACTIVE;
-    const totalWidth = MODE_OPTIONS.length * INACTIVE_VISUAL_WIDTH + (MODE_OPTIONS.length - 1) * ICON_VISUAL_GAP_INACTIVE;
-    const startX = MODE_SELECTOR_POS_X - totalWidth / 2 + INACTIVE_VISUAL_WIDTH / 2;
+    const spacePerIcon = 43 + ICON_VISUAL_GAP_INACTIVE;
+    const totalWidth = MODE_OPTIONS.length * 43 + (MODE_OPTIONS.length - 1) * ICON_VISUAL_GAP_INACTIVE;
+    const startX = MODE_SELECTOR_POS_X - totalWidth / 2 + 21.5;
 
     MODE_OPTIONS.forEach((mode, index) => {
         const x = startX + index * spacePerIcon;
@@ -119,8 +109,8 @@ function createModeSelectorGrid(view: ModeToggleView): SVGGElement {
         // Create text element (acronym) - Native Size
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('class', 'rt-mode-acronym-text');
-        text.setAttribute('x', String(ICON_BASE_WIDTH / 2));
-        text.setAttribute('y', String(ICON_BASE_HEIGHT - 12));
+        text.setAttribute('x', '21.5'); // Center of 43
+        text.setAttribute('y', '48'); // 60 - 12
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('dominant-baseline', 'middle');
         text.textContent = mode.acronym;
@@ -232,19 +222,19 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
         positions.push(x);
 
         if (i === activeIndex) {
-            // After active icon, add larger gap
-            x += ACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_ACTIVE;
+            // After active icon, add larger gap (43 * 1.2 = 51.6)
+            x += 43 * ICON_ACTIVE_SCALE + ICON_VISUAL_GAP_ACTIVE;
         } else if (i + 1 === activeIndex) {
             // Before active icon, add larger gap
-            x += INACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_ACTIVE;
+            x += 43 + ICON_VISUAL_GAP_ACTIVE;
         } else {
             // Between inactive icons
-            x += INACTIVE_VISUAL_WIDTH + ICON_VISUAL_GAP_INACTIVE;
+            x += 43 + ICON_VISUAL_GAP_INACTIVE;
         }
     }
 
     // Center the group
-    const totalWidth = positions[positions.length - 1] + INACTIVE_VISUAL_WIDTH - positions[0];
+    const totalWidth = positions[positions.length - 1] + 43 - positions[0];
     const offset = MODE_SELECTOR_POS_X - (positions[0] + positions[positions.length - 1]) / 2;
 
     MODE_OPTIONS.forEach((mode, index) => {
@@ -268,9 +258,9 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             // Update path to active size (native)
             bg.setAttribute('d', createActiveDocumentShape());
 
-            // Update text positions to active size
-            text.setAttribute('x', String((ICON_BASE_WIDTH / 2) * ICON_ACTIVE_SCALE));
-            text.setAttribute('y', String((ICON_BASE_HEIGHT - 12) * ICON_ACTIVE_SCALE));
+            // Update text positions to active size (21.5 * 1.2 = 25.8, 48 * 1.2 = 57.6)
+            text.setAttribute('x', String(21.5 * ICON_ACTIVE_SCALE));
+            text.setAttribute('y', String(48 * ICON_ACTIVE_SCALE));
             if (numberLabel) {
                 numberLabel.setAttribute('x', String(8 * ICON_ACTIVE_SCALE));
                 numberLabel.setAttribute('y', String(14 * ICON_ACTIVE_SCALE));
@@ -287,8 +277,8 @@ function updateModeSelectorState(modeSelector: SVGGElement, currentMode: string)
             bg.setAttribute('d', createInactiveDocumentShape());
 
             // Update text positions to inactive size (Native)
-            text.setAttribute('x', String(ICON_BASE_WIDTH / 2));
-            text.setAttribute('y', String(ICON_BASE_HEIGHT - 12));
+            text.setAttribute('x', '21.5');
+            text.setAttribute('y', '48');
             if (numberLabel) {
                 numberLabel.setAttribute('x', '8');
                 numberLabel.setAttribute('y', '14');

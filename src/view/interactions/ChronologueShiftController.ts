@@ -15,14 +15,8 @@ import {
     SHIFT_BUTTON_POS_Y
 } from '../../renderer/layout/LayoutConstants';
 
-// Base SVG dimensions (source viewBox size)
-const SHIFT_BUTTON_BASE_WIDTH = 108; // Base width from SVG path
-const SHIFT_BUTTON_BASE_HEIGHT = 55; // Base height from SVG path
-
-// Button Scaling Constants
+// Scaling applied on click/activation
 const BUTTON_ACTIVE_SCALE = 1.2;
-
-const ELAPSED_ARC_STROKE_WIDTH = 3;
 
 export interface ChronologueShiftView {
     registerDomEvent: (
@@ -296,15 +290,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         if (!altButton) return; // Guard clause
 
         if (alienModeActive) {
-            // Turn OFF Alien Mode
-            alienModeActive = false;
-            globalAlienModeActive = false;
-            updateAltButtonState(altButton, false);
-            // Revert strict Shift Mode (if active) or turn off? 
-            // Proposal: Toggling ALT off leaves Shift ON (standard behavior)
-            if (shiftModeActive) {
-                svg.setAttribute('data-shift-mode', 'active');
-            }
+            // Turn OFF Alien Mode → also deactivate Shift
+            deactivateShiftMode(); // This will also clear alienModeActive
         } else {
             // Turn ON Alien Mode
             // Must ensure Shift is Active
@@ -619,7 +606,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
  * Create the shift button SVG path
  */
 function createShiftButtonShape(): string {
-    return 'M0 11C0 4.92487 4.92487 0 11 0H78C94.5685 0 108 13.4315 108 30V44C108 50.0751 103.075 55 97 55H11C4.92487 55 0 50.0751 0 44V11Z';
+    return 'M0 11C0 4.92487 4.92487 0 11 0H67C83.5685 0 97 13.4315 97 30V44C97 50.0751 92.0751 55 86 55H11C4.92487 55 0 50.0751 0 44V11Z';
 }
 
 /**
@@ -642,8 +629,8 @@ function createShiftButton(): SVGGElement {
 
     // Create text element with up arrow
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', '54'); // Center of button (108/2)
-    text.setAttribute('y', '36'); // Approx 65% down for visual balance
+    text.setAttribute('x', '48.5'); // Center of button (97/2)
+    text.setAttribute('y', '43'); // Near bottom like page icons (55 - 12)
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('class', 'rt-shift-button-text');
@@ -693,16 +680,10 @@ function createAltButton(): SVGGElement {
     // Position to the LEFT of Shift button.
     // Shift is at SHIFT_BUTTON_POS_X.
     // Space 10px.
-    // Alt Button Native Width = 45px (Scale 1.0).
-    // New X = SHIFT_BUTTON_POS_X - 10 - 45.
-
-    const nativeWidth = 45;
-    const nativeHeight = 46;
-    // Center vertically relative to Shift button
-    const yOffset = (SHIFT_BUTTON_BASE_HEIGHT - nativeHeight) / 2;
-
-    const posX = SHIFT_BUTTON_POS_X - 10 - nativeWidth;
-    const posY = SHIFT_BUTTON_POS_Y + yOffset;
+    // Alt Button Native Width = 43px.
+    const posX = SHIFT_BUTTON_POS_X - 10 - 43;
+    // Center vertically relative to Shift button (55 - 46) / 2 = 4.5
+    const posY = SHIFT_BUTTON_POS_Y + 4.5;
 
     button.setAttribute('transform', `translate(${posX}, ${posY})`);
 
@@ -716,12 +697,11 @@ function createAltButton(): SVGGElement {
 
     // Create text element
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', '22.5'); // Center of 45
-    text.setAttribute('y', '26'); // Slightly below center
+    text.setAttribute('x', '21.5'); // Center of 43
+    text.setAttribute('y', '34'); // Near bottom like page icons (46 - 12)
     text.setAttribute('text-anchor', 'middle');
     text.setAttribute('dominant-baseline', 'middle');
     text.setAttribute('class', 'rt-shift-button-text');
-    text.setAttribute('font-size', '11px');
     text.textContent = 'ALT';
 
     // Create title for tooltip
@@ -736,11 +716,10 @@ function createAltButton(): SVGGElement {
 }
 
 /**
- * Create a narrower button shape for ALT (Base Width 45)
- * Uses the new Alt Key SVG path provided
+ * Create button shape for ALT (43×46)
  */
 function createAltButtonShape(): string {
-    return 'M44.9891 35.5616C44.9748 41.0016 43.0867 46 34.0648 46H9.73753C2.98562 46 0.0473442 38.6061 0.00496292 34.3114C-0.0062027 33.1802 0.00496292 29.0328 0.00496292 27.6455C0.00496292 25.6393 0.412907 19.3215 8.25279 10.1803C16.1106 1.01827 24.0073 0 26.207 3.61411e-06H35.1096C42.2229 3.92301e-06 44.9673 5.31298 44.9954 10.1803C45.0063 12.0656 44.9954 33.1802 44.9891 35.5616Z';
+    return 'M42.6961 35.5616C42.6818 41.0016 38.5008 46 31.7718 46L9.73753 46C2.98561 46 0.0473404 38.6061 0.00495911 34.3114C-0.0062027 33.1802 0.00495911 29.0328 0.00495911 27.6455C0.00495911 25.6393 0.412907 19.3215 8.25278 10.1803C16.1106 1.01827 24.0073 0 26.207 2.71215e-06L32.8167 0C39.9299 0 42.6743 5.31298 42.7024 10.1803C42.7133 12.0656 42.7024 33.1802 42.6961 35.5616Z';
 }
 
 /**

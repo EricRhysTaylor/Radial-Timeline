@@ -282,7 +282,7 @@
   text-anchor: middle;
   dominant-baseline: middle;
   font-family: var(--font-interface);
-  font-size: 20px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -500,37 +500,54 @@
 /* ALIEN SHIFT MODE ([data-shift-mode="alien"])                              */
 /* -------------------------------------------------------------------------- */
 
-/* 1. Base State: Scenes fade out, but use Red tint */
+/* 1. Base State: Scenes fade out, but use muted Red tint */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] {
   opacity: 0.15;
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
-  fill: var(--text-error) !important;
-  /* Red Fill */
-  stroke: var(--text-error) !important;
-  /* Red Border */
+  fill: rgba(180, 60, 60, 0.4) !important;
+  stroke: rgba(180, 60, 60, 0.6) !important;
   stroke-width: 1px;
 }
 
-/* 2. Base State: Number Squares match the red theme */
+/* 2. Base State: Number Squares muted red */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square {
-  fill: var(--text-error) !important;
+  fill: rgba(180, 60, 60, 0.3) !important;
   stroke: none !important;
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-text {
-  fill: var(--background-primary) !important;
-  /* Contrast against red */
+  fill: rgba(180, 60, 60, 0.5) !important;
   opacity: 0.8;
 }
 
-/* 3. SPOKES: Visible and Red in Alien Mode (Override opacity: 0) */
+/* 3. Scene Text: Muted reddish */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-title {
+  fill: rgba(180, 60, 60, 0.6) !important;
+}
+
+/* 4. Spokes/Radial Lines/Month Lines: Muted red tint */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-ring,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-radial-line,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-month-spoke-line {
+  stroke: rgba(180, 60, 60, 0.3) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-month-label,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-month-label-outer,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-act-label {
+  fill: rgba(180, 60, 60, 0.5) !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-chronological-tick-major,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-chronological-tick-minor {
+  stroke: rgba(180, 60, 60, 0.4) !important;
+}
+
+/* 5. Subplot Headlines: Hidden in Alien Mode (like Shift mode) */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-subplot-ring-label-text {
-  opacity: 1 !important;
-  /* FORCE VISIBLE */
-  fill: var(--text-error) !important;
-  font-weight: bold;
+  opacity: 0 !important;
 }
 
 /* Settings Validation Icon */
@@ -550,7 +567,7 @@
   color: var(--text-error);
 }
 
-/* 4. Hover State: Full Opacity, Brighter Red */
+/* 6. Hover State: Full Opacity, Brighter Red */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:hover,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:has(.rt-shift-locked) {
@@ -562,13 +579,19 @@
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-scene-path,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path.rt-shift-locked {
   fill: var(--text-error) !important;
+  stroke: var(--text-error) !important;
   filter: brightness(1.3) drop-shadow(0 0 5px var(--text-error));
 }
 
-/* 5. Active Number Square in Alien Mode */
+/* 7. Active Number Square in Alien Mode */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active {
   fill: var(--interactive-accent) !important;
   /* Default if no subplot */
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-text.rt-shift-active {
+  fill: var(--background-primary) !important;
+  opacity: 1;
 }
 
 /* Re-apply per-subplot colors for active squares in Alien Mode */
