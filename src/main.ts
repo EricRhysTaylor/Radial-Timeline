@@ -400,6 +400,12 @@ export default class RadialTimelinePlugin extends Plugin {
     }
 
     onunload() {
+        // If the settings/plugins modal is open, avoid touching DOM elements to reduce the chance of the modal being closed by side effects.
+        const modalOpen = document.body.querySelector('.modal-container');
+        if (modalOpen) {
+            return;
+        }
+
         // Clean up any other resources
         this.hideBeatsStatusBar();
         // Clean up tooltip anchors appended to document.body
