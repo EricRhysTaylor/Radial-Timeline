@@ -26,9 +26,16 @@ async function logApiInteractionToFile(
     commandContext: string,
     sceneName?: string,
     tripletInfo?: { prev: string; current: string; next: string },
-    analysis?: ParsedSceneAnalysis | null
+    analysis?: ParsedSceneAnalysis | null,
+    options?: {
+        force?: boolean;
+        supplementalLocalInstructions?: string | null;
+        rawTextResult?: string | null;
+        systemPrompt?: string | null;
+    }
 ): Promise<void> {
-    if (!plugin.settings.logApiInteractions) {
+    const forceLog = options?.force === true;
+    if (!plugin.settings.logApiInteractions && !forceLog) {
         return;
     }
 
@@ -114,7 +121,7 @@ async function logApiInteractionToFile(
         }
     } catch { }
 
-    let outcomeSection = '## Outcome\n\n';
+    let outcomeSection = '### Outcome\n\n';
     if (responseData && typeof responseData === 'object') {
         const responseAsRecord = responseData as Record<string, unknown>;
         if (responseAsRecord.error) {
@@ -200,26 +207,60 @@ async function logApiInteractionToFile(
         return `${header}:\n${lines.map(line => `  ${line}`).join('\n')}`;
     };
 
+    const systemPromptForLog = options?.systemPrompt?.trim();
+    const supplementalLocalPrompt = options?.supplementalLocalInstructions?.trim();
+
+    const tocLines: string[] = [
+        '- [Prompt (with supplemental local instructions)](#prompt-with-supplemental-local-instructions)',
+        '- [Sent package](#sent-package)',
+        '- [Returned package](#returned-package)',
+        '- [Return json](#return-json)'
+    ];
+    if (analysis) {
+        tocLines.push('- [Scene analysis](#scene-analysis)');
+    }
+    tocLines.push('- [Metadata](#metadata)');
+
+    const promptSectionParts: string[] = [];
+    promptSectionParts.push('## Prompt (with supplemental local instructions)\n\n');
+    if (systemPromptForLog) {
+        promptSectionParts.push(`**System prompt:**\n\`\`\`\n${systemPromptForLog}\n\`\`\`\n\n`);
+    }
+    promptSectionParts.push(`**User prompt:**\n\`\`\`\n${promptContent || 'N/A'}\n\`\`\`\n`);
+    if (supplementalLocalPrompt) {
+        promptSectionParts.push(`\n**Supplemental local instructions:**\n\`\`\`\n${supplementalLocalPrompt}\n\`\`\`\n`);
+    }
+    const promptSection = promptSectionParts.join('');
+
+    const sentPackageSection = `## Sent package\n\`\`\`json\n${requestJson}\n\`\`\`\n`;
+    const returnedPackageSection = `## Returned package\n\`\`\`\n${options?.rawTextResult ?? '[no text content returned]'}\n\`\`\`\n`;
+    const returnJsonSection = `## Return json\n\`\`\`json\n${responseJson}\n\`\`\`\n`;
+
     const structuredAnalysisSection = analysis
-        ? `\n## Scene Analysis\n\n` +
+        ? `## Scene analysis\n\n` +
         `${formatAnalysisSection('previousSceneAnalysis', analysis.previousSceneAnalysis)}\n\n` +
         `${formatAnalysisSection('currentSceneAnalysis', analysis.currentSceneAnalysis)}\n\n` +
-        `${formatAnalysisSection('nextSceneAnalysis', analysis.nextSceneAnalysis)}\n\n---\n`
+        `${formatAnalysisSection('nextSceneAnalysis', analysis.nextSceneAnalysis)}\n\n`
         : '';
 
-    const fileContent = `# AI Log — ${new Date().toLocaleString()}\n\n` +
+    const metadataSection = `## Metadata\n\n` +
         `**Provider:** ${provider}\n` +
         `**Model:** ${modelId}\n` +
         `**Scene:** ${sceneName ?? 'N/A'}\n` +
         `**Command:** ${commandContext}\n` +
-        subplotSection +
-        `\n**Prompt:**\n\`\`\`\n${promptContent}\n\`\`\`\n` +
-        tripletSection +
-        structuredAnalysisSection +
+        `${subplotSection}` +
+        `${tripletSection}` +
         `\n${usageString}\n` +
-        outcomeSection +
-        `\n## Raw Request\n\`\`\`json\n${requestJson}\n\`\`\`\n` +
-        `\n## Raw Response\n\`\`\`json\n${responseJson}\n\`\`\`\n`;
+        `\n${outcomeSection}`;
+
+    const fileContent = `# AI Report — ${new Date().toLocaleString()}\n\n` +
+        `## Table of contents\n${tocLines.join('\n')}\n\n` +
+        promptSection +
+        sentPackageSection +
+        returnedPackageSection +
+        returnJsonSection +
+        structuredAnalysisSection +
+        metadataSection;
 
     try {
         const folderExists = vault.getAbstractFileByPath(logFolder);
@@ -275,12 +316,15 @@ export async function callAiProvider(
     tripletInfo?: { prev: string; current: string; next: string }
 ): Promise<AiProviderResponse> {
     const provider = plugin.settings.defaultAiProvider || 'openai';
+    const forceLocalReport = provider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true);
+    const supplementalLocalInstructions = provider === 'local' ? plugin.settings.localLlmInstructions : undefined;
     let apiKey: string | undefined;
     let modelId: string | undefined;
     let requestBodyForLog: object | null = null;
     let responseDataForLog: unknown;
     let result: string | null = null;
     let apiErrorMsg: string | undefined;
+    let systemPrompt: string | null = null;
 
     try {
         const normalizeModelId = (prov: string, id: string | undefined): string | undefined => {
@@ -315,7 +359,7 @@ export async function callAiProvider(
         };
 
         const jsonSchema = getSceneAnalysisJsonSchema();
-        const systemPrompt: string = getSceneAnalysisSystemPrompt();
+        systemPrompt = getSceneAnalysisSystemPrompt();
 
         if (provider === 'anthropic') {
             apiKey = plugin.settings.anthropicApiKey;
@@ -474,7 +518,13 @@ export async function callAiProvider(
             commandContext,
             sceneName,
             tripletInfo,
-            parsedForLog
+            parsedForLog,
+            {
+                force: forceLocalReport,
+                supplementalLocalInstructions,
+                rawTextResult: result,
+                systemPrompt
+            }
         );
 
         return { result, modelIdUsed: modelId };
@@ -498,7 +548,13 @@ export async function callAiProvider(
             commandContext,
             sceneName,
             tripletInfo,
-            null
+            null,
+            {
+                force: forceLocalReport,
+                supplementalLocalInstructions,
+                rawTextResult: result,
+                systemPrompt
+            }
         );
 
         throw error instanceof Error ? error : new Error(String(error));

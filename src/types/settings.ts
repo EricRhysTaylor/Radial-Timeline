@@ -44,6 +44,7 @@ export interface RadialTimelineSettings {
     localModelId?: string;
     localApiKey?: string;
     localLlmInstructions?: string;
+    localSendPulseToAiReport?: boolean;
     openaiModelId?: string;
     enableAiSceneAnalysis: boolean;
     enableZeroDraftMode?: boolean;

@@ -311,6 +311,16 @@
   fill: var(--text-on-accent);
 }
 
+.rt-alt-button:active .rt-shift-button-bg {
+  fill: rgba(180, 60, 60, 0.9);
+  stroke: rgba(200, 80, 80, 1);
+  stroke-width: 2px;
+}
+
+.rt-alt-button:active .rt-shift-button-text {
+  fill: var(--text-on-accent);
+}
+
 .rt-shift-mode-active .rt-shift-button-bg {
   fill: var(--interactive-accent) !important;
   stroke: var(--text-normal) !important;

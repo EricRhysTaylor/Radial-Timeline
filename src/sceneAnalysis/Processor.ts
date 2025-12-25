@@ -97,6 +97,7 @@ export async function processWithModal(
 
     const totalToProcess = queueItems.length;
     let processedCount = 0;
+    const sendPulseToAiReportOnly = plugin.settings.defaultAiProvider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true);
 
     for (const { triplet, shouldProcess } of tasks) {
         if (modal.isAborted()) {
@@ -139,6 +140,13 @@ export async function processWithModal(
                 if (parsedAnalysis) {
                     if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
                     if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
+
+                    if (sendPulseToAiReportOnly) {
+                        processedCount++;
+                        modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
+                        markQueueStatus('success');
+                        continue;
+                    }
 
                     const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
                     if (success) {
@@ -208,6 +216,7 @@ export async function processBySubplotOrder(
 
         let totalProcessedCount = 0;
         let totalTripletsAcrossSubplots = 0;
+        const sendPulseToAiReportOnly = plugin.settings.defaultAiProvider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true);
         subplotNames.forEach(subplotName => {
             const scenes = scenesBySubplot[subplotName];
             scenes.sort(compareScenesByOrder);
@@ -252,7 +261,8 @@ export async function processBySubplotOrder(
                 const nextNum = triplet.next ? String(triplet.next.sceneNumber ?? 'N/A') : 'N/A';
 
                 const contextPrompt = getActiveContextPrompt(plugin);
-                const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt);
+                const extraInstructions = plugin.settings.defaultAiProvider === 'local' ? plugin.settings.localLlmInstructions : undefined;
+                const userPrompt = buildSceneAnalysisPrompt(prevBody, currentBody, nextBody, prevNum, currentNum, nextNum, contextPrompt, extraInstructions);
 
                 const sceneNameForLog = triplet.current.file.basename;
                 const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
@@ -265,9 +275,11 @@ export async function processBySubplotOrder(
                         if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
                         if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
 
-                        const updated = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
-                        if (updated) {
-                            await plugin.saveSettings();
+                        if (!sendPulseToAiReportOnly) {
+                            const updated = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
+                            if (updated) {
+                                await plugin.saveSettings();
+                            }
                         }
                     }
                 }
@@ -337,6 +349,7 @@ export async function processSubplotWithModal(
     }
     const total = queueItems.length;
     let processedCount = 0;
+    const sendPulseToAiReportOnly = plugin.settings.defaultAiProvider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true);
 
     for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
@@ -381,14 +394,20 @@ export async function processSubplotWithModal(
                     if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
                     if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
 
-                    const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
-                    if (success) {
+                    if (sendPulseToAiReportOnly) {
                         processedCount++;
                         modal.updateProgress(processedCount, total, sceneName);
                         markQueueStatus('success');
                     } else {
-                        markQueueStatus('error');
-                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                        const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
+                        if (success) {
+                            processedCount++;
+                            modal.updateProgress(processedCount, total, sceneName);
+                            markQueueStatus('success');
+                        } else {
+                            markQueueStatus('error');
+                            modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                        }
                     }
                 } else {
                     markQueueStatus('error');
@@ -457,6 +476,7 @@ export async function processEntireSubplotWithModalInternal(
     }
     const total = queueItems.length;
     let processedCount = 0;
+    const sendPulseToAiReportOnly = plugin.settings.defaultAiProvider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true);
 
     for (const { triplet, shouldProcess } of subplotTasks) {
         if (modal.isAborted()) {
@@ -501,14 +521,20 @@ export async function processEntireSubplotWithModalInternal(
                     if (!triplet.prev) parsedAnalysis['previousSceneAnalysis'] = '';
                     if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
 
-                    const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
-                    if (success) {
+                    if (sendPulseToAiReportOnly) {
                         processedCount++;
                         modal.updateProgress(processedCount, total, sceneName);
                         markQueueStatus('success');
                     } else {
-                        markQueueStatus('error');
-                        modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                        const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
+                        if (success) {
+                            processedCount++;
+                            modal.updateProgress(processedCount, total, sceneName);
+                            markQueueStatus('success');
+                        } else {
+                            markQueueStatus('error');
+                            modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                        }
                     }
                 } else {
                     markQueueStatus('error');

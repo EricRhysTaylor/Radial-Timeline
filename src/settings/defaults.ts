@@ -105,6 +105,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     localBaseUrl: 'http://localhost:11434/v1',
     localModelId: 'llama3',
     localApiKey: '',
+    localSendPulseToAiReport: true,
     enablePlanetaryTime: false,
     planetaryProfiles: [],
     activePlanetaryProfileId: undefined,

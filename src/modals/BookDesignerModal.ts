@@ -65,8 +65,8 @@ export class BookDesignerModal extends Modal {
 
         // Time Increment Setting
         new Setting(structCard)
-            .setName('Time increment per scene')
-            .setDesc('Duration between scenes (e.g. 1 hour, 1 day, 1 week).')
+            .setName('Date increment per scene')
+            .setDesc('Timeline increment across scenes (e.g. 1 hour, 1 day, 1 week).')
             .addText(text => {
                 text.setValue(this.timeIncrement)
                     .setPlaceholder('1 day');

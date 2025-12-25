@@ -362,6 +362,16 @@ export function renderAiSection(params: {
             text.inputEl.rows = 3;
         });
 
+    new Settings(localSection)
+        .setName('Send triplet pulse output to AI report (Local LLM)')
+        .setDesc('When enabled, Local LLM triplet pulse analysis skips writing to the scene file and saves the results in the AI report instead. Recommended default for local models.')
+        .addToggle(toggle => toggle
+            .setValue(plugin.settings.localSendPulseToAiReport ?? true)
+            .onChange(async (value) => {
+                plugin.settings.localSendPulseToAiReport = value;
+                await plugin.saveSettings();
+            }));
+
     const apiKeySetting = new Settings(localSection)
         .setName('API Key (Optional)')
         .setDesc('Required by some servers. For local tools like Ollama, this is usually ignored.')

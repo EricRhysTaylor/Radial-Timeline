@@ -98,7 +98,7 @@
 
 /* Scoped padding for stacked settings inside Book Designer (e.g., Subplots) */
 .rt-book-designer-modal .rt-setting-stacked.rt-manuscript-group-setting {
-    padding: 12px 16px 16px 16px !important;
+    padding: 12px 16px 16px 0 !important;
 }
 
 .rt-manuscript-surface .rt-setting-stacked .setting-item-control {
