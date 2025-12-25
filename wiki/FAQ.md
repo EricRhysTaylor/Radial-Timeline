@@ -1,100 +1,20 @@
 # FAQ
 
-## Custom Calendars & Alien Time
+## Custom/Alien Calendars
 
-Radial Timeline does not support fully custom calendar systems (for example, calendars based on alien star systems, non-Earth day lengths, or culturally specific time units) for timeline planning.
+Radial Timeline now includes an experimental Planetary Time system. Plan in Earth time (fastest for pacing), then view a converted “local” calendar as needed.
 
-This is a deliberate design decision. While alien calendars are often an important part of worldbuilding, they are not well suited to the structural tasks Radial Timeline is designed to support: narrative sequencing, pacing analysis, and subplot coordination.
+### Environmental Cycles
 
----
-
-### Design Rationale
-
-When plotting a story, authors need a temporal reference frame that allows for fast, intuitive reasoning about duration and spacing.
-
-For most authors on Earth, that reference frame is the standard Earth-based time system (days, weeks, months, years). These units are deeply internalized and allow authors to evaluate pacing and narrative pressure without constant translation. No doubt, in 100 years, there will be authors on Mars using the Martian calendar to plan their novels. That's the way it should be.
-
-Introducing a fully custom calendar into the planning layer would require authors to repeatedly convert between unfamiliar units in order to answer basic structural questions, increasing cognitive overhead during development.
-
-Radial Timeline prioritizes reducing that overhead.
-
----
-
-### Separation of Structure and Presentation
-
-Radial Timeline intentionally distinguishes between:
-
-- **Structural time** — used for planning, analysis, and comparison  
-- **In-world time** — used for narrative texture, immersion, and worldbuilding  
-
-Custom calendars belong primarily to the latter.
-
-While a fictional setting may include unique astronomical cycles, cultural calendars, or locally defined units of time, those systems are most effective when expressed in the prose, not when used as the underlying units for timeline computation.
-
----
-
-### How Published Science Fiction Handles Time
-
-In practice, most published science fiction separates story structure from in-world timekeeping:
-
-- Narrative planning and pacing rely on familiar temporal units.
-- Fictional calendars and time references appear in dialogue, exposition, and scene description.
-- Readers infer urgency and duration through context rather than explicit conversion.
-
-This separation allows authors to maintain clarity during development while still presenting rich and internally consistent worlds on the page.
-
----
-
-### Environmental Cycles Without Custom Calendars
-
-Alien time does not need to be numeric to be meaningful.
-
-Many science-fiction settings emphasize lived temporal experience rather than formal calendars, such as:
-
-- Extremely long or uneven solar days  
-- Apparent solar reversals or stalled suns  
-- Tidal cycles that define travel or labor windows  
-- Cultural markers tied to light, heat, or shadow  
-
-These phenomena shape character behavior, social structures, and conflict without requiring a non-intuitive calendrical system in the planning layer.
-
----
+Long days, stalled suns, tidal windows, and other cycles shape behavior without requiring a full custom calendar for planning.
 
 ### Recommended Workflow
 
-#### 1. Plan in Earth Time
+1) Plan in Earth time for pacing, spacing, and overlaps. Authors born on earth and writing for Earthlings should use Earth time systems during development.
+2) Write/translate in prose using in-world terms (lunar cues, solar position, cultural markers).  
+3) Use the Backdrop ring (plus Chronologue Alt/Shift view) to track worldbuilding timing alongside the main timeline as a supplemental cross-reference. 
 
-Use standard units (days, weeks, months) to evaluate:
-
-- Narrative pacing  
-- Recovery time between events  
-- Overlap and intersection of plotlines  
-
-These units allow rapid structural judgment.
-
----
-
-#### 2. Translate in the Prose
-
-When writing scenes, express duration using in-world language and phenomena:
-
-- Lunar cycles  
-- Solar positions  
-- Environmental or cultural markers  
-
-This is where alien time becomes visible to the reader.
-
----
-
-### Summary
-
-Radial Timeline focuses on the architecture of a story: sequencing, spacing, overlap, and escalation.
-
-Alien calendars, solar anomalies, and environmental cycles remain essential to worldbuilding and should appear in the prose, where they shape experience and meaning.
-
-They are intentionally excluded from the timeline's computational layer to preserve clarity, speed, and intuitive reasoning during story development.
-
----
+Radial Timeline keeps structural work in intuitive Earth units while letting you surface alien time for storytelling.
 
 ## I Use the Snowflake Method
 
