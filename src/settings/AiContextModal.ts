@@ -126,21 +126,21 @@ export class AiContextModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl, modalEl } = this;
-        // Use shared modal base styling + AI Context specific class
+        // Use generic modal base + AI Context specific styling
         if (modalEl) {
-            modalEl.classList.add('rt-pulse-modal-shell');
+            modalEl.classList.add('rt-modal-shell');
             modalEl.style.width = '660px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
         titleEl.setText('');
-        contentEl.addClass('rt-pulse-modal');
+        contentEl.addClass('rt-modal-container');
         contentEl.addClass('rt-ai-context-modal');
 
-        const hero = contentEl.createDiv({ cls: 'rt-gossamer-simple-header' });
-        hero.createDiv({ cls: 'rt-gossamer-hero-system', text: 'AI context templates' });
+        const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
+        hero.createDiv({ cls: 'rt-modal-title', text: 'AI context templates' });
         hero.createDiv({
-            cls: 'rt-gossamer-score-subtitle',
+            cls: 'rt-modal-subtitle',
             text: 'Define context prepended to AI prompts and Gossamer scoring.'
         });
 

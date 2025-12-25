@@ -101,6 +101,12 @@
     padding: 12px 16px 16px 0 !important;
 }
 
+/* Remove left padding from setting info in stacked layouts - align with input fields */
+.rt-book-designer-modal .rt-setting-stacked .setting-item-info {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+}
+
 .rt-manuscript-surface .rt-setting-stacked .setting-item-control {
     width: 100%;
     display: flex;

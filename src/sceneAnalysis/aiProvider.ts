@@ -214,7 +214,7 @@ async function logApiInteractionToFile(
         '- [Prompt (with supplemental local instructions)](#prompt-with-supplemental-local-instructions)',
         '- [Sent package](#sent-package)',
         '- [Returned package](#returned-package)',
-        '- [Return json](#return-json)'
+        '- [Return JSON](#return-json)'
     ];
     if (analysis) {
         tocLines.push('- [Scene analysis](#scene-analysis)');
@@ -234,7 +234,7 @@ async function logApiInteractionToFile(
 
     const sentPackageSection = `## Sent package\n\`\`\`json\n${requestJson}\n\`\`\`\n`;
     const returnedPackageSection = `## Returned package\n\`\`\`\n${options?.rawTextResult ?? '[no text content returned]'}\n\`\`\`\n`;
-    const returnJsonSection = `## Return json\n\`\`\`json\n${responseJson}\n\`\`\`\n`;
+    const returnJsonSection = `## Return JSON\n\`\`\`json\n${responseJson}\n\`\`\`\n`;
 
     const structuredAnalysisSection = analysis
         ? `## Scene analysis\n\n` +
@@ -262,6 +262,18 @@ async function logApiInteractionToFile(
         structuredAnalysisSection +
         metadataSection;
 
+    const shouldEmitRawOnly = provider === 'local' && (plugin.settings.localSendPulseToAiReport ?? true) && !!options?.rawTextResult;
+    const rawFileContent = shouldEmitRawOnly
+        ? `# AI Raw Response — ${new Date().toLocaleString()}\n\n` +
+        `**Provider:** ${provider}\n` +
+        `**Model:** ${modelId}\n` +
+        `**Scene:** ${sceneName ?? 'N/A'}\n` +
+        `**Command:** ${commandContext}\n` +
+        (subplotSection ? `${subplotSection}\n` : '') +
+        (tripletSection ? `${tripletSection}\n` : '') +
+        `\n## Raw JSON\n\`\`\`json\n${options.rawTextResult}\n\`\`\`\n`
+        : '';
+
     try {
         const folderExists = vault.getAbstractFileByPath(logFolder);
         if (!folderExists) {
@@ -272,6 +284,16 @@ async function logApiInteractionToFile(
             await vault.modify(existing as any, fileContent.trim());
         } else {
             await vault.create(filePath, fileContent.trim());
+        }
+
+        if (shouldEmitRawOnly) {
+            const rawFilePath = filePath.replace(/\.md$/, ' — RAW.md');
+            const rawExisting = vault.getAbstractFileByPath(rawFilePath);
+            if (rawExisting) {
+                await vault.modify(rawExisting as any, rawFileContent.trim());
+            } else {
+                await vault.create(rawFilePath, rawFileContent.trim());
+            }
         }
     } catch (error) {
         console.error(`[BeatsCommands] Error logging API interaction to file ${filePath}:`, error);

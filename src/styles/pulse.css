@@ -76,6 +76,64 @@
   overflow-y: auto;
 }
 
+/* ==========================================================================
+   GENERIC MODAL BASE SYSTEM
+   Shared styles for all plugin modals. Each modal adds its own specific class.
+   ========================================================================== */
+
+/* Modal Shell - transparent wrapper */
+.rt-modal-shell.modal {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Modal Container - gradient background with consistent padding */
+.rt-modal-container {
+  padding: 26px 30px 22px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(16, 16, 21, 0.95), rgba(36, 28, 24, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+}
+
+/* Modal Header - consistent left alignment with modal padding */
+.rt-modal-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+/* Modal Title - large white gradient text */
+.rt-modal-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(to right, #fff, #f0f0f0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.01em;
+}
+
+/* Modal Subtitle - smaller white text */
+.rt-modal-subtitle {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* Modal Actions - button row at bottom */
+.rt-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+/* ==========================================================================
+   AI CONTEXT MODAL - specific styles
+   ========================================================================== */
 .rt-ai-context-actions {
   display: flex;
   gap: 8px;
@@ -83,6 +141,10 @@
   margin-top: 20px;
   padding-top: 0;
 }
+
+/* ==========================================================================
+   PULSE/GOSSAMER MODALS - Scene Analysis, Book Designer, etc.
+   ========================================================================== */
 
 /* Pulse Processing Modal Styles */
 .rt-pulse-modal-shell.modal {

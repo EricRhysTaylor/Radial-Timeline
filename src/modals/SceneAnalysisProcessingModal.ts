@@ -580,10 +580,11 @@ export class SceneAnalysisProcessingModal extends Modal {
         const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });
         const progressBg = progressContainer.createDiv({ cls: 'rt-pulse-progress-bg' });
         this.progressBarEl = progressBg.createDiv({ cls: 'rt-pulse-progress-bar' });
-        this.progressBarEl.style.setProperty('--progress-width', '0%');
+        // Start at 25% so the bar isn't empty while waiting for first API response
+        this.progressBarEl.style.setProperty('--progress-width', '25%');
 
         this.progressTextEl = progressCard.createDiv({ cls: 'rt-pulse-progress-text' });
-        this.progressTextEl.setText('Waiting for first scene...');
+        this.progressTextEl.setText('Initializing… preparing first scene (0%)');
 
         this.statusTextEl = progressCard.createDiv({ cls: 'rt-pulse-status-text' });
         this.statusTextEl.setText('Initializing pipeline...');
@@ -807,10 +808,15 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.plugin.settings.logApiInteractions) {
             const logNoteEl = contentEl.createDiv({ cls: 'rt-pulse-summary-tip' });
             logNoteEl.createEl('strong', { text: 'Logs: ' });
+            const isLocal = (this.plugin.settings.defaultAiProvider || 'openai') === 'local';
+            const pulsesBypassed = isLocal && (this.plugin.settings.localSendPulseToAiReport ?? true);
+            const pulseRouting = pulsesBypassed
+                ? 'Triplet pulse updates bypassed scene hover/meta and were saved to the AI report.'
+                : 'Triplet pulse updates were written to scene hover/meta.';
             if (this.logAttempts > 0) {
-                logNoteEl.appendText('Detailed AI interaction logs were saved to the AI folder.');
+                logNoteEl.appendText(`Detailed AI interaction logs were saved to the AI folder. ${pulseRouting}`);
             } else {
-                logNoteEl.appendText('Logging is enabled, but no AI request reached the server.');
+                logNoteEl.appendText(`Logging is enabled, but no AI request reached the server. ${pulseRouting}`);
             }
         }
 

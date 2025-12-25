@@ -210,10 +210,10 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     const renderFields = () => {
         fieldsContainer.empty();
         const profile = getActiveProfile();
-        if (!profile) {
-            fieldsContainer.createDiv({ text: t('planetary.preview.empty') });
-            return;
-        }
+        const hasProfile = !!profile;
+        fieldsContainer.classList.toggle('rt-planetary-hidden', !hasProfile);
+        previewContainer.classList.toggle('rt-planetary-hidden', !hasProfile);
+        if (!hasProfile) return;
 
         const addNumberField = (label: string, key: keyof PlanetaryProfile, hint?: string) => {
             const setting = new Settings(fieldsContainer).setName(label);
@@ -302,7 +302,10 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     const renderPreview = () => {
         previewContainer.empty();
         const profile = getActiveProfile();
-        if (!profile) return;
+        const hasProfile = !!profile;
+        previewContainer.classList.toggle('rt-planetary-hidden', !hasProfile);
+        fieldsContainer.classList.toggle('rt-planetary-hidden', !hasProfile);
+        if (!hasProfile) return;
         const result = convertFromEarth(new Date(), profile);
         const header = previewContainer.createDiv({ cls: 'rt-planetary-preview-heading' });
         header.setText(`Quick preview (Earth → ${profile.label || 'local'})`);

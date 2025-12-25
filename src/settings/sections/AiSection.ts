@@ -44,7 +44,7 @@ export function renderAiSection(params: {
 
     const tripletDisplaySetting = new Settings(containerEl)
         .setName('Show previous and next scene analysis')
-        .setDesc('When enabled, hover cards include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
+        .setDesc('When enabled, scene hover metadata include the AI pulse for the previous and next scenes. Turn off to display only the current scene for a more compact view.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.showFullTripletAnalysis ?? true)
             .onChange(async (value) => {
@@ -353,7 +353,7 @@ export function renderAiSection(params: {
         .setDesc('Additional instructions added to the start of the prompt. Useful for fine-tuning local model behavior.')
         .addTextArea(text => {
             text
-                .setPlaceholder('e.g. Focus on emotional resonance...')
+                .setPlaceholder('e.g. Maintain strict JSON formatting...')
                 .setValue(plugin.settings.localLlmInstructions || '')
                 .onChange(async (value) => {
                     plugin.settings.localLlmInstructions = value;
@@ -363,7 +363,7 @@ export function renderAiSection(params: {
         });
 
     new Settings(localSection)
-        .setName('Send triplet pulse output to AI report (Local LLM)')
+        .setName('Bypass scene hover metadata yaml writes')
         .setDesc('When enabled, Local LLM triplet pulse analysis skips writing to the scene file and saves the results in the AI report instead. Recommended default for local models.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.localSendPulseToAiReport ?? true)
