@@ -161,6 +161,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.modalEl && !this.modalEl.classList.contains('rt-modal-shell')) {
             this.modalEl.classList.add('rt-modal-shell');
         }
+        this.contentEl.classList.add('rt-modal-container');
         this.contentEl.classList.add('rt-scene-analysis-modal');
     }
 
@@ -180,7 +181,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (mode === 'force-all') {
             return 'Reprocessing every completed scene';
         }
-        return 'Flagged scenes in manuscript order';
+        return 'Analyze flagged scenes in manuscript order';
     }
 
     private getProcessingSubtitle(): string {
@@ -196,27 +197,27 @@ export class SceneAnalysisProcessingModal extends Modal {
         parent: HTMLElement,
         options?: { trackStatus?: boolean; subtitle?: string; metaItems?: string[] }
     ): HTMLElement {
-        const hero = parent.createDiv({ cls: 'rt-pulse-progress-hero' });
+        // Use flat header style matching Book Designer (no border/background on header)
+        const hero = parent.createDiv({ cls: 'rt-modal-header' });
         const modelLabel = this.getActiveModelDisplayName();
         const badgeText = modelLabel ? `AI pulse run · ${modelLabel}` : 'AI pulse run';
-        hero.createSpan({ text: badgeText, cls: 'rt-pulse-hero-badge' });
-        hero.createEl('h2', { text: this.getProcessingTitle(), cls: 'rt-pulse-progress-heading' });
+        hero.createSpan({ text: badgeText, cls: 'rt-scene-analysis-badge' });
+        hero.createDiv({ text: this.getProcessingTitle(), cls: 'rt-modal-title' });
         const subtitleText = options?.subtitle ?? this.getProcessingSubtitle();
-        const subtitleEl = hero.createDiv({ cls: 'rt-pulse-progress-subtitle' });
+        const subtitleEl = hero.createDiv({ cls: 'rt-modal-subtitle' });
         subtitleEl.setText(subtitleText);
         if (options?.trackStatus) {
             this.heroStatusEl = subtitleEl;
         } else {
             this.heroStatusEl = undefined;
         }
-        const metaEl = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
-        const metaItems =
-            options?.metaItems ??
-            [
-                'Select how many scenes to process. This run analyzes scenes in manuscript order and refreshes their pulse metadata.'
-            ];
-        for (const item of metaItems) {
-            metaEl.createSpan({ text: item, cls: 'rt-pulse-hero-meta-item' });
+        // Add meta pills only if provided (e.g., during progress view)
+        const metaItems = options?.metaItems ?? [];
+        if (metaItems.length > 0) {
+            const metaEl = hero.createDiv({ cls: 'rt-scene-analysis-meta' });
+            for (const item of metaItems) {
+                metaEl.createSpan({ text: item, cls: 'rt-scene-analysis-meta-item' });
+            }
         }
         return hero;
     }

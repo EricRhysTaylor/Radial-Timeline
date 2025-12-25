@@ -32,30 +32,29 @@ export class BookDesignerModal extends Modal {
         const { contentEl, modalEl } = this;
         contentEl.empty();
         
-        // Add styling classes to modal shell (Obsidian's container)
-        // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        // Use generic modal system + Book Designer specific class
         if (modalEl) {
-            modalEl.classList.add('rt-pulse-modal-shell');
+            modalEl.classList.add('rt-modal-shell');
             modalEl.style.width = '860px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '96vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('rt-pulse-modal');
+        contentEl.addClass('rt-modal-container');
         contentEl.addClass('rt-book-designer-modal');
         contentEl.addClass('rt-manuscript-surface');
 
            
         const sourcePath = this.plugin.settings.sourcePath || 'vault root';
-        // Hero Header (Gossamer Pulse Standard)
-        const hero = contentEl.createDiv({ cls: 'rt-gossamer-simple-header' });
-        hero.createSpan({ cls: 'rt-gossamer-simple-badge', text: 'SETUP' });
-        hero.createDiv({ cls: 'rt-gossamer-hero-system', text: 'Book designer' });
-        hero.createDiv({ cls: 'rt-gossamer-score-subtitle', text: `Configure and generate the scaffold for your new novel. Source path from settings will place book at... ${sourcePath}` });
+        // Hero Header using generic modal system
+        const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
+        hero.createSpan({ cls: 'rt-modal-badge', text: 'SETUP' });
+        hero.createDiv({ cls: 'rt-modal-title', text: 'Book designer' });
+        hero.createDiv({ cls: 'rt-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Source path from settings will place scenes in ${sourcePath}` });
     
         
-        const heroMeta = hero.createDiv({ cls: 'rt-gossamer-simple-meta' });
-        heroMeta.createSpan({ cls: 'rt-pulse-hero-meta-item', text: 'Scenes + Subplots' });
-        heroMeta.createSpan({ cls: 'rt-pulse-hero-meta-item', text: 'Acts + Beats' });
+        const heroMeta = hero.createDiv({ cls: 'rt-modal-meta' });
+        heroMeta.createSpan({ cls: 'rt-modal-meta-item', text: 'Scenes + Subplots' });
+        heroMeta.createSpan({ cls: 'rt-modal-meta-item', text: 'Acts + Beats' });
         
         const scrollContainer = contentEl.createDiv({ cls: 'rt-gossamer-scores-container rt-manuscript-card-stack' });
 

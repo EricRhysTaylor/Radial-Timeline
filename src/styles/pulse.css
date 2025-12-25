@@ -101,8 +101,24 @@
 .rt-modal-header {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 4px;
   margin-bottom: 16px;
+}
+
+/* Modal Badge - pill shaped label at top of header */
+.rt-modal-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
 }
 
 /* Modal Title - large white gradient text */
@@ -123,6 +139,25 @@
   line-height: 1.4;
 }
 
+/* Modal Meta - small pills below subtitle */
+.rt-modal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rt-modal-meta-item {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
 /* Modal Actions - button row at bottom */
 .rt-modal-actions {
   display: flex;
@@ -140,6 +175,54 @@
   justify-content: flex-end;
   margin-top: 20px;
   padding-top: 0;
+}
+
+/* ==========================================================================
+   SCENE ANALYSIS MODAL - specific styles
+   ========================================================================== */
+.rt-scene-analysis-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Scene Analysis badge inherits from generic modal badge */
+.rt-scene-analysis-badge {
+  /* Uses same styles as rt-modal-badge - can add overrides here if needed */
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.rt-scene-analysis-meta {
+  margin-top: 12px;
+}
+
+.rt-scene-analysis-meta-item {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Scene Analysis cards - bordered subsections */
+.rt-scene-analysis-modal .rt-pulse-glass-card {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: none;
 }
 
 /* ==========================================================================

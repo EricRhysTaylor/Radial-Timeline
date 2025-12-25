@@ -211,7 +211,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 22px 24px;
 }
 
 .rt-subplot-picker-info {
