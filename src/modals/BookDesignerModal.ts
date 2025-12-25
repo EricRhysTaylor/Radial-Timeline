@@ -50,7 +50,7 @@ export class BookDesignerModal extends Modal {
         const hero = contentEl.createDiv({ cls: 'rt-gossamer-simple-header' });
         hero.createSpan({ cls: 'rt-gossamer-simple-badge', text: 'SETUP' });
         hero.createDiv({ cls: 'rt-gossamer-hero-system', text: 'Book designer' });
-        hero.createDiv({ cls: 'rt-gossamer-score-subtitle', text: `Configure and generate the skeleton for your new novel. Source path from settings will place book at... ${sourcePath}` });
+        hero.createDiv({ cls: 'rt-gossamer-score-subtitle', text: `Configure and generate the scaffold for your new novel. Source path from settings will place book at... ${sourcePath}` });
     
         
         const heroMeta = hero.createDiv({ cls: 'rt-gossamer-simple-meta' });

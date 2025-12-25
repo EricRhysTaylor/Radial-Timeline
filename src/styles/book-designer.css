@@ -34,6 +34,12 @@
     height: 100%;
 }
 
+/* Remove horizontal padding when card-block contains stacked settings */
+.rt-manuscript-surface .rt-manuscript-card-block.rt-manuscript-group-block {
+    padding-left: 0;
+    padding-right: 0;
+}
+
 .rt-manuscript-surface .rt-manuscript-card-block + .rt-manuscript-card-block {
     margin-top: 8px;
 }
@@ -98,13 +104,17 @@
 
 /* Scoped padding for stacked settings inside Book Designer (e.g., Subplots) */
 .rt-book-designer-modal .rt-setting-stacked.rt-manuscript-group-setting {
-    padding: 12px 16px 16px 0 !important;
+    padding: 12px 16px 16px 16px !important;
 }
 
 /* Remove left padding from setting info in stacked layouts - align with input fields */
 .rt-book-designer-modal .rt-setting-stacked .setting-item-info {
     padding-left: 0 !important;
     margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    text-align: left !important;
+    align-self: flex-start !important;
 }
 
 .rt-manuscript-surface .rt-setting-stacked .setting-item-control {
@@ -158,6 +168,7 @@
 
 /* Scoped padding & divider only for Book Designer duo grid */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-scenes-generate-setting {
+    padding-left: 16px !important;
     padding-right: 16px !important;
     padding-bottom: 16px !important;
     border-right: 1px solid rgba(255, 255, 255, 0.12);
@@ -165,6 +176,7 @@
 
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-book-length-setting {
     padding-left: 16px !important;
+    padding-right: 16px !important;
     border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 

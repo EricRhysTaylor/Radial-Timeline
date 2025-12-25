@@ -147,6 +147,11 @@ export class SceneAnalysisService {
         return modelId;
     }
 
+    isLocalReportOnlyMode(): boolean {
+        const provider = this.plugin.settings.defaultAiProvider || 'openai';
+        return provider === 'local' && (this.plugin.settings.localSendPulseToAiReport ?? true);
+    }
+
     async processByManuscriptOrder(): Promise<void> {
         const { processByManuscriptOrder } = await import('../SceneAnalysisCommands');
         await processByManuscriptOrder(this.plugin, this.plugin.app.vault);
@@ -197,19 +202,23 @@ class SubplotPickerModal extends Modal {
         const { contentEl, modalEl, titleEl } = this;
         titleEl.setText('');
         contentEl.empty();
+        // Use generic modal base + subplot picker specific styling
         if (modalEl) {
-            modalEl.classList.add('rt-pulse-modal-shell');
+            modalEl.classList.add('rt-modal-shell');
+            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
-        contentEl.addClass('rt-gossamer-score-modal');
+        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('rt-subplot-picker-modal');
 
         const modelName = this.service.getActiveModelName();
-        const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
-        hero.createSpan({ text: 'AI pulse run', cls: 'rt-pulse-hero-badge' });
-        hero.createEl('h2', { text: 'Process subplot scenes', cls: 'rt-pulse-progress-heading' });
-        hero.createDiv({ cls: 'rt-pulse-progress-subtitle', text: 'Choose a subplot and run pulse updates just for that arc.' });
+        const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
+        const badgeText = modelName ? `AI pulse run · ${modelName}` : 'AI pulse run';
+        hero.createSpan({ text: badgeText, cls: 'rt-subplot-picker-badge' });
+        hero.createEl('h2', { text: 'Process subplot scenes', cls: 'rt-modal-title' });
+        hero.createDiv({ cls: 'rt-modal-subtitle', text: 'Choose a subplot and run pulse updates just for that arc.' });
 
-        const heroMeta = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
-        heroMeta.createSpan({ text: `Model: ${modelName}`, cls: 'rt-pulse-hero-meta-item' });
         const heroStats = hero.createDiv({ cls: 'rt-subplot-picker-hero-stats' });
         this.heroStats = {
             flagged: this.createHeroStat(heroStats, 'Flagged scenes'),
@@ -217,7 +226,7 @@ class SubplotPickerModal extends Modal {
             total: this.createHeroStat(heroStats, 'Total scenes')
         };
 
-        const formCard = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
+        const formCard = contentEl.createDiv({ cls: 'rt-subplot-picker-card' });
         const selectContainer = formCard.createDiv({ cls: 'rt-subplot-picker-select' });
         selectContainer.createEl('label', { text: 'Pick a subplot to process', cls: 'rt-subplot-picker-label' });
         this.dropdown = new DropdownComponent(selectContainer.createDiv({ cls: 'rt-subplot-picker-dropdown' }));
@@ -233,7 +242,7 @@ class SubplotPickerModal extends Modal {
         this.statsEl = formCard.createDiv({ cls: 'rt-subplot-picker-stats' });
         this.updateStats(this.selectedSubplot);
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-subplot-picker-actions' });
         new ButtonComponent(buttonRow)
             .setButtonText('Process flagged scenes')
             .setCta()
@@ -282,9 +291,15 @@ class SubplotPickerModal extends Modal {
         this.statsEl.empty();
         const summaryLine = `${stats.flagged} flagged • ${stats.processable} processable • ${stats.total} total`;
         this.statsEl.createDiv({ cls: 'rt-subplot-picker-stats-line', text: summaryLine });
+        
+        // Check if local LLM is bypassing YAML pulse write
+        const isLocalReportOnly = this.service.isLocalReportOnlyMode();
+        const infoText = isLocalReportOnly
+            ? 'Local LLM mode: Results logged to AI report only (YAML pulse fields not updated).'
+            : 'Flagged scenes with processable metadata are sent to the AI along with the manuscript content.';
         this.statsEl.createDiv({
             cls: 'rt-subplot-picker-summary',
-            text: 'Flagged scenes with processable metadata are sent to the AI along with the manuscript content.'
+            text: infoText
         });
 
         if (this.heroStats) {

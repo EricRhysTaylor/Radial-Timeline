@@ -121,9 +121,15 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl, modalEl } = this;
-        if (modalEl) modalEl.classList.add('rt-pulse-modal-shell');
-        contentEl.addClass('rt-pulse-modal');
-        contentEl.addClass('rt-manuscript-surface');
+        // Use generic modal base + scene analysis specific styling
+        if (modalEl) {
+            modalEl.classList.add('rt-modal-shell');
+            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('rt-scene-analysis-modal');
         titleEl.setText('');
 
         // If we're already processing (reopening), show progress view
@@ -152,10 +158,10 @@ export class SceneAnalysisProcessingModal extends Modal {
     }
 
     private ensureModalShell(): void {
-        if (this.modalEl && !this.modalEl.classList.contains('rt-pulse-modal-shell')) {
-            this.modalEl.classList.add('rt-pulse-modal-shell');
+        if (this.modalEl && !this.modalEl.classList.contains('rt-modal-shell')) {
+            this.modalEl.classList.add('rt-modal-shell');
         }
-        this.contentEl.classList.add('rt-gossamer-score-modal');
+        this.contentEl.classList.add('rt-scene-analysis-modal');
     }
 
     private getProcessingTitle(): string {

@@ -8,7 +8,7 @@ import { Notice, type Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { SceneAnalysisProcessingModal, ProcessingMode, SceneQueueItem } from '../modals/SceneAnalysisProcessingModal';
 import { buildTripletsByIndex } from './TripletBuilder';
-import { updateSceneAnalysis } from './FileUpdater';
+import { updateSceneAnalysis, markPulseProcessed } from './FileUpdater';
 import { createAiRunner } from './RequestRunner';
 import {
     getAllSceneData,
@@ -142,9 +142,15 @@ export async function processWithModal(
                     if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
 
                     if (sendPulseToAiReportOnly) {
-                        processedCount++;
-                        modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
-                        markQueueStatus('success');
+                        const flagCleared = await markPulseProcessed(vault, triplet.current.file, plugin, aiResult.modelIdUsed);
+                        if (flagCleared) {
+                            processedCount++;
+                            modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
+                            markQueueStatus('success');
+                        } else {
+                            markQueueStatus('error');
+                            modal.addError(`Failed to update pulse flag for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                        }
                         continue;
                     }
 
@@ -280,6 +286,8 @@ export async function processBySubplotOrder(
                             if (updated) {
                                 await plugin.saveSettings();
                             }
+                    } else {
+                        await markPulseProcessed(vault, triplet.current.file, plugin, aiResult.modelIdUsed);
                         }
                     }
                 }
@@ -395,9 +403,15 @@ export async function processSubplotWithModal(
                     if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
 
                     if (sendPulseToAiReportOnly) {
-                        processedCount++;
-                        modal.updateProgress(processedCount, total, sceneName);
-                        markQueueStatus('success');
+                        const flagCleared = await markPulseProcessed(vault, triplet.current.file, plugin, aiResult.modelIdUsed);
+                        if (flagCleared) {
+                            processedCount++;
+                            modal.updateProgress(processedCount, total, sceneName);
+                            markQueueStatus('success');
+                        } else {
+                            markQueueStatus('error');
+                            modal.addError(`Failed to update pulse flag for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                        }
                     } else {
                         const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
                         if (success) {
@@ -522,9 +536,15 @@ export async function processEntireSubplotWithModalInternal(
                     if (!triplet.next) parsedAnalysis['nextSceneAnalysis'] = '';
 
                     if (sendPulseToAiReportOnly) {
-                        processedCount++;
-                        modal.updateProgress(processedCount, total, sceneName);
-                        markQueueStatus('success');
+                        const flagCleared = await markPulseProcessed(vault, triplet.current.file, plugin, aiResult.modelIdUsed);
+                        if (flagCleared) {
+                            processedCount++;
+                            modal.updateProgress(processedCount, total, sceneName);
+                            markQueueStatus('success');
+                        } else {
+                            markQueueStatus('error');
+                            modal.addError(`Failed to update pulse flag for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
+                        }
                     } else {
                         const success = await updateSceneAnalysis(vault, triplet.current.file, parsedAnalysis, plugin, aiResult.modelIdUsed);
                         if (success) {

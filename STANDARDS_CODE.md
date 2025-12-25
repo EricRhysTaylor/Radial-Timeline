@@ -240,7 +240,7 @@ modalEl.style.maxHeight = '80vh';
 
 #### Modal Layout Standards
 
-Every modal (AI Pulse Analysis, Manage Subplots, Gossamer score, release notes, etc.) must follow the same skeleton so we stop reworking gradients, padding, and redundant copy.
+Every modal (AI Pulse Analysis, Manage Subplots, Gossamer score, release notes, etc.) must follow the same template so we stop reworking gradients, padding, and redundant copy.
 
 1. **Shell + Base Class**
    - Always add `rt-pulse-modal-shell` to `modalEl` unless the modal intentionally mirrors core Obsidian styling. Layer in specialized shells (e.g., `rt-subplot-modal-shell`) when a layout requires unique height constraints.

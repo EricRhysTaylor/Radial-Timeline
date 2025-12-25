@@ -211,7 +211,7 @@ async function logApiInteractionToFile(
     const supplementalLocalPrompt = options?.supplementalLocalInstructions?.trim();
 
     const tocLines: string[] = [
-        '- [Prompt (with supplemental local instructions)](#prompt-with-supplemental-local-instructions)',
+        '- [Prompt](#prompt)',
         '- [Sent package](#sent-package)',
         '- [Returned package](#returned-package)',
         '- [Return JSON](#return-json)'
@@ -222,7 +222,7 @@ async function logApiInteractionToFile(
     tocLines.push('- [Metadata](#metadata)');
 
     const promptSectionParts: string[] = [];
-    promptSectionParts.push('## Prompt (with supplemental local instructions)\n\n');
+    promptSectionParts.push('## Prompt\n\n');
     if (systemPromptForLog) {
         promptSectionParts.push(`**System prompt:**\n\`\`\`\n${systemPromptForLog}\n\`\`\`\n\n`);
     }
@@ -287,7 +287,7 @@ async function logApiInteractionToFile(
         }
 
         if (shouldEmitRawOnly) {
-            const rawFilePath = filePath.replace(/\.md$/, ' — RAW.md');
+            const rawFilePath = `${logFolder}/RAW — ${fileName}`;
             const rawExisting = vault.getAbstractFileByPath(rawFilePath);
             if (rawExisting) {
                 await vault.modify(rawExisting as any, rawFileContent.trim());

@@ -62,3 +62,51 @@ export async function updateSceneAnalysis(
     return false;
   }
 }
+
+export async function markPulseProcessed(
+  vault: Vault,
+  file: TFile,
+  plugin: RadialTimelinePlugin,
+  modelIdUsed: string | null
+): Promise<boolean> {
+  try {
+    await plugin.app.fileManager.processFrontMatter(file, (fm) => {
+      const fmObj = fm as Record<string, unknown>;
+
+      const now = new Date();
+      const timestamp = now.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      } as Intl.DateTimeFormatOptions);
+      fmObj['Pulse Last Updated'] = `${timestamp}${modelIdUsed ? ` by ${modelIdUsed}` : ' by Unknown Model'}`;
+
+      const pulseKeys = [
+        'Pulse Update',
+        'PulseUpdate',
+        'pulseupdate',
+        'Beats Update',
+        'BeatsUpdate',
+        'beatsupdate',
+        'Review Update',
+        'ReviewUpdate',
+        'reviewupdate'
+      ];
+      let updatedFlag = false;
+      for (const key of pulseKeys) {
+        if (Object.prototype.hasOwnProperty.call(fmObj, key)) {
+          fmObj[key] = false;
+          updatedFlag = true;
+        }
+      }
+      if (!updatedFlag) fmObj['Pulse Update'] = false;
+    });
+    return true;
+  } catch (e) {
+    console.error('[markPulseProcessed] Error updating pulse flag:', e);
+    return false;
+  }
+}
