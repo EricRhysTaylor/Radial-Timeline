@@ -229,12 +229,12 @@ function main() {
     console.error('  - openLinkText() automatically prevents duplicate tabs (recommended by Obsidian)');
     console.error('  - If you must use openFile(), add a comment: // SAFE: openFile used for <reason>');
     
-    console.error('\n\x1b[33mIf you believe this is a false positive, you can add a comment:\x1b[0m');
-    console.error('  // SAFE: innerHTML used for <reason>');
-    console.error('  // SAFE: inline style used for <reason>');
-    console.error('  // SAFE: Modal sizing via inline styles (Obsidian pattern)');
-    console.error('  // SAFE: any type used for <reason>');
-    console.error('  // SAFE: openFile used for <reason>');
+    console.error('\n\x1b[33mIf you believe this is a false positive, add a SAFE comment ON THE SAME LINE:\x1b[0m');
+    console.error('  textPath.innerHTML = html; // SAFE: innerHTML used for <reason>');
+    console.error('  el.style.width = "100px"; // SAFE: inline style used for <reason>');
+    console.error('  modalEl.style.width = "660px"; // SAFE: Modal sizing via inline styles (Obsidian pattern)');
+    console.error('  data: any // SAFE: any type used for <reason>');
+    console.error('  .openFile(file) // SAFE: openFile used for <reason>');
     console.error('\n📖 See STANDARDS_CODE.md for detailed guidelines and best practices.\n');
     process.exit(1);
   }
