@@ -318,7 +318,7 @@
 }
 
 .rt-alt-button:active .rt-shift-button-text {
-  fill: var(--text-on-accent);
+  fill: rgba(200, 80, 80, 1);
 }
 
 .rt-shift-mode-active .rt-shift-button-bg {
@@ -694,7 +694,7 @@
 }
 
 .rt-alt-button.rt-shift-mode-active .rt-shift-button-text {
-  fill: var(--text-on-accent) !important;
+  fill: rgba(200, 80, 80, 1) !important;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.1em;

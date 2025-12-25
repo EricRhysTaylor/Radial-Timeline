@@ -289,7 +289,7 @@ export function renderAiSection(params: {
     const localWarning = localBaseUrlSetting.descEl.createDiv({ cls: 'rt-setting-note rt-setting-warning' });
     localWarning.style.marginTop = '8px';
     localWarning.createEl('strong', { text: 'Advisory Note:' });
-    localWarning.appendText(' Strongly recommend one of the big three online LLM, as they are by far the most intelligent and fully compliant with Radial Timeline’s JSON response formatting requirements. Lightweight consumer GPUs with 16GB RAM generally cannot run the larger local LLMs that have the potential to work. However, I wanted to accomodate several requests for a local LLM.');
+    localWarning.appendText('By default, no meta is written to the scene when local LLM is used. Rather it is stored in RAW AI file in the AI folder, as the response does not follow directions and breaks the scene hover metadata. To enable scene hover metadata, enable "Bypass scene hover metadata yaml writes" below. Strongly recommend one of the big three online LLM, as they are by far the most intelligent and fully compliant with Radial Timeline’s JSON response formatting requirements.');
 
     const localModelSetting = new Settings(localSection)
         .setName('Model ID')

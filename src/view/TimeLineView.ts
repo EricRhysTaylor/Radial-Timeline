@@ -788,7 +788,7 @@ export class RadialTimelineView extends ItemView {
             // Must be done after fragment is in DOM for getBoundingClientRect to work
             const svgForTooltips = container.querySelector('.radial-timeline-svg');
             if (svgForTooltips) {
-                setupTooltips(svgForTooltips as SVGElement);
+                setupTooltips(svgForTooltips as SVGElement, this.registerDomEvent.bind(this));
             }
             
             // ============================================================================

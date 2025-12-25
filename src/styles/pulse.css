@@ -90,7 +90,7 @@
 
 /* Modal Container - gradient background with consistent padding */
 .rt-modal-container {
-  padding: 26px 30px 22px;
+  padding: 26px 50px 22px;
   border-radius: 20px;
   background: linear-gradient(145deg, rgba(16, 16, 21, 0.95), rgba(36, 28, 24, 0.92));
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -103,7 +103,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 /* Modal Badge - pill shaped label at top of header */
@@ -1621,7 +1621,7 @@
 .rt-gossamer-scores-container {
   flex: 1;
   overflow-y: auto;
-  padding: 0 20px;
+  padding: 0;
   background-color: transparent;
   min-height: 0;
   display: flex;

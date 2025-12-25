@@ -80,7 +80,12 @@ export function addTooltipData(
  * Setup delegated tooltip handling for SVG elements.
  * Uses a single custom .rt-tooltip DOM element for performance and compatibility.
  */
-export function setupTooltipsFromDataAttributes(container: HTMLElement | SVGElement): void {
+type DomEventRegistrar = (element: HTMLElement, event: string, handler: (ev: Event) => void) => void;
+
+export function setupTooltipsFromDataAttributes(
+    container: HTMLElement | SVGElement,
+    registerDomEvent: DomEventRegistrar
+): void {
     const svgElement = container instanceof SVGElement ? container : container.querySelector('svg');
     if (!svgElement) return;
 
@@ -113,9 +118,9 @@ export function setupTooltipsFromDataAttributes(container: HTMLElement | SVGElem
         }
     };
 
-    // Use standard event listeners (cleaned up when SVG is destroyed by virtue of being attached to it)
-    svgElement.addEventListener('mouseover', handleMouseOver);
-    svgElement.addEventListener('mouseout', handleMouseOut);
+    // Use Obsidian lifecycle-backed registration for automatic cleanup
+    registerDomEvent(svgElement as unknown as HTMLElement, 'mouseover', handleMouseOver);
+    registerDomEvent(svgElement as unknown as HTMLElement, 'mouseout', handleMouseOut);
 }
 
 /**

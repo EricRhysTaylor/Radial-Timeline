@@ -818,8 +818,8 @@ export class SceneAnalysisProcessingModal extends Modal {
             const isLocal = (this.plugin.settings.defaultAiProvider || 'openai') === 'local';
             const pulsesBypassed = isLocal && (this.plugin.settings.localSendPulseToAiReport ?? true);
             const pulseRouting = pulsesBypassed
-                ? 'Triplet pulse updates bypassed scene hover/meta and were saved to the AI report.'
-                : 'Triplet pulse updates were written to scene hover/meta.';
+                ? 'Triplet pulse updates bypassed scene yaml and were saved to the AI report.'
+                : 'Triplet pulse updates were written to scene yaml.';
             if (this.logAttempts > 0) {
                 logNoteEl.appendText(`Detailed AI interaction logs were saved to the AI folder. ${pulseRouting}`);
             } else {
