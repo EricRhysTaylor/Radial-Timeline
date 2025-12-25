@@ -46,9 +46,9 @@ Backdrop notes allow you to visualize contextual events—historical wars, plane
 *   **Visualize**: These appear as a dedicated ring in Chronologue mode, grounding your scenes in their temporal context.
 *   **Overlaps**: Two backdrops may overlap partially via visual plaid pattern
 
-### Planetary Time (Experimental)
+### Planetary Time
 
-For sci-fi and fantasy authors, Chronologue mode includes an experimental **Planetary Time** system. While Radial Timeline requires Earth time (Gregorian calendar) for its internal logic and physics, you can create custom "Local Time" profiles to translate these dates into your world's calendar.
+For sci-fi and fantasy authors, Chronologue mode includes a **Planetary Time** system. While Radial Timeline requires Earth time (Gregorian calendar) for its internal logic and physics, you can create custom "Local Time" profiles to translate these dates into your world's calendar.
 
 **Features:**
 *   **Settings**: Define custom planetary profiles with specific astronomical facts:

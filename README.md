@@ -41,7 +41,7 @@ Radial Timeline™ arranges your scenes by act, subplot, narrative or chronologi
 Radial Timeline™ captures and visualizes all 4 critical timelines, revealing the big picture as your manuscript evolves from the nucleus of an idea to the final polished novel.
 
 1. **Narrative time**: the sequence you reveal events to readers.
-2. **Chronological time**: when events happen in your story's world. (Includes experimental Planetary Time calculator for sci-fi/fantasy calendars).
+2. **Chronological time**: when events happen in your story's world. (Includes Planetary Time calculator for sci-fi/fantasy calendars).
 3. **Author time**: your scene writing progress with target completion dates from Todo to Complete.
 4. **Publishing time**: manuscript revision stages from Zero draft through Press-ready.
 
@@ -110,7 +110,7 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 **Get your first timeline in 3 steps:**
 
 1. **Install the plugin**: Settings → Community plugins → Browse → "Radial Timeline"
-2. **Open the timeline**: Click the radial timeline ribbon icon or use command palette → "Radial Timeline: Open timeline view" 
+2. **Open the timeline**: Click the radial timeline ribbon icon or use command palette → "Radial Timeline: Open" 
 3. **Welcome screen**: For any empty vault, you will be greeted by a Welcome screen with introductory details and a button to open the Book designer. Create a single scene or a fully fleshed novel template. 
 Create more scenes by:
 - Using Book Designer again and again via command palette → "Book Designer"
@@ -126,7 +126,7 @@ Radial Timeline determines scene order based on the **leading number** in the sc
 *   Scene order is **per Act** (defined in the YAML frontmatter).
 *   You can also reorder scenes via **drag-and-drop** in Narrative Mode.
 
-For full details, see **[Reordering Scenes](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/How-to#reordering-scenes)**.
+For full details, see **[Reordering Scenes](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/How-to#reorder-scenes)**.
 
 **Optional - Insert story beats**: Consider inserting story beats for your chosen system such as the 15-beat Save the Cat by going to Settings → Radial Timeline → Create Templates.
 

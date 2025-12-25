@@ -2,7 +2,7 @@
 
 ## Custom/Alien Calendars
 
-Radial Timeline now includes an experimental Planetary Time system. Plan in Earth time (fastest for pacing), then view a converted “local” calendar as needed.
+Radial Timeline now includes a Planetary Time system. Plan in Earth time (fastest for pacing), then view a converted “local” calendar as needed.
 
 ### Environmental Cycles
 

@@ -125,8 +125,24 @@ export class AiContextModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl, titleEl } = this;
-        titleEl.setText('AI context templates');
+        const { contentEl, titleEl, modalEl } = this;
+        // Use shared modal base styling + AI Context specific class
+        if (modalEl) {
+            modalEl.classList.add('rt-pulse-modal-shell');
+            modalEl.style.width = '660px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+        titleEl.setText('');
+        contentEl.addClass('rt-pulse-modal');
+        contentEl.addClass('rt-ai-context-modal');
+
+        const hero = contentEl.createDiv({ cls: 'rt-gossamer-simple-header' });
+        hero.createDiv({ cls: 'rt-gossamer-hero-system', text: 'AI context templates' });
+        hero.createDiv({
+            cls: 'rt-gossamer-score-subtitle',
+            text: 'Define context prepended to AI prompts and Gossamer scoring.'
+        });
 
         // Info section
         const infoEl = contentEl.createDiv({ cls: 'rt-ai-context-info' });
@@ -192,25 +208,12 @@ export class AiContextModal extends Modal {
         this.textareaEl = editorSection.createEl('textarea', { cls: 'rt-ai-context-textarea' });
         this.textareaEl.placeholder = 'Enter your AI context prompt here...';
         
-        // Preview section (must be created before the event listener references it)
-        const previewSection = contentEl.createDiv({ cls: 'rt-ai-context-preview-section' });
-        const previewLabel = previewSection.createDiv({ cls: 'rt-ai-context-label' });
-        previewLabel.setText('How it will appear:');
-        const previewText = previewSection.createDiv({ cls: 'rt-ai-context-preview' });
-        
-        // Track changes and update preview
+        // Track changes
         const handleInput = () => {
             const currentTemplate = this.getCurrentTemplate();
             if (currentTemplate && !currentTemplate.isBuiltIn) {
                 this.isDirty = true;
                 this.updateButtonStates();
-            }
-
-            const prompt = this.textareaEl?.value.trim() || '';
-            if (prompt) {
-                previewText.textContent = `${prompt}\n\nBefore taking action, prepare an action plan.\n\n[Rest of AI prompt...]`;
-            } else {
-                previewText.textContent = '[No context set - will use default AI prompt]';
             }
         };
         // Note: Modal classes don't have registerDomEvent, use addEventListener instead
@@ -282,17 +285,6 @@ export class AiContextModal extends Modal {
         if (this.textareaEl) {
             this.textareaEl.value = currentTemplate.prompt;
             this.textareaEl.disabled = currentTemplate.isBuiltIn;
-            
-            // Update preview
-            const previewText = this.contentEl.querySelector('.rt-ai-context-preview');
-            if (previewText) {
-                const prompt = currentTemplate.prompt.trim();
-                if (prompt) {
-                    previewText.textContent = `${prompt}\n\nBefore taking action, prepare an action plan.\n\n[Rest of AI prompt...]`;
-                } else {
-                    previewText.textContent = '[No context set - will use default AI prompt]';
-                }
-            }
         }
         
         this.isDirty = false;

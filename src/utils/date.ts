@@ -1153,7 +1153,8 @@ export function generateChronologicalTicks(
                 name: labels.name,
                 shortName: labels.shortName,
                 isMajor: true,
-                sceneIndex: scene.sortedIndex
+                sceneIndex: scene.sortedIndex,
+                earthDate: scene.date.toISOString()
             });
             lastLabeledSceneDate = scene.date; // Update last labeled scene
         } else {

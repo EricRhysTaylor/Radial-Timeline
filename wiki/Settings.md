@@ -10,11 +10,15 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
     *   **Pending Edits**: The dialog lets you capture quick notes or edits into a `Pending Edits` frontmatter field without getting sucked into a full revision.
     *   **Override**: You can click the "Override" button (red) to force open the note if absolutely necessary.
 
+### Point of view
+*   **Global POV**: Set a default POV style (first, second/you, third, omni, objective, off). Scene-level `POV:` overrides this.
+*   **YAML overrides**: Accepts `first`, `second/you`, `third`, `omni`, `objective`, or numeric terms like `two`, `four`, `count`, `all` to mark multiple POV carriers.
+
 ### Chronologue mode settings
 *   **Chronologue duration arc cap**: Select maximum duration to display on scene duration arcs, or use "auto".
 *   **Discontinuity gap threshold**: Controls when the ∞ symbol appears in shift mode. Auto-calculated as 3× the median time gap.
 
-### Gossamer story beats system
+### Gossamer story beats system & templates
 *   **Story beats system**: Select story structure model (Save The Cat, Hero's Journey, Story Grid, or Custom).
 *   **Create story beat template notes**: Generate template beat notes with YAML frontmatter.
 
@@ -26,14 +30,7 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 *   **Advanced YAML editor**: Enable to fully customize the Advanced YAML structure used when creating scenes with the Advanced template.
 *   **New Keys**: Add your own keys to the Advanced template. Or reset all keys back to the default.
 
-
-### AI features
-*   **AI Provider**: Choose Anthropic, Gemini, OpenAI, or Local/OpenAI Compatible.
-*   **Local AI Support**: Connect to local LLMs (like Ollama or LM Studio).
-*   **Contextual Prompt**: Customize AI analysis prompts.
-*   **API Logging**: Track AI interactions.
-
-### Planetary Time (Experimental)
+### Planetary Time
 *   **Enable planetary time**: Toggle to show planetary time features.
 *   **Active Profile**: Select which custom calendar to use for conversions.
 *   **Profiles**: Create and manage multiple calendar systems (e.g., "Mars", "Fantasy Realm").
@@ -42,6 +39,12 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
     *   **Days per year**: Number of local days in a local year.
     *   **Epoch Offset**: Number of Earth days to shift the start of your calendar (relative to 1970-01-01).
     *   **Month/Weekday Names**: Comma-separated lists of custom names.
+
+### AI features
+*   **AI Provider**: Choose Anthropic, Gemini, OpenAI, or Local/OpenAI Compatible.
+*   **Local AI Support**: Connect to local LLMs (like Ollama or LM Studio).
+*   **Contextual Prompt**: Customize AI analysis prompts.
+*   **API Logging**: Track AI interactions.
 
 ### Advanced
 *   **Auto-expand clipped scene titles**: Disable to prevent scene title expansion on hover. FYI: May make scene drag-and-drop a bit challenging as the scene will expand thus changing the location of the number square drag hotspot.

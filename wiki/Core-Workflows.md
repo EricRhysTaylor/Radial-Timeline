@@ -17,12 +17,11 @@
 When you're ready to read through your work or send it to an editor, use the **`Generate manuscript`** command.
 
 1.  Open the command palette (`Cmd/Ctrl + P`) and select **`Radial Timeline: Generate manuscript`**.
-2. **Chronological Increment**: Scenes `When` date will adjust per scene.
-3.  **Subplot Filter**: Optionally filter to compile only scenes from a specific subplot.
-4.  **Order**: Choose from Narrative, Chronological, Reverse Narrative, or Reverse Chronological ordering.
-5.  **TOC**: Select Markdown, Plain Text, or No Table of Contents.
-6.  **Range**: Use the drag-bar slider to visually select a specific range of scenes to include (useful for generating a single act or particular range of scenes).
-7.  **Output**: A new file is created in the `AI/` folder containing the compiled text of all selected scenes.
+2.  **Subplot Filter**: Optionally filter to compile only scenes from a specific subplot.
+3.  **Order**: Choose from Narrative, Chronological, Reverse Narrative, or Reverse Chronological ordering.
+4.  **TOC**: Select Markdown, Plain Text, or No Table of Contents.
+5.  **Range**: Use the drag-bar slider to visually select a specific range of scenes to include (useful for generating a single act or particular range of scenes).
+6.  **Output**: A new file is created in the `AI/` folder containing the compiled text of all selected scenes.
 
 ### Zero Draft Mode
 Prevents edits to completed zero-draft scenes. Click completed scene → modal for pending edits → save ideas for later revision. Keeps you progress to new scenes instead of endlessly revising. See the **[Settings](Settings#zero-draft-mode)** for details.

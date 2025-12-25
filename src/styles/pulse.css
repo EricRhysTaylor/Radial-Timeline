@@ -80,10 +80,10 @@
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--background-modifier-border);
+  margin-top: 20px;
+  padding-top: 0;
 }
+
 /* Pulse Processing Modal Styles */
 .rt-pulse-modal-shell.modal {
   width: min(760px, 92vw);
@@ -105,7 +105,7 @@
 
 /* Flattened padding for Scene Pulse Analysis modal only */
 .rt-pulse-modal.rt-gossamer-score-modal {
-  padding: 18px 20px 18px;
+  padding: 0 !important;
 }
 
 .rt-pulse-modal::before {
@@ -133,9 +133,11 @@
 }
 
 .rt-gossamer-score-modal .rt-pulse-glass-card {
-  padding: 14px 16px;
-  border-radius: 14px;
-  box-shadow: none;
+  padding: 12px 14px !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
 .rt-pulse-progress-hero {
@@ -151,11 +153,15 @@
 
 /* Flatter hero for Scene Pulse Analysis */
 .rt-gossamer-score-modal .rt-pulse-progress-hero {
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: none;
-  border-radius: 16px;
+  padding: 12px 14px !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+}
+
+.rt-gossamer-score-modal .rt-pulse-progress-hero::after {
+  display: none !important;
 }
 
 .rt-pulse-progress-hero::after {
@@ -607,8 +613,8 @@
 }
 
 .rt-gossamer-score-modal .rt-pulse-progress-body {
-  gap: 12px;
-  margin-top: 14px;
+  gap: 10px !important;
+  margin-top: 12px !important;
 }
 
 .rt-pulse-progress-card {
@@ -620,8 +626,8 @@
 }
 
 .rt-gossamer-score-modal .rt-pulse-progress-card {
-  padding: 16px 18px;
-  gap: 12px;
+  padding: 16px 18px !important;
+  gap: 12px !important;
 }
 
 .rt-pulse-progress-container {
@@ -1439,15 +1445,10 @@
   width: fit-content;
 }
 
+/* Shared Modal Base Styles - All modals use these */
 .rt-gossamer-hero-system {
   margin: 2px 0 0;
   padding: 0;
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--text-normal);
-}
-
-.rt-book-designer-modal .rt-gossamer-hero-system {
   font-size: 1.8rem;
   font-weight: 700;
   background: linear-gradient(to right, #fff, #f0f0f0);
@@ -1459,7 +1460,7 @@
 
 .rt-gossamer-score-subtitle {
   margin: 0;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 0.95rem;
   line-height: 1.4;
 }

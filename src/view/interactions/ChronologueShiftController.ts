@@ -220,9 +220,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         const modeAttr = alienModeActive ? 'alien' : 'active';
         svg.setAttribute('data-shift-mode', modeAttr);
         
-        // Update boundary labels for alien mode
+        // Update date labels for alien mode
         if (alienModeActive) {
-            updateBoundaryLabelsForAlienMode(true);
+            updateDateLabelsForAlienMode(true);
         }
 
         // Make all scenes non-select (gray) - CSS handles this automatically
@@ -262,7 +262,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             if (altButton) updateAltButtonState(altButton, false);
             
             // Restore Earth labels
-            updateBoundaryLabelsForAlienMode(false);
+            updateDateLabelsForAlienMode(false);
 
             selectedScenes = [];
             rebuildSelectedPathsSet(); // Rebuild Set after clearing
@@ -294,22 +294,24 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
     };
 
-    // Update boundary date labels for alien mode (planetary time conversion)
-    const updateBoundaryLabelsForAlienMode = (enableAlien: boolean) => {
-        const boundaryLabels = svg.querySelectorAll('.rt-date-boundary[data-earth-date]');
+    // Update all date labels around the chronologue perimeter for alien mode (planetary time)
+    const updateDateLabelsForAlienMode = (enableAlien: boolean) => {
+        const dateLabels = svg.querySelectorAll('.rt-month-label-outer[data-earth-date]');
         const profile = getActivePlanetaryProfile(view.plugin.settings);
-        
-        boundaryLabels.forEach(label => {
+
+        const includeTimeInLabel = (earthLabel: string): boolean =>
+            /(\d{1,2}:\d{2}\s*(am|pm)?|noon|midnight)/i.test(earthLabel);
+        const padTime = (value: number): string => String(Math.max(0, value)).padStart(2, '0');
+
+        dateLabels.forEach(label => {
             const textPath = label.querySelector('textPath');
             if (!textPath) return;
-            
+
             if (enableAlien && profile) {
-                // Convert to planetary time
                 const earthDateStr = label.getAttribute('data-earth-date');
                 if (!earthDateStr) return;
-                
+
                 // Store original Earth label if not already stored
-                // Extract text from tspan elements to preserve multiline format
                 if (!label.getAttribute('data-earth-label')) {
                     const tspans = textPath.querySelectorAll('tspan');
                     if (tspans.length > 0) {
@@ -319,34 +321,54 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                         label.setAttribute('data-earth-label', textPath.textContent || '');
                     }
                 }
-                
+                if (!label.getAttribute('data-earth-label-html')) {
+                    label.setAttribute('data-earth-label-html', textPath.innerHTML);
+                }
+
+                const earthLabel = label.getAttribute('data-earth-label') || '';
                 const earthDate = new Date(earthDateStr);
                 const conversion = convertFromEarth(earthDate, profile);
                 if (conversion) {
-                    // Format: 3-line layout to prevent clipping
-                    // Line 1: Epoch label (e.g., "SOL")
-                    // Line 2: "YEAR" + year number
-                    // Line 3: Month + Day
-                    const epochLabel = profile.epochLabel || '';
                     const monthName = profile.monthNames?.[conversion.localMonthIndex] || String(conversion.localMonthIndex + 1);
-                    const alienLabel = `${epochLabel}\nYEAR ${conversion.localYear}\n${monthName} ${conversion.localDayOfMonth}`;
-                    // Clear existing content and create tspan elements
-                    while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
-                    alienLabel.split('\n').forEach((line, i) => {
-                        const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                        tspan.setAttribute('x', '0');
-                        tspan.setAttribute('dy', i === 0 ? '0' : '0.9em');
-                        tspan.textContent = line;
-                        textPath.appendChild(tspan);
-                    });
+                    const isBoundary = label.classList.contains('rt-date-boundary');
+
+                    if (isBoundary) {
+                        // Boundary labels keep their multi-line layout
+                        const alienLines: string[] = [];
+                        if (profile.epochLabel) alienLines.push(profile.epochLabel);
+                        alienLines.push(`YEAR ${conversion.localYear}`);
+                        alienLines.push(`${monthName} ${conversion.localDayOfMonth}`);
+                        if (includeTimeInLabel(earthLabel)) {
+                            alienLines.push(`${padTime(conversion.localHours)}:${padTime(conversion.localMinutes)}`);
+                        }
+
+                        while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
+                        alienLines.forEach((line, i) => {
+                            const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                            tspan.setAttribute('x', '0');
+                            tspan.setAttribute('dy', i === 0 ? '0' : '0.9em');
+                            tspan.textContent = line;
+                            textPath.appendChild(tspan);
+                        });
+                    } else {
+                        // Regular perimeter ticks stay single-line
+                        const epochPrefix = profile.epochLabel ? `${profile.epochLabel} ` : '';
+                        const timeSuffix = includeTimeInLabel(earthLabel)
+                            ? ` @ ${padTime(conversion.localHours)}:${padTime(conversion.localMinutes)}`
+                            : '';
+                        const alienText = `${epochPrefix}YEAR ${conversion.localYear} ${monthName} ${conversion.localDayOfMonth}${timeSuffix}`;
+                        while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
+                        textPath.textContent = alienText;
+                    }
                 }
             } else {
                 // Restore Earth label
+                const earthLabelHtml = label.getAttribute('data-earth-label-html');
                 const earthLabel = label.getAttribute('data-earth-label');
-                if (earthLabel) {
-                    // Clear existing content
+                if (earthLabelHtml) {
+                    textPath.innerHTML = earthLabelHtml; // SAFE: innerHTML used for restoring saved SVG tspan structure
+                } else if (earthLabel) {
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
-                    // Check if it had multiple lines
                     if (earthLabel.includes('\n')) {
                         earthLabel.split('\n').forEach((line, i) => {
                             const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
@@ -379,7 +401,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                 globalAlienModeActive = true;
                 updateAltButtonState(altButton, true);
                 svg.setAttribute('data-shift-mode', 'alien');
-                updateBoundaryLabelsForAlienMode(true);
+                updateDateLabelsForAlienMode(true);
             }
         }
     };

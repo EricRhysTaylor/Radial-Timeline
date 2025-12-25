@@ -93,6 +93,7 @@ export class SearchService {
         this.plugin.getSceneData().then(scenes => {
             scenes.forEach(scene => {
                 const povText = scene.pov ? String(scene.pov) : '';
+                // Include hover-visible text so squares highlight when hover text matches
                 const textFields: (string | undefined)[] = [
                     scene.title,
                     scene.synopsis,
@@ -100,7 +101,10 @@ export class SearchService {
                     scene.subplot,
                     scene.location,
                     povText,
-                    scene.Duration
+                    scene.Duration,
+                    scene["currentSceneAnalysis"],
+                    scene["previousSceneAnalysis"],
+                    scene["nextSceneAnalysis"]
                 ];
                 const textMatched = textFields.some(f => containsWholePhrase(f, term, false));
                 // Check both the numeric date format and the display format

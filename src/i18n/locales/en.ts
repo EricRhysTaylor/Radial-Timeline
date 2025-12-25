@@ -340,7 +340,7 @@ export const en: TranslationKeys = {
         loadError: 'Failed to load scenes.',
     },
     planetary: {
-        heading: 'Planetary time (experimental custom calendar)',
+        heading: 'Planetary calendar system',
         enable: {
             name: 'Enable planetary conversions',
             desc: 'Turns on the converter modal, Chronologue Alt/Option tooltip, and synopsis line for the active profile.',

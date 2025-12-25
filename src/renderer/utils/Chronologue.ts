@@ -210,8 +210,8 @@ export function renderOuterLabelTexts({
                 .join('');
         }
 
-        // Add data-earth-date for boundary labels to support alien mode conversion
-        const earthDateAttr = (isFirst || isLast) && earthDate ? ` data-earth-date="${earthDate}"` : '';
+        // Add data-earth-date so alien (planetary) mode can swap labels
+        const earthDateAttr = earthDate ? ` data-earth-date="${earthDate}"` : '';
 
         const labelHtml = `
             <text class="${labelClass}"${earthDateAttr} ${isPastMonth ? 'opacity="0.5"' : ''}>

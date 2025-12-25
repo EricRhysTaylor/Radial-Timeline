@@ -68,6 +68,18 @@ export class FileTrackingService {
         });
 
         this.plugin.registerEvent(this.plugin.app.workspace.on('layout-change', () => {
+            // Avoid refreshing while an Obsidian modal is open (prevents flicker behind dialogs).
+            if (this.isModalOpen()) {
+                // Try once shortly after the modal likely closes.
+                window.setTimeout(() => {
+                    if (!this.isModalOpen()) {
+                        this.updateOpenFilesTracking();
+                        this.plugin.refreshTimelineIfNeeded(null);
+                    }
+                }, 200);
+                return;
+            }
+
             this.updateOpenFilesTracking();
             this.plugin.refreshTimelineIfNeeded(null);
         }));
@@ -102,5 +114,18 @@ export class FileTrackingService {
             }
         }
         this.plugin.refreshTimelineIfNeeded(file);
+    }
+
+    /**
+     * Heuristic: detect if any Obsidian modal is currently mounted.
+     * This prevents timeline refreshes while a modal is visible, which causes UI flicker.
+     */
+    private isModalOpen(): boolean {
+        try {
+            const container = document.body.querySelector('.modal-container');
+            return !!(container && container.childElementCount > 0);
+        } catch {
+            return false;
+        }
     }
 }

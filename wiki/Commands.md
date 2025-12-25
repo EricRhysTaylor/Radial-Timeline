@@ -26,4 +26,4 @@ Type "Radial Timeline" to filter the list.
 | **Gossamer AI evaluation...** | Runs AI analysis to evaluate story beats/momentum for the Gossamer view. | [[Gossamer Mode#ai-analysis]] |
 | **Scene pulse analysis (manuscript order)** | Runs AI analysis on scenes sequentially (all scenes). | [[AI Analysis]] |
 | **Scene pulse analysis (subplot order)** | Runs AI analysis on a specific subplot. | [[AI Analysis]] |
-| **Planetary time converter** | Opens the calculator for custom planetary calendars (if enabled in settings). | [[Settings#alien-calendar-system]] |
+| **Planetary time converter** | Opens the calculator for custom planetary calendars (if enabled in settings). | [[Settings#planetary-time]] |
