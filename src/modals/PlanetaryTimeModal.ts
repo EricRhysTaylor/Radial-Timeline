@@ -69,6 +69,7 @@ export class PlanetaryTimeModal extends Modal {
         const inputSetting = new Settings(contentEl)
             .setName(t('planetary.modal.datetimeLabel'))
             .setDesc(t('planetary.modal.datetimeDesc'));
+        inputSetting.settingEl.addClass('rt-planetary-datetime-setting');
 
         inputSetting.addText((text: TextComponent) => {
             text.inputEl.type = 'date';
