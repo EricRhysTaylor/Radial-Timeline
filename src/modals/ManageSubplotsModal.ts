@@ -34,24 +34,23 @@ export class ManageSubplotsModal extends Modal {
         const { contentEl, modalEl } = this;
         contentEl.empty();
         
-        // Add Pulse styles
-        modalEl.classList.add('rt-pulse-modal-shell', 'rt-subplot-modal-shell');
-        contentEl.addClass('rt-subplot-modal');
-        contentEl.addClass('rt-manuscript-surface');
+        // Apply generic modal shell + modal-specific class
+        modalEl.classList.add('rt-modal-shell');
+        contentEl.addClass('rt-modal-container', 'rt-manage-subplots-modal');
 
-        // Hero Section
-        const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
-        hero.createSpan({ text: 'Configuration', cls: 'rt-pulse-hero-badge' });
-        hero.createEl('h2', { text: 'Manage Subplots', cls: 'rt-pulse-progress-heading' });
-        hero.createDiv({ text: 'Rename or remove subplots across the manuscript.', cls: 'rt-pulse-progress-subtitle' });
+        // Hero Section (generic header)
+        const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
+        hero.createSpan({ text: 'Configuration', cls: 'rt-modal-badge' });
+        hero.createDiv({ text: 'Manage Subplots', cls: 'rt-modal-title' });
+        hero.createDiv({ text: 'Rename or remove subplots across the manuscript.', cls: 'rt-modal-subtitle' });
 
         // Stats Placeholder
-        this.statsContainer = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
-        this.statsContainer.createSpan({ text: 'Loading stats...', cls: 'rt-pulse-hero-meta-item' });
+        this.statsContainer = hero.createDiv({ cls: 'rt-modal-meta' });
+        this.statsContainer.createSpan({ text: 'Loading stats...', cls: 'rt-modal-meta-item' });
 
         // Single card container (avoid extra nesting)
-        const card = contentEl.createDiv({ cls: 'rt-subplot-management-card rt-pulse-glass-card' });
-        this.listContainer = card.createDiv({ cls: 'rt-subplot-management-list' });
+        const card = contentEl.createDiv({ cls: 'rt-manage-subplots-card rt-pulse-glass-card' });
+        this.listContainer = card.createDiv({ cls: 'rt-manage-subplots-list' });
         
         // Initial load
         this.loadSubplots();
@@ -75,32 +74,32 @@ export class ManageSubplotsModal extends Modal {
 
         // Update Stats
         this.statsContainer.empty();
-        this.statsContainer.createSpan({ text: `Total Subplots: ${this.subplots.length}`, cls: 'rt-pulse-hero-meta-item' });
+        this.statsContainer.createSpan({ text: `Total Subplots: ${this.subplots.length}`, cls: 'rt-modal-meta-item' });
 
         // Clear list
         this.listContainer.empty();
         
         // Header
-        const header = this.listContainer.createDiv({ cls: 'rt-pulse-ruler-title rt-subplot-management-header' });
+        const header = this.listContainer.createDiv({ cls: 'rt-manage-subplots-header' });
         header.setText('Active Subplots');
 
         // List Scroll Area
-        const scrollArea = this.listContainer.createDiv({ cls: 'rt-subplot-management-scroll' });
+        const scrollArea = this.listContainer.createDiv({ cls: 'rt-manage-subplots-scroll' });
 
         sorted.forEach(subplot => {
-            const row = scrollArea.createDiv({ cls: 'rt-subplot-management-row' });
+            const row = scrollArea.createDiv({ cls: 'rt-manage-subplots-row' });
             
             // Left: Name and Count
-            const info = row.createDiv({ cls: 'rt-subplot-management-info' });
+            const info = row.createDiv({ cls: 'rt-manage-subplots-info' });
             
-            const nameEl = info.createDiv({ cls: 'rt-pulse-ruler-label rt-subplot-management-name' });
+            const nameEl = info.createDiv({ cls: 'rt-manage-subplots-name' });
             nameEl.setText(subplot.name);
 
-            const countEl = info.createDiv({ cls: 'rt-pulse-ruler-value rt-subplot-management-count' });
+            const countEl = info.createDiv({ cls: 'rt-manage-subplots-count' });
             countEl.setText(`${subplot.count} scenes`);
 
             // Right: Actions
-            const actions = row.createDiv({ cls: 'rt-subplot-management-actions' });
+            const actions = row.createDiv({ cls: 'rt-manage-subplots-actions' });
 
             // Rename Button
             const renameBtn = new ButtonComponent(actions)
@@ -113,7 +112,7 @@ export class ManageSubplotsModal extends Modal {
             pencilIcon.innerHTML = PENCIL_ICON; // SAFE: innerHTML used for SVG icon
             renameBtn.buttonEl.appendChild(pencilIcon);
             
-            renameBtn.buttonEl.classList.add('rt-pulse-icon-button', 'rt-subplot-management-btn');
+            renameBtn.buttonEl.classList.add('rt-pulse-icon-button', 'rt-manage-subplots-btn');
 
             // Delete Button (Disable for Main Plot)
             const isMainPlot = subplot.name === "Main Plot";
@@ -126,11 +125,11 @@ export class ManageSubplotsModal extends Modal {
             eraserIcon.innerHTML = ERASER_ICON; // SAFE: innerHTML used for SVG icon
             deleteBtn.buttonEl.appendChild(eraserIcon);
 
-            deleteBtn.buttonEl.classList.add('rt-pulse-icon-button', 'rt-subplot-management-btn', 'rt-subplot-management-delete-btn');
+            deleteBtn.buttonEl.classList.add('rt-pulse-icon-button', 'rt-manage-subplots-btn', 'rt-manage-subplots-delete-btn');
             
             if (isMainPlot) {
-                deleteBtn.buttonEl.classList.add('rt-subplot-management-disabled');
-                renameBtn.buttonEl.classList.add('rt-subplot-management-disabled');
+                deleteBtn.buttonEl.classList.add('rt-manage-subplots-disabled');
+                renameBtn.buttonEl.classList.add('rt-manage-subplots-disabled');
             }
         });
     }

@@ -76,3 +76,4 @@ Reference `src/modals/ManuscriptOptionsModal.ts` for the gold standard implement
 
 
 
+

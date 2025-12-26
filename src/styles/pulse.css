@@ -532,15 +532,15 @@
 }
 
 
-/* Subplot Management Modal */
+/* Manage Subplots Modal */
 
-.rt-subplot-management-list {
+.rt-manage-subplots-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.rt-subplot-management-card {
+.rt-manage-subplots-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -550,7 +550,7 @@
   min-height: 0;
 }
 
-.rt-subplot-management-scroll {
+.rt-manage-subplots-scroll {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -560,7 +560,7 @@
   padding-bottom: 4px;
 }
 
-.rt-subplot-management-row {
+.rt-manage-subplots-row {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
@@ -572,23 +572,29 @@
   margin-bottom: 4px;
 }
 
-.rt-subplot-management-info {
+.rt-manage-subplots-info {
   display: flex;
   flex-direction: column;
 }
 
-.rt-subplot-management-count {
+.rt-manage-subplots-name {
+  font-size: 1em;
+  color: var(--text-normal);
+}
+
+.rt-manage-subplots-count {
   font-size: 0.85em;
   color: var(--text-muted);
   margin-top: 2px;
+  font-weight: 600;
 }
 
-.rt-subplot-management-actions {
+.rt-manage-subplots-actions {
   display: flex;
   gap: 8px;
 }
 
-.rt-subplot-management-btn {
+.rt-manage-subplots-btn {
   padding: 4px;
   height: 32px;
   width: 32px;
@@ -599,19 +605,20 @@
   box-shadow: none;
 }
 
-.rt-subplot-management-btn svg {
+.rt-manage-subplots-btn svg {
   width: 16px;
   height: 16px;
 }
 
-.rt-subplot-management-delete-btn:not(:disabled) {
+.rt-manage-subplots-delete-btn:not(:disabled) {
   color: var(--text-error);
 }
 
-.rt-subplot-management-disabled {
+.rt-manage-subplots-disabled {
   opacity: 0.3;
 }
 
+/* Keep old names for rename modal input (used in sub-modals) */
 .rt-subplot-management-input-label {
   margin-bottom: 8px;
   color: var(--text-muted);
@@ -626,26 +633,25 @@
   color: var(--text-normal);
 }
 
-.rt-subplot-management-header {
+.rt-manage-subplots-header {
   margin-bottom: 14px;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
 }
 
-/* Subplot modal sizing */
-.rt-subplot-modal-shell.modal {
-  width: min(500px, 90vw);
+/* Manage Subplots modal sizing - uses generic shell */
+.rt-modal-shell.modal:has(.rt-manage-subplots-modal) {
+  width: min(700px, 90vw);
 }
 
-.rt-subplot-modal-shell .modal-content {
-  min-height: 80vh;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.rt-subplot-modal {
+.rt-manage-subplots-modal {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 80vh;
   max-height: 90vh;
 }
 

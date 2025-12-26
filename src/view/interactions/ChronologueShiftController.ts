@@ -727,7 +727,7 @@ function createShiftButton(): SVGGElement {
 
     // Add tooltip data attributes for Obsidian setTooltip
     button.classList.add('rt-tooltip-target');
-    button.setAttribute('data-tooltip', 'Toggle Shift Mode for elapsed time comparison');
+    button.setAttribute('data-tooltip', 'Elapsed scene time comparison & gap visualization');
     button.setAttribute('data-tooltip-placement', 'bottom');
 
     button.appendChild(path);
