@@ -242,7 +242,7 @@ class SubplotPickerModal extends Modal {
         this.statsEl = formCard.createDiv({ cls: 'rt-subplot-picker-stats' });
         this.updateStats(this.selectedSubplot);
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-subplot-picker-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
         new ButtonComponent(buttonRow)
             .setButtonText('Process flagged scenes')
             .setCta()

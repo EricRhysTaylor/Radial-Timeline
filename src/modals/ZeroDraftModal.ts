@@ -49,7 +49,7 @@ export class ZeroDraftModal extends Modal {
         this.textareaEl.value = this.originalText;
 
         // Buttons container
-        const buttonRow = contentEl.createDiv({ cls: 'rt-zero-draft-buttons' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
 
         // OK button
         new ButtonComponent(buttonRow)

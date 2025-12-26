@@ -65,27 +65,28 @@ export class GossamerProcessingModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('rt-pulse-modal-shell');
+            modalEl.classList.add('rt-modal-shell');
+            modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
 
-        contentEl.addClass('rt-gossamer-score-modal');
-        contentEl.addClass('rt-manuscript-surface');
+        contentEl.addClass('rt-modal-container', 'rt-gossamer-processing-modal');
 
         // Show confirmation view first
         this.showConfirmationView();
     }
 
     private renderProcessingHero(parent: HTMLElement, subtitle: string, modelName?: string): void {
-        const hero = parent.createDiv({ cls: 'rt-pulse-progress-hero' });
+        const hero = parent.createDiv({ cls: 'rt-modal-header' });
         
         // Build badge text
         const badgeText = modelName 
-            ? `AI MOMENTUM ANALYSIS • ${modelName.toUpperCase()}`
-            : 'AI MOMENTUM ANALYSIS';
+            ? `AI momentum analysis · ${modelName}`
+            : 'AI momentum analysis';
             
-        hero.createSpan({ text: badgeText, cls: 'rt-pulse-hero-badge' });
-        hero.createEl('h2', { text: 'Gossamer Momentum Analysis', cls: 'rt-pulse-progress-heading' });
-        hero.createDiv({ text: subtitle, cls: 'rt-pulse-progress-subtitle' });
+        hero.createSpan({ text: badgeText, cls: 'rt-modal-badge' });
+        hero.createDiv({ text: 'Gossamer momentum analysis', cls: 'rt-modal-title' });
+        hero.createDiv({ text: subtitle, cls: 'rt-modal-subtitle' });
     }
 
     onClose(): void {
@@ -126,13 +127,13 @@ export class GossamerProcessingModal extends Modal {
         const infoEl = card.createDiv({ cls: 'rt-pulse-info' });
 
         // Beat system info (will be updated when manuscript info is set)
-        const beatSystemEl = infoEl.createDiv({ cls: 'rt-gossamer-beat-system-info' });
+        const beatSystemEl = infoEl.createDiv({ cls: 'rt-gossamer-proc-beat-system-info' });
         beatSystemEl.setText('Gathering manuscript details...');
 
         // Manuscript info section (will be populated by caller)
-        const infoSection = card.createDiv({ cls: 'rt-gossamer-info-section' });
-        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-gossamer-section-title' });
-        this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-manuscript-info' });
+        const infoSection = card.createDiv({ cls: 'rt-gossamer-proc-info-section' });
+        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-gossamer-proc-section-title' });
+        this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-proc-manuscript-info' });
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
 
         // Check if API key is configured
@@ -144,7 +145,7 @@ export class GossamerProcessingModal extends Modal {
         }
 
         // Action buttons
-        const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Begin Analysis')
@@ -181,9 +182,9 @@ export class GossamerProcessingModal extends Modal {
         const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-pulse-glass-card' });
 
         // Manuscript info section (reusing existing styles but inside the card)
-        const infoSection = progressCard.createDiv({ cls: 'rt-gossamer-info-section' });
-        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-gossamer-section-title' });
-        this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-manuscript-info' });
+        const infoSection = progressCard.createDiv({ cls: 'rt-gossamer-proc-info-section' });
+        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-gossamer-proc-section-title' });
+        this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-proc-manuscript-info' });
         this.manuscriptInfoEl.setText('Assembling manuscript...');
 
         // Progress bar container
@@ -193,22 +194,22 @@ export class GossamerProcessingModal extends Modal {
         this.progressBarEl.style.setProperty('--progress-width', '0%');
 
         // Status section
-        const statusSection = progressCard.createDiv({ cls: 'rt-gossamer-status-section' });
-        statusSection.createEl('h3', { text: 'Status', cls: 'rt-gossamer-section-title' });
-        this.statusTextEl = statusSection.createDiv({ cls: 'rt-gossamer-status-text' });
+        const statusSection = progressCard.createDiv({ cls: 'rt-gossamer-proc-status-section' });
+        statusSection.createEl('h3', { text: 'Status', cls: 'rt-gossamer-proc-section-title' });
+        this.statusTextEl = statusSection.createDiv({ cls: 'rt-gossamer-proc-status-text' });
         this.statusTextEl.setText(this.currentStatus);
 
         // API status section
-        const apiSection = progressCard.createDiv({ cls: 'rt-gossamer-api-section' });
-        apiSection.createEl('h3', { text: 'API Activity', cls: 'rt-gossamer-section-title' });
-        this.apiStatusEl = apiSection.createDiv({ cls: 'rt-gossamer-api-status' });
+        const apiSection = progressCard.createDiv({ cls: 'rt-gossamer-proc-api-section' });
+        apiSection.createEl('h3', { text: 'API Activity', cls: 'rt-gossamer-proc-section-title' });
+        this.apiStatusEl = apiSection.createDiv({ cls: 'rt-gossamer-proc-api-status' });
         this.apiStatusEl.setText('Waiting to send...');
 
         // Error section
         this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-pulse-glass-card rt-hidden' });
 
         // Close button (disabled while processing)
-        const buttonContainer = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+        const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
         this.closeButtonEl = new ButtonComponent(buttonContainer)
             .setButtonText('Close')
             .setDisabled(true)
@@ -225,12 +226,12 @@ export class GossamerProcessingModal extends Modal {
             this.manuscriptInfoEl.empty();
 
             // Stats Grid
-            const stats = this.manuscriptInfoEl.createDiv({ cls: 'rt-gossamer-stats' });
+            const stats = this.manuscriptInfoEl.createDiv({ cls: 'rt-gossamer-proc-stats' });
 
             const createStat = (label: string, value: string) => {
-                const item = stats.createDiv({ cls: 'rt-gossamer-stat-item' });
-                item.createDiv({ cls: 'rt-gossamer-stat-label', text: label });
-                item.createDiv({ cls: 'rt-gossamer-stat-value', text: value });
+                const item = stats.createDiv({ cls: 'rt-gossamer-proc-stat-item' });
+                item.createDiv({ cls: 'rt-gossamer-proc-stat-label', text: label });
+                item.createDiv({ cls: 'rt-gossamer-proc-stat-value', text: value });
             };
 
             createStat('Scenes', info.totalScenes.toLocaleString());
@@ -241,14 +242,14 @@ export class GossamerProcessingModal extends Modal {
             // Add note if this is iterative refinement with previous analysis
             if (info.hasIterativeContext) {
                 stats.createDiv({
-                    cls: 'rt-gossamer-stat-row rt-gossamer-iterative-note',
+                    cls: 'rt-gossamer-proc-stat-row rt-gossamer-proc-iterative-note',
                     text: `Iterative refinement: Previous analysis will be sent for comparison`
                 });
             }
         }
 
         // Update the beat system info in confirmation view if it exists
-        const beatSystemInfoEl = this.confirmationView?.querySelector('.rt-gossamer-beat-system-info');
+        const beatSystemInfoEl = this.confirmationView?.querySelector('.rt-gossamer-proc-beat-system-info');
         if (beatSystemInfoEl) {
             beatSystemInfoEl.setText(`Beat System: ${info.beatSystem}`);
         }
@@ -381,11 +382,11 @@ export class GossamerProcessingModal extends Modal {
         // Show error section
         if (this.errorListEl.hasClass('rt-hidden')) {
             this.errorListEl.removeClass('rt-hidden');
-            const header = this.errorListEl.createDiv({ cls: 'rt-beats-error-header' });
+            const header = this.errorListEl.createDiv({ cls: 'rt-gossamer-proc-error-header' });
             header.setText('Errors encountered:');
         }
 
-        const errorItem = this.errorListEl.createDiv({ cls: 'rt-beats-error-item' });
+        const errorItem = this.errorListEl.createDiv({ cls: 'rt-gossamer-proc-error-item' });
         errorItem.setText(message);
     }
 

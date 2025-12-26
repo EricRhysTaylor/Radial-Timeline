@@ -224,7 +224,7 @@ export class AiContextModal extends Modal {
         (this as any)._inputHandler = handleInput;
 
         // Action buttons
-        const actionRow = contentEl.createDiv({ cls: 'rt-ai-context-actions' });
+        const actionRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
         
         // Save button
         this.saveButton = new ButtonComponent(actionRow)

@@ -38,7 +38,7 @@ class ConfirmationModal extends Modal {
         const messageEl = contentEl.createDiv({ cls: 'rt-confirmation-message' });
         messageEl.setText(this.message);
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-beats-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Continue')
@@ -215,7 +215,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         const metaItems = options?.metaItems ?? [];
         if (metaItems.length > 0) {
             const metaEl = hero.createDiv({ cls: 'rt-scene-analysis-meta' });
-            for (const item of metaItems) {
+        for (const item of metaItems) {
                 metaEl.createSpan({ text: item, cls: 'rt-scene-analysis-meta-item' });
             }
         }
@@ -429,7 +429,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         });
 
         // Action buttons
-        const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('Start processing')
@@ -608,7 +608,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-pulse-glass-card rt-hidden' });
 
-        this.actionButtonContainer = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+        this.actionButtonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
         this.abortButtonEl = new ButtonComponent(this.actionButtonContainer)
             .setButtonText('Abort processing')
             .setWarning()

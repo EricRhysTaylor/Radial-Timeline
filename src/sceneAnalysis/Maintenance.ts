@@ -218,7 +218,7 @@ class PurgeConfirmationModal extends Modal {
         const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
         warningEl.createEl('strong', { text: 'Are you sure you want to proceed?' });
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
         new ButtonComponent(buttonRow)
             .setButtonText('Purge beats')
             .setWarning()

@@ -275,7 +275,7 @@ export class BookDesignerModal extends Modal {
 
         // Generate Beats Toggle (Pills)
         const beatSystem = this.plugin.settings.beatSystem || 'Custom';
-        const beatLabel = beatSystem === 'Custom' ? 'Custom beats' : `${beatSystem} beats`;
+        const beatLabel = beatSystem === 'Custom' ? 'custom beats' : `${beatSystem} beats`;
         
         const beatSetting = extraRow.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block' });
         beatSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: `Generate ${beatLabel}` });
@@ -294,7 +294,7 @@ export class BookDesignerModal extends Modal {
         });
 
         // Actions Footer
-        const footer = contentEl.createDiv({ cls: 'rt-beats-actions rt-manuscript-actions' });
+        const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
 
         new ButtonComponent(footer)
             .setButtonText('Cancel')

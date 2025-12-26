@@ -192,7 +192,7 @@ class SubplotDeletionConfirmModal extends Modal {
         const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
         warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the manuscript?`);
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
         
         new ButtonComponent(buttonRow)
             .setButtonText('Cancel')
@@ -246,7 +246,7 @@ class RenameSubplotModal extends Modal {
         // Focus input
         window.setTimeout(() => inputEl.focus(), 50);
 
-        const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
         
         const save = async () => {
             const val = inputEl.value.trim();

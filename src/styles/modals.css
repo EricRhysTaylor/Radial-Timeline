@@ -26,16 +26,16 @@
   margin-bottom: 4px;
 }
 
-.rt-planetary-modal-actions {
-  margin-top: 8px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
 .rt-planetary-modal-result {
-  margin-top: 12px;
-  font-weight: 600;
+  margin-top: 36px;
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--text-normal);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
 }
 
 .rt-planetary-time-text {
@@ -52,35 +52,42 @@
 }
 
 /* Fix input styling in planetary modal */
-.rt-planetary-modal-shell input[type="date"],
-.rt-planetary-modal-shell input[type="time"] {
-  background-color: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
+.rt-modal-shell input[type="date"],
+.rt-modal-shell input[type="time"] {
+  background-color: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-normal);
   font-family: var(--font-interface);
   font-size: var(--font-ui-medium);
   line-height: 1.3;
-  padding: 4px 8px;
-  border-radius: var(--input-radius);
+  padding: 6px 10px;
+  border-radius: 8px;
   height: auto;
 }
 
-.rt-confirm-modal {
+.rt-planetary-modal .setting-item {
+  border: none;
+  padding: 12px 0;
+}
+
+.rt-planetary-modal .rt-modal-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 12px;
+}
+
+.rt-drag-confirm-modal {
   max-width: 560px;
 }
 
-.rt-confirm-heading {
-  color: var(--rt-confirm-accent, var(--interactive-accent));
-}
-
-.rt-confirm-list {
+.rt-drag-confirm-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin: 20px 0;
 }
 
-.rt-confirm-row {
+.rt-drag-confirm-row {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -90,7 +97,7 @@
   border: 1px solid var(--background-modifier-border);
 }
 
-.rt-confirm-row-icon {
+.rt-drag-confirm-row-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,17 +105,17 @@
   color: var(--rt-confirm-accent, var(--text-normal));
 }
 
-.rt-confirm-row-icon svg {
+.rt-drag-confirm-row-icon svg {
   width: 24px;
   height: 24px;
 }
 
-.rt-confirm-row-text {
+.rt-drag-confirm-row-text {
   font-size: 1.05em;
   line-height: 1.4;
 }
 
-.rt-confirm-modal .rt-mod-cta {
+.rt-drag-confirm-modal .rt-mod-cta {
   background-color: var(--rt-confirm-accent, var(--interactive-accent));
 }
 
@@ -282,12 +289,4 @@
   text-transform: uppercase;
   color: var(--text-muted);
   margin-bottom: 8px;
-}
-
-.rt-subplot-picker-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 12px;
 }

@@ -9,41 +9,53 @@ Date: 2025-12-26
 ---
 
 ### Title
-Single-screen radial visualization system for long-form content with multi-thread ring mapping and multi-timeline modes
+Single-screen radial visualization system for structured content with multi-thread ring mapping and multi-timeline modes
 
 ---
 
 ### Technical Field
-The disclosure relates to computer-implemented user interfaces and visualization systems for planning, organizing, and managing long-form content, including narrative works and other structured content sets.
+The disclosure relates to computer-implemented user interfaces and visualization systems for planning, organizing, and managing structured content, including fiction and non-fiction narrative works, screenplays, podcasts, video scripts, and other segmented content sets.
 
 ---
 
 ### Background
-Creators of long-form works often rely on lists, folders, and spreadsheets to track segments (e.g., scenes/sections), threads (e.g., subplot/storyline/topic), and timing (e.g., reader order, in-world chronology). Conventional tools fragment this information across multiple views and screens, which can make it difficult to perceive structure and continuity at scale, and to stay on schedule as a work evolves.
+Creators of structured content — including fiction (novels, short stories, screenplays) and non-fiction (essays, memoirs, biographies, textbooks, how-to guides), as well as podcasts, video scripts, and other segmented works — often rely on lists, folders, and spreadsheets to track segments (e.g., scenes/sections/episodes/chapters), threads (e.g., subplot/storyline/topic/character arc/thematic thread), and timing (e.g., reader order, in-world chronology, episode sequence). Conventional tools fragment this information across multiple views and screens, which can make it difficult to perceive structure and continuity at scale, and to stay on schedule as a work evolves.
 
 ---
 
 ### Summary (High Level)
-Disclosed is a computer-implemented system that renders an entire long-form work on a single screen as a radial map. Content segments are arranged around a circle and mapped into concentric rings representing threads/subplots. A mode controller renders the same underlying dataset in four coordinated modes that implement four timelines: narrative time, chronological time, author progress time, and publishing stage time. The interface surfaces dense segment metadata (e.g., synopsis, duration, status, stage) without requiring navigation away from the one-screen map and supports direct manipulation for reordering and exploration.
+Disclosed is a computer-implemented system that renders an entire structured work on a single screen as a radial map. Content segments (scenes, episodes, chapters, sections, beats) are arranged around a circle and mapped into concentric rings representing threads/subplots. A mode controller renders the same underlying dataset in four coordinated modes that implement four timelines: narrative time, chronological time, author progress time, and publishing stage time. The interface surfaces dense segment metadata (e.g., synopsis, duration, status, stage) without requiring navigation away from the one-screen map and supports direct manipulation for reordering and exploration.
 
 ---
 
 ### Brief Description of the Drawings (Example Figure Set)
 The following figures are exemplary and may be replaced or supplemented by additional screenshots:
 
-- **FIG. 1**: Narrative mode radial map showing all segments and thread rings, with beat-system markers/labels on the perimeter and thread-based color coding. (`wiki/images/narrative.jpeg`)
-- **FIG. 2**: Hover synopsis view showing information-dense segment metadata and analysis context while the radial map remains visible. (`wiki/images/synopsis.jpeg`)
-- **FIG. 3**: Thread-isolated mode emphasizing author status and publish stage indicators for schedule adherence. (`wiki/images/subplot.jpeg`)
-- **FIG. 4**: Chronological mode ordering segments by time metadata with adaptive time labeling and duration/overlap visualization. (`wiki/images/chronologue.jpeg`)
-- **FIG. 5**: Chronological shift sub-mode showing elapsed-time comparison between selected segments and discontinuity/gap visualization. (`wiki/images/shift.jpeg`)
-- **FIG. 6**: Momentum mode showing beat-level momentum values and trajectory visualization. (`wiki/images/gossamer.jpeg`)
+- **FIG. 1**: Narrative mode radial map showing all segments and thread rings, with beat-system markers/labels on the perimeter and thread-based color coding.
+- **FIG. 2**: Hover synopsis view showing information-dense segment metadata and analysis context while the radial map remains visible.
+- **FIG. 3**: Thread-isolated mode emphasizing author status and publish stage indicators for schedule adherence.
+- **FIG. 4**: Chronological mode ordering segments by time metadata with adaptive time labeling and duration/overlap visualization.
+- **FIG. 5**: Chronological shift sub-mode showing elapsed-time comparison between selected segments and discontinuity/gap visualization.
+- **FIG. 6**: Momentum mode showing beat-level momentum values and trajectory visualization.
+
+![FIG. 1 - Narrative Mode](wiki/images/narrative.jpeg)
+
+![FIG. 2 - Synopsis Hover View](wiki/images/synopsis.jpeg)
+
+![FIG. 3 - Thread-Isolated Mode](wiki/images/subplot.jpeg)
+
+![FIG. 4 - Chronological Mode](wiki/images/chronologue.jpeg)
+
+![FIG. 5 - Chronological Shift Sub-Mode](wiki/images/shift.jpeg)
+
+![FIG. 6 - Gossamer Momentum Mode](wiki/images/gossamer.jpeg)
 
 ---
 
 ### Detailed Description
 
 #### A. Data model (content segments + metadata)
-In one embodiment, a "content segment" is a discrete unit of a long-form work stored as a file. Content segments can include narrative scenes and structural beats/plot points. Each segment may include, or be associated with, metadata fields including:
+In one embodiment, a "content segment" is a discrete unit of a structured work stored as a file. Content segments can include narrative scenes, structural beats/plot points, chapters, episodes, sections, or any other organizational unit of the work. The work can be of any length and any genre, including fiction (novels, short stories, novellas, screenplays), non-fiction (essays, memoirs, biographies, textbooks, how-to guides, articles), podcast series, video scripts, or other segmented content. Each segment may include, or be associated with, metadata fields including:
 
 - Identifier (e.g., filename prefix number)
 - Thread assignment (one or more threads/subplots; a segment may belong to multiple threads)
@@ -71,7 +83,7 @@ The system renders a circular map with:
 
 **Three-act angular structure**: The radial layout may be divided into angular sectors (e.g., three 120° sectors) representing structural divisions (e.g., acts), with visual dividers and optionally labeled with act identifiers. The system may support customizable sector counts (e.g., five-act structure).
 
-This mapping enables an entire manuscript (or comparable long-form work) to be visualized at once on a single screen as an information-dense "visual puzzle" that the author assembles and refines.
+This mapping enables an entire work (manuscript, screenplay, podcast series, video script, or other structured content) to be visualized at once on a single screen as an information-dense "visual puzzle" that the author assembles and refines.
 
 #### C. Modes implementing four timelines
 The system includes a mode controller configured to render four modes that implement four timelines:
@@ -104,14 +116,14 @@ In an embodiment, the chronological mode includes a shift sub-mode in which sele
 ---
 
 ### Abstract (150–250 words; Working Draft)
-A computer-implemented system provides a single-screen, information-dense visualization of an entire long-form work as a radial map. The work is decomposed into content segments, each having associated metadata including at least one thread assignment and at least one timeline attribute. The system generates a circular layout in which concentric rings represent distinct threads and angular position represents ordering. Content segments occupy substantially equal angular space independent of duration to ensure clickability and title display; rings are ordered radially by segment density (more segments outward, fewer inward). A selectable mode controller renders the same underlying dataset in four coordinated modes that implement four author-facing timelines: (i) a narrative mode presenting content segments in reader order with thread coloring and beat-system markers; (ii) a thread-isolated mode presenting one thread at a time while emphasizing author schedule status and publishing stage with a central legend grid; (iii) a chronological mode positioning content segments by time metadata with duration arcs, adaptive time labeling, and dedicated backdrop-event rings for contextual events; and (iv) a Gossamer Momentum mode hiding segments to create a bezier curve plot showing narrative drive and momentum at key story beat junctures. User interactions surface dense metadata without leaving the screen, including hover-based synopsis display, cross-ring highlight propagation for multi-thread segments, dominant thread indicators (folded-corner cue), and direct manipulation to reorder segments. The result is a unified one-screen interface that allows an author to assemble, verify, and maintain structural coherence across many segments while simultaneously tracking progress and publication stage.
+A computer-implemented system provides a single-screen, information-dense visualization of an entire structured work as a radial map. The work is decomposed into content segments (scenes, episodes, chapters, sections, beats, or other organizational units), each having associated metadata including at least one thread assignment and at least one timeline attribute. The system generates a circular layout in which concentric rings represent distinct threads and angular position represents ordering. Content segments occupy substantially equal angular space independent of duration to ensure clickability and title display; rings are ordered radially by segment density (more segments outward, fewer inward). A selectable mode controller renders the same underlying dataset in four coordinated modes that implement four author-facing timelines: (i) a narrative mode presenting content segments in reader order with thread coloring and beat-system markers; (ii) a thread-isolated mode presenting one thread at a time while emphasizing author schedule status and publishing stage with a central legend grid; (iii) a chronological mode positioning content segments by time metadata with duration arcs, adaptive time labeling, and dedicated backdrop-event rings for contextual events; and (iv) a Gossamer Momentum mode hiding segments to create a bezier curve plot showing narrative drive and momentum at key story beat junctures. User interactions surface dense metadata without leaving the screen, including hover-based synopsis display, cross-ring highlight propagation for multi-thread segments, dominant thread indicators (folded-corner cue), and direct manipulation to reorder segments. The result is a unified one-screen interface that allows an author to assemble, verify, and maintain structural coherence across many segments of any content type while simultaneously tracking progress and publication stage.
 
 ---
 
 ### Claims (Optional for provisional; included for later non-provisional drafting)
 
-1. **A computer-implemented method** for visualizing a long-form work on a single display, the method comprising:  
-   receiving, by one or more processors, a plurality of content segments stored as files, each content segment having (i) an identifier, (ii) a narrative-order attribute, (iii) a thread attribute associating the content segment with at least one thread, and (iv) at least one metadata field selected from the group consisting of synopsis, character, location, point-of-view, duration, status, due date, and publish stage;  
+1. **A computer-implemented method** for visualizing a structured work on a single display, the method comprising:  
+   receiving, by one or more processors, a plurality of content segments stored as files, each content segment representing an organizational unit of the structured work selected from the group consisting of scenes, episodes, chapters, sections, and beats, each content segment having (i) an identifier, (ii) a narrative-order attribute, (iii) a thread attribute associating the content segment with at least one thread, and (iv) at least one metadata field selected from the group consisting of synopsis, character, location, point-of-view, duration, status, due date, and publish stage;  
    generating a radial layout in which (a) a plurality of concentric rings represent respective threads, (b) angular position represents ordering of the plurality of content segments, and (c) each content segment occupies substantially equal angular space within its ring independent of duration metadata;  
    ordering the plurality of concentric rings radially such that threads having more content segments are positioned at larger radii and threads having fewer content segments are positioned at smaller radii;  
    rendering, on a single screen, the radial layout in a selectable plurality of modes comprising a narrative mode, a thread-isolated mode, a chronological mode, and a Gossamer Momentum mode, each mode implementing a different author timeline selected from narrative time, chronological time, author progress time, and publishing stage time;  
@@ -121,10 +133,10 @@ A computer-implemented system provides a single-screen, information-dense visual
    in the Gossamer Momentum mode, hiding content segments and creating a bezier curve plot showing narrative drive and momentum at key story beat junctures; and  
    providing one or more interactive controls that, without leaving the single screen, (i) display metadata for a selected content segment and (ii) modify ordering of the content segments.
 
-2. **A system** for single-screen visualization of a long-form work, comprising:  
+2. **A system** for single-screen visualization of a structured work, comprising:  
    one or more processors;  
    a memory storing instructions that, when executed by the one or more processors, cause the system to:  
-   ingest a plurality of content segments each associated with metadata including thread assignment and at least one timeline attribute;  
+   ingest a plurality of content segments, each representing an organizational unit of the structured work selected from the group consisting of scenes, episodes, chapters, sections, and beats, each associated with metadata including thread assignment and at least one timeline attribute;  
    compute a radial layout having concentric rings corresponding to threads and angular positions corresponding to ordering, wherein each content segment occupies substantially equal angular space within its ring independent of duration metadata;  
    order the concentric rings radially such that threads having more content segments are positioned at larger radii and threads having fewer content segments are positioned at smaller radii;  
    render the radial layout on a display in a plurality of selectable modes comprising a narrative mode, a thread-isolated mode, a chronological mode, and a Gossamer Momentum mode, wherein the modes implement respective timelines of narrative time, chronological time, author progress time, and publishing stage time; and  

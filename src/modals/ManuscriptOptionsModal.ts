@@ -162,7 +162,7 @@ export class ManuscriptOptionsModal extends Modal {
 
         this.loadingEl = rangeCard.createDiv({ cls: 'rt-manuscript-loading', text: t('manuscriptModal.rangeLoading') });
 
-        const actions = container.createDiv({ cls: 'rt-beats-actions rt-manuscript-actions' });
+        const actions = container.createDiv({ cls: 'rt-modal-actions' });
         this.actionButton = new ButtonComponent(actions)
             .setButtonText(t('manuscriptModal.actionCreate'))
             .setCta()

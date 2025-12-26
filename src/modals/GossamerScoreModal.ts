@@ -128,19 +128,19 @@ export class GossamerScoreModal extends Modal {
     const { contentEl, modalEl } = this;
     contentEl.empty();
 
-    // Set modal width using Obsidian's approach
+    // Set modal width using new generic system
     if (modalEl) {
       modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
       modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.classList.add('rt-pulse-modal-shell');
+      modalEl.classList.add('rt-modal-shell');
     }
 
-    contentEl.addClass('rt-gossamer-score-modal');
-    contentEl.addClass('rt-pulse-modal');
-    contentEl.addClass('rt-manuscript-surface');
+    contentEl.addClass('rt-modal-container', 'rt-gossamer-score-modal');
 
     // Use settings as source of truth for beat system
     const settingsSystem = this.plugin.settings.beatSystem || 'Save The Cat';
+    
+    // ... filtering logic ...
 
     // Filter beats based on settings (same logic as main.ts getSceneData)
     // Need to read Beat Model from metadata cache since it's not on Scene object
@@ -195,13 +195,13 @@ export class GossamerScoreModal extends Modal {
     // const rangeValidation = validateBeatRanges(filteredBeats, settingsSystem);
 
     // Title with plot system name rendered in hero card
-    const headerEl = contentEl.createDiv({ cls: 'rt-gossamer-simple-header' });
-    headerEl.createSpan({ text: 'Gossamer momentum', cls: 'rt-gossamer-simple-badge' });
-    headerEl.createDiv({ text: `${settingsSystem} Beat System`, cls: 'rt-gossamer-hero-system' });
-    const heroSubtitle = headerEl.createDiv({ cls: 'rt-gossamer-score-subtitle' });
+    const headerEl = contentEl.createDiv({ cls: 'rt-modal-header' });
+    headerEl.createSpan({ text: 'Gossamer momentum', cls: 'rt-modal-badge' });
+    headerEl.createDiv({ text: `${settingsSystem} beat system`, cls: 'rt-modal-title' });
+    const heroSubtitle = headerEl.createDiv({ cls: 'rt-modal-subtitle' });
     heroSubtitle.setText('Enter momentum scores (0-100) for each beat. Previous scores will be saved as history.');
-    const heroMeta = headerEl.createDiv({ cls: 'rt-gossamer-simple-meta' });
-    heroMeta.createSpan({ text: `Beats detected: ${actualCount}` });
+    const heroMeta = headerEl.createDiv({ cls: 'rt-modal-meta' });
+    heroMeta.createSpan({ text: `Beats detected: ${actualCount}`, cls: 'rt-modal-meta-item' });
 
     // Show warning if no beats match
     if (actualCount === 0) {
@@ -365,7 +365,7 @@ export class GossamerScoreModal extends Modal {
 
 
     // Buttons
-    const buttonContainer = contentEl.createDiv('rt-gossamer-score-buttons');
+    const buttonContainer = contentEl.createDiv('rt-modal-actions');
 
     new ButtonComponent(buttonContainer)
       .setButtonText('Paste scores')
@@ -798,19 +798,28 @@ export class GossamerScoreModal extends Modal {
     // Show confirmation dialog with improved styling
     const confirmed = await new Promise<boolean>((resolve) => {
       const modal = new Modal(this.app);
-      modal.titleEl.setText('Delete all Gossamer scores');
+      const { modalEl, contentEl } = modal;
+      modal.titleEl.setText('');
+      contentEl.empty();
+      
+      modalEl.classList.add('rt-modal-shell');
+      contentEl.addClass('rt-modal-container', 'rt-gossamer-score-modal');
 
-      const content = modal.contentEl.createDiv();
-      content.addClass('rt-gossamer-confirm-content');
+      const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
+      hero.createSpan({ text: 'Warning', cls: 'rt-modal-badge' });
+      hero.createDiv({ text: 'Delete all Gossamer scores', cls: 'rt-modal-title' });
+      hero.createDiv({ cls: 'rt-modal-subtitle', text: 'This action cannot be undone.' });
+
+      const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
 
       // Warning message with proper styling
-      const warningEl = content.createEl('div', {
-        text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) and their justifications from ALL Beat notes. This action cannot be undone.'
+      const warningEl = card.createDiv({
+        text: 'This will permanently delete ALL Gossamer scores (Gossamer1-30) and their justifications from ALL Beat notes.',
+        cls: 'rt-gossamer-confirm-warning'
       });
-      warningEl.addClass('rt-gossamer-confirm-warning');
 
-      // Button container with proper Obsidian styling
-      const buttonContainer = content.createDiv('rt-gossamer-confirm-buttons');
+      // Button container with proper styling
+      const buttonContainer = contentEl.createDiv('rt-modal-actions');
 
       new ButtonComponent(buttonContainer)
         .setButtonText('Delete all scores')
@@ -916,14 +925,14 @@ class NormalizeConfirmationModal extends Modal {
     contentEl.empty();
 
     if (modalEl) {
-      modalEl.classList.add('rt-pulse-modal-shell');
+      modalEl.classList.add('rt-modal-shell');
     }
-    contentEl.addClass('rt-gossamer-score-modal');
+    contentEl.addClass('rt-modal-container', 'rt-gossamer-score-modal');
 
-    const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
-    hero.createSpan({ text: 'Warning', cls: 'rt-pulse-hero-badge' });
-    hero.createEl('h2', { text: 'Normalize Gossamer history?', cls: 'rt-pulse-progress-heading' });
-    hero.createDiv({ cls: 'rt-pulse-progress-subtitle', text: 'This action cannot be undone.' });
+    const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
+    hero.createSpan({ text: 'Warning', cls: 'rt-modal-badge' });
+    hero.createDiv({ text: 'Normalize Gossamer history?', cls: 'rt-modal-title' });
+    hero.createDiv({ cls: 'rt-modal-subtitle', text: 'This action cannot be undone.' });
 
     const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
 
@@ -933,7 +942,7 @@ class NormalizeConfirmationModal extends Modal {
     const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
     warningEl.createEl('strong', { text: 'Are you sure you want to proceed?' });
 
-    const buttonRow = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+    const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
     new ButtonComponent(buttonRow)
       .setButtonText('Normalize')
       .setWarning()

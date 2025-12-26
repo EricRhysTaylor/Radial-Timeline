@@ -18,29 +18,32 @@ export class DragConfirmModal extends Modal {
     onOpen(): void {
         const { contentEl, modalEl } = this;
         contentEl.empty();
-        modalEl.addClass('rt-pulse-modal-shell');
-        contentEl.addClass('rt-pulse-modal');
-        contentEl.addClass('rt-pulse-glass-card');
-        contentEl.addClass('rt-confirm-modal');
-        contentEl.addClass('rt-manuscript-surface');
-        modalEl.style.setProperty('width', 'min(560px, 90vw)');
-        modalEl.style.setProperty('max-height', '90vh');
+        
+        if (modalEl) {
+            modalEl.classList.add('rt-modal-shell');
+            modalEl.style.width = 'min(560px, 90vw)'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+
+        contentEl.addClass('rt-modal-container', 'rt-drag-confirm-modal');
         
         // Use the passed accent color (subplot color)
         if (this.accent) {
             contentEl.style.setProperty('--rt-confirm-accent', this.accent);
         }
 
-        contentEl.createEl('h3', { text: 'Confirm reorder', cls: 'rt-pulse-progress-heading rt-confirm-heading' });
+        // Header
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        header.createSpan({ cls: 'rt-modal-badge', text: 'Reorder' });
+        header.createDiv({ cls: 'rt-modal-title', text: 'Confirm reorder' });
 
-        const listDiv = contentEl.createDiv({ cls: 'rt-confirm-list' });
+        const listDiv = contentEl.createDiv({ cls: 'rt-drag-confirm-list' });
 
         // Render each line as a styled card with icon
         this.summary.forEach((line, index) => {
-            const row = listDiv.createDiv({ cls: 'rt-confirm-row' });
+            const row = listDiv.createDiv({ cls: 'rt-drag-confirm-row' });
 
             // Icon container
-            const iconContainer = row.createDiv({ cls: 'rt-confirm-row-icon' });
+            const iconContainer = row.createDiv({ cls: 'rt-drag-confirm-row-icon' });
 
             // Assign specific icons based on list index
             if (index === 0) {
@@ -52,10 +55,10 @@ export class DragConfirmModal extends Modal {
             }
 
             // Text content
-            row.createDiv({ cls: 'rt-confirm-row-text', text: line });
+            row.createDiv({ cls: 'rt-drag-confirm-row-text', text: line });
         });
 
-        const buttons = contentEl.createDiv({ cls: 'rt-pulse-actions' });
+        const buttons = contentEl.createDiv({ cls: 'rt-modal-actions' });
         const confirmBtn = buttons.createEl('button', { text: 'Apply', cls: 'rt-mod-cta' });
         const cancelBtn = buttons.createEl('button', { text: 'Cancel' });
 

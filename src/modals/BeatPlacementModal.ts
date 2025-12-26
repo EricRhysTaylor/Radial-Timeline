@@ -114,7 +114,7 @@ export class BeatPlacementModal extends Modal {
         }
         
         // Button container
-        const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-buttons' });
+        const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
         
         new ButtonComponent(buttonContainer)
             .setButtonText('Begin Analysis')
@@ -199,7 +199,7 @@ export class BeatPlacementModal extends Modal {
         this.errorListEl.hide();
         
         // Close button (disabled initially)
-        const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-buttons' });
+        const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
         this.closeButtonEl = new ButtonComponent(buttonContainer)
             .setButtonText('Processing...')
             .setDisabled(true);
