@@ -2,6 +2,7 @@
  * Gossamer Score Entry Modal - Manual entry of beat momentum scores
  */
 import { Modal, App, ButtonComponent, Notice, TextComponent, TFile } from 'obsidian';
+import { tooltip, tooltipForComponent } from '../utils/tooltip';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import { normalizeBeatName, normalizeGossamerHistory } from '../utils/gossamer';
@@ -130,8 +131,9 @@ export class GossamerScoreModal extends Modal {
 
     // Set modal width using new generic system
     if (modalEl) {
-      modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-      modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.width = '980px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxWidth = '98vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxHeight = '92vh'; // Prevent button clipping at bottom
       modalEl.classList.add('rt-modal-shell');
     }
 
@@ -323,7 +325,7 @@ export class GossamerScoreModal extends Modal {
               text: justification,
               cls: 'rt-gossamer-score-justification'
             });
-            justEl.setAttribute('title', justification);
+            tooltip(justEl, justification, 'bottom');
           }
 
           scoreContainer.addEventListener('click', () => {
@@ -367,13 +369,13 @@ export class GossamerScoreModal extends Modal {
     // Buttons
     const buttonContainer = contentEl.createDiv('rt-modal-actions');
 
-    new ButtonComponent(buttonContainer)
+    const pasteBtn = new ButtonComponent(buttonContainer)
       .setButtonText('Paste scores')
       .onClick(async () => {
         await this.pasteFromClipboard();
       });
 
-    new ButtonComponent(buttonContainer)
+    const copyBtn = new ButtonComponent(buttonContainer)
       .setButtonText('Copy template for AI')
       .setTooltip('Copy beat names in AI-ready format')
       .onClick(async () => {
@@ -388,32 +390,41 @@ export class GossamerScoreModal extends Modal {
     });
     toggleLabel.createSpan({ text: 'Include beat descriptions when copying template' });
 
-    new ButtonComponent(buttonContainer)
+    const normalizeBtn = new ButtonComponent(buttonContainer)
       .setButtonText('Normalize history')
       .setTooltip('Remove gaps and orphaned notes from Gossamer runs')
       .onClick(async () => {
         await this.normalizeAllScores();
       });
 
-    new ButtonComponent(buttonContainer)
+    const saveBtn = new ButtonComponent(buttonContainer)
       .setButtonText('Save scores')
       .setCta()
       .onClick(async () => {
         await this.saveScores();
       });
 
-    new ButtonComponent(buttonContainer)
+    const deleteBtn = new ButtonComponent(buttonContainer)
       .setButtonText('Delete scores')
       .setWarning()
       .onClick(async () => {
         await this.deleteAllScores();
       });
 
-    new ButtonComponent(buttonContainer)
+    const cancelBtn = new ButtonComponent(buttonContainer)
       .setButtonText('Cancel')
       .onClick(() => {
         this.close();
       });
+
+    // Tooltips with centered bubble arrow (bottom placement)
+    tooltipForComponent(pasteBtn, 'Paste scores from clipboard', 'bottom');
+    tooltipForComponent(copyBtn, 'Copy beat names for AI prompts', 'bottom');
+    tooltip(toggleLabel, 'Include beat descriptions when copying template', 'bottom');
+    tooltipForComponent(normalizeBtn, 'Cleanup score history gaps', 'bottom');
+    tooltipForComponent(saveBtn, 'Save new scores and deletions', 'bottom');
+    tooltipForComponent(deleteBtn, 'Delete all scores for these beats', 'bottom');
+    tooltipForComponent(cancelBtn, 'Close without saving', 'bottom');
   }
 
   private buildEntries(): void {

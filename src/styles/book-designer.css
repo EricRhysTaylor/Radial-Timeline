@@ -18,8 +18,9 @@
 .rt-manuscript-surface .rt-pulse-glass-card.rt-manuscript-card {
     box-shadow: none;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 14px 16px;
+    padding: 8px 16px 14px;
     gap: 10px;
+    margin-top: 0 !important; /* remove inherited pulse margin in Book Designer */
 }
 
 /* Inner Block (Group) */

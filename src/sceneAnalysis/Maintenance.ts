@@ -196,29 +196,37 @@ class PurgeConfirmationModal extends Modal {
         contentEl.empty();
 
         if (modalEl) {
-            modalEl.classList.add('rt-pulse-modal-shell');
+            modalEl.classList.add('rt-modal-shell');
+            modalEl.style.width = '760px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw';
+            modalEl.style.maxHeight = '92vh';
         }
-        contentEl.addClass('rt-gossamer-score-modal');
+        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('rt-purge-confirm-modal');
 
-        const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
-        hero.createSpan({ text: 'Warning', cls: 'rt-pulse-hero-badge' });
-        hero.createEl('h2', { text: 'Confirm purge beats', cls: 'rt-pulse-progress-heading' });
-        hero.createDiv({ cls: 'rt-pulse-progress-subtitle', text: 'This action cannot be undone.' });
+        const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
+        hero.createSpan({ text: 'Warning', cls: 'rt-modal-badge' });
+        hero.createDiv({ text: 'Confirm purge beats', cls: 'rt-modal-title' });
+        hero.createDiv({ text: 'This action cannot be undone.', cls: 'rt-modal-subtitle' });
 
-        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
+        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card rt-purge-confirm-card' });
 
         const messageEl = card.createDiv({ cls: 'rt-purge-message' });
         messageEl.setText(this.message);
 
         const detailsEl = card.createDiv({ cls: 'rt-purge-details' });
-        detailsEl.createEl('strong', { text: 'This will permanently delete:' });
-        const listEl = detailsEl.createEl('ul');
+        detailsEl.createEl('div', { text: 'This will permanently delete:', cls: 'rt-purge-danger' });
+        const listEl = detailsEl.createEl('ul', { cls: 'rt-purge-list' });
         this.details.forEach(detail => listEl.createEl('li', { text: detail }));
 
-        const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
-        warningEl.createEl('strong', { text: 'Are you sure you want to proceed?' });
+        const warningEl = card.createDiv({ cls: 'rt-purge-warning' });
+        warningEl.setText('Are you sure you want to proceed?');
 
         const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        new ButtonComponent(buttonRow)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
+
         new ButtonComponent(buttonRow)
             .setButtonText('Purge beats')
             .setWarning()
@@ -226,10 +234,6 @@ class PurgeConfirmationModal extends Modal {
                 this.close();
                 this.onConfirm();
             });
-
-        new ButtonComponent(buttonRow)
-            .setButtonText('Cancel')
-            .onClick(() => this.close());
     }
 }
 

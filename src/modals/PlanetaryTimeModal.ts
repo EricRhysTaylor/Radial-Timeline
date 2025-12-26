@@ -1,4 +1,4 @@
-import { App, Modal, Setting as Settings, DropdownComponent, TextComponent, ButtonComponent, ExtraButtonComponent } from 'obsidian';
+import { App, Modal, Setting as Settings, DropdownComponent, TextComponent, ButtonComponent, ExtraButtonComponent, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { PlanetaryProfile } from '../types';
 import { convertFromEarth } from '../utils/planetaryTime';
@@ -11,7 +11,10 @@ export class PlanetaryTimeModal extends Modal {
     private localDateValue: string;
     private localTimeValue: string;
     private resultEl: HTMLElement | null = null;
+    private resultTextEl: HTMLElement | null = null;
     private profileDropdown: DropdownComponent | null = null;
+    private lastProfile: PlanetaryProfile | null = null;
+    private lastFormatted: string | null = null;
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app);
@@ -111,16 +114,25 @@ export class PlanetaryTimeModal extends Modal {
             .onClick(() => this.renderResult());
         convertBtn.buttonEl.classList.add('rt-planetary-convert-btn');
 
-
-        this.resultEl = contentEl.createDiv({ cls: 'rt-planetary-modal-result' });
+        const resultRow = contentEl.createDiv({ cls: 'rt-planetary-modal-result-row' });
+        this.resultEl = resultRow.createDiv({ cls: 'rt-planetary-modal-result' });
+        const iconEl = this.resultEl.createDiv({ cls: 'rt-planetary-result-icon' });
+        setIcon(iconEl, 'orbit');
+        this.resultTextEl = this.resultEl.createDiv({ cls: 'rt-planetary-result-text' });
+        new ExtraButtonComponent(resultRow)
+            .setIcon('copy')
+            .setTooltip('Copy YAML')
+            .onClick(() => this.copyYaml());
         this.renderResult();
     }
 
     private renderResult(): void {
-        if (!this.resultEl) return;
+        if (!this.resultEl || !this.resultTextEl) return;
+        this.lastProfile = null;
+        this.lastFormatted = null;
         const profile = this.getActiveProfile();
         if (!profile) {
-            this.resultEl.setText(t('planetary.modal.noProfile'));
+            this.resultTextEl.setText(t('planetary.modal.noProfile'));
             return;
         }
         let parsed: Date | null = null;
@@ -136,15 +148,17 @@ export class PlanetaryTimeModal extends Modal {
             parsed = null;
         }
         if (!parsed) {
-            this.resultEl.setText(t('planetary.modal.invalid'));
+            this.resultTextEl.setText(t('planetary.modal.invalid'));
             return;
         }
         const conversion = convertFromEarth(parsed, profile);
         if (!conversion) {
-            this.resultEl.setText(t('planetary.preview.invalid'));
+            this.resultTextEl.setText(t('planetary.preview.invalid'));
             return;
         }
-        this.resultEl.setText(conversion.formatted);
+        this.lastProfile = profile;
+        this.lastFormatted = conversion.formatted;
+        this.resultTextEl.setText(conversion.formatted);
     }
 
     private getActiveProfile(): PlanetaryProfile | null {
@@ -164,5 +178,17 @@ export class PlanetaryTimeModal extends Modal {
         const hours = String(d.getHours()).padStart(2, '0');
         const minutes = String(d.getMinutes()).padStart(2, '0');
         return `${hours}:${minutes}`;
+    }
+
+    private copyYaml(): void {
+        if (!this.lastProfile || !this.lastFormatted) return;
+        const yaml = [
+            'Planetary:',
+            `  profile: ${this.lastProfile.label || 'Unknown'}`,
+            `  local: "${this.lastFormatted}"`,
+        ].join('\n');
+        navigator.clipboard?.writeText(yaml).catch(() => {
+            // Obsidian desktop supports clipboard; ignore failures silently
+        });
     }
 }

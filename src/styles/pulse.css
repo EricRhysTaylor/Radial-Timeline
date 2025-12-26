@@ -103,7 +103,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  margin-bottom: 0;
+  margin-bottom: 20px;
 }
 
 /* Modal Badge - pill shaped label at top of header */
@@ -339,6 +339,7 @@
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
   box-shadow: none !important;
   border-radius: 12px !important;
+  margin-bottom: 12px !important;
 }
 
 .rt-gossamer-score-modal .rt-pulse-progress-hero::after {
@@ -580,8 +581,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px 18px;
-  margin-top: 18px;
+  padding: 12px 18px;
+  margin-top: 0;
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -793,7 +794,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  margin-top: 20px;
+  margin-top: 16px;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -805,7 +806,7 @@
 }
 
 .rt-pulse-progress-card {
-  padding: 22px 24px;
+  padding: 18px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1593,12 +1594,14 @@
 
 /* Gossamer Score Modal */
 .rt-gossamer-score-modal {
-  padding: 0;
+  padding: 26px 50px 22px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-height: 90vh;
+  max-height: 92vh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .rt-gossamer-warning {
@@ -1664,7 +1667,7 @@
 .rt-gossamer-scores-container {
   flex: 1;
   overflow-y: auto;
-  padding: 0;
+  padding: 0 4px 14px 0;
   background-color: transparent;
   min-height: 0;
   display: flex;
@@ -1858,11 +1861,68 @@
   color: var(--text-accent);
 }
 
+/* Gossamer Score Modal footer buttons */
+.rt-gossamer-score-modal .rt-modal-actions {
+  flex-wrap: wrap;
+  gap: 12px;
+  row-gap: 10px;
+  justify-content: flex-start;
+  align-items: center;
+  padding-top: 6px;
+}
+
+/* Purge confirmation modal */
+.rt-purge-confirm-card {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rt-purge-confirm-modal .rt-modal-subtitle {
+  margin-bottom: 12px;
+}
+
+.rt-purge-message {
+  font-size: 1rem;
+  color: var(--text-normal);
+  line-height: 1.5;
+}
+
+.rt-purge-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text-normal);
+}
+
+.rt-purge-danger {
+  color: var(--text-accent);
+  font-weight: 700;
+}
+
+.rt-purge-list {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-normal);
+  line-height: 1.4;
+}
+
+.rt-purge-list li {
+  margin: 3px 0;
+}
+
+.rt-purge-warning {
+  color: var(--text-normal);
+  font-weight: 700;
+}
+
 .rt-gossamer-score-label {
-  font-size: 0.65rem;
-  letter-spacing: 0.08em;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-normal);
 }
 
 .rt-gossamer-score-value {

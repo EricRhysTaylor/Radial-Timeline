@@ -27,15 +27,17 @@
 }
 
 .rt-planetary-modal-result {
-  margin-top: 36px;
+  margin-top: 0;
   font-weight: 700;
-  font-size: 1.4rem;
+  font-size: 1.2rem;
   color: var(--text-normal);
-  background: rgba(255, 255, 255, 0.05);
-  padding: 16px 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  text-align: center;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .rt-planetary-time-text {
@@ -74,7 +76,37 @@
 .rt-planetary-modal .rt-modal-header {
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 12px;
+  margin-bottom: 0;
+}
+
+.rt-planetary-modal-result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.rt-planetary-modal-result-row .rt-planetary-modal-result {
+  flex: 1;
+  margin-top: 0;
+}
+
+.rt-planetary-result-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.rt-planetary-result-icon svg {
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+  transform: translateY(0);
+}
+
+.rt-planetary-result-text {
+  flex: 1;
 }
 
 .rt-drag-confirm-modal {
