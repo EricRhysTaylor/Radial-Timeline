@@ -1,7 +1,7 @@
 import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
-import { getPlotSystem } from '../../utils/beatsSystems';
+import { getPlotSystem, getCustomSystemFromSettings } from '../../utils/beatsSystems';
 import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
 import { AiContextModal } from '../AiContextModal';
 import { DEFAULT_SETTINGS } from '../defaults';
@@ -9,29 +9,6 @@ import { renderMetadataSection } from './MetadataSection';
 
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
-
-import { PlotSystemTemplate } from '../../utils/beatsSystems';
-
-// Helper to construct dynamic custom system object
-function getCustomSystemFromSettings(plugin: RadialTimelinePlugin): PlotSystemTemplate {
-    const name = plugin.settings.customBeatSystemName || 'Custom';
-    const beatLines = plugin.settings.customBeatSystemBeats || [];
-    
-    // Convert simple strings to beat definitions
-    const beats = beatLines.filter(line => line.trim().length > 0);
-    const beatDetails = beats.map(b => ({
-        name: b,
-        description: '',
-        range: ''
-    }));
-
-    return {
-        name,
-        beats,
-        beatDetails,
-        beatCount: beats.length
-    };
-}
 
 export function renderStoryBeatsSection(params: {
     app: App;
@@ -108,22 +85,138 @@ export function renderStoryBeatsSection(params: {
                     updateTemplateButton(templateSetting, 'Custom');
                 }));
 
-        new Settings(customConfigContainer)
-            .setName('Beat List')
-            .setDesc('Enter one beat name per line (e.g. "Hook", "Plot Turn 1"). These will be generated as template files.')
-            .addTextArea(text => {
-                text
-                    .setPlaceholder('Hook\nPlot Turn 1\nPinch Point 1\n...')
-                    .setValue((plugin.settings.customBeatSystemBeats || []).join('\n'))
-                    .onChange(async (value) => {
-                        const lines = value.split('\n'); // keep empty lines for index? No, filter clean.
-                        plugin.settings.customBeatSystemBeats = lines;
-                        await plugin.saveSettings();
-                        updateTemplateButton(templateSetting, 'Custom');
-                    });
-                text.inputEl.rows = 8;
-                text.inputEl.style.width = '100%'; // SAFE: inline style used for full width input
+        // Beat List Editor (draggable rows with Name + Act)
+        const listHeader = customConfigContainer.createDiv({ cls: 'rt-custom-beat-header setting-item' });
+        listHeader.addClass('rt-beatlist-header');
+        const titleWrap = listHeader.createDiv({ cls: 'setting-item-info' });
+        titleWrap.createDiv({ text: 'Beat List', cls: 'setting-item-name' });
+        titleWrap.createDiv({ text: 'Define beats in order. Drag to reorder. Act drives the frontmatter.', cls: 'setting-item-description' });
+
+        const addBtn = listHeader.createEl('button', { text: 'Add beat', cls: 'rt-mod-cta' });
+
+        const listContainer = customConfigContainer.createDiv({ cls: 'rt-custom-beat-list' });
+
+        type BeatRow = { name: string; act: number };
+
+        const parseBeatRow = (item: unknown): BeatRow => {
+            if (typeof item === 'object' && item !== null && (item as { name?: unknown }).name) {
+                const obj = item as { name?: unknown; act?: unknown };
+                const objName = typeof obj.name === 'string' ? obj.name : String(obj.name ?? '');
+                const objAct = typeof obj.act === 'number' ? obj.act : 1;
+                return { name: objName, act: objAct };
+            }
+            const raw = String(item ?? '').trim();
+            if (!raw) return { name: '', act: 1 };
+            const m = raw.match(/^(.*?)\[(\d+)\]$/);
+            if (m) {
+                const actNum = parseInt(m[2], 10);
+                return { name: m[1].trim(), act: !Number.isNaN(actNum) ? actNum : 1 };
+            }
+            return { name: raw, act: 1 };
+        };
+
+        const saveBeats = async (beats: BeatRow[]) => {
+            plugin.settings.customBeatSystemBeats = beats;
+            await plugin.saveSettings();
+            updateTemplateButton(templateSetting, 'Custom');
+        };
+
+        const renderList = () => {
+            listContainer.empty();
+            const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow);
+
+            if (beats.length === 0) {
+                listContainer.createDiv({ text: 'No beats defined. Add one to get started.', cls: 'setting-item-description' }).style.fontStyle = 'italic';
+                return;
+            }
+
+            beats.forEach((beatLine, index) => {
+                const row = listContainer.createDiv({ cls: 'rt-custom-beat-row' });
+                row.draggable = true;
+
+                // Drag handle
+                const handle = row.createDiv({ cls: 'rt-drag-handle' });
+                setIcon(handle, 'grip-vertical');
+
+                // Index
+                const idxEl = row.createDiv({ text: `${index + 1}.`, cls: 'rt-beat-index' });
+                idxEl.style.minWidth = '24px'; // SAFE: inline width for index
+
+                // Parse "Name [Act]"
+                let name = beatLine.name;
+                let act = beatLine.act.toString();
+
+                // Name input
+                const nameInput = row.createEl('input', { type: 'text', cls: 'rt-beat-name-input' });
+                nameInput.value = name;
+                nameInput.placeholder = 'Beat name';
+                nameInput.addEventListener('change', () => {
+                    const newName = nameInput.value.trim();
+                    if (!newName) return;
+                    const updated = [...beats];
+                    updated[index] = { name: newName, act: parseInt(act, 10) || 1 };
+                    saveBeats(updated);
+                    renderList();
+                });
+
+                // Act select
+                const actSelect = row.createEl('select', { cls: 'rt-beat-act-select' });
+                [1, 2, 3].forEach(n => {
+                    const opt = actSelect.createEl('option', { value: n.toString(), text: `Act ${n}` });
+                    if (act === n.toString()) opt.selected = true;
+                });
+                actSelect.addEventListener('change', () => {
+                    act = actSelect.value;
+                    const updated = [...beats];
+                    const currentName = nameInput.value.trim() || name;
+                    updated[index] = { name: currentName, act: parseInt(act, 10) || 1 };
+                    saveBeats(updated);
+                    renderList();
+                });
+
+                // Delete button
+                const delBtn = row.createEl('button', { cls: 'rt-beat-delete-btn' });
+                setIcon(delBtn, 'trash');
+                delBtn.onclick = () => {
+                    const updated = [...beats];
+                    updated.splice(index, 1);
+                    saveBeats(updated);
+                    renderList();
+                };
+
+                // Drag and drop reorder
+                row.addEventListener('dragstart', (e) => {
+                    e.dataTransfer?.setData('text/plain', index.toString());
+                    row.classList.add('rt-dragging');
+                });
+                row.addEventListener('dragend', () => {
+                    row.classList.remove('rt-dragging');
+                });
+                row.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+                row.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const from = parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
+                    if (Number.isNaN(from) || from === index || from < 0) return;
+                    const updated = [...beats];
+                    const [moved] = updated.splice(from, 1);
+                    updated.splice(index, 0, moved);
+                    saveBeats(updated);
+                    renderList();
+                });
             });
+        };
+
+        renderList();
+
+        addBtn.onclick = () => {
+            const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow);
+            let defaultAct = beats.length > 0 ? beats[beats.length - 1].act : 1;
+            const updated = [...beats, { name: 'New Beat', act: defaultAct }];
+            saveBeats(updated);
+            renderList();
+        };
     };
     renderCustomConfig();
 
@@ -394,8 +487,14 @@ export function renderStoryBeatsSection(params: {
             displayName = plugin.settings.customBeatSystemName || 'Custom';
             
             // Check if beats are defined
-            const beats = plugin.settings.customBeatSystemBeats || [];
-            const hasBeats = beats.some(b => b.trim().length > 0);
+            const beats = (plugin.settings.customBeatSystemBeats || []).map((b: unknown) => {
+                if (typeof b === 'string') return b.trim();
+                if (typeof b === 'object' && b !== null && (b as { name?: unknown }).name) {
+                    return String((b as { name: unknown }).name).trim();
+                }
+                return '';
+            });
+            const hasBeats = beats.some(b => b.length > 0);
             
             if (hasBeats) {
                 setting.setName(`Create story beat template notes for ${displayName}`);
@@ -428,7 +527,7 @@ export function renderStoryBeatsSection(params: {
         
         // Handle Custom Dynamic System
         if (storyStructureName === 'Custom') {
-             const customSystem = getCustomSystemFromSettings(plugin);
+             const customSystem = getCustomSystemFromSettings(plugin.settings);
              if (customSystem.beats.length > 0) {
                  storyStructure = customSystem;
              } else {

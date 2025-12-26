@@ -179,8 +179,9 @@ export class GossamerScoreModal extends Modal {
     if (settingsSystem === 'Custom' && this.plugin.settings.customBeatSystemName && this.plugin.settings.customBeatSystemBeats?.length) {
         plotSystemTemplate = {
             name: this.plugin.settings.customBeatSystemName,
-            beats: this.plugin.settings.customBeatSystemBeats,
-            beatDetails: this.plugin.settings.customBeatSystemBeats.map(b => ({ name: b, description: '', range: '' })),
+            // Persisted beats are objects ({ name, act }); template expects names
+            beats: this.plugin.settings.customBeatSystemBeats.map(b => b.name),
+            beatDetails: this.plugin.settings.customBeatSystemBeats.map(b => ({ name: b.name, description: '', range: '' })),
             beatCount: this.plugin.settings.customBeatSystemBeats.length
         };
     }

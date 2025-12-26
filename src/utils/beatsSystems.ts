@@ -7,6 +7,7 @@ export interface PlotBeatInfo {
   description: string;
   placement?: string; // Formerly location/percentageRange: where this beat typically lands
   range?: string;     // Formerly momentumRange: ideal momentum/score band (0-100)
+  act?: number;       // Explicit act assignment (1, 2, 3)
 }
 
 export interface PlotSystemTemplate {
@@ -271,5 +272,31 @@ export const PLOT_SYSTEM_NAMES = Object.keys(PLOT_SYSTEMS);
 
 export function getPlotSystem(name: string): PlotSystemTemplate | null {
   return PLOT_SYSTEMS[name] || null;
+}
+
+/**
+ * Shared helper to construct the custom system object from settings.
+ * Accepts any object that matches the minimal settings shape needed.
+ */
+export function getCustomSystemFromSettings(settings: { customBeatSystemName?: string; customBeatSystemBeats?: { name: string; act: number }[] }): PlotSystemTemplate {
+    const name = settings.customBeatSystemName || 'Custom';
+    const beatObjs = settings.customBeatSystemBeats || [];
+    
+    const beats = beatObjs.map(b => b.name).filter(n => n.trim().length > 0);
+    const beatDetails = beatObjs
+        .filter(b => b.name.trim().length > 0)
+        .map(b => ({
+            name: b.name,
+            description: '',
+            range: '',
+            act: b.act
+        }));
+
+    return {
+        name,
+        beats,
+        beatDetails,
+        beatCount: beats.length
+    };
 }
 

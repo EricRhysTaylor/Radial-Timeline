@@ -117,7 +117,8 @@ export async function createBeatTemplateNotes(
     const beatName = beatSystem.beats[i];
     const beatInfo = beatSystem.beatDetails[i];
     const beatNumber = i + 1;
-    const act = getBeatAct(i, beatSystem.beats.length);
+    // Use explicit act if available, otherwise calculate
+    const act = beatInfo.act ? beatInfo.act : getBeatAct(i, beatSystem.beats.length);
     
     // Use canonical title without "Act X:" prefix for filename
     const displayName = stripActPrefix(beatName);

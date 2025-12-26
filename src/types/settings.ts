@@ -60,7 +60,7 @@ export interface RadialTimelineSettings {
     activeAiContextTemplateId?: string;
     beatSystem?: string;
     customBeatSystemName?: string;
-    customBeatSystemBeats?: string[];
+    customBeatSystemBeats?: { name: string; act: number }[];
     dominantSubplots?: Record<string, string>;
     globalPovMode?: GlobalPovMode;
     readabilityScale?: ReadabilityScale;

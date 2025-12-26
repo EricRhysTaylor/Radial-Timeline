@@ -76,19 +76,27 @@ This mapping enables an entire manuscript (or comparable long-form work) to be v
 #### C. Modes implementing four timelines
 The system includes a mode controller configured to render four modes that implement four timelines:
 
-1. **Narrative mode** (Narrative time): segments shown in reader order; thread colors dominant; may show beat-system markers/labels for pacing reference.
-2. **Thread-isolated mode** (Author time + Publishing time): one thread shown at a time; visual encoding emphasizes author status (Todo/Working/Overdue/Complete) and publish stage colors; includes a central legend/grid key for rapid schedule assessment.
-3. **Chronological mode** (Chronological time): segments positioned by chronological time metadata; may show duration arcs and overlaps; time labeling adapts to the span of the story timeline.
-4. **Momentum mode** (Momentum timeline over structure): beat notes and momentum values displayed across the work’s structure; may show trajectories, ranges, and historical values.
+1. **Narrative mode** (Narrative time): segments shown in reader order; thread colors dominant; may show beat-system markers/labels for pacing reference positioned at angular locations corresponding to beat-annotated segments.
+
+2. **Thread-isolated mode** (Author time + Publishing time): one thread shown at a time; visual encoding emphasizes author status (Todo/Working/Overdue/Complete) and publish stage colors; includes a central legend/grid key for rapid schedule assessment. The publish stage color system permeates UI elements, including the central status grid, tints for plaid patterns indicating incomplete work, Act labels, and hover meta scene titles, providing consistent visual continuity across the interface.
+
+3. **Chronological mode** (Chronological time): segments positioned by chronological time metadata; may show duration arcs extending radially from segment positions (arc length proportional to duration); time labeling adapts to the span of the story timeline using adaptive time units that compare adjacent scenes and express the most easily understood time unit based on elapsed time. Backdrop events (e.g., seasonal tides, solar movements, volcanic periods) are rendered as a dedicated ring immediately inside the outermost ring of content segments, with start and end times corresponding to the outer ring timeline dates. Overlapping backdrops may be encoded using a plaid fill pattern.
+
+4. **Gossamer Momentum mode** (Momentum timeline over structure): beat notes and momentum values displayed across the work's structure; hides scenes and creates a bezier curve plot showing the narrative drive and momentum at key story beat junctures (e.g., Save the Cat beats); may show trajectories, ranges, and historical values. The system may support multiple selectable beat systems (e.g., Save the Cat, Hero's Journey, Story Grid, custom) and filter/render beat notes according to the selected system.
 
 The four modes allow the author to switch between timelines without leaving the one-screen radial representation.
 
 #### D. Information-dense interaction on a single screen
 The interface can include interactions such as:
 
-- Hover/selection to display a synopsis panel containing dense metadata (title, date, synopsis, thread labels, and other fields)
-- Visual cues to identify a dominant thread when a segment belongs to multiple threads (e.g., folded-corner cue)
-- Direct manipulation to reorder segments in narrative order (e.g., dragging a segment indicator)
+- **Hover/selection**: Display a synopsis panel containing dense metadata (title, date, synopsis, thread labels, characters, location, point-of-view, AI analysis, and other fields) while the radial map remains visible.
+- **Dominant thread indicator**: When a segment belongs to multiple threads, the system renders a visual cue (e.g., folded-corner indicator at a beginning position of a ring) to identify the dominant thread for that segment in the outermost "all threads" ring.
+- **Cross-ring highlight propagation**: Upon selection of a content segment in one ring, the system may highlight instances of the content segment in all other rings in which the segment appears, enabling rapid tracking of multi-thread segment relationships.
+- **Direct manipulation reordering**: Drag-and-drop a segment indicator to reorder segments in narrative order, with automatic persistence of the new ordering to file metadata.
+- **Point-of-view markers**: Typographic markers (e.g., superscript numerals `¹`, `²`, `³` or symbolic indicators like `°`) encode narrative voice/POV on segment indicators.
+- **Search with metadata highlighting**: The system receives a search query, identifies content segments having metadata matching the query (including synopsis, character, location, POV, duration, and AI analysis fields), and simultaneously highlights matching segment indicators and matching text within hover synopsis panels.
+- **Conditional missing-time warnings**: In chronological mode, the system displays a missing-time warning indicator (e.g., red square) for a content segment only when an author status field indicates active work or completion (e.g., Working or Complete), implementing progressive disclosure that does not nag authors about chronological dates until scenes are actively being written.
+- **Completion estimate prediction**: The system may compute a predicted completion date based on a rate of content segment completion (e.g., scenes completed per day) and display the predicted completion date as a marker or label on the radial layout.
 
 #### E. Chronological shift (elapsed-time + discontinuity visualization)
 In an embodiment, the chronological mode includes a shift sub-mode in which selecting two segments generates an elapsed-time visualization (e.g., an arc) representing time between the selected segments. The system may identify large time gaps (discontinuities) and display gap indicators (e.g., an infinity symbol) to highlight potential continuity issues.
@@ -96,48 +104,80 @@ In an embodiment, the chronological mode includes a shift sub-mode in which sele
 ---
 
 ### Abstract (150–250 words; Working Draft)
-A computer-implemented system provides a single-screen, information-dense visualization of an entire long-form work as a radial map. The work is decomposed into content segments, each having associated metadata including at least one thread assignment and at least one timeline attribute. The system generates a circular layout in which concentric rings represent distinct threads and angular position represents ordering. A selectable mode controller renders the same underlying dataset in four coordinated modes that implement four author-facing timelines: (i) a narrative mode presenting content segments in reader order with thread coloring and optionally beat-system markers; (ii) a thread-isolated mode presenting one thread at a time while emphasizing author schedule status and publishing stage; (iii) a chronological mode positioning content segments by time metadata and enabling gap and elapsed-time inspection; and (iv) a momentum mode presenting beat-level momentum values across the structure of the work. User interactions surface dense metadata without leaving the screen, including hover-based synopsis display and direct manipulation to reorder segments. The result is a unified one-screen interface that allows an author to assemble, verify, and maintain structural coherence across many segments while simultaneously tracking progress and publication stage.
+A computer-implemented system provides a single-screen, information-dense visualization of an entire long-form work as a radial map. The work is decomposed into content segments, each having associated metadata including at least one thread assignment and at least one timeline attribute. The system generates a circular layout in which concentric rings represent distinct threads and angular position represents ordering. Content segments occupy substantially equal angular space independent of duration to ensure clickability and title display; rings are ordered radially by segment density (more segments outward, fewer inward). A selectable mode controller renders the same underlying dataset in four coordinated modes that implement four author-facing timelines: (i) a narrative mode presenting content segments in reader order with thread coloring and beat-system markers; (ii) a thread-isolated mode presenting one thread at a time while emphasizing author schedule status and publishing stage with a central legend grid; (iii) a chronological mode positioning content segments by time metadata with duration arcs, adaptive time labeling, and dedicated backdrop-event rings for contextual events; and (iv) a Gossamer Momentum mode hiding segments to create a bezier curve plot showing narrative drive and momentum at key story beat junctures. User interactions surface dense metadata without leaving the screen, including hover-based synopsis display, cross-ring highlight propagation for multi-thread segments, dominant thread indicators (folded-corner cue), and direct manipulation to reorder segments. The result is a unified one-screen interface that allows an author to assemble, verify, and maintain structural coherence across many segments while simultaneously tracking progress and publication stage.
 
 ---
 
 ### Claims (Optional for provisional; included for later non-provisional drafting)
 
 1. **A computer-implemented method** for visualizing a long-form work on a single display, the method comprising:  
-   receiving, by one or more processors, a plurality of content segments stored as files, each content segment having (i) an identifier, (ii) a narrative-order attribute, (iii) a thread attribute associating the content segment with at least one thread, and (iv) at least one metadata field selected from the group consisting of synopsis, character, location, point-of-view, duration, status, due, and publish stage;  
-   generating a radial layout in which (a) a plurality of concentric rings represent respective threads and (b) angular position represents ordering of the plurality of content segments;  
-   rendering, on a single screen, the radial layout in a selectable plurality of modes comprising a narrative mode, a thread-isolated mode, a chronological mode, and a momentum mode, each mode implementing a different author timeline selected from narrative time, chronological time, author progress time, and publishing stage time;  
-   in the narrative mode, presenting content segments in narrative order with visual thread indicators;  
-   in the thread-isolated mode, presenting content segments associated with a selected thread while visually emphasizing author progress status and publish stage;  
-   in the chronological mode, positioning content segments according to a chronological time field and displaying time gaps between non-adjacent chronological positions;  
-   in the momentum mode, presenting momentum values associated with structural beats of the long-form work; and  
+   receiving, by one or more processors, a plurality of content segments stored as files, each content segment having (i) an identifier, (ii) a narrative-order attribute, (iii) a thread attribute associating the content segment with at least one thread, and (iv) at least one metadata field selected from the group consisting of synopsis, character, location, point-of-view, duration, status, due date, and publish stage;  
+   generating a radial layout in which (a) a plurality of concentric rings represent respective threads, (b) angular position represents ordering of the plurality of content segments, and (c) each content segment occupies substantially equal angular space within its ring independent of duration metadata;  
+   ordering the plurality of concentric rings radially such that threads having more content segments are positioned at larger radii and threads having fewer content segments are positioned at smaller radii;  
+   rendering, on a single screen, the radial layout in a selectable plurality of modes comprising a narrative mode, a thread-isolated mode, a chronological mode, and a Gossamer Momentum mode, each mode implementing a different author timeline selected from narrative time, chronological time, author progress time, and publishing stage time;  
+   in the narrative mode, presenting content segments in narrative order with visual thread indicators and beat-system markers positioned at angular locations corresponding to beat-annotated segments;  
+   in the thread-isolated mode, presenting content segments associated with a selected thread while visually emphasizing author progress status and publish stage, and rendering a central legend grid for rapid schedule assessment;  
+   in the chronological mode, positioning content segments according to a chronological time field, displaying time gaps between non-adjacent chronological positions, and rendering backdrop events as a dedicated ring immediately inside an outermost ring of content segments;  
+   in the Gossamer Momentum mode, hiding content segments and creating a bezier curve plot showing narrative drive and momentum at key story beat junctures; and  
    providing one or more interactive controls that, without leaving the single screen, (i) display metadata for a selected content segment and (ii) modify ordering of the content segments.
 
 2. **A system** for single-screen visualization of a long-form work, comprising:  
    one or more processors;  
    a memory storing instructions that, when executed by the one or more processors, cause the system to:  
    ingest a plurality of content segments each associated with metadata including thread assignment and at least one timeline attribute;  
-   compute a radial layout having concentric rings corresponding to threads and angular positions corresponding to ordering;  
-   render the radial layout on a display in a plurality of selectable modes comprising a narrative mode, a thread-isolated mode, a chronological mode, and a momentum mode, wherein the modes implement respective timelines of narrative time, chronological time, author progress time, and publishing stage time; and  
+   compute a radial layout having concentric rings corresponding to threads and angular positions corresponding to ordering, wherein each content segment occupies substantially equal angular space within its ring independent of duration metadata;  
+   order the concentric rings radially such that threads having more content segments are positioned at larger radii and threads having fewer content segments are positioned at smaller radii;  
+   render the radial layout on a display in a plurality of selectable modes comprising a narrative mode, a thread-isolated mode, a chronological mode, and a Gossamer Momentum mode, wherein the modes implement respective timelines of narrative time, chronological time, author progress time, and publishing stage time; and  
    implement an interaction controller configured to present metadata for selected segments and to reorder segments via direct manipulation.
 
 3. The method of claim 1, wherein the thread attribute is derived from a structured frontmatter field and wherein a content segment is associateable with multiple threads.
 
-4. The method of claim 1, wherein the thread-isolated mode replaces thread coloring with a workflow palette representing status values including at least Todo, Working, Overdue, and Complete.
+4. The method of claim 3, wherein, for a content segment associated with multiple threads, the method further comprises rendering a folded-corner visual indicator at a beginning position of a ring to identify a dominant thread for display in an outermost ring.
 
-5. The method of claim 1, wherein the thread-isolated mode, for a content segment marked Complete, encodes the content segment according to a publish stage value.
+5. The method of claim 1, wherein the radial layout is divided into angular sectors representing structural divisions, each sector spanning a predetermined angular range.
 
-6. The method of claim 1, wherein the interactive controls include hover interaction that displays a synopsis panel including at least a title and one or more metadata fields.
+6. The method of claim 5, wherein the angular sectors comprise three 120-degree sectors representing a three-act structure.
 
-7. The method of claim 1, wherein the interactive controls include drag-and-drop reordering by selecting a segment indicator and dropping the segment indicator at a new position, further comprising persisting the new order by updating at least one ordering attribute stored in a file name or metadata.
+7. The method of claim 1, wherein the thread-isolated mode replaces thread coloring with a workflow palette representing status values including at least Todo, Working, Overdue, and Complete.
 
-8. The method of claim 1, wherein the chronological mode includes parsing partial time values including year-only and year-and-month values and defaulting missing components to first of month and time of noon.
+8. The method of claim 7, wherein the thread-isolated mode, for a content segment marked Complete, encodes the content segment according to a publish stage value.
 
-9. The method of claim 1, wherein the chronological mode includes a shift sub-mode that, upon selection of two content segments, displays an elapsed-time comparison between the selected segments.
+9. The method of claim 8, wherein publish stage color encoding permeates the thread-isolated mode by tinting at least the central legend grid, plaid patterns for incomplete segments, act labels, and hover metadata titles.
 
-10. The method of claim 9, wherein the shift sub-mode identifies and visually marks discontinuities when an elapsed time between adjacent chronological content segments exceeds a threshold.
+10. The method of claim 7, wherein incomplete content segments are encoded using a plaid fill pattern.
 
-11. The method of claim 1, further comprising receiving and rendering backdrop events as a dedicated ring separate from the content segments, each backdrop event including a start time and an end time.
+11. The method of claim 1, wherein the interactive controls include hover interaction that displays a synopsis panel including at least a title and one or more metadata fields selected from synopsis, character, location, point-of-view, duration, status, due date, publish stage, and AI-generated analysis.
 
-12. The method of claim 1, wherein the momentum mode associates momentum values with beat notes and renders the momentum values over the beat notes around the radial layout.
+12. The method of claim 1, wherein the interactive controls include drag-and-drop reordering by selecting a segment indicator and dropping the segment indicator at a new position, further comprising persisting the new order by updating at least one ordering attribute stored in a file name or metadata.
+
+13. The method of claim 1, wherein the chronological mode includes parsing partial time values including year-only and year-and-month values and defaulting missing components to first of month and time of noon.
+
+14. The method of claim 1, wherein, in the chronological mode, the method further comprises rendering duration arcs extending radially from content segment positions, the arc length proportional to duration metadata.
+
+15. The method of claim 1, wherein the chronological mode implements adaptive time labeling by comparing adjacent content segments and selecting a time unit for display based on elapsed time between the adjacent content segments.
+
+16. The method of claim 1, further comprising receiving and rendering backdrop events as a dedicated ring immediately inside an outermost ring of content segments in the chronological mode, each backdrop event including a start time and an end time corresponding to the chronological timeline.
+
+17. The method of claim 16, wherein overlapping backdrop events are encoded using a plaid fill pattern.
+
+18. The method of claim 1, wherein the chronological mode displays a missing-time warning indicator for a content segment only when an author status field of the content segment indicates active work or completion.
+
+19. The method of claim 1, wherein the chronological mode includes a shift sub-mode that, upon selection of two content segments, displays an elapsed-time comparison between the selected segments.
+
+20. The method of claim 19, wherein the shift sub-mode identifies and visually marks discontinuities when an elapsed time between adjacent chronological content segments exceeds a threshold.
+
+21. The method of claim 1, wherein the Gossamer Momentum mode associates momentum values with beat notes conforming to one of a plurality of selectable beat systems and renders the momentum values according to the selected beat system.
+
+22. The method of claim 21, wherein the plurality of selectable beat systems includes Save the Cat, Hero's Journey, Story Grid, and custom beat systems.
+
+23. The method of claim 1, wherein content segments include point-of-view metadata and the system renders typographic markers selected from superscript numerals and symbolic indicators to encode narrative voice on segment indicators.
+
+24. The method of claim 1, further comprising: receiving a search query; identifying content segments having metadata matching the query, the metadata including at least synopsis, character, location, point-of-view, duration, and AI-generated analysis fields; and simultaneously highlighting matching segment indicators and matching text within hover synopsis panels.
+
+25. The method of claim 1, further comprising: upon selection of a content segment in a first ring, highlighting instances of the content segment in all other rings in which the content segment appears.
+
+26. The method of claim 1, further comprising: computing a predicted completion date based on a rate of content segment completion; and displaying the predicted completion date as a marker on the radial layout.
+
+27. The method of claim 1, wherein each content segment is stored as a markdown file having structured YAML frontmatter containing the metadata fields.
 
 

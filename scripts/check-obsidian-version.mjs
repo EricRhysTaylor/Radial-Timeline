@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 const MANIFEST_PATH = path.join(process.cwd(), 'manifest.json');
-const VERSIONS_URL = 'https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/desktop-releases.json';
+const STABLE_VERSIONS_URL = 'https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/desktop-releases.json';
 
 // ANSI colors for output
 const COLORS = {
@@ -14,44 +14,37 @@ const COLORS = {
     reset: '\x1b[0m'
 };
 
-async function fetchLatestVersion() {
+function compareVersions(v1, v2) {
+    const parts1 = v1.split('.').map(Number);
+    const parts2 = v2.split('.').map(Number);
+    
+    for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+        const p1 = parts1[i] || 0;
+        const p2 = parts2[i] || 0;
+        
+        if (p1 > p2) return 1;
+        if (p1 < p2) return -1;
+    }
+    return 0;
+}
+
+async function fetchLatestVersion(url) {
     return new Promise((resolve, reject) => {
-        https.get(VERSIONS_URL, { headers: { 'User-Agent': 'RadialTimeline-VersionCheck' } }, (res) => {
+        https.get(url, { 
+            headers: { 'User-Agent': 'RadialTimeline-VersionCheck' }
+        }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', () => {
                 try {
                     const json = JSON.parse(data);
                     
-                    // CASE 1: 'latestVersion' key (Present in your debug log)
-                    if (json.latestVersion && typeof json.latestVersion === 'string') {
-                        resolve(json.latestVersion);
-                        return;
-                    }
-
-                    // CASE 2: 'latest' key
-                    if (json.latest && typeof json.latest === 'string') {
-                        resolve(json.latest);
-                        return;
-                    }
-
-                    // CASE 3: 'versions' object map
-                    const versionMap = (json.versions && typeof json.versions === 'object') ? json.versions : json;
+                    const result = {
+                        stable: json.latestVersion || '0.0.0',
+                        beta: json.beta?.latestVersion || null
+                    };
                     
-                    // CASE 4: Keys are version numbers
-                    const versions = Object.keys(versionMap)
-                        .filter(k => /^\d+\.\d+\.\d+/.test(k))
-                        .sort((a, b) => {
-                            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-                        });
-                    
-                    if (versions.length > 0) {
-                        resolve(versions[versions.length - 1]);
-                    } else {
-                        // Fallback: Dump keys for debugging if we can't find any version
-                        console.warn(`[Debug] Could not find version keys. Available keys: ${Object.keys(json).join(', ')}`);
-                        resolve('0.0.0');
-                    }
+                    resolve(result);
                 } catch (e) {
                     reject(e);
                 }
@@ -66,22 +59,43 @@ async function check() {
     try {
         const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
         const currentTarget = manifest.minAppVersion;
-        const latestVersion = await fetchLatestVersion();
+        const result = await fetchLatestVersion(STABLE_VERSIONS_URL);
 
         console.log(`   Target (minAppVersion): ${currentTarget}`);
-        console.log(`   Latest Obsidian Release: ${latestVersion}`);
+        console.log(`   Latest Stable: ${result.stable}`);
+        if (result.beta) {
+            console.log(`   Latest Beta: ${result.beta}`);
+        }
 
-        // Simple comparison
-        if (latestVersion !== currentTarget) {
-            console.log(`\n${COLORS.yellow}⚠️  NEW OBSIDIAN VERSION DETECTED: ${latestVersion}${COLORS.reset}`);
-            console.log(`${COLORS.yellow}   There may be new API standards or features available.${COLORS.reset}`);
-            console.log(`${COLORS.yellow}   Action: Ask AI to "Check for API changes in Obsidian v${latestVersion} and update code standards."${COLORS.reset}\n`);
+        // Priority 1: Check if there's a beta version newer than current target
+        if (result.beta) {
+            const betaComparison = compareVersions(result.beta, currentTarget);
+            if (betaComparison > 0) {
+                console.log(`\n${COLORS.yellow}⚠️  NEWER BETA VERSION AVAILABLE: ${result.beta}${COLORS.reset}`);
+                console.log(`${COLORS.yellow}   Check for API changes: https://github.com/obsidianmd/obsidian-releases/releases/tag/v${result.beta}${COLORS.reset}`);
+                console.log(`${COLORS.yellow}   Consider testing compatibility and updating minAppVersion if needed.${COLORS.reset}\n`);
+                return;
+            } else if (betaComparison === 0) {
+                console.log(`\n${COLORS.green}✅ Project is targeting the current beta version (${result.beta}).${COLORS.reset}\n`);
+                return;
+            }
+        }
+
+        // Priority 2: Check stable version
+        const stableComparison = compareVersions(result.stable, currentTarget);
+        
+        if (stableComparison > 0) {
+            console.log(`\n${COLORS.yellow}⚠️  NEWER STABLE VERSION: ${result.stable}${COLORS.reset}`);
+            console.log(`${COLORS.yellow}   Check for API changes: https://github.com/obsidianmd/obsidian-releases/releases/tag/v${result.stable}${COLORS.reset}`);
+            console.log(`${COLORS.yellow}   Consider updating minAppVersion.${COLORS.reset}\n`);
+        } else if (stableComparison === 0) {
+            console.log(`\n${COLORS.green}✅ Project is targeting the latest stable version.${COLORS.reset}\n`);
         } else {
-            console.log(`${COLORS.green}✅ Project is targeting the latest version.${COLORS.reset}\n`);
+            console.log(`\n${COLORS.green}✅ Project is targeting a version newer than latest stable.${COLORS.reset}\n`);
         }
 
     } catch (err) {
-        console.warn(`${COLORS.yellow}⚠️  Could not fetch latest Obsidian version (offline?): ${err.message}${COLORS.reset}`);
+        console.warn(`${COLORS.yellow}⚠️  Could not fetch Obsidian version info: ${err.message}${COLORS.reset}`);
     }
 }
 
