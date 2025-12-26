@@ -53,14 +53,14 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot1.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot1.jpeg" alt="All Scenes Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/narrative.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/narrative.jpeg" alt="All Scenes Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Narrative Timeline</div>
   </div>
   <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot2.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot2.jpeg" alt="Timeline Hover Synopsis" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/synopsis.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/synopsis.jpeg" alt="Timeline Hover Synopsis" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline Hover Synopsis</div>
   </div>
@@ -72,14 +72,14 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot3.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot3.jpeg" alt="Subplot Mode author workflow colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/subplot.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/subplot.jpeg" alt="Subplot Mode author workflow colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Mode — Author & publishing progress</div>
   </div>
   <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot4.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot4.jpeg" alt="Gossamer View" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/gossamer.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/gossamer.jpeg" alt="Gossamer View" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer View</div>
   </div>
@@ -87,14 +87,14 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot6.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot6.jpeg" alt="Chronologue Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/chronologue.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/chronologue.jpeg" alt="Chronologue Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode (<a href="https://www.youtube.com/watch?v=XKWq32LB0d0" target="_blank">Watch Video</a>)</div>
   </div>
   <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot5.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/screenshot5.jpeg" alt="Chronologue Mode - SHIFT" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/shift.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
+      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/shift.jpeg" alt="Chronologue Mode - SHIFT" style="width: 300px; max-width: 100%; border-radius: 8px;" />
     </a>
     <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode - SHIFT</div>
   </div>

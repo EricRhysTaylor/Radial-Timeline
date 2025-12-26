@@ -20,7 +20,8 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 
 ### Gossamer story beats system & templates
 *   **Story beats system**: Select story structure model (Save The Cat, Hero's Journey, Story Grid, or Custom).
-*   **Create story beat template notes**: Generate template beat notes with YAML frontmatter.
+    *   *Custom*: Select this to use your own methodology. You will need to create beat notes manually with `Beat Model: Custom` in the frontmatter.
+*   **Create story beat template notes**: Generate template beat notes with YAML frontmatter. (Disabled for Custom mode).
 
 ### Metadata Mapping
 *   **Enable custom metadata mapping**: Map your own custom frontmatter keys (e.g., use `StoryLine` instead of `Subplot`) to system keys.
@@ -28,7 +29,8 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 
 ### Scene Templates & Frontmatter
 *   **Advanced YAML editor**: Enable to fully customize the Advanced YAML structure used when creating scenes with the Advanced template.
-*   **New Keys**: Add your own keys to the Advanced template. Or reset all keys back to the default.
+*   **New Keys**: Add your own keys to the Advanced template.
+    *   *Templater Support*: You can enter Templater code (e.g., `<% tp.file.creation_date() %>`) as values. If Templater is set to trigger on new file creation, these will be expanded when the Book Designer creates your scenes.
 
 ### Planetary Time
 *   **Enable planetary time**: Toggle to show planetary time features.

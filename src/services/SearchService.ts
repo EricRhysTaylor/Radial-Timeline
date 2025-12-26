@@ -12,19 +12,31 @@ export class SearchService {
 
     openSearchPrompt(): void {
         const modal = new Modal(this.app);
-        modal.titleEl.setText('Search timeline');
-        const contentEl = modal.contentEl;
+        const { modalEl, contentEl } = modal;
+        
+        // Apply generic modal shell + modal-specific class
+        modalEl.classList.add('rt-modal-shell');
         contentEl.empty();
-        const searchContainer = contentEl.createDiv('search-container');
-        searchContainer.classList.add('flex-container');
-        searchContainer.classList.add('radial-timeline-search');
+        contentEl.addClass('rt-modal-container', 'rt-search-modal');
+        
+        // Header
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        header.createSpan({ text: 'Find', cls: 'rt-modal-badge' });
+        header.createDiv({ text: 'Search timeline', cls: 'rt-modal-title' });
+        header.createDiv({ text: 'Search scenes by title, synopsis, characters, dates, and more.', cls: 'rt-modal-subtitle' });
+        
+        // Search input container
+        const searchContainer = contentEl.createDiv({ cls: 'rt-search-input-container' });
         const searchInput = new TextComponent(searchContainer);
         searchInput.setPlaceholder('Enter search term (min 3 letters)');
-        searchInput.inputEl.classList.add('search-input');
+        searchInput.inputEl.classList.add('rt-search-input');
         if (this.plugin.searchActive && this.plugin.searchTerm) searchInput.setValue(this.plugin.searchTerm);
-        const buttonContainer = contentEl.createDiv('rt-button-container');
+        
+        // Actions
+        const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
         new ButtonComponent(buttonContainer)
             .setButtonText('Search')
+            .setCta()
             .onClick(() => {
                 const term = searchInput.getValue().trim();
                 if (term.length >= 3) { this.performSearch(term); modal.close(); }
@@ -40,7 +52,10 @@ export class SearchService {
                 else { new Notice('Please enter at least 3 letters to search'); }
             }
         });
+        
         modal.open();
+        // Focus input after modal opens
+        window.setTimeout(() => searchInput.inputEl.focus(), 50);
     }
 
     performSearch(term: string): void {

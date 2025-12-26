@@ -20,33 +20,33 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
   <div style="text-align: center;">
-    <img src="images/screenshot1.jpeg" alt="All Scenes Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Narrative Timeline</div>
+    <img src="images/narrative.jpeg" alt="Narrative Mode: all scenes outer ring, subplot rings, and story beats (e.g., Save the Cat)" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Narrative Mode — story beats + subplot rings (dominant subplot shown via folded corners)</div>
   </div>
   <div style="text-align: center;">
-    <img src="images/screenshot2.jpeg" alt="Timeline Hover Synopsis" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline Hover Synopsis</div>
+    <img src="images/synopsis.jpeg" alt="Hover synopsis: metadata + AI pulse triplet analysis (previous/current/next)" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Hover synopsis — information-dense metadata + pulse triplet feedback</div>
   </div>
 </div>
 
 <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <img src="images/screenshot3.jpeg" alt="Subplot Mode author workflow colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Mode — Author & publishing progress</div>
+    <img src="images/subplot.jpeg" alt="Subplot Mode: author status (Todo/Working/Overdue/Complete) and publish stage colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Mode — schedule/status + publish stage progress</div>
   </div>
   <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
   <div style="text-align: center;">
-    <img src="images/screenshot6.jpeg" alt="Chronologue Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode</div>
+    <img src="images/chronologue.jpeg" alt="Chronologue Mode: scenes ordered by When/Duration with overlaps and adaptive time labeling" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode — chronological backbone with duration arcs, overlaps, and adaptive time scale</div>
   </div>
   <div style="text-align: center;">
-    <img src="images/screenshot5.jpeg" alt="Chronologue Mode - SHIFT" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode - SHIFT</div>
+    <img src="images/shift.jpeg" alt="Chronologue Shift mode: elapsed-time arc between selected scenes and infinity gap markers" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Shift — compare elapsed time between scenes and surface discontinuity gaps</div>
   </div>
 </div>
   <div style="text-align: center;">
-    <img src="images/screenshot4.jpeg" alt="Gossamer View" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer View</div>
+    <img src="images/gossamer.jpeg" alt="Gossamer Mode: narrative momentum across story beats with scoring history and ideal ranges" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer Mode — momentum map across story beats</div>
   </div>
 </div>
 

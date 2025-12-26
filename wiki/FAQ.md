@@ -47,3 +47,20 @@ Here's how the two complement each other:
 ### Summary
 
 The Snowflake Method gets you from idea to scene list. Radial Timeline takes that scene list and gives you visual tools to analyze structure, track characters, manage subplots, and refine pacing. They work together rather than competing.
+
+## I Use Dramatica
+
+**Q: Can I use Radial Timeline with Dramatica?**
+
+**A:** Yes! While Dramatica is complex and focuses on arguments (Throughlines) rather than linear beats, you can use Radial Timeline to visualize your scenes and track your data.
+
+1.  **Beats System**: Set **Settings > Story beats system** to **"Custom"**. You can then manually create notes for your Signposts (e.g., `Class: Beat`, `Beat Model: Custom`) to see them on the timeline.
+2.  **Advanced Metadata**: Use the **Advanced YAML editor** (in Settings) to add Dramatica-specific keys to your scene templates. For example, you can add fields like:
+    ```yaml
+    dramatica:
+      MC: Universe
+      OS: Mind
+      IC: Psychology
+      RS: Physics
+    ```
+    This allows you to keep your Dramatica structure data right inside your scene notes while still getting the visual benefits of the timeline.

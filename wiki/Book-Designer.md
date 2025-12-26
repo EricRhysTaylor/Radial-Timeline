@@ -39,3 +39,39 @@ Once configured, click **Create Book**. The plugin will:
 
 You'll see a notification confirming the number of scenes and files created. Your Radial Timeline will immediately update to display your new story structure.
 
+## Customizing Templates
+
+The Book Designer uses one of two templates:
+1.  **Base**: A minimal template with only the essential fields required for Radial Timeline.
+2.  **Advanced**: A richer template with analysis fields, stats, and more.
+
+### Adding Custom Properties
+To add your own properties (like `Draft Status`, `POV Character`, or Templater code) to generated scenes:
+1.  Go to **Settings > Scene YAML templates & remapping**.
+2.  Enable **Advanced YAML editor**.
+3.  Add your custom keys to the list.
+    *   *Tip:* You can use Templater syntax in the values (e.g., `<% tp.date.now() %>`). When the scene is created, if you have Templater configured to run on new files, these tags will be processed.
+4.  In the Book Designer, select **Advanced** as your template type.
+
+## Custom Beat Systems
+
+If you use a story structure not listed in the standard options (like 7 Point Story Structure):
+1.  Go to **Settings > Gossamer story beats system** and select **Custom**.
+2.  The Book Designer will *not* automatically generate beat notes for custom systems (since it doesn't know your specific beats).
+3.  **Manual Setup**:
+    *   Create a new note for each major beat (e.g., "Pinch Point 1").
+    *   Add the following frontmatter:
+        ```yaml
+        Class: Beat
+        Beat Model: Custom
+        ```
+    *   The Radial Timeline will automatically detect these notes and display them in the Gossamer view alongside your scenes.
+
+## Advanced Metadata
+
+Some writing methodologies rely on tracking complex properties rather than just linear beats. You can accommodate this using the **Advanced Template**:
+
+1.  Go to **Settings > Scene YAML templates & remapping**.
+2.  Enable **Advanced YAML editor**.
+3.  Add custom keys for your methodology.
+4.  When you generate or edit scenes, these properties will be preserved, allowing you to use the plugin's timeline to visualize your story while maintaining your specific data structure in the notes.

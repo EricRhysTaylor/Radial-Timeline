@@ -5,7 +5,7 @@
 Subplot Mode isolates each subplot into its own radial pass, removing the combined outer ring. This mode focuses on **Author time** (your writing status) and **Publishing time** (revision stages), making it ideal for tracking progress.
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/screenshot3.jpeg" alt="Subplot Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/subplot.jpeg" alt="Subplot Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
 </div>
 
 ## Key Features

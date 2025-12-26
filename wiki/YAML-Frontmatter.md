@@ -81,8 +81,8 @@ Place:
 Questions:                           #Analysis Block
 Reader Emotion:
 Internal: How do the characters change?
-Type:                                 
-Shift:
+Type:                                 #Story Grid: Scene type (Inciting Incident, Progressive Complication, Crisis, Climax, Resolution)
+Shift:                                #Story Grid: Value shift (e.g. Life to Death, Hope to Despair)
 Publish Stage: Zero
 Status: Todo
 Due:
@@ -91,6 +91,14 @@ Total Time:
 Revision: 
 Pending Edits:
 Pulse Update: No
+```
+
+**Tip for Advanced Methodologies (e.g., Dramatica):**
+You can customize this template in **Settings > Scene YAML templates & remapping** to include specific fields for your system. For example, a Dramatica user might add:
+```yaml
+dramatica:
+  MC: 1
+  OS: 2
 ```
 
 

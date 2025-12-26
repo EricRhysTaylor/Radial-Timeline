@@ -60,14 +60,14 @@ export class ManuscriptOptionsModal extends Modal {
         const { contentEl, modalEl } = this;
         contentEl.empty();
 
+        // Apply generic modal shell + modal-specific class
         if (modalEl) {
             modalEl.style.width = '760px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.classList.add('rt-pulse-modal-shell');
+            modalEl.classList.add('rt-modal-shell');
         }
-        contentEl.classList.add('rt-pulse-modal');
-        contentEl.classList.add('rt-manuscript-surface');
+        contentEl.classList.add('rt-modal-container', 'rt-manuscript-modal');
 
         this.renderSkeleton(contentEl);
         await this.loadSubplots();
@@ -81,17 +81,17 @@ export class ManuscriptOptionsModal extends Modal {
 
     // Layout -----------------------------------------------------------------
     private renderSkeleton(container: HTMLElement): void {
-        const hero = container.createDiv({ cls: 'rt-gossamer-simple-header' });
-        hero.createSpan({ cls: 'rt-gossamer-simple-badge', text: 'Manuscript' });
+        const hero = container.createDiv({ cls: 'rt-modal-header' });
+        hero.createSpan({ cls: 'rt-modal-badge', text: 'Manuscript' });
         hero.createDiv({
-            cls: 'rt-gossamer-hero-system',
+            cls: 'rt-modal-title',
             text: t('manuscriptModal.title')
         });
         hero.createDiv({
-            cls: 'rt-gossamer-score-subtitle',
+            cls: 'rt-modal-subtitle',
             text: t('manuscriptModal.description')
         });
-        this.heroMetaEl = hero.createDiv({ cls: 'rt-gossamer-simple-meta' });
+        this.heroMetaEl = hero.createDiv({ cls: 'rt-modal-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
 
         const tocCard = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
@@ -176,7 +176,7 @@ export class ManuscriptOptionsModal extends Modal {
     private renderHeroMeta(items: string[]): void {
         if (!this.heroMetaEl) return;
         this.heroMetaEl.empty();
-        items.forEach(item => this.heroMetaEl?.createSpan({ cls: 'rt-pulse-hero-meta-item', text: item }));
+        items.forEach(item => this.heroMetaEl?.createSpan({ cls: 'rt-modal-meta-item', text: item }));
     }
 
     // Interaction helpers ----------------------------------------------------

@@ -59,6 +59,6 @@ For sci-fi and fantasy authors, Chronologue mode includes a **Planetary Time** s
     *   **Custom Labels**: Define custom names for months and days of the week.
 *   **Synopsis Hover**: In Chronologue Mode, hover over a scene to see its date converted to your active planetary profile.
 *   **Calculator**: Use the command palette (`Cmd/Ctrl + P`) and search for **"Radial Timeline: Planetary time converter"** to open a calculator. Enter any Earth date/time to see the corresponding planetary date/time.
-*   **Coming Soon**: A special Alt+Shift wireframe view for deep planetary analysis.
+*   **Chronologue Mode**: A special Alt+Shift red-tinted wireframe view revealing the alien timeline and elapsed time between scenes (a mirror of the standard shift mode for your alien location).
 
 > **Note**: You must still plan and enter metadata using standard Earth format (`When: 2045-05-20`). This feature provides a "translation layer" to help you write scene content (e.g., "The sun set at 19:00 local time") without breaking the timeline's chronological structure.

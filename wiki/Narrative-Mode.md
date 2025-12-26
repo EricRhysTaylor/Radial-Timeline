@@ -5,7 +5,7 @@
 Narrative Mode is your primary manuscript-order workspace. It displays all scenes from all subplots on the outer ring, organized by the **3-act structure** (120° per act). This view emphasizes **Narrative time** (the order readers will experience the story).
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/screenshot1.jpeg" alt="Narrative Mode Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
+  <img src="images/narrative.jpeg" alt="Narrative Mode Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
 </div>
 
 ## Key Features

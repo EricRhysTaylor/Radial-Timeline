@@ -167,6 +167,42 @@
 }
 
 /* ==========================================================================
+   SEARCH MODAL - specific styles
+   ========================================================================== */
+.rt-modal-shell.modal:has(.rt-search-modal) {
+  width: min(600px, 90vw);
+}
+
+.rt-search-modal {
+  display: flex;
+  flex-direction: column;
+}
+
+.rt-search-input-container {
+  margin-top: 20px;
+}
+
+.rt-search-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-normal);
+  font-size: 1rem;
+}
+
+.rt-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.rt-search-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* ==========================================================================
    AI CONTEXT MODAL - specific styles
    ========================================================================== */
 .rt-ai-context-actions {
