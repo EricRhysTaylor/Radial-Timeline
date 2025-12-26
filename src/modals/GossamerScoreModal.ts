@@ -156,6 +156,12 @@ export class GossamerScoreModal extends Modal {
 
       if (settingsSystem === 'Custom') {
         // For Custom, only show beats WITHOUT recognized Beat Models
+        // OR beats that match the custom system name if defined
+        const customName = this.plugin.settings.customBeatSystemName;
+        if (customName && beatModel === customName) {
+            return true;
+        }
+
         const recognizedSystems = ['Save The Cat', 'Hero\'s Journey', 'Story Grid'];
         return !beatModel || !recognizedSystems.includes(beatModel);
       } else {
@@ -167,11 +173,21 @@ export class GossamerScoreModal extends Modal {
     // Use filtered beats for entry building
     this.plotBeats = filteredBeats;
 
-    const plotSystemTemplate = getPlotSystem(settingsSystem);
+    let plotSystemTemplate = getPlotSystem(settingsSystem);
+    
+    // Support Custom Dynamic System Template
+    if (settingsSystem === 'Custom' && this.plugin.settings.customBeatSystemName && this.plugin.settings.customBeatSystemBeats?.length) {
+        plotSystemTemplate = {
+            name: this.plugin.settings.customBeatSystemName,
+            beats: this.plugin.settings.customBeatSystemBeats,
+            beatDetails: this.plugin.settings.customBeatSystemBeats.map(b => ({ name: b, description: '', range: '' })),
+            beatCount: this.plugin.settings.customBeatSystemBeats.length
+        };
+    }
 
     // Validate beat count (only when template exists)
     const actualCount = filteredBeats.length;
-    const countMismatch = plotSystemTemplate ? actualCount !== plotSystemTemplate.beatCount : false;
+    const countMismatch = plotSystemTemplate ? actualCount !== (plotSystemTemplate.beatCount || plotSystemTemplate.beats.length) : false;
 
     // Validate Range fields (filter by beat system but ignore title matching)
     // NOTE: Temporarily disabled - metadata cache not refreshing Range field

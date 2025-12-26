@@ -5,6 +5,29 @@ import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { parseDuration, parseDurationDetail } from '../utils/date';
 
+import { PlotSystemTemplate } from '../utils/beatsSystems';
+
+// Helper to construct dynamic custom system object (Duplicated from TemplatesSection - ideally shared util)
+function getCustomSystemFromSettings(plugin: RadialTimelinePlugin): PlotSystemTemplate {
+    const name = plugin.settings.customBeatSystemName || 'Custom';
+    const beatLines = plugin.settings.customBeatSystemBeats || [];
+    
+    // Convert simple strings to beat definitions
+    const beats = beatLines.filter(line => line.trim().length > 0);
+    const beatDetails = beats.map(b => ({
+        name: b,
+        description: '',
+        range: ''
+    }));
+
+    return {
+        name,
+        beats,
+        beatDetails,
+        beatCount: beats.length
+    };
+}
+
 export class BookDesignerModal extends Modal {
     private plugin: RadialTimelinePlugin;
     
@@ -726,7 +749,21 @@ export class BookDesignerModal extends Modal {
         let beatsCreated = 0;
         if (this.generateBeats) {
             const beatSystem = this.plugin.settings.beatSystem || 'Custom';
-            if (beatSystem !== 'Custom') {
+            
+            // Handle Custom Dynamic System
+            if (beatSystem === 'Custom') {
+                const customSystem = getCustomSystemFromSettings(this.plugin);
+                if (customSystem.beats.length > 0) {
+                     try {
+                        const result = await createBeatTemplateNotes(vault, 'Custom', targetFolder, customSystem);
+                        beatsCreated = result.created;
+                    } catch (e) {
+                        new Notice(`Error creating custom beats: ${e}`);
+                    }
+                } else {
+                    // No custom beats defined, skip
+                }
+            } else {
                 try {
                     const result = await createBeatTemplateNotes(vault, beatSystem, targetFolder);
                     beatsCreated = result.created;

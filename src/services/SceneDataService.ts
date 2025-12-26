@@ -274,7 +274,7 @@ export class SceneDataService {
                 original: p,
                 "Beat Model": p.metadata["Beat Model"]
             }));
-            const filtered = filterBeatsBySystem(beatsWithModel, this.settings.beatSystem);
+            const filtered = filterBeatsBySystem(beatsWithModel, this.settings.beatSystem, this.settings.customBeatSystemName);
             beatsToProcess = filtered.map(f => f.original);
         }
 

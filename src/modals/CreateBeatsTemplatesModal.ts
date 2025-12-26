@@ -17,7 +17,14 @@ export class CreateBeatsTemplatesModal extends Modal {
   constructor(app: App, plugin: RadialTimelinePlugin, beatSystem: string, beatCount: number) {
     super(app);
     this.plugin = plugin;
-    this.beatSystem = beatSystem;
+    
+    // If it's the dynamic custom system, show the user's custom name
+    if (beatSystem === 'Custom' && this.plugin.settings.customBeatSystemName) {
+        this.beatSystem = this.plugin.settings.customBeatSystemName;
+    } else {
+        this.beatSystem = beatSystem;
+    }
+    
     this.beatCount = beatCount;
   }
 

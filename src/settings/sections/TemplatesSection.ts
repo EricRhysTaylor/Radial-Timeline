@@ -10,6 +10,29 @@ import { renderMetadataSection } from './MetadataSection';
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
 
+import { PlotSystemTemplate } from '../../utils/beatsSystems';
+
+// Helper to construct dynamic custom system object
+function getCustomSystemFromSettings(plugin: RadialTimelinePlugin): PlotSystemTemplate {
+    const name = plugin.settings.customBeatSystemName || 'Custom';
+    const beatLines = plugin.settings.customBeatSystemBeats || [];
+    
+    // Convert simple strings to beat definitions
+    const beats = beatLines.filter(line => line.trim().length > 0);
+    const beatDetails = beats.map(b => ({
+        name: b,
+        description: '',
+        range: ''
+    }));
+
+    return {
+        name,
+        beats,
+        beatDetails,
+        beatCount: beats.length
+    };
+}
+
 export function renderStoryBeatsSection(params: {
     app: App;
     plugin: RadialTimelinePlugin;
@@ -36,6 +59,7 @@ export function renderStoryBeatsSection(params: {
                     await plugin.saveSettings();
                     updateStoryStructureDescription(storyStructureInfo, value);
                     updateTemplateButton(templateSetting, value);
+                    updateCustomInputsVisibility(value);
                 });
             dropdown.selectEl.style.minWidth = '200px';
         });
@@ -62,6 +86,56 @@ export function renderStoryBeatsSection(params: {
     storyStructureInfo.style.marginBottom = '0';
     
     updateStoryStructureDescription(storyStructureInfo, plugin.settings.beatSystem || 'Custom');
+
+    // --- Custom System Configuration (Dynamic Visibility) ---
+    const customConfigContainer = containerEl.createDiv({ cls: 'rt-custom-beat-config' });
+    customConfigContainer.style.paddingLeft = '18px';
+    customConfigContainer.style.borderLeft = '2px solid var(--interactive-accent)';
+    customConfigContainer.style.marginBottom = '18px';
+
+    const renderCustomConfig = () => {
+        customConfigContainer.empty();
+        
+        new Settings(customConfigContainer)
+            .setName('Custom system name')
+            .setDesc('The name of your custom beat system (e.g. "7 Point Structure"). Matches the "Beat Model" field in YAML.')
+            .addText(text => text
+                .setPlaceholder('Custom')
+                .setValue(plugin.settings.customBeatSystemName || 'Custom')
+                .onChange(async (value) => {
+                    plugin.settings.customBeatSystemName = value;
+                    await plugin.saveSettings();
+                    updateTemplateButton(templateSetting, 'Custom');
+                }));
+
+        new Settings(customConfigContainer)
+            .setName('Beat List')
+            .setDesc('Enter one beat name per line (e.g. "Hook", "Plot Turn 1"). These will be generated as template files.')
+            .addTextArea(text => {
+                text
+                    .setPlaceholder('Hook\nPlot Turn 1\nPinch Point 1\n...')
+                    .setValue((plugin.settings.customBeatSystemBeats || []).join('\n'))
+                    .onChange(async (value) => {
+                        const lines = value.split('\n'); // keep empty lines for index? No, filter clean.
+                        plugin.settings.customBeatSystemBeats = lines;
+                        await plugin.saveSettings();
+                        updateTemplateButton(templateSetting, 'Custom');
+                    });
+                text.inputEl.rows = 8;
+                text.inputEl.style.width = '100%'; // SAFE: inline style used for full width input
+            });
+    };
+    renderCustomConfig();
+
+    const updateCustomInputsVisibility = (system: string) => {
+        if (system === 'Custom') {
+            customConfigContainer.style.display = 'block'; // SAFE: inline style used for toggling visibility
+        } else {
+            customConfigContainer.style.display = 'none'; // SAFE: inline style used for toggling visibility
+        }
+    };
+    updateCustomInputsVisibility(plugin.settings.beatSystem || 'Custom');
+    // --------------------------------------------------------
 
     // Create template beat note button
     const templateSetting = new Settings(containerEl)
@@ -313,37 +387,66 @@ export function renderStoryBeatsSection(params: {
 
     function updateTemplateButton(setting: Settings, selectedSystem: string): void {
         const isCustom = selectedSystem === 'Custom';
+        
+        // Dynamic name for custom system
+        let displayName = selectedSystem;
         if (isCustom) {
-            setting.setName('Create story beat template notes');
-            setting.setDesc('Custom story structures must be created manually by the author.');
+            displayName = plugin.settings.customBeatSystemName || 'Custom';
+            
+            // Check if beats are defined
+            const beats = plugin.settings.customBeatSystemBeats || [];
+            const hasBeats = beats.some(b => b.trim().length > 0);
+            
+            if (hasBeats) {
+                setting.setName(`Create story beat template notes for ${displayName}`);
+                setting.setDesc(`Generate ${beats.length} template beat notes for your custom system.`);
+                setting.settingEl.style.opacity = '1';
+                // Enable button
+                const btn = setting.controlEl.querySelector('button');
+                if (btn) btn.disabled = false;
+            } else {
+                setting.setName('Create story beat template notes');
+                setting.setDesc('Define your custom beat list above to generate templates.');
+                setting.settingEl.style.opacity = '0.6';
+                // Disable button
+                const btn = setting.controlEl.querySelector('button');
+                if (btn) btn.disabled = true;
+            }
         } else {
             setting.setName(`Create story beat template notes for ${selectedSystem}`);
             setting.setDesc(`Generate ${selectedSystem} template beat notes including YAML frontmatter and body summary.`);
-        }
-        const settingEl = setting.settingEl;
-        if (isCustom) {
-            settingEl.style.opacity = '0.6';
-        } else {
-            settingEl.style.opacity = '1';
+            setting.settingEl.style.opacity = '1';
+            const btn = setting.controlEl.querySelector('button');
+            if (btn) btn.disabled = false;
         }
     }
 
     async function createBeatTemplates(): Promise<void> {
         const storyStructureName = plugin.settings.beatSystem || 'Custom';
+        
+        let storyStructure = getPlotSystem(storyStructureName);
+        
+        // Handle Custom Dynamic System
         if (storyStructureName === 'Custom') {
-            new Notice('Custom story structure selected. Create your own Beat notes with Class: Beat. No templates will be generated.');
-            return;
+             const customSystem = getCustomSystemFromSettings(plugin);
+             if (customSystem.beats.length > 0) {
+                 storyStructure = customSystem;
+             } else {
+                 new Notice('No custom beats defined. Add beats in the list above.');
+                 return;
+             }
         }
-        const storyStructure = getPlotSystem(storyStructureName);
+
         if (!storyStructure) {
             new Notice(`Unknown story structure: ${storyStructureName}`);
             return;
         }
+        
         const modal = new CreateBeatsTemplatesModal(
             app,
             plugin,
             storyStructureName,
-            storyStructure.beatCount
+            storyStructure.beatCount || storyStructure.beats.length
         );
         modal.open();
         const result = await modal.waitForConfirmation();
@@ -353,7 +456,8 @@ export function renderStoryBeatsSection(params: {
             const { created, skipped, errors } = await createBeatTemplateNotes(
                 app.vault,
                 storyStructureName,
-                sourcePath
+                sourcePath,
+                storyStructureName === 'Custom' ? storyStructure : undefined
             );
             if (errors.length > 0) {
                 new Notice(`Created ${created} notes. ${skipped} skipped. ${errors.length} errors. Check console.`);

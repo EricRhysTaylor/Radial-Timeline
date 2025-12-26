@@ -73,9 +73,14 @@ function getBeatAct(beatIndex: number, totalBeats: number): number {
 export async function createBeatTemplateNotes(
   vault: Vault,
   beatSystemName: string,
-  sourcePath: string
+  sourcePath: string,
+  customSystem?: PlotSystemTemplate
 ): Promise<{ created: number; skipped: number; errors: string[] }> {
-  const beatSystem = PLOT_SYSTEMS[beatSystemName];
+  let beatSystem = PLOT_SYSTEMS[beatSystemName];
+  
+  if (beatSystemName === 'Custom' && customSystem) {
+    beatSystem = customSystem;
+  }
   
   if (!beatSystem) {
     throw new Error(`Unknown beat system: ${beatSystemName}`);

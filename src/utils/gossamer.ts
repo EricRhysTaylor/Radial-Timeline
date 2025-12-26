@@ -35,18 +35,42 @@ export interface GossamerRun {
  * 
  * @param beats - Array of beat objects with optional "Beat Model" field
  * @param selectedBeatSystem - The beat system to filter by (e.g., "Save The Cat", "Custom")
+ * @param customBeatSystemName - Optional custom system name from settings
  * @returns Filtered array of beats matching the selected system
  */
 export function filterBeatsBySystem<T>(
   beats: T[],
-  selectedBeatSystem?: string
+  selectedBeatSystem?: string,
+  customBeatSystemName?: string
 ): T[] {
   if (!selectedBeatSystem || selectedBeatSystem.trim() === '') {
     return beats; // No filtering if no system selected
   }
 
-  if (selectedBeatSystem === 'Custom') {
-    // For Custom: exclude beats that belong to built-in systems
+  const system = selectedBeatSystem.trim();
+
+  if (system === 'Custom') {
+    // If a custom name is defined in settings, we should include beats that match it
+    if (customBeatSystemName && customBeatSystemName.trim() !== '') {
+        const customName = customBeatSystemName.trim();
+        // Also include beats with generic 'Custom' model or no model, but exclude standard ones.
+        const builtInSystems = ['save the cat', 'savethecat', "hero's journey", 'herosjourney', 'story grid', 'storygrid'];
+        
+        return beats.filter(b => {
+          const beatModel = (b as any)["Beat Model"];
+          if (!beatModel || typeof beatModel !== 'string') return true; 
+          
+          const normalizedModel = beatModel.toLowerCase().replace(/\s+/g, '').replace(/'/g, '');
+          
+          // Match custom name specifically
+          if (beatModel === customName) return true;
+          
+          // OR Match legacy custom logic (not built-in)
+          return !builtInSystems.includes(normalizedModel);
+        });
+    }
+
+    // Default Custom: exclude beats that belong to built-in systems
     const builtInSystems = ['save the cat', 'savethecat', "hero's journey", 'herosjourney', 'story grid', 'storygrid'];
     return beats.filter(b => {
       const beatModel = (b as any)["Beat Model"]; // SAFE: dynamic field access for Beat Model filtering

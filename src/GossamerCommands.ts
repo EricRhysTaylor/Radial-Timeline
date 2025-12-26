@@ -524,7 +524,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
       // Use centralized filtering helper (single source of truth)
       const { filterBeatsBySystem } = await import('./utils/gossamer');
       if (beatSystem && beatSystem.trim() !== '' && plotBeats.some(p => p["Beat Model"])) {
-        plotBeats = filterBeatsBySystem(plotBeats, beatSystem);
+        plotBeats = filterBeatsBySystem(plotBeats, beatSystem, plugin.settings.customBeatSystemName);
       }
       
       if (plotBeats.length === 0) {
