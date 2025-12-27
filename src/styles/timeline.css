@@ -593,6 +593,20 @@
   color: var(--text-error);
 }
 
+/* Planetary Time (Alien Calendar) Synopsis Line */
+.rt-planetary-time-text {
+  fill: var(--text-muted, currentColor);
+  font-size: 14px !important;
+  line-height: 1.2;
+}
+
+.rt-planetary-outline {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-dasharray: 4 3;
+  stroke-width: 2;
+}
+
 /* 6. Hover State: Full Opacity, Brighter Red */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:hover,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,

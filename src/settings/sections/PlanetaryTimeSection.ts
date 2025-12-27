@@ -240,14 +240,14 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             });
         };
 
-        const addTextField = (label: string, key: keyof PlanetaryProfile, placeholder?: string, onSave?: () => void) => {
+        const addTextField = (label: string, key: keyof PlanetaryProfile, placeholder?: string, onSave?: () => void, sizeClass = 'rt-input-lg') => {
             const setting = new Settings(fieldsContainer).setName(label);
             if (placeholder) setting.setDesc(placeholder);
             setting.addText((text: TextComponent) => {
                 const current = (profile as any)[key];
                 const originalValue = current ?? '';
                 text.setValue(originalValue);
-                text.inputEl.addClass('rt-input-sm');
+                text.inputEl.addClass(sizeClass);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
                 text.inputEl.addEventListener('blur', async () => {
                     const value = text.getValue();
@@ -274,6 +274,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             .setName(t('planetary.fields.monthNames'))
             .setDesc('Optional. Determines how the year is divided. Provide names to set the month count (e.g. 4 names = 4 months). Leave blank for 12 numbered months.')
             .addText((text: TextComponent) => {
+                text.inputEl.addClass('rt-input-lg');
                 const originalValue = (profile.monthNames || []).join(', ');
                 text.setValue(originalValue);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
@@ -289,6 +290,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             .setName(t('planetary.fields.weekdayNames'))
             .setDesc('Optional. Sets weekday labels; leave blank for numbered weekdays.')
             .addText((text: TextComponent) => {
+                text.inputEl.addClass('rt-input-lg');
                 const originalValue = (profile.weekdayNames || []).join(', ');
                 text.setValue(originalValue);
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed

@@ -528,16 +528,20 @@ export function renderStoryBeatsSection(params: {
             const listEl = advancedContainer.createDiv({ cls: 'rt-template-entries rt-template-indent' });
 
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
-                const row = listEl.createDiv({ cls: 'rt-template-entry-line setting-item rt-template-grid rt-template-grid-reorder' });
+                // Match beats row structure: all inputs are direct grid children
+                const row = listEl.createDiv({ cls: 'rt-template-entry-line rt-template-grid rt-template-grid-reorder' });
 
-                const dragHandle = row.createDiv({ cls: 'rt-template-drag-handle' });
+                // 1. Drag handle (direct child)
+                const dragHandle = row.createDiv({ cls: 'rt-drag-handle' });
                 dragHandle.draggable = true;
                 setIcon(dragHandle, 'grip-vertical');
                 setTooltip(dragHandle, 'Drag to reorder key');
 
-                const keyCol = row.createDiv({ cls: 'setting-item-info' });
-                const keyInput = keyCol.createEl('input', { cls: 'rt-template-input' });
-                keyInput.type = 'text';
+                // 2. Spacer (pushes rest to the right)
+                row.createDiv({ cls: 'rt-grid-spacer' });
+
+                // 3. Key input (direct child - no wrapper!)
+                const keyInput = row.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md' });
                 keyInput.value = entry.key;
                 keyInput.placeholder = 'Key';
                 keyInput.onchange = () => {
@@ -562,40 +566,29 @@ export function renderStoryBeatsSection(params: {
                     rerender(nextList);
                 };
 
-                const valCol = row.createDiv({ cls: 'setting-item-control rt-template-value-col' });
-                const valueWrap = valCol.createDiv({ cls: 'rt-template-value-wrap' });
-                const typeIcon = valueWrap.createDiv({ cls: 'rt-template-type-icon' });
+                // 4. Value input (direct child - no wrapper!)
                 const value = entry.value;
+                const valInput = row.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md' });
                 if (Array.isArray(value)) {
-                    const input = valueWrap.createEl('input', { cls: 'rt-template-input' });
-                    input.type = 'text';
-                    input.value = value.join(', ');
-                    input.placeholder = 'Comma-separated values';
-                    const hintEl = valCol.createDiv({ cls: 'rt-template-hint rt-template-hint-hidden' });
-                    attachTypeIcon(input, typeIcon);
-                    attachHint(input, hintEl, row);
-                    input.onchange = () => {
+                    valInput.value = value.join(', ');
+                    valInput.placeholder = 'Comma-separated values';
+                    valInput.onchange = () => {
                         const nextList = [...list];
-                        nextList[idx] = { ...entry, value: input.value.split(',').map(s => s.trim()).filter(Boolean) };
+                        nextList[idx] = { ...entry, value: valInput.value.split(',').map(s => s.trim()).filter(Boolean) };
                         saveEntries(nextList);
                     };
                 } else {
-                    const input = valueWrap.createEl('input', { cls: 'rt-template-input' });
-                    input.type = 'text';
-                    input.value = value ?? '';
-                    input.placeholder = 'Value';
-                    const hintEl = valCol.createDiv({ cls: 'rt-template-hint rt-template-hint-hidden' });
-                    attachTypeIcon(input, typeIcon);
-                    attachHint(input, hintEl, row);
-                    input.onchange = () => {
+                    valInput.value = value ?? '';
+                    valInput.placeholder = 'Value';
+                    valInput.onchange = () => {
                         const nextList = [...list];
-                        nextList[idx] = { ...entry, value: input.value };
+                        nextList[idx] = { ...entry, value: valInput.value };
                         saveEntries(nextList);
                     };
                 }
 
-                const actionCol = row.createDiv({ cls: 'setting-item-control rt-template-actions' });
-                const delBtn = actionCol.createEl('button', { cls: 'rt-template-delete rt-template-icon-btn' });
+                // 5. Delete button (direct child - no wrapper!)
+                const delBtn = row.createEl('button', { cls: 'rt-template-icon-btn' });
                 setIcon(delBtn, 'trash');
                 delBtn.onclick = () => {
                     const nextList = list.filter((_, i) => i !== idx);
@@ -644,22 +637,25 @@ export function renderStoryBeatsSection(params: {
 
             data.forEach((entry, idx, arr) => renderEntryRow(entry, idx, arr));
 
-            // Add new key/value (includes revert on the same row)
-            const addRow = advancedContainer.createDiv({ cls: 'rt-template-add-row setting-item rt-template-grid rt-template-grid-reorder rt-template-indent' });
+            // Add new key/value - matches beats add row structure (direct children)
+            const addRow = advancedContainer.createDiv({ cls: 'rt-template-add-row rt-template-grid rt-template-grid-reorder rt-template-indent' });
 
-            addRow.createDiv({ cls: 'rt-template-handle-spacer' });
+            // 1. Handle placeholder (direct child)
+            addRow.createDiv({ cls: 'rt-drag-handle rt-drag-placeholder' });
 
-            const keyInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'New key' } });
-            const valCol = addRow.createDiv({ cls: 'rt-template-value-col' });
-            const valueWrap = valCol.createDiv({ cls: 'rt-template-value-wrap' });
-            const addTypeIcon = valueWrap.createDiv({ cls: 'rt-template-type-icon' });
-            const valInput = valueWrap.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'Value' } }) as HTMLInputElement;
-            const addHintEl = valCol.createDiv({ cls: 'rt-template-hint rt-template-hint-hidden' });
-            attachTypeIcon(valInput, addTypeIcon);
-            attachHint(valInput, addHintEl, addRow);
-            const actions = addRow.createDiv({ cls: 'rt-template-actions' });
+            // 2. Spacer (direct child)
+            addRow.createDiv({ cls: 'rt-grid-spacer' });
 
-            const addBtn = actions.createEl('button', { cls: 'rt-template-icon-btn' });
+            // 3. Key input (direct child - no wrapper!)
+            const keyInput = addRow.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md', attr: { placeholder: 'New key' } });
+
+            // 4. Value input (direct child - no wrapper!)
+            const valInput = addRow.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+
+            // 5. Buttons wrapper (holds both + and reset)
+            const btnWrap = addRow.createDiv({ cls: 'rt-template-add-buttons' });
+
+            const addBtn = btnWrap.createEl('button', { cls: 'rt-template-icon-btn rt-mod-cta' });
             setIcon(addBtn, 'plus');
             setTooltip(addBtn, 'Add key');
             addBtn.onclick = () => {
@@ -678,8 +674,7 @@ export function renderStoryBeatsSection(params: {
                 rerender(nextList);
             };
 
-            // Revert button with tooltip for clarity
-            const revertBtn = actions.createEl('button', { cls: 'rt-mod-cta rt-template-icon-btn rt-template-reset-btn' });
+            const revertBtn = btnWrap.createEl('button', { cls: 'rt-template-icon-btn rt-template-reset-btn' });
             setIcon(revertBtn, 'rotate-ccw');
             setTooltip(revertBtn, 'Revert to original template');
             revertBtn.onclick = async () => {

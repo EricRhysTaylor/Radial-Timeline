@@ -235,29 +235,39 @@
   background: var(--rt-publishStageColors-Zero);
 }
 
-/* Scene template editor grids */
+/* Scene template editor grids (YAML key/value rows) - matches beats row styling */
 .rt-template-grid {
   display: grid;
-  grid-template-columns: auto 1fr 1fr auto;
-  column-gap: 6px;
+  /* Handle | Spacer | Key | Value | Trash */
+  grid-template-columns: auto 1fr auto auto auto;
   align-items: center;
-  justify-items: end;
+  gap: 12px;
+  padding: 10px 0 10px 12px; /* No right padding - trash flush to edge */
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
 }
 
 .rt-template-grid.rt-template-grid-reorder {
-  grid-template-columns: auto var(--rt-input-width-lg) var(--rt-input-width-lg) auto;
-  justify-items: end;
+  grid-template-columns: auto 1fr auto auto auto;
 }
 
+/* Use same drag handle as beats */
 .rt-template-drag-handle {
-  width: 32px;
-  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
+  width: 22px;
+  height: 22px;
   color: var(--text-muted);
-  flex-shrink: 0;
+}
+
+/* YAML entries container - gap between rows like beats */
+.rt-template-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .rt-template-entry-line.rt-template-dragging {
@@ -274,8 +284,6 @@
   flex-direction: column;
   gap: 4px;
   align-items: stretch;
-  justify-self: end;
-  width: 100%;
   position: relative;
 }
 
@@ -284,7 +292,6 @@
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: 6px;
-  width: 100%;
 }
 
 .rt-template-type-icon {
@@ -344,21 +351,12 @@
 }
 
 .rt-template-indent {
-  padding-left: 20px;
-  border-left: 2px solid var(--background-modifier-border);
+  padding-left: 18px;
+  border-left: 2px solid var(--interactive-accent); /* Match beats accent color */
   margin-left: 4px;
 }
 
-.rt-template-grid .rt-template-input {
-  width: 100%;
-}
-
-.rt-template-grid .rt-template-value-col {
-  justify-self: end;
-}
-
 .rt-template-grid .setting-item-info {
-  width: 100%;
   justify-self: end;
 }
 
@@ -373,26 +371,18 @@
   justify-content: flex-end;
 }
 
+/* Standardized template input styling (used for beats, YAML keys/values) */
 .rt-template-input {
-  background-color: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
-  color: var(--text-normal);
-  border-radius: 6px;
-  padding: 8px 10px;
   height: 36px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
 }
 
-/* Standardized width for template inputs in grids (keys/values, beats) */
-.rt-advanced-template-card .rt-template-input,
-.rt-custom-beat-row .rt-template-input {
-  width: var(--rt-input-width-lg);
-  max-width: 100%;
-}
-
-.rt-custom-beat-row .rt-beat-act-select.rt-template-input {
-  width: var(--rt-input-width-sm);
-  max-width: var(--rt-input-width-sm);
-  justify-self: end;
+.rt-template-input:focus {
+  outline: 1px solid var(--interactive-accent);
 }
 
 .rt-template-icon-btn {
@@ -418,8 +408,33 @@
   flex-shrink: 0;
 }
 
+/* CTA variant for icon buttons (accent-styled add buttons) */
+.rt-template-icon-btn.rt-mod-cta {
+  background-color: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.rt-template-icon-btn.rt-mod-cta svg,
+.rt-template-icon-btn.rt-mod-cta svg * {
+  stroke: var(--text-on-accent);
+}
+
+.rt-template-icon-btn.rt-mod-cta:hover {
+  filter: brightness(1.05);
+}
+
 .rt-template-add-row {
-  column-gap: 12px;
+  background: var(--background-primary);
+  border-style: dashed;
+  opacity: 0.95;
+}
+
+/* Button wrapper for add row (+ and reset side by side) */
+.rt-template-add-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 /* Custom Story Beats editor layout */
@@ -446,12 +461,11 @@
 
 .rt-custom-beat-row {
   display: grid;
-  /* Handle | Index | Name | Act | Trash */
-  grid-template-columns: auto auto var(--rt-input-width-md) var(--rt-input-width-sm) 38px;
+  /* Handle | Spacer | Index | Name | Act | Trash */
+  grid-template-columns: auto 1fr auto auto auto auto;
   align-items: center;
-  justify-items: end;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 10px 0 10px 12px; /* No right padding - trash flush to edge */
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
@@ -459,10 +473,6 @@
 
 .rt-custom-beat-row .rt-drag-handle {
   justify-self: start;
-}
-
-.rt-custom-beat-row .rt-beat-name-input {
-  justify-self: end;
 }
 
 .rt-drag-handle {
@@ -475,98 +485,15 @@
   color: var(--text-muted);
 }
 
-.rt-beat-index {
+/* Grid row index (used in beats & YAML) */
+.rt-row-index {
   font-weight: 600;
   color: var(--text-muted);
   text-align: right;
   min-width: 28px;
 }
 
-.rt-beat-name-input {
-  height: 36px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-modifier-form-field);
-  color: var(--text-normal);
-}
-
-.rt-beat-name-input:focus {
-  outline: 1px solid var(--interactive-accent);
-}
-
-.rt-beat-act-select {
-  min-width: 120px;
-  height: 36px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-modifier-form-field);
-  color: var(--text-normal);
-}
-
-.rt-beat-delete-btn {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border-radius: 8px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-modifier-form-field);
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.rt-beat-add-btn {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border-radius: 8px;
-  border: 1px solid var(--interactive-accent);
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  cursor: pointer;
-}
-
-.rt-beat-add-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.rt-beat-add-btn svg,
-.rt-beat-add-btn svg * {
-  stroke: var(--text-on-accent);
-}
-
-.rt-beat-add-btn:hover {
-  filter: brightness(1.05);
-}
-
-.rt-beat-delete-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.rt-beat-delete-btn svg,
-.rt-beat-delete-btn svg * {
-  stroke: var(--text-muted);
-}
-
-.rt-beat-delete-btn:hover {
-  color: var(--text-normal);
-  border-color: var(--interactive-accent);
-}
-
-.rt-beat-delete-btn:hover svg,
-.rt-beat-delete-btn:hover svg * {
-  stroke: var(--text-normal);
-}
-
+/* Add row styling */
 .rt-custom-beat-add-row {
   background: var(--background-primary);
   border-style: dashed;
@@ -575,10 +502,6 @@
 
 .rt-drag-placeholder {
   opacity: 0.35;
-}
-
-.rt-beat-add-index {
-  min-width: 24px;
 }
 
 /* Keep the Add beat CTA aligned to the right on the header row */
