@@ -24,6 +24,9 @@ export interface RadialTimelineSettings {
     showSourcePathAsTitle?: boolean;
     validFolderPaths: string[];
     aiOutputFolder?: string;
+    actCount?: number;
+    actLabelsRaw?: string;
+    showActLabels?: boolean;
     publishStageColors: {
         Zero: string;
         Author: string;

@@ -49,8 +49,6 @@ const TIMELINE_VIEW_DISPLAY_TEXT = "Radial timeline"; // Sentence case per guide
 
 
 // STATUS_COLORS now imported from constants
-
-const NUM_ACTS = 3;
 // Note: Search highlighting is now handled entirely by addHighlightRectangles() in TimeLineView.ts
 // after the SVG is rendered. This simplifies the code and ensures a single source of truth.
 

@@ -45,6 +45,7 @@ export interface RingRenderContext {
     synopsesElements: SVGGElement[];
     sceneGrades: Map<string, string>;
     manuscriptOrderPositions?: Map<string, { startAngle: number; endAngle: number }>;
+    numActs: number;
 }
 
 export function renderRings(ctx: RingRenderContext): string {
@@ -64,7 +65,8 @@ export function renderRings(ctx: RingRenderContext): string {
         maxTextWidth,
         synopsesElements,
         sceneGrades,
-        manuscriptOrderPositions
+        manuscriptOrderPositions,
+        numActs
     } = ctx;
 
     let svg = '';
@@ -120,9 +122,8 @@ export function renderRings(ctx: RingRenderContext): string {
                 startAngle = -Math.PI / 2;
                 endAngle = (3 * Math.PI) / 2;
             } else {
-                // Manuscript mode: 120 deg wedges
-                // Only 3 acts supported in logic roughly
-                const totalActsDivisor = 3; // Typically NUM_ACTS is 3
+                // Manuscript mode: divide full circle by configured acts
+                const totalActsDivisor = actsToRender || numActs;
                 startAngle = (act * 2 * Math.PI) / totalActsDivisor - Math.PI / 2;
                 endAngle = ((act + 1) * 2 * Math.PI) / totalActsDivisor - Math.PI / 2;
             }

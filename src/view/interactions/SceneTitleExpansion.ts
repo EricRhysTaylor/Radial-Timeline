@@ -63,7 +63,7 @@ export function calculateTargetSize(
 /**
  * Calculate act boundaries based on act number
  */
-export function getActBoundaries(actNumber: number): { start: number; end: number } {
+export function getActBoundaries(actNumber: number, totalActs: number = 3): { start: number; end: number } {
     if (actNumber === 0) {
         // Chronologue mode: full 360° circle starting at top
         return {
@@ -71,8 +71,7 @@ export function getActBoundaries(actNumber: number): { start: number; end: numbe
             end: -Math.PI / 2 + (2 * Math.PI)
         };
     } else {
-        // 3-act structure: divide circle into thirds
-        const NUM_ACTS = 3;
+        const NUM_ACTS = Math.max(3, totalActs);
         return {
             start: (actNumber * 2 * Math.PI / NUM_ACTS) - Math.PI / 2,
             end: ((actNumber + 1) * 2 * Math.PI / NUM_ACTS) - Math.PI / 2

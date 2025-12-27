@@ -196,15 +196,18 @@ export function renderAiSection(params: {
             frag.appendChild(link);
             return frag;
         })())
-        .addText(text => text
-            .setPlaceholder('Enter your Anthropic API key')
-            .setValue(plugin.settings.anthropicApiKey || '')
-            .onChange(async (value) => {
-                plugin.settings.anthropicApiKey = value.trim();
-                await plugin.saveSettings();
-                params.setKeyInputRef('anthropic', text.inputEl);
-                params.scheduleKeyValidation('anthropic');
-            }));
+        .addText(text => {
+            text.inputEl.addClass('rt-input-full');
+            text
+                .setPlaceholder('Enter your Anthropic API key')
+                .setValue(plugin.settings.anthropicApiKey || '')
+                .onChange(async (value) => {
+                    plugin.settings.anthropicApiKey = value.trim();
+                    await plugin.saveSettings();
+                    params.setKeyInputRef('anthropic', text.inputEl);
+                    params.scheduleKeyValidation('anthropic');
+                });
+        });
 
     // Gemini API Key
     new Settings(geminiSection)
@@ -222,15 +225,18 @@ export function renderAiSection(params: {
             frag.appendChild(link);
             return frag;
         })())
-        .addText(text => text
-            .setPlaceholder('Enter your Gemini API key')
-            .setValue(plugin.settings.geminiApiKey || '')
-            .onChange(async (value) => {
-                plugin.settings.geminiApiKey = value.trim();
-                await plugin.saveSettings();
-                params.setKeyInputRef('gemini', text.inputEl);
-                params.scheduleKeyValidation('gemini');
-            }));
+        .addText(text => {
+            text.inputEl.addClass('rt-input-full');
+            text
+                .setPlaceholder('Enter your Gemini API key')
+                .setValue(plugin.settings.geminiApiKey || '')
+                .onChange(async (value) => {
+                    plugin.settings.geminiApiKey = value.trim();
+                    await plugin.saveSettings();
+                    params.setKeyInputRef('gemini', text.inputEl);
+                    params.scheduleKeyValidation('gemini');
+                });
+        });
 
     // OpenAI API Key
     new Settings(openaiSection)
@@ -248,23 +254,26 @@ export function renderAiSection(params: {
             frag.appendChild(link);
             return frag;
         })())
-        .addText(text => text
-            .setPlaceholder('Enter your API key')
-            .setValue(plugin.settings.openaiApiKey || '')
-            .onChange(async (value) => {
-                plugin.settings.openaiApiKey = value.trim();
-                await plugin.saveSettings();
-                params.setKeyInputRef('openai', text.inputEl);
-                const v = value.trim();
-                text.inputEl.removeClass('rt-setting-input-success');
-                text.inputEl.removeClass('rt-setting-input-error');
-                if (v && !v.startsWith('sk-')) {
-                    text.inputEl.addClass('rt-setting-input-error');
-                    new Notice('This does not look like an OpenAI secret key. Keys start with "sk-".');
-                } else {
-                    params.scheduleKeyValidation('openai');
-                }
-            }));
+        .addText(text => {
+            text.inputEl.addClass('rt-input-full');
+            text
+                .setPlaceholder('Enter your API key')
+                .setValue(plugin.settings.openaiApiKey || '')
+                .onChange(async (value) => {
+                    plugin.settings.openaiApiKey = value.trim();
+                    await plugin.saveSettings();
+                    params.setKeyInputRef('openai', text.inputEl);
+                    const v = value.trim();
+                    text.inputEl.removeClass('rt-setting-input-success');
+                    text.inputEl.removeClass('rt-setting-input-error');
+                    if (v && !v.startsWith('sk-')) {
+                        text.inputEl.addClass('rt-setting-input-error');
+                        new Notice('This does not look like an OpenAI secret key. Keys start with "sk-".');
+                    } else {
+                        params.scheduleKeyValidation('openai');
+                    }
+                });
+        });
 
     const localSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-local' });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
@@ -285,6 +294,7 @@ export function renderAiSection(params: {
                     params.scheduleKeyValidation('local');
                 });
             params.setLocalConnectionInputs({ baseInput: text.inputEl });
+            text.inputEl.addClass('rt-input-full');
         });
 
     const localWarning = localBaseUrlSetting.descEl.createDiv({ cls: 'rt-setting-note rt-setting-warning' });
@@ -307,6 +317,7 @@ export function renderAiSection(params: {
                     params.scheduleKeyValidation('local');
                 });
             params.setLocalConnectionInputs({ modelInput: text.inputEl });
+            text.inputEl.addClass('rt-input-sm');
         });
 
     localModelSetting.addExtraButton(button => {

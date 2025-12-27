@@ -27,6 +27,7 @@ export function renderNumberSquaresUnified(params: {
   sceneNumbersMap?: Map<string, { number: string; x: number; y: number; width: number; height: number }>;
   enableSubplotColors?: boolean;
   resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
+  numActs?: number;
 }): string {
   const {
     plugin,
@@ -43,12 +44,14 @@ export function renderNumberSquaresUnified(params: {
     scenesByActAndSubplot,
     sceneNumbersMap,
     enableSubplotColors = false,
-    resolveSubplotVisual
+    resolveSubplotVisual,
+    numActs
   } = params;
 
   let svg = '<g class="rt-number-squares">';
   const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
   const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.75 : 1; // pad more aggressively when font grows
+  const totalActs = numActs ?? 3;
 
   scenes.forEach((scene, idx) => {
     if (isBeatNote(scene) || scene.itemType === 'Backdrop') return;
@@ -104,9 +107,9 @@ export function renderNumberSquaresUnified(params: {
         startAngle = -Math.PI / 2;
         endAngle = (3 * Math.PI) / 2;
       } else {
-        // Manuscript mode: 120° wedges for each Act
-        startAngle = (actIndex * 2 * Math.PI) / 3 - Math.PI / 2; // NUM_ACTS = 3
-        endAngle = ((actIndex + 1) * 2 * Math.PI) / 3 - Math.PI / 2;
+        // Manuscript mode: divide full circle by configured acts
+        startAngle = (actIndex * 2 * Math.PI) / totalActs - Math.PI / 2;
+        endAngle = ((actIndex + 1) * 2 * Math.PI) / totalActs - Math.PI / 2;
       }
 
       const innerR = ringStartRadii[ring];
@@ -223,10 +226,12 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
   sceneGrades: Map<string, string>;
   enableSubplotColors?: boolean;
   resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
+  numActs?: number;
 }): string {
-  const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, enableSubplotColors = false, resolveSubplotVisual } = params;
+  const { plugin, NUM_RINGS, masterSubplotOrder, ringStartRadii, ringWidths, scenesByActAndSubplot, scenes, sceneGrades, enableSubplotColors = false, resolveSubplotVisual, numActs } = params;
   const readabilityScale = getReadabilityMultiplier(plugin.settings as any);
   const squareScale = readabilityScale > 1 ? 1 + (readabilityScale - 1) * 0.75 : 1;
+  const totalActs = numActs ?? 3;
 
   // Check if using When date sorting
   const currentMode = (plugin.settings as any).currentMode || 'narrative';
@@ -267,9 +272,9 @@ export function renderInnerRingsNumberSquaresAllScenes(params: {
       startAngle = -Math.PI / 2;
       endAngle = (3 * Math.PI) / 2;
     } else {
-      // Manuscript mode: 120° wedges for each Act
-      startAngle = (actIndex * 2 * Math.PI) / 3 - Math.PI / 2; // NUM_ACTS = 3
-      endAngle = ((actIndex + 1) * 2 * Math.PI) / 3 - Math.PI / 2;
+      // Manuscript mode: divide full circle by configured acts
+      startAngle = (actIndex * 2 * Math.PI) / totalActs - Math.PI / 2;
+      endAngle = ((actIndex + 1) * 2 * Math.PI) / totalActs - Math.PI / 2;
     }
     const innerR = ringStartRadii[ring];
     const outerR = innerR + ringWidths[ring];
@@ -328,6 +333,7 @@ export function renderNumberSquaresStandard(params: {
   sceneNumbersMap: Map<string, { number: string; x: number; y: number; width: number; height: number }>;
   enableSubplotColors?: boolean;
   resolveSubplotVisual?: (scene: TimelineItem) => { subplotIndex: number } | null;
+  numActs?: number;
 }): string {
   return renderNumberSquaresUnified({
     plugin: params.plugin,
@@ -340,6 +346,7 @@ export function renderNumberSquaresStandard(params: {
     scenesByActAndSubplot: params.scenesByActAndSubplot,
     sceneNumbersMap: params.sceneNumbersMap,
     enableSubplotColors: params.enableSubplotColors,
-    resolveSubplotVisual: params.resolveSubplotVisual
+    resolveSubplotVisual: params.resolveSubplotVisual,
+    numActs: params.numActs
   });
 }

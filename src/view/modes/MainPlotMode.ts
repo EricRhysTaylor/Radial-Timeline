@@ -22,7 +22,8 @@ export function setupMainPlotMode(view: ViewLike, svg: SVGSVGElement): void {
     // The class should only be added during actual hover events
 
     // Create scene interaction manager for title expansion and styling
-    const manager = new SceneInteractionManager(view as any, svg);
+    const totalActs = Math.max(3, (view.plugin.settings as any).actCount ?? 3);
+    const manager = new SceneInteractionManager(view as any, svg, totalActs);
     manager.setTitleExpansionEnabled(view.plugin.settings.enableSceneTitleAutoExpand ?? true);
 
     let currentGroup: Element | null = null;

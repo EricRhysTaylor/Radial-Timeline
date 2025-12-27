@@ -10,63 +10,42 @@ const ALL_CANONICAL_KEYS = CANONICAL_KEYS;
 
 export function renderMetadataSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
+    const pendingMappings: { id: number; systemKey: string }[] = [];
+    let nextPendingId = 1;
 
-    let mappingsExpanded = plugin.settings.enableCustomMetadataMapping ?? false;
-
-    // Header with an expander instead of a toggle
+    // Single toggle that both enables the feature and controls visibility
     new Settings(containerEl)
         .setName('Custom Metadata Mapping')
         .setDesc('Map your custom frontmatter keys to Radial Timeline keys. Useful for pre-existing notes.')
-        .addExtraButton(button => {
-            const refreshButton = () => {
-                button.setIcon('chevrons-up-down');
-                button.setTooltip(mappingsExpanded ? 'Hide mapping options' : 'Show mapping options');
-            };
-            refreshButton();
-            button.onClick(() => {
-                mappingsExpanded = !mappingsExpanded;
-                refreshButton();
-                renderMappings();
-            });
+        .addToggle(toggle => {
+            toggle
+                .setValue(plugin.settings.enableCustomMetadataMapping ?? false)
+                .onChange(async (value) => {
+                    plugin.settings.enableCustomMetadataMapping = value;
+                    await plugin.saveSettings();
+                    renderMappings(); // Refresh visibility
+                });
         });
 
     const mappingContainer = containerEl.createDiv({ cls: 'rt-mapping-body' });
 
-    // Real enable/disable control lives inside the expanded body
-    new Settings(mappingContainer)
-        .setName('Apply metadata remapping')
-        .setDesc('Normalize your custom frontmatter keys to Radial Timeline keys.')
-        .addToggle(toggle => toggle
-            .setValue(plugin.settings.enableCustomMetadataMapping ?? false)
-            .onChange(async (value) => {
-                plugin.settings.enableCustomMetadataMapping = value;
-                await plugin.saveSettings();
-                renderMappings(); // Refresh visibility
-            }));
-
-    const disabledHint = mappingContainer.createDiv({ cls: 'rt-text-muted' });
-    disabledHint.setText('Turn on remapping to edit and apply the mappings.');
-
     const mappingListContainer = mappingContainer.createDiv({ cls: 'rt-mapping-list' });
 
     const renderMappings = () => {
-        // Collapse/expand the entire body
-        mappingContainer.toggleClass('rt-settings-hidden', !mappingsExpanded);
-
         // Toggle visibility based on setting
-        if (!plugin.settings.enableCustomMetadataMapping || !mappingsExpanded) {
-            disabledHint.toggleClass('rt-settings-hidden', !!plugin.settings.enableCustomMetadataMapping || !mappingsExpanded);
+        if (!plugin.settings.enableCustomMetadataMapping) {
+            mappingContainer.addClass('rt-settings-hidden');
             mappingListContainer.addClass('rt-mapping-hidden');
             mappingListContainer.empty();
             return;
         }
 
-        disabledHint.addClass('rt-settings-hidden');
+        mappingContainer.removeClass('rt-settings-hidden');
         mappingListContainer.removeClass('rt-mapping-hidden');
         mappingListContainer.empty();
         
         const mappings = plugin.settings.frontmatterMappings || {};
-        // Get set of currently used canonical keys to enforce uniqueness
+        // Get set of currently used canonical keys to enforce uniqueness (persisted only)
         const usedCanonicalKeys = new Set(Object.values(mappings));
 
         // Render existing mappings
@@ -80,6 +59,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                     .onChange(async (_newValue) => {
                         // We defer saving until blur to avoid partial state
                     });
+                text.inputEl.addClass('rt-input-sm');
                 
                 // Handle rename on blur
                 // SAFE: addEventListener used for Settings (transient element, cleanup via DOM removal)
@@ -141,24 +121,77 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                 }));
         }
 
+        // Render pending draft mappings (not persisted until a user key is provided)
+        for (const pending of pendingMappings) {
+            const setting = new Settings(mappingListContainer);
+
+            // Text input for User Key (starts empty; required to persist)
+            setting.addText(text => {
+                text.setPlaceholder('Your Key (required to save)');
+                text.setValue('');
+                text.inputEl.addClass('rt-input-sm');
+                text.inputEl.addEventListener('blur', async () => {
+                    const newValue = text.getValue().trim();
+                    if (!newValue) {
+                        return; // Keep as draft and do not persist
+                    }
+
+                    if (!plugin.settings.frontmatterMappings) {
+                        plugin.settings.frontmatterMappings = {};
+                    }
+
+                    plugin.settings.frontmatterMappings[newValue] = pending.systemKey;
+                    const idx = pendingMappings.indexOf(pending);
+                    if (idx >= 0) pendingMappings.splice(idx, 1);
+
+                    await plugin.saveSettings();
+                    renderMappings();
+                });
+            });
+
+            // Dropdown for System Key (suggested, but not saved until user key is set)
+            setting.addDropdown(dropdown => {
+                const usedCanonicalKeysForDraft = new Set([
+                    ...Object.values(mappings),
+                    ...pendingMappings.filter(p => p !== pending).map(p => p.systemKey)
+                ]);
+
+                dropdown.addOption(pending.systemKey, pending.systemKey);
+
+                ALL_CANONICAL_KEYS.forEach(key => {
+                    if (key !== pending.systemKey && !usedCanonicalKeysForDraft.has(key)) {
+                        dropdown.addOption(key, key);
+                    }
+                });
+
+                dropdown.setValue(pending.systemKey);
+                dropdown.onChange((newValue) => {
+                    pending.systemKey = newValue;
+                    renderMappings(); // Refresh availability for other rows
+                });
+            });
+
+            // Delete draft button
+            setting.addButton(button => button
+                .setIcon('trash')
+                .setTooltip('Discard Draft')
+                .onClick(() => {
+                    const idx = pendingMappings.indexOf(pending);
+                    if (idx >= 0) pendingMappings.splice(idx, 1);
+                    renderMappings();
+                }));
+        }
+
         // Add New Mapping Button
         new Settings(mappingListContainer)
             .addButton(button => button
                 .setButtonText('Add New Mapping')
                 .onClick(async () => {
-                    if (!plugin.settings.frontmatterMappings) {
-                        plugin.settings.frontmatterMappings = {};
-                    }
-                    
-                    // Find a unique user key placeholder
-                    let newKey = 'New Key';
-                    let i = 1;
-                    while (plugin.settings.frontmatterMappings[newKey]) {
-                        newKey = `New Key ${i++}`;
-                    }
-
-                    // Find first available canonical key
-                    const currentUsed = new Set(Object.values(plugin.settings.frontmatterMappings));
+                    // Find first available canonical key (includes drafts to avoid duplicate suggestions)
+                    const currentUsed = new Set([
+                        ...Object.values(plugin.settings.frontmatterMappings || {}),
+                        ...pendingMappings.map(pending => pending.systemKey)
+                    ]);
                     const firstAvailable = ALL_CANONICAL_KEYS.find(k => !currentUsed.has(k));
 
                     if (!firstAvailable) {
@@ -166,8 +199,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                         return;
                     }
 
-                    plugin.settings.frontmatterMappings[newKey] = firstAvailable;
-                    await plugin.saveSettings();
+                    pendingMappings.push({ id: nextPendingId++, systemKey: firstAvailable });
                     renderMappings();
                 }));
     };

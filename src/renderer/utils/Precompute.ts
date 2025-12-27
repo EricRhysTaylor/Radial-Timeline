@@ -14,12 +14,12 @@ import {
     SUBPLOT_OUTER_RADIUS_CHRONOLOGUE,
     MONTH_LABEL_RADIUS
 } from '../layout/LayoutConstants';
-import { NUM_ACTS } from '../../utils/constants';
 import { computeRingGeometry } from '../layout/Rings';
 import { getMostAdvancedStageColor } from '../../utils/colour';
 import { startPerfSegment } from '../utils/Performance';
 import { computeSubplotDominanceStates, type SubplotDominanceState } from '../components/SubplotDominanceIndicators';
 import { getReadabilityScale } from '../../utils/readability';
+import { getConfiguredActCount } from '../../utils/acts';
 
 const BACKDROP_RING_HEIGHT = 20; // px
 
@@ -98,20 +98,21 @@ export function computeCacheableValues(
             scenesByActAndSubplot[0][subplot] = sortScenes(scenesByActAndSubplot[0][subplot], true, forceChronological);
         });
     } else {
-        for (let act = 0; act < NUM_ACTS; act++) {
+        const numActs = getConfiguredActCount(plugin.settings as any);
+        for (let act = 0; act < numActs; act++) {
             scenesByActAndSubplot[act] = {};
         }
         scenes.forEach(scene => {
             if (scene.itemType === 'Backdrop') return;
             const act = scene.actNumber !== undefined ? scene.actNumber - 1 : 0;
-            const validAct = (act >= 0 && act < NUM_ACTS) ? act : 0;
+            const validAct = (act >= 0 && act < numActs) ? act : 0;
             const subplot = scene.subplot && scene.subplot.trim().length > 0 ? scene.subplot : 'Main Plot';
             if (!scenesByActAndSubplot[validAct][subplot]) {
                 scenesByActAndSubplot[validAct][subplot] = [];
             }
             scenesByActAndSubplot[validAct][subplot].push(scene);
         });
-        for (let act = 0; act < NUM_ACTS; act++) {
+        for (let act = 0; act < numActs; act++) {
             Object.keys(scenesByActAndSubplot[act] || {}).forEach(subplot => {
                 scenesByActAndSubplot[act][subplot] = sortScenes(scenesByActAndSubplot[act][subplot], false, false);
             });
@@ -119,7 +120,7 @@ export function computeCacheableValues(
     }
 
     const allSubplotsMap = new Map<string, number>();
-    const actsToCheck = sortByWhen ? 1 : NUM_ACTS;
+    const actsToCheck = sortByWhen ? 1 : getConfiguredActCount(plugin.settings as any);
 
     for (let actIndex = 0; actIndex < actsToCheck; actIndex++) {
         Object.entries(scenesByActAndSubplot[actIndex] || {}).forEach(([subplot, scenes]) => {

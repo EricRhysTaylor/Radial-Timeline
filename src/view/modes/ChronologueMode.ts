@@ -55,7 +55,8 @@ export function setupChronologueMode(view: ChronologueView, svg: SVGSVGElement):
  */
 function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement): void {
     // Create scene interaction manager for title expansion
-    const manager = new SceneInteractionManager(view as any, svg);
+    const totalActs = Math.max(3, (view.plugin.settings as any).actCount ?? 3);
+    const manager = new SceneInteractionManager(view as any, svg, totalActs);
 
     // ALWAYS DISABLE title expansion in Chronologue mode:
     // - Not needed: Chronological order focuses on temporal relationships, not scene titles

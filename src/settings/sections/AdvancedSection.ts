@@ -20,6 +20,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
 
             text.setPlaceholder(t('settings.advanced.aiOutputFolder.placeholder'))
                 .setValue(fallbackFolder);
+            text.inputEl.addClass('rt-input-full');
 
             const inputEl = text.inputEl;
 
@@ -89,7 +90,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 clearFontMetricsCaches(); // Clear cached measurements for new scale
                 plugin.refreshTimelineIfNeeded(null);
             });
-            drop.selectEl.style.setProperty('width', 'fit-content', 'important');
+            drop.selectEl.addClass('rt-setting-dropdown');
         });
 
 
@@ -111,6 +112,7 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                     plugin.settings.metadataRefreshDebounceMs = n;
                     await plugin.saveSettings();
                 });
+            text.inputEl.addClass('rt-input-xs');
         });
 
     // 3. Reset subplot color precedence

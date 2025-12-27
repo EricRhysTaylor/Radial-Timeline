@@ -447,13 +447,10 @@ export class BookDesignerModal extends Modal {
         guide.setAttr('r', `${outerR}`);
         guide.addClass('rt-manuscript-preview-guide');
 
-        // Draw Act Divider Lines (Fixed Positions: 0, 1/3, 2/3)
+        // Draw Act Divider Lines (dynamic wedges by configured acts)
         // 12 o'clock = -PI/2
-        const actAngles = [
-            -Math.PI / 2,                  // Act 1 Start
-            -Math.PI / 2 + (2 * Math.PI / 3), // Act 2 Start
-            -Math.PI / 2 + (4 * Math.PI / 3)  // Act 3 Start
-        ];
+        const totalActs = Math.max(3, (this.plugin.settings as any).actCount ?? 3);
+        const actAngles = Array.from({ length: totalActs }, (_, idx) => -Math.PI / 2 + (idx * 2 * Math.PI) / totalActs);
 
         actAngles.forEach(angle => {
             const x1 = cx + innerR * Math.cos(angle);
@@ -473,15 +470,11 @@ export class BookDesignerModal extends Modal {
         // Render Scenes per Act Sector
         buckets.forEach((bucketScenes, bIdx) => {
             const actNumber = actsList[bIdx];
-            // Fixed angular range for this Act (1=0..120, 2=120..240, 3=240..360)
-            // Assuming Act 1, 2, 3 correspond to these fixed sectors.
-            // If user selects Act 1 and Act 3 (skipping 2), Act 3 should still be in 240..360 sector.
-            // Map Act Number to Sector Index (0, 1, 2)
-            // Act numbers are 1-based.
-            const sectorIndex = (actNumber - 1) % 3; 
+            // Map Act Number to Sector Index (0-based)
+            const sectorIndex = (actNumber - 1) % totalActs; 
             
             const sectorStart = actAngles[sectorIndex];
-            const sectorSpan = (2 * Math.PI) / 3; // 120 degrees
+            const sectorSpan = (2 * Math.PI) / totalActs;
             
             const count = bucketScenes.length;
             if (count === 0) return;

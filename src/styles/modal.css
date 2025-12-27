@@ -12,6 +12,18 @@
   box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
 }
 
+/* Default sizing for modal inputs (override with utilities above when needed) */
+.rt-modal-shell input[type="text"],
+.rt-modal-shell input[type="number"],
+.rt-modal-shell input[type="password"] {
+  width: var(--rt-input-width-md);
+  max-width: 100%;
+}
+
+.rt-modal-shell textarea {
+  width: 100%;
+}
+
 .rt-modal-header {
   display: flex;
   flex-direction: column;
@@ -189,6 +201,13 @@
   white-space: pre-wrap;
   max-height: 120px;
   overflow-y: auto;
+}
+
+/* Numeric entry for Gossamer scores */
+.rt-gossamer-score-input {
+  width: var(--rt-input-width-xs);
+  min-width: var(--rt-input-width-xs);
+  text-align: center;
 }
 
 .rt-scene-analysis-modal {

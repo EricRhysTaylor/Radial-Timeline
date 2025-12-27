@@ -28,6 +28,7 @@ import {
 export class SceneInteractionManager {
     private svg: SVGSVGElement;
     private enabled: boolean = true;
+    private totalActs: number = 3;
     
     // State tracking
     private currentGroup: Element | null = null;
@@ -46,8 +47,9 @@ export class SceneInteractionManager {
     // Cleanup registration (for Obsidian's Component system)
     private cleanupCallbacks: (() => void)[] = [];
     
-    constructor(view: RadialTimelineView, svg: SVGSVGElement) {
+    constructor(view: RadialTimelineView, svg: SVGSVGElement, totalActs?: number) {
         this.svg = svg;
+        this.totalActs = Math.max(3, totalActs ?? 3);
         this.registerFn = typeof (view as any).register === 'function' ? (view.register as any).bind(view) : null;
         
         // Create reusable text measurement element
@@ -62,6 +64,10 @@ export class SceneInteractionManager {
                 this.rafId = null;
             }
         });
+    }
+
+    setActCount(count: number): void {
+        this.totalActs = Math.max(3, count);
     }
     
     /**
@@ -415,7 +421,7 @@ export class SceneInteractionManager {
         
         // Get act boundaries
         const actNum = Number(hoveredAct);
-        const actBounds = getActBoundaries(actNum);
+        const actBounds = getActBoundaries(actNum, this.totalActs);
         
         // Redistribute angles
         const redistribution = redistributeAngles(

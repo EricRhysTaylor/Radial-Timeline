@@ -1,4 +1,3 @@
-import { NUM_ACTS } from '../../utils/constants';
 import type { TimelineItem } from '../../types';
 import {
     isBeatNote,
@@ -17,6 +16,7 @@ import {
 } from '../components/NumberSquares';
 import { parseSceneTitle } from '../../utils/text';
 import type { SceneNumberInfo } from '../../utils/constants';
+import { getConfiguredActCount } from '../../utils/acts';
 
 // Define the interface for the number square visual resolver logic
 export type NumberSquareVisualResolver = (scene: TimelineItem) => { subplotIndex: number };
@@ -32,6 +32,7 @@ export interface NumberSquareRenderContext {
     sceneNumbersMap: Map<string, SceneNumberInfo>;
     numberSquareVisualResolver: NumberSquareVisualResolver | null;
     shouldApplyNumberSquareColors: boolean;
+    numActs: number;
 }
 
 export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
@@ -45,11 +46,13 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
         sceneGrades,
         sceneNumbersMap,
         numberSquareVisualResolver,
-        shouldApplyNumberSquareColors
+        shouldApplyNumberSquareColors,
+        numActs
     } = ctx;
 
     let svg = '';
     const NUM_RINGS = masterSubplotOrder.length;
+    const totalActs = Math.max(3, numActs || getConfiguredActCount(plugin.settings as any));
 
     if (shouldShowAllScenesInOuterRing(plugin)) {
         // In outer-ring-narrative mode, draw number squares for ALL rings
@@ -66,7 +69,7 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
         const currentMode = (plugin.settings as any).currentMode || 'narrative';
         const isChronologueMode = currentMode === 'chronologue';
         const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
-        const actsToRender = sortByWhen ? 1 : NUM_ACTS;
+        const actsToRender = sortByWhen ? 1 : totalActs;
 
         for (let act = 0; act < actsToRender; act++) {
             let startAngle: number;
@@ -77,9 +80,9 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
                 startAngle = -Math.PI / 2;
                 endAngle = (3 * Math.PI) / 2;
             } else {
-                // Manuscript mode: 120° wedges
-                startAngle = (act * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
-                endAngle = ((act + 1) * 2 * Math.PI) / NUM_ACTS - Math.PI / 2;
+                // Manuscript mode: divide full circle by configured acts
+                startAngle = (act * 2 * Math.PI) / totalActs - Math.PI / 2;
+                endAngle = ((act + 1) * 2 * Math.PI) / totalActs - Math.PI / 2;
             }
 
             // Build combined list for this act (or all scenes if using When date)
@@ -180,7 +183,8 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
             scenes,
             sceneGrades,
             enableSubplotColors: shouldApplyNumberSquareColors,
-            resolveSubplotVisual: numberSquareVisualResolver || undefined
+            resolveSubplotVisual: numberSquareVisualResolver || undefined,
+            numActs
         });
 
         svg += `</g>`;
@@ -196,7 +200,8 @@ export function renderNumberSquares(ctx: NumberSquareRenderContext): string {
             sceneGrades,
             sceneNumbersMap,
             enableSubplotColors: shouldApplyNumberSquareColors,
-            resolveSubplotVisual: numberSquareVisualResolver || undefined
+            resolveSubplotVisual: numberSquareVisualResolver || undefined,
+            numActs
         });
     }
 

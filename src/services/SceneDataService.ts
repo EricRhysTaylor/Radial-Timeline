@@ -18,6 +18,7 @@ import { parseWhenField } from '../utils/date';
 import { normalizeBooleanValue, isStoryBeat } from '../utils/sceneHelpers';
 import { stripWikiLinks } from '../utils/text';
 import { filterBeatsBySystem } from '../utils/gossamer';
+import { clampActNumber, getConfiguredActCount } from '../utils/acts';
 
 export interface GetSceneDataOptions {
     filterBeatsBySystem?: boolean;
@@ -115,10 +116,9 @@ export class SceneDataService {
 
                     // Read actNumber from metadata, default to 1 if missing or empty
                     const actValue = metadata.Act;
-                    const actNumber = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
-
-                    // Ensure actNumber is a valid number between 1 and 3
-                    const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
+                    const configuredActs = getConfiguredActCount(this.settings);
+                    const actNumberRaw = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
+                    const validActNumber = clampActNumber(actNumberRaw, configuredActs);
 
                     // Use filename for display; numbering is derived from the filename/title prefix.
                     // Do not consume YAML Title for numbering/ordering to avoid stale frontmatter.
@@ -230,8 +230,9 @@ export class SceneDataService {
                 } else if (metadata && isStoryBeat(metadata.Class)) {
                     // Defer processing of Plot/Beat items until after all scenes are collected
                     const actValue = metadata.Act;
-                    const actNumber = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
-                    const validActNumber = (actNumber >= 1 && actNumber <= 3) ? actNumber : 1;
+                    const configuredActs = getConfiguredActCount(this.settings);
+                    const actNumberRaw = (actValue !== undefined && actValue !== null && actValue !== '') ? Number(actValue) : 1;
+                    const validActNumber = clampActNumber(actNumberRaw, configuredActs);
                     plotsToProcess.push({ file, metadata, validActNumber });
                 }
             } catch (error) {

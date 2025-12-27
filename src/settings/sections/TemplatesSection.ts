@@ -66,19 +66,20 @@ export function renderStoryBeatsSection(params: {
 
     // --- Custom System Configuration (Dynamic Visibility) ---
     const customConfigContainer = containerEl.createDiv({ cls: 'rt-custom-beat-config' });
-    customConfigContainer.style.paddingLeft = '18px';
-    customConfigContainer.style.borderLeft = '2px solid var(--interactive-accent)';
-    customConfigContainer.style.marginBottom = '18px';
 
     const renderCustomConfig = () => {
         customConfigContainer.empty();
         
         new Settings(customConfigContainer)
-            .setName('Custom system name')
-            .setDesc('The name of your custom beat system (e.g. "7 Point Structure"). Matches the "Beat Model" field in YAML.')
+            .setName('Custom story beat system')
+            .setDesc('The name of your custom beat system (e.g. "7 Point Structure"). Assigned the "Beat Model" field in YAML. Define beats in order. Drag to reorder. Act drives the frontmatter.')
             .addText(text => text
                 .setPlaceholder('Custom')
                 .setValue(plugin.settings.customBeatSystemName || 'Custom')
+                .then(t => {
+                    t.inputEl.addClass('rt-input-md');
+                    return t;
+                })
                 .onChange(async (value) => {
                     plugin.settings.customBeatSystemName = value;
                     await plugin.saveSettings();
@@ -86,15 +87,9 @@ export function renderStoryBeatsSection(params: {
                 }));
 
         // Beat List Editor (draggable rows with Name + Act)
-        const listHeader = customConfigContainer.createDiv({ cls: 'rt-custom-beat-header setting-item' });
-        listHeader.addClass('rt-beatlist-header');
-        const titleWrap = listHeader.createDiv({ cls: 'setting-item-info' });
-        titleWrap.createDiv({ text: 'Beat List', cls: 'setting-item-name' });
-        titleWrap.createDiv({ text: 'Define beats in order. Drag to reorder. Act drives the frontmatter.', cls: 'setting-item-description' });
+        const beatWrapper = customConfigContainer.createDiv({ cls: 'rt-custom-beat-wrapper' });
 
-        const addBtn = listHeader.createEl('button', { text: 'Add beat', cls: 'rt-mod-cta' });
-
-        const listContainer = customConfigContainer.createDiv({ cls: 'rt-custom-beat-list' });
+        const listContainer = beatWrapper.createDiv({ cls: 'rt-custom-beat-list' });
 
         type BeatRow = { name: string; act: number };
 
@@ -124,11 +119,6 @@ export function renderStoryBeatsSection(params: {
         const renderList = () => {
             listContainer.empty();
             const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow);
-
-            if (beats.length === 0) {
-                listContainer.createDiv({ text: 'No beats defined. Add one to get started.', cls: 'setting-item-description' }).style.fontStyle = 'italic';
-                return;
-            }
 
             beats.forEach((beatLine, index) => {
                 const row = listContainer.createDiv({ cls: 'rt-custom-beat-row' });
@@ -206,17 +196,42 @@ export function renderStoryBeatsSection(params: {
                     renderList();
                 });
             });
+
+            // Add row at bottom (single line, matches advanced YAML add row)
+            const defaultAct = beats.length > 0 ? beats[beats.length - 1].act : 1;
+            const addRow = listContainer.createDiv({ cls: 'rt-custom-beat-row rt-custom-beat-add-row' });
+
+            addRow.createDiv({ cls: 'rt-drag-handle rt-drag-placeholder' });
+            addRow.createDiv({ cls: 'rt-beat-index rt-beat-add-index', text: '' });
+
+            const addNameInput = addRow.createEl('input', { type: 'text', cls: 'rt-beat-name-input', placeholder: 'New beat' });
+            const addActSelect = addRow.createEl('select', { cls: 'rt-beat-act-select' });
+            [1, 2, 3].forEach(n => {
+                const opt = addActSelect.createEl('option', { value: n.toString(), text: `Act ${n}` });
+                if (defaultAct === n) opt.selected = true;
+            });
+
+            const addBtn = addRow.createEl('button', { cls: 'rt-beat-add-btn', attr: { 'aria-label': 'Add beat' } });
+            setIcon(addBtn, 'plus');
+
+            const commitAdd = () => {
+                const name = (addNameInput.value || 'New Beat').trim();
+                const act = parseInt(addActSelect.value, 10) || defaultAct || 1;
+                const updated = [...beats, { name, act }];
+                saveBeats(updated);
+                renderList();
+            };
+
+            addBtn.onclick = commitAdd;
+            plugin.registerDomEvent(addNameInput, 'keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitAdd();
+                }
+            });
         };
 
         renderList();
-
-        addBtn.onclick = () => {
-            const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow);
-            let defaultAct = beats.length > 0 ? beats[beats.length - 1].act : 1;
-            const updated = [...beats, { name: 'New Beat', act: defaultAct }];
-            saveBeats(updated);
-            renderList();
-        };
     };
     renderCustomConfig();
 
@@ -262,6 +277,72 @@ export function renderStoryBeatsSection(params: {
                 });
                 modal.open();
             }));
+
+    // Acts Section (above YAML)
+    new Settings(containerEl)
+        .setName('Acts')
+        .setHeading();
+
+    const getActCount = () => Math.max(3, plugin.settings.actCount ?? 3);
+
+    const previewEl = containerEl.createDiv({ cls: 'setting-item-description' });
+    const updateActPreview = () => {
+        const count = getActCount();
+        const raw = plugin.settings.actLabelsRaw ?? '';
+        const labels = raw.split(',').map(l => l.trim()).filter(Boolean).slice(0, count);
+        const showLabels = plugin.settings.showActLabels ?? true;
+        const previewLabels = Array.from({ length: count }, (_, idx) => {
+            if (!showLabels) return `${idx + 1}`;
+            return labels[idx] && labels[idx].length > 0 ? labels[idx] : `Act ${idx + 1}`;
+        });
+        previewEl.setText(`Preview: ${previewLabels.join(', ')}`);
+    };
+
+    new Settings(containerEl)
+        .setName('Act count')
+        .setDesc('Minimum 3. Applies to Narrative, Subplot, and Gossamer layouts. Scene and Beats YAML.')
+        .addText(text => {
+            text.setPlaceholder('3');
+            text.setValue(String(getActCount()));
+            text.inputEl.type = 'number';
+            text.inputEl.min = '3';
+            text.inputEl.addClass('rt-input-xs');
+            text.onChange(async (value) => {
+                const parsed = parseInt(value, 10);
+                const next = Number.isFinite(parsed) ? Math.max(3, parsed) : 3;
+                plugin.settings.actCount = next;
+                await plugin.saveSettings();
+                updateActPreview();
+            });
+        });
+
+    new Settings(containerEl)
+        .setName('Act labels (optional)')
+        .setDesc('Comma-separated labels. Extra labels are ignored; empty slots fall back to numbers.')
+        .addTextArea(text => {
+            text.setValue(plugin.settings.actLabelsRaw ?? 'Act 1, Act 2, Act 3');
+            text.inputEl.rows = 2;
+            text.inputEl.addClass('rt-input-full');
+            text.onChange(async (value) => {
+                plugin.settings.actLabelsRaw = value;
+                await plugin.saveSettings();
+                updateActPreview();
+            });
+        });
+
+    new Settings(containerEl)
+        .setName('Show act labels')
+        .setDesc('When off, acts show numbers only.')
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.showActLabels ?? true);
+            toggle.onChange(async (value) => {
+                plugin.settings.showActLabels = value;
+                await plugin.saveSettings();
+                updateActPreview();
+            });
+        });
+
+    updateActPreview();
 
     // Scene YAML Templates Section
     new Settings(containerEl)
@@ -653,9 +734,9 @@ export function renderStoryBeatsSection(params: {
 
     function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
         const descriptions: Record<string, string> = {
-            'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement.',
-            'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery.',
-            'Story Grid': 'Literary fiction and complex narratives. Balances micro and macro structure with progressive complications.',
+            'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement. Examples: The Hunger Games, The Martian, The Fault in Our Stars.',
+            'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery. Examples: The Odyssey, The Hobbit, Harry Potter and the Sorcerer\'s Stone.',
+            'Story Grid': 'Literary fiction and complex narratives. Balances micro and macro structure with progressive complications. Examples: The Silence of the Lambs, Pride and Prejudice, The Tipping Point.',
             'Custom': 'Uses any story beat notes you create. Perfect for when you don\'t follow a traditional story structure.'
         };
 

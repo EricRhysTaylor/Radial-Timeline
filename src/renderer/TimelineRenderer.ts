@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
-import { NUM_ACTS, STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
+import { STAGE_ORDER, STAGES_FOR_GRID, STATUSES_FOR_GRID, STATUS_COLORS, SceneNumberInfo } from '../utils/constants';
 import {
     GRID_CELL_BASE,
     GRID_CELL_WIDTH_EXTRA,
@@ -94,6 +94,7 @@ import type { CompletionEstimate } from './utils/Estimation';
 import { renderProgressRingBaseLayer } from './utils/ProgressRing';
 import { getReadabilityMultiplier, getReadabilityScale } from '../utils/readability';
 import { getVersionCheckService } from '../services/VersionCheckService';
+import { getConfiguredActCount, parseActLabels, shouldShowActLabels } from '../utils/acts';
 
 
 // STATUS_COLORS and SceneNumberInfo now imported from constants
@@ -185,9 +186,21 @@ export function createTimelineSVG(
     };
     const forceSubplotFillColors = currentMode === 'narrative' || currentMode === 'chronologue';
 
+    // Determine sorting method (needed for later logic; pulled out for readability)
+    const numActs = getConfiguredActCount(plugin.settings as any);
+    const actLabels = parseActLabels(plugin.settings as any, numActs);
+    const showActLabels = shouldShowActLabels(plugin.settings as any);
+    const isChronologueMode = currentMode === 'chronologue';
+    const isSubplotMode = currentMode === 'subplot';
+    const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
+    const forceChronological = isChronologueMode;
+    const chronologueSceneEntries: ChronologueSceneEntry[] | undefined = isChronologueMode
+        ? collectChronologueSceneEntries(scenes)
+        : undefined;
+
     // Create SVG root and expose the dominant publish-stage colour for CSS via a hidden <g> element
     let svg = `<svg width="${size}" height="${size}" viewBox="-${size / 2} -${size / 2} ${size} ${size}" 
-                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" data-font-scale="${readabilityScale}"
+                       xmlns="http://www.w3.org/2000/svg" class="radial-timeline-svg ${readabilityClass}" data-font-scale="${readabilityScale}" data-num-acts="${numActs}"
                        preserveAspectRatio="xMidYMid meet">`;
 
 
@@ -199,15 +212,6 @@ export function createTimelineSVG(
 
     // Create a map to store scene number information for the scene square and synopsis
     const sceneNumbersMap = new Map<string, SceneNumberInfo>();
-
-    // Determine sorting method (needed for later logic; pulled out for readability)
-    const isChronologueMode = currentMode === 'chronologue';
-    const isSubplotMode = currentMode === 'subplot';
-    const sortByWhen = isChronologueMode ? true : ((plugin.settings as any).sortByWhenDate ?? false);
-    const forceChronological = isChronologueMode;
-    const chronologueSceneEntries: ChronologueSceneEntry[] | undefined = isChronologueMode
-        ? collectChronologueSceneEntries(scenes)
-        : undefined;
 
     // Use appropriate subplot outer radius based on mode and readability scale
     const subplotOuterRadius = isChronologueMode
@@ -397,7 +401,14 @@ export function createTimelineSVG(
     // Only show Act labels when using manuscript order (not When date sorting)
     if (!sortByWhen) {
         // --- Draw Act labels at fixed radius ---
-        svg += renderActLabels({ NUM_ACTS, outerMostOuterRadius: ACT_LABEL_RADIUS, actLabelOffset: 0, maxStageColor });
+        svg += renderActLabels({
+            numActs,
+            actLabels,
+            showActLabels,
+            outerMostOuterRadius: ACT_LABEL_RADIUS,
+            actLabelOffset: 0,
+            maxStageColor
+        });
     }
 
     // Initialize beat angles map for Gossamer (clear any stale data from previous render)
@@ -409,8 +420,8 @@ export function createTimelineSVG(
 
     // Determine how many acts to render based on sorting method
     // When date sorting: Use full 360° circle (only "act 0")
-    // Manuscript order: Use 3 Act zones of 120° each
-    const actsToRender = sortByWhen ? 1 : NUM_ACTS;
+    // Manuscript order: Use configured Act zones
+    const actsToRender = sortByWhen ? 1 : numActs;
 
     const stopRingRender = startPerfSegment(plugin, 'timeline.render-rings');
 
@@ -430,7 +441,8 @@ export function createTimelineSVG(
         maxTextWidth,
         synopsesElements,
         sceneGrades,
-        manuscriptOrderPositions
+        manuscriptOrderPositions,
+        numActs
     };
 
     svg += renderRings(ringRenderContext);
@@ -438,7 +450,7 @@ export function createTimelineSVG(
     stopRingRender();
 
     // After all scenes are drawn, add just the act borders (vertical lines only)
-    svg += renderActBorders({ NUM_ACTS, innerRadius, outerRadius: subplotOuterRadius });
+    svg += renderActBorders({ numActs, innerRadius, outerRadius: subplotOuterRadius });
 
     if (shouldShowSubplotRings(plugin)) {
         svg += renderSubplotDominanceIndicators({
@@ -564,7 +576,8 @@ export function createTimelineSVG(
         sceneGrades,
         sceneNumbersMap,
         numberSquareVisualResolver: numberSquareVisualResolver || null,
-        shouldApplyNumberSquareColors
+        shouldApplyNumberSquareColors,
+        numActs
     };
 
     svg += renderNumberSquares(numberSquareContext);
@@ -619,7 +632,7 @@ export function createTimelineSVG(
 
     // Add rotation toggle control (non-rotating UI), positioned above top edge (Act 2 marker vicinity)
     // Place the button near the Act 2 label (start of Act 2 boundary) and slightly outside along local y-axis
-    svg += renderRotationToggle({ numActs: NUM_ACTS, actualOuterRadius });
+    svg += renderRotationToggle({ numActs, actualOuterRadius });
 
     // Add version indicator (bottom-right corner)
     try {

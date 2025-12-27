@@ -71,6 +71,43 @@
   flex: 0 0 var(--rt-settings-select-width);
 }
 
+/* Input sizing utilities (shared across settings) */
+.rt-input-xs {
+  width: var(--rt-input-width-xs);
+  min-width: var(--rt-input-width-xs);
+}
+
+.rt-input-sm {
+  width: var(--rt-input-width-sm);
+  min-width: var(--rt-input-width-sm);
+}
+
+.rt-input-md {
+  width: var(--rt-input-width-md);
+  min-width: var(--rt-input-width-md);
+}
+
+.rt-input-lg {
+  width: var(--rt-input-width-lg);
+  min-width: var(--rt-input-width-lg);
+}
+
+.rt-input-full {
+  width: 100%;
+}
+
+/* Default sizing for settings inputs (override with utilities above when needed) */
+.setting-item .setting-item-control input[type="text"],
+.setting-item .setting-item-control input[type="number"],
+.setting-item .setting-item-control input[type="password"] {
+  width: var(--rt-input-width-md);
+  max-width: 100%;
+}
+
+.setting-item .setting-item-control textarea {
+  width: 100%;
+}
+
 /* Dim non-selected provider sections in settings */
 .rt-provider-section {
   transition: opacity 120ms ease;
@@ -299,10 +336,6 @@
   cursor: pointer;
 }
 
-.rt-input-full {
-  width: 100%;
-}
-
 .rt-template-indent {
   padding-left: 20px;
   border-left: 2px solid var(--background-modifier-border);
@@ -363,6 +396,160 @@
 
 .rt-template-add-row {
   column-gap: 12px;
+}
+
+/* Custom Story Beats editor layout */
+.rt-custom-beat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 6px;
+}
+
+.rt-custom-beat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.rt-custom-beat-wrapper {
+  padding-left: 18px;
+  border-left: 2px solid var(--interactive-accent);
+  margin-bottom: 18px;
+}
+
+.rt-custom-beat-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr 130px auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+}
+
+.rt-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  width: 22px;
+  height: 22px;
+  color: var(--text-muted);
+}
+
+.rt-beat-index {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.rt-beat-name-input {
+  width: 100%;
+  height: 36px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+}
+
+.rt-beat-name-input:focus {
+  outline: 1px solid var(--interactive-accent);
+}
+
+.rt-beat-act-select {
+  width: 100%;
+  min-width: 120px;
+  height: 36px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+}
+
+.rt-beat-delete-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.rt-beat-add-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+}
+
+.rt-beat-add-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rt-beat-add-btn svg,
+.rt-beat-add-btn svg * {
+  stroke: var(--text-on-accent);
+}
+
+.rt-beat-add-btn:hover {
+  filter: brightness(1.05);
+}
+
+.rt-beat-delete-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rt-beat-delete-btn svg,
+.rt-beat-delete-btn svg * {
+  stroke: var(--text-muted);
+}
+
+.rt-beat-delete-btn:hover {
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+}
+
+.rt-beat-delete-btn:hover svg,
+.rt-beat-delete-btn:hover svg * {
+  stroke: var(--text-normal);
+}
+
+.rt-custom-beat-add-row {
+  background: var(--background-primary);
+  border-style: dashed;
+  opacity: 0.95;
+}
+
+.rt-drag-placeholder {
+  opacity: 0.35;
+}
+
+.rt-beat-add-index {
+  min-width: 24px;
+}
+
+/* Keep the Add beat CTA aligned to the right on the header row */
+.rt-custom-beat-header .rt-mod-cta {
+  margin-left: auto;
 }
 
 .rt-color-grid-controls .rt-swatch-trigger.rt-stage-Author {

@@ -12,6 +12,9 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     showSourcePathAsTitle: true, // Default: show source path as title of the work
     validFolderPaths: [], // Default empty array for folder path history
     aiOutputFolder: 'AI',
+    actCount: 3,
+    actLabelsRaw: 'Act 1, Act 2, Act 3',
+    showActLabels: true,
     publishStageColors: {
         Zero: '#9E70CF',   // Purple (Stage Zero)
         Author: '#5E85CF', // Blue   (Author)
@@ -117,7 +120,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     enableAdvancedYamlEditor: false,
     sceneYamlTemplates: {
         base: `Class: Scene              # Type: Scene, Beat, Backdrop
-Act: {{Act}}              # Which act (1-3)
+Act: {{Act}}              # Which act (1..Act Count)
 When: {{When}}            # Story chronology date (YYYY-MM-DD 12:30pm)
 Duration: 1 hour         # How long the scene lasts (e.g., "45 seconds", "45s", "45sec", "2 hours", "3days")
 Synopsis: Short scene summary.                # Brief description of what happens in this scene

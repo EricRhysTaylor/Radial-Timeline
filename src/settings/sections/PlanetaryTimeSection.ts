@@ -221,6 +221,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
             setting.addText((text: TextComponent) => {
                 text.inputEl.type = 'number';
                 text.inputEl.min = '0';
+                text.inputEl.addClass('rt-input-xs');
                 const current = (profile as any)[key];
                 const originalValue = current !== undefined ? String(current) : '';
                 text.setValue(originalValue);
@@ -246,6 +247,7 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
                 const current = (profile as any)[key];
                 const originalValue = current ?? '';
                 text.setValue(originalValue);
+                text.inputEl.addClass('rt-input-sm');
                 // SAFE: addEventListener used in settings section; cleanup occurs when settings container is destroyed
                 text.inputEl.addEventListener('blur', async () => {
                     const value = text.getValue();

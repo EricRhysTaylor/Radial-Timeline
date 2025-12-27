@@ -61,7 +61,15 @@
   --rt-synopsis-metadata-line-height: 24px;
 
   /* Settings UI sizing */
-  --rt-settings-select-width: 240px;
+  --rt-input-width-xs: 72px;
+  /* very short numbers (e.g., 1-3 digits) */
+  --rt-input-width-sm: 140px;
+  /* short text or small numbers */
+  --rt-input-width-md: 240px;
+  /* default text inputs & dropdowns */
+  --rt-input-width-lg: 320px;
+  /* longer tokens/IDs */
+  --rt-settings-select-width: var(--rt-input-width-md);
   /* consistent width for dropdowns */
 
   /* ============================================

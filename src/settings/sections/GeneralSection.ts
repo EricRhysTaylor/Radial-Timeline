@@ -21,6 +21,7 @@ export function renderGeneralSection(params: {
         text
             .setPlaceholder('Example: Book 1')
             .setValue(plugin.settings.sourcePath);
+        text.inputEl.addClass('rt-input-full');
 
         attachFolderSuggest(text);
 
