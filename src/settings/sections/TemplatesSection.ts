@@ -3,7 +3,6 @@ import type RadialTimelinePlugin from '../../main';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings } from '../../utils/beatsSystems';
 import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
-import { AiContextModal } from '../AiContextModal';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { renderMetadataSection } from './MetadataSection';
 
@@ -17,8 +16,83 @@ export function renderStoryBeatsSection(params: {
 }): void {
     const { app, plugin, containerEl } = params;
 
+    // Acts Section (above beats)
     new Settings(containerEl)
-        .setName('Gossamer and story beats system')
+        .setName('Acts')
+        .setHeading();
+
+    const getActCount = () => Math.max(3, plugin.settings.actCount ?? 3);
+
+    const getActPreviewLabels = () => {
+        const count = getActCount();
+        const raw = plugin.settings.actLabelsRaw ?? '';
+        const labels = raw.split(',').map(l => l.trim()).filter(Boolean).slice(0, count);
+        const showLabels = plugin.settings.showActLabels ?? true;
+        return Array.from({ length: count }, (_, idx) => {
+            if (!showLabels) return `${idx + 1}`;
+            return labels[idx] && labels[idx].length > 0 ? labels[idx] : `Act ${idx + 1}`;
+        });
+    };
+
+    const updateActPreview = () => {
+        const previewLabels = getActPreviewLabels();
+        actsPreviewHeading.setText(`Preview (${previewLabels.length} acts)`);
+        actsPreviewBody.setText(previewLabels.join(' · '));
+    };
+
+    new Settings(containerEl)
+        .setName('Act count')
+        .setDesc('Minimum 3. Applies to Narrative, Subplot, and Gossamer layouts. Scene and Beats YAML.')
+        .addText(text => {
+            text.setPlaceholder('3');
+            text.setValue(String(getActCount()));
+            text.inputEl.type = 'number';
+            text.inputEl.min = '3';
+            text.inputEl.addClass('rt-input-xs');
+            text.onChange(async (value) => {
+                const parsed = parseInt(value, 10);
+                const next = Number.isFinite(parsed) ? Math.max(3, parsed) : 3;
+                plugin.settings.actCount = next;
+                await plugin.saveSettings();
+                updateActPreview();
+            });
+        });
+
+    new Settings(containerEl)
+        .setName('Act labels (optional)')
+        .setDesc('Comma-separated labels. Extra labels are ignored; empty slots fall back to numbers.')
+        .addTextArea(text => {
+            text.setValue(plugin.settings.actLabelsRaw ?? 'Act 1, Act 2, Act 3');
+            text.inputEl.rows = 2;
+            text.inputEl.addClass('rt-input-full');
+            text.onChange(async (value) => {
+                plugin.settings.actLabelsRaw = value;
+                await plugin.saveSettings();
+                updateActPreview();
+            });
+        });
+
+    new Settings(containerEl)
+        .setName('Show act labels')
+        .setDesc('When off, acts show numbers only.')
+        .addToggle(toggle => {
+            toggle.setValue(plugin.settings.showActLabels ?? true);
+            toggle.onChange(async (value) => {
+                plugin.settings.showActLabels = value;
+                await plugin.saveSettings();
+                updateActPreview();
+            });
+        });
+
+    // Preview (planet-style)
+    const actsPreview = containerEl.createDiv({ cls: 'rt-planetary-preview rt-acts-preview' });
+    const actsPreviewHeading = actsPreview.createDiv({ cls: 'rt-planetary-preview-heading', text: 'Preview' });
+    const actsPreviewBody = actsPreview.createDiv({ cls: 'rt-planetary-preview-body rt-acts-preview-body' });
+
+    updateActPreview();
+
+    new Settings(containerEl)
+        .setName('Story beats system')
         .setHeading();
 
     const beatSystemSetting = new Settings(containerEl)
@@ -116,9 +190,28 @@ export function renderStoryBeatsSection(params: {
             updateTemplateButton(templateSetting, 'Custom');
         };
 
+        const buildActLabels = (count: number): string[] => {
+            const raw = plugin.settings.actLabelsRaw ?? '';
+            const showLabels = plugin.settings.showActLabels ?? true;
+            const labels = raw.split(',').map(l => l.trim()).filter(Boolean);
+            return Array.from({ length: count }, (_, idx) => {
+                if (!showLabels) return `Act ${idx + 1}`;
+                return labels[idx] && labels[idx].length > 0 ? labels[idx] : `Act ${idx + 1}`;
+            });
+        };
+
+        const clampAct = (val: number, maxActs: number) => {
+            const n = Number.isFinite(val) ? val : 1;
+            return Math.min(Math.max(1, n), maxActs);
+        };
+
         const renderList = () => {
             listContainer.empty();
-            const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || []).map(parseBeatRow);
+            const maxActs = getActCount();
+            const actLabels = buildActLabels(maxActs);
+            const beats: BeatRow[] = (plugin.settings.customBeatSystemBeats || [])
+                .map(parseBeatRow)
+                .map(b => ({ ...b, act: clampAct(b.act, maxActs) }));
 
             beats.forEach((beatLine, index) => {
                 const row = listContainer.createDiv({ cls: 'rt-custom-beat-row' });
@@ -134,10 +227,10 @@ export function renderStoryBeatsSection(params: {
 
                 // Parse "Name [Act]"
                 let name = beatLine.name;
-                let act = beatLine.act.toString();
+                let act = clampAct(beatLine.act, maxActs).toString();
 
                 // Name input
-                const nameInput = row.createEl('input', { type: 'text', cls: 'rt-beat-name-input' });
+                const nameInput = row.createEl('input', { type: 'text', cls: 'rt-beat-name-input rt-template-input' });
                 nameInput.value = name;
                 nameInput.placeholder = 'Beat name';
                 plugin.registerDomEvent(nameInput, 'change', () => {
@@ -150,16 +243,17 @@ export function renderStoryBeatsSection(params: {
                 });
 
                 // Act select
-                const actSelect = row.createEl('select', { cls: 'rt-beat-act-select' });
-                [1, 2, 3].forEach(n => {
-                    const opt = actSelect.createEl('option', { value: n.toString(), text: `Act ${n}` });
+                const actSelect = row.createEl('select', { cls: 'rt-beat-act-select rt-template-input' });
+                Array.from({ length: maxActs }, (_, i) => i + 1).forEach(n => {
+                    const opt = actSelect.createEl('option', { value: n.toString(), text: actLabels[n - 1] });
                     if (act === n.toString()) opt.selected = true;
                 });
                 plugin.registerDomEvent(actSelect, 'change', () => {
                     act = actSelect.value;
                     const updated = [...beats];
                     const currentName = nameInput.value.trim() || name;
-                    updated[index] = { name: currentName, act: parseInt(act, 10) || 1 };
+                    const actNum = clampAct(parseInt(act, 10) || 1, maxActs);
+                    updated[index] = { name: currentName, act: actNum };
                     saveBeats(updated);
                     renderList();
                 });
@@ -198,16 +292,16 @@ export function renderStoryBeatsSection(params: {
             });
 
             // Add row at bottom (single line, matches advanced YAML add row)
-            const defaultAct = beats.length > 0 ? beats[beats.length - 1].act : 1;
+            const defaultAct = beats.length > 0 ? clampAct(beats[beats.length - 1].act, maxActs) : 1;
             const addRow = listContainer.createDiv({ cls: 'rt-custom-beat-row rt-custom-beat-add-row' });
 
             addRow.createDiv({ cls: 'rt-drag-handle rt-drag-placeholder' });
             addRow.createDiv({ cls: 'rt-beat-index rt-beat-add-index', text: '' });
 
-            const addNameInput = addRow.createEl('input', { type: 'text', cls: 'rt-beat-name-input', placeholder: 'New beat' });
-            const addActSelect = addRow.createEl('select', { cls: 'rt-beat-act-select' });
-            [1, 2, 3].forEach(n => {
-                const opt = addActSelect.createEl('option', { value: n.toString(), text: `Act ${n}` });
+            const addNameInput = addRow.createEl('input', { type: 'text', cls: 'rt-beat-name-input rt-template-input', placeholder: 'New beat' });
+            const addActSelect = addRow.createEl('select', { cls: 'rt-beat-act-select rt-template-input' });
+            Array.from({ length: maxActs }, (_, i) => i + 1).forEach(n => {
+                const opt = addActSelect.createEl('option', { value: n.toString(), text: actLabels[n - 1] });
                 if (defaultAct === n) opt.selected = true;
             });
 
@@ -216,7 +310,7 @@ export function renderStoryBeatsSection(params: {
 
             const commitAdd = () => {
                 const name = (addNameInput.value || 'New Beat').trim();
-                const act = parseInt(addActSelect.value, 10) || defaultAct || 1;
+                const act = clampAct(parseInt(addActSelect.value, 10) || defaultAct || 1, maxActs);
                 const updated = [...beats, { name, act }];
                 saveBeats(updated);
                 renderList();
@@ -257,97 +351,6 @@ export function renderStoryBeatsSection(params: {
             }));
 
     updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
-
-    const getActiveTemplateName = (): string => {
-        const templates = plugin.settings.aiContextTemplates || [];
-        const activeId = plugin.settings.activeAiContextTemplateId;
-        const active = templates.find(t => t.id === activeId);
-        return active?.name || 'Generic Editor';
-    };
-
-    const contextTemplateSetting = new Settings(containerEl)
-        .setName('AI prompt role & context template')
-        .setDesc(`Active: ${getActiveTemplateName()}`)
-        .addExtraButton(button => button
-            .setIcon('gear')
-            .setTooltip('Manage context templates for AI prompt generation and Gossamer score generation')
-            .onClick(() => {
-                const modal = new AiContextModal(app, plugin, () => {
-                    contextTemplateSetting.setDesc(`Active: ${getActiveTemplateName()}`);
-                });
-                modal.open();
-            }));
-
-    // Acts Section (above YAML)
-    new Settings(containerEl)
-        .setName('Acts')
-        .setHeading();
-
-    const getActCount = () => Math.max(3, plugin.settings.actCount ?? 3);
-
-    new Settings(containerEl)
-        .setName('Act count')
-        .setDesc('Minimum 3. Applies to Narrative, Subplot, and Gossamer layouts. Scene and Beats YAML.')
-        .addText(text => {
-            text.setPlaceholder('3');
-            text.setValue(String(getActCount()));
-            text.inputEl.type = 'number';
-            text.inputEl.min = '3';
-            text.inputEl.addClass('rt-input-xs');
-            text.onChange(async (value) => {
-                const parsed = parseInt(value, 10);
-                const next = Number.isFinite(parsed) ? Math.max(3, parsed) : 3;
-                plugin.settings.actCount = next;
-                await plugin.saveSettings();
-                updateActPreview();
-            });
-        });
-
-    new Settings(containerEl)
-        .setName('Act labels (optional)')
-        .setDesc('Comma-separated labels. Extra labels are ignored; empty slots fall back to numbers.')
-        .addTextArea(text => {
-            text.setValue(plugin.settings.actLabelsRaw ?? 'Act 1, Act 2, Act 3');
-            text.inputEl.rows = 2;
-            text.inputEl.addClass('rt-input-full');
-            text.onChange(async (value) => {
-                plugin.settings.actLabelsRaw = value;
-                await plugin.saveSettings();
-                updateActPreview();
-            });
-        });
-
-    new Settings(containerEl)
-        .setName('Show act labels')
-        .setDesc('When off, acts show numbers only.')
-        .addToggle(toggle => {
-            toggle.setValue(plugin.settings.showActLabels ?? true);
-            toggle.onChange(async (value) => {
-                plugin.settings.showActLabels = value;
-                await plugin.saveSettings();
-                updateActPreview();
-            });
-        });
-
-    // Preview (planet-style)
-    const actsPreview = containerEl.createDiv({ cls: 'rt-planetary-preview rt-acts-preview' });
-    const actsPreviewHeading = actsPreview.createDiv({ cls: 'rt-planetary-preview-heading', text: 'Preview' });
-    const actsPreviewBody = actsPreview.createDiv({ cls: 'rt-planetary-preview-body rt-acts-preview-body' });
-
-    const updateActPreview = () => {
-        const count = getActCount();
-        const raw = plugin.settings.actLabelsRaw ?? '';
-        const labels = raw.split(',').map(l => l.trim()).filter(Boolean).slice(0, count);
-        const showLabels = plugin.settings.showActLabels ?? true;
-        const previewLabels = Array.from({ length: count }, (_, idx) => {
-            if (!showLabels) return `${idx + 1}`;
-            return labels[idx] && labels[idx].length > 0 ? labels[idx] : `Act ${idx + 1}`;
-        });
-        actsPreviewHeading.setText(`Preview (${count} acts)`);
-        actsPreviewBody.setText(previewLabels.join(' · '));
-    };
-
-    updateActPreview();
 
     // Scene YAML Templates Section
     new Settings(containerEl)
@@ -656,7 +659,9 @@ export function renderStoryBeatsSection(params: {
             attachHint(valInput, addHintEl, addRow);
             const actions = addRow.createDiv({ cls: 'rt-template-actions' });
 
-            const addBtn = actions.createEl('button', { text: 'Add key', cls: 'rt-mod-cta rt-template-add-btn' });
+            const addBtn = actions.createEl('button', { cls: 'rt-template-icon-btn' });
+            setIcon(addBtn, 'plus');
+            setTooltip(addBtn, 'Add key');
             addBtn.onclick = () => {
                 const k = (keyInput.value || '').trim();
                 if (!k) return;

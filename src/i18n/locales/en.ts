@@ -227,7 +227,7 @@ export const en: TranslationKeys = {
                 desc: 'Values you can use for `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the scene POV. If two, for example, then the first two characters in `Character:` YAML list will get a POV mark for scene synopsis.',
             },
             modes: {
-                off: 'Legacy (first listed character, POV superscript)',
+                off: 'Legacy (first listed character, POV)',
                 first: 'First-person voice (¹)',
                 second: 'Second-person voice (You²)',
                 third: 'Third-person limited (³)',
@@ -238,8 +238,8 @@ export const en: TranslationKeys = {
         advanced: {
             heading: 'Advanced',
             aiOutputFolder: {
-                name: 'AI output folder',
-                desc: 'Folder where AI logs and generated files (manuscripts, reports) are saved. Uses your vault folder structure.',
+                name: 'Logs & generated files output folder',
+                desc: 'Folder where AI logs and generated files (manuscripts, local LLM reports) are saved. Uses your vault folder structure.',
                 placeholder: 'AI',
             },
             autoExpand: {

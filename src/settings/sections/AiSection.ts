@@ -6,6 +6,7 @@ import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels } from '../../api/geminiApi';
 import { fetchLocalModels } from '../../api/localAiApi';
 import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
+import { AiContextModal } from '../AiContextModal';
 import { resolveAiOutputFolder } from '../../utils/aiOutput';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
@@ -28,6 +29,26 @@ export function renderAiSection(params: {
     new Settings(containerEl)
         .setName('AI LLM for scene analysis')
         .setHeading();
+
+    const getActiveTemplateName = (): string => {
+        const templates = plugin.settings.aiContextTemplates || [];
+        const activeId = plugin.settings.activeAiContextTemplateId;
+        const active = templates.find(t => t.id === activeId);
+        return active?.name || 'Generic Editor';
+    };
+
+    const contextTemplateSetting = new Settings(containerEl)
+        .setName('AI prompt role & context template')
+        .setDesc(`Active: ${getActiveTemplateName()}`)
+        .addExtraButton(button => button
+            .setIcon('gear')
+            .setTooltip('Manage context templates for AI prompt generation and Gossamer score generation')
+            .onClick(() => {
+                const modal = new AiContextModal(app, plugin, () => {
+                    contextTemplateSetting.setDesc(`Active: ${getActiveTemplateName()}`);
+                });
+                modal.open();
+            }));
 
     // Enable/disable scene beats features
     // NOTE: This toggle should always be visible (not added to _aiRelatedElements)

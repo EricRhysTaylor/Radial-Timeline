@@ -3,12 +3,12 @@ import type RadialTimelinePlugin from '../../main';
 import type { GlobalPovMode } from '../../types/settings';
 
 const POV_MODE_OPTIONS: Record<GlobalPovMode, string> = {
-    off: 'first listed character, “pov” superscript',
-    first: 'First-person voice (¹ marker on characters)',
-    second: 'Second-person voice (You² label)',
-    third: 'Third-person limited (³ marker on characters)',
-    omni: 'Omni narrator (Omni³ label)',
-    objective: 'Objective — camera-eye narrator (Narrator° label)'
+    off: 'first listed character (pov)',
+    first: 'First-person (¹)',
+    second: 'Second-person (You²)',
+    third: 'Third-person limited (³)',
+    omni: 'Omni narrator (Omni³)',
+    objective: 'Objective (Narrator°)'
 };
 
 export function renderPovSection(params: {
@@ -46,5 +46,5 @@ export function renderPovSection(params: {
 
     new ObsidianSetting(containerEl)
         .setName('Scene level YAML overrides')
-        .setDesc('Values you can use for `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the scene POV. If two, for example, then the first two characters in `Character:` YAML list will get a POV mark.');
+        .setDesc('Values you can use for YAML field `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the scene POV. If two, for example, then the first two characters in `Character:` YAML list will get a POV mark.');
 }

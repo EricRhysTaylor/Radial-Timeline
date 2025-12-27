@@ -245,7 +245,8 @@
 }
 
 .rt-template-grid.rt-template-grid-reorder {
-  grid-template-columns: auto 1fr 1fr auto;
+  grid-template-columns: auto var(--rt-input-width-lg) var(--rt-input-width-lg) auto;
+  justify-items: end;
 }
 
 .rt-template-drag-handle {
@@ -352,6 +353,10 @@
   width: 100%;
 }
 
+.rt-template-grid .rt-template-value-col {
+  justify-self: end;
+}
+
 .rt-template-grid .setting-item-info {
   width: 100%;
   justify-self: end;
@@ -375,6 +380,19 @@
   border-radius: 6px;
   padding: 8px 10px;
   height: 36px;
+}
+
+/* Standardized width for template inputs in grids (keys/values, beats) */
+.rt-advanced-template-card .rt-template-input,
+.rt-custom-beat-row .rt-template-input {
+  width: var(--rt-input-width-lg);
+  max-width: 100%;
+}
+
+.rt-custom-beat-row .rt-beat-act-select.rt-template-input {
+  width: var(--rt-input-width-sm);
+  max-width: var(--rt-input-width-sm);
+  justify-self: end;
 }
 
 .rt-template-icon-btn {
@@ -428,13 +446,23 @@
 
 .rt-custom-beat-row {
   display: grid;
-  grid-template-columns: auto auto 1fr 130px auto;
+  /* Handle | Index | Name | Act | Trash */
+  grid-template-columns: auto auto var(--rt-input-width-md) var(--rt-input-width-sm) 38px;
   align-items: center;
-  gap: 10px;
+  justify-items: end;
+  gap: 8px;
   padding: 10px 12px;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
+}
+
+.rt-custom-beat-row .rt-drag-handle {
+  justify-self: start;
+}
+
+.rt-custom-beat-row .rt-beat-name-input {
+  justify-self: end;
 }
 
 .rt-drag-handle {
@@ -450,13 +478,14 @@
 .rt-beat-index {
   font-weight: 600;
   color: var(--text-muted);
+  text-align: right;
+  min-width: 28px;
 }
 
 .rt-beat-name-input {
-  width: 100%;
   height: 36px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-modifier-form-field);
   color: var(--text-normal);
@@ -467,11 +496,10 @@
 }
 
 .rt-beat-act-select {
-  width: 100%;
   min-width: 120px;
   height: 36px;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-modifier-form-field);
   color: var(--text-normal);
@@ -653,16 +681,14 @@
 }
 
 .rt-color-grid-controls .rt-hex-input {
-  width: 6em;
-  /* fits #RRGGBB with less space */
+  width: 10ch !important;
+  flex: 0 0 10ch !important;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
   border-radius: 6px;
   padding: 6px 8px;
   box-shadow: none;
   outline: none;
-  flex-shrink: 1;
-  min-width: 5em;
 }
 
 /* Focus state for hex input */

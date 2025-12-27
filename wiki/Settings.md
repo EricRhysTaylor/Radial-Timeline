@@ -18,7 +18,7 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 *   **Chronologue duration arc cap**: Select maximum duration to display on scene duration arcs, or use "auto".
 *   **Discontinuity gap threshold**: Controls when the ∞ symbol appears in shift mode. Auto-calculated as 3× the median time gap.
 
-### Gossamer story beats system & templates
+### Story beats system & templates
 *   **Story beats system**: Select story structure model (Save The Cat, Hero's Journey, Story Grid, or Custom).
     *   *Custom*: Select this to use your own methodology. You will need to create beat notes manually with `Beat Model: Custom` in the frontmatter.
 *   **Create story beat template notes**: Generate template beat notes with YAML frontmatter. (Disabled for Custom mode).

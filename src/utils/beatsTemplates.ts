@@ -113,6 +113,9 @@ export async function createBeatTemplateNotes(
   const sanitize = (s: string) =>
     s.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim();
 
+  // Use the custom system name (if provided) for Beat Model frontmatter instead of generic "Custom"
+  const beatModelName = beatSystem.name || beatSystemName;
+
   for (let i = 0; i < beatSystem.beats.length; i++) {
     const beatName = beatSystem.beats[i];
     const beatInfo = beatSystem.beatDetails[i];
@@ -135,7 +138,7 @@ export async function createBeatTemplateNotes(
     }
 
     // Generate full note content with frontmatter and body
-    const content = generatePlotNoteContent(beatInfo, act, beatSystemName);
+    const content = generatePlotNoteContent(beatInfo, act, beatModelName);
 
     try {
       await vault.create(normalizedPath, content);
