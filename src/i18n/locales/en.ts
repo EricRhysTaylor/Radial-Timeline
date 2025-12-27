@@ -227,12 +227,12 @@ export const en: TranslationKeys = {
                 desc: 'Values you can use for `POV:` first, second, third, omni, objective, or a number such as two, four, count, or all to designate more than one character is carrying the scene POV. If two, for example, then the first two characters in `Character:` YAML list will get a POV mark for scene synopsis.',
             },
             modes: {
-                off: 'Legacy (first listed character, "pov" superscript)',
-                first: 'First-person voice (¹ marker on characters)',
-                second: 'Second-person voice (You² label)',
-                third: 'Third-person limited (³ marker on characters)',
-                omni: 'Omni narrator (Omni³ label)',
-                objective: 'Objective — camera-eye narrator (Narrator° label)',
+                off: 'Legacy (first listed character, POV superscript)',
+                first: 'First-person voice (¹)',
+                second: 'Second-person voice (You²)',
+                third: 'Third-person limited (³)',
+                omni: 'Omni narrator (Omni³)',
+                objective: 'Objective — camera-eye narrator (Narrator°)',
             },
         },
         advanced: {

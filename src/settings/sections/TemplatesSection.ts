@@ -72,7 +72,7 @@ export function renderStoryBeatsSection(params: {
         
         new Settings(customConfigContainer)
             .setName('Custom story beat system')
-            .setDesc('The name of your custom beat system (e.g. "7 Point Structure"). Assigned the "Beat Model" field in YAML. Define beats in order. Drag to reorder. Act drives the frontmatter.')
+            .setDesc('The name of your custom beat system (e.g. "7 Point Structure"). Assigned to the "Beat Model" field in YAML. Drag to reorder beats.')
             .addText(text => text
                 .setPlaceholder('Custom')
                 .setValue(plugin.settings.customBeatSystemName || 'Custom')
@@ -285,19 +285,6 @@ export function renderStoryBeatsSection(params: {
 
     const getActCount = () => Math.max(3, plugin.settings.actCount ?? 3);
 
-    const previewEl = containerEl.createDiv({ cls: 'setting-item-description' });
-    const updateActPreview = () => {
-        const count = getActCount();
-        const raw = plugin.settings.actLabelsRaw ?? '';
-        const labels = raw.split(',').map(l => l.trim()).filter(Boolean).slice(0, count);
-        const showLabels = plugin.settings.showActLabels ?? true;
-        const previewLabels = Array.from({ length: count }, (_, idx) => {
-            if (!showLabels) return `${idx + 1}`;
-            return labels[idx] && labels[idx].length > 0 ? labels[idx] : `Act ${idx + 1}`;
-        });
-        previewEl.setText(`Preview: ${previewLabels.join(', ')}`);
-    };
-
     new Settings(containerEl)
         .setName('Act count')
         .setDesc('Minimum 3. Applies to Narrative, Subplot, and Gossamer layouts. Scene and Beats YAML.')
@@ -341,6 +328,24 @@ export function renderStoryBeatsSection(params: {
                 updateActPreview();
             });
         });
+
+    // Preview (planet-style)
+    const actsPreview = containerEl.createDiv({ cls: 'rt-planetary-preview rt-acts-preview' });
+    const actsPreviewHeading = actsPreview.createDiv({ cls: 'rt-planetary-preview-heading', text: 'Preview' });
+    const actsPreviewBody = actsPreview.createDiv({ cls: 'rt-planetary-preview-body rt-acts-preview-body' });
+
+    const updateActPreview = () => {
+        const count = getActCount();
+        const raw = plugin.settings.actLabelsRaw ?? '';
+        const labels = raw.split(',').map(l => l.trim()).filter(Boolean).slice(0, count);
+        const showLabels = plugin.settings.showActLabels ?? true;
+        const previewLabels = Array.from({ length: count }, (_, idx) => {
+            if (!showLabels) return `${idx + 1}`;
+            return labels[idx] && labels[idx].length > 0 ? labels[idx] : `Act ${idx + 1}`;
+        });
+        actsPreviewHeading.setText(`Preview (${count} acts)`);
+        actsPreviewBody.setText(previewLabels.join(' · '));
+    };
 
     updateActPreview();
 

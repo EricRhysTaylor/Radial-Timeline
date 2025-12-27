@@ -116,7 +116,7 @@ export class ManuscriptOptionsModal extends Modal {
 
         // Subplot Filter Card
         const filterCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        filterCard.createDiv({ cls: 'rt-sub-card-head', text: 'Subplot Filter' });
+        filterCard.createDiv({ cls: 'rt-sub-card-head', text: 'Subplot filter' });
         const filterContainer = filterCard.createDiv({ cls: 'rt-manuscript-input-container' });
         this.subplotDropdown = new DropdownComponent(filterContainer)
             .addOption('All Subplots', 'All Subplots')

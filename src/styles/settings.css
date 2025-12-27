@@ -97,9 +97,9 @@
 }
 
 /* Default sizing for settings inputs (override with utilities above when needed) */
-.setting-item .setting-item-control input[type="text"],
-.setting-item .setting-item-control input[type="number"],
-.setting-item .setting-item-control input[type="password"] {
+.setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
+.setting-item .setting-item-control input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
+.setting-item .setting-item-control input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full) {
   width: var(--rt-input-width-md);
   max-width: 100%;
 }
@@ -334,6 +334,12 @@
 .rt-template-add-btn {
   justify-self: end;
   cursor: pointer;
+}
+
+.rt-acts-preview-body {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .rt-template-indent {

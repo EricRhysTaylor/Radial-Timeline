@@ -13,9 +13,9 @@
 }
 
 /* Default sizing for modal inputs (override with utilities above when needed) */
-.rt-modal-shell input[type="text"],
-.rt-modal-shell input[type="number"],
-.rt-modal-shell input[type="password"] {
+.rt-modal-shell input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
+.rt-modal-shell input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
+.rt-modal-shell input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full) {
   width: var(--rt-input-width-md);
   max-width: 100%;
 }

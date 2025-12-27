@@ -29,9 +29,23 @@ export class BookDesignerModal extends Modal {
         this.templateType = 'base';
     }
 
+    private getMaxActs(): number {
+        const fromSettings = (this.plugin.settings as any).actCount;
+        const parsed = typeof fromSettings === 'number' ? Math.floor(fromSettings) : 3;
+        return Math.min(10, Math.max(3, parsed));
+    }
+
+    private normalizeSelectedActs(maxActs: number): number[] {
+        const unique = Array.from(new Set(this.selectedActs)).filter(a => a >= 1 && a <= maxActs);
+        if (unique.length > 0) return unique.sort((a, b) => a - b);
+        return [1, 2, 3].filter(a => a <= maxActs);
+    }
+
     onOpen(): void {
         const { contentEl, modalEl } = this;
         contentEl.empty();
+        const maxActs = this.getMaxActs();
+        this.selectedActs = this.normalizeSelectedActs(maxActs);
         
         // Use generic modal system + Book Designer specific class
         if (modalEl) {
@@ -70,6 +84,7 @@ export class BookDesignerModal extends Modal {
             .addText(text => {
                 text.setValue(this.timeIncrement)
                     .setPlaceholder('1 day');
+                text.inputEl.addClass('rt-input-sm');
                 
                 // Use blur to validate
                 text.inputEl.addEventListener('blur', () => {
@@ -130,7 +145,7 @@ export class BookDesignerModal extends Modal {
                             this.schedulePreviewUpdate();
                         }
                     });
-                text.inputEl.addClass('rt-input-full');
+                text.inputEl.addClass('rt-input-xs');
             });
         scenesSetting.settingEl.addClass('rt-manuscript-group-setting');
         scenesSetting.settingEl.addClass('rt-scenes-generate-setting');
@@ -149,7 +164,7 @@ export class BookDesignerModal extends Modal {
                             this.schedulePreviewUpdate();
                         }
                     });
-                text.inputEl.addClass('rt-input-full');
+                text.inputEl.addClass('rt-input-xs');
             });
         lengthSetting.settingEl.addClass('rt-manuscript-group-setting');
         lengthSetting.settingEl.addClass('rt-book-length-setting');
@@ -160,8 +175,10 @@ export class BookDesignerModal extends Modal {
         const actSetting = structCard.createDiv({ cls: 'rt-manuscript-setting-row rt-manuscript-card-block rt-manuscript-acts-row' });
         actSetting.createDiv({ cls: 'rt-manuscript-setting-label', text: 'Acts to distribute scenes across' });
         const actChecks = actSetting.createDiv({ cls: 'rt-manuscript-checkbox-row' });
+        actChecks.style.flexWrap = 'wrap';
+        const actCountForUi = this.getMaxActs();
 
-        [1, 2, 3].forEach(num => {
+        Array.from({ length: actCountForUi }, (_, i) => i + 1).forEach(num => {
             const item = actChecks.createDiv({ cls: 'rt-manuscript-checkbox-item' });
             const input = item.createEl('input', { type: 'checkbox' });
             input.checked = this.selectedActs.includes(num);
@@ -175,6 +192,7 @@ export class BookDesignerModal extends Modal {
                     this.selectedActs = [num]; // ensure at least one
                     input.checked = true; // force UI back
                 }
+                this.selectedActs = this.normalizeSelectedActs(actCountForUi);
                 this.schedulePreviewUpdate();
             };
             const label = item.createEl('label');
@@ -367,8 +385,9 @@ export class BookDesignerModal extends Modal {
     }
 
     private getActsListSorted(): number[] {
+        const maxActs = this.getMaxActs();
         const acts = (this.selectedActs.length > 0 ? [...this.selectedActs] : [1])
-            .map(a => Math.max(1, Math.min(3, a)))
+            .map(a => Math.max(1, Math.min(maxActs, a)))
             .sort((a, b) => a - b);
         // Dedupe
         return Array.from(new Set(acts));
@@ -449,7 +468,7 @@ export class BookDesignerModal extends Modal {
 
         // Draw Act Divider Lines (dynamic wedges by configured acts)
         // 12 o'clock = -PI/2
-        const totalActs = Math.max(3, (this.plugin.settings as any).actCount ?? 3);
+        const totalActs = this.getMaxActs();
         const actAngles = Array.from({ length: totalActs }, (_, idx) => -Math.PI / 2 + (idx * 2 * Math.PI) / totalActs);
 
         actAngles.forEach(angle => {
