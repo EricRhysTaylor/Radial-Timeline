@@ -352,6 +352,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // 4. Story Beats System and Gossamer (templates dropdown, create templates button)
         renderStoryBeatsSection({ app: this.app, plugin: this.plugin, containerEl });
 
+        // Planetary time conversions (opt-in)
+        renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl });
+
         // 5. AI LLM for Scene Analysis
         renderAiSection({
             app: this.app,
@@ -373,9 +376,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 if (modelInput) this._localModelIdInput = modelInput;
             },
         });
-
-        // Planetary time conversions (opt-in)
-        renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl });
 
         // 6. Custom Metadata Mapping
         // Moved to GeneralSection to be under Source Path

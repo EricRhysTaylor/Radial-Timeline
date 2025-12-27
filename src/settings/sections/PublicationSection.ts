@@ -20,7 +20,7 @@ export function renderPublicationSection(params: {
         .setDesc('Set a target date for project completion (YYYY-MM-DD). This will be shown on the timeline.')
         .addText(text => {
             text.inputEl.type = 'date';
-            text.inputEl.addClass('rt-input-sm');
+            text.inputEl.addClass('rt-input-md'); /* YYYY-MM-DD needs more space */
             text.setValue(plugin.settings.targetCompletionDate || '')
                 .onChange(async (value) => {
                     const today = new Date();

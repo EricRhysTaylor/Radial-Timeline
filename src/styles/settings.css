@@ -235,9 +235,10 @@
   background: var(--rt-publishStageColors-Zero);
 }
 
-/* Scene template editor grids (YAML key/value rows) - matches beats row styling */
-.rt-template-grid {
+/* YAML key/value rows - simple class like beats */
+.rt-yaml-row {
   display: grid;
+  box-sizing: border-box;
   /* Handle | Spacer | Key | Value | Trash */
   grid-template-columns: auto 1fr auto auto auto;
   align-items: center;
@@ -246,10 +247,6 @@
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;
-}
-
-.rt-template-grid.rt-template-grid-reorder {
-  grid-template-columns: auto 1fr auto auto auto;
 }
 
 /* Use same drag handle as beats */
@@ -353,7 +350,6 @@
 .rt-template-indent {
   padding-left: 18px;
   border-left: 2px solid var(--interactive-accent); /* Match beats accent color */
-  margin-left: 4px;
 }
 
 .rt-template-grid .setting-item-info {
@@ -424,7 +420,8 @@
   filter: brightness(1.05);
 }
 
-.rt-template-add-row {
+/* YAML add row */
+.rt-yaml-add-row {
   background: var(--background-primary);
   border-style: dashed;
   opacity: 0.95;
@@ -461,11 +458,12 @@
 
 .rt-custom-beat-row {
   display: grid;
+  box-sizing: border-box;
   /* Handle | Spacer | Index | Name | Act | Trash */
   grid-template-columns: auto 1fr auto auto auto auto;
   align-items: center;
   gap: 12px;
-  padding: 10px 0 10px 12px; /* No right padding - trash flush to edge */
+  padding: 10px 0px 10px 12px; /* Minimal right padding - trash close to edge */
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 10px;

@@ -146,7 +146,8 @@ export class RadialTimelineView extends ItemView {
 
     // --- Helpers for number-square orientation/position (shared across modes) ---
     public applyRotationToNumberSquares(svg: SVGSVGElement, rotated: boolean): void {
-        const angle = 120; // degrees to counter-rotate when the whole timeline rotates -120
+        const numActs = parseInt(svg.getAttribute('data-num-acts') || '3', 10);
+        const angle = numActs > 0 ? 360 / numActs : 120; // Dynamic counter-rotation based on act count
         const orients = svg.querySelectorAll<SVGGElement>('.number-square-orient');
         orients.forEach((el) => {
             const base = (el.getAttribute('transform') || '').replace(/\s*rotate\([^)]*\)/g, '').trim();

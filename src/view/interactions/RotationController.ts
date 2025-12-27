@@ -20,8 +20,12 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
     let rotated = view.getRotationState();
 
     const applyRotation = () => {
+        const numActs = parseInt(svg.getAttribute('data-num-acts') || '3', 10);
+        // Default to 120 degrees (3 acts) if something goes wrong, but try to use 360/numActs
+        const angle = numActs > 0 ? 360 / numActs : 120;
+
         if (rotated) {
-            rotatable.setAttribute('transform', 'rotate(-120)');
+            rotatable.setAttribute('transform', `rotate(-${angle})`);
             arrowUp.classList.add('is-hidden');
             arrowDown.classList.remove('is-hidden');
         } else {
@@ -50,7 +54,7 @@ export function setupRotationController(view: RotationView, svg: SVGSVGElement):
                 const t = el.getAttribute('transform') || '';
                 const base = t.replace(/\s*rotate\([^)]*\)/g, '').trim();
                 if (rotated) {
-                    el.setAttribute('transform', `${base} rotate(120)`.trim());
+                    el.setAttribute('transform', `${base} rotate(${angle})`.trim());
                 } else {
                     el.setAttribute('transform', base);
                 }

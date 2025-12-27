@@ -220,6 +220,7 @@ export function renderStoryBeatsSection(params: {
                 // Drag handle
                 const handle = row.createDiv({ cls: 'rt-drag-handle' });
                 setIcon(handle, 'grip-vertical');
+                setTooltip(handle, 'Drag to reorder beat');
 
                 // Index
                 const idxEl = row.createDiv({ text: `${index + 1}.`, cls: 'rt-beat-index' });
@@ -259,7 +260,7 @@ export function renderStoryBeatsSection(params: {
                 });
 
                 // Delete button
-                const delBtn = row.createEl('button', { cls: 'rt-beat-delete-btn' });
+                const delBtn = row.createEl('button', { cls: 'rt-template-icon-btn' });
                 setIcon(delBtn, 'trash');
                 delBtn.onclick = () => {
                     const updated = [...beats];
@@ -529,7 +530,7 @@ export function renderStoryBeatsSection(params: {
 
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
                 // Match beats row structure: all inputs are direct grid children
-                const row = listEl.createDiv({ cls: 'rt-template-entry-line rt-template-grid rt-template-grid-reorder' });
+                const row = listEl.createDiv({ cls: 'rt-yaml-row' });
 
                 // 1. Drag handle (direct child)
                 const dragHandle = row.createDiv({ cls: 'rt-drag-handle' });
@@ -637,8 +638,8 @@ export function renderStoryBeatsSection(params: {
 
             data.forEach((entry, idx, arr) => renderEntryRow(entry, idx, arr));
 
-            // Add new key/value - matches beats add row structure (direct children)
-            const addRow = advancedContainer.createDiv({ cls: 'rt-template-add-row rt-template-grid rt-template-grid-reorder rt-template-indent' });
+            // Add new key/value - inside listEl so it gets the indent border
+            const addRow = listEl.createDiv({ cls: 'rt-yaml-row rt-yaml-add-row' });
 
             // 1. Handle placeholder (direct child)
             addRow.createDiv({ cls: 'rt-drag-handle rt-drag-placeholder' });
@@ -739,9 +740,9 @@ export function renderStoryBeatsSection(params: {
 
     function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
         const descriptions: Record<string, string> = {
-            'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement. Examples: The Hunger Games, The Martian, The Fault in Our Stars.',
-            'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery. Examples: The Odyssey, The Hobbit, Harry Potter and the Sorcerer\'s Stone.',
-            'Story Grid': 'Literary fiction and complex narratives. Balances micro and macro structure with progressive complications. Examples: The Silence of the Lambs, Pride and Prejudice, The Tipping Point.',
+            'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement. Examples: <i>The Hunger Games</i>, <i>The Martian</i>, <i>The Fault in Our Stars</i>.',
+            'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery. Examples: <i>The Odyssey</i>, <i>The Hobbit</i>, <i>Harry Potter and the Sorcerer\'s Stone</i>.',
+            'Story Grid': 'Literary fiction and complex narratives. Balances micro and macro structure with progressive complications. Examples: <i>The Silence of the Lambs</i>, <i>Pride and Prejudice</i>, <i>The Tipping Point</i>.',
             'Custom': 'Uses any story beat notes you create. Perfect for when you don\'t follow a traditional story structure.'
         };
 
@@ -754,7 +755,7 @@ export function renderStoryBeatsSection(params: {
             }
             const boldSpan = lineDiv.createEl('b');
             boldSpan.textContent = system;
-            lineDiv.appendText(`: ${desc}`);
+            lineDiv.createSpan().innerHTML = `: ${desc}`; // SAFE: innerHTML used for displaying HTML tags in hardcoded descriptions
         }
     }
 
