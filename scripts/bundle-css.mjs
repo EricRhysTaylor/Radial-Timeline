@@ -21,7 +21,7 @@ const files = [
     'grid.css',
     'indicators.css',
     'chronologue.css',
-    'modals.css',
+    'modal.css',
     'pulse.css',
     'book-designer.css',
     'settings.css',

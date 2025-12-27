@@ -277,14 +277,20 @@ export function renderStoryBeatsSection(params: {
     new Settings(containerEl)
         .setName('Advanced YAML editor')
         .setDesc('Enable editing of custom YAML keys for the advanced scene template.')
-        .addToggle(toggle => {
-            toggle
-                .setValue(plugin.settings.enableAdvancedYamlEditor ?? false)
-                .onChange(async (value) => {
-                    plugin.settings.enableAdvancedYamlEditor = value;
-                    await plugin.saveSettings();
-                    onAdvancedToggle?.();
-                });
+        .addExtraButton(button => {
+            const refreshButton = () => {
+                const expanded = plugin.settings.enableAdvancedYamlEditor ?? false;
+                button.setIcon('chevrons-up-down');
+                button.setTooltip(expanded ? 'Hide advanced YAML editor' : 'Show advanced YAML editor');
+            };
+            refreshButton();
+            button.onClick(async () => {
+                const next = !(plugin.settings.enableAdvancedYamlEditor ?? false);
+                plugin.settings.enableAdvancedYamlEditor = next;
+                refreshButton();
+                await plugin.saveSettings();
+                onAdvancedToggle?.();
+            });
         });
 
     const templateSection = containerEl.createDiv({ cls: 'rt-scene-template-editor' });
@@ -295,7 +301,7 @@ export function renderStoryBeatsSection(params: {
         advancedContainer.empty();
 
         const isEnabled = plugin.settings.enableAdvancedYamlEditor ?? false;
-        advancedContainer.toggleClass('rt-template-hidden', !isEnabled);
+        advancedContainer.toggleClass('rt-settings-hidden', !isEnabled);
         if (!isEnabled) return;
 
         // Prepare template data
@@ -311,6 +317,9 @@ export function renderStoryBeatsSection(params: {
         requiredOrder.forEach((key) => {
             requiredValues[key] = currentObj[key] ?? defaultObj[key] ?? '';
         });
+        if (!requiredValues['Class']) {
+            requiredValues['Class'] = 'Scene';
+        }
 
         // Only discretionary (non-required) keys are editable
         const optionalOrder = mergeOrders(
@@ -327,7 +336,7 @@ export function renderStoryBeatsSection(params: {
         let dragIndex: number | null = null;
 
         const advancedComments: Record<string, string> = {
-            Duration: 'Numeric duration (e.g., minutes or hours)',
+            Duration: 'Free text duration (e.g., "45 minutes", "2 hours", "PT45M")',
             'Reader Emotion': 'Describe the intended reader emotion',
         };
 
@@ -379,7 +388,7 @@ export function renderStoryBeatsSection(params: {
             if (isoDate.test(value)) return 'Date: YYYY-MM-DD (e.g., 2025-07-23)';
             if (shortDate.test(value) || partialDate.test(value)) return 'Looks like a date. Prefer ISO: 2025-07-23 or 2025-07-23T14:30';
             if (timeOnly.test(value) || partialTime.test(value)) return 'Time: Use HH:MM or full ISO timestamp 2025-07-23T14:30';
-            if (durationMatch.test(value)) return 'Duration: 45 minutes or ISO PT45M';
+            if (durationMatch.test(value)) return 'Duration: text like 45 minutes or ISO PT45M';
             if (value.includes(',')) return 'Multiple values? YAML list example:\\n- Item 1\\n- Item 2';
             return null;
         };
@@ -424,7 +433,7 @@ export function renderStoryBeatsSection(params: {
             const data = next ?? workingEntries;
             workingEntries = data;
             advancedContainer.empty();
-            advancedContainer.toggleClass('rt-template-hidden', !isEnabled);
+            advancedContainer.toggleClass('rt-settings-hidden', !isEnabled);
             if (!isEnabled) return;
 
             const listEl = advancedContainer.createDiv({ cls: 'rt-template-entries rt-template-indent' });

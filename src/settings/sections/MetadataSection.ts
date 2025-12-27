@@ -11,10 +11,31 @@ const ALL_CANONICAL_KEYS = CANONICAL_KEYS;
 export function renderMetadataSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
 
-    // Toggle for Metadata Mapping - Combined with Heading semantics but as a toggle
+    let mappingsExpanded = plugin.settings.enableCustomMetadataMapping ?? false;
+
+    // Header with an expander instead of a toggle
     new Settings(containerEl)
         .setName('Custom Metadata Mapping')
         .setDesc('Map your custom frontmatter keys to Radial Timeline keys. Useful for pre-existing notes.')
+        .addExtraButton(button => {
+            const refreshButton = () => {
+                button.setIcon('chevrons-up-down');
+                button.setTooltip(mappingsExpanded ? 'Hide mapping options' : 'Show mapping options');
+            };
+            refreshButton();
+            button.onClick(() => {
+                mappingsExpanded = !mappingsExpanded;
+                refreshButton();
+                renderMappings();
+            });
+        });
+
+    const mappingContainer = containerEl.createDiv({ cls: 'rt-mapping-body' });
+
+    // Real enable/disable control lives inside the expanded body
+    new Settings(mappingContainer)
+        .setName('Apply metadata remapping')
+        .setDesc('Normalize your custom frontmatter keys to Radial Timeline keys.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.enableCustomMetadataMapping ?? false)
             .onChange(async (value) => {
@@ -23,16 +44,24 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                 renderMappings(); // Refresh visibility
             }));
 
-    const mappingListContainer = containerEl.createDiv({ cls: 'rt-mapping-list' });
+    const disabledHint = mappingContainer.createDiv({ cls: 'rt-text-muted' });
+    disabledHint.setText('Turn on remapping to edit and apply the mappings.');
+
+    const mappingListContainer = mappingContainer.createDiv({ cls: 'rt-mapping-list' });
 
     const renderMappings = () => {
+        // Collapse/expand the entire body
+        mappingContainer.toggleClass('rt-settings-hidden', !mappingsExpanded);
+
         // Toggle visibility based on setting
-        if (!plugin.settings.enableCustomMetadataMapping) {
+        if (!plugin.settings.enableCustomMetadataMapping || !mappingsExpanded) {
+            disabledHint.toggleClass('rt-settings-hidden', !!plugin.settings.enableCustomMetadataMapping || !mappingsExpanded);
             mappingListContainer.addClass('rt-mapping-hidden');
             mappingListContainer.empty();
             return;
         }
 
+        disabledHint.addClass('rt-settings-hidden');
         mappingListContainer.removeClass('rt-mapping-hidden');
         mappingListContainer.empty();
         
@@ -48,7 +77,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
             setting.addText(text => {
                 text.setPlaceholder('Your Key (e.g. StoryLine)')
                     .setValue(userKey)
-                    .onChange(async (newValue) => {
+                    .onChange(async (_newValue) => {
                         // We defer saving until blur to avoid partial state
                     });
                 

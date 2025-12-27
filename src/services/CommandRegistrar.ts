@@ -157,9 +157,11 @@ export class CommandRegistrar {
                 await vault.createFolder(sourcePath);
             }
 
-            const template = (this.plugin.settings.sceneYamlTemplates?.base
-                ?? DEFAULT_SETTINGS.sceneYamlTemplates?.base
-                ?? '').trim();
+            const template = ensureClassScene(
+                (this.plugin.settings.sceneYamlTemplates?.base
+                    ?? DEFAULT_SETTINGS.sceneYamlTemplates?.base
+                    ?? '').trim()
+            );
 
             if (!template) {
                 new Notice('Basic scene template not found. Set a scene template in Settings.');
@@ -201,9 +203,11 @@ export class CommandRegistrar {
                 await vault.createFolder(sourcePath);
             }
 
-            const template = (this.plugin.settings.sceneYamlTemplates?.advanced
-                ?? DEFAULT_SETTINGS.sceneYamlTemplates?.advanced
-                ?? '').trim();
+            const template = ensureClassScene(
+                (this.plugin.settings.sceneYamlTemplates?.advanced
+                    ?? DEFAULT_SETTINGS.sceneYamlTemplates?.advanced
+                    ?? '').trim()
+            );
 
             if (!template) {
                 new Notice('Advanced scene template not found. Enable or configure it in Settings.');
@@ -397,4 +401,16 @@ export class CommandRegistrar {
         }
     }
 
+}
+
+function ensureClassScene(template: string): string {
+    const lines = template.split('\n');
+    const classIdx = lines.findIndex(l => /^\s*Class\s*:/i.test(l));
+    if (classIdx >= 0) {
+        if (!/^\s*Class\s*:\s*Scene\b/i.test(lines[classIdx])) {
+            lines[classIdx] = 'Class: Scene';
+        }
+        return lines.join('\n');
+    }
+    return ['Class: Scene', ...lines].join('\n');
 }
