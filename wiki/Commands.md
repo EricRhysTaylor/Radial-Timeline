@@ -14,16 +14,17 @@ Type "Radial Timeline" to filter the list.
 
 | Command | Description | Documentation |
 | :--- | :--- | :--- |
-| **Open** | Opens the main Radial Timeline view. | [[Home#quick-start]] |
-| **Create scene note** | Creates a new scene file using the active template. | [[Core Workflows#create-scenes]] |
-| **Create backdrop note** | Creates a new backdrop file for contextual events that impact the plot. | [[Chronologue Mode]] |
-| **Book designer** | Opens the Book Designer to generate a manuscript template. | [[Book Designer]] |
+| **Open** | Opens the main Radial Timeline view. | [[Home#getting-started]] |
 | **Search timeline** | Opens the search bar in the timeline view to filter scenes. | [[How-to#search]] |
 | **Clear search** | Clears the active search filter. | [[How-to#search]] |
 | **Manage subplots** | Opens the Subplot Manager to rename or delete subplots in bulk across all files. | [[How-to#manage-subplots-in-bulk]] |
-| **Generate manuscript** | Compiles your scenes into a single manuscript file (narrative or chronological). | [[Core Workflows#generate-manuscript]] |
+| **Create basic scene note** | Creates a new scene note using the **Base** scene YAML template. | [[Core Workflows#creating-scenes]] |
+| **Create advanced scene note** | Creates a new scene note using the **Advanced** scene YAML template (including any Advanced YAML editor customizations). | [[Advanced-YAML]] |
+| **Create backdrop note** | Creates a new backdrop file for contextual events that impact the plot. | [[Chronologue Mode#backdrop-notes]] |
+| **Book designer** | Opens the Book Designer to generate a manuscript template. | [[Book Designer]] |
+| **Generate manuscript** | Compiles your scenes into a single manuscript file (narrative or chronological). | [[Core Workflows#generating-a-manuscript]] |
 | **Gossamer enter momentum scores** | Opens the score entry modal for manual Gossamer analysis. | [[Gossamer Mode#manual-entry]] |
-| **Gossamer AI evaluation...** | Runs AI analysis to evaluate story beats/momentum for the Gossamer view. | [[Gossamer Mode#ai-analysis]] |
+| **Gossamer AI evaluation...** | Runs AI analysis to evaluate story beats/momentum for the Gossamer view. (Requires AI features enabled.) | [[Gossamer Mode#ai-analysis]] |
 | **Scene pulse analysis (manuscript order)** | Runs AI analysis on scenes sequentially (all scenes). | [[AI Analysis]] |
 | **Scene pulse analysis (subplot order)** | Runs AI analysis on a specific subplot. | [[AI Analysis]] |
-| **Planetary time converter** | Opens the calculator for custom planetary calendars (if enabled in settings). | [[Settings#planetary-time]] |
+| **Planetary time converter** | Opens the calculator for custom planetary calendars (if enabled in settings). | [[Chronologue Mode#planetary-time]] |

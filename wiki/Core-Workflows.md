@@ -1,8 +1,14 @@
 ### Planning Your Novel
-*   **Act Structure**: Create and distribute scenes by act (1-3) to see your three-act structure take shape as scene ideas come to you.
+*   **Act Structure**: Scenes are organized by act (default 3 acts, configurable in **Settings → Acts**). Acts come from the scene frontmatter `Act:` field.
 *   **Subplot Tracking**: Each ring represents a different subplot. Keep scenes in a single subplot or spread them across multiple subplots to capture common themes, topics, characters, etc.
 *   **Story Beats**: Use story beat systems (Save the Cat, Hero's Journey, Story Grid, or Custom) to lay out the momentum scaffolding.
 *   **Backdrop**: Whether it's the sun setting for a half year (north or south pole) or a sun reigniting after centuries of dormancy in an exotic star system, mark major plot backdrop events using the special context ring placed below the outer ring.
+
+### Creating Scenes
+
+*   **Book Designer**: Use [[Book Designer]] to generate a full manuscript scaffold (acts, subplots, optional beat notes).
+*   **Create basic scene note**: Command palette → **Radial Timeline: Create basic scene note** (uses the Base YAML template).
+*   **Create advanced scene note**: Command palette → **Radial Timeline: Create advanced scene note** (uses the Advanced YAML template, including any Advanced YAML editor customizations).
 
 ### Subplot Mode and Tracking Progress
 *   **Scene Status Colors**: In Subplot Mode, scenes are color-coded by status: Todo = plaid, Working = pink, Overdue = red, Complete = publish stage color. In Narrative and Chronologue modes, scenes display their subplot color.

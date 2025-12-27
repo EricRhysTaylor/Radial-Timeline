@@ -18,7 +18,7 @@ The Book Designer modal guides you through three key configuration sections:
 *   **Target location**: The folder path where your new book files will be created (e.g., `Book 1`). The folder will be created if it doesn't exist. Otherwise root of the vault will be used.
 *   **Scenes to generate**: The total number of scene files to create.
 *   **Target book length**: Used for numbering distribution. For example, if you generate 10 scenes with a target length of 60, scenes will be numbered 1, 7, 13, etc., leaving gaps for future scenes.
-*   **Acts to distribute scenes across**: Choose which acts (1, 2, 3) to populate. Scenes are distributed evenly across the selected acts.
+*   **Acts to distribute scenes across**: Choose which acts (1..N) to populate, where **N** comes from your **Settings → Acts → Act count**. Scenes are distributed evenly across the selected acts.
 
 ### 2. Content Configuration
 *   **Subplots**: Enter your subplots, one per line. Scenes will be assigned to these subplots in a round-robin fashion. Each scene will belong to only one subplot.
@@ -56,16 +56,18 @@ To add your own properties (like `Draft Status`, `POV Character`, or Templater c
 ## Custom Beat Systems
 
 If you use a story structure not listed in the standard options (like 7 Point Story Structure):
-1.  Go to **Settings > Gossamer story beats system** and select **Custom**.
-2.  The Book Designer will *not* automatically generate beat notes for custom systems (since it doesn't know your specific beats).
-3.  **Manual Setup**:
-    *   Create a new note for each major beat (e.g., "Pinch Point 1").
-    *   Add the following frontmatter:
-        ```yaml
-        Class: Beat
-        Beat Model: Custom
-        ```
-    *   The Radial Timeline will automatically detect these notes and display them in the Gossamer view alongside your scenes.
+1.  Go to **Settings → Story beats system** and select **Custom**.
+2.  Define your **custom beat system name** and **beat list** in **Settings → Story beats system**.
+3.  In the Book Designer, enable **Generate Beats** to automatically generate beat notes for your custom system.
+
+You can also create custom beat notes manually:
+*   Create a new note for each major beat (e.g., "Pinch Point 1").
+*   Add the following frontmatter:
+    ```yaml
+    Class: Beat
+    Beat Model: Custom
+    ```
+*   Radial Timeline will detect these notes and display them in the Gossamer view alongside your scenes based on settings. If the new manually created note doesn't match the beat model name in settings, it will not be recognized.
 
 ## Advanced Metadata
 

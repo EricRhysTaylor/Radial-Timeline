@@ -13,10 +13,10 @@ export function renderActLabels(params: {
   const actLabelRadius = outerMostOuterRadius + actLabelOffset;
   for (let act = 0; act < numActs; act++) {
     const angle = (act * 2 * Math.PI) / numActs - Math.PI / 2;
-    // Right-justify act labels against the Act axis
-    // Anchor at the axis (plus small offset), extend path backwards to the left
+    // Right-justify act labels just to the LEFT of the Act axis spoke
+    // Text reads left-to-right and ends just before the tick
     const anchorOffset = 0.02;
-    const endAngleAct = angle + anchorOffset;
+    const endAngleAct = angle - anchorOffset;
     const startAngleAct = endAngleAct - (Math.PI / 3); // Long enough arc for long titles
     
     const actPathId = `actPath-${act}`;

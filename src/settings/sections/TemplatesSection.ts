@@ -42,7 +42,7 @@ export function renderStoryBeatsSection(params: {
 
     new Settings(containerEl)
         .setName('Act count')
-        .setDesc('Minimum 3. Applies to Narrative, Subplot, and Gossamer layouts. Scene and Beats YAML.')
+        .setDesc('Applies to Narrative, Subplot, and Gossamer layouts. Scene and Beats YAML. (Minimum 3)')
         .addText(text => {
             text.setPlaceholder('3');
             text.setValue(String(getActCount()));
@@ -97,12 +97,12 @@ export function renderStoryBeatsSection(params: {
 
     const beatSystemSetting = new Settings(containerEl)
         .setName('Story beats system')
-        .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer view.')
+        .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer mode.')
         .addDropdown(dropdown => {
             dropdown
                 .addOption('Save The Cat', 'Save The Cat (15 beats)')
                 .addOption('Hero\'s Journey', 'Hero\'s Journey (12 beats)')
-                .addOption('Story Grid', 'Story Grid (15 beats)')                    
+                .addOption('Story Grid', 'Story Grid (5 Commandments)')                    
                 .addOption('Custom', 'Custom (User defined beat structure)')
                 .setValue(plugin.settings.beatSystem || 'Custom')
                 .onChange(async (value) => {
@@ -222,6 +222,9 @@ export function renderStoryBeatsSection(params: {
                 setIcon(handle, 'grip-vertical');
                 setTooltip(handle, 'Drag to reorder beat');
 
+                // Spacer (pushes rest to the right, matches YAML row structure)
+                row.createDiv({ cls: 'rt-grid-spacer' });
+
                 // Index
                 const idxEl = row.createDiv({ text: `${index + 1}.`, cls: 'rt-beat-index' });
                 idxEl.style.minWidth = '24px'; // SAFE: inline width for index
@@ -297,6 +300,7 @@ export function renderStoryBeatsSection(params: {
             const addRow = listContainer.createDiv({ cls: 'rt-custom-beat-row rt-custom-beat-add-row' });
 
             addRow.createDiv({ cls: 'rt-drag-handle rt-drag-placeholder' });
+            addRow.createDiv({ cls: 'rt-grid-spacer' });
             addRow.createDiv({ cls: 'rt-beat-index rt-beat-add-index', text: '' });
 
             const addNameInput = addRow.createEl('input', { type: 'text', cls: 'rt-beat-name-input rt-template-input', placeholder: 'New beat' });
@@ -740,9 +744,9 @@ export function renderStoryBeatsSection(params: {
 
     function updateStoryStructureDescription(container: HTMLElement, selectedSystem: string): void {
         const descriptions: Record<string, string> = {
-            'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement. Examples: <i>The Hunger Games</i>, <i>The Martian</i>, <i>The Fault in Our Stars</i>.',
-            'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery. Examples: <i>The Odyssey</i>, <i>The Hobbit</i>, <i>Harry Potter and the Sorcerer\'s Stone</i>.',
-            'Story Grid': 'Literary fiction and complex narratives. Balances micro and macro structure with progressive complications. Examples: <i>The Silence of the Lambs</i>, <i>Pride and Prejudice</i>, <i>The Tipping Point</i>.',
+            'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement. <i>The Hunger Games</i>, <i>The Martian</i>, <i>The Fault in Our Stars</i>.',
+            'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery. <i>The Odyssey</i>, <i>The Hobbit</i>, <i>Harry Potter and the Sorcerer\'s Stone</i>.',
+            'Story Grid': 'Scene-driven structure built around the 5 Commandments: Inciting Incident, Progressive Complications, Crisis, Climax, Resolution. Useful per-scene and at the global level. <i>The Silence of the Lambs</i>, <i>Pride and Prejudice</i>.',
             'Custom': 'Uses any story beat notes you create. Perfect for when you don\'t follow a traditional story structure.'
         };
 

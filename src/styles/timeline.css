@@ -596,7 +596,7 @@
 /* Planetary Time (Alien Calendar) Synopsis Line */
 .rt-planetary-time-text {
   fill: var(--text-muted, currentColor);
-  font-size: 14px !important;
+  font-size: 16px !important;
   line-height: 1.2;
 }
 

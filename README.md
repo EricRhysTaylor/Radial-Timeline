@@ -49,92 +49,15 @@ Narrative and Chronologue modes keep subplot colors front-and-center so you can 
 
 ---
 
-## Visual Overview
+## Docs (How-to & setup)
 
-<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-  <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/narrative.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/narrative.jpeg" alt="All Scenes Timeline" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Narrative Timeline</div>
-  </div>
-  <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/synopsis.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/synopsis.jpeg" alt="Timeline Hover Synopsis" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Timeline Hover Synopsis</div>
-  </div>
-</div>
+If you want the “how-to” details (setup, templates, YAML, reordering, advanced options), they live in the wiki:
 
-<div style="text-align: center; font-size: 0.8em; margin-top: 10px; color: #888;">
-  Click image to view full size in browser
-</div>  
-
-<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
-  <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/subplot.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/subplot.jpeg" alt="Subplot Mode author workflow colors" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Subplot Mode — Author & publishing progress</div>
-  </div>
-  <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/gossamer.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/gossamer.jpeg" alt="Gossamer View" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer View</div>
-  </div>
-</div>
-
-<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
-  <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/chronologue.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/chronologue.jpeg" alt="Chronologue Mode" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode (<a href="https://www.youtube.com/watch?v=XKWq32LB0d0" target="_blank">Watch Video</a>)</div>
-  </div>
-  <div style="text-align: center;">
-    <a href="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/shift.jpeg" target="_blank" rel="noopener" style="cursor: pointer;">
-      <img src="https://raw.githubusercontent.com/EricRhysTaylor/radial-timeline/master/wiki/images/shift.jpeg" alt="Chronologue Mode - SHIFT" style="width: 300px; max-width: 100%; border-radius: 8px;" />
-    </a>
-    <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Chronologue Mode - SHIFT</div>
-  </div>
-</div>
-
-<div style="text-align: center; font-size: 0.8em; margin-top: 10px; color: #888;">
-  Click image to view full size in browser
-</div>  
-
-
-## Quick Start
-
-**Get your first timeline in 3 steps:**
-
-1. **Install the plugin**: Settings → Community plugins → Browse → "Radial Timeline"
-2. **Open the timeline**: Click the radial timeline ribbon icon or use command palette → "Radial Timeline: Open" 
-3. **Welcome screen**: For any empty vault, you will be greeted by a Welcome screen with introductory details and a button to open the Book designer. Create a single scene or a fully fleshed novel template. 
-Create more scenes by:
-- Using Book Designer again and again via command palette → "Book Designer"
-- Using command palette → "Create scene note"
-- Duplicating the template scenes using Obsidian duplicate (`right click` on scene → duplicate)
-- Use Obsidian's core templates plugin to directly insert yaml into notes **Settings** → Core Plugins → Templates
-
-**Customization highlights**
-- Advanced YAML editor (Settings → Scene YAML templates & remapping): optional fields can be added, renamed, reordered, or removed; required base keys stay locked. Book Designer uses your customized Advanced template when selected.
-- AI output folder (Settings → Advanced): choose where AI logs, manuscripts, and generated reports are saved; default is `AI`. API logging writes requests/responses there when enabled.
-
-## Scene Naming & Ordering
-
-Radial Timeline determines scene order based on the **leading number** in the scene file name (e.g., `1 My Scene.md`).
-
-*   To reorder a scene, simply change its number: rename `1 My Scene` to `5 My Scene`.
-*   Scene order is **per Act** (defined in the YAML frontmatter).
-*   You can also reorder scenes via **drag-and-drop** in Narrative Mode.
-
-For full details, see **[Reordering Scenes](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/How-to#reorder-scenes)**.
-
-**Optional - Insert story beats**: Consider inserting story beats for your chosen system such as the 15-beat Save the Cat by going to Settings → Radial Timeline → Create Templates.
-
-**Pro tip**: Organize your vault for multiple books by creating folders for each then set your Radial Timeline™ plugin source path (Settings → Radial timeline → Source path) to a specific folder like `Book 1: The Saga Begins` to quickly organize your vault.
+- [Wiki Home](https://github.com/EricRhysTaylor/Radial-Timeline/wiki)
+- [How-to](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/How-to)
+- [Settings](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Settings)
+- [Commands](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Commands)
+- [YAML Frontmatter](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/YAML-Frontmatter)
 
 <br>
 <a href="https://youtu.be/7noTSFaj8Eo" target="_blank" rel="noopener">
@@ -147,12 +70,6 @@ For full details, see **[Reordering Scenes](https://github.com/EricRhysTaylor/Ra
   </p>
 </a>
 
-
----
-
-## Documentation
-
-Detailed guides and references have been moved to the [GitHub Wiki](https://github.com/EricRhysTaylor/Radial-Timeline/wiki).
 
 ---
 
@@ -201,7 +118,7 @@ If you're experiencing visual quality issues on Windows, please check your displ
 
 ## Feedback and support
 
-Please see the [Github Wiki](https://github.com/EricRhysTaylor/radial-timeline/wiki) for documentation. Also check out the Discussions group at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/discussions" target="_blank" rel="noopener">Discussions</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">Github Repository Issues page</a>. If you find the radial timeline plugin useful and would like to encourage continued development, please consider joining my <a href="https://www.patreon.com/c/EricRhysTaylor" target="_blank" rel="noopener">Patreon</a> or just buying me a coffee:
+Check out the Discussions group at <a href="https://github.com/EricRhysTaylor/Radial-Timeline/discussions" target="_blank" rel="noopener">Discussions</a>. If you encounter issues or have feature requests, please file an issue on the <a href="https://github.com/EricRhysTaylor/radial-timeline/issues" target="_blank" rel="noopener">Github Repository Issues page</a>. If you find the radial timeline plugin useful and would like to encourage continued development, please consider joining my <a href="https://www.patreon.com/c/EricRhysTaylor" target="_blank" rel="noopener">Patreon</a> or just buying me a coffee:
 
 <a href="https://www.buymeacoffee.com/ericrhysTaylor" target="_blank" rel="noopener">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="buy me a coffee" style="width: 150px;"></a>

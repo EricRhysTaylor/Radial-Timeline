@@ -11,7 +11,7 @@ Subplot Mode isolates each subplot into its own radial pass, removing the combin
 ## Key Features
 
 *   **Single Thread Focus**: View one subplot at a time to analyze its specific arc and continuity.
-*   **3-Act Structure**: Like Narrative Mode, scenes are distributed across three acts (120° per act).
+*   **Act Structure**: Like Narrative Mode, scenes are distributed across your configured act count (default 3). Each act spans \(360° / \text{Act Count}\).
 *   **Cleaner View**: Removes story beats to reduce visual noise while you focus on workflow.
 
 ## Workflow Visualization

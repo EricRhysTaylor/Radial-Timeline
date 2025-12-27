@@ -59,8 +59,6 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
                     .onChange(async (_newValue) => {
                         // We defer saving until blur to avoid partial state
                     });
-                text.inputEl.addClass('rt-input-sm');
-                
                 // Handle rename on blur
                 // SAFE: addEventListener used for Settings (transient element, cleanup via DOM removal)
                 text.inputEl.addEventListener('blur', async () => {
@@ -129,7 +127,6 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
             setting.addText(text => {
                 text.setPlaceholder('Your Key (required to save)');
                 text.setValue('');
-                text.inputEl.addClass('rt-input-sm');
                 text.inputEl.addEventListener('blur', async () => {
                     const newValue = text.getValue().trim();
                     if (!newValue) {

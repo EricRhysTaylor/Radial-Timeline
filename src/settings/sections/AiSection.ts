@@ -315,8 +315,8 @@ export function renderAiSection(params: {
                     params.scheduleKeyValidation('local');
                 });
             params.setLocalConnectionInputs({ baseInput: text.inputEl });
-            text.inputEl.addClass('rt-input-full');
         });
+    localBaseUrlSetting.settingEl.addClass('rt-setting-full-width-input');
 
     const localWarning = localBaseUrlSetting.descEl.createDiv({ cls: 'rt-setting-note rt-setting-warning' });
     localWarning.style.marginTop = '8px';
@@ -382,7 +382,7 @@ export function renderAiSection(params: {
             });
     });
 
-    new Settings(localSection)
+    const customInstructionsSetting = new Settings(localSection)
         .setName('Custom Instructions')
         .setDesc('Additional instructions added to the start of the prompt. Useful for fine-tuning local model behavior.')
         .addTextArea(text => {
@@ -393,8 +393,9 @@ export function renderAiSection(params: {
                     plugin.settings.localLlmInstructions = value;
                     await plugin.saveSettings();
                 });
-            text.inputEl.rows = 3;
+            text.inputEl.rows = 4;
         });
+    customInstructionsSetting.settingEl.addClass('rt-setting-full-width-input');
 
     new Settings(localSection)
         .setName('Bypass scene hover metadata yaml writes')

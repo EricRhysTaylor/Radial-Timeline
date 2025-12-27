@@ -1,60 +1,58 @@
-Access via Obsidian Settings → Community Plugins → Radial Timeline
+Access via Obsidian **Settings → Community Plugins → Radial Timeline**.
+
+Below is the **current settings order** as implemented in `src/settings/SettingsTab.ts`.
 
 ### Source path
-*   Root folder for scene files (e.g., `Book 1`). Leave blank to scan entire vault.
+*   **Source path**: Root folder for your manuscript scene files (e.g., `Book 1`). Leave blank to scan the entire vault.
+*   **Show source path as title**: When on, uses the source folder name as the work title; when off shows “Work in Progress”.
 
 ### Publication and progress
-*   **Target completion date**: Optional target (YYYY-MM-DD). Marker appears on outer ring.
-*   **Zero draft mode**: Prevents edits to completed zero-draft scenes to keep you moving forward.
-    *   **What it does**: When you click a scene marked as `Publish Stage: Zero` and `Status: Complete`, instead of opening the file, a dialog appears.
-    *   **Pending Edits**: The dialog lets you capture quick notes or edits into a `Pending Edits` frontmatter field without getting sucked into a full revision.
-    *   **Override**: You can click the "Override" button (red) to force open the note if absolutely necessary.
+*   **Target completion date**: Optional target (YYYY-MM-DD). Marker appears on the outer ring.
+*   **Zero draft mode**: Intercepts clicks on scenes with `Publish Stage: Zero` + `Status: Complete` so you can capture `Pending Edits` without opening the note.
+*   **Show completion estimate**: Toggles the predicted completion tick on the timeline (based on your writing pace).
 
 ### Point of view
-*   **Global POV**: Set a default POV style (first, second/you, third, omni, objective, off). Scene-level `POV:` overrides this.
-*   **YAML overrides**: Accepts `first`, `second/you`, `third`, `omni`, `objective`, or numeric terms like `two`, `four`, `count`, `all` to mark multiple POV carriers.
+*   **Global POV**: Default POV mode applied across scenes; scene-level `POV:` overrides it.
+*   **Scene level YAML overrides**: Supported `POV:` values and multi-carrier shorthand.
 
 ### Chronologue mode settings
-*   **Chronologue duration arc cap**: Select maximum duration to display on scene duration arcs, or use "auto".
-*   **Discontinuity gap threshold**: Controls when the ∞ symbol appears in shift mode. Auto-calculated as 3× the median time gap.
+*   **Chronologue duration arc cap**: Choose a max duration for scaling duration arcs (or auto).
+*   **Discontinuity gap threshold**: Controls when the ∞ symbol appears in Shift mode (auto default is 3× median gap; you can override with values like “4 days”, “1 week”, “30 minutes”).
 
-### Story beats system & templates
-*   **Story beats system**: Select story structure model (Save The Cat, Hero's Journey, Story Grid, or Custom).
-    *   *Custom*: Select this to use your own methodology. You will need to create beat notes manually with `Beat Model: Custom` in the frontmatter.
-*   **Create story beat template notes**: Generate template beat notes with YAML frontmatter. (Disabled for Custom mode).
+### Acts
+*   **Act count**: Minimum 3. Applies to Narrative/Subplot/Gossamer layouts and the `Act:` values used in Scene and Beat YAML.
+*   **Act labels (optional)**: Comma-separated labels (extra labels ignored; missing/empty entries fall back to defaults).
+*   **Show act labels**: Number-only act markers when off (your “numbering toggle”).
 
-### Metadata Mapping
-*   **Enable custom metadata mapping**: Map your own custom frontmatter keys (e.g., use `StoryLine` instead of `Subplot`) to system keys.
-*   **Mappings**: Define multiple key pairs to support legacy data or preferred naming conventions.
+### Story beats system
+*   **Story beats system**: Save The Cat, Hero’s Journey, Story Grid, or **Custom**.
+*   **Custom story beat system** (Custom only): Name your system and edit the beat list. Beats can be drag-reordered, renamed, deleted, and assigned to an act.
+*   **Create story beat template notes**: Generates beat note templates in your source path.
 
-### Scene Templates & Frontmatter
-*   **Advanced YAML editor**: Enable to customize the Advanced template while keeping required base keys (Class, Act, When, Duration, Synopsis, Subplot, Character, Status, Publish Stage, Due, Pending Edits, Pulse Update) locked in order.
-*   **Optional keys**: Drag to reorder, rename, delete, or add optional fields. Click the revert icon to restore defaults.
-    *   *Templater Support*: Values accept Templater code (e.g., `<% tp.file.creation_date() %>`) which will expand if Templater runs on new files.
+### Scene YAML templates & remapping
+*   **Custom Metadata Mapping**: Map your vault’s frontmatter keys to Radial Timeline system keys (useful for pre-existing notes / legacy YAML).
+*   **Advanced YAML editor**: Toggle the Advanced template editor to add/reorder optional YAML keys while keeping required base keys locked.
+
+See also: [[Advanced-YAML]] and [[YAML-Frontmatter]].
 
 ### Planetary Time
-*   **Enable planetary time**: Toggle to show planetary time features.
-*   **Active Profile**: Select which custom calendar to use for conversions.
-*   **Profiles**: Create and manage multiple calendar systems (e.g., "Mars", "Fantasy Realm").
-    *   **Hours per day**: Length of a local day in Earth hours.
-    *   **Days per week**: Number of days in a local week.
-    *   **Days per year**: Number of local days in a local year.
-    *   **Epoch Offset**: Number of Earth days to shift the start of your calendar (relative to 1970-01-01).
-    *   **Month/Weekday Names**: Comma-separated lists of custom names.
+*   **Enable planetary time**: Turns on Planetary Time features.
+*   **Active profile**: Select which custom calendar to use.
+*   **Profiles**: Create/manage calendars (hours/day, days/week, days/year, epoch offset + labels, optional month/weekday names).
 
-### AI features
-*   **AI Provider**: Choose Anthropic, Gemini, OpenAI, or Local/OpenAI Compatible.
-*   **Local AI Support**: Connect to local LLMs (like Ollama or LM Studio).
-*   **Contextual Prompt**: Customize AI analysis prompts.
-*   **API Logging**: Track AI interactions; logs are written to the AI output folder (configurable in Advanced settings, default `AI`).
+### AI LLM for scene analysis
+*   **Enable AI LLM features**: Shows/hides AI commands and AI hover visuals (metadata stays untouched when off).
+*   **AI prompt role & context template**: Manage templates used for prompt generation (Scene analysis + Gossamer).
+*   **Model**: Pick a curated model (Anthropic/Gemini/OpenAI) or a Local/OpenAI-compatible endpoint.
+*   **API logging**: Writes request/response logs into your AI output folder (see Advanced).
 
 ### Advanced
-*   **AI output folder**: Set where AI logs, manuscripts, and generated reports are saved (default `AI`).
-*   **Auto-expand clipped scene titles**: Disable to prevent scene title expansion on hover. FYI: May make scene drag-and-drop a bit challenging as the scene will expand thus changing the location of the number square drag hotspot.
-*   **Show completion estimate**: Toggle the predicted completion date tick on the timeline (based on your writing pace).
-*   **Timeline readability scale**: Choose between normal and large UI elements for high-resolution displays.
-*   **Metadata refresh debounce (ms)**: Delay before refreshing timeline after YAML frontmatter changes.
+*   **AI output folder**: Where AI logs and generated files (including manuscripts) are saved (default `AI`).
+*   **Auto-expand clipped scene titles**
+*   **Timeline readability scale**
+*   **Metadata refresh debounce (ms)**
+*   **Reset subplot color precedence**
 
 ### Visual customization
-*   **Publishing stage colors**: Customize colors for Zero, Author, House, Press stages.
-*   **Ring colors**: Customize up to 16 subplot ring colors.
+*   **Publishing stage colors**
+*   **Subplot ring colors** (16 ring palette)

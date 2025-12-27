@@ -99,3 +99,6 @@ You can filter scenes by searching for text content across multiple fields.
     *   **Text**: Matching text within the synopsis hover metadata is highlighted in yellow.
 *   **Clear**: Use the command **Radial Timeline: Clear search** or click the clear button in the modal.
 
+### Rotate the timeline
+In Narrative and Subplot modes you can use the **rotation toggle** (arrow icon near the outer ring) to rotate the timeline for easier reading. The rotation offset is **act-aware** (based on your configured **Act count**) and keeps scene number squares oriented correctly.
+

@@ -11,7 +11,7 @@ The Advanced YAML editor lets you tailor the Advanced scene template while keepi
    - Renamed or deleted.
    - Added via the “Add key” row (values accept text or comma-separated lists).
 4. Click the rotate/restore icon to revert the Advanced template back to the shipped defaults.
-5. Book Designer and “Create scene note” will use your customized Advanced template whenever you pick **Advanced**.
+5. Book Designer and **Create advanced scene note** will use your customized Advanced template whenever you pick **Advanced**.
 
 Tip: Values support Templater syntax (e.g., `<% tp.date.now() %>`) if Templater is set to run on new files.
 
