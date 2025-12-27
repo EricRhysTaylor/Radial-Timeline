@@ -53,6 +53,11 @@ export const ja: DeepPartial<TranslationKeys> = {
         },
         advanced: {
             heading: '詳細設定',
+            aiOutputFolder: {
+                name: 'AI出力フォルダ',
+                desc: 'AIログや生成ファイル（原稿、レポートなど）を保存するフォルダです。ボールト内のフォルダを指定してください。',
+                placeholder: 'AI',
+            },
             autoExpand: {
                 name: 'クリップされたシーンタイトルを自動展開',
                 desc: 'シーンにホバーしたとき、タイトルテキストがクリップされている場合は自動的に展開します。',

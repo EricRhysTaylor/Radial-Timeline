@@ -193,10 +193,6 @@ class SubplotDeletionConfirmModal extends Modal {
         warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the manuscript?`);
 
         const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
-        
-        new ButtonComponent(buttonRow)
-            .setButtonText('Cancel')
-            .onClick(() => this.close());
 
         new ButtonComponent(buttonRow)
             .setButtonText('Remove Subplot')
@@ -205,6 +201,10 @@ class SubplotDeletionConfirmModal extends Modal {
                 await this.onConfirm();
                 this.close();
             });
+
+        new ButtonComponent(buttonRow)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
     }
 
     onClose() {
@@ -238,7 +238,7 @@ class RenameSubplotModal extends Modal {
 
         const card = contentEl.createDiv({ cls: 'rt-glass-card rt-pulse-section-gap' });
         
-        const inputContainer = card.createDiv({ cls: 'rt-pulse-info' });
+        const inputContainer = card.createDiv();
         inputContainer.createDiv({ text: `Rename "${this.oldName}" to:`, cls: 'rt-subplot-management-input-label' });
         
         const inputEl = inputContainer.createEl('input', { type: 'text', value: this.oldName, cls: 'rt-subplot-management-input' });

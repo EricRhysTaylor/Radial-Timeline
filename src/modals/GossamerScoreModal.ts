@@ -31,6 +31,14 @@ interface BeatScoreEntry {
   beatPath?: string;
 }
 
+interface NormalizationIssue {
+  beatTitle: string;
+  missingSlots: number[];
+  orphanJustifications: number[];
+  hasRenumbering: boolean;
+  changed: boolean;
+}
+
 export class GossamerScoreModal extends Modal {
   private plugin: RadialTimelinePlugin;
   private plotBeats: TimelineItem[];
@@ -47,14 +55,77 @@ export class GossamerScoreModal extends Modal {
     this.plotBeats = plotBeats;
   }
 
+  private analyzeNormalizationFrontmatter(frontmatter: Record<string, any>, beatTitle: string): NormalizationIssue {
+    const maxHistory = 30;
+    const missingSlots: number[] = [];
+    const orphanJustifications: number[] = [];
+    const indices: number[] = [];
+
+    for (let i = 1; i <= maxHistory; i++) {
+      const scoreKey = `Gossamer${i}`;
+      const justKey = `Gossamer${i} Justification`;
+      const rawScore = frontmatter[scoreKey];
+      let numeric: number | undefined;
+
+      if (typeof rawScore === 'number') {
+        numeric = rawScore;
+      } else if (typeof rawScore === 'string') {
+        const parsed = parseInt(rawScore);
+        if (!Number.isNaN(parsed)) numeric = parsed;
+      }
+
+      if (numeric !== undefined) {
+        indices.push(i);
+      } else if (typeof frontmatter[justKey] === 'string' && frontmatter[justKey].trim().length > 0) {
+        orphanJustifications.push(i);
+      }
+    }
+
+    let hasRenumbering = false;
+    let expectedIndex = 1;
+    for (const idx of indices) {
+      if (idx !== expectedIndex) {
+        hasRenumbering = true;
+        while (expectedIndex < idx) {
+          missingSlots.push(expectedIndex);
+          expectedIndex++;
+        }
+      }
+      expectedIndex = idx + 1;
+    }
+
+    const changed = hasRenumbering || orphanJustifications.length > 0;
+    return { beatTitle, missingSlots, orphanJustifications, hasRenumbering, changed };
+  }
+
   private async normalizeAllScores(): Promise<void> {
-    const confirmMessage = 'This reorders all Gossamer scores (G1, G2, etc.) for each beat and removes orphaned justifications. Back up your vault before running cleanup in case you need to restore previous scoring history.';
+    const beatsToNormalize = this.plotBeats.filter(beat => beat.path);
+    const normalizationIssues: NormalizationIssue[] = [];
+
+    for (const beat of beatsToNormalize) {
+      if (!beat.path) continue;
+      const file = this.plugin.app.vault.getAbstractFileByPath(beat.path);
+      if (!file || !(file instanceof TFile)) continue;
+
+      const cache = this.plugin.app.metadataCache.getFileCache(file as any);
+      const fm = cache?.frontmatter;
+      if (!fm) continue;
+
+      const analysis = this.analyzeNormalizationFrontmatter(fm, beat.title || beat.path);
+      if (analysis.changed) {
+        normalizationIssues.push(analysis);
+      }
+    }
+
+    const confirmMessage = normalizationIssues.length > 0
+      ? `Will renumber and clean ${normalizationIssues.length} beat${normalizationIssues.length === 1 ? '' : 's'} with gaps or orphaned justifications. Back up your vault before running cleanup as a safety measure.`
+      : 'No numbering gaps or orphaned Gossamer justifications were detected. Back up your vault before running cleanup.';
 
     new NormalizeConfirmationModal(
       this.app,
       confirmMessage,
+      normalizationIssues,
       async () => {
-        const beatsToNormalize = this.plotBeats.filter(beat => beat.path);
         let changedCount = 0;
 
         for (const beat of beatsToNormalize) {
@@ -236,7 +307,7 @@ export class GossamerScoreModal extends Modal {
     // }
 
     // Scrollable list of beat scores
-    const scoresContainer = contentEl.createDiv('rt-gossamer-scores-container');
+    const scoresContainer = contentEl.createDiv('rt-container');
 
     // Build entries from plot beats
     this.buildEntries();
@@ -832,7 +903,9 @@ export class GossamerScoreModal extends Modal {
       });
 
       // Button container with proper styling
-      const buttonContainer = contentEl.createDiv('rt-modal-actions');
+      const buttonContainer = contentEl.createDiv({
+        cls: ['rt-modal-actions', 'rt-inline-actions']
+      });
 
       new ButtonComponent(buttonContainer)
         .setButtonText('Delete all scores')
@@ -927,6 +1000,7 @@ class NormalizeConfirmationModal extends Modal {
   constructor(
     app: App,
     private readonly message: string,
+    private readonly issues: NormalizationIssue[],
     private readonly onConfirm: () => void
   ) {
     super(app);
@@ -949,13 +1023,54 @@ class NormalizeConfirmationModal extends Modal {
 
     const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
-    const messageEl = card.createDiv({ cls: 'rt-purge-message' });
-    messageEl.setText(this.message);
+    card.createDiv({ cls: 'rt-purge-message' }).setText(this.message);
+
+    if (this.issues.length > 0) {
+      const issuesEl = card.createDiv({ cls: 'rt-purge-issues' });
+      issuesEl.createEl('h3', { text: 'Beats to normalize', cls: 'rt-purge-issues-title' });
+
+      const listEl = issuesEl.createEl('ul', { cls: 'rt-purge-issues-list' });
+      const preview = this.issues.slice(0, 6);
+
+      preview.forEach(issue => {
+        const item = listEl.createEl('li', { cls: 'rt-purge-issues-item' });
+        item.createEl('strong', { text: issue.beatTitle });
+
+        const details: string[] = [];
+
+        if (issue.missingSlots.length > 0) {
+          const gapLabel = issue.missingSlots.length === 1 ? 'Gap' : 'Gaps';
+          const gapList = issue.missingSlots.map(slot => `G${slot}`).join(', ');
+          details.push(`${gapLabel}: ${gapList}`);
+        } else if (issue.hasRenumbering) {
+          details.push('Out-of-order numbering');
+        }
+
+        if (issue.orphanJustifications.length > 0) {
+          const orphanList = issue.orphanJustifications.map(slot => `G${slot}`).join(', ');
+          details.push(`Orphaned justification${issue.orphanJustifications.length === 1 ? '' : 's'}: ${orphanList}`);
+        }
+
+        item.createSpan({ text: details.join(' • ') || 'Will compact numbering' });
+      });
+
+      if (this.issues.length > preview.length) {
+        issuesEl.createDiv({
+          cls: 'rt-purge-issues-footnote',
+          text: `+${this.issues.length - preview.length} more beat${this.issues.length - preview.length === 1 ? '' : 's'} will be cleaned.`
+        });
+      }
+    } else {
+      card.createDiv({
+        cls: 'rt-purge-message rt-purge-message-secondary',
+        text: 'No gaps detected. Normalization will simply compact numbering and remove stray justification fields.'
+      });
+    }
 
     const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
     warningEl.createEl('strong', { text: 'Are you sure you want to proceed?' });
 
-    const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
+    const buttonRow = contentEl.createDiv({ cls: ['rt-modal-actions', 'rt-inline-actions'] });
     new ButtonComponent(buttonRow)
       .setButtonText('Normalize')
       .setWarning()

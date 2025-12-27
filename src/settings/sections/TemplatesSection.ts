@@ -150,7 +150,7 @@ export function renderStoryBeatsSection(params: {
                 const nameInput = row.createEl('input', { type: 'text', cls: 'rt-beat-name-input' });
                 nameInput.value = name;
                 nameInput.placeholder = 'Beat name';
-                nameInput.addEventListener('change', () => {
+                plugin.registerDomEvent(nameInput, 'change', () => {
                     const newName = nameInput.value.trim();
                     if (!newName) return;
                     const updated = [...beats];
@@ -165,7 +165,7 @@ export function renderStoryBeatsSection(params: {
                     const opt = actSelect.createEl('option', { value: n.toString(), text: `Act ${n}` });
                     if (act === n.toString()) opt.selected = true;
                 });
-                actSelect.addEventListener('change', () => {
+                plugin.registerDomEvent(actSelect, 'change', () => {
                     act = actSelect.value;
                     const updated = [...beats];
                     const currentName = nameInput.value.trim() || name;
@@ -185,17 +185,17 @@ export function renderStoryBeatsSection(params: {
                 };
 
                 // Drag and drop reorder
-                row.addEventListener('dragstart', (e) => {
+                plugin.registerDomEvent(row, 'dragstart', (e) => {
                     e.dataTransfer?.setData('text/plain', index.toString());
                     row.classList.add('rt-dragging');
                 });
-                row.addEventListener('dragend', () => {
+                plugin.registerDomEvent(row, 'dragend', () => {
                     row.classList.remove('rt-dragging');
                 });
-                row.addEventListener('dragover', (e) => {
+                plugin.registerDomEvent(row, 'dragover', (e) => {
                     e.preventDefault();
                 });
-                row.addEventListener('drop', (e) => {
+                plugin.registerDomEvent(row, 'drop', (e) => {
                     e.preventDefault();
                     const from = parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
                     if (Number.isNaN(from) || from === index || from < 0) return;
@@ -324,6 +324,7 @@ export function renderStoryBeatsSection(params: {
         });
 
         let workingEntries = entries;
+        let dragIndex: number | null = null;
 
         const saveEntries = (nextEntries: TemplateEntry[]) => {
             workingEntries = nextEntries;
@@ -343,7 +344,12 @@ export function renderStoryBeatsSection(params: {
             const listEl = advancedContainer.createDiv({ cls: 'rt-template-entries rt-template-indent' });
 
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
-                const row = listEl.createDiv({ cls: 'rt-template-entry-line setting-item rt-template-grid' });
+                const row = listEl.createDiv({ cls: 'rt-template-entry-line setting-item rt-template-grid rt-template-grid-reorder' });
+
+                const dragHandle = row.createDiv({ cls: 'rt-template-drag-handle' });
+                dragHandle.draggable = true;
+                setIcon(dragHandle, 'grip-vertical');
+                setTooltip(dragHandle, 'Drag to reorder key');
 
                 const keyCol = row.createDiv({ cls: 'setting-item-info' });
                 const keyInput = keyCol.createEl('input', { cls: 'rt-template-input' });
@@ -404,12 +410,52 @@ export function renderStoryBeatsSection(params: {
                     saveEntries(nextList);
                     rerender(nextList);
                 };
+
+                plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
+                    dragIndex = idx;
+                    row.classList.add('rt-template-dragging');
+                    e.dataTransfer?.setData('text/plain', idx.toString());
+                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                });
+
+                plugin.registerDomEvent(dragHandle, 'dragend', () => {
+                    row.classList.remove('rt-template-dragging');
+                    row.classList.remove('rt-template-dragover');
+                    dragIndex = null;
+                });
+
+                plugin.registerDomEvent(row, 'dragover', (e) => {
+                    e.preventDefault();
+                    row.classList.add('rt-template-dragover');
+                });
+
+                plugin.registerDomEvent(row, 'dragleave', () => {
+                    row.classList.remove('rt-template-dragover');
+                });
+
+                plugin.registerDomEvent(row, 'drop', (e) => {
+                    e.preventDefault();
+                    row.classList.remove('rt-template-dragover');
+                    const from = dragIndex ?? parseInt(e.dataTransfer?.getData('text/plain') || '-1', 10);
+                    if (Number.isNaN(from) || from < 0 || from >= list.length || from === idx) {
+                        dragIndex = null;
+                        return;
+                    }
+                    const nextList = [...list];
+                    const [moved] = nextList.splice(from, 1);
+                    nextList.splice(idx, 0, moved);
+                    dragIndex = null;
+                    saveEntries(nextList);
+                    rerender(nextList);
+                });
             };
 
             data.forEach((entry, idx, arr) => renderEntryRow(entry, idx, arr));
 
             // Add new key/value (includes revert on the same row)
-            const addRow = advancedContainer.createDiv({ cls: 'rt-template-add-row setting-item rt-template-grid rt-template-indent' });
+            const addRow = advancedContainer.createDiv({ cls: 'rt-template-add-row setting-item rt-template-grid rt-template-grid-reorder rt-template-indent' });
+
+            addRow.createDiv({ cls: 'rt-template-handle-spacer' });
 
             const keyInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'New key' } });
             const valInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'Value' } });

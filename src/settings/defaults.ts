@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     sourcePath: '',
     showSourcePathAsTitle: true, // Default: show source path as title of the work
     validFolderPaths: [], // Default empty array for folder path history
+    aiOutputFolder: 'AI',
     publishStageColors: {
         Zero: '#9E70CF',   // Purple (Stage Zero)
         Author: '#5E85CF', // Blue   (Author)

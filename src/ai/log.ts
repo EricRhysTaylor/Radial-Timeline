@@ -4,6 +4,7 @@
 import type RadialTimelinePlugin from '../main';
 import type { Vault } from 'obsidian';
 import { Notice } from 'obsidian';
+import { ensureAiOutputFolder } from '../utils/aiOutput';
 
 export interface LogPayload {
   prefix: 'Gossamer' | 'Beats';
@@ -17,7 +18,7 @@ export interface LogPayload {
 
 export async function logExchange(plugin: RadialTimelinePlugin, vault: Vault, payload: LogPayload): Promise<void> {
   if (!plugin.settings.logApiInteractions) return;
-  const folder = 'AI';
+  const folder = await ensureAiOutputFolder(plugin);
   // Build a local-time, file-safe timestamp (e.g., "10-18-2025 08-38-45 AM PDT")
   const localStamp = new Date().toLocaleString(undefined, {
     year: 'numeric', month: '2-digit', day: '2-digit',
@@ -62,7 +63,6 @@ export async function logExchange(plugin: RadialTimelinePlugin, vault: Vault, pa
   }
   
   try {
-    try { await vault.createFolder(folder); } catch {}
     await vault.create(file, fileContent.trim());
   } catch (e) {
     console.error('[AI][log] Failed to write log:', e);

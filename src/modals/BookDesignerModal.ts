@@ -57,7 +57,7 @@ export class BookDesignerModal extends Modal {
         heroMeta.createSpan({ cls: 'rt-modal-meta-item', text: 'Scenes + Subplots' });
         heroMeta.createSpan({ cls: 'rt-modal-meta-item', text: 'Acts + Beats' });
         
-        const scrollContainer = contentEl.createDiv({ cls: 'rt-gossamer-scores-container rt-manuscript-card-stack' });
+        const scrollContainer = contentEl.createDiv({ cls: 'rt-container rt-card-stack' });
 
         // SECTION 1: LOCATION & STRUCTURE
         const structCard = scrollContainer.createDiv({ cls: 'rt-glass-card rt-sub-card' });
@@ -297,16 +297,16 @@ export class BookDesignerModal extends Modal {
         const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
 
         new ButtonComponent(footer)
-            .setButtonText('Cancel')
-            .onClick(() => this.close());
-
-        new ButtonComponent(footer)
             .setButtonText('Create Book')
             .setCta()
             .onClick(() => {
                 this.close();
                 this.generateBook();
             });
+        
+        new ButtonComponent(footer)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
         
         // Add cursor pointer to footer buttons
         footer.querySelectorAll('button').forEach(btn => {

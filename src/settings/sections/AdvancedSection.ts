@@ -1,4 +1,4 @@
-import { App, Setting as Settings, Notice } from 'obsidian';
+import { App, Setting as Settings, Notice, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
@@ -9,6 +9,60 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
     new Settings(containerEl)
         .setName(t('settings.advanced.heading'))
         .setHeading();
+
+    // 0. AI output folder for logs and generated files
+    new Settings(containerEl)
+        .setName(t('settings.advanced.aiOutputFolder.name'))
+        .setDesc(t('settings.advanced.aiOutputFolder.desc'))
+        .addText(text => {
+            const fallbackFolder = plugin.settings.aiOutputFolder?.trim() || 'AI';
+            const illegalChars = /[<>:"|?*]/;
+
+            text.setPlaceholder(t('settings.advanced.aiOutputFolder.placeholder'))
+                .setValue(fallbackFolder);
+
+            const inputEl = text.inputEl;
+
+            const flashClass = (cls: string) => {
+                inputEl.addClass(cls);
+                window.setTimeout(() => inputEl.removeClass(cls), cls === 'rt-setting-input-success' ? 1000 : 2000);
+            };
+
+            const validatePath = async () => {
+                inputEl.removeClass('rt-setting-input-success');
+                inputEl.removeClass('rt-setting-input-error');
+
+                const rawValue = text.getValue();
+                const trimmed = rawValue.trim() || fallbackFolder;
+
+                if (illegalChars.test(trimmed)) {
+                    flashClass('rt-setting-input-error');
+                    new Notice('Folder path cannot contain the characters < > : " | ? *');
+                    return;
+                }
+
+                const normalized = normalizePath(trimmed);
+
+                try { await plugin.app.vault.createFolder(normalized); } catch { /* folder may already exist */ }
+
+                const isValid = await plugin.validateAndRememberPath(normalized);
+                if (!isValid) {
+                    flashClass('rt-setting-input-error');
+                    return;
+                }
+
+                plugin.settings.aiOutputFolder = normalized;
+                await plugin.saveSettings();
+                flashClass('rt-setting-input-success');
+            };
+
+            text.onChange(() => {
+                inputEl.removeClass('rt-setting-input-success');
+                inputEl.removeClass('rt-setting-input-error');
+            });
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void validatePath(); });
+        });
 
     // 1. Auto-expand clipped scene titles
     new Settings(containerEl)

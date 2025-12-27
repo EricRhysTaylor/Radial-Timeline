@@ -123,8 +123,8 @@ export class GossamerProcessingModal extends Modal {
 
         const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
-        // Info section
-        const infoEl = card.createDiv({ cls: 'rt-pulse-info' });
+        // Info section (no extra spacing class)
+        const infoEl = card.createDiv();
 
         // Beat system info (will be updated when manuscript info is set)
         const beatSystemEl = infoEl.createDiv({ cls: 'rt-gossamer-proc-beat-system-info' });

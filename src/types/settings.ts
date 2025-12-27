@@ -23,6 +23,7 @@ export interface RadialTimelineSettings {
     sourcePath: string;
     showSourcePathAsTitle?: boolean;
     validFolderPaths: string[];
+    aiOutputFolder?: string;
     publishStageColors: {
         Zero: string;
         Author: string;

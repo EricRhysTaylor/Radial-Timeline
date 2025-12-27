@@ -237,16 +237,16 @@ class PurgeConfirmationModal extends Modal {
 
         const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
         new ButtonComponent(buttonRow)
-            .setButtonText('Cancel')
-            .onClick(() => this.close());
-
-        new ButtonComponent(buttonRow)
             .setButtonText('Purge beats')
             .setWarning()
             .onClick(() => {
                 this.close();
                 this.onConfirm();
             });
+
+        new ButtonComponent(buttonRow)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
     }
 }
 
@@ -336,8 +336,8 @@ export async function purgeBeatsBySubplotName(
             plugin.app,
             `Purge beats from ${filtered.length} scene${filtered.length !== 1 ? 's' : ''} in subplot "${subplotName}"?`,
             [
-                'previousSceneAnalysis, currentSceneAnalysis, nextSceneAnalysis fields',
-                'Pulse Last Updated timestamps'
+                '`previousSceneAnalysis`, `currentSceneAnalysis`, `nextSceneAnalysis` fields',
+                '`Pulse Last Updated` timestamps'
             ],
             async () => {
                 const notice = new Notice(`Purging beats from "${subplotName}"...`, 0);

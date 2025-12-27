@@ -52,6 +52,11 @@ export interface TranslationKeys {
         };
         advanced: {
             heading: string;
+            aiOutputFolder: {
+                name: string;
+                desc: string;
+                placeholder: string;
+            };
             autoExpand: {
                 name: string;
                 desc: string;
@@ -232,6 +237,11 @@ export const en: TranslationKeys = {
         },
         advanced: {
             heading: 'Advanced',
+            aiOutputFolder: {
+                name: 'AI output folder',
+                desc: 'Folder where AI logs and generated files (manuscripts, reports) are saved. Uses your vault folder structure.',
+                placeholder: 'AI',
+            },
             autoExpand: {
                 name: 'Auto-expand clipped scene titles',
                 desc: 'When hovering over a scene, automatically expand it if the title text is clipped. Disable this if you prefer to quickly slide through scenes and read titles from the synopsis instead.',

@@ -6,6 +6,7 @@ import { fetchOpenAiModels } from '../../api/openaiApi';
 import { fetchGeminiModels } from '../../api/geminiApi';
 import { fetchLocalModels } from '../../api/localAiApi';
 import { CURATED_MODELS, CuratedModel, AiProvider } from '../../data/aiModels';
+import { resolveAiOutputFolder } from '../../utils/aiOutput';
 
 type Provider = 'anthropic' | 'gemini' | 'openai' | 'local';
 
@@ -289,7 +290,8 @@ export function renderAiSection(params: {
     const localWarning = localBaseUrlSetting.descEl.createDiv({ cls: 'rt-setting-note rt-setting-warning' });
     localWarning.style.marginTop = '8px';
     localWarning.createEl('strong', { text: 'Advisory Note:' });
-    localWarning.appendText('By default, no meta is written to the scene when local LLM is used. Rather it is stored in RAW AI file in the AI folder, as the response does not follow directions and breaks the scene hover metadata. To enable scene hover metadata, enable "Bypass scene hover metadata yaml writes" below. Strongly recommend one of the big three online LLM, as they are by far the most intelligent and fully compliant with Radial Timeline’s JSON response formatting requirements.');
+    const aiOutputFolder = resolveAiOutputFolder(plugin);
+    localWarning.appendText(`By default, no meta is written to the scene when local LLM is used. Rather it is stored in RAW AI file in the AI output folder (${aiOutputFolder}), as the response does not follow directions and breaks the scene hover metadata. To enable scene hover metadata, enable "Bypass scene hover metadata yaml writes" below. Strongly recommend one of the big three online LLM, as they are by far the most intelligent and fully compliant with Radial Timeline’s JSON response formatting requirements.`);
 
     const localModelSetting = new Settings(localSection)
         .setName('Model ID')
@@ -364,7 +366,7 @@ export function renderAiSection(params: {
 
     new Settings(localSection)
         .setName('Bypass scene hover metadata yaml writes')
-        .setDesc('When enabled, Local LLM triplet pulse analysis skips writing to the scene file and saves the results in the AI report instead. Recommended default for local models.')
+        .setDesc('When enabled, Local LLM triplet pulse analysis skips writing to the scene note and saves the results in the RAW AI log report instead. Recommended default for local models.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.localSendPulseToAiReport ?? true)
             .onChange(async (value) => {

@@ -11,6 +11,7 @@ import { TimelineMode } from './modes/ModeDefinition';
 import { assembleManuscript, type AssembledManuscript, type SceneContent } from './utils/manuscript';
 import { buildUnifiedBeatAnalysisPrompt, getUnifiedBeatAnalysisJsonSchema, type UnifiedBeatInfo } from './ai/prompts/unifiedBeatAnalysis';
 import { callGeminiApi } from './api/geminiApi';
+import { ensureAiOutputFolder, resolveAiOutputFolder } from './utils/aiOutput';
 const resolveGeminiModelId = (plugin?: RadialTimelinePlugin): string =>
   plugin?.settings?.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
 
@@ -805,9 +806,11 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     reportLines.push(`\`\`\``);
     reportLines.push(``);
 
-    // Save report to AI folder (only if logging is enabled)
+    // Save report to AI output folder (only if logging is enabled)
     let reportFile: TFile | undefined;
+    let aiFolderPath = resolveAiOutputFolder(plugin);
     if (plugin.settings.logApiInteractions) {
+      aiFolderPath = await ensureAiOutputFolder(plugin);
       const reportDate = new Date();
       const dateStr = reportDate.toLocaleDateString(undefined, {
         year: 'numeric',
@@ -820,13 +823,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
         hour12: true
       }).replace(/:/g, '.');
 
-      const reportPath = `AI/Gossamer Analysis ${dateStr} ${timeStr}.md`;
-
-      try {
-        await plugin.app.vault.createFolder('AI');
-      } catch (e) {
-        // Folder might already exist
-      }
+      const reportPath = `${aiFolderPath}/Gossamer Analysis ${dateStr} ${timeStr}.md`;
 
       reportFile = await plugin.app.vault.create(reportPath, reportLines.join('\n'));
       
@@ -838,7 +835,7 @@ export async function runGossamerAiAnalysis(plugin: RadialTimelinePlugin): Promi
     const successMessage = `✓ Updated ${updateCount} beats with momentum scores`;
     
     const logMessage = plugin.settings.logApiInteractions
-      ? `${successMessage}. Report saved to AI folder (includes full manuscript).`
+      ? `${successMessage}. Report saved to ${aiFolderPath} (includes full manuscript).`
       : `${successMessage}. (Logging disabled - no report saved)`;
 
     modal.completeProcessing(true, successMessage);
@@ -970,13 +967,8 @@ async function createFailureDiagnosticReport(
     hour12: true
   }).replace(/:/g, '.');
 
-  const reportPath = `AI/Gossamer Analysis FAILED ${dateStr} ${timeStr}.md`;
-
-  try {
-    await plugin.app.vault.createFolder('AI');
-  } catch (e) {
-    // Folder might already exist
-  }
+  const aiFolderPath = await ensureAiOutputFolder(plugin);
+  const reportPath = `${aiFolderPath}/Gossamer Analysis FAILED ${dateStr} ${timeStr}.md`;
 
   const reportFile = await plugin.app.vault.create(reportPath, reportLines.join('\n'));
   
@@ -984,7 +976,7 @@ async function createFailureDiagnosticReport(
   const leaf = plugin.app.workspace.getLeaf('tab');
   await leaf.openFile(reportFile);
   
-  new Notice(`⚠️ Analysis failed. Diagnostic report saved to AI folder.`);
+  new Notice(`⚠️ Analysis failed. Diagnostic report saved to ${aiFolderPath}.`);
 }
 
 /**
@@ -1087,7 +1079,7 @@ async function createGossamerProcessingLog(
     logLines.push(``);
   }
 
-  // Save log to AI folder
+  // Save log to AI output folder
   const dateStr = now.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
@@ -1099,13 +1091,8 @@ async function createGossamerProcessingLog(
     hour12: true
   }).replace(/:/g, '.');
 
-  const logPath = `AI/Gossamer Processing Log ${dateStr} ${timeStr}.md`;
-
-  try {
-    await plugin.app.vault.createFolder('AI');
-  } catch (e) {
-    // Folder might already exist
-  }
+  const aiFolderPath = await ensureAiOutputFolder(plugin);
+  const logPath = `${aiFolderPath}/Gossamer Processing Log ${dateStr} ${timeStr}.md`;
 
   await plugin.app.vault.create(logPath, logLines.join('\n'));
 }

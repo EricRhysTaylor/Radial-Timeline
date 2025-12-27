@@ -7,7 +7,7 @@
     --rt-trio-grid-cols: minmax(0, 1fr) minmax(0, 1fr) 200px;
 }
 
-.rt-manuscript-surface .rt-manuscript-card-stack {
+.rt-manuscript-surface .rt-card-stack {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -15,8 +15,7 @@
 }
 
 /* Glass Card Base */
-.rt-manuscript-surface .rt-glass-card.rt-sub-card,
-.rt-manuscript-surface .rt-pulse-glass-card.rt-manuscript-card {
+.rt-manuscript-surface .rt-glass-card.rt-sub-card {
     box-shadow: none;
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 8px 16px 14px;
@@ -269,8 +268,7 @@
 }
 
 /* Card Note */
-.rt-manuscript-surface .rt-sub-card-note,
-.rt-manuscript-surface .rt-manuscript-card-note {
+.rt-manuscript-surface .rt-sub-card-note {
     margin-top: 4px;
 }
 

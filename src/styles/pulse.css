@@ -259,8 +259,7 @@
 }
 
 /* Scene Analysis cards - bordered subsections */
-.rt-scene-analysis-modal .rt-glass-card,
-.rt-scene-analysis-modal .rt-pulse-glass-card {
+.rt-scene-analysis-modal .rt-glass-card {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
@@ -309,9 +308,8 @@
   z-index: 1;
 }
 
-/* Shared glass card surface (legacy alias: .rt-pulse-glass-card) */
-.rt-glass-card,
-.rt-pulse-glass-card {
+/* Shared glass card surface */
+.rt-glass-card {
   position: relative;
   border-radius: 18px;
   padding: 18px 20px;
@@ -321,8 +319,7 @@
   backdrop-filter: blur(14px);
 }
 
-.rt-gossamer-score-modal .rt-glass-card,
-.rt-gossamer-score-modal .rt-pulse-glass-card {
+.rt-gossamer-score-modal .rt-glass-card {
   padding: 12px 14px !important;
   border-radius: 12px !important;
   box-shadow: none !important;
@@ -412,20 +409,12 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.rt-pulse-info {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: var(--text-muted);
-  margin-top: 22px;
-}
-
 .rt-pulse-section-gap {
   margin-top: 22px;
 }
 
-/* Flat/section card variant (legacy alias: .rt-pulse-glass-card.rt-manuscript-card) */
-.rt-glass-card.rt-sub-card,
-.rt-pulse-glass-card.rt-manuscript-card {
+/* Flat/section card variant */
+.rt-glass-card.rt-sub-card {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: none;
@@ -433,21 +422,18 @@
   margin-top: 12px;
 }
 
-.rt-sub-card,
-.rt-manuscript-card {
+.rt-sub-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.rt-sub-card-head,
-.rt-manuscript-card-head {
+.rt-sub-card-head {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
-.rt-sub-card-note,
-.rt-manuscript-card-note {
+.rt-sub-card-note {
   color: var(--text-muted);
   font-size: 0.9rem;
 }
@@ -1354,7 +1340,7 @@
 
 .rt-gossamer-proc-beat-system-info {
   font-weight: 600;
-  color: var(--text-accent);
+  color: var(--text-normal);
   margin-bottom: 12px;
 }
 
@@ -1680,7 +1666,7 @@
   flex-wrap: wrap;
 }
 
-.rt-gossamer-scores-container {
+.rt-container {
   flex: 1;
   overflow-y: auto;
   padding: 0 4px 14px 0;
@@ -1905,6 +1891,56 @@
   justify-content: flex-end;
 }
 
+.rt-gossamer-score-modal .rt-modal-actions.rt-inline-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  width: auto;
+}
+
+.rt-gossamer-score-modal .rt-purge-issues {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rt-gossamer-score-modal .rt-purge-issues-title {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.rt-gossamer-score-modal .rt-purge-issues-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rt-gossamer-score-modal .rt-purge-issues-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.rt-gossamer-score-modal .rt-purge-issues-item strong {
+  color: var(--text-normal);
+}
+
+.rt-gossamer-score-modal .rt-purge-issues-footnote {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 /* Purge confirmation modal */
 .rt-purge-confirm-card {
   padding: 16px 18px;
@@ -1921,6 +1957,14 @@
   font-size: 1rem;
   color: var(--text-normal);
   line-height: 1.5;
+}
+
+.rt-purge-message-secondary {
+  color: var(--text-muted);
+}
+
+.rt-purge-message + .rt-purge-message {
+  margin-top: 12px;
 }
 
 .rt-purge-details {
@@ -1944,6 +1988,15 @@
 
 .rt-purge-list li {
   margin: 3px 0;
+}
+
+.rt-purge-list code {
+  font-family: var(--font-monospace);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: var(--text-normal);
 }
 
 .rt-purge-warning {
@@ -1972,6 +2025,7 @@
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;

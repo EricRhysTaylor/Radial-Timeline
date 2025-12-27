@@ -14,6 +14,7 @@ import { BookDesignerModal } from '../modals/BookDesignerModal';
 import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
+import { ensureAiOutputFolder } from '../utils/aiOutput';
 
 export class CommandRegistrar {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -52,9 +53,17 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'create-scene-note',
-            name: 'Create scene note',
+            name: 'Create basic scene note',
             callback: () => {
                 void this.createSceneTemplateNote();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'create-advanced-scene-note',
+            name: 'Create advanced scene note',
+            callback: () => {
+                void this.createAdvancedSceneTemplateNote();
             }
         });
 
@@ -180,6 +189,50 @@ export class CommandRegistrar {
         } catch (error) {
             console.error('[CreateSceneTemplateNote] Failed to create template scene note:', error);
             new Notice('Failed to create template scene note.');
+        }
+    }
+
+    private async createAdvancedSceneTemplateNote(): Promise<void> {
+        try {
+            const vault = this.app.vault;
+            const sourcePath = sanitizeSourcePath(this.plugin.settings.sourcePath);
+
+            if (sourcePath && !vault.getAbstractFileByPath(sourcePath)) {
+                await vault.createFolder(sourcePath);
+            }
+
+            const template = (this.plugin.settings.sceneYamlTemplates?.advanced
+                ?? DEFAULT_SETTINGS.sceneYamlTemplates?.advanced
+                ?? '').trim();
+
+            if (!template) {
+                new Notice('Advanced scene template not found. Enable or configure it in Settings.');
+                return;
+            }
+
+            const today = new Date().toISOString().slice(0, 10);
+            const content = generateSceneContent(template, {
+                act: 1,
+                when: today,
+                sceneNumber: 1,
+                subplots: ['Main Plot'],
+                character: 'Hero',
+                place: 'Unknown',
+                characterList: ['Hero'],
+                placeList: ['Unknown']
+            });
+
+            const fileBody = `---\n${content}\n---\n\nWrite your scene here...`;
+            const initialPath = buildInitialSceneFilename(sourcePath, '1 Template Scene (Advanced).md');
+            const filePath = this.getAvailableFilePath(initialPath);
+
+            const createdFile = await vault.create(filePath, fileBody);
+            const leaf = this.app.workspace.getLeaf('tab');
+            await leaf.openFile(createdFile);
+            new Notice(`Advanced template scene created at ${filePath}`);
+        } catch (error) {
+            console.error('[CreateAdvancedSceneTemplateNote] Failed to create advanced template scene note:', error);
+            new Notice('Failed to create advanced template scene note.');
         }
     }
 
@@ -326,10 +379,8 @@ export class CommandRegistrar {
             const timeFileStr = timeDisplayStr.replace(/:/g, '.');
             
             const fileSubplotLabel = options.subplot ? ` (${options.subplot})` : '';
-            const manuscriptPath = `AI/Manuscript ${orderLabel}${fileSubplotLabel} ${dateStr} ${timeFileStr}.md`;
-            try {
-                await this.app.vault.createFolder('AI');
-            } catch { }
+            const aiFolderPath = await ensureAiOutputFolder(this.plugin);
+            const manuscriptPath = `${aiFolderPath}/Manuscript ${orderLabel}${fileSubplotLabel} ${dateStr} ${timeFileStr}.md`;
             const existing = this.app.vault.getAbstractFileByPath(manuscriptPath);
             if (existing) {
                 new Notice('Warning: Duplicate title. Please wait 1 minute then try again.');
