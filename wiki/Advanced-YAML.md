@@ -1,6 +1,19 @@
 # Advanced YAML & Data Integrity
 
-The Advanced YAML editor allows you to define custom fields for your scenes, enabling you to track specific metrics or properties unique to your workflow (e.g., Story Grid values, Dramatica signposts).
+The Advanced YAML editor lets you tailor the Advanced scene template while keeping required base keys intact. Add, remove, or reorder optional fields to match your workflow (e.g., Story Grid values, Dramatica signposts, Templater snippets).
+
+## How it works
+
+1. Enable **Settings → Scene YAML templates & remapping → Advanced YAML editor**.
+2. Required base keys (Class, Act, When, Duration, Synopsis, Subplot, Character, Status, Publish Stage, Due, Pending Edits, Pulse Update) stay locked and auto-included in order.
+3. Optional keys from the Advanced template can be:
+   - Drag-reordered with the grip handle.
+   - Renamed or deleted.
+   - Added via the “Add key” row (values accept text or comma-separated lists).
+4. Click the rotate/restore icon to revert the Advanced template back to the shipped defaults.
+5. Book Designer and “Create scene note” will use your customized Advanced template whenever you pick **Advanced**.
+
+Tip: Values support Templater syntax (e.g., `<% tp.date.now() %>`) if Templater is set to run on new files.
 
 ## Data Integrity & Backups
 

@@ -1,4 +1,4 @@
-import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip } from 'obsidian';
+import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings } from '../../utils/beatsSystems';
@@ -326,6 +326,87 @@ export function renderStoryBeatsSection(params: {
         let workingEntries = entries;
         let dragIndex: number | null = null;
 
+        const guessTypeIcon = (raw: string): string | null => {
+            const value = raw.trim();
+            if (!value) return null;
+
+            const isBool = /^(true|false)$/i.test(value);
+            if (isBool) return 'check';
+
+            const isNumber = /^-?\d+(\.\d+)?$/.test(value);
+            if (isNumber) return 'hash';
+
+            const isIsoDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value);
+            if (isIsoDateTime) return 'calendar-clock';
+
+            const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
+            if (isIsoDate) return 'calendar';
+
+            const isTime = /^\d{1,2}:\d{2}(:\d{2})?$/.test(value);
+            if (isTime) return 'clock';
+
+            const isList = value.includes(',');
+            if (isList) return 'list';
+
+            const isDuration = /^\d+\s*(s|sec|secs|seconds|m|min|mins|minutes|h|hr|hrs|hours|d|day|days|wk|wks|weeks)$/i.test(value);
+            if (isDuration) return 'timer';
+
+            return 'type';
+        };
+
+        const guessYamlHint = (raw: string): string | null => {
+            const value = raw.trim();
+            if (!value) return null;
+
+            const boolMatch = /^(true|false)$/i;
+            const numberMatch = /^-?\d+(\.\d+)?$/;
+            const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+            const isoDateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
+            const shortDate = /^\d{1,2}\/\d{1,2}(\/\d{2,4})?$/;
+            const partialDate = /[/-]/;
+            const timeOnly = /^\d{1,2}:\d{2}(:\d{2})?$/;
+            const partialTime = /:\d?$/;
+            const durationMatch = /^\d+\s*(s|sec|secs|seconds|m|min|mins|minutes|h|hr|hrs|hours|d|day|days|wk|wks|weeks)$/i;
+
+            if (boolMatch.test(value)) return 'Boolean detected. Use true/false.';
+            if (numberMatch.test(value)) return 'Number detected. YAML numeric example: 42 or 3.14';
+            if (isoDateTime.test(value)) return 'Datetime detected. Format: YYYY-MM-DDTHH:MM (optionally :SS)';
+            if (isoDate.test(value)) return 'Date detected. Format: YYYY-MM-DD (e.g., 2025-07-23)';
+            if (shortDate.test(value) || partialDate.test(value)) return 'Looks like a date. Prefer ISO: 2025-07-23 or 2025-07-23T14:30';
+            if (timeOnly.test(value) || partialTime.test(value)) return 'Time detected. Use HH:MM or full ISO timestamp 2025-07-23T14:30';
+            if (durationMatch.test(value)) return 'Duration detected. Examples: "45 minutes" or ISO "PT45M".';
+            if (value.includes(',')) return 'Multiple values? YAML list example:\\n- Item 1\\n- Item 2';
+            return null;
+        };
+
+        const attachHint = (inputEl: HTMLInputElement, hintEl: HTMLElement, rowEl?: HTMLElement) => {
+            const applyHint = () => {
+                const hint = guessYamlHint(inputEl.value);
+                if (hint) {
+                    hintEl.removeClass('rt-template-hint-hidden');
+                    hintEl.setText(hint);
+                    inputEl.setAttribute('title', hint);
+                    rowEl?.addClass('rt-template-hint-row');
+                } else {
+                    hintEl.addClass('rt-template-hint-hidden');
+                    hintEl.setText('');
+                    inputEl.removeAttribute('title');
+                    rowEl?.removeClass('rt-template-hint-row');
+                }
+            };
+            inputEl.addEventListener('input', applyHint);
+            applyHint();
+        };
+
+        const attachTypeIcon = (inputEl: HTMLInputElement, iconEl: HTMLElement) => {
+            const applyIcon = () => {
+                const icon = guessTypeIcon(inputEl.value);
+                if (icon) setIcon(iconEl, icon);
+            };
+            inputEl.addEventListener('input', applyIcon);
+            applyIcon();
+        };
+
         const saveEntries = (nextEntries: TemplateEntry[]) => {
             workingEntries = nextEntries;
             const yaml = buildYamlWithRequired(requiredOrder, requiredValues, nextEntries);
@@ -378,23 +459,31 @@ export function renderStoryBeatsSection(params: {
                     rerender(nextList);
                 };
 
-                const valCol = row.createDiv({ cls: 'setting-item-control' });
+                const valCol = row.createDiv({ cls: 'setting-item-control rt-template-value-col' });
+                const valueWrap = valCol.createDiv({ cls: 'rt-template-value-wrap' });
+                const typeIcon = valueWrap.createDiv({ cls: 'rt-template-type-icon' });
                 const value = entry.value;
                 if (Array.isArray(value)) {
-                    const input = valCol.createEl('input', { cls: 'rt-template-input' });
+                    const input = valueWrap.createEl('input', { cls: 'rt-template-input' });
                     input.type = 'text';
                     input.value = value.join(', ');
                     input.placeholder = 'Comma-separated values';
+                    const hintEl = valCol.createDiv({ cls: 'rt-template-hint rt-template-hint-hidden' });
+                    attachTypeIcon(input, typeIcon);
+                    attachHint(input, hintEl, row);
                     input.onchange = () => {
                         const nextList = [...list];
                         nextList[idx] = { ...entry, value: input.value.split(',').map(s => s.trim()).filter(Boolean) };
                         saveEntries(nextList);
                     };
                 } else {
-                    const input = valCol.createEl('input', { cls: 'rt-template-input' });
+                    const input = valueWrap.createEl('input', { cls: 'rt-template-input' });
                     input.type = 'text';
                     input.value = value ?? '';
                     input.placeholder = 'Value';
+                    const hintEl = valCol.createDiv({ cls: 'rt-template-hint rt-template-hint-hidden' });
+                    attachTypeIcon(input, typeIcon);
+                    attachHint(input, hintEl, row);
                     input.onchange = () => {
                         const nextList = [...list];
                         nextList[idx] = { ...entry, value: input.value };
@@ -458,7 +547,13 @@ export function renderStoryBeatsSection(params: {
             addRow.createDiv({ cls: 'rt-template-handle-spacer' });
 
             const keyInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'New key' } });
-            const valInput = addRow.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'Value' } });
+            const valCol = addRow.createDiv({ cls: 'rt-template-value-col' });
+            const valueWrap = valCol.createDiv({ cls: 'rt-template-value-wrap' });
+            const addTypeIcon = valueWrap.createDiv({ cls: 'rt-template-type-icon' });
+            const valInput = valueWrap.createEl('input', { cls: 'rt-template-input', attr: { placeholder: 'Value' } }) as HTMLInputElement;
+            const addHintEl = valCol.createDiv({ cls: 'rt-template-hint rt-template-hint-hidden' });
+            attachTypeIcon(valInput, addTypeIcon);
+            attachHint(valInput, addHintEl, addRow);
             const actions = addRow.createDiv({ cls: 'rt-template-actions' });
 
             const addBtn = actions.createEl('button', { text: 'Add key', cls: 'rt-mod-cta rt-template-add-btn' });
@@ -479,10 +574,49 @@ export function renderStoryBeatsSection(params: {
             };
 
             // Revert button with tooltip for clarity
-            const revertBtn = actions.createEl('button', { cls: 'rt-mod-cta rt-template-icon-btn' });
+            const revertBtn = actions.createEl('button', { cls: 'rt-mod-cta rt-template-icon-btn rt-template-reset-btn' });
             setIcon(revertBtn, 'rotate-ccw');
             setTooltip(revertBtn, 'Revert to original template');
             revertBtn.onclick = async () => {
+                const confirmed = await new Promise<boolean>((resolve) => {
+                    const modal = new Modal(app);
+                    const { modalEl, contentEl } = modal;
+                    modal.titleEl.setText('');
+                    contentEl.empty();
+
+                    modalEl.classList.add('rt-modal-shell');
+                    contentEl.addClass('rt-modal-container');
+
+                    const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+                    header.createSpan({ text: 'Warning', cls: 'rt-modal-badge' });
+                    header.createDiv({ text: 'Reset advanced YAML template', cls: 'rt-modal-title' });
+                    header.createDiv({ text: 'Resetting will delete all custom changes and restore the default template.', cls: 'rt-modal-subtitle' });
+
+                    const body = contentEl.createDiv({ cls: 'rt-glass-card' });
+                    body.createDiv({ text: 'Are you sure you want to reset? This cannot be undone.', cls: 'rt-purge-warning' });
+
+                    const actionsRow = contentEl.createDiv({ cls: ['rt-modal-actions', 'rt-inline-actions'] });
+
+                    new ButtonComponent(actionsRow)
+                        .setButtonText('Reset to default')
+                        .setWarning()
+                        .onClick(() => {
+                            modal.close();
+                            resolve(true);
+                        });
+
+                    new ButtonComponent(actionsRow)
+                        .setButtonText('Cancel')
+                        .onClick(() => {
+                            modal.close();
+                            resolve(false);
+                        });
+
+                    modal.open();
+                });
+
+                if (!confirmed) return;
+
                 if (!plugin.settings.sceneYamlTemplates) plugin.settings.sceneYamlTemplates = { base: DEFAULT_SETTINGS.sceneYamlTemplates!.base, advanced: '' };
                 plugin.settings.sceneYamlTemplates.advanced = defaultTemplate;
                 await plugin.saveSettings();

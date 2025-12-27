@@ -201,13 +201,14 @@
 /* Scene template editor grids */
 .rt-template-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1.8fr auto;
-  column-gap: 12px;
+  grid-template-columns: auto 1fr 1fr auto;
+  column-gap: 6px;
   align-items: center;
+  justify-items: end;
 }
 
 .rt-template-grid.rt-template-grid-reorder {
-  grid-template-columns: auto 1.1fr 1.8fr auto;
+  grid-template-columns: auto 1fr 1fr auto;
 }
 
 .rt-template-drag-handle {
@@ -230,10 +231,62 @@
   outline-offset: 2px;
 }
 
+.rt-template-value-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+  justify-self: end;
+  width: 100%;
+  position: relative;
+}
+
+.rt-template-value-wrap {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.rt-template-type-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.rt-template-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.3;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 100%;
+}
+
+.rt-template-hint-hidden {
+  display: none;
+}
+
 .rt-template-handle-spacer {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
+}
+
+.rt-template-reset-btn {
+  background: var(--background-modifier-error, #532d2d);
+  border-color: var(--background-modifier-error-hover, #8a3b3b);
+  color: var(--text-on-accent, #fff);
+}
+
+.rt-template-reset-btn:hover {
+  background: var(--background-modifier-error-hover, #8a3b3b);
+  color: var(--text-on-accent, #fff);
 }
 
 .rt-template-actions {
@@ -258,6 +311,15 @@
 
 .rt-template-grid .rt-template-input {
   width: 100%;
+}
+
+.rt-template-grid .setting-item-info {
+  width: 100%;
+  justify-self: end;
+}
+
+.rt-template-hint-row {
+  padding-bottom: 14px;
 }
 
 .rt-template-grid .rt-template-actions {

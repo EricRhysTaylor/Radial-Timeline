@@ -28,9 +28,9 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 *   **Mappings**: Define multiple key pairs to support legacy data or preferred naming conventions.
 
 ### Scene Templates & Frontmatter
-*   **Advanced YAML editor**: Enable to fully customize the Advanced YAML structure used when creating scenes with the Advanced template.
-*   **New Keys**: Add your own keys to the Advanced template.
-    *   *Templater Support*: You can enter Templater code (e.g., `<% tp.file.creation_date() %>`) as values. If Templater is set to trigger on new file creation, these will be expanded when the Book Designer creates your scenes.
+*   **Advanced YAML editor**: Enable to customize the Advanced template while keeping required base keys (Class, Act, When, Duration, Synopsis, Subplot, Character, Status, Publish Stage, Due, Pending Edits, Pulse Update) locked in order.
+*   **Optional keys**: Drag to reorder, rename, delete, or add optional fields. Click the revert icon to restore defaults.
+    *   *Templater Support*: Values accept Templater code (e.g., `<% tp.file.creation_date() %>`) which will expand if Templater runs on new files.
 
 ### Planetary Time
 *   **Enable planetary time**: Toggle to show planetary time features.
@@ -46,9 +46,10 @@ Access via Obsidian Settings → Community Plugins → Radial Timeline
 *   **AI Provider**: Choose Anthropic, Gemini, OpenAI, or Local/OpenAI Compatible.
 *   **Local AI Support**: Connect to local LLMs (like Ollama or LM Studio).
 *   **Contextual Prompt**: Customize AI analysis prompts.
-*   **API Logging**: Track AI interactions.
+*   **API Logging**: Track AI interactions; logs are written to the AI output folder (configurable in Advanced settings, default `AI`).
 
 ### Advanced
+*   **AI output folder**: Set where AI logs, manuscripts, and generated reports are saved (default `AI`).
 *   **Auto-expand clipped scene titles**: Disable to prevent scene title expansion on hover. FYI: May make scene drag-and-drop a bit challenging as the scene will expand thus changing the location of the number square drag hotspot.
 *   **Show completion estimate**: Toggle the predicted completion date tick on the timeline (based on your writing pace).
 *   **Timeline readability scale**: Choose between normal and large UI elements for high-resolution displays.

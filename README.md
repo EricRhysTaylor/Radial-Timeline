@@ -118,6 +118,10 @@ Create more scenes by:
 - Duplicating the template scenes using Obsidian duplicate (`right click` on scene → duplicate)
 - Use Obsidian's core templates plugin to directly insert yaml into notes **Settings** → Core Plugins → Templates
 
+**Customization highlights**
+- Advanced YAML editor (Settings → Scene YAML templates & remapping): optional fields can be added, renamed, reordered, or removed; required base keys stay locked. Book Designer uses your customized Advanced template when selected.
+- AI output folder (Settings → Advanced): choose where AI logs, manuscripts, and generated reports are saved; default is `AI`. API logging writes requests/responses there when enabled.
+
 ## Scene Naming & Ordering
 
 Radial Timeline determines scene order based on the **leading number** in the scene file name (e.g., `1 My Scene.md`).
