@@ -22,6 +22,9 @@ build/
 # obsidian
 data.json
 
+# Private patent documents - DO NOT COMMIT
+private-patent-docs/
+
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
 
