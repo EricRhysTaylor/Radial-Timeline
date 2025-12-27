@@ -326,6 +326,11 @@ export function renderStoryBeatsSection(params: {
         let workingEntries = entries;
         let dragIndex: number | null = null;
 
+        const advancedComments: Record<string, string> = {
+            Duration: 'Numeric duration (e.g., minutes or hours)',
+            'Reader Emotion': 'Describe the intended reader emotion',
+        };
+
         const guessTypeIcon = (raw: string): string | null => {
             const value = raw.trim();
             if (!value) return null;
@@ -368,13 +373,13 @@ export function renderStoryBeatsSection(params: {
             const partialTime = /:\d?$/;
             const durationMatch = /^\d+\s*(s|sec|secs|seconds|m|min|mins|minutes|h|hr|hrs|hours|d|day|days|wk|wks|weeks)$/i;
 
-            if (boolMatch.test(value)) return 'Boolean detected. Use true/false.';
-            if (numberMatch.test(value)) return 'Number detected. YAML numeric example: 42 or 3.14';
-            if (isoDateTime.test(value)) return 'Datetime detected. Format: YYYY-MM-DDTHH:MM (optionally :SS)';
-            if (isoDate.test(value)) return 'Date detected. Format: YYYY-MM-DD (e.g., 2025-07-23)';
+            if (boolMatch.test(value)) return 'Boolean: Use true/false.';
+            if (numberMatch.test(value)) return 'Number: 42 or 3.14';
+            if (isoDateTime.test(value)) return 'Datetime: YYYY-MM-DDTHH:MM';
+            if (isoDate.test(value)) return 'Date: YYYY-MM-DD (e.g., 2025-07-23)';
             if (shortDate.test(value) || partialDate.test(value)) return 'Looks like a date. Prefer ISO: 2025-07-23 or 2025-07-23T14:30';
-            if (timeOnly.test(value) || partialTime.test(value)) return 'Time detected. Use HH:MM or full ISO timestamp 2025-07-23T14:30';
-            if (durationMatch.test(value)) return 'Duration detected. Examples: "45 minutes" or ISO "PT45M".';
+            if (timeOnly.test(value) || partialTime.test(value)) return 'Time: Use HH:MM or full ISO timestamp 2025-07-23T14:30';
+            if (durationMatch.test(value)) return 'Duration: 45 minutes or ISO PT45M';
             if (value.includes(',')) return 'Multiple values? YAML list example:\\n- Item 1\\n- Item 2';
             return null;
         };
@@ -409,7 +414,7 @@ export function renderStoryBeatsSection(params: {
 
         const saveEntries = (nextEntries: TemplateEntry[]) => {
             workingEntries = nextEntries;
-            const yaml = buildYamlWithRequired(requiredOrder, requiredValues, nextEntries);
+            const yaml = buildYamlWithRequired(requiredOrder, requiredValues, nextEntries, advancedComments);
             if (!plugin.settings.sceneYamlTemplates) plugin.settings.sceneYamlTemplates = { base: DEFAULT_SETTINGS.sceneYamlTemplates!.base, advanced: '' };
             plugin.settings.sceneYamlTemplates.advanced = yaml;
             void plugin.saveSettings();
@@ -797,16 +802,18 @@ function mergeOrders(primary: string[], secondary: string[]): string[] {
     return result;
 }
 
-function buildYamlFromEntries(entries: TemplateEntry[]): string {
+function buildYamlFromEntries(entries: TemplateEntry[], commentMap?: Record<string, string>): string {
     const lines: string[] = [];
     entries.forEach(entry => {
+        const comment = commentMap?.[entry.key];
         if (Array.isArray(entry.value)) {
-            lines.push(`${entry.key}:`);
+            lines.push(comment ? `${entry.key}: # ${comment}` : `${entry.key}:`);
             entry.value.forEach((v: string) => {
                 lines.push(`  - ${v}`);
             });
         } else {
-            lines.push(`${entry.key}: ${entry.value ?? ''}`);
+            const valueStr = entry.value ?? '';
+            lines.push(comment ? `${entry.key}: ${valueStr} # ${comment}` : `${entry.key}: ${valueStr}`);
         }
     });
     return lines.join('\n');
@@ -815,7 +822,8 @@ function buildYamlFromEntries(entries: TemplateEntry[]): string {
 function buildYamlWithRequired(
     requiredOrder: string[],
     requiredValues: Record<string, TemplateEntryValue>,
-    optionalEntries: TemplateEntry[]
+    optionalEntries: TemplateEntry[],
+    commentMap?: Record<string, string>
 ): string {
     const combined: TemplateEntry[] = [
         ...requiredOrder.map(key => ({
@@ -825,7 +833,7 @@ function buildYamlWithRequired(
         })),
         ...optionalEntries
     ];
-    return buildYamlFromEntries(combined);
+    return buildYamlFromEntries(combined, commentMap);
 }
 
 function entriesFromTemplate(template: string, requiredOrder: string[]): TemplateEntry[] {
