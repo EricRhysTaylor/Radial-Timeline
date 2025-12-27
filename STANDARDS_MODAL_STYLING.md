@@ -30,13 +30,13 @@ meta.createSpan({ cls: 'rt-pulse-hero-meta-item', text: 'Detail 1' });
 ## 3. Cards & Panels
 Content should be grouped into "Glass Cards" rather than sitting on the plain background.
 
-*   **Container Class:** `rt-pulse-glass-card`
-*   **Section Heading:** `rt-manuscript-card-head` (inside the card)
-*   **Explanatory Note:** `rt-manuscript-card-note` (muted text at bottom of card)
+*   **Container Class:** `rt-glass-card` (legacy alias: `rt-pulse-glass-card`)
+*   **Section Heading:** `rt-sub-card-head` (legacy alias: `rt-manuscript-card-head`)
+*   **Explanatory Note:** `rt-sub-card-note` (muted text, legacy alias: `rt-manuscript-card-note`)
 
 ```typescript
-const card = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
-card.createDiv({ cls: 'rt-manuscript-card-head', text: 'Settings Group' });
+const card = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+card.createDiv({ cls: 'rt-sub-card-head', text: 'Settings Group' });
 // ... content ...
 ```
 

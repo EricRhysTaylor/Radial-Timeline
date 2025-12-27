@@ -94,8 +94,8 @@ export class ManuscriptOptionsModal extends Modal {
         this.heroMetaEl = hero.createDiv({ cls: 'rt-modal-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
 
-        const tocCard = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
-        tocCard.createDiv({ cls: 'rt-manuscript-card-head', text: t('manuscriptModal.tocHeading') });
+        const tocCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        tocCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.tocHeading') });
         const tocActions = tocCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createPill(tocActions, t('manuscriptModal.tocMarkdown'), this.tocMode === 'markdown', () => {
             this.tocMode = 'markdown';
@@ -110,13 +110,13 @@ export class ManuscriptOptionsModal extends Modal {
             this.updatePills(tocActions, 2);
         });
         tocCard.createDiv({
-            cls: 'rt-manuscript-card-note',
+            cls: 'rt-sub-card-note',
             text: t('manuscriptModal.tocNote')
         });
 
         // Subplot Filter Card
-        const filterCard = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
-        filterCard.createDiv({ cls: 'rt-manuscript-card-head', text: 'Subplot Filter' });
+        const filterCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        filterCard.createDiv({ cls: 'rt-sub-card-head', text: 'Subplot Filter' });
         const filterContainer = filterCard.createDiv({ cls: 'rt-manuscript-input-container' });
         this.subplotDropdown = new DropdownComponent(filterContainer)
             .addOption('All Subplots', 'All Subplots')
@@ -133,20 +133,20 @@ export class ManuscriptOptionsModal extends Modal {
                 await this.loadScenesForOrder();
             });
 
-        const orderCard = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
-        orderCard.createDiv({ cls: 'rt-manuscript-card-head', text: t('manuscriptModal.orderHeading') });
+        const orderCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        orderCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.orderHeading') });
         const orderRow = orderCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createOrderPill(orderRow, t('manuscriptModal.orderNarrative'), 'narrative');
         this.createOrderPill(orderRow, t('manuscriptModal.orderReverseNarrative'), 'reverse-narrative');
         this.createOrderPill(orderRow, t('manuscriptModal.orderChronological'), 'chronological');
         this.createOrderPill(orderRow, t('manuscriptModal.orderReverseChronological'), 'reverse-chronological');
         orderCard.createDiv({
-            cls: 'rt-manuscript-card-note',
+            cls: 'rt-sub-card-note',
             text: t('manuscriptModal.orderNote')
         });
 
-        const rangeCard = container.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
-        rangeCard.createDiv({ cls: 'rt-manuscript-card-head', text: t('manuscriptModal.rangeHeading') });
+        const rangeCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        rangeCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.rangeHeading') });
         this.rangeStatusEl = rangeCard.createDiv({ cls: 'rt-manuscript-range-status', text: t('manuscriptModal.rangeLoading') });
 
         const rangeShell = rangeCard.createDiv({ cls: 'rt-manuscript-range-shell' });

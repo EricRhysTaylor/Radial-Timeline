@@ -166,6 +166,11 @@
   margin-top: 20px;
 }
 
+/* Tighter spacing for pulse processing modals */
+.rt-pulse-modal .rt-modal-actions {
+  margin-top: 10px;
+}
+
 /* ==========================================================================
    SEARCH MODAL - specific styles
    ========================================================================== */
@@ -254,6 +259,7 @@
 }
 
 /* Scene Analysis cards - bordered subsections */
+.rt-scene-analysis-modal .rt-glass-card,
 .rt-scene-analysis-modal .rt-pulse-glass-card {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -303,6 +309,8 @@
   z-index: 1;
 }
 
+/* Shared glass card surface (legacy alias: .rt-pulse-glass-card) */
+.rt-glass-card,
 .rt-pulse-glass-card {
   position: relative;
   border-radius: 18px;
@@ -313,6 +321,7 @@
   backdrop-filter: blur(14px);
 }
 
+.rt-gossamer-score-modal .rt-glass-card,
 .rt-gossamer-score-modal .rt-pulse-glass-card {
   padding: 12px 14px !important;
   border-radius: 12px !important;
@@ -414,7 +423,8 @@
   margin-top: 22px;
 }
 
-/* Manuscript Modal */
+/* Flat/section card variant (legacy alias: .rt-pulse-glass-card.rt-manuscript-card) */
+.rt-glass-card.rt-sub-card,
 .rt-pulse-glass-card.rt-manuscript-card {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -423,17 +433,20 @@
   margin-top: 12px;
 }
 
+.rt-sub-card,
 .rt-manuscript-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
+.rt-sub-card-head,
 .rt-manuscript-card-head {
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
+.rt-sub-card-note,
 .rt-manuscript-card-note {
   color: var(--text-muted);
   font-size: 0.9rem;
@@ -704,7 +717,6 @@
 }
 
 .rt-pulse-modes {
-  margin-top: 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1236,6 +1248,10 @@
 /* Gossamer AI Processing Modal */
 .rt-gossamer-proc-modal {
   padding: 0;
+}
+
+.rt-gossamer-proc-modal .rt-pulse-progress-body {
+  margin-top: 8px;
 }
 
 .rt-gossamer-proc-info-section,
@@ -1860,15 +1876,33 @@
 .rt-gossamer-score-item-container:hover .rt-gossamer-score-value {
   color: var(--text-accent);
 }
+.rt-gossamer-score-item-container:hover .rt-gossamer-score-label {
+  color: var(--text-accent);
+}
 
 /* Gossamer Score Modal footer buttons */
 .rt-gossamer-score-modal .rt-modal-actions {
-  flex-wrap: wrap;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   row-gap: 10px;
-  justify-content: flex-start;
-  align-items: center;
   padding-top: 6px;
+  width: 100%;
+}
+
+.rt-gossamer-actions-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rt-gossamer-actions-bottom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
 }
 
 /* Purge confirmation modal */
@@ -1897,7 +1931,7 @@
 }
 
 .rt-purge-danger {
-  color: var(--text-accent);
+  color: var(--text-normal);
   font-weight: 700;
 }
 

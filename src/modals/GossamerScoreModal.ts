@@ -368,21 +368,23 @@ export class GossamerScoreModal extends Modal {
 
     // Buttons
     const buttonContainer = contentEl.createDiv('rt-modal-actions');
+    const topActions = buttonContainer.createDiv('rt-gossamer-actions-top');
+    const bottomActions = buttonContainer.createDiv('rt-gossamer-actions-bottom');
 
-    const pasteBtn = new ButtonComponent(buttonContainer)
+    const pasteBtn = new ButtonComponent(topActions)
       .setButtonText('Paste scores')
       .onClick(async () => {
         await this.pasteFromClipboard();
       });
 
-    const copyBtn = new ButtonComponent(buttonContainer)
+    const copyBtn = new ButtonComponent(topActions)
       .setButtonText('Copy template for AI')
       .setTooltip('Copy beat names in AI-ready format')
       .onClick(async () => {
         await this.copyTemplateForAI();
       });
 
-    const toggleLabel = buttonContainer.createEl('label', { cls: 'rt-gossamer-copy-toggle' });
+    const toggleLabel = topActions.createEl('label', { cls: 'rt-gossamer-copy-toggle' });
     const toggleInput = toggleLabel.createEl('input', { type: 'checkbox' });
     toggleInput.checked = this.includeBeatDescriptions;
     toggleInput.addEventListener('change', () => {
@@ -390,28 +392,28 @@ export class GossamerScoreModal extends Modal {
     });
     toggleLabel.createSpan({ text: 'Include beat descriptions when copying template' });
 
-    const normalizeBtn = new ButtonComponent(buttonContainer)
+    const normalizeBtn = new ButtonComponent(bottomActions)
       .setButtonText('Normalize history')
       .setTooltip('Remove gaps and orphaned notes from Gossamer runs')
       .onClick(async () => {
         await this.normalizeAllScores();
       });
 
-    const saveBtn = new ButtonComponent(buttonContainer)
+    const saveBtn = new ButtonComponent(bottomActions)
       .setButtonText('Save scores')
       .setCta()
       .onClick(async () => {
         await this.saveScores();
       });
 
-    const deleteBtn = new ButtonComponent(buttonContainer)
+    const deleteBtn = new ButtonComponent(bottomActions)
       .setButtonText('Delete scores')
       .setWarning()
       .onClick(async () => {
         await this.deleteAllScores();
       });
 
-    const cancelBtn = new ButtonComponent(buttonContainer)
+    const cancelBtn = new ButtonComponent(bottomActions)
       .setButtonText('Cancel')
       .onClick(() => {
         this.close();
@@ -821,7 +823,7 @@ export class GossamerScoreModal extends Modal {
       hero.createDiv({ text: 'Delete all Gossamer scores', cls: 'rt-modal-title' });
       hero.createDiv({ cls: 'rt-modal-subtitle', text: 'This action cannot be undone.' });
 
-      const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
+      const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
       // Warning message with proper styling
       const warningEl = card.createDiv({
@@ -945,7 +947,7 @@ class NormalizeConfirmationModal extends Modal {
     hero.createDiv({ text: 'Normalize Gossamer history?', cls: 'rt-modal-title' });
     hero.createDiv({ cls: 'rt-modal-subtitle', text: 'This action cannot be undone.' });
 
-    const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
+    const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
     const messageEl = card.createDiv({ cls: 'rt-purge-message' });
     messageEl.setText(this.message);

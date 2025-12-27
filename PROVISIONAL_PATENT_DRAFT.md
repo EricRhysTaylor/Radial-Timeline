@@ -35,6 +35,7 @@ The following figures are exemplary and may be replaced or supplemented by addit
 - **FIG. 4**: Chronological mode ordering segments by time metadata with adaptive time labeling and duration/overlap visualization.
 - **FIG. 5**: Chronological shift sub-mode showing elapsed-time comparison between selected segments and discontinuity/gap visualization.
 - **FIG. 6**: Momentum mode showing beat-level momentum values and trajectory visualization.
+- **FIG. 7**: Planetary Time alternate calendar view showing parallel in-world calendar system alongside Earth dates in Chronological mode.
 
 ---
 
@@ -53,6 +54,8 @@ The following figures illustrate various embodiments and modes of the invention:
 ![FIG. 5 - Chronological Shift Sub-Mode](wiki/images/shift.jpeg)
 
 ![FIG. 6 - Gossamer Momentum Mode](wiki/images/gossamer.jpeg)
+
+![FIG. 7 - Planetary Time Alternate Calendar](wiki/images/alt.jpg)
 
 \newpage
 
@@ -129,10 +132,9 @@ The interface can include interactions such as:
 - **Dominant thread color indicator**: When a segment belongs to multiple threads, the system renders a visual cue (e.g., folded-corner indicator at a beginning position of a ring) to identify the dominant thread color for that segment in the outermost "all threads" ring.
 - **Cross-ring highlight propagation**: Upon selection of a content segment in one ring, the system may highlight instances of the content segment in all other rings in which the segment appears, enabling rapid tracking of multi-thread segment relationships.
 - **Direct manipulation reordering**: Drag-and-drop a segment indicator to reorder segments in narrative order, with automatic persistence of the new ordering to file metadata.
-- **Point-of-view markers**: Typographic markers (e.g., superscript numerals `¹`, `²`, `³` or symbolic indicators like `°`) encode narrative voice/POV on segment indicators.
-- **Search with metadata highlighting**: The system receives a search query, identifies content segments having metadata matching the query (including synopsis, character, location, POV, duration, and AI analysis fields), and simultaneously highlights matching segment indicators and matching text within hover synopsis panels.
-- **Conditional missing-time warnings**: In chronological mode, the system displays a missing-time warning indicator (e.g., red square) for a content segment only when a scene status field indicates active work or completion (e.g., Working or Complete), implementing progressive disclosure that does not nag authors about chronological dates until scenes are actively being written.
-- **Completion estimate prediction**: The system may compute a predicted completion date based on a rate of content segment completion (e.g., scenes completed per day) and display the predicted completion date as a marker or label on the radial layout.
+- **Point-of-view markers**: Typographic markers (e.g., superscript numerals `¹`, `²`, `³` or symbolic indicators like `°`) encode narrative voice/POV on segment hover meta.
+- **Search with metadata highlighting**: The system receives a search query, identifies content segments having metadata matching the query (including synopsis, character, subplot, date-time, and AI analysis fields), and simultaneously highlights matching segment number indicators and meta search terms.
+- **Conditional missing-time warnings**: In chronological mode, the system displays a missing date warning indicator (e.g., red square) for a content segment only when a scene status field indicates active work or completion (e.g., Working or Complete), implementing progressive disclosure that does not nag authors about chronological dates until scenes are actively being written.
 
 #### E. Central status/stage grid and rainbow ring (progress tracking core)
 In an embodiment, the system renders a central information core comprising:
@@ -156,6 +158,14 @@ The central core enables single-glance assessment of both granular workflow stat
 #### E. Chronological shift (elapsed-time + discontinuity visualization)
 In an embodiment, the chronological mode includes a shift sub-mode in which selecting two segments generates an elapsed-time visualization (e.g., an arc) representing time between the selected segments. The system may identify large time gaps (discontinuities) and display gap indicators (e.g., an infinity symbol) to highlight potential continuity issues.
 
+#### F. Planetary Time (alternate parallel calendar system)
+In one embodiment, the chronological mode includes a Planetary Time feature accessible via keyboard shortcuts (e.g., Alt+Shift keys) or mode controllers. This feature displays a parallel in-world calendar system alongside Earth dates, allowing authors to:
+- Plan narrative timelines using Earth dates (for rapid pacing decisions)
+- View converted "local" calendar dates for fictional worlds with custom day/month/year structures
+- Toggle between Earth time and planetary/alternate calendar views
+- Maintain chronological accuracy across both calendar systems simultaneously
+
+This enables authors of speculative fiction, fantasy, or alternate-history works to manage dual temporal frameworks within a single visualization.
 ---
 
 ### Abstract (150–250 words; Working Draft)
@@ -268,5 +278,7 @@ A computer-implemented system provides a single-screen, information-dense visual
 43. The method of claim 1, further comprising rendering a central information core comprising both a status/stage grid and a rainbow ring, wherein the central core enables single-glance assessment of workflow state and project timeline.
 
 44. The method of claim 1, wherein the outermost ring unites all content segments across all threads in the narrative mode and the chronological mode, and wherein the outermost ring displays only a Main Plot thread in the thread-isolated mode while inner rings display respective subplot threads.
+
+45. The method of claim 1, wherein the chronological mode further comprises a Planetary Time feature that displays a parallel in-world calendar system alongside Earth dates, enabling dual temporal framework management for speculative fiction or alternate-history works.
 
 

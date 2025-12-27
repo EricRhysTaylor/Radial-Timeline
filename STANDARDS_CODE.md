@@ -247,7 +247,7 @@ Every modal (AI Pulse Analysis, Manage Subplots, Gossamer score, release notes, 
    - Choose exactly one base class for `contentEl`:  
      `rt-pulse-modal` (glass gradient surface), `rt-gossamer-score-modal` (neutral/flat stack, preferred for most modals), or `rt-subplot-modal` (tall manager view). Only use custom wrappers when a modal truly needs its own CSS file.
    - Use the Gossamer “simple header” pattern (`rt-gossamer-simple-header` + badge/title/subtitle/meta) for new modals that should be flat/subdued (e.g., Manuscript options). Reserve the heavier `rt-pulse-progress-hero` only when the modal needs a spotlight hero.
-   - Place major sections directly inside `.rt-gossamer-score-modal` (or `.rt-pulse-modal`) as bordered sections (e.g., `.rt-pulse-glass-card.rt-manuscript-card` style: light border, no drop shadow). Do **not** stack multiple gradients or card shadows; rely on subtle borders/spacing instead of layered surfaces.
+   - Place major sections directly inside `.rt-gossamer-score-modal` (or `.rt-pulse-modal`) as bordered sections (e.g., `.rt-glass-card.rt-sub-card` style: light border, no drop shadow; legacy aliases remain for backward compatibility). Do **not** stack multiple gradients or card shadows; rely on subtle borders/spacing instead of layered surfaces.
 
 2. **Sizing & Responsiveness**
    - Inline size the shell with the standard comment:  

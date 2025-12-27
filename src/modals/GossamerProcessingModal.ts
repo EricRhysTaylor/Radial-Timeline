@@ -121,7 +121,7 @@ export class GossamerProcessingModal extends Modal {
 
         this.confirmationView = contentEl;
 
-        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card' });
+        const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
         // Info section
         const infoEl = card.createDiv({ cls: 'rt-pulse-info' });
@@ -179,7 +179,7 @@ export class GossamerProcessingModal extends Modal {
         this.renderProcessingHero(contentEl, 'Analyzing manuscript...', modelName);
 
         const bodyEl = contentEl.createDiv({ cls: 'rt-pulse-progress-body' });
-        const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-pulse-glass-card' });
+        const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-glass-card' });
 
         // Manuscript info section (reusing existing styles but inside the card)
         const infoSection = progressCard.createDiv({ cls: 'rt-gossamer-proc-info-section' });
@@ -206,7 +206,7 @@ export class GossamerProcessingModal extends Modal {
         this.apiStatusEl.setText('Waiting to send...');
 
         // Error section
-        this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-pulse-glass-card rt-hidden' });
+        this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-glass-card rt-hidden' });
 
         // Close button (disabled while processing)
         const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });

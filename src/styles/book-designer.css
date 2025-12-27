@@ -15,6 +15,7 @@
 }
 
 /* Glass Card Base */
+.rt-manuscript-surface .rt-glass-card.rt-sub-card,
 .rt-manuscript-surface .rt-pulse-glass-card.rt-manuscript-card {
     box-shadow: none;
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -268,6 +269,7 @@
 }
 
 /* Card Note */
+.rt-manuscript-surface .rt-sub-card-note,
 .rt-manuscript-surface .rt-manuscript-card-note {
     margin-top: 4px;
 }

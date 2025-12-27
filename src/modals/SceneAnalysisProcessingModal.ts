@@ -352,7 +352,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.renderProcessingHero(contentEl);
 
         // Mode selection
-        const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes rt-pulse-glass-card' });
+        const modesSection = contentEl.createDiv({ cls: 'rt-pulse-modes rt-glass-card' });
 
         // Mode 1: Process Flagged Scenes (Recommended)
         const mode1 = this.createModeOption(
@@ -382,7 +382,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         );
 
         // Scene count display
-        const countSection = contentEl.createDiv({ cls: 'rt-pulse-count rt-pulse-glass-card' });
+        const countSection = contentEl.createDiv({ cls: 'rt-pulse-count rt-glass-card' });
         const countEl = countSection.createDiv({ cls: 'rt-pulse-count-number' });
 
         // Show loading state initially
@@ -582,7 +582,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         });
 
         const bodyEl = contentEl.createDiv({ cls: 'rt-pulse-progress-body' });
-        const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-pulse-glass-card' });
+        const progressCard = bodyEl.createDiv({ cls: 'rt-pulse-progress-card rt-glass-card' });
 
         const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });
         const progressBg = progressContainer.createDiv({ cls: 'rt-pulse-progress-bg' });
@@ -606,7 +606,7 @@ export class SceneAnalysisProcessingModal extends Modal {
         this.queueNoteEl = rulerBlock.createDiv({ cls: 'rt-pulse-ruler-note' });
         this.queueNoteEl.setText('Triplets animate as the AI advances - starts, endings, and missing scenes handled automatically.');
 
-        this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-pulse-glass-card rt-hidden' });
+        this.errorListEl = bodyEl.createDiv({ cls: 'rt-pulse-error-list rt-glass-card rt-hidden' });
 
         this.actionButtonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
         this.abortButtonEl = new ButtonComponent(this.actionButtonContainer)
@@ -774,7 +774,7 @@ export class SceneAnalysisProcessingModal extends Modal {
 
         contentEl.querySelectorAll('.rt-pulse-summary').forEach(el => el.remove());
         if (hasIssues) {
-            const summaryContainer = contentEl.createDiv({ cls: 'rt-pulse-summary rt-pulse-glass-card' });
+            const summaryContainer = contentEl.createDiv({ cls: 'rt-pulse-summary rt-glass-card' });
             summaryContainer.createEl('h3', { text: 'Processing details', cls: 'rt-pulse-summary-title' });
             const summaryStats = summaryContainer.createDiv({ cls: 'rt-pulse-summary-stats' });
             if (hasErrors) {

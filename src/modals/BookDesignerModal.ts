@@ -60,8 +60,8 @@ export class BookDesignerModal extends Modal {
         const scrollContainer = contentEl.createDiv({ cls: 'rt-gossamer-scores-container rt-manuscript-card-stack' });
 
         // SECTION 1: LOCATION & STRUCTURE
-        const structCard = scrollContainer.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
-        structCard.createDiv({ cls: 'rt-manuscript-card-head', text: 'Location & Structure' });
+        const structCard = scrollContainer.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        structCard.createDiv({ cls: 'rt-sub-card-head', text: 'Location & Structure' });
 
         // Time Increment Setting
         new Setting(structCard)
@@ -185,8 +185,8 @@ export class BookDesignerModal extends Modal {
         });
 
         // SECTION 2: CONTENT CONFIGURATION
-        const contentCard = scrollContainer.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
-        contentCard.createDiv({ cls: 'rt-manuscript-card-head', text: 'Content Configuration' });
+        const contentCard = scrollContainer.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        contentCard.createDiv({ cls: 'rt-sub-card-head', text: 'Content Configuration' });
 
         // Subplots + characters + preview (single border spanning all columns)
         const contentGroup = contentCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block' });
@@ -247,8 +247,8 @@ export class BookDesignerModal extends Modal {
 
 
         // SECTION 3: TEMPLATES & EXTRAS
-        const extraCard = scrollContainer.createDiv({ cls: 'rt-pulse-glass-card rt-manuscript-card' });
-        extraCard.createDiv({ cls: 'rt-manuscript-card-head', text: 'Templates & Extras' });
+        const extraCard = scrollContainer.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        extraCard.createDiv({ cls: 'rt-sub-card-head', text: 'Templates & Extras' });
 
         const extraRow = extraCard.createDiv({ cls: 'rt-manuscript-duo-row' });
 

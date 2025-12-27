@@ -209,7 +209,7 @@ class PurgeConfirmationModal extends Modal {
         hero.createDiv({ text: 'Confirm purge beats', cls: 'rt-modal-title' });
         hero.createDiv({ text: 'This action cannot be undone.', cls: 'rt-modal-subtitle' });
 
-        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card rt-purge-confirm-card' });
+        const card = contentEl.createDiv({ cls: 'rt-glass-card rt-purge-confirm-card' });
 
         const messageEl = card.createDiv({ cls: 'rt-purge-message' });
         messageEl.setText(this.message);
@@ -217,7 +217,20 @@ class PurgeConfirmationModal extends Modal {
         const detailsEl = card.createDiv({ cls: 'rt-purge-details' });
         detailsEl.createEl('div', { text: 'This will permanently delete:', cls: 'rt-purge-danger' });
         const listEl = detailsEl.createEl('ul', { cls: 'rt-purge-list' });
-        this.details.forEach(detail => listEl.createEl('li', { text: detail }));
+        this.details.forEach(detail => {
+            const li = listEl.createEl('li');
+            // Render backtick-wrapped segments as inline code for clearer YAML key styling
+            detail
+                .split(/(`[^`]+`)/g)
+                .filter(Boolean)
+                .forEach(part => {
+                    if (part.startsWith('`') && part.endsWith('`')) {
+                        li.createEl('code', { text: part.slice(1, -1) });
+                    } else {
+                        li.appendText(part);
+                    }
+                });
+        });
 
         const warningEl = card.createDiv({ cls: 'rt-purge-warning' });
         warningEl.setText('Are you sure you want to proceed?');
@@ -284,8 +297,8 @@ export async function purgeBeatsByManuscriptOrder(
             plugin.app,
             `Purge ALL beats from ${allScenes.length} scene${allScenes.length !== 1 ? 's' : ''} in your manuscript?`,
             [
-                'previousSceneAnalysis, currentSceneAnalysis, nextSceneAnalysis fields',
-                'Pulse Last Updated timestamps'
+                '`previousSceneAnalysis`, `currentSceneAnalysis`, `nextSceneAnalysis` fields',
+                '`Pulse Update` timestamp'
             ],
             async () => {
                 const notice = new Notice('Purging beats from all scenes...', 0);

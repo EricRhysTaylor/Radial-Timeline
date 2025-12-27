@@ -49,7 +49,7 @@ export class ManageSubplotsModal extends Modal {
         this.statsContainer.createSpan({ text: 'Loading stats...', cls: 'rt-modal-meta-item' });
 
         // Single card container (avoid extra nesting)
-        const card = contentEl.createDiv({ cls: 'rt-manage-subplots-card rt-pulse-glass-card' });
+        const card = contentEl.createDiv({ cls: 'rt-manage-subplots-card rt-glass-card' });
         this.listContainer = card.createDiv({ cls: 'rt-manage-subplots-list' });
         
         // Initial load
@@ -188,7 +188,7 @@ class SubplotDeletionConfirmModal extends Modal {
         const meta = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
         meta.createSpan({ text: 'Scenes in only this subplot will be moved to Main Plot', cls: 'rt-pulse-hero-meta-item' });
 
-        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card rt-pulse-section-gap' });
+        const card = contentEl.createDiv({ cls: 'rt-glass-card rt-pulse-section-gap' });
         const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
         warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the manuscript?`);
 
@@ -236,7 +236,7 @@ class RenameSubplotModal extends Modal {
         hero.createSpan({ text: 'Edit', cls: 'rt-pulse-hero-badge' });
         hero.createEl('h2', { text: 'Rename Subplot', cls: 'rt-pulse-progress-heading' });
 
-        const card = contentEl.createDiv({ cls: 'rt-pulse-glass-card rt-pulse-section-gap' });
+        const card = contentEl.createDiv({ cls: 'rt-glass-card rt-pulse-section-gap' });
         
         const inputContainer = card.createDiv({ cls: 'rt-pulse-info' });
         inputContainer.createDiv({ text: `Rename "${this.oldName}" to:`, cls: 'rt-subplot-management-input-label' });
