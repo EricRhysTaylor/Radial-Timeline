@@ -408,7 +408,7 @@ export function renderStoryBeatsSection(params: {
                     rowEl?.removeClass('rt-template-hint-row');
                 }
             };
-            inputEl.addEventListener('input', applyHint);
+            plugin.registerDomEvent(inputEl, 'input', applyHint);
             applyHint();
         };
 
@@ -417,7 +417,7 @@ export function renderStoryBeatsSection(params: {
                 const icon = guessTypeIcon(inputEl.value);
                 if (icon) setIcon(iconEl, icon);
             };
-            inputEl.addEventListener('input', applyIcon);
+            plugin.registerDomEvent(inputEl, 'input', applyIcon);
             applyIcon();
         };
 
