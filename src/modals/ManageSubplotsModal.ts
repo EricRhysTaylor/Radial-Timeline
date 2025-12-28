@@ -229,23 +229,32 @@ class RenameSubplotModal extends Modal {
         const { contentEl, modalEl } = this;
         contentEl.empty();
         
-        modalEl.classList.add('rt-pulse-modal-shell');
-        contentEl.addClass('rt-pulse-modal');
+        // Shell & Container (matching PlanetaryTimeModal)
+        modalEl.classList.add('rt-modal-shell', 'rt-rename-subplot-modal');
+        contentEl.addClass('rt-modal-container');
 
-        const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
-        hero.createSpan({ text: 'Edit', cls: 'rt-pulse-hero-badge' });
-        hero.createEl('h2', { text: 'Rename Subplot', cls: 'rt-pulse-progress-heading' });
+        // Header (matching PlanetaryTimeModal)
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        header.createSpan({ cls: 'rt-modal-badge', text: 'Edit' });
+        header.createDiv({ cls: 'rt-modal-title', text: 'Rename Subplot' });
+        header.createDiv({ cls: 'rt-modal-subtitle', text: `Enter a new name for "${this.oldName}"` });
 
-        const card = contentEl.createDiv({ cls: 'rt-glass-card rt-pulse-section-gap' });
+        // Input Field (Large template input field style)
+        // Container with border
+        const inputContainer = contentEl.createDiv({ 
+            cls: 'rt-search-input-container',
+        });
         
-        const inputContainer = card.createDiv();
-        inputContainer.createDiv({ text: `Rename "${this.oldName}" to:`, cls: 'rt-subplot-management-input-label' });
-        
-        const inputEl = inputContainer.createEl('input', { type: 'text', value: this.oldName, cls: 'rt-subplot-management-input' });
+        const inputEl = inputContainer.createEl('input', { 
+            type: 'text', 
+            value: this.oldName, 
+            cls: 'rt-input-full' 
+        });
 
         // Focus input
         window.setTimeout(() => inputEl.focus(), 50);
 
+        // Actions
         const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
         
         const save = async () => {
@@ -259,13 +268,13 @@ class RenameSubplotModal extends Modal {
         };
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Cancel')
-            .onClick(() => this.close());
-
-        const saveBtn = new ButtonComponent(buttonRow)
             .setButtonText('Rename')
             .setCta()
             .onClick(save);
+
+        new ButtonComponent(buttonRow)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
         
         // Handle Enter key
         inputEl.addEventListener('keydown', (e) => {

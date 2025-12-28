@@ -18,8 +18,15 @@ export function renderMonthSpokesAndInnerLabels(params: {
   currentMonthIndex: number;
   includeIntermediateSpokes?: boolean;
   outerSpokeInnerRadius?: number;  // Optional: if provided, render additional outer spokes from this radius
+  numActs?: number;
 }): string {
-  const { months, lineInnerRadius, lineOuterRadius, currentMonthIndex, includeIntermediateSpokes = false, outerSpokeInnerRadius } = params;
+  const { months, lineInnerRadius, lineOuterRadius, currentMonthIndex, includeIntermediateSpokes = false, outerSpokeInnerRadius, numActs = 3 } = params;
+  const totalActs = Math.max(3, Math.floor(numActs));
+  const actBoundaryAngles = Array.from({ length: totalActs }, (_, i) => -Math.PI / 2 + (i * 2 * Math.PI) / totalActs);
+  const isActBoundaryAngle = (angle: number): boolean => {
+    const tolerance = (2 * Math.PI / totalActs) / 12; // small fraction of act wedge
+    return actBoundaryAngles.some(b => Math.abs(normalizeAngle(angle - b)) <= tolerance);
+  };
   
   // Inner calendar spokes - always render these short spokes around the calendar labels
   const innerSpokeStart = lineInnerRadius - 5;
@@ -29,7 +36,7 @@ export function renderMonthSpokesAndInnerLabels(params: {
   
   // Render main month spokes and labels
   months.forEach(({ name, angle }, monthIndex) => {
-    const isActBoundary = [0, 4, 8].includes(monthIndex);
+    const isActBoundary = isActBoundaryAngle(angle);
     const isPastMonth = monthIndex < currentMonthIndex;
     
     // Inner calendar reference spokes (always rendered)
@@ -116,6 +123,24 @@ export function renderMonthSpokesAndInnerLabels(params: {
       }
     }
   }
+
+  // Render dedicated Act boundary spokes (full length) so act wedges are always emphasized
+  if (outerSpokeInnerRadius !== undefined) {
+    actBoundaryAngles.forEach(angle => {
+      const x1 = formatNumber(outerSpokeInnerRadius * Math.cos(angle));
+      const y1 = formatNumber(outerSpokeInnerRadius * Math.sin(angle));
+      const x2 = formatNumber(lineOuterRadius * Math.cos(angle));
+      const y2 = formatNumber(lineOuterRadius * Math.sin(angle));
+      svg += `
+        <line
+          x1="${x1}"
+          y1="${y1}"
+          x2="${x2}"
+          y2="${y2}"
+          class="rt-month-spoke-line rt-act-boundary"
+        />`;
+    });
+  }
   svg += '</g>';
   return svg;
 }
@@ -123,18 +148,29 @@ export function renderMonthSpokesAndInnerLabels(params: {
 export function renderGossamerMonthSpokes(params: {
   innerRadius: number;
   outerRadius: number;
+  numActs?: number;
 }): string {
-  const { innerRadius, outerRadius } = params;
+  const { innerRadius, outerRadius, numActs = 3 } = params;
+  const totalActs = Math.max(3, Math.floor(numActs));
+  const actBoundaryAngles = Array.from({ length: totalActs }, (_, i) => -Math.PI / 2 + (i * 2 * Math.PI) / totalActs);
   let spokesHtml = '';
-  for (let i = 0; i < 12; i++) {
-    const angle = (i / 12) * 2 * Math.PI - Math.PI / 2;
+  const monthAngles = Array.from({ length: 12 }, (_, i) => (i / 12) * 2 * Math.PI - Math.PI / 2);
+  monthAngles.forEach(angle => {
     const x1 = formatNumber(innerRadius * Math.cos(angle));
     const y1 = formatNumber(innerRadius * Math.sin(angle));
     const x2 = formatNumber(outerRadius * Math.cos(angle));
     const y2 = formatNumber(outerRadius * Math.sin(angle));
-    const isActBoundary = [0, 4, 8].includes(i);
+    const isActBoundary = actBoundaryAngles.some(b => Math.abs(normalizeAngle(angle - b)) < 1e-6);
     spokesHtml += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="rt-month-spoke-line rt-gossamer-grid-spoke${isActBoundary ? ' rt-act-boundary' : ''}"/>`;
-  }
+  });
+  // Explicit act spokes for non-divisible month boundaries
+  actBoundaryAngles.forEach(angle => {
+    const x1 = formatNumber(innerRadius * Math.cos(angle));
+    const y1 = formatNumber(innerRadius * Math.sin(angle));
+    const x2 = formatNumber(outerRadius * Math.cos(angle));
+    const y2 = formatNumber(outerRadius * Math.sin(angle));
+    spokesHtml += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="rt-month-spoke-line rt-gossamer-grid-spoke rt-act-boundary"/>`;
+  });
   return `<g class="rt-gossamer-spokes">${spokesHtml}</g>`;
 }
 

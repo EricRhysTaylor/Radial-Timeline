@@ -142,7 +142,7 @@ Released under a **Source-Available, Non-Commercial License**.
 - Commercial use, redistribution, or creation of derivative works using this source code is prohibited without written permission.
 - The "Radial Timeline" name is a trademark of Eric Rhys Taylor.  
 
-See the [LICENSE](./LICENSE) and [NOTICE](./NOTICE) files for full details.
+See the [License](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/License) and [Notice](https://github.com/EricRhysTaylor/Radial-Timeline/wiki/Notice) pages for full details.
 
 ## Disclaimer & Limitation of Liability
 

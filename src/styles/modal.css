@@ -20,6 +20,11 @@
   max-width: 100%;
 }
 
+.rt-modal-shell input.rt-input-full {
+  width: 100%;
+  min-width: 300px;
+}
+
 .rt-modal-shell textarea {
   width: 100%;
 }
@@ -93,6 +98,12 @@
 
 .rt-modal-shell.modal:has(.rt-search-modal) {
   width: min(600px, 90vw);
+}
+
+/* Rename Subplot Modal sizing */
+.rt-rename-subplot-modal.modal {
+  width: min(640px, 92vw);
+  max-height: 92vh;
 }
 
 .rt-search-modal {

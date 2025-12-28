@@ -42,7 +42,7 @@ export function renderStoryBeatsSection(params: {
 
     new Settings(containerEl)
         .setName('Act count')
-        .setDesc('Applies to Narrative, Subplot, and Gossamer layouts. Scene and Beats YAML. (Minimum 3)')
+        .setDesc('Applies to Narrative, Subplot, and Gossamer modes. Scene and Beats YAML. (Minimum 3)')
         .addText(text => {
             text.setPlaceholder('3');
             text.setValue(String(getActCount()));

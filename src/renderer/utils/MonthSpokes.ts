@@ -9,6 +9,7 @@ type CalendarSpokeOptions = {
     currentMonthIndex: number;
     subplotOuterRadius: number;
     isChronologueMode: boolean;
+    numActs: number;
 };
 
 export function renderCalendarSpokesLayer({
@@ -17,7 +18,8 @@ export function renderCalendarSpokesLayer({
     monthTickEnd,
     currentMonthIndex,
     subplotOuterRadius,
-    isChronologueMode
+    isChronologueMode,
+    numActs
 }: CalendarSpokeOptions): string {
     const includeIntermediateSpokes = !isChronologueMode;
     const outerSpokeInnerRadius = isChronologueMode ? undefined : subplotOuterRadius;
@@ -28,6 +30,7 @@ export function renderCalendarSpokesLayer({
         lineOuterRadius: monthTickEnd,
         currentMonthIndex,
         includeIntermediateSpokes,
-        outerSpokeInnerRadius
+        outerSpokeInnerRadius,
+        numActs
     });
 }

@@ -24,7 +24,7 @@ Type "Radial Timeline" to filter the list.
 | **Book designer** | Opens the Book Designer to generate a manuscript template. | [[Book Designer]] |
 | **Generate manuscript** | Compiles your scenes into a single manuscript file (narrative or chronological). | [[Core Workflows#generating-a-manuscript]] |
 | **Gossamer enter momentum scores** | Opens the score entry modal for manual Gossamer analysis. | [[Gossamer Mode#manual-entry]] |
-| **Gossamer AI evaluation...** | Runs AI analysis to evaluate story beats/momentum for the Gossamer view. (Requires AI features enabled.) | [[Gossamer Mode#ai-analysis]] |
+| **Gossamer AI evaluation using … story beats** | Runs AI analysis to evaluate story beats/momentum for the Gossamer view. **The command name reflects your selected beat system** (e.g., “using Custom story beats”). (Requires AI features enabled.) | [[Gossamer Mode#ai-analysis]] |
 | **Scene pulse analysis (manuscript order)** | Runs AI analysis on scenes sequentially (all scenes). | [[AI Analysis]] |
 | **Scene pulse analysis (subplot order)** | Runs AI analysis on a specific subplot. | [[AI Analysis]] |
 | **Planetary time converter** | Opens the calculator for custom planetary calendars (if enabled in settings). | [[Chronologue Mode#planetary-time]] |

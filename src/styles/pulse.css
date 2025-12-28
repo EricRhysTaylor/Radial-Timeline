@@ -1,3 +1,43 @@
+/* Pulse text styles */
+.pulse-text {
+  font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  font-weight: normal;
+  text-transform: none;
+  fill: #666666;
+  /* Default color for the <text> element */
+  white-space: nowrap;
+  /* Prevent automatic line wrapping */
+  text-transform: uppercase;
+}
+
+.pulse-text-grade {
+  font-size: calc(16px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  fill: var(--rt-max-publish-stage-color);
+  /* Darker green for better visibility */
+  font-weight: bold;
+}
+
+.pulse-text-positive {
+  font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  fill: #2B9348;
+  /* Darker green for better visibility */
+  font-weight: bold;
+}
+
+.pulse-text-negative {
+  font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  fill: #D62828;
+  /* Darker red for better visibility */
+  font-weight: bold;
+}
+
+.pulse-text-neutral {
+  font-size: calc(14px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
+  fill: #000000;
+  /* Solid black */
+  font-weight: bold;
+}
+
 .rt-gossamer-beat-outline:hover,
 .rt-gossamer-beat-outline.rt-hover {
   stroke: white !important;
@@ -298,6 +338,11 @@
   justify-content: center;
   background: transparent;
   box-shadow: none;
+}
+
+.rt-manage-subplots-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 

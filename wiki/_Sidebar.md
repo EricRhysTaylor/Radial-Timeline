@@ -17,3 +17,5 @@
     *   [[Technical]]
     *   [[Acknowledgments]]
     *   [[FAQ]]
+    *   [[License]]
+    *   [[Notice]]

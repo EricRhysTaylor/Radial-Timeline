@@ -317,7 +317,8 @@ export function createTimelineSVG(
         monthTickEnd,
         currentMonthIndex,
         subplotOuterRadius,
-        isChronologueMode
+        isChronologueMode,
+        numActs
     });
 
     // Add outer chronological tick marks in Chronologue mode

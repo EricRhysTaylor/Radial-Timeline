@@ -110,6 +110,13 @@
   opacity: 1;
 }
 
+.radial-timeline-container .act-border {
+  stroke: var(--text-normal);
+  stroke-width: 2px;
+  stroke-dasharray: none;
+  opacity: 1;
+}
+
 .radial-timeline-container .rt-scene-title-small {
   font-size: calc(9px * var(--rt-font-scale, 1));
 }

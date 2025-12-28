@@ -254,7 +254,11 @@ export class RendererService {
         const minMax = pluginAny._gossamerMinMax || null;
 
         // Build spoke and layer markup
-        const spokesHtml = renderGossamerMonthSpokes({ innerRadius, outerRadius });
+        const spokesHtml = renderGossamerMonthSpokes({
+            innerRadius,
+            outerRadius,
+            numActs: (view.plugin.settings as any)?.actCount ?? 3
+        });
         const layerHtml = renderGossamerLayer(
             scenes || [],
             run,

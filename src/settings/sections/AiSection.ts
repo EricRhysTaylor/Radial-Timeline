@@ -231,7 +231,7 @@ export function renderAiSection(params: {
         });
 
     // Gemini API Key
-    new Settings(geminiSection)
+    const geminiKeySetting = new Settings(geminiSection)
         .setName('Gemini API key')
         .setDesc((() => {
             const frag = document.createDocumentFragment();
@@ -258,9 +258,10 @@ export function renderAiSection(params: {
                     params.scheduleKeyValidation('gemini');
                 });
         });
+    geminiKeySetting.settingEl.addClass('rt-setting-full-width-input');
 
     // OpenAI API Key
-    new Settings(openaiSection)
+    const openAiKeySetting = new Settings(openaiSection)
         .setName('OpenAI API key')
         .setDesc((() => {
             const frag = document.createDocumentFragment();
@@ -295,6 +296,7 @@ export function renderAiSection(params: {
                     }
                 });
         });
+    openAiKeySetting.settingEl.addClass('rt-setting-full-width-input');
 
     const localSection = containerEl.createDiv({ cls: 'rt-provider-section rt-provider-local' });
     params.setProviderSections({ anthropic: anthropicSection, gemini: geminiSection, openai: openaiSection, local: localSection } as any);
@@ -314,15 +316,16 @@ export function renderAiSection(params: {
                     await plugin.saveSettings();
                     params.scheduleKeyValidation('local');
                 });
+            text.inputEl.classList.add('rt-input-full');
             params.setLocalConnectionInputs({ baseInput: text.inputEl });
         });
     localBaseUrlSetting.settingEl.addClass('rt-setting-full-width-input');
 
     const localWarning = localBaseUrlSetting.descEl.createDiv({ cls: 'rt-setting-note rt-setting-warning' });
     localWarning.style.marginTop = '8px';
-    localWarning.createEl('strong', { text: 'Advisory Note:' });
+    localWarning.createEl('strong', { text: 'Advisory Note: ' });
     const aiOutputFolder = resolveAiOutputFolder(plugin);
-    localWarning.appendText(`By default, no meta is written to the scene when local LLM is used. Rather it is stored in RAW AI file in the AI output folder (${aiOutputFolder}), as the response does not follow directions and breaks the scene hover metadata. To enable scene hover metadata, enable "Bypass scene hover metadata yaml writes" below. Strongly recommend one of the big three online LLM, as they are by far the most intelligent and fully compliant with Radial Timeline’s JSON response formatting requirements.`);
+    localWarning.appendText(`By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in a RAW AI file in the local logs output folder (${aiOutputFolder}), as the response does not follow directions and breaks the scene hover formatting. You may still enable scene hover metadata, "Bypass scene hover metadata yaml writes" below.`);
 
     const localModelSetting = new Settings(localSection)
         .setName('Model ID')
@@ -421,6 +424,7 @@ export function renderAiSection(params: {
                 });
             params.setKeyInputRef('local', text.inputEl);
         });
+    apiKeySetting.settingEl.addClass('rt-setting-full-width-input');
 
     // Apply provider dimming on first render
     params.refreshProviderDimming();
