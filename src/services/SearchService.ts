@@ -1,5 +1,6 @@
 import { App, Modal, Notice, TextComponent, ButtonComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { getActivePlanetaryProfile, convertFromEarth } from '../utils/planetaryTime';
 
 export class SearchService {
     private plugin: RadialTimelinePlugin;
@@ -32,6 +33,23 @@ export class SearchService {
         searchInput.inputEl.classList.add('rt-search-input');
         if (this.plugin.searchActive && this.plugin.searchTerm) searchInput.setValue(this.plugin.searchTerm);
         
+        // Validation helper - shows red border if input is invalid
+        const validateInput = (): boolean => {
+            const term = searchInput.getValue().trim();
+            if (term.length > 0 && term.length < 3) {
+                searchInput.inputEl.classList.add('rt-input-error');
+                return false;
+            } else {
+                searchInput.inputEl.classList.remove('rt-input-error');
+                return true;
+            }
+        };
+        
+        // Validate on blur
+        this.plugin.registerDomEvent(searchInput.inputEl, 'blur', () => {
+            validateInput();
+        });
+        
         // Actions
         const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
         new ButtonComponent(buttonContainer)
@@ -39,17 +57,29 @@ export class SearchService {
             .setCta()
             .onClick(() => {
                 const term = searchInput.getValue().trim();
-                if (term.length >= 3) { this.performSearch(term); modal.close(); }
-                else { new Notice('Please enter at least 3 letters to search'); }
+                if (term.length >= 3) { 
+                    searchInput.inputEl.classList.remove('rt-input-error');
+                    this.performSearch(term); 
+                    modal.close(); 
+                } else { 
+                    searchInput.inputEl.classList.add('rt-input-error');
+                    new Notice('Please enter at least 3 letters to search'); 
+                }
             });
         new ButtonComponent(buttonContainer)
             .setButtonText('Reset')
-            .onClick(() => { searchInput.setValue(''); this.clearSearch(); modal.close(); });
+            .onClick(() => { searchInput.setValue(''); searchInput.inputEl.classList.remove('rt-input-error'); this.clearSearch(); modal.close(); });
         this.plugin.registerDomEvent(searchInput.inputEl, 'keydown', (e) => {
             if (e.key === 'Enter') {
                 const term = searchInput.getValue().trim();
-                if (term.length >= 3) { this.performSearch(term); modal.close(); }
-                else { new Notice('Please enter at least 3 letters to search'); }
+                if (term.length >= 3) { 
+                    searchInput.inputEl.classList.remove('rt-input-error');
+                    this.performSearch(term); 
+                    modal.close(); 
+                } else { 
+                    searchInput.inputEl.classList.add('rt-input-error');
+                    new Notice('Please enter at least 3 letters to search'); 
+                }
             }
         });
         
@@ -105,6 +135,9 @@ export class SearchService {
             }
         };
 
+        // Get active planetary profile for planetary line search
+        const planetaryProfile = getActivePlanetaryProfile(this.plugin.settings as any);
+        
         this.plugin.getSceneData().then(scenes => {
             scenes.forEach(scene => {
                 const povText = scene.pov ? String(scene.pov) : '';
@@ -121,6 +154,16 @@ export class SearchService {
                     scene["previousSceneAnalysis"],
                     scene["nextSceneAnalysis"]
                 ];
+                
+                // Add planetary line text if planetary time is enabled and scene has a When date
+                if (planetaryProfile && scene.when) {
+                    const conversion = convertFromEarth(scene.when, planetaryProfile);
+                    if (conversion) {
+                        const label = (planetaryProfile.label || 'LOCAL').toUpperCase();
+                        textFields.push(`${label}: ${conversion.formatted}`);
+                    }
+                }
+                
                 const textMatched = textFields.some(f => containsWholePhrase(f, term, false));
                 // Check both the numeric date format and the display format
                 const dateFieldNumeric = scene.when?.toLocaleDateString();

@@ -68,14 +68,28 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     }
 
     // Dims non-selected provider sections based on chosen model/provider
+    // Also disables input fields in dimmed sections
     private refreshProviderDimming() {
         const selected = (this.plugin.settings.defaultAiProvider || 'openai') as 'anthropic' | 'gemini' | 'openai' | 'local';
         const map = this._providerSections;
         (['anthropic', 'gemini', 'openai', 'local'] as const).forEach(key => {
             const el = map[key];
             if (!el) return;
-            if (key === selected) el.classList.remove('dimmed');
+            const isSelected = key === selected;
+            
+            // Toggle dimmed class
+            if (isSelected) el.classList.remove('dimmed');
             else el.classList.add('dimmed');
+            
+            // Disable/enable all inputs, textareas, and buttons in non-selected sections
+            const inputs = el.querySelectorAll('input, textarea, button, select');
+            inputs.forEach(input => {
+                if (isSelected) {
+                    input.removeAttribute('disabled');
+                } else {
+                    input.setAttribute('disabled', 'true');
+                }
+            });
         });
     }
 

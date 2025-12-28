@@ -42,7 +42,7 @@ export class ManageSubplotsModal extends Modal {
         const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
         hero.createSpan({ text: 'Configuration', cls: 'rt-modal-badge' });
         hero.createDiv({ text: 'Manage Subplots', cls: 'rt-modal-title' });
-        hero.createDiv({ text: 'Rename or remove subplots across the manuscript. Orphaned scenes will be moved to Main Plot.', cls: 'rt-modal-subtitle' });
+        hero.createDiv({ text: 'Rename or remove subplots across the timeline. Orphaned scenes will be moved to Main Plot.', cls: 'rt-modal-subtitle' });
 
         // Stats Placeholder
         this.statsContainer = hero.createDiv({ cls: 'rt-modal-meta' });
@@ -190,7 +190,7 @@ class SubplotDeletionConfirmModal extends Modal {
 
         const card = contentEl.createDiv({ cls: 'rt-glass-card rt-pulse-section-gap' });
         const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
-        warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the manuscript?`);
+        warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the timeline?`);
 
         const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
 

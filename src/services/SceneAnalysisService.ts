@@ -231,7 +231,9 @@ class SubplotPickerModal extends Modal {
         selectContainer.createEl('label', { text: 'Pick a subplot to process', cls: 'rt-subplot-picker-label' });
         this.dropdown = new DropdownComponent(selectContainer.createDiv({ cls: 'rt-subplot-picker-dropdown' }));
         this.options.forEach((option, index) => {
-            this.dropdown?.addOption(option.name, `${index + 1}. ${option.name}`);
+            // Show flagged count in parentheses if any scenes are flagged
+            const flaggedSuffix = option.stats.flagged > 0 ? ` (${option.stats.flagged})` : '';
+            this.dropdown?.addOption(option.name, `${index + 1}. ${option.name}${flaggedSuffix}`);
         });
         this.dropdown.setValue(this.selectedSubplot);
         this.dropdown.onChange(value => {

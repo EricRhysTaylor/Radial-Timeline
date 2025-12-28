@@ -1,5 +1,15 @@
 import { escapeRegExp } from '../../utils/regex';
 
+/**
+ * CSS-escape a value for use in attribute selectors
+ */
+function cssEscape(value: string): string {
+    if (typeof (window as any).CSS !== 'undefined' && (window as any).CSS.escape) {
+        return (window as any).CSS.escape(value);
+    }
+    return value.replace(/[^a-zA-Z0-9_\-]/g, '\\$&');
+}
+
 interface SearchView {
     contentEl: HTMLElement;
     plugin: {
@@ -141,8 +151,9 @@ export function addHighlightRectangles(view: SearchView): void {
         const sceneId = scenePath?.id;
         if (!sceneId) return;
 
-        const numberSquare = svg.querySelector(`.rt-number-square[data-scene-id="${sceneId}"]`);
-        const numberText = svg.querySelector(`.rt-number-text[data-scene-id="${sceneId}"]`);
+        const escapedSceneId = cssEscape(sceneId);
+        const numberSquare = svg.querySelector(`.rt-number-square[data-scene-id="${escapedSceneId}"]`);
+        const numberText = svg.querySelector(`.rt-number-text[data-scene-id="${escapedSceneId}"]`);
         if (numberSquare) numberSquare.classList.add('rt-search-result');
         if (numberText) numberText.classList.add('rt-search-result');
     });

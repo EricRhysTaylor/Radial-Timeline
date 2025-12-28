@@ -212,17 +212,6 @@ async function logApiInteractionToFile(
     const systemPromptForLog = options?.systemPrompt?.trim();
     const supplementalLocalPrompt = options?.supplementalLocalInstructions?.trim();
 
-    const tocLines: string[] = [
-        '- [Prompt](#prompt)',
-        '- [Sent package](#sent-package)',
-        '- [Returned package](#returned-package)',
-        '- [Return JSON](#return-json)'
-    ];
-    if (analysis) {
-        tocLines.push('- [Scene analysis](#scene-analysis)');
-    }
-    tocLines.push('- [Metadata](#metadata)');
-
     const promptSectionParts: string[] = [];
     promptSectionParts.push('## Prompt\n\n');
     if (systemPromptForLog) {
@@ -256,7 +245,6 @@ async function logApiInteractionToFile(
         `\n${outcomeSection}`;
 
     const fileContent = `# AI Report — ${new Date().toLocaleString()}\n\n` +
-        `## Table of contents\n${tocLines.join('\n')}\n\n` +
         promptSection +
         sentPackageSection +
         returnedPackageSection +

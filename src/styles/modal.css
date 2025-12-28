@@ -113,10 +113,16 @@
 
 .rt-search-input-container {
   margin-top: 20px;
+  width: 100%;
+  display: flex;
+}
+
+.rt-search-input-container > * {
+  flex: 1;
 }
 
 .rt-search-input {
-  width: 100%;
+  width: 100% !important;
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -133,6 +139,11 @@
   outline: none;
   border-color: rgba(255, 255, 255, 0.25);
   background: rgba(0, 0, 0, 0.35);
+}
+
+.rt-search-input.rt-input-error {
+  border-color: var(--text-error) !important;
+  background: rgba(255, 0, 0, 0.08);
 }
 
 .rt-ai-context-actions {

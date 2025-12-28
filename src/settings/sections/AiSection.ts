@@ -334,6 +334,7 @@ export function renderAiSection(params: {
         .setName('Model ID')
         .setDesc('The exact model name your server expects (e.g., "llama3", "mistral-7b", "local-model").')
         .addText(text => {
+            text.inputEl.addClass('rt-input-lg');
             localModelText = text;
             text
                 .setPlaceholder('llama3')
@@ -344,7 +345,6 @@ export function renderAiSection(params: {
                     params.scheduleKeyValidation('local');
                 });
             params.setLocalConnectionInputs({ modelInput: text.inputEl });
-            text.inputEl.addClass('rt-input-sm');
         });
 
     localModelSetting.addExtraButton(button => {
