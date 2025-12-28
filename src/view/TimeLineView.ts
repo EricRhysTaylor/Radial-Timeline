@@ -428,40 +428,9 @@ export class RadialTimelineView extends ItemView {
     async onOpen(): Promise<void> {
         await this.plugin.maybeShowReleaseNotesModal();
         
-        // Register event to track file opens
-        this.registerEvent(
-            this.app.workspace.on('file-open', () => {
-                this.updateOpenFilesTracking();
-            })
-        );
-        
-        // Register event for layout changes (tab opening/closing)
-        this.registerEvent(
-            this.app.workspace.on('layout-change', () => {
-                this.updateOpenFilesTracking();
-            })
-        );
-        
-        // Register for active leaf changes which might mean tabs were changed
-        this.registerEvent(
-            this.app.workspace.on('active-leaf-change', (leaf) => {
-                // Check if this view is becoming active
-                const isThisViewActive = leaf?.view === this;
-                
-                if (isThisViewActive) {
-                    // Timeline view became active
-                }
-                
-                this.updateOpenFilesTracking();
-            })
-        );
-        
-        // Register for quick switching between files
-        this.registerEvent(
-            this.app.workspace.on('quick-preview', () => {
-                this.updateOpenFilesTracking();
-            })
-        );
+        // Note: Workspace events (file-open, layout-change, active-leaf-change, quick-preview)
+        // are handled by FileTrackingService at the plugin level to avoid duplicate handlers.
+        // The service calls refreshTimeline() on all views when open files change.
 
         // Frontmatter values to track changes only to YAML frontmatter with debounce every 5 seconds.
         this.registerEvent(
@@ -512,9 +481,6 @@ export class RadialTimelineView extends ItemView {
             })
         );
         
-        // Initial check of open files
-        this.updateOpenFilesTracking();
-        
         // If starting in Gossamer mode, initialize it before the first render
         if (this._currentMode === 'gossamer' && this.modeManager) {
             const { TimelineMode } = await import('../modes/ModeDefinition');
@@ -544,13 +510,11 @@ export class RadialTimelineView extends ItemView {
         this.plugin.searchTerm = '';
         this.plugin.searchResults.clear();
         
-        // Clean up keyboard event listeners
-        if ((this as any)._modeToggleCleanup) {
-            (this as any)._modeToggleCleanup();
-        }
+        // Clean up chronologue shift mode buttons (keyboard listeners auto-cleanup via view.register())
         if ((this as any)._chronologueShiftCleanup) {
             (this as any)._chronologueShiftCleanup();
         }
+        // Note: ModeToggleController keyboard listeners are cleaned up automatically via view.register()
     }
     
     // Add missing addHighlightRectangles method

@@ -258,7 +258,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         return /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex);
     }
 
-    // Render Patreon support section
+    // Render Backup and Safety section (replacing Patreon section)
     private renderPatreonSection(containerEl: HTMLElement): void {
         const patreonContainer = containerEl.createDiv({ cls: 'rt-patreon-support' });
 
@@ -276,11 +276,44 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Content container
         const contentContainer = patreonContainer.createDiv({ cls: 'rt-patreon-content' });
 
-        const title = contentContainer.createEl('h3', { cls: 'rt-patreon-title' });
-        title.createSpan({ text: 'Support Radial Timeline Development' });
+        // Title row with icon
+        const titleRow = contentContainer.createDiv({ cls: 'rt-patreon-title-row' });
+
+        // Archive Restore icon (small)
+        const iconSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        iconSvg.setAttribute('width', '24');
+        iconSvg.setAttribute('height', '24');
+        iconSvg.setAttribute('viewBox', '0 0 24 24');
+        iconSvg.setAttribute('fill', 'none');
+        iconSvg.setAttribute('stroke', 'currentColor');
+        iconSvg.setAttribute('stroke-width', '2');
+        iconSvg.setAttribute('stroke-linecap', 'round');
+        iconSvg.setAttribute('stroke-linejoin', 'round');
+        iconSvg.classList.add('lucide', 'lucide-archive-restore', 'rt-patreon-title-icon');
+
+        iconSvg.innerHTML = `<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h2"/><path d="M20 8v11a2 2 0 0 1-2 2h-2"/><path d="m9 15 3-3 3 3"/><path d="M12 12v9"/>`; // SAFE: innerHTML used for static SVG content
+        titleRow.appendChild(iconSvg);
+
+        const title = titleRow.createEl('h3', { cls: 'rt-patreon-title' });
+        title.createSpan({ text: 'Protect Your Work' });
 
         const description = contentContainer.createEl('p', { cls: 'rt-patreon-description' });
-        description.appendText('Join my Patreon to show your unbridled enthusiasm for the Radial Timeline! Help guide the development of the project into the far far future by voting in polls and sharing ideas and feedback directly with the creator.');
+        
+        const backupPara = description.createDiv();
+        backupPara.createSpan({ text: 'I strongly recommend ' });
+        backupPara.createEl('a', { text: 'automating backups', href: 'https://help.obsidian.md/backup' });
+        backupPara.createSpan({ text: '. The native ' });
+        backupPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
+        backupPara.createSpan({ text: ' service and community favorite ' });
+        backupPara.createEl('a', { text: 'Obsidian Git', href: 'https://obsidian.md/plugins?id=obsidian-git' });
+        backupPara.createSpan({ text: ' are excellent choices.' });
+
+        const syncPara = description.createDiv({ cls: 'rt-patreon-sync-para' });
+        syncPara.createEl('strong', { text: 'Sync Conflicts: ' });
+        syncPara.createSpan({ text: 'Avoid mixing sync services. If using iCloud on macOS alongside another sync tool, append ' });
+        syncPara.createEl('code', { text: '.nosync' });
+        syncPara.createSpan({ text: ' to the folder name to stop iCloud from syncing the vault. ' });
+        syncPara.createEl('a', { text: 'Read the Obsidian Sync Guide.', href: 'https://help.obsidian.md/sync/switch' });
 
         const buttonContainer = contentContainer.createDiv({ cls: 'rt-patreon-button-container' });
         const patreonButton = buttonContainer.createEl('a', {

@@ -26,6 +26,7 @@ export interface ChronologueShiftView {
         handler: (ev: Event) => void,
         options?: boolean | AddEventListenerOptions
     ) => void;
+    register: (cb: () => void) => void;
     plugin: {
         refreshTimelineIfNeeded?: (path: string | null) => void;
         [key: string]: any; // SAFE: any type used for facade extension by downstream plugins
@@ -508,12 +509,18 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
     };
 
-    // Add keyboard listeners - SAFE: Manual cleanup registered in view.onClose() via _chronologueShiftCleanup
+    // SAFE: Document-level listeners cleaned up via view.register() below
     document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp); // SAFE: Manual cleanup in onClose
+    // SAFE: Cleanup handled by view.register() below
+    document.addEventListener('keyup', handleKeyUp);
+    view.register(() => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keyup', handleKeyUp);
+    });
 
-    // Store cleanup function on view for later removal
+    // Store cleanup function for mode switching (removes buttons immediately)
     (view as any)._chronologueShiftCleanup = () => {
+        // Remove keyboard listeners
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
 

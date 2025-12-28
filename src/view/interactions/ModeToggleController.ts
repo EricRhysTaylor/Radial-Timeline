@@ -20,6 +20,7 @@ interface ModeToggleView {
         refreshTimelineIfNeeded: (file: unknown) => void;
     };
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
+    register: (cb: () => void) => void;
 }
 
 // Build MODE_OPTIONS dynamically from mode registry - SINGLE SOURCE OF TRUTH
@@ -340,13 +341,11 @@ export function setupModeToggleController(view: ModeToggleView, svg: SVGSVGEleme
         }
     };
 
-    // SAFE: Manual cleanup registered in view.onClose() via _modeToggleCleanup
+    // SAFE: Document-level listener cleaned up via view.register() below
     document.addEventListener('keydown', handleKeyPress);
-
-    // Store cleanup function
-    (view as any)._modeToggleCleanup = () => {
+    view.register(() => {
         document.removeEventListener('keydown', handleKeyPress);
-    };
+    });
 
     // Register hover handlers for visual feedback (color changes only, no scaling)
     MODE_OPTIONS.forEach(mode => {

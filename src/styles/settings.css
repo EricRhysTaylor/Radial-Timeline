@@ -961,14 +961,29 @@
   z-index: 1;
 }
 
+.rt-patreon-title-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rt-patreon-title-icon {
+  margin-right: 8px;
+  color: var(--text-accent);
+}
+
 .rt-patreon-title {
-  margin: 0 0 12px 0;
-  font-size: 18px;
+  margin: 0 !important;
+  font-size: 20px !important;
   font-weight: 600;
   color: var(--text-normal);
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.rt-patreon-sync-para {
+  margin-top: 8px;
 }
 
 .rt-patreon-description {

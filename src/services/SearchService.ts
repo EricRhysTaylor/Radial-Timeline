@@ -45,8 +45,8 @@ export class SearchService {
             }
         };
         
-        // Validate on blur
-        this.plugin.registerDomEvent(searchInput.inputEl, 'blur', () => {
+        // SAFE: Modal classes don't have registerDomEvent; cleanup via DOM removal on modal close
+        searchInput.inputEl.addEventListener('blur', () => {
             validateInput();
         });
         
@@ -69,7 +69,8 @@ export class SearchService {
         new ButtonComponent(buttonContainer)
             .setButtonText('Reset')
             .onClick(() => { searchInput.setValue(''); searchInput.inputEl.classList.remove('rt-input-error'); this.clearSearch(); modal.close(); });
-        this.plugin.registerDomEvent(searchInput.inputEl, 'keydown', (e) => {
+        // SAFE: Modal classes don't have registerDomEvent; cleanup via DOM removal on modal close
+        searchInput.inputEl.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 const term = searchInput.getValue().trim();
                 if (term.length >= 3) { 

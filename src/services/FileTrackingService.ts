@@ -119,11 +119,23 @@ export class FileTrackingService {
     /**
      * Heuristic: detect if any Obsidian modal is currently mounted.
      * This prevents timeline refreshes while a modal is visible, which causes UI flicker.
+     * Checks multiple selectors to catch settings modal, plugins modal, and standard modals.
      */
     private isModalOpen(): boolean {
         try {
-            const container = document.body.querySelector('.modal-container');
-            return !!(container && container.childElementCount > 0);
+            // Check for standard modal container with content
+            const modalContainer = document.body.querySelector('.modal-container');
+            if (modalContainer && modalContainer.childElementCount > 0) return true;
+            
+            // Check for modal background overlay (present when any modal is open)
+            const modalBg = document.body.querySelector('.modal-bg');
+            if (modalBg) return true;
+            
+            // Check for the modal element itself
+            const modal = document.body.querySelector('.modal');
+            if (modal) return true;
+            
+            return false;
         } catch {
             return false;
         }

@@ -45,7 +45,7 @@ export class BookDesignerModal extends Modal {
         const { contentEl, modalEl } = this;
         contentEl.empty();
         const maxActs = this.getMaxActs();
-        this.selectedActs = this.normalizeSelectedActs(maxActs);
+        this.selectedActs = Array.from({ length: maxActs }, (_, i) => i + 1);
         
         // Use generic modal system + Book Designer specific class
         if (modalEl) {
@@ -459,12 +459,18 @@ export class BookDesignerModal extends Modal {
         svg.setAttr('width', `${size}`);
         svg.setAttr('height', `${size}`);
 
-        // Outer guide ring
-        const guide = svg.createSvg('circle');
-        guide.setAttr('cx', `${cx}`);
-        guide.setAttr('cy', `${cy}`);
-        guide.setAttr('r', `${outerR}`);
-        guide.addClass('rt-manuscript-preview-guide');
+        const subplotCount = Math.max(1, subplotList.length);
+        const ringWidth = (outerR - innerR) / subplotCount;
+
+        // Draw Guide Rings (One for outer + one for each subplot boundary)
+        for (let i = 0; i <= subplotCount; i++) {
+            const r = outerR - (i * ringWidth);
+            const guide = svg.createSvg('circle');
+            guide.setAttr('cx', `${cx}`);
+            guide.setAttr('cy', `${cy}`);
+            guide.setAttr('r', `${r}`);
+            guide.addClass('rt-manuscript-preview-guide');
+        }
 
         // Draw Act Divider Lines (dynamic wedges by configured acts)
         // 12 o'clock = -PI/2
@@ -511,11 +517,12 @@ export class BookDesignerModal extends Modal {
                 const sceneNum = bucketScenes[localIdx];
                 const subplotIndex = (sceneNum - 1) % subplotList.length;
                 
-                const rOut = outerR;
-                const rIn = innerR;
+                // Calculate concentric ring radius (Main plot = outer)
+                const rOutLocal = outerR - (subplotIndex * ringWidth);
+                const rInLocal = rOutLocal - ringWidth;
 
                 const path = svg.createSvg('path');
-                path.setAttr('d', this.donutSlicePath(cx, cy, rIn, rOut, a0, a1));
+                path.setAttr('d', this.donutSlicePath(cx, cy, rInLocal, rOutLocal, a0, a1));
                 path.setAttr('fill', this.subplotColor(subplotIndex, subplotList.length));
                 path.addClass('rt-manuscript-preview-slice');
                 path.setAttr('data-act', `${actNumber}`);

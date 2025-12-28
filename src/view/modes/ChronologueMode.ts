@@ -15,6 +15,7 @@ import { updateSynopsisTitleColor } from '../interactions/SynopsisTitleColorMana
 
 export interface ChronologueView {
     registerDomEvent: (el: HTMLElement, event: string, handler: (ev: Event) => void) => void;
+    register: (cb: () => void) => void;
     plugin: {
         refreshTimelineIfNeeded?: (path: string | null) => void;
         app?: App;

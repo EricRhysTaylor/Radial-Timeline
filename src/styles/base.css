@@ -101,185 +101,38 @@
 }
 
 .rt-welcome-book-btn {
-  font-size: 20px;
-  line-height: 1.1;
-  padding: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: auto;
-  min-height: 0;
-  cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+  font-size: 16px;
+  line-height: 1.2;
+  padding: 8px 16px;
 }
 
-.rt-welcome-book-btn:hover {
-  transform: translateY(-1px) scale(1.02);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  filter: brightness(1.05);
-}
-
-/* Stage-specific fill should be applied to the bold title tspans, not the parent text. */
-.radial-timeline-container {
+.rt-welcome-backup-notice {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 100%;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 12px 16px;
+  border-left: 4px solid var(--interactive-accent);
+  background: var(--background-primary-alt);
+  border-radius: 0 4px 4px 0;
   width: 100%;
-  overflow: hidden;
-  position: relative;
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-  background-color: transparent;
-  font-family: var(--font-interface), "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  text-align: left;
 }
 
-.rt-loading-message,
-.rt-error-message {
-  padding: 20px;
-  text-align: center;
-  font-size: 1.2em;
-  color: var(--text-error);
-}
-
-.radial-timeline-container svg {
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  min-height: 0;
-  /* Flexbox fix for vertical resizing */
-  margin: 0 auto;
-  padding: 0;
-  transform-origin: center;
-  object-fit: contain;
-  cursor: default;
-  background-color: transparent;
-  fill: none;
-}
-
-/* In Gossamer mode, ensure default cursor unless over beat elements */
-.radial-timeline-svg[data-gossamer-mode="true"] {
-  cursor: default;
-}
-
-/* Measurement text node used only for width measurement; keep off-layout and invisible */
-/* Note: font-size uses the computed value directly - do NOT multiply by --rt-font-scale
-   because the computed style passed in already includes the scale factor */
-.rt-measure-text {
-  font-family: var(--rt-measurement-font-family, sans-serif);
-  font-size: var(--rt-measurement-font-size, 18px);
-  visibility: hidden;
-  position: absolute;
-  pointer-events: none;
-}
-
-.radial-timeline-container .rt-scene-path {
-  cursor: pointer;
-  stroke: var(--rt-color-empty);
-  stroke-width: 1px;
-}
-
-/* Void cells - empty space in timeline */
-.radial-timeline-container .rt-void-cell {
-  fill: var(--rt-color-empty);
-  fill-opacity: 0.9;
-  stroke: var(--rt-color-empty);
-  stroke-width: 1;
-  cursor: default;
-}
-
-/* Optimized global fade: Apply to all children when parent has class */
-.rt-global-fade .rt-scene-path:not(.rt-selected) {
-  fill: var(--rt-color-empty-selected) !important;
-}
-
-.rt-global-fade .rt-number-square:not(.rt-selected) {
-  fill: var(--rt-color-empty-selected);
-  stroke: none;
-  stroke-width: 0;
-}
-
-.rt-global-fade .rt-number-text:not(.rt-selected) {
-  fill: var(--rt-color-empty);
-}
-
-.radial-timeline-container .rt-scene-path.rt-non-selected {
-  fill: var(--rt-color-empty-selected) !important;
-}
-
-.radial-timeline-container .rt-scene-path.rt-scene-is-open.rt-non-selected {
-  fill: var(--rt-color-empty-selected) !important;
-}
-
-.radial-timeline-container .rt-scene-path.rt-selected {
-  filter: saturate(1.2) brightness(1.1);
-}
-
-.radial-timeline-container .rt-scene-title {
-  cursor: pointer;
-  fill: white;
-  opacity: 1;
-  font-size: calc(18px * var(--rt-font-scale, 1));
-  pointer-events: none;
-}
-
-/* Layout containers */
-.rt-flex-container {
+.rt-welcome-backup-icon {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 15px;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
-/* Button styles */
-.rt-action-button {
-  padding: 10px;
-  margin-top: 20px;
+.rt-welcome-backup-text {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-muted);
 }
 
-/* Dynamic positioning */
-.radial-timeline-container .dynamic-position {
-  position: absolute;
-}
-
-/* SVG Element Styles */
-.radial-timeline-container .svg-path {
-  display: none;
-  fill: none;
-}
-
-.radial-timeline-container .svg-text {
-  font-weight: bold;
-}
-
-/* Title text styles */
-.radial-timeline-container .rt-scene-title-bold {
-  font-weight: bold;
-}
-
-/* Grade border styles */
-.radial-timeline-container .grade-border {
-  fill: none;
-}
-
-/* Invisible spacer styles */
-.radial-timeline-container .rt-invisible-spacer {
-  opacity: 0;
-}
-
-/* Button Container Styles */
-.rt-button-container {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  align-items: center;
-  /* Align items vertically */
-}
-
-/* Info container styles */
-.rt-info-container {
-  cursor: pointer;
+.rt-welcome-backup-text strong {
+  color: var(--text-normal);
 }
