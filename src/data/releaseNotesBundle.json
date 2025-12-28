@@ -1,14 +1,6 @@
 {
   "entries": [
     {
-      "version": "5.0.0",
-      "title": "5.0.0",
-      "body": "## Major Release 5.0: The Harmonization Update\r\n\r\nThis is a massive update focusing on consistency, customization, and advanced world-building features.\r\n\r\n### 🎨 Complete Visual Overhaul\r\n- **Restyled Modals**: Every single modal in the plugin has been harmonized with a consistent, polished design.\r\n- **Book Designer Perfected**: The new Book Designer modal is now fully feature-complete and styled to match the new standard.\r\n- **New Welcome Screen**: A redesigned welcome screen for new vaults, featuring better orientation and direct links to the Book Designer.\r\n\r\n### 🎭 Acts & Structure\r\n- **Infinite Custom Acts**: You are no longer limited to a fixed number of acts. Create as many as you need.\r\n- **Custom Labels**: Give your acts custom names directly in the interface.\r\n- **Updated Structure Modals**: All modals related to acts and structure have been updated to support the new flexible act system.\r\n\r\n### ⚙️ Enhanced Settings & Customization\r\n- **Story Beat Editor**: Edit your Story Beats directly in settings.\r\n- **Enhanced Custom Story Beats**: Better support for defining your own beat templates.\r\n- **Advanced YAML Editor**: A powerful new editor for your metadata templates.\r\n\r\n### 🌌 World Building & Logic\r\n- **Alien Calendar System**: Full support for alternative calendar systems.\r\n- **Chronologue Parallel Calendar**: Press `Alt` (or `Option`) to reveal the parallel calendar system in Chronologue mode.\r\n- **Local LLM Support**: More options and better integration for working with local AI models.\r\n\r\n### 🔧 Other Improvements\r\n- **Backdrop Styling**: Updated styles for Alt and Shift backdrop interactions.\r\n- Many under-the-hood improvements and optimizations.",
-      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.0",
-      "publishedAt": "2025-12-28T20:31:19.028Z",
-      "isDraft": false
-    },
-    {
       "version": "4.6.1",
       "title": "4.6.1",
       "body": "## What's Changed\r\n\r\n### Bug\r\n- Revised release script included a bug that prevented detection of new release\r\n- Update Now text above icon was overlapping text animation making it hard to read",
@@ -113,21 +105,21 @@
       "isDraft": false
     }
   ],
-  "majorVersion": "5.0.0",
+  "majorVersion": "4.0.0",
   "major": {
-    "version": "5.0.0",
-    "title": "5.0.0",
-    "body": "## Major Release 5.0: The Harmonization Update\r\n\r\nThis is a massive update focusing on consistency, customization, and advanced world-building features.\r\n\r\n### 🎨 Complete Visual Overhaul\r\n- **Restyled Modals**: Every single modal in the plugin has been harmonized with a consistent, polished design.\r\n- **Book Designer Perfected**: The new Book Designer modal is now fully feature-complete and styled to match the new standard.\r\n- **New Welcome Screen**: A redesigned welcome screen for new vaults, featuring better orientation and direct links to the Book Designer.\r\n\r\n### 🎭 Acts & Structure\r\n- **Infinite Custom Acts**: You are no longer limited to a fixed number of acts. Create as many as you need.\r\n- **Custom Labels**: Give your acts custom names directly in the interface.\r\n- **Updated Structure Modals**: All modals related to acts and structure have been updated to support the new flexible act system.\r\n\r\n### ⚙️ Enhanced Settings & Customization\r\n- **Story Beat Editor**: Edit your Story Beats directly in settings.\r\n- **Enhanced Custom Story Beats**: Better support for defining your own beat templates.\r\n- **Advanced YAML Editor**: A powerful new editor for your metadata templates.\r\n\r\n### 🌌 World Building & Logic\r\n- **Alien Calendar System**: Full support for alternative calendar systems.\r\n- **Chronologue Parallel Calendar**: Press `Alt` (or `Option`) to reveal the parallel calendar system in Chronologue mode.\r\n- **Local LLM Support**: More options and better integration for working with local AI models.\r\n\r\n### 🔧 Other Improvements\r\n- **Backdrop Styling**: Updated styles for Alt and Shift backdrop interactions.\r\n- Many under-the-hood improvements and optimizations.",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.0",
-    "publishedAt": "2025-12-28T20:31:19.028Z",
+    "version": "4.0.0",
+    "title": "4.0.0",
+    "body": "## Major Release 4.0: Chronologue Mode & Timeline Intelligence\r\n\r\n### Chronologue Mode\r\n\r\nVisualize your story in true chronological order with the new **Chronologue Mode**. See the timeline of your story around the enlarged outer perimeter. All scenes and subplots now respect your date and time-based chronology. Perfect for understanding story flow and identifying pacing issues and temporal impossibilities.\r\n\r\n- Start date and end date at the top of timeline using zero stage color and press stage color\r\n- Duration time arcs show duration of each scene relative to other scenes\r\n- Intelligent time unit labeling reveals the timespan of the manuscript\r\n- Dedicated shift button for checking elapsed time between scene & discontinuities\r\n\r\n### Intelligent Date-Time Ordering\r\n\r\nScenes and plots now automatically organize based on when events actually occur in your narrative, not manuscript order. Ideal for complex narratives with flashbacks, parallel timelines, or non-linear storytelling.\r\n\r\n### Advanced Mode Control System\r\n\r\n- Four dedicated view modes: Main Plot, All Scenes, Chronologue and Gossamer\r\n- Keyboard shortcuts and current mode title\r\n\r\n### Enhanced Synopsis Display\r\n\r\n- Expanded synopsis details with larger scene title and searchable date and time\r\n- Duration tracking on a separate line below date and time\r\n- Improved text positioning for all quadrants\r\n\r\n### View Optimizations\r\n- Timeline radius adjusts to view mode so no space is wasted\r\n- Various advanced settings for customization of modes\r\n---\r\n",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.0.0",
+    "publishedAt": "2025-11-05T20:39:14Z",
     "isDraft": false
   },
   "latest": {
-    "version": "5.0.0",
-    "title": "5.0.0",
-    "body": "## Major Release 5.0: The Harmonization Update\r\n\r\nThis is a massive update focusing on consistency, customization, and advanced world-building features.\r\n\r\n### 🎨 Complete Visual Overhaul\r\n- **Restyled Modals**: Every single modal in the plugin has been harmonized with a consistent, polished design.\r\n- **Book Designer Perfected**: The new Book Designer modal is now fully feature-complete and styled to match the new standard.\r\n- **New Welcome Screen**: A redesigned welcome screen for new vaults, featuring better orientation and direct links to the Book Designer.\r\n\r\n### 🎭 Acts & Structure\r\n- **Infinite Custom Acts**: You are no longer limited to a fixed number of acts. Create as many as you need.\r\n- **Custom Labels**: Give your acts custom names directly in the interface.\r\n- **Updated Structure Modals**: All modals related to acts and structure have been updated to support the new flexible act system.\r\n\r\n### ⚙️ Enhanced Settings & Customization\r\n- **Story Beat Editor**: Edit your Story Beats directly in settings.\r\n- **Enhanced Custom Story Beats**: Better support for defining your own beat templates.\r\n- **Advanced YAML Editor**: A powerful new editor for your metadata templates.\r\n\r\n### 🌌 World Building & Logic\r\n- **Alien Calendar System**: Full support for alternative calendar systems.\r\n- **Chronologue Parallel Calendar**: Press `Alt` (or `Option`) to reveal the parallel calendar system in Chronologue mode.\r\n- **Local LLM Support**: More options and better integration for working with local AI models.\r\n\r\n### 🔧 Other Improvements\r\n- **Backdrop Styling**: Updated styles for Alt and Shift backdrop interactions.\r\n- Many under-the-hood improvements and optimizations.",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.0",
-    "publishedAt": "2025-12-28T20:31:19.028Z",
+    "version": "4.6.1",
+    "title": "4.6.1",
+    "body": "## What's Changed\r\n\r\n### Bug\r\n- Revised release script included a bug that prevented detection of new release\r\n- Update Now text above icon was overlapping text animation making it hard to read",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/4.6.1",
+    "publishedAt": "2025-12-23T05:50:55Z",
     "isDraft": false
   },
   "patches": []

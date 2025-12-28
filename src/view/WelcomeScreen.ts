@@ -64,8 +64,8 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     
     const backupPara = backupText.createDiv();
     backupPara.createEl('strong', { text: 'Protect Your Work: ' });
-    backupPara.createSpan({ text: 'I strongly recommend ' });
-    backupPara.createEl('a', { text: 'automating backups', href: 'https://help.obsidian.md/backup' });
+    backupPara.createSpan({ text: 'It is strongly recommended for you to ' });
+    backupPara.createEl('a', { text: 'automate backups', href: 'https://help.obsidian.md/backup' });
     backupPara.createSpan({ text: '. The native ' });
     backupPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
     backupPara.createSpan({ text: ' service and community favorite ' });

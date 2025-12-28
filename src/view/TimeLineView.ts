@@ -426,6 +426,7 @@ export class RadialTimelineView extends ItemView {
     }
     
     async onOpen(): Promise<void> {
+        this.contentEl.addClass('radial-timeline-view');
         await this.plugin.maybeShowReleaseNotesModal();
         
         // Note: Workspace events (file-open, layout-change, active-leaf-change, quick-preview)

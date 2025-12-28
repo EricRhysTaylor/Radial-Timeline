@@ -300,8 +300,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const description = contentContainer.createEl('p', { cls: 'rt-patreon-description' });
         
         const backupPara = description.createDiv();
-        backupPara.createSpan({ text: 'I strongly recommend ' });
-        backupPara.createEl('a', { text: 'automating backups', href: 'https://help.obsidian.md/backup' });
+        backupPara.createSpan({ text: 'It is strongly recommended for you to ' });
+        backupPara.createEl('a', { text: 'automate backups', href: 'https://help.obsidian.md/backup' });
         backupPara.createSpan({ text: '. The native ' });
         backupPara.createEl('a', { text: 'Obsidian Sync', href: 'https://obsidian.md/sync' });
         backupPara.createSpan({ text: ' service and community favorite ' });
