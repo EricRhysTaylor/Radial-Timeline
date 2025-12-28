@@ -6,7 +6,8 @@
 
 import { Notice, type Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
+import { DEFAULT_GEMINI_MODEL_ID, DEFAULT_OPENAI_MODEL_ID, DEFAULT_ANTHROPIC_MODEL_ID } from '../constants/aiDefaults';
+import { getSceneAnalysisTokenLimit } from '../constants/tokenLimits';
 import { callAnthropicApi } from '../api/anthropicApi';
 import { callOpenAiApi } from '../api/openaiApi';
 import { callGeminiApi } from '../api/geminiApi';
@@ -352,16 +353,26 @@ export async function callAiProvider(
         const normalizeModelId = (prov: string, id: string | undefined): string | undefined => {
             if (!id) return id;
             switch (prov) {
-                case 'anthropic':
-                    if (id === 'claude-opus-4-1' || id === 'claude-4.1-opus' || id === 'claude-opus-4-1@20250805') return 'claude-opus-4-1-20250805';
-                    if (id === 'claude-sonnet-4-1' || id === 'claude-4-sonnet' || id === 'claude-sonnet-4-1@20250805') return 'claude-sonnet-4-5-20250929';
-                    if (id === 'claude-opus-4-0' || id === 'claude-3-opus-20240229') return 'claude-opus-4-1-20250805';
-                    if (id === 'claude-sonnet-4-0' || id === 'claude-3-7-sonnet-20250219' || id === 'claude-sonnet-4-20250514') return 'claude-sonnet-4-5-20250929';
+                case 'anthropic': {
+                    // Route legacy/old model IDs to current defaults
+                    const legacyIds = new Set([
+                        'claude-opus-4-1', 'claude-4.1-opus', 'claude-opus-4-1@20250805', 'claude-opus-4-1-20250805',
+                        'claude-opus-4-0', 'claude-3-opus-20240229', 'claude-opus-4-20250514'
+                    ]);
+                    const sonnetLegacyIds = new Set([
+                        'claude-sonnet-4-1', 'claude-4-sonnet', 'claude-sonnet-4-1@20250805',
+                        'claude-sonnet-4-0', 'claude-3-7-sonnet-20250219', 'claude-sonnet-4-20250514'
+                    ]);
+                    if (legacyIds.has(id)) return 'claude-opus-4-5-20251101';
+                    if (sonnetLegacyIds.has(id)) return DEFAULT_ANTHROPIC_MODEL_ID;
                     return id;
-                case 'openai':
-                    if (id === 'gpt-5' || id === 'o3' || id === 'gpt-4o') return 'gpt-4.1';
-                    if (id === 'gpt-4.1') return 'gpt-4.1';
+                }
+                case 'openai': {
+                    // Route legacy model IDs to latest
+                    const legacyIds = new Set(['gpt-5', 'o3', 'gpt-4o', 'gpt-4.1', 'gpt-4-turbo']);
+                    if (legacyIds.has(id)) return DEFAULT_OPENAI_MODEL_ID;
                     return id;
+                }
                 case 'gemini': {
                     const cleaned = id.trim().replace(/^models\//, '');
                     const legacyIds = new Set([
@@ -370,7 +381,8 @@ export async function callAiProvider(
                         'gemini-ultra',
                         'gemini-creative',
                         'gemini-1.0-pro',
-                        'gemini-1.5-pro'
+                        'gemini-1.5-pro',
+                        'gemini-3-pro-preview'
                     ]);
                     if (legacyIds.has(cleaned)) return DEFAULT_GEMINI_MODEL_ID;
                     return cleaned;
@@ -384,8 +396,9 @@ export async function callAiProvider(
         systemPrompt = getSceneAnalysisSystemPrompt();
 
         if (provider === 'anthropic') {
+            const maxTokens = getSceneAnalysisTokenLimit('anthropic');
             apiKey = plugin.settings.anthropicApiKey;
-            modelId = normalizeModelId('anthropic', plugin.settings.anthropicModelId) || 'claude-sonnet-4-5-20250929';
+            modelId = normalizeModelId('anthropic', plugin.settings.anthropicModelId) || DEFAULT_ANTHROPIC_MODEL_ID;
 
             if (!apiKey || !modelId) {
                 apiErrorMsg = 'Anthropic API key or Model ID not configured in settings.';
@@ -397,11 +410,11 @@ export async function callAiProvider(
                 model: modelId,
                 system: systemPrompt || undefined,
                 userPrompt,
-                max_tokens: 4000
+                max_tokens: maxTokens
             };
 
             const apiResponse = await retryWithBackoff(() =>
-                callAnthropicApi(apiKey!, modelId!, systemPrompt, userPrompt, 4000)
+                callAnthropicApi(apiKey!, modelId!, systemPrompt, userPrompt, maxTokens)
             );
 
             responseDataForLog = apiResponse.responseData;
@@ -411,8 +424,9 @@ export async function callAiProvider(
             }
             result = apiResponse.content;
         } else if (provider === 'openai') {
+            const maxTokens = getSceneAnalysisTokenLimit('openai');
             apiKey = plugin.settings.openaiApiKey;
-            modelId = normalizeModelId('openai', plugin.settings.openaiModelId) || 'gpt-4o';
+            modelId = normalizeModelId('openai', plugin.settings.openaiModelId) || DEFAULT_OPENAI_MODEL_ID;
 
             if (!apiKey || !modelId) {
                 apiErrorMsg = 'OpenAI API key or Model ID not configured in settings.';
@@ -423,7 +437,7 @@ export async function callAiProvider(
             requestBodyForLog = {
                 model: modelId,
                 messages: [{ role: 'user', content: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt }],
-                max_completion_tokens: 2000,
+                max_completion_tokens: maxTokens,
                 response_format: {
                     type: 'json_schema' as const,
                     json_schema: {
@@ -439,7 +453,7 @@ export async function callAiProvider(
                     modelId!,
                     systemPrompt,
                     userPrompt,
-                    2000,
+                    maxTokens,
                     undefined,
                     { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } }
                 )
@@ -452,6 +466,7 @@ export async function callAiProvider(
             }
             result = apiResponse.content;
         } else if (provider === 'gemini') {
+            const maxTokens = getSceneAnalysisTokenLimit('gemini');
             apiKey = plugin.settings.geminiApiKey;
             modelId = normalizeModelId('gemini', plugin.settings.geminiModelId) || DEFAULT_GEMINI_MODEL_ID;
 
@@ -465,12 +480,12 @@ export async function callAiProvider(
                 system_instruction: systemPrompt || undefined,
                 userPrompt,
                 temperature: 0.2,
-                maxOutputTokens: 4000,
+                maxOutputTokens: maxTokens,
                 response_schema: jsonSchema
             };
 
             const apiResponse = await retryWithBackoff(() =>
-                callGeminiApi(apiKey!, modelId!, systemPrompt, userPrompt, 4000, 0.2, jsonSchema, true)
+                callGeminiApi(apiKey!, modelId!, systemPrompt, userPrompt, maxTokens, 0.2, jsonSchema, true)
             );
 
             responseDataForLog = apiResponse.responseData;
@@ -480,6 +495,7 @@ export async function callAiProvider(
             }
             result = apiResponse.content;
         } else if (provider === 'local') {
+            const maxTokens = getSceneAnalysisTokenLimit('local');
             const localBaseUrl = plugin.settings.localBaseUrl || 'http://localhost:11434/v1';
             modelId = plugin.settings.localModelId || 'llama3';
             apiKey = plugin.settings.localApiKey || ''; // Optional for local
@@ -494,7 +510,7 @@ export async function callAiProvider(
                 model: modelId,
                 temperature: 0.1,
                 messages: [{ role: 'user', content: systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt }],
-                max_completion_tokens: 2000,
+                max_completion_tokens: maxTokens,
                 response_format: {
                     type: 'json_schema' as const,
                     json_schema: {
@@ -510,7 +526,7 @@ export async function callAiProvider(
                     modelId!,
                     systemPrompt,
                     userPrompt,
-                    2000,
+                    maxTokens,
                     localBaseUrl,
                     { type: 'json_schema', json_schema: { name: 'scene_analysis', schema: jsonSchema } },
                     0.1

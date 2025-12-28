@@ -93,17 +93,13 @@
 }
 
 .rt-input-full {
-  width: min(100%, 420px);
+  width: 100%;
+  min-width: 520px;
 }
 
 .setting-item .setting-item-control .rt-input-full {
-  width: min(100%, 420px);
-}
-
-.rt-setting-full-width-input .setting-item-control input.rt-input-full {
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
+  width: 100%;
+  min-width: 520px;
 }
 
 /* Full-width input on its own row (for long URLs, paths, etc.) */

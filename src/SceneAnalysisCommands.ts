@@ -176,6 +176,16 @@ export async function processEntireSubplotWithModal(
         }
     };
 
+    // Pre-check: verify there are scenes to process BEFORE opening modal
+    const sceneCount = await getSceneCount();
+    if (sceneCount === 0) {
+        const reason = isResuming 
+            ? `No remaining scenes to process for subplot "${subplotName}" (all may have been processed today).`
+            : `No scenes with content found for subplot "${subplotName}".`;
+        new Notice(reason);
+        return;
+    }
+
     // Create the modal with subplot-specific context
     const modal = new SceneAnalysisProcessingModal(
         plugin.app,
@@ -193,8 +203,17 @@ export async function processEntireSubplotWithModal(
     const originalOnOpen = modal.onOpen.bind(modal);
     modal.onOpen = function() {
         // Show the modal first
-        const { contentEl, titleEl } = this;
+        const { contentEl, titleEl, modalEl } = this;
         titleEl.setText('');
+        
+        // Set modal width to match manuscript order modal
+        if (modalEl) {
+            modalEl.classList.add('rt-modal-shell');
+            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+        contentEl.addClass('rt-modal-container', 'rt-scene-analysis-modal');
         
         // Show progress view immediately (skip confirmation)
         this.showProgressView();
@@ -265,6 +284,13 @@ export async function processBySubplotNameWithModal(
         }
     };
 
+    // Pre-check: verify there are scenes to process BEFORE opening modal
+    const sceneCount = await getSceneCount();
+    if (sceneCount === 0) {
+        new Notice(`No flagged scenes (Pulse Update: Yes) with content found for subplot "${subplotName}".`);
+        return;
+    }
+
     // Create the modal with subplot-specific context
     const modal = new SceneAnalysisProcessingModal(
         plugin.app,
@@ -282,8 +308,17 @@ export async function processBySubplotNameWithModal(
     const originalOnOpen = modal.onOpen.bind(modal);
     modal.onOpen = function() {
         // Show the modal first
-        const { contentEl, titleEl } = this;
+        const { contentEl, titleEl, modalEl } = this;
         titleEl.setText('');
+        
+        // Set modal width to match manuscript order modal
+        if (modalEl) {
+            modalEl.classList.add('rt-modal-shell');
+            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+        contentEl.addClass('rt-modal-container', 'rt-scene-analysis-modal');
         
         // Show progress view immediately (skip confirmation)
         this.showProgressView();

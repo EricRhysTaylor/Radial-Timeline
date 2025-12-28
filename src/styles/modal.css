@@ -21,7 +21,8 @@
 }
 
 .rt-modal-shell input.rt-input-full {
-  width: min(100%, 420px);
+  width: 100%;
+  min-width: 300px;
 }
 
 .rt-modal-shell textarea {
@@ -115,8 +116,7 @@
 }
 
 .rt-search-input {
-  width: var(--rt-input-width-lg);
-  max-width: 100%;
+  width: 100%;
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -214,13 +214,6 @@
   overflow-y: auto;
 }
 
-/* Numeric entry for Gossamer scores */
-.rt-gossamer-score-input {
-  width: var(--rt-input-width-xs);
-  min-width: var(--rt-input-width-xs);
-  text-align: center;
-}
-
 .rt-scene-analysis-modal {
   display: flex;
   flex-direction: column;
@@ -243,6 +236,9 @@
 
 .rt-scene-analysis-meta {
   margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .rt-scene-analysis-meta-item {
@@ -284,146 +280,6 @@
 .rt-pulse-modal.rt-gossamer-score-modal {
   padding: 0 !important;
 }
-
-/* Gossamer momentum entries */
-.rt-gossamer-score-modal .rt-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: calc(92vh - 240px);
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.rt-gossamer-score-entry {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 14px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-}
-
-.rt-gossamer-score-row {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-@media (max-width: 900px) {
-  .rt-gossamer-score-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
-.rt-gossamer-beat-title-container {
-  min-width: 180px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.rt-gossamer-beat-title {
-  font-weight: 700;
-  color: var(--text-normal);
-}
-
-.rt-gossamer-beat-range {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-.rt-gossamer-justification-container {
-  flex: 1;
-  min-width: 220px;
-}
-
-.rt-gossamer-current-justification {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  padding: 10px 12px;
-  color: var(--text-normal);
-  line-height: 1.4;
-}
-
-.rt-gossamer-input-container {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 140px;
-  max-width: 200px;
-}
-
-.rt-gossamer-input-label {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.rt-gossamer-scores-history-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.rt-gossamer-existing-scores-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.rt-gossamer-score-item-container {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 10px;
-  padding: 10px 12px;
-  min-width: 120px;
-  cursor: pointer;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
-}
-
-.rt-gossamer-score-item-container:hover {
-  border-color: var(--interactive-accent);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
-}
-
-.rt-gossamer-score-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: space-between;
-}
-
-.rt-gossamer-icon-column {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* NOTE: canonical definitions for these live near the gossamer score cards block */
-
-.rt-gossamer-score-justification {
-  margin-top: 6px;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  line-height: 1.35;
-}
-
-.rt-gossamer-score-count {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-.rt-gossamer-actions-top,
-.rt-gossamer-actions-bottom {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 
 .rt-pulse-modal::before {
   content: '';
@@ -1429,6 +1285,17 @@
   overflow: hidden;
 }
 
+/* Scrollable container for beat entries */
+.rt-gossamer-score-modal .rt-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .rt-gossamer-warning {
   margin: 0;
   padding: 12px 16px;
@@ -1662,6 +1529,10 @@
 
 .rt-gossamer-score-modal .rt-modal-actions {
   margin-top: 12px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .rt-gossamer-score-modal .rt-modal-actions.rt-inline-actions {

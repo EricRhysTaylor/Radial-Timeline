@@ -34,14 +34,14 @@ export const CURATED_MODELS: Record<AiProvider, CuratedModel[]> = {
     ],
     gemini: [
         {
-            id: 'gemini-3-pro-preview',
-            label: 'Gemini 3 Pro Preview',
-            guidance: "Google's latest reasoning engine—massive context and advanced problem solving for complex narrative analysis.",
+            id: 'gemini-pro-latest',
+            label: 'Gemini Pro (Latest)',
+            guidance: "Google's latest Pro model—auto-updates to newest version. Massive context and advanced reasoning.",
         },
         {
-            id: 'gemini-2.5-pro',
-            label: 'Gemini 2.5 Pro',
-            guidance: "Google's stable high-intelligence model. Reliable performance and large context window.",
+            id: 'gemini-3-pro-preview',
+            label: 'Gemini 3 Pro Preview',
+            guidance: "Google's current reasoning engine—massive context and advanced problem solving for complex narrative analysis.",
         },
     ],
 };

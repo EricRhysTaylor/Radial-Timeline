@@ -117,6 +117,25 @@
   opacity: 1;
 }
 
+/* Act spokes: soften or recolor on hover/shift modes */
+.radial-timeline-svg.scene-hover .act-border,
+.radial-timeline-svg.scene-hover .rt-month-spoke-line.rt-act-boundary {
+  stroke: #ffffff !important;
+  opacity: 0.35 !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .act-border,
+.radial-timeline-svg[data-shift-mode="active"] .rt-month-spoke-line.rt-act-boundary {
+  stroke: rgba(255, 255, 255, 0.3) !important;
+  opacity: 0.25 !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .act-border,
+.radial-timeline-svg[data-shift-mode="alien"] .rt-month-spoke-line.rt-act-boundary {
+  stroke: rgba(200, 50, 50, 0.8) !important;
+  opacity: 0.7 !important;
+}
+
 .radial-timeline-container .rt-scene-title-small {
   font-size: calc(9px * var(--rt-font-scale, 1));
 }

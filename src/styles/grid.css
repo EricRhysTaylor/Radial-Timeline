@@ -234,6 +234,21 @@
   /* Fully opaque for prominence */
 }
 
+.radial-timeline-svg.scene-hover .rt-gossamer-grid-spoke.rt-act-boundary {
+  stroke: #ffffff !important;
+  opacity: 0.35 !important;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-gossamer-grid-spoke.rt-act-boundary {
+  stroke: rgba(255, 255, 255, 0.3) !important;
+  opacity: 0.25 !important;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-gossamer-grid-spoke.rt-act-boundary {
+  stroke: rgba(200, 50, 50, 0.8) !important;
+  opacity: 0.7 !important;
+}
+
 /* Story beat slices in all modes (except Gossamer) - base state with gray fill */
 .rt-scene-group.beats .rt-scene-path,
 .rt-scene-group[data-item-type="Beat"] .rt-scene-path {
