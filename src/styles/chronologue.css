@@ -196,11 +196,11 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   font-family: 'hooge05_55Regular', monospace, ui-monospace, SFMono-Regular;
   font-size: 20px;
   font-weight: normal;
-  fill: var(--text-normal);
-  opacity: 0.85;
+  fill: white; /* Changed to pure white */
+  /* 100% White */
   stroke: none;
   /* NO STROKE BY DEFAULT */
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  text-shadow: none;
   text-decoration: none;
   dominant-baseline: middle;
   pointer-events: none;
@@ -210,13 +210,13 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 .rt-backdrop-overlap-label {
-  fill: var(--text-normal);
+  fill: white; /* Changed to pure white */
   fill-opacity: 1;
   stroke: none;
 }
 
 .rt-backdrop-overlap-label.rt-backdrop-overlap-odd {
-  fill: var(--text-normal) !important;
+  fill: white !important; /* Changed to pure white */
   stroke: none !important;
 }
 
@@ -324,13 +324,13 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 }
 
 /* Alien mode: Red-tinted backdrop treatment */
-.radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-ring {
-  opacity: 0.15; /* Same visibility as shift mode used to be, but tinted via background */
-}
+/* Removed opacity override since default is 1, allowing children to be fully opaque */
+/* .radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-ring { } */
 
 /* Alien mode: Tint the ring background itself red */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-ring-background {
   stroke: rgba(255, 0, 0, 0.5) !important;
+  stroke-opacity: 0.15 !important; /* Move opacity here */
 }
 
 /* Alien mode: Match backdrop borders to spokes/scene borders */
@@ -341,8 +341,8 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 
 /* Alien mode: Backdrop labels - red tinted and much more visible */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-backdrop-label {
-  fill: rgba(255, 80, 80, 1) !important;
-  opacity: 0.7;
+  fill: rgba(200, 50, 50, 0.8) !important;
+  opacity: 0.3 !important;
 }
 
 /* Alien mode: Muted overlap segments with red tint */
