@@ -29,34 +29,30 @@ export class CreateBeatsTemplatesModal extends Modal {
   }
 
   onOpen(): void {
-    const { contentEl, modalEl } = this;
+    const { contentEl, modalEl, titleEl } = this;
     contentEl.empty();
-    if (modalEl) modalEl.classList.add('rt-pulse-modal-shell');
-    contentEl.addClass('rt-pulse-modal');
-    contentEl.addClass('rt-manuscript-surface');
+    titleEl.setText('');
+    
+    if (modalEl) {
+      modalEl.classList.add('rt-modal-shell');
+      modalEl.style.width = '620px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+      modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+    }
+    contentEl.addClass('rt-modal-container');
     contentEl.addClass('rt-create-plot-templates-modal');
 
-    // Title
-    const titleEl = contentEl.createEl('h2', { text: 'Create Plot Template Notes' });
-    titleEl.style.marginBottom = '16px';
+    // Header
+    const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+    header.createSpan({ cls: 'rt-modal-badge', text: 'Setup' });
+    header.createDiv({ cls: 'rt-modal-title', text: 'Create beat template notes' });
+    header.createDiv({ cls: 'rt-modal-subtitle', text: `This will create ${this.beatCount} beat notes for "${this.beatSystem}".` });
 
-    // Warning/info section
-    const infoContainer = contentEl.createDiv('rt-plot-templates-info');
-    infoContainer.style.backgroundColor = 'var(--background-secondary)'; // SAFE: inline style used for modal layout
-    infoContainer.style.padding = '16px';
-    infoContainer.style.borderRadius = '6px';
-    infoContainer.style.marginBottom = '20px';
+    // Info card with example
+    const card = contentEl.createDiv({ cls: 'rt-glass-card' });
 
-    infoContainer.createEl('p', { 
-      text: `This will create ${this.beatCount} Beat notes for "${this.beatSystem}" with the following structure:`
-    });
+    card.createDiv({ cls: 'rt-sub-card-note', text: 'Each beat note will have the following YAML structure:' });
 
-    const exampleCode = infoContainer.createEl('pre');
-    exampleCode.style.backgroundColor = 'var(--background-primary)'; // SAFE: inline style used for modal layout
-    exampleCode.style.padding = '12px'; // SAFE: inline style used for modal layout
-    exampleCode.style.borderRadius = '4px'; // SAFE: inline style used for modal layout
-    exampleCode.style.fontSize = '12px'; // SAFE: inline style used for modal layout
-    exampleCode.style.overflowX = 'auto'; // SAFE: inline style used for modal layout
+    const exampleCode = card.createEl('pre', { cls: 'rt-code-block' });
     exampleCode.textContent = `---
 Class: Beat
 Act: 1
@@ -66,33 +62,15 @@ Range: [Ideal momentum range]
 Gossamer1:
 ---`;
 
-    const locationInfo = infoContainer.createEl('p');
-    locationInfo.style.marginTop = '12px';
-    locationInfo.style.marginBottom = '0';
-    
     const sourcePath = this.plugin.settings.sourcePath.trim();
     const locationText = sourcePath 
       ? `Notes will be created in: ${sourcePath}/`
       : 'Notes will be created in the vault root (no source path set)';
     
-    const locationLabel = locationInfo.createEl('strong');
-    locationLabel.textContent = 'Location:';
-    locationInfo.appendText(` ${locationText}`);
+    card.createDiv({ cls: 'rt-sub-card-note', text: locationText });
 
     // Buttons
-    const buttonContainer = contentEl.createDiv('rt-plot-templates-buttons');
-    buttonContainer.style.display = 'flex'; // SAFE: inline style used for modal layout
-    buttonContainer.style.gap = '10px'; // SAFE: inline style used for modal layout
-    buttonContainer.style.justifyContent = 'flex-end'; // SAFE: inline style used for modal layout
-
-    new ButtonComponent(buttonContainer)
-      .setButtonText('Cancel')
-      .onClick(() => {
-        if (this.resolve) {
-          this.resolve({ confirmed: false });
-        }
-        this.close();
-      });
+    const buttonContainer = contentEl.createDiv({ cls: 'rt-modal-actions' });
 
     new ButtonComponent(buttonContainer)
       .setButtonText(`Create ${this.beatCount} notes`)
@@ -100,6 +78,15 @@ Gossamer1:
       .onClick(() => {
         if (this.resolve) {
           this.resolve({ confirmed: true });
+        }
+        this.close();
+      });
+
+    new ButtonComponent(buttonContainer)
+      .setButtonText('Cancel')
+      .onClick(() => {
+        if (this.resolve) {
+          this.resolve({ confirmed: false });
         }
         this.close();
       });

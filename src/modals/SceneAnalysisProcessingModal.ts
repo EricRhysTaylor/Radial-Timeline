@@ -21,7 +21,7 @@ export type SceneQueueItem = {
 };
 
 /**
- * Simple confirmation modal that matches Obsidian theme
+ * Simple confirmation modal that matches the generic modal system
  */
 class ConfirmationModal extends Modal {
     private readonly message: string;
@@ -34,12 +34,27 @@ class ConfirmationModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl, titleEl } = this;
-        titleEl.setText('Confirm action');
+        const { contentEl, titleEl, modalEl } = this;
+        titleEl.setText('');
+        
+        if (modalEl) {
+            modalEl.classList.add('rt-modal-shell');
+            modalEl.style.width = '520px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+        contentEl.addClass('rt-modal-container');
 
-        const messageEl = contentEl.createDiv({ cls: 'rt-confirmation-message' });
+        // Header
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        header.createSpan({ cls: 'rt-modal-badge', text: 'Confirm' });
+        header.createDiv({ cls: 'rt-modal-title', text: 'Confirm action' });
+
+        // Message card
+        const card = contentEl.createDiv({ cls: 'rt-glass-card' });
+        const messageEl = card.createDiv({ cls: 'rt-confirmation-message' });
         messageEl.setText(this.message);
 
+        // Actions
         const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
 
         new ButtonComponent(buttonRow)

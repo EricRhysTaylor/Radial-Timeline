@@ -31,14 +31,27 @@ class TextInputModal extends Modal {
     }
 
     onOpen(): void {
-        const { contentEl, titleEl } = this;
-        titleEl.setText(this.title);
+        const { contentEl, titleEl, modalEl } = this;
+        titleEl.setText('');
+        
+        if (modalEl) {
+            modalEl.classList.add('rt-modal-shell');
+            modalEl.style.width = '480px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('rt-text-input-modal');
 
-        // Input field
-        this.inputEl = contentEl.createEl('input', {
+        // Header
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        header.createDiv({ cls: 'rt-modal-title', text: this.title });
+
+        // Input field in a container
+        const inputContainer = contentEl.createDiv({ cls: 'rt-search-input-container' });
+        this.inputEl = inputContainer.createEl('input', {
             type: 'text',
             value: this.defaultValue,
-            cls: 'rt-text-input-modal-field'
+            cls: 'rt-input-full'
         });
 
         // Focus and select all
@@ -64,16 +77,16 @@ class TextInputModal extends Modal {
         (this as any)._keydownHandler = handleKeydown;
 
         // Buttons
-        const buttonRow = contentEl.createDiv({ cls: 'modal-button-container rt-text-input-modal-buttons' });
-
-        new ButtonComponent(buttonRow)
-            .setButtonText('Cancel')
-            .onClick(() => this.close());
+        const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
 
         new ButtonComponent(buttonRow)
             .setButtonText('OK')
             .setCta()
             .onClick(() => this.submit(this.inputEl?.value || ''));
+
+        new ButtonComponent(buttonRow)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
     }
 
     onClose(): void {

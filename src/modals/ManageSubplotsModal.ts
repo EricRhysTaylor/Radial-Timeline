@@ -170,33 +170,36 @@ class SubplotDeletionConfirmModal extends Modal {
     }
 
     onOpen() {
-        const { contentEl, modalEl } = this;
+        const { contentEl, modalEl, titleEl } = this;
         contentEl.empty();
+        titleEl.setText('');
         
-        modalEl.classList.add('rt-pulse-modal-shell');
-        contentEl.addClass('rt-pulse-modal');
-
         if (modalEl) {
+            modalEl.classList.add('rt-modal-shell');
             modalEl.style.width = '600px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
         }
+        contentEl.addClass('rt-modal-container');
 
-        const hero = contentEl.createDiv({ cls: 'rt-pulse-progress-hero' });
-        hero.createSpan({ text: 'Warning', cls: 'rt-pulse-hero-badge' });
-        hero.createEl('h2', { text: 'Remove Subplot?', cls: 'rt-pulse-progress-heading' });
-        hero.createDiv({ text: 'This action cannot be undone.', cls: 'rt-pulse-progress-subtitle' });
-        const meta = hero.createDiv({ cls: 'rt-pulse-progress-meta' });
-        meta.createSpan({ text: 'Scenes in only this subplot will be moved to Main Plot', cls: 'rt-pulse-hero-meta-item' });
+        // Header
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        header.createSpan({ cls: 'rt-modal-badge', text: 'Warning' });
+        header.createDiv({ cls: 'rt-modal-title', text: 'Remove subplot?' });
+        header.createDiv({ cls: 'rt-modal-subtitle', text: 'This action cannot be undone.' });
+        const meta = header.createDiv({ cls: 'rt-modal-meta' });
+        meta.createSpan({ cls: 'rt-modal-meta-item', text: 'Scenes in only this subplot will be moved to Main Plot' });
 
-        const card = contentEl.createDiv({ cls: 'rt-glass-card rt-pulse-section-gap' });
+        // Warning card
+        const card = contentEl.createDiv({ cls: 'rt-glass-card' });
         const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
         warningEl.setText(`Are you sure you want to remove "${this.subplotName}" from the timeline?`);
 
+        // Actions
         const buttonRow = contentEl.createDiv({ cls: 'rt-modal-actions' });
 
         new ButtonComponent(buttonRow)
-            .setButtonText('Remove Subplot')
-            .setWarning() // Sets red style usually
+            .setButtonText('Remove subplot')
+            .setWarning()
             .onClick(async () => {
                 await this.onConfirm();
                 this.close();

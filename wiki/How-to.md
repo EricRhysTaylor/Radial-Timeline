@@ -84,20 +84,30 @@ Need to rename or delete a subplot across dozens of scenes? Use the **`Subplot M
 This is especially helpful after reorganizing your B/C plots—you no longer have to hunt through every note manually.
 
 ### Search
-You can filter scenes by searching for text content across multiple fields.
+You can filter scenes by searching for text content across multiple fields. Search requires a minimum of **3 characters**.
 
 *   **Trigger**: Use the command palette (`Cmd/Ctrl + P`) → **Radial Timeline: Search timeline**.
 *   **Matches**: Searches case-insensitive text in:
-    *   Title
-    *   Date (`When`) and Times (e.g., "9am", "April")
-    *   Synopsis
-    *   Pulse analysis
-    *   Subplot
-    *   Characters
+
+| Field | Examples |
+| :--- | :--- |
+| Title | Scene filename |
+| Synopsis | Scene summary text |
+| Characters | All characters listed in the scene |
+| Subplot | Subplot name |
+| Location | Place field value |
+| POV | Point of view (first, third, omni, etc.) |
+| Duration | "2 hours", "45 minutes", "3 days" |
+| Date/Time | "Dec 28", "2025", "9am", "April", "Midnight" |
+| AI Pulse Analysis | Current, previous, and next scene analysis text |
+| Planetary Time | Planet name and formatted local time (if enabled) |
+
 *   **Visuals**:
-    *   **Scene Numbers**: Highlighted in yellow all subplot rings.
+    *   **Scene Numbers**: Highlighted in yellow on all subplot rings.
     *   **Text**: Matching text within the synopsis hover metadata is highlighted in yellow.
 *   **Clear**: Use the command **Radial Timeline: Clear search** or click the clear button in the modal.
+
+> **Note**: Status, Publish Stage, Due date, Pending Edits, and Gossamer scores are not included in search.
 
 ### Rotate the timeline
 In Narrative and Subplot modes you can use the **rotation toggle** (arrow icon near the outer ring) to rotate the timeline for easier reading. The rotation offset is **act-aware** (based on your configured **Act count**) and keeps scene number squares oriented correctly.

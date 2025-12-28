@@ -35,14 +35,25 @@ export class ZeroDraftModal extends Modal {
 
     onOpen(): void {
         const { contentEl, titleEl, modalEl } = this;
-        if (modalEl) modalEl.classList.add('rt-pulse-modal-shell');
-        contentEl.addClass('rt-pulse-modal');
-        contentEl.addClass('rt-manuscript-surface');
-        titleEl.setText(this.titleText);
+        titleEl.setText('');
+        
+        if (modalEl) {
+            modalEl.classList.add('rt-modal-shell');
+            modalEl.style.width = '680px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+        }
+        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('rt-zero-draft-modal');
 
-        // Context note
+        // Header
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        header.createSpan({ cls: 'rt-modal-badge', text: 'Zero Draft' });
+        header.createDiv({ cls: 'rt-modal-title', text: this.titleText });
+        header.createDiv({ cls: 'rt-modal-subtitle', text: 'Enter Pending Edits below, or click Override to open the note directly.' });
+
+        // Info note
         const infoEl = contentEl.createDiv({ cls: 'rt-zero-draft-info' });
-        infoEl.setText('Zero draft mode is enabled. This scene has Publish Stage = Zero and Status = Complete. Enter Pending Edits below, or click Override to open the note. You can turn this off in Settings → Zero draft mode.');
+        infoEl.setText('Zero draft mode is enabled. This scene has Publish Stage = Zero and Status = Complete. You can turn this off in Settings → Zero draft mode.');
 
         // Textarea
         this.textareaEl = contentEl.createEl('textarea', { cls: 'rt-zero-draft-textarea' });
@@ -53,7 +64,8 @@ export class ZeroDraftModal extends Modal {
 
         // OK button
         new ButtonComponent(buttonRow)
-            .setButtonText('OK')
+            .setButtonText('Save')
+            .setCta()
             .onClick(() => {
                 const next = (this.textareaEl.value || '').trim();
                 // If we are clearing existing non-empty content, confirm deletion
@@ -63,6 +75,22 @@ export class ZeroDraftModal extends Modal {
                 }
                 // Proceed with write
                 this.onOk(next);
+                this.close();
+            });
+
+        // Override button
+        new ButtonComponent(buttonRow)
+            .setButtonText('Override')
+            .setWarning()
+            .onClick(() => {
+                const current = (this.textareaEl.value || '').trim();
+                const isDirty = current !== this.originalText;
+                if (isDirty) {
+                    const discard = window.confirm('Discard changes?');
+                    if (!discard) return;
+                }
+                // Open note without saving
+                this.onOverride();
                 this.close();
             });
 
@@ -78,22 +106,6 @@ export class ZeroDraftModal extends Modal {
                 }
                 this.close();
             });
-
-        // Override button (red)
-        const overrideBtn = new ButtonComponent(buttonRow)
-            .setButtonText('Override')
-            .onClick(() => {
-                const current = (this.textareaEl.value || '').trim();
-                const isDirty = current !== this.originalText;
-                if (isDirty) {
-                    const discard = window.confirm('Discard changes?');
-                    if (!discard) return;
-                }
-                // Open note without saving
-                this.onOverride();
-                this.close();
-            });
-        overrideBtn.buttonEl.classList.add('rt-zero-draft-override');
     }
 }
 

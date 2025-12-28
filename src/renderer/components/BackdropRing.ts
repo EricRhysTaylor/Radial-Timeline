@@ -205,11 +205,12 @@ export function renderBackdropRing({
     // Base "Body" of the ring
     svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" fill="none" />`;
 
-    // Define diagonal pattern for overlaps
+    // Define plaid pattern for overlaps (matching todo scene plaid style)
     svg += `<defs>
-        <pattern id="rt-backdrop-diagonal" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect x="0" y="0" width="40" height="40" fill="#333333" opacity="0.2" />
-            <rect x="0" y="0" width="20" height="40" fill="#ffffff" opacity="0.3" />
+        <pattern id="rt-backdrop-diagonal" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="10" height="10" fill="var(--rt-color-todo)" opacity="var(--rt-color-plaid-opacity)"/>
+            <line x1="0" y1="0" x2="0" y2="10" stroke="#666666" stroke-width="1.5" stroke-opacity="0.5"/>
+            <line x1="0" y1="0" x2="10" y2="0" stroke="#666666" stroke-width="1.5" stroke-opacity="0.5"/>
         </pattern>
     </defs>`;
 

@@ -555,14 +555,10 @@
 /* ALIEN SHIFT MODE ([data-shift-mode="alien"])                              */
 /* -------------------------------------------------------------------------- */
 
-/* 1. Base State: Scenes fade out, but use muted Red tint */
-.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] {
-  opacity: 0.15;
-}
-
+/* 1. Base State: Scene paths fade out with muted red tint (opacity on path only, not group) */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
-  fill: rgba(180, 60, 60, 0.4) !important;
-  stroke: rgba(180, 60, 60, 0.6) !important;
+  fill: rgba(180, 60, 60, 0.06) !important;
+  stroke: rgba(180, 60, 60, 0.09) !important;
   stroke-width: 1px;
 }
 
@@ -578,9 +574,10 @@
   opacity: 0.7;
 }
 
-/* 3. Scene Text: Muted reddish */
+/* 3. Scene Text: Match number square text color and opacity */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-title {
-  fill: rgba(180, 60, 60, 0.6) !important;
+  fill: rgba(200, 50, 50, 0.8) !important;
+  opacity: 0.7;
 }
 
 /* 4. Spokes/Radial Lines/Month Lines: Muted red tint */
