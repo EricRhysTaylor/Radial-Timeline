@@ -205,12 +205,11 @@ export function renderBackdropRing({
     // Base "Body" of the ring
     svg += `<circle cx="0" cy="0" r="${formatNumber(availableRadius)}" class="rt-backdrop-ring-background" stroke-width="${BACKDROP_RING_HEIGHT}" pointer-events="none" fill="none" />`;
 
-    // Define plaid pattern for overlaps - fully opaque to block backdrop ring fill
+    // Define diagonal pattern for overlaps
     svg += `<defs>
-        <pattern id="rt-backdrop-diagonal" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect width="10" height="10" fill="#cccccc"/>
-            <line x1="0" y1="0" x2="0" y2="10" stroke="#888888" stroke-width="2"/>
-            <line x1="0" y1="0" x2="10" y2="0" stroke="#888888" stroke-width="2"/>
+        <pattern id="rt-backdrop-diagonal" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect x="0" y="0" width="20" height="40" fill="var(--rt-subplot-colors-0)" fill-opacity="0.25" />
+            <rect x="20" y="0" width="20" height="40" fill="var(--rt-subplot-colors-1)" fill-opacity="0.25" />
         </pattern>
     </defs>`;
 
@@ -289,7 +288,7 @@ export function renderBackdropRing({
         const labelClass = `rt-backdrop-label`;
         svg += `<g class="rt-scene-group" data-item-type="Backdrop" data-path="${encodedPath}">`;
 
-        // 1. Definition Path (invisible, for text) - stored in defs for later use
+        // 1. Definition Path (invisible, for text)
         svg += `<defs><path id="${pathId}" d="${td}" /></defs>`;
 
         // Use slightly smaller height for the segment to show the borders clearly (1px inset)
@@ -338,7 +337,6 @@ export function renderBackdropRing({
         
         const content = (title + ' • ').repeat(repeatCount);
 
-        // Render text inside the scene group so hover works correctly
         svg += `<text class="${labelClass}">
             <textPath href="#${pathId}" startOffset="${textPadding}" spacing="auto" method="align">
                 ${content}
@@ -387,16 +385,21 @@ export function renderBackdropRing({
             `Z`;
     };
 
-    // Render ONE overlay per overlap interval
+    // Render overlays AFTER base ring so they sit above bases,
+    // but insert them immediately before closing the base ring so hover order stays consistent.
     const overlayPaths: string[] = [];
     intervals.forEach((interval) => {
-        const { start, end } = interval;
-        const overlayClass = `rt-backdrop-segment rt-backdrop-overlap`;
-        const path = buildBoxPath(start, end);
-        overlayPaths.push(`<path d="${path}" class="${overlayClass}" pointer-events="none" />`);
+        const { start, end, active: activeSegments } = interval;
+        activeSegments.forEach((segIdx, depth) => {
+            const hueClass = `rt-backdrop-hue-${depth % 8}`; // map depth to a finite hue set
+            const parityClass = depth % 2 === 0 ? 'rt-backdrop-overlap-even' : 'rt-backdrop-overlap-odd';
+            const overlayClass = `rt-backdrop-segment rt-backdrop-overlap ${parityClass} ${hueClass}`;
+            const path = buildBoxPath(start, end);
+            overlayPaths.push(`<path d="${path}" class="${overlayClass}" pointer-events="none" />`);
+        });
     });
 
-    // Append overlays on top (they cover the overlap portions of text)
+    // Append overlays at the very end (above bases)
     overlayPaths.forEach(p => { svg += p; });
 
     svg += `</g>`;
