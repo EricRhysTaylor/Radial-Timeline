@@ -1,6 +1,6 @@
 {
 	"name": "radial-timeline",
-	"version": "4.6.1",
+	"version": "5.0.0",
 	"description": "A manuscript timeline for creative fiction writing projects that displays scenes organized by act, subplot, and chronological order in a radial format for a comprehensive view of project.",
 	"main": "main.js",
 	"type": "module",

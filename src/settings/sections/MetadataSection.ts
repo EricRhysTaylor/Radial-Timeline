@@ -127,7 +127,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
             setting.addText(text => {
                 text.setPlaceholder('Your Key (required to save)');
                 text.setValue('');
-                text.inputEl.addEventListener('blur', async () => {
+                plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                     const newValue = text.getValue().trim();
                     if (!newValue) {
                         return; // Keep as draft and do not persist

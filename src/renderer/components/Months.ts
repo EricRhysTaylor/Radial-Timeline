@@ -11,8 +11,8 @@ export function renderMonthLabelDefs(params: {
     const startAngle = angle + angleOffset;
     
     // Longer arc for chronologue boundary labels (can span multiple lines)
-    // Standard arc for regular month labels
-    const arcLength = (isFirst || isLast) ? (Math.PI / 12) : (Math.PI / 24);
+    // Standard arc for regular month labels - increased to prevent clipping of long date/time strings
+    const arcLength = (isFirst || isLast) ? (Math.PI / 4) : (Math.PI / 6);
     const endAngle = startAngle + arcLength;
     const pathId = `monthLabelPath-${index}`;
     

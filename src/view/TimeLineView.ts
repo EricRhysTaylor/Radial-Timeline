@@ -538,8 +538,11 @@ export class RadialTimelineView extends ItemView {
     }
     
     async onClose(): Promise<void> {
-        // Clear search state when view closes to ensure fresh state on reopen
-        this.plugin.clearSearch();
+        // Clear search state directly without triggering refreshTimeline()
+        // (view is closing, so no point in refreshing - avoids side effects during unload)
+        this.plugin.searchActive = false;
+        this.plugin.searchTerm = '';
+        this.plugin.searchResults.clear();
         
         // Clean up keyboard event listeners
         if ((this as any)._modeToggleCleanup) {

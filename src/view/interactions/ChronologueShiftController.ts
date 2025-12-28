@@ -6,7 +6,7 @@
 
 import type { TimelineItem } from '../../types';
 import type { PlanetaryProfile } from '../../types/settings';
-import { getActivePlanetaryProfile, validatePlanetaryProfile, convertFromEarth, formatElapsedTimePlanetary } from '../../utils/planetaryTime';
+import { getActivePlanetaryProfile, validatePlanetaryProfile, convertFromEarth, formatElapsedTimePlanetary, formatPlanetaryDateAdaptive } from '../../utils/planetaryTime';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
 import {
@@ -334,6 +334,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
                     if (isBoundary) {
                         // Boundary labels keep their multi-line layout
+                        // Uses a cleaner adaptive format for boundaries too
                         const alienLines: string[] = [];
                         if (profile.epochLabel) alienLines.push(profile.epochLabel);
                         alienLines.push(`YEAR ${conversion.localYear}`);
@@ -351,12 +352,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                             textPath.appendChild(tspan);
                         });
                     } else {
-                        // Regular perimeter ticks stay single-line
-                        const epochPrefix = profile.epochLabel ? `${profile.epochLabel} ` : '';
-                        const timeSuffix = includeTimeInLabel(earthLabel)
-                            ? ` @ ${padTime(conversion.localHours)}:${padTime(conversion.localMinutes)}`
-                            : '';
-                        const alienText = `${epochPrefix}YEAR ${conversion.localYear} ${monthName} ${conversion.localDayOfMonth}${timeSuffix}`;
+                        // Regular perimeter ticks use the new adaptive short format
+                        const alienText = formatPlanetaryDateAdaptive(conversion, earthLabel);
+                        
                         while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
                         textPath.textContent = alienText;
                     }
@@ -518,6 +516,14 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     (view as any)._chronologueShiftCleanup = () => {
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
+
+        // Explicitly remove buttons to ensure instant disappearance on mode switch
+        if (shiftButton && shiftButton.parentNode) {
+            shiftButton.parentNode.removeChild(shiftButton);
+        }
+        if (altButton && altButton.parentNode) {
+            altButton.parentNode.removeChild(altButton);
+        }
     };
 
     // Helper function to find scene by path - use view.sceneData if available

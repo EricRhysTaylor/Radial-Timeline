@@ -5,6 +5,7 @@
 import type { PlanetaryProfile, RadialTimelineSettings } from '../types';
 
 export interface PlanetaryConversionResult {
+    profile: PlanetaryProfile; // Included for convenience
     localYear: number;
     localDayOfYear: number;
     localMonthIndex: number;
@@ -77,6 +78,7 @@ export function convertFromEarth(date: Date, profile: PlanetaryProfile): Planeta
     });
 
     return {
+        profile,
         localYear,
         localDayOfYear,
         localMonthIndex,
@@ -107,6 +109,51 @@ export function formatPlanetaryDateTime(opts: {
     const monthAbbrev = abbreviate(monthLabel);
     // Format: Year ☉ Weekday Month · Day @ Time
     return `${epochLabel}Year ${localYear} ☉ ${weekdayAbbrev} ${monthAbbrev} · ${localDayOfMonth} @ ${timeStr}`;
+}
+
+/**
+ * Smart adaptive formatter for planetary dates on perimeter
+ * Attempts to match the granularity of the replaced Earth label (Time only, Date only, or Full)
+ */
+export function formatPlanetaryDateAdaptive(
+    conversion: PlanetaryConversionResult,
+    earthLabel: string
+): string {
+    // Detect content of Earth label to match granularity
+    // Matches 10:30, 10:30am, noon, midnight
+    const hasTime = /(\d{1,2}:\d{2}|noon|midnight)/i.test(earthLabel);
+    // Matches 4-digit year (1000-2999)
+    const hasYear = /\b(1\d{3}|2\d{3})\b/.test(earthLabel);
+    
+    // Check if it's ONLY time (no letters except am/pm/noon/midnight, no year)
+    // Used to identify "Time-only" ticks
+    const isTimeOnly = hasTime && !hasYear && !/[A-Za-z]{3,}/.test(earthLabel.replace(/am|pm|noon|midnight/i, ''));
+
+    const { profile, localYear, localMonthIndex, localDayOfMonth, localHours, localMinutes } = conversion;
+    const monthLabel = profile.monthNames?.[localMonthIndex] ?? `${localMonthIndex + 1}`;
+    // Use short abbreviation for perimeter labels
+    const monthAbbrev = abbreviate(monthLabel); 
+    const timeStr = `${pad(localHours)}:${pad(localMinutes)}`;
+
+    const parts: string[] = [];
+
+    if (isTimeOnly) {
+        return timeStr;
+    }
+
+    if (hasYear) {
+        // Compact year: "Yr 30"
+        parts.push(`Yr ${localYear}`);
+    }
+
+    // Date part: Month Day
+    parts.push(`${monthAbbrev} ${localDayOfMonth}`);
+
+    if (hasTime) {
+        parts.push(timeStr);
+    }
+
+    return parts.join(' · ');
 }
 
 export function parseCommaNames(input: string | undefined): string[] | undefined {
