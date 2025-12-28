@@ -14,6 +14,7 @@ import { callGeminiApi } from '../api/geminiApi';
 import { getSceneAnalysisJsonSchema, getSceneAnalysisSystemPrompt } from '../ai/prompts/sceneAnalysis';
 import type { AiProviderResponse, ApiRequestData, ParsedSceneAnalysis } from './types';
 import { parseGptResult } from './responseParsing';
+import { cacheResolvedModel, isLatestAlias } from '../utils/modelResolver';
 
 
 async function logApiInteractionToFile(
@@ -465,6 +466,15 @@ export async function callAiProvider(
                 throw new Error(apiErrorMsg);
             }
             result = apiResponse.content;
+            
+            // Cache the resolved model version if using a "latest" alias
+            if (isLatestAlias(modelId)) {
+                const responseObj = apiResponse.responseData as Record<string, unknown>;
+                const resolvedVersion = responseObj?.model as string | undefined;
+                if (resolvedVersion) {
+                    cacheResolvedModel(modelId, resolvedVersion);
+                }
+            }
         } else if (provider === 'gemini') {
             const maxTokens = getSceneAnalysisTokenLimit('gemini');
             apiKey = plugin.settings.geminiApiKey;
@@ -494,6 +504,15 @@ export async function callAiProvider(
                 throw new Error(apiErrorMsg);
             }
             result = apiResponse.content;
+            
+            // Cache the resolved model version if using a "latest" alias
+            if (isLatestAlias(modelId)) {
+                const responseObj = apiResponse.responseData as Record<string, unknown>;
+                const resolvedVersion = responseObj?.modelVersion as string | undefined;
+                if (resolvedVersion) {
+                    cacheResolvedModel(modelId, resolvedVersion);
+                }
+            }
         } else if (provider === 'local') {
             const maxTokens = getSceneAnalysisTokenLimit('local');
             const localBaseUrl = plugin.settings.localBaseUrl || 'http://localhost:11434/v1';

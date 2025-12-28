@@ -8,6 +8,7 @@
  */
 import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
+import { getModelDisplayName } from '../utils/modelResolver';
 
 export interface ManuscriptInfo {
     totalScenes: number;
@@ -109,7 +110,8 @@ export class GossamerProcessingModal extends Modal {
     }
 
     private getActiveModelDisplayName(): string {
-        return `${this.plugin.settings.geminiModelId || 'gemini-3-pro-preview'}`;
+        const modelId = this.plugin.settings.geminiModelId || 'gemini-pro-latest';
+        return getModelDisplayName(modelId);
     }
 
     private showConfirmationView(): void {

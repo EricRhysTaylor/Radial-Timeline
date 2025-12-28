@@ -79,7 +79,7 @@ export function renderAiSection(params: {
     // Single model picker
     const modelPickerSetting = new Settings(containerEl)
         .setName('Model')
-        .setDesc('Pick preferred model for advanced writing analysis.');
+        .setDesc('Pick preferred model for advanced writing analysis. Models marked "Latest" auto-update to the newest version.');
 
     const controlRow = modelPickerSetting.controlEl.createDiv({ cls: 'rt-model-picker-row' });
     const guidanceEl = controlRow.createDiv({ cls: 'rt-model-guidance' });
@@ -202,7 +202,7 @@ export function renderAiSection(params: {
     params.addAiRelatedElement(openaiSection);
 
     // Anthropic API Key
-    new Settings(anthropicSection)
+    const anthropicKeySetting = new Settings(anthropicSection)
         .setName('Anthropic API key')
         .setDesc((() => {
             const frag = document.createDocumentFragment();
@@ -229,6 +229,7 @@ export function renderAiSection(params: {
                     params.scheduleKeyValidation('anthropic');
                 });
         });
+    anthropicKeySetting.settingEl.addClass('rt-setting-full-width-input');
 
     // Gemini API Key
     const geminiKeySetting = new Settings(geminiSection)
@@ -308,6 +309,7 @@ export function renderAiSection(params: {
         .setName('Local LLM Base URL')
         .setDesc('The API endpoint. For Ollama, use "http://localhost:11434/v1". For LM Studio, use "http://localhost:1234/v1".')
         .addText(text => {
+            text.inputEl.addClass('rt-input-full');
             text
                 .setPlaceholder('http://localhost:11434/v1')
                 .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1')
@@ -316,16 +318,17 @@ export function renderAiSection(params: {
                     await plugin.saveSettings();
                     params.scheduleKeyValidation('local');
                 });
-            text.inputEl.classList.add('rt-input-full');
             params.setLocalConnectionInputs({ baseInput: text.inputEl });
         });
     localBaseUrlSetting.settingEl.addClass('rt-setting-full-width-input');
 
-    const localWarning = localBaseUrlSetting.descEl.createDiv({ cls: 'rt-setting-note rt-setting-warning' });
-    localWarning.style.marginTop = '8px';
-    localWarning.createEl('strong', { text: 'Advisory Note: ' });
+    // Advisory note as separate section
+    const localWarningSection = localSection.createDiv({ cls: 'rt-local-llm-advisory' });
+    localWarningSection.createEl('strong', { text: 'Advisory Note', cls: 'rt-local-llm-advisory-title' });
     const aiOutputFolder = resolveAiOutputFolder(plugin);
-    localWarning.appendText(`By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in a RAW AI file in the local logs output folder (${aiOutputFolder}), as the response does not follow directions and breaks the scene hover formatting. You may still enable scene hover metadata, "Bypass scene hover metadata yaml writes" below.`);
+    localWarningSection.createSpan({
+        text: `By default, no LLM pulses are written to the scene when local transformer is used. Rather it is stored in a RAW AI file in the local logs output folder (${aiOutputFolder}), as the response does not follow directions and breaks the scene hover formatting. You may still write scene hover metadata with local LLM by toggling off the setting "Bypass scene hover metadata yaml writes" below.`
+    });
 
     const localModelSetting = new Settings(localSection)
         .setName('Model ID')
@@ -402,7 +405,7 @@ export function renderAiSection(params: {
 
     new Settings(localSection)
         .setName('Bypass scene hover metadata yaml writes')
-        .setDesc('When enabled, Local LLM triplet pulse analysis skips writing to the scene note and saves the results in the RAW AI log report instead. Recommended default for local models.')
+        .setDesc('Default is enabled. Local LLM triplet pulse analysis skips writing to the scene note and saves the results in the RAW AI log report instead. Recommended for local models.')
         .addToggle(toggle => toggle
             .setValue(plugin.settings.localSendPulseToAiReport ?? true)
             .onChange(async (value) => {
@@ -414,6 +417,7 @@ export function renderAiSection(params: {
         .setName('API Key (Optional)')
         .setDesc('Required by some servers. For local tools like Ollama, this is usually ignored.')
         .addText(text => {
+            text.inputEl.addClass('rt-input-full');
             text
                 .setPlaceholder('not-needed')
                 .setValue(plugin.settings.localApiKey || '')

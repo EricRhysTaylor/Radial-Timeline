@@ -58,19 +58,19 @@ export function renderStoryBeatsSection(params: {
             });
         });
 
-    new Settings(containerEl)
+    const actLabelsSetting = new Settings(containerEl)
         .setName('Act labels (optional)')
         .setDesc('Comma-separated labels. Extra labels are ignored; empty slots fall back to numbers.')
         .addTextArea(text => {
             text.setValue(plugin.settings.actLabelsRaw ?? 'Act 1, Act 2, Act 3');
-            text.inputEl.rows = 2;
-            text.inputEl.addClass('rt-input-full');
+            text.inputEl.rows = 3;
             text.onChange(async (value) => {
                 plugin.settings.actLabelsRaw = value;
                 await plugin.saveSettings();
                 updateActPreview();
             });
         });
+    actLabelsSetting.settingEl.addClass('rt-setting-full-width-input');
 
     new Settings(containerEl)
         .setName('Show act labels')

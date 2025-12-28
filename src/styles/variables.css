@@ -69,6 +69,8 @@
   /* standard text (beats, YAML keys) */
   --rt-input-width-lg: 24ch;
   /* longer tokens/IDs */
+  --rt-input-width-xl: 48ch;
+  /* API keys, URLs, long strings */
   --rt-settings-select-width: var(--rt-input-width-md);
   /* consistent width for dropdowns */
 

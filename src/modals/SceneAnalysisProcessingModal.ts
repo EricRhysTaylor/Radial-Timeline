@@ -10,6 +10,7 @@ import { App, Modal, ButtonComponent, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { DEFAULT_GEMINI_MODEL_ID } from '../constants/aiDefaults';
 import { resolveAiOutputFolder } from '../utils/aiOutput';
+import { getModelDisplayName } from '../utils/modelResolver';
 
 export type ProcessingMode = 'flagged' | 'unprocessed' | 'force-all';
 
@@ -892,20 +893,19 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     private getActiveModelDisplayName(): string {
         const provider = this.plugin.settings.defaultAiProvider || 'openai';
+        let modelId: string;
 
         if (provider === 'anthropic') {
-            return this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
+            modelId = this.plugin.settings.anthropicModelId || 'claude-sonnet-4-5-20250929';
+        } else if (provider === 'gemini') {
+            modelId = this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
+        } else if (provider === 'local') {
+            modelId = this.plugin.settings.localModelId || 'local-model';
+        } else {
+            modelId = this.plugin.settings.openaiModelId || 'gpt-4o';
         }
 
-        if (provider === 'gemini') {
-            return this.plugin.settings.geminiModelId || DEFAULT_GEMINI_MODEL_ID;
-        }
-
-        if (provider === 'local') {
-            return this.plugin.settings.localModelId || 'local-model';
-        }
-
-        return this.plugin.settings.openaiModelId || 'gpt-4o';
+        return getModelDisplayName(modelId);
     }
 
     private deriveErrorHint(message: string): string | null {

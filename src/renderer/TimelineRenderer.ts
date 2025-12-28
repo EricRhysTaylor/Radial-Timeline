@@ -561,11 +561,6 @@ export function createTimelineSVG(
         svg += renderEstimatedDateElements({ estimateDate: estimateResult.date, progressRadius });
     }
 
-    // Subplot label background layer
-    svg += `<g class="background-layer">`;
-    svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, plugin });
-    svg += `</g>`;
-
     // Add number squares after background layer but before synopses
     const numberSquareContext: NumberSquareRenderContext = {
         plugin,
@@ -584,6 +579,11 @@ export function createTimelineSVG(
     svg += renderNumberSquares(numberSquareContext);
 
     // Close rotatable container
+    svg += `</g>`;
+
+    // Subplot labels - rendered OUTSIDE rotatable so they stay fixed when rotation is applied
+    svg += `<g class="background-layer subplot-labels-fixed">`;
+    svg += renderSubplotLabels({ NUM_RINGS, ringStartRadii, ringWidths, masterSubplotOrder, plugin });
     svg += `</g>`;
 
     let chronologueOverlaysHtml = '';

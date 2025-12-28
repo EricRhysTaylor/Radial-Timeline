@@ -16,7 +16,7 @@ export function renderMetadataSection(params: { app: App; plugin: RadialTimeline
     // Single toggle that both enables the feature and controls visibility
     new Settings(containerEl)
         .setName('Custom Metadata Mapping')
-        .setDesc('Map your custom frontmatter keys to Radial Timeline keys. Useful for pre-existing notes.')
+        .setDesc('Map your custom frontmatter keys to Radial Timeline keys. Useful for pre-existing vaults.')
         .addToggle(toggle => {
             toggle
                 .setValue(plugin.settings.enableCustomMetadataMapping ?? false)

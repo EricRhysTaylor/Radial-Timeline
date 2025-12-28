@@ -92,14 +92,19 @@
   min-width: var(--rt-input-width-lg);
 }
 
+.rt-input-xl {
+  width: var(--rt-input-width-xl);
+  min-width: var(--rt-input-width-xl);
+}
+
 .rt-input-full {
   width: 100%;
-  min-width: 520px;
+  min-width: var(--rt-input-width-xl);
 }
 
 .setting-item .setting-item-control .rt-input-full {
   width: 100%;
-  min-width: 520px;
+  min-width: var(--rt-input-width-xl);
 }
 
 /* Full-width input on its own row (for long URLs, paths, etc.) */
@@ -163,6 +168,24 @@
 
 .rt-provider-section.dimmed {
   opacity: 0.55;
+}
+
+/* Local LLM Advisory Note */
+.rt-local-llm-advisory {
+  margin: 16px 0 20px 0;
+  padding: 14px 18px;
+  background: rgba(255, 165, 0, 0.08);
+  border: 1px solid rgba(255, 165, 0, 0.25);
+  border-left: 4px solid rgba(255, 165, 0, 0.6);
+  border-radius: 8px;
+  color: var(--text-normal);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.rt-local-llm-advisory-title {
+  display: block;
+  margin-bottom: 8px;
 }
 
 .rt-model-picker-row {

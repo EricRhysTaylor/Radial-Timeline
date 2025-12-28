@@ -136,6 +136,13 @@
   opacity: 0.7 !important;
 }
 
+/* Hide act spokes and labels in Chronologue mode - act organization not relevant */
+.radial-timeline-svg[data-chronologue-mode="true"] .act-border,
+.radial-timeline-svg[data-chronologue-mode="true"] .rt-month-spoke-line.rt-act-boundary,
+.radial-timeline-svg[data-chronologue-mode="true"] .rt-act-label {
+  display: none;
+}
+
 .radial-timeline-container .rt-scene-title-small {
   font-size: calc(9px * var(--rt-font-scale, 1));
 }
@@ -334,7 +341,7 @@
 }
 
 .rt-alt-button:hover .rt-shift-button-text {
-  fill: var(--text-on-accent);
+  fill: rgba(200, 80, 80, 1);
 }
 
 .rt-alt-button:active .rt-shift-button-bg {
