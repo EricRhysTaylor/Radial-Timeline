@@ -555,10 +555,10 @@
 /* ALIEN SHIFT MODE ([data-shift-mode="alien"])                              */
 /* -------------------------------------------------------------------------- */
 
-/* 1. Base State: Scene paths fade out with muted red tint (opacity on path only, not group) */
+/* 1. Base State: Scene paths fade out with muted red tint (matching SHIFT mode visibility ~15%) */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
-  fill: rgba(180, 60, 60, 0.06) !important;
-  stroke: rgba(180, 60, 60, 0.09) !important;
+  fill: rgba(180, 60, 60, 0.15) !important;
+  stroke: rgba(180, 60, 60, 0.25) !important;
   stroke-width: 1px;
 }
 
@@ -580,11 +580,11 @@
   opacity: 0.7;
 }
 
-/* 4. Spokes/Radial Lines/Month Lines: Muted red tint */
+/* 4. Spokes/Radial Lines/Month Lines: Muted red tint (increased visibility to match SHIFT) */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-ring,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-radial-line,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-month-spoke-line {
-  stroke: rgba(180, 60, 60, 0.3) !important;
+  stroke: rgba(180, 60, 60, 0.5) !important;
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-month-label,
@@ -597,7 +597,7 @@
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-chronological-tick-major,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-chronological-tick-minor {
-  stroke: rgba(180, 60, 60, 0.4) !important;
+  stroke: rgba(180, 60, 60, 0.5) !important;
 }
 
 /* 5. Subplot Headlines: Hidden in Alien Mode (like Shift mode) */

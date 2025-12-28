@@ -863,8 +863,6 @@ export class RadialTimelineView extends ItemView {
                 } else {
                     // When unhighlighting, we don't need to do anything special.
                     // The hover effect disappears naturally when mouse leaves.
-                    // If we want to restore focus to this view, trigger for this.leaf.
-                    this.plugin.app.workspace.trigger('active-leaf-change', this.leaf);
                 }
             }
         } catch (error) {
