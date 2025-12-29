@@ -105,7 +105,7 @@
 
 /* Scoped padding for stacked settings inside Book Designer (e.g., Subplots) */
 .rt-book-designer-modal .rt-setting-stacked.rt-manuscript-group-setting {
-    padding: 12px 16px 16px 16px !important;
+    padding: 0px 16px 16px 16px !important;
 }
 
 /* Remove left padding from setting info in stacked layouts - align with input fields */
@@ -162,6 +162,20 @@
     grid-template-columns: var(--rt-trio-grid-cols);
 }
 
+/* Book Designer content grid: left (form) / right (preview) */
+.rt-book-designer-modal .rt-manuscript-content-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.rt-book-designer-modal .rt-manuscript-content-left {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
 /* Fix for vertical alignment of 'Target book length' (2nd item in Duo Grid) */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
     padding-bottom: 16px !important;
@@ -212,6 +226,10 @@
     .rt-manuscript-surface {
         --rt-duo-grid-cols: 1fr;
         --rt-trio-grid-cols: 1fr;
+    }
+
+    .rt-book-designer-modal .rt-manuscript-content-grid {
+        grid-template-columns: 1fr;
     }
 
     /* Reset borders and spacing for stack */
@@ -292,6 +310,14 @@
     height: 100%;
 }
 
+.rt-book-designer-modal .rt-manuscript-preview-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+}
+
 .rt-manuscript-surface .rt-manuscript-preview-title {
     font-weight: 600;
     color: var(--text-muted);
@@ -303,12 +329,15 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 280px;
+    height: auto;
+    aspect-ratio: auto;
 }
 
 .rt-manuscript-surface .rt-manuscript-preview-svg {
-    max-width: 100%;
+    width: auto;
     height: auto;
+    max-width: 180px;
+    max-height: 180px;
 }
 
 .rt-manuscript-surface .rt-manuscript-preview-guide {
@@ -323,17 +352,26 @@
     cursor: grab;
 }
 
+.rt-book-designer-modal .rt-manuscript-preview-host.rt-preview-dragging,
+.rt-book-designer-modal .rt-manuscript-preview-host.rt-preview-dragging svg {
+    cursor: grabbing !important;
+}
+
 .rt-manuscript-surface .rt-manuscript-preview-core {
     fill: rgba(0, 0, 0, 0.0);
     stroke: rgba(255, 255, 255, 0.10);
     stroke-width: 1;
 }
 
+.rt-manuscript-surface .rt-manuscript-preview-slice:active {
+    cursor: grabbing;
+}
+
 .rt-manuscript-preview-status {
     color: var(--text-muted);
     font-size: 0.85rem;
     text-align: center;
-    width: 100%;
+    width: auto;
 }
 
 .rt-book-designer-modal .rt-template-actions {
@@ -341,6 +379,16 @@
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 8px;
+}
+
+.rt-book-designer-modal .rt-layout-templates-card {
+    padding: 10px 16px !important;
+}
+
+/* Override group-block horizontal strip-out for layout templates */
+.rt-book-designer-modal .rt-layout-templates-card.rt-manuscript-group-block {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
 }
 
 /* --- Animations --- */

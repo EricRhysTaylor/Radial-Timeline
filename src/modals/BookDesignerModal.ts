@@ -255,7 +255,7 @@ export class BookDesignerModal extends Modal {
         if (!this.previewStatusEl) return;
         const mode = this.distributionMode === 'manual' ? 'Manual layout active' : 'Auto distribution';
         const templatePart = this.activeTemplateId ? ' · From template' : '';
-        this.previewStatusEl.setText(`${mode}${templatePart}`);
+        this.previewStatusEl.setText(`— ${mode}${templatePart}`);
     }
 
     private refreshTemplateDropdown(): void {
@@ -562,11 +562,12 @@ export class BookDesignerModal extends Modal {
         contentCard.createDiv({ cls: 'rt-sub-card-head', text: 'Content Configuration' });
 
         // Subplots + characters + preview (single border spanning all columns)
-        const contentGroup = contentCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block' });
-        const contentGrid = contentGroup.createDiv({ cls: 'rt-manuscript-trio-grid' });
+        const contentGroup = contentCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block rt-manuscript-content-grid' });
 
-        // Subplots
-        const subplotsSetting = new Setting(contentGrid)
+        // Left column: Subplots + Characters stacked
+        const leftCol = contentGroup.createDiv({ cls: 'rt-manuscript-content-left' });
+
+        const subplotsSetting = new Setting(leftCol)
             .setName('Subplots')
             .setDesc('Enter one subplot per line.')
             .setClass('rt-setting-stacked')
@@ -592,8 +593,7 @@ export class BookDesignerModal extends Modal {
             });
         subplotsSetting.settingEl.addClass('rt-manuscript-group-setting');
         
-        // Characters
-        const characterSetting = new Setting(contentGrid)
+        const characterSetting = new Setting(leftCol)
             .setName('Characters')
             .setDesc('Enter one character per line.')
             .setClass('rt-setting-stacked')
@@ -615,11 +615,12 @@ export class BookDesignerModal extends Modal {
             });
         characterSetting.settingEl.addClass('rt-manuscript-group-setting');
 
-        // Preview column
-        const previewCol = contentGrid.createDiv({ cls: 'rt-manuscript-preview-col' });
-        previewCol.createDiv({ cls: 'rt-manuscript-preview-title', text: 'Preview' });
+        // Right column: Preview (larger)
+        const previewCol = contentGroup.createDiv({ cls: 'rt-manuscript-preview-col rt-manuscript-preview-col-wide' });
+        const previewHeader = previewCol.createDiv({ cls: 'rt-manuscript-preview-head' });
+        previewHeader.createDiv({ cls: 'rt-manuscript-preview-title', text: 'Preview' });
+        this.previewStatusEl = previewHeader.createDiv({ cls: 'rt-manuscript-preview-status', text: 'Auto distribution' });
         this.previewHostEl = previewCol.createDiv({ cls: 'rt-manuscript-preview-host' });
-        this.previewStatusEl = previewCol.createDiv({ cls: 'rt-manuscript-preview-status', text: 'Auto distribution' });
         this.updateDistributionStatus();
         this.schedulePreviewUpdate();
 
@@ -676,7 +677,7 @@ export class BookDesignerModal extends Modal {
         });
 
         // Template load/save
-        const templateCard = extraCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block' });
+        const templateCard = extraCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block rt-layout-templates-card' });
         const templateSetting = new Setting(templateCard)
             .setName('Layout templates')
             .setDesc('Select a saved layout (acts, subplots, assignments, metadata).')
@@ -829,12 +830,17 @@ export class BookDesignerModal extends Modal {
         const svg = this.previewHostEl.createSvg('svg');
         svg.addClass('rt-manuscript-preview-svg');
         svg.setAttr('viewBox', `0 0 ${size} ${size}`);
-        svg.setAttr('width', `${size}`);
-        svg.setAttr('height', `${size}`);
+        svg.setAttr('preserveAspectRatio', 'xMidYMid meet');
+        svg.setAttr('width', '100%');
+        svg.setAttr('height', '100%');
 
         const subplotCount = Math.max(1, subplotList.length);
         const ringWidth = (outerR - innerR) / subplotCount;
         const dims: PreviewDims = { cx, cy, outerR, innerR, subplotCount, totalActs, ringWidth };
+
+        const ringColor = this.distributionMode === 'manual'
+            ? 'rgba(255, 165, 0, 0.35)'
+            : 'rgba(255, 255, 255, 0.10)';
 
         // Draw Guide Rings (One for outer + one for each subplot boundary)
         for (let i = 0; i <= subplotCount; i++) {
@@ -843,12 +849,18 @@ export class BookDesignerModal extends Modal {
             guide.setAttr('cx', `${cx}`);
             guide.setAttr('cy', `${cy}`);
             guide.setAttr('r', `${r}`);
+            guide.setAttr('stroke', ringColor);
+            guide.style.setProperty('stroke', ringColor);
             guide.addClass('rt-manuscript-preview-guide');
         }
 
         // Draw Act Divider Lines (dynamic wedges by configured acts)
         // 12 o'clock = -PI/2
         const actAngles = Array.from({ length: totalActs }, (_, idx) => -Math.PI / 2 + (idx * 2 * Math.PI) / totalActs);
+
+        const spokeColor = this.distributionMode === 'manual'
+            ? 'rgba(255, 165, 0, 0.75)'
+            : 'rgba(255, 255, 255, 0.3)';
 
         actAngles.forEach(angle => {
             const x1 = cx + innerR * Math.cos(angle);
@@ -861,8 +873,9 @@ export class BookDesignerModal extends Modal {
             line.setAttr('y1', `${y1}`);
             line.setAttr('x2', `${x2}`);
             line.setAttr('y2', `${y2}`);
-            line.setAttr('stroke', 'rgba(255, 255, 255, 0.3)');
+            line.setAttr('stroke', spokeColor);
             line.setAttr('stroke-width', '1');
+            line.addClass('rt-manuscript-preview-spoke');
         });
 
         // Render Scenes per Act Sector from assignments
@@ -935,6 +948,7 @@ export class BookDesignerModal extends Modal {
         if (!svg) return;
         this.dragState = { sceneNumber, pointerId: evt.pointerId, dims, targetAct: 0, targetSubplot: 0 };
         svg.setPointerCapture(evt.pointerId);
+        if (this.previewHostEl) this.previewHostEl.addClass('rt-preview-dragging');
 
         const moveHandler = (moveEvt: PointerEvent) => this.handleDragMove(moveEvt, svg as SVGSVGElement, dims);
         const upHandler = (upEvt: PointerEvent) => {
@@ -978,14 +992,20 @@ export class BookDesignerModal extends Modal {
         }
         this.dragState = null;
         this.updateDistributionStatus();
+        if (this.previewHostEl) this.previewHostEl.removeClass('rt-preview-dragging');
     }
 
     private computeDropTarget(evt: PointerEvent, svg: SVGSVGElement, dims: PreviewDims): { act: number; subplotIndex: number } | null {
-        const rect = svg.getBoundingClientRect();
-        const x = evt.clientX - rect.left;
-        const y = evt.clientY - rect.top;
-        const dx = x - dims.cx;
-        const dy = y - dims.cy;
+        // Convert pointer coordinates into SVG viewBox space to avoid scaling mismatch
+        const ctm = svg.getScreenCTM();
+        if (!ctm) return null;
+        const pt = svg.createSVGPoint();
+        pt.x = evt.clientX;
+        pt.y = evt.clientY;
+        const local = pt.matrixTransform(ctm.inverse());
+
+        const dx = local.x - dims.cx;
+        const dy = local.y - dims.cy;
         const radius = Math.sqrt(dx * dx + dy * dy);
         if (radius < dims.innerR || radius > dims.outerR) return null;
 
