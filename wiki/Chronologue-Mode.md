@@ -1,7 +1,14 @@
 **Constructing Your Story Timeline**
 
-[![Chronologue Mode Walkthrough](https://img.youtube.com/vi/XKWq32LB0d0/hqdefault.jpg)](https://www.youtube.com/watch?v=XKWq32LB0d0)
-> *Watch the full walkthrough on [YouTube](https://www.youtube.com/watch?v=XKWq32LB0d0)*
+<a href="https://www.youtube.com/watch?v=XKWq32LB0d0" target="_blank" rel="noopener">
+  <p align="center">
+    <img src="https://i.ytimg.com/vi/XKWq32LB0d0/maxresdefault.jpg" alt="Chronologue Mode walkthrough" style="max-width: 80%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+  </p>
+  <p align="center" style="font-family: sans-serif; font-size: 16px; margin-top: 10px;">
+    Chronologue Mode walkthrough<br>
+    Full video on YouTube
+  </p>
+</a>
 
 Chronologue mode is essential for constructing and visualizing the chronological backbone of your story—particularly valuable for non-linear narratives, mysteries, thrillers, or any story where **when events happen** differs from **when you reveal them**. The palette matches Narrative mode (subplot colors only) so the timing comparisons stay clean while Subplot Mode retains the Todo/Working/Overdue and publish-stage overlays.
 
