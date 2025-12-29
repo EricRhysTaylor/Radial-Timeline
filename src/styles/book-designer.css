@@ -303,6 +303,7 @@
     align-items: center;
     justify-content: center;
     width: 100%;
+    min-height: 280px;
 }
 
 .rt-manuscript-surface .rt-manuscript-preview-svg {
@@ -319,12 +320,27 @@
 .rt-manuscript-surface .rt-manuscript-preview-slice {
     stroke: rgba(0, 0, 0, 0.25);
     stroke-width: 0.8;
+    cursor: grab;
 }
 
 .rt-manuscript-surface .rt-manuscript-preview-core {
     fill: rgba(0, 0, 0, 0.0);
     stroke: rgba(255, 255, 255, 0.10);
     stroke-width: 1;
+}
+
+.rt-manuscript-preview-status {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    width: 100%;
+}
+
+.rt-book-designer-modal .rt-template-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
 }
 
 /* --- Animations --- */

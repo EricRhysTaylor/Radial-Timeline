@@ -157,6 +157,7 @@ Revision:                             # Revision count (suggest leaving blank un
 Pending Edits:
 Pulse Update: No`
     },
+    bookDesignerTemplates: [],
     backdropYamlTemplate: `Class: Backdrop                   # Backdrop events appear below the outer ring in Chronologue Mode
 When: {{When}}                       # Start Date/Time (YYYY-MM-DD HH:MM)
 End: {{End}}                         # End Date/Time (YYYY-MM-DD HH:MM)

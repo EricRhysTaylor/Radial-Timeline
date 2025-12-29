@@ -1,10 +1,89 @@
-import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, TextAreaComponent } from 'obsidian';
+import { App, Modal, Setting, Notice, normalizePath, ButtonComponent, TextAreaComponent, TextComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { createBeatTemplateNotes } from '../utils/beatsTemplates';
 import { generateSceneContent, SceneCreationData } from '../utils/sceneGenerator';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { parseDuration, parseDurationDetail } from '../utils/date';
 import { getCustomSystemFromSettings } from '../utils/beatsSystems';
+import type { BookDesignerTemplate, BookDesignerSceneAssignment } from '../types/settings';
+
+type PreviewDims = {
+    cx: number;
+    cy: number;
+    outerR: number;
+    innerR: number;
+    subplotCount: number;
+    totalActs: number;
+    ringWidth: number;
+};
+
+class SaveTemplateModal extends Modal {
+    private nameInput!: TextComponent;
+    private descriptionEl: HTMLElement | null = null;
+    private onSave: (name: string) => void;
+    private defaultName: string;
+
+    constructor(app: App, onSave: (name: string) => void, defaultName: string) {
+        super(app);
+        this.onSave = onSave;
+        this.defaultName = defaultName;
+    }
+
+    onOpen(): void {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('rt-book-designer-modal');
+
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        header.createSpan({ cls: 'rt-modal-badge', text: 'TEMPLATE' });
+        header.createDiv({ cls: 'rt-modal-title', text: 'Save layout template' });
+        header.createDiv({ cls: 'rt-modal-subtitle', text: 'Name this layout so you can reuse it later.' });
+
+        const form = contentEl.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        const nameSetting = new Setting(form)
+            .setName('Template name')
+            .setDesc('Choose a short, unique name.')
+            .addText(text => {
+                this.nameInput = text;
+                text.setPlaceholder('e.g., Thriller / 3-Act Balanced');
+                text.setValue(this.defaultName);
+                text.inputEl.addEventListener('keydown', (evt) => {
+                    if (evt.key === 'Enter') {
+                        evt.preventDefault();
+                        this.handleSave();
+                    }
+                });
+            });
+        nameSetting.settingEl.addClass('rt-manuscript-group-setting');
+
+        this.descriptionEl = form.createDiv({ cls: 'rt-sub-card-note', text: 'Templates capture layout, acts, subplots, characters, beats toggle, and the selected YAML type (base/advanced).' });
+
+        const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        new ButtonComponent(footer)
+            .setButtonText('Save')
+            .setCta()
+            .onClick(() => this.handleSave());
+
+        new ButtonComponent(footer)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
+
+        footer.querySelectorAll('button').forEach(btn => {
+            btn.style.cursor = 'pointer';
+        });
+    }
+
+    private handleSave(): void {
+        const name = this.nameInput.getValue().trim();
+        if (!name) {
+            new Notice('Template name is required.');
+            return;
+        }
+        this.onSave(name);
+        this.close();
+    }
+}
 
 export class BookDesignerModal extends Modal {
     private plugin: RadialTimelinePlugin;
@@ -22,6 +101,27 @@ export class BookDesignerModal extends Modal {
     // Preview
     private previewHostEl: HTMLElement | null = null;
     private previewUpdateRaf: number | null = null;
+    private previewStatusEl: HTMLElement | null = null;
+
+    // Layout + templates
+    private sceneAssignments: BookDesignerSceneAssignment[] = [];
+    private distributionMode: 'auto' | 'manual' = 'auto';
+    private activeTemplateId: string | null = null;
+    private isApplyingTemplate: boolean = false;
+
+    // Drag state
+    private dragState: { sceneNumber: number; pointerId: number; dims: PreviewDims; targetAct: number; targetSubplot: number } | null = null;
+
+    // Input refs for template/application updates
+    private timeIncrementInput: TextComponent | null = null;
+    private scenesInput: TextComponent | null = null;
+    private targetRangeInput: TextComponent | null = null;
+    private subplotsInput: TextAreaComponent | null = null;
+    private characterInput: TextAreaComponent | null = null;
+    private templateDropdown: HTMLSelectElement | null = null;
+    private actCheckboxes: HTMLInputElement[] = [];
+    private templateTypePills: HTMLElement[] = [];
+    private beatPills: HTMLElement[] = [];
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app);
@@ -41,11 +141,260 @@ export class BookDesignerModal extends Modal {
         return [1, 2, 3].filter(a => a <= maxActs);
     }
 
+    private resetManualLayout(): void {
+        this.distributionMode = 'auto';
+        this.activeTemplateId = null;
+        this.sceneAssignments = this.rebuildAutoAssignments();
+        this.dragState = null;
+        this.updateDistributionStatus();
+    }
+
+    private markManualLayout(): void {
+        this.distributionMode = 'manual';
+        this.activeTemplateId = null;
+        this.updateDistributionStatus();
+    }
+
+    private rebuildAutoAssignments(): BookDesignerSceneAssignment[] {
+        const scenes = Math.max(1, Math.floor(this.scenesToGenerate || 1));
+        const actsList = this.getActsListSorted();
+        const subplotList = this.parseSubplots();
+
+        const buckets: number[][] = actsList.map(() => []);
+        const baseSize = Math.floor(scenes / actsList.length);
+        const rem = scenes % actsList.length;
+        const sizes = actsList.map(() => baseSize);
+        if (baseSize === 0) {
+            let r = rem;
+            let idx = 0;
+            while (r > 0 && idx < sizes.length) {
+                sizes[idx] += 1;
+                r -= 1;
+                idx += 1;
+            }
+        } else if (actsList.length === 3 && baseSize === 1 && rem === 2) {
+            sizes[0] = 2;
+            sizes[1] = 2;
+            sizes[2] = 1;
+        } else {
+            sizes[sizes.length - 1] += rem;
+        }
+
+        let actCursor = 0;
+        let remainingInAct = sizes[0] ?? scenes;
+        for (let i = 1; i <= scenes; i++) {
+            buckets[actCursor].push(i);
+            remainingInAct -= 1;
+            if (remainingInAct === 0 && actCursor < actsList.length - 1) {
+                actCursor += 1;
+                remainingInAct = sizes[actCursor];
+            }
+        }
+
+        const assignments: BookDesignerSceneAssignment[] = [];
+        buckets.forEach((sceneNums, idx) => {
+            const actNumber = actsList[idx];
+            sceneNums.forEach(sceneNum => {
+                const subplotIndex = (sceneNum - 1) % subplotList.length;
+                assignments.push({
+                    sceneNumber: sceneNum,
+                    act: actNumber,
+                    subplotIndex
+                });
+            });
+        });
+
+        // Ensure assignments are sorted by scene number
+        return assignments.sort((a, b) => a.sceneNumber - b.sceneNumber);
+    }
+
+    private getWorkingAssignments(): BookDesignerSceneAssignment[] {
+        const scenes = Math.max(1, Math.floor(this.scenesToGenerate || 1));
+        if (this.distributionMode === 'manual' && this.sceneAssignments.length === scenes) {
+            return this.sceneAssignments;
+        }
+        this.sceneAssignments = this.rebuildAutoAssignments();
+        this.distributionMode = 'auto';
+        this.updateDistributionStatus();
+        return this.sceneAssignments;
+    }
+
+    private coerceAssignments(assignments: BookDesignerSceneAssignment[], subplotCount: number, actsList: number[]): BookDesignerSceneAssignment[] {
+        const scenes = Math.max(1, Math.floor(this.scenesToGenerate || 1));
+        const auto = this.rebuildAutoAssignments();
+        const actSet = new Set(actsList);
+        const maxSubplot = Math.max(0, subplotCount - 1);
+
+        return Array.from({ length: scenes }, (_, idx) => {
+            const sceneNum = idx + 1;
+            const incoming = assignments.find(a => a.sceneNumber === sceneNum);
+            const fallback = auto[idx] ?? {
+                sceneNumber: sceneNum,
+                act: actsList[0] ?? 1,
+                subplotIndex: 0
+            };
+            if (!incoming) return fallback;
+            const act = actSet.has(incoming.act) ? incoming.act : fallback.act;
+            const subplotIndex = incoming.subplotIndex >= 0 && incoming.subplotIndex <= maxSubplot ? incoming.subplotIndex : Math.min(fallback.subplotIndex, maxSubplot);
+            return { sceneNumber: sceneNum, act, subplotIndex };
+        });
+    }
+
+    private getTemplateList(): BookDesignerTemplate[] {
+        const list = (this.plugin.settings as any).bookDesignerTemplates;
+        if (Array.isArray(list)) return list;
+        return [];
+    }
+
+    private async persistTemplateList(list: BookDesignerTemplate[]): Promise<void> {
+        (this.plugin.settings as any).bookDesignerTemplates = list;
+        await this.plugin.saveSettings();
+    }
+
+    private updateDistributionStatus(): void {
+        if (!this.previewStatusEl) return;
+        const mode = this.distributionMode === 'manual' ? 'Manual layout active' : 'Auto distribution';
+        const templatePart = this.activeTemplateId ? ' · From template' : '';
+        this.previewStatusEl.setText(`${mode}${templatePart}`);
+    }
+
+    private refreshTemplateDropdown(): void {
+        if (!this.templateDropdown) return;
+        const selectEl = this.templateDropdown;
+        selectEl.empty();
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.text = 'Select template';
+        selectEl.appendChild(placeholder);
+
+        const templates = this.getTemplateList();
+        templates.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.text = t.name;
+            if (this.activeTemplateId && this.activeTemplateId === t.id) {
+                opt.selected = true;
+            }
+            selectEl.appendChild(opt);
+        });
+    }
+
+    private openSaveTemplateModal(): void {
+        const defaultName = `Layout ${this.templateType === 'base' ? 'Basic' : 'Advanced'} ${new Date().toLocaleDateString()}`;
+        new SaveTemplateModal(this.app, (name) => {
+            void this.saveTemplate(name);
+        }, defaultName).open();
+    }
+
+    private async saveTemplate(name: string): Promise<void> {
+        const subplotList = this.parseSubplots();
+        const characters = this.character.split('\n').map(c => c.trim()).filter(Boolean);
+        const assignments = this.getWorkingAssignments();
+
+        const template: BookDesignerTemplate = {
+            id: `${Date.now()}`,
+            name,
+            templateType: this.templateType,
+            createdAt: new Date().toISOString(),
+            scenesToGenerate: this.scenesToGenerate,
+            targetRangeMax: this.targetRangeMax,
+            timeIncrement: this.timeIncrement,
+            selectedActs: [...this.selectedActs],
+            subplots: subplotList,
+            characters,
+            generateBeats: this.generateBeats,
+            assignments: assignments.map(a => ({ ...a }))
+        };
+
+        const existing = this.getTemplateList();
+        const filtered = existing.filter(t => t.name !== name);
+        filtered.unshift(template);
+        await this.persistTemplateList(filtered);
+        this.activeTemplateId = template.id;
+        this.refreshTemplateDropdown();
+        this.updateDistributionStatus();
+        new Notice(`Template "${name}" saved.`);
+    }
+
+    private applyTemplateById(templateId: string): void {
+        const tpl = this.getTemplateList().find(t => t.id === templateId);
+        if (!tpl) {
+            new Notice('Template not found.');
+            return;
+        }
+        this.applyTemplate(tpl);
+    }
+
+    private applyTemplate(template: BookDesignerTemplate): void {
+        this.isApplyingTemplate = true;
+
+        this.templateType = template.templateType;
+        this.scenesToGenerate = template.scenesToGenerate;
+        this.targetRangeMax = template.targetRangeMax;
+        this.timeIncrement = template.timeIncrement;
+        this.selectedActs = [...template.selectedActs];
+        this.subplots = template.subplots.join('\n') || 'Main Plot';
+        this.character = template.characters.join('\n') || 'Hero';
+        this.generateBeats = template.generateBeats;
+
+        const subplotCount = Math.max(1, template.subplots.length || this.parseSubplots().length);
+        const coerced = this.coerceAssignments(template.assignments, subplotCount, this.selectedActs);
+        this.sceneAssignments = coerced;
+        this.distributionMode = 'manual';
+        this.activeTemplateId = template.id;
+        this.isApplyingTemplate = false;
+
+        this.syncUiFromState();
+        this.updateDistributionStatus();
+        this.schedulePreviewUpdate();
+        new Notice(`Applied template "${template.name}".`);
+    }
+
+    private syncUiFromState(): void {
+        // Text inputs
+        if (this.timeIncrementInput) this.timeIncrementInput.setValue(this.timeIncrement);
+        if (this.scenesInput) this.scenesInput.setValue(this.scenesToGenerate.toString());
+        if (this.targetRangeInput) this.targetRangeInput.setValue(this.targetRangeMax.toString());
+        if (this.subplotsInput) this.subplotsInput.setValue(this.subplots);
+        if (this.characterInput) this.characterInput.setValue(this.character);
+
+        // Acts checkboxes
+        const maxActs = this.getMaxActs();
+        this.selectedActs = this.normalizeSelectedActs(maxActs);
+        this.actCheckboxes.forEach((input, idx) => {
+            const actNum = idx + 1;
+            input.checked = this.selectedActs.includes(actNum);
+        });
+
+        // Template pills
+        this.templateTypePills.forEach(pill => {
+            const id = pill.getAttr('data-template-id') as 'base' | 'advanced' | null;
+            if (!id) return;
+            if (id === this.templateType) pill.addClass('rt-is-active');
+            else pill.removeClass('rt-is-active');
+        });
+
+        // Beat pills
+        this.beatPills.forEach(pill => {
+            const val = pill.getAttr('data-generate-beats') === 'true';
+            if (val === this.generateBeats) pill.addClass('rt-is-active');
+            else pill.removeClass('rt-is-active');
+        });
+
+        this.refreshTemplateDropdown();
+    }
+
     onOpen(): void {
         const { contentEl, modalEl } = this;
         contentEl.empty();
         const maxActs = this.getMaxActs();
         this.selectedActs = Array.from({ length: maxActs }, (_, i) => i + 1);
+        this.sceneAssignments = this.rebuildAutoAssignments();
+        this.distributionMode = 'auto';
+        this.activeTemplateId = null;
+        this.actCheckboxes = [];
+        this.templateTypePills = [];
+        this.beatPills = [];
         
         // Use generic modal system + Book Designer specific class
         if (modalEl) {
@@ -82,6 +431,7 @@ export class BookDesignerModal extends Modal {
             .setName('Date increment per scene')
             .setDesc('Timeline increment across scenes (e.g. 1 hour, 1 day, 1 week).')
             .addText(text => {
+                this.timeIncrementInput = text;
                 text.setValue(this.timeIncrement)
                     .setPlaceholder('1 day');
                 text.inputEl.addClass('rt-input-sm');
@@ -135,6 +485,7 @@ export class BookDesignerModal extends Modal {
             .setName('Scenes to generate')
             .setDesc('Number of template scene files to create with YAML frontmatter.')
             .addText(text => {
+                this.scenesInput = text;
                 text
                     .setValue(this.scenesToGenerate.toString())
                     .onChange(value => {
@@ -142,6 +493,7 @@ export class BookDesignerModal extends Modal {
                         if (!isNaN(parsed) && parsed > 0) {
                             this.scenesToGenerate = parsed;
                             if (lengthSettingRef) this.updateTargetDesc(lengthSettingRef);
+                            if (!this.isApplyingTemplate) this.resetManualLayout();
                             this.schedulePreviewUpdate();
                         }
                     });
@@ -154,6 +506,7 @@ export class BookDesignerModal extends Modal {
             .setName('Target book length')
             .setDesc('Used for numbering distribution (e.g. 10, 20, 30...)')
             .addText(text => {
+                this.targetRangeInput = text;
                 text
                     .setValue(this.targetRangeMax.toString())
                     .onChange(value => {
@@ -182,6 +535,7 @@ export class BookDesignerModal extends Modal {
             const item = actChecks.createDiv({ cls: 'rt-manuscript-checkbox-item' });
             const input = item.createEl('input', { type: 'checkbox' });
             input.checked = this.selectedActs.includes(num);
+            this.actCheckboxes.push(input);
             input.onchange = () => {
                 if (input.checked) {
                     if (!this.selectedActs.includes(num)) this.selectedActs.push(num);
@@ -193,6 +547,7 @@ export class BookDesignerModal extends Modal {
                     input.checked = true; // force UI back
                 }
                 this.selectedActs = this.normalizeSelectedActs(actCountForUi);
+                if (!this.isApplyingTemplate) this.resetManualLayout();
                 this.schedulePreviewUpdate();
             };
             const label = item.createEl('label');
@@ -216,10 +571,12 @@ export class BookDesignerModal extends Modal {
             .setDesc('Enter one subplot per line.')
             .setClass('rt-setting-stacked')
             .addTextArea(text => {
+                this.subplotsInput = text;
                 text
                     .setValue(this.subplots)
                     .onChange(value => {
                         this.subplots = value;
+                        if (!this.isApplyingTemplate) this.resetManualLayout();
                         this.schedulePreviewUpdate();
                     });
                 text.inputEl.rows = 4;
@@ -241,6 +598,7 @@ export class BookDesignerModal extends Modal {
             .setDesc('Enter one character per line.')
             .setClass('rt-setting-stacked')
             .addTextArea(text => {
+                this.characterInput = text;
                 text
                     .setValue(this.character)
                     .onChange(value => this.character = value);
@@ -261,6 +619,8 @@ export class BookDesignerModal extends Modal {
         const previewCol = contentGrid.createDiv({ cls: 'rt-manuscript-preview-col' });
         previewCol.createDiv({ cls: 'rt-manuscript-preview-title', text: 'Preview' });
         this.previewHostEl = previewCol.createDiv({ cls: 'rt-manuscript-preview-host' });
+        this.previewStatusEl = previewCol.createDiv({ cls: 'rt-manuscript-preview-status', text: 'Auto distribution' });
+        this.updateDistributionStatus();
         this.schedulePreviewUpdate();
 
 
@@ -284,6 +644,8 @@ export class BookDesignerModal extends Modal {
             const pill = templPills.createDiv({ cls: 'rt-manuscript-pill' });
             pill.setText(opt.label);
             if (this.templateType === opt.id) pill.addClass('rt-is-active');
+            pill.setAttr('data-template-id', opt.id);
+            this.templateTypePills.push(pill);
             pill.onclick = () => {
                 templPills.querySelectorAll('.rt-manuscript-pill').forEach(p => p.removeClass('rt-is-active'));
                 pill.addClass('rt-is-active');
@@ -304,12 +666,59 @@ export class BookDesignerModal extends Modal {
             const pill = beatPills.createDiv({ cls: 'rt-manuscript-pill' });
             pill.setText(opt.label);
             if (this.generateBeats === opt.val) pill.addClass('rt-is-active');
+            pill.setAttr('data-generate-beats', String(opt.val));
+            this.beatPills.push(pill);
             pill.onclick = () => {
                 beatPills.querySelectorAll('.rt-manuscript-pill').forEach(p => p.removeClass('rt-is-active'));
                 pill.addClass('rt-is-active');
                 this.generateBeats = opt.val;
             };
         });
+
+        // Template load/save
+        const templateCard = extraCard.createDiv({ cls: 'rt-manuscript-card-block rt-manuscript-group-block' });
+        const templateSetting = new Setting(templateCard)
+            .setName('Layout templates')
+            .setDesc('Select a saved layout (acts, subplots, assignments, metadata).')
+            .addDropdown(drop => {
+                this.templateDropdown = drop.selectEl;
+                this.refreshTemplateDropdown();
+                drop.onChange(value => {
+                    if (!value) return;
+                    this.applyTemplateById(value);
+                });
+            });
+        templateSetting.settingEl.addClass('rt-manuscript-group-setting');
+
+        const templateActions = templateCard.createDiv({ cls: 'rt-template-actions' });
+        new ButtonComponent(templateActions)
+            .setButtonText('Save current as template')
+            .onClick(() => this.openSaveTemplateModal());
+
+        new ButtonComponent(templateActions)
+            .setButtonText('Commit manual layout')
+            .onClick(() => {
+                this.markManualLayout();
+                this.sceneAssignments = this.getWorkingAssignments();
+                this.schedulePreviewUpdate();
+                new Notice('Manual layout committed.');
+            });
+
+        new ButtonComponent(templateActions)
+            .setButtonText('Reset to auto')
+            .onClick(() => {
+                this.resetManualLayout();
+                this.schedulePreviewUpdate();
+                new Notice('Layout reset to auto distribution.');
+            });
+
+        new ButtonComponent(templateActions)
+            .setButtonText('Refresh auto layout')
+            .onClick(() => {
+                this.resetManualLayout();
+                this.schedulePreviewUpdate();
+                new Notice('Auto distribution refreshed.');
+            });
 
         // Actions Footer
         const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
@@ -406,50 +815,14 @@ export class BookDesignerModal extends Modal {
         if (!this.previewHostEl) return;
         this.previewHostEl.empty();
 
-        const scenes = Math.max(1, Math.floor(this.scenesToGenerate || 1));
         const subplotList = this.parseSubplots();
         const actsList = this.getActsListSorted();
+        const totalActs = this.getMaxActs();
+        const assignments = this.getWorkingAssignments();
 
-        // Prepare distribution buckets for each active act (block distribution)
-        // Rule:
-        // - base = floor(scenes / acts)
-        // - if base == 0: spread remainder from first act forward (e.g., 2 scenes -> 1,1,0)
-        // - special case: acts=3, base=1, rem=2 => 2,2,1 (user desired for 5 scenes)
-        // - otherwise (base > 0): add remainder to LAST act (e.g., 11 scenes -> 3,3,5)
-        const buckets: number[][] = actsList.map(() => []);
-        const baseSize = Math.floor(scenes / actsList.length);
-        const rem = scenes % actsList.length;
-        const sizes = actsList.map(() => baseSize);
-        if (baseSize === 0) {
-            let r = rem;
-            let idx = 0;
-            while (r > 0 && idx < sizes.length) {
-                sizes[idx] += 1;
-                r -= 1;
-                idx += 1;
-            }
-        } else if (actsList.length === 3 && baseSize === 1 && rem === 2) {
-            sizes[0] = 2;
-            sizes[1] = 2;
-            sizes[2] = 1;
-        } else {
-            sizes[sizes.length - 1] += rem;
-        }
-
-        let actCursor = 0;
-        let remainingInAct = sizes[0] ?? scenes;
-        for (let i = 1; i <= scenes; i++) {
-            buckets[actCursor].push(i);
-            remainingInAct -= 1;
-            if (remainingInAct === 0 && actCursor < actsList.length - 1) {
-                actCursor += 1;
-                remainingInAct = sizes[actCursor];
-            }
-        }
-
-        const size = 168;
-        const outerR = 74;
-        const innerR = 38; // empty inner core
+        const size = 260;
+        const outerR = 116;
+        const innerR = 52; // empty inner core
         const cx = size / 2;
         const cy = size / 2;
 
@@ -461,6 +834,7 @@ export class BookDesignerModal extends Modal {
 
         const subplotCount = Math.max(1, subplotList.length);
         const ringWidth = (outerR - innerR) / subplotCount;
+        const dims: PreviewDims = { cx, cy, outerR, innerR, subplotCount, totalActs, ringWidth };
 
         // Draw Guide Rings (One for outer + one for each subplot boundary)
         for (let i = 0; i <= subplotCount; i++) {
@@ -474,7 +848,6 @@ export class BookDesignerModal extends Modal {
 
         // Draw Act Divider Lines (dynamic wedges by configured acts)
         // 12 o'clock = -PI/2
-        const totalActs = this.getMaxActs();
         const actAngles = Array.from({ length: totalActs }, (_, idx) => -Math.PI / 2 + (idx * 2 * Math.PI) / totalActs);
 
         actAngles.forEach(angle => {
@@ -492,32 +865,27 @@ export class BookDesignerModal extends Modal {
             line.setAttr('stroke-width', '1');
         });
 
-        // Render Scenes per Act Sector
-        buckets.forEach((bucketScenes, bIdx) => {
-            const actNumber = actsList[bIdx];
-            // Map Act Number to Sector Index (0-based)
-            const sectorIndex = (actNumber - 1) % totalActs; 
-            
+        // Render Scenes per Act Sector from assignments
+        actsList.forEach(actNumber => {
+            const sectorIndex = (actNumber - 1) % totalActs;
             const sectorStart = actAngles[sectorIndex];
             const sectorSpan = (2 * Math.PI) / totalActs;
-            
-            const count = bucketScenes.length;
+
+            const actScenes = assignments
+                .filter(a => a.act === actNumber)
+                .sort((a, b) => a.sceneNumber - b.sceneNumber);
+
+            const count = actScenes.length;
             if (count === 0) return;
 
-            const anglePerScene = sectorSpan / count;
+            const anglePerScene = sectorSpan / Math.max(1, count);
 
-            bucketScenes.forEach((_, localIdx) => {
+            actScenes.forEach((assignment, localIdx) => {
                 const a0 = sectorStart + localIdx * anglePerScene;
                 const a1 = a0 + anglePerScene;
-                
-                // Draw Single Subplot Slice (Round Robin)
-                // Scene 1 -> Subplot 1, Scene 2 -> Subplot 2, etc.
-                // We need the global scene index to determine this.
-                // We stored 'i' (1-based scene num) in bucketScenes.
-                const sceneNum = bucketScenes[localIdx];
-                const subplotIndex = (sceneNum - 1) % subplotList.length;
-                
-                // Calculate concentric ring radius (Main plot = outer)
+
+                const subplotIndex = Math.min(Math.max(assignment.subplotIndex, 0), subplotList.length - 1);
+
                 const rOutLocal = outerR - (subplotIndex * ringWidth);
                 const rInLocal = rOutLocal - ringWidth;
 
@@ -525,7 +893,10 @@ export class BookDesignerModal extends Modal {
                 path.setAttr('d', this.donutSlicePath(cx, cy, rInLocal, rOutLocal, a0, a1));
                 path.setAttr('fill', this.subplotColor(subplotIndex, subplotList.length));
                 path.addClass('rt-manuscript-preview-slice');
-                path.setAttr('data-act', `${actNumber}`);
+                path.setAttr('data-act', `${assignment.act}`);
+                path.setAttr('data-scene', `${assignment.sceneNumber}`);
+                path.setAttr('data-subplot', `${subplotIndex}`);
+                path.addEventListener('pointerdown', (evt: PointerEvent) => this.beginDrag(evt, assignment.sceneNumber, dims));
             });
         });
 
@@ -557,6 +928,101 @@ export class BookDesignerModal extends Modal {
             `A ${r0} ${r0} 0 ${largeArc} 0 ${x1i} ${y1i}`,
             'Z'
         ].join(' ');
+    }
+
+    private beginDrag(evt: PointerEvent, sceneNumber: number, dims: PreviewDims): void {
+        const svg = (evt.currentTarget as SVGElement).closest('svg');
+        if (!svg) return;
+        this.dragState = { sceneNumber, pointerId: evt.pointerId, dims, targetAct: 0, targetSubplot: 0 };
+        svg.setPointerCapture(evt.pointerId);
+
+        const moveHandler = (moveEvt: PointerEvent) => this.handleDragMove(moveEvt, svg as SVGSVGElement, dims);
+        const upHandler = (upEvt: PointerEvent) => {
+            this.finishDrag(upEvt, svg as SVGSVGElement);
+            svg.removeEventListener('pointermove', moveHandler);
+            svg.removeEventListener('pointerup', upHandler);
+        };
+
+        svg.addEventListener('pointermove', moveHandler);
+        svg.addEventListener('pointerup', upHandler);
+    }
+
+    private handleDragMove(evt: PointerEvent, svg: SVGSVGElement, dims: PreviewDims): void {
+        if (!this.dragState) return;
+        const target = this.computeDropTarget(evt, svg, dims);
+        if (!target) return;
+        this.dragState.targetAct = target.act;
+        this.dragState.targetSubplot = target.subplotIndex;
+        if (this.previewStatusEl) {
+            const subplotList = this.parseSubplots();
+            const subplotLabel = subplotList[target.subplotIndex] || `Subplot ${target.subplotIndex + 1}`;
+            this.previewStatusEl.setText(`Dragging scene ${this.dragState.sceneNumber} → Act ${target.act}, ${subplotLabel}`);
+        }
+    }
+
+    private finishDrag(evt: PointerEvent, svg: SVGSVGElement): void {
+        if (!this.dragState) return;
+        const target = this.computeDropTarget(evt, svg, this.dragState.dims);
+        svg.releasePointerCapture(this.dragState.pointerId);
+
+        if (target) {
+            const assignments = this.getWorkingAssignments().map(a => ({ ...a }));
+            const idx = assignments.findIndex(a => a.sceneNumber === this.dragState!.sceneNumber);
+            if (idx >= 0) {
+                assignments[idx].act = target.act;
+                assignments[idx].subplotIndex = target.subplotIndex;
+                this.sceneAssignments = assignments;
+                this.markManualLayout();
+                this.schedulePreviewUpdate();
+            }
+        }
+        this.dragState = null;
+        this.updateDistributionStatus();
+    }
+
+    private computeDropTarget(evt: PointerEvent, svg: SVGSVGElement, dims: PreviewDims): { act: number; subplotIndex: number } | null {
+        const rect = svg.getBoundingClientRect();
+        const x = evt.clientX - rect.left;
+        const y = evt.clientY - rect.top;
+        const dx = x - dims.cx;
+        const dy = y - dims.cy;
+        const radius = Math.sqrt(dx * dx + dy * dy);
+        if (radius < dims.innerR || radius > dims.outerR) return null;
+
+        const angleRaw = Math.atan2(dy, dx); // radians, center at +x
+        const normalized = (angleRaw - (-Math.PI / 2) + 2 * Math.PI) % (2 * Math.PI); // 0 at 12 o'clock
+
+        const sectorSpan = (2 * Math.PI) / dims.totalActs;
+        const targetAct = this.closestSelectedAct(normalized, sectorSpan, dims.totalActs);
+
+        const offset = dims.outerR - radius;
+        const subplotIndex = Math.min(Math.max(Math.floor(offset / dims.ringWidth), 0), dims.subplotCount - 1);
+
+        return { act: targetAct, subplotIndex };
+    }
+
+    private closestSelectedAct(normalizedAngle: number, sectorSpan: number, totalActs: number): number {
+        const selected = this.getActsListSorted();
+        if (selected.length === 0) return 1;
+        let bestAct = selected[0];
+        let bestDiff = Number.MAX_VALUE;
+        selected.forEach(act => {
+            const center = ((act - 1) * sectorSpan) + (sectorSpan / 2);
+            const diff = Math.abs(this.wrapAngle(normalizedAngle - center));
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                bestAct = act;
+            }
+        });
+        return bestAct;
+    }
+
+    private wrapAngle(angle: number): number {
+        const twoPi = 2 * Math.PI;
+        let a = angle % twoPi;
+        if (a > Math.PI) a -= twoPi;
+        if (a < -Math.PI) a += twoPi;
+        return Math.abs(a);
     }
 
     async generateBook(): Promise<void> {
@@ -599,6 +1065,7 @@ export class BookDesignerModal extends Modal {
 
         // Ensure we don't divide by zero if user sets range < count
         const rangeMax = Math.max(this.targetRangeMax, this.scenesToGenerate);
+        const assignments = this.getWorkingAssignments();
         
         // Distribution Logic:
         // We want to distribute 'scenesToGenerate' items across 'rangeMax' slots.
@@ -659,41 +1126,14 @@ export class BookDesignerModal extends Modal {
                 sceneNum = Math.round(1 + (i - 1) * step);
             }
 
-            // Act Distribution (Block method with remainder; if base==0 spread from first; special 2,2,1 case)
-            const actsList = this.selectedActs.length > 0 ? [...this.selectedActs].sort() : [1];
-            const baseSize = Math.floor(this.scenesToGenerate / actsList.length);
-            const remAct = this.scenesToGenerate % actsList.length;
-            const sizes = actsList.map(() => baseSize);
-            if (baseSize === 0) {
-                let r = remAct;
-                let idx = 0;
-                while (r > 0 && idx < sizes.length) {
-                    sizes[idx] += 1;
-                    r -= 1;
-                    idx += 1;
-                }
-            } else if (actsList.length === 3 && baseSize === 1 && remAct === 2) {
-                sizes[0] = 2;
-                sizes[1] = 2;
-                sizes[2] = 1;
-            } else {
-                sizes[sizes.length - 1] += remAct; // remainder to last act
-            }
-
-            let actIndex = 0;
-            let remaining = sizes[0] ?? this.scenesToGenerate;
-            for (let n = 1; n <= i; n++) {
-                if (remaining === 0 && actIndex < actsList.length - 1) {
-                    actIndex += 1;
-                    remaining = sizes[actIndex];
-                }
-                remaining -= 1;
-            }
-            const act = actsList[actIndex];
-
-            // Subplot Distribution (Round Robin)
-            const subplotIndex = (i - 1) % subplotList.length;
-            const assignedSubplots = [subplotList[subplotIndex]];
+            const assignment = assignments.find(a => a.sceneNumber === i) ?? {
+                sceneNumber: i,
+                act: this.selectedActs[0] ?? 1,
+                subplotIndex: (i - 1) % subplotList.length
+            };
+            const act = assignment.act;
+            const subplotIndex = Math.min(Math.max(assignment.subplotIndex, 0), subplotList.length - 1);
+            const assignedSubplots = [subplotList[subplotIndex] ?? subplotList[0]];
 
             // Process characters: inline YAML (string for 1, array for >1)
             const characterList = this.character.split('\n').map(c => c.trim()).filter(c => c.length > 0);

@@ -19,6 +19,27 @@ export interface AiContextTemplate {
     isBuiltIn: boolean;
 }
 
+export interface BookDesignerSceneAssignment {
+    sceneNumber: number;
+    act: number;
+    subplotIndex: number;
+}
+
+export interface BookDesignerTemplate {
+    id: string;
+    name: string;
+    templateType: 'base' | 'advanced';
+    createdAt: string;
+    scenesToGenerate: number;
+    targetRangeMax: number;
+    timeIncrement: string;
+    selectedActs: number[];
+    subplots: string[];
+    characters: string[];
+    generateBeats: boolean;
+    assignments: BookDesignerSceneAssignment[];
+}
+
 export interface RadialTimelineSettings {
     sourcePath: string;
     showSourcePathAsTitle?: boolean;
@@ -83,6 +104,7 @@ export interface RadialTimelineSettings {
         base: string;
         advanced: string;
     };
+    bookDesignerTemplates?: BookDesignerTemplate[];
     backdropYamlTemplate?: string;
 }
 
