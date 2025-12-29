@@ -33,14 +33,17 @@ function runCommand(command, description, silent = false, allowFail = false) {
 }
 
 function updateManifestAndVersions(targetVersion) {
-    // Keep manifest.json and versions.json in sync with package.json
+    // Keep manifest files and versions.json in sync with package.json
     const manifestPath = 'src/manifest.json';
+    const rootManifestPath = 'manifest.json';
     const versionsPath = 'versions.json';
     try {
         const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
         const { minAppVersion } = manifest;
         manifest.version = targetVersion;
+        // Write both the source and root manifests so Obsidian's updater sees the bump
         writeFileSync(manifestPath, JSON.stringify(manifest, null, '\t'));
+        writeFileSync(rootManifestPath, JSON.stringify(manifest, null, '\t'));
 
         const versions = JSON.parse(readFileSync(versionsPath, 'utf8'));
         versions[targetVersion] = minAppVersion;
