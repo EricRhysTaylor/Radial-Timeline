@@ -3,9 +3,10 @@
     {
       "version": "5.0.1",
       "title": "5.0.1",
-      "body": "## What's Changed\n\n### New Features\n- Bug - Release script allowed the manifest to not update properly with the new release ([4e14615](https://github.com/EricRhysTaylor/Radial-Timeline/commit/4e146158260bc80fe5228b610749c6ad152227f0))\n\n### Improvements\n- Update and reorganized wiki ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\n\n### Documentation\n- Settings inline links to related wiki docs ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\n\n### Other Changes\n- src/data/releaseNotesBundle.json ([0266102](https://github.com/EricRhysTaylor/Radial-Timeline/commit/0266102a1a6e63f8d2c9d43f3a49ad44428ce537))",
-      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.1",
-      "publishedAt": "2025-12-29T17:41:22.868Z"
+      "body": "## What's Changed\r\n\r\n### Bug\r\n- Release script allowed the manifest to not update properly with the new release ([4e14615](https://github.com/EricRhysTaylor/Radial-Timeline/commit/4e146158260bc80fe5228b610749c6ad152227f0)) Peventing Obsidian from detecting and updating plugin.\r\n\r\n### Improvements\r\n- New Release Alert in Timeline now shows versions on hover. Large click zone.\r\n- Update and reorganized wiki ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\r\n\r\n### Documentation\r\n- Settings inline links to related wiki docs ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-f7b7e7e9c69269a0c81c",
+      "publishedAt": "2025-12-29T17:45:40.734Z",
+      "isDraft": true
     },
     {
       "version": "5.0.0",
@@ -28,17 +29,9 @@
   "latest": {
     "version": "5.0.1",
     "title": "5.0.1",
-    "body": "## What's Changed\n\n### New Features\n- Bug - Release script allowed the manifest to not update properly with the new release ([4e14615](https://github.com/EricRhysTaylor/Radial-Timeline/commit/4e146158260bc80fe5228b610749c6ad152227f0))\n\n### Improvements\n- Update and reorganized wiki ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\n\n### Documentation\n- Settings inline links to related wiki docs ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\n\n### Other Changes\n- src/data/releaseNotesBundle.json ([0266102](https://github.com/EricRhysTaylor/Radial-Timeline/commit/0266102a1a6e63f8d2c9d43f3a49ad44428ce537))",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.1",
-    "publishedAt": "2025-12-29T17:41:22.868Z"
-  },
-  "patches": [
-    {
-      "version": "5.0.1",
-      "title": "5.0.1",
-      "body": "## What's Changed\n\n### New Features\n- Bug - Release script allowed the manifest to not update properly with the new release ([4e14615](https://github.com/EricRhysTaylor/Radial-Timeline/commit/4e146158260bc80fe5228b610749c6ad152227f0))\n\n### Improvements\n- Update and reorganized wiki ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\n\n### Documentation\n- Settings inline links to related wiki docs ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\n\n### Other Changes\n- src/data/releaseNotesBundle.json ([0266102](https://github.com/EricRhysTaylor/Radial-Timeline/commit/0266102a1a6e63f8d2c9d43f3a49ad44428ce537))",
-      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.1",
-      "publishedAt": "2025-12-29T17:41:22.868Z"
-    }
-  ]
+    "body": "## What's Changed\r\n\r\n### Bug\r\n- Release script allowed the manifest to not update properly with the new release ([4e14615](https://github.com/EricRhysTaylor/Radial-Timeline/commit/4e146158260bc80fe5228b610749c6ad152227f0)) Peventing Obsidian from detecting and updating plugin.\r\n\r\n### Improvements\r\n- New Release Alert in Timeline now shows versions on hover. Large click zone.\r\n- Update and reorganized wiki ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\r\n\r\n### Documentation\r\n- Settings inline links to related wiki docs ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-f7b7e7e9c69269a0c81c",
+    "publishedAt": "2025-12-29T17:45:40.734Z",
+    "isDraft": true
+  }
 }
