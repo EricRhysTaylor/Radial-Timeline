@@ -49,10 +49,14 @@ const VERSION_TEXT_CHAR_WIDTH_RATIO = 0.62;
 /** Minimum inner padding from the SVG/circle edge for the version indicator */
 const VERSION_INDICATOR_SAFE_PADDING = 32;
 
-/** Hit area size for the icon (px) — see .rt-version-icon-hitarea */
+/** Hit area size for the icon (px) — see .rt-version-hitarea */
 const ICON_HITAREA_SIZE = 32;
 
 const ICON_HITAREA_HALF_WIDTH = ICON_HITAREA_SIZE / 2;
+
+/** Extra padding for the unified hit area (px) */
+const HITAREA_HORIZONTAL_PADDING = 12;
+const HITAREA_VERTICAL_PADDING = 10;
 
 function estimateTextHalfWidth(text: string): number {
     const trimmed = text.trim();
@@ -99,10 +103,18 @@ function getUpdateSeverity(current: string, latest: string | undefined): 'none' 
 export function renderVersionIndicator(options: VersionIndicatorOptions): string {
     const { version, hasUpdate, latestVersion } = options;
 
-    const rawVersionText = hasUpdate ? 'NEW RELEASE' : version;
+    const currentVersionLabel = version.trim() || version;
+    const latestVersionLabel = (latestVersion ?? '').trim();
+    const updateRangeText = latestVersionLabel
+        ? `${currentVersionLabel} -> ${latestVersionLabel}`
+        : currentVersionLabel;
+
+    const rawVersionText = hasUpdate ? 'NEW RELEASE' : currentVersionLabel;
     const versionText = rawVersionText.trim() || rawVersionText;
 
-    const actionText = hasUpdate ? 'UPDATE TO LATEST VERSION' : 'REPORT BUG';
+    const actionText = hasUpdate
+        ? (updateRangeText || 'UPDATE TO LATEST VERSION')
+        : 'REPORT BUG';
 
     const versionTextHalfWidth = estimateTextHalfWidth(versionText);
     const actionTextHalfWidth = estimateTextHalfWidth(actionText);
@@ -134,12 +146,34 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
     const iconX = -(iconSize / 2);
     const iconY = 10;  // Below the text baseline
 
+    // Hit area sized to cover text + icon to prevent hover flicker
+    const hitAreaWidth = Math.max(
+        ICON_HITAREA_SIZE + HITAREA_HORIZONTAL_PADDING * 2,
+        (maxHalfWidth * 2) + (HITAREA_HORIZONTAL_PADDING * 2)
+    );
+    const hitAreaX = -(hitAreaWidth / 2);
+    const hitAreaY = -(VERSION_TEXT_FONT_SIZE_PX + HITAREA_VERTICAL_PADDING);
+    const hitAreaHeight = (VERSION_TEXT_FONT_SIZE_PX + HITAREA_VERTICAL_PADDING) + (iconY + iconSize + HITAREA_VERTICAL_PADDING);
+
     // Choose icon based on update state
     const iconContent = hasUpdate ? BADGE_ALERT_ICON : BUG_ICON;
     const iconClass = hasUpdate ? 'rt-version-alert-icon' : 'rt-version-bug-icon';
 
     return `
         <g id="version-indicator" class="${groupClasses.join(' ')}" transform="translate(${x}, ${y})">
+            <title>${hasUpdate ? updateRangeText : currentVersionLabel}</title>
+
+            <!-- Unified hit area covers text and icon for consistent hover/click -->
+            <rect class="rt-version-hitarea"
+                x="${formatNumber(hitAreaX)}"
+                y="${formatNumber(hitAreaY)}"
+                width="${formatNumber(hitAreaWidth)}"
+                height="${formatNumber(hitAreaHeight)}"
+                rx="6" ry="6"
+                fill="white" fill-opacity="0" stroke="none" pointer-events="all">
+                <title>${hasUpdate ? updateRangeText : currentVersionLabel}</title>
+            </rect>
+
             <!-- Version text (visible by default) -->
             <text class="rt-version-text rt-version-number" x="0" y="0">
                 ${versionText}
@@ -152,14 +186,11 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
             
             <!-- Icon below version: Bug icon (no update) or Alert icon (update available) -->
             <g class="${iconClass}" transform="translate(${formatNumber(iconX)}, ${formatNumber(iconY)}) scale(${iconScale})">
+                <title>${hasUpdate ? updateRangeText : currentVersionLabel}</title>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
                     ${iconContent}
                 </svg>
             </g>
-            
-            <!-- Invisible hit area for icon click -->
-            <rect class="rt-version-icon-hitarea" x="${formatNumber(iconX - 4)}" y="${formatNumber(iconY - 4)}" width="${ICON_HITAREA_SIZE}" height="${ICON_HITAREA_SIZE}" fill="white" fill-opacity="0" stroke="none" pointer-events="all">
-            </rect>
         </g>
     `;
 }

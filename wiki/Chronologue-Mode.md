@@ -1,6 +1,6 @@
 **Constructing Your Story Timeline**
 
-[![Chronologue Mode Walkthrough](https://img.youtube.com/vi/XKWq32LB0d0/0.jpg)](https://www.youtube.com/watch?v=XKWq32LB0d0)
+[![Chronologue Mode Walkthrough](https://img.youtube.com/vi/XKWq32LB0d0/hqdefault.jpg)](https://www.youtube.com/watch?v=XKWq32LB0d0)
 > *Watch the full walkthrough on [YouTube](https://www.youtube.com/watch?v=XKWq32LB0d0)*
 
 Chronologue mode is essential for constructing and visualizing the chronological backbone of your story—particularly valuable for non-linear narratives, mysteries, thrillers, or any story where **when events happen** differs from **when you reveal them**. The palette matches Narrative mode (subplot colors only) so the timing comparisons stay clean while Subplot Mode retains the Todo/Working/Overdue and publish-stage overlays.
@@ -34,6 +34,26 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
 <div style="text-align: center; margin: 20px 0;">
   <img src="images/duration.png" alt="Duration Marks in Chronologue Mode (red, orange and normal)" style="width: 380; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Duration Marks in Chronologue Mode (red, orange and normal)</div>
+</div>
+
+### Shift Mode (bones view)
+- Toggle with **Shift** (or Caps Lock) to strip the overlays and see the raw chronological scaffold.
+- Click any two scenes to measure elapsed story time; keep clicking to update the arc.
+- Discontinuities (∞ gaps) stay visible so you can spot missing bridges fast.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/shift.jpeg" alt="Shift mode wireframe view in Chronologue" style="width: 420; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Shift mode wireframe view</div>
+</div>
+
+### Alt Modes (alien/planetary overlay)
+- Use **Alt** to enter the planetary wireframe for your active local time profile.
+- Alt+Shift mirrors Shift mode but tinted for alien time; great for comparing Earth vs local calendars.
+- All scene timings still derive from Earth timestamps; the overlay is a translation layer.
+
+<div style="text-align: center; margin: 20px 0;">
+  <img src="images/alt.jpg" alt="Alt planetary wireframe overlay in Chronologue" style="width: 420; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Alt planetary wireframe overlay</div>
 </div>
 
 

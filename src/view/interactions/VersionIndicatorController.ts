@@ -52,52 +52,28 @@ export function setupVersionIndicatorController(view: VersionIndicatorView, svg:
     const versionIndicator = svg.querySelector('#version-indicator') as SVGGElement | null;
     if (!versionIndicator) return;
 
-    // Find the icon hit area
-    const iconHitarea = versionIndicator.querySelector('.rt-version-icon-hitarea') as SVGRectElement | null;
-    
-    // Handle click on icon area
-    if (iconHitarea) {
-        view.registerDomEvent(iconHitarea as unknown as HTMLElement, 'click', (ev: Event) => {
-            ev.stopPropagation();
-            try {
-                const versionService = getVersionCheckService();
-                if (versionService.isUpdateAvailable()) {
-                    // Update available - open Obsidian's settings to community plugins
-                    versionService.openUpdateSettings(view.plugin.app);
-                } else {
-                    // No update - open GitHub issues for bug reporting
-                    window.open(BUG_REPORT_URL, '_blank');
-                }
-            } catch {
-                // Fallback: open bug report URL
+    const hitArea = versionIndicator.querySelector('.rt-version-hitarea') as SVGRectElement | null;
+
+    const handleClick = (ev: Event) => {
+        ev.stopPropagation();
+        try {
+            const versionService = getVersionCheckService();
+            if (versionService.isUpdateAvailable()) {
+                versionService.openUpdateSettings(view.plugin.app);
+            } else {
                 window.open(BUG_REPORT_URL, '_blank');
             }
-        });
-    }
-
-    // Also handle click on the icon group itself
-    const bugIcon = versionIndicator.querySelector('.rt-version-bug-icon') as SVGGElement | null;
-    const alertIcon = versionIndicator.querySelector('.rt-version-alert-icon') as SVGGElement | null;
-    
-    if (bugIcon) {
-        view.registerDomEvent(bugIcon as unknown as HTMLElement, 'click', (ev: Event) => {
-            ev.stopPropagation();
+        } catch {
             window.open(BUG_REPORT_URL, '_blank');
-        });
+        }
+    };
+
+    // Prefer the unified hit area; fall back to the whole indicator group
+    if (hitArea) {
+        view.registerDomEvent(hitArea as unknown as HTMLElement, 'click', handleClick);
     }
+    view.registerDomEvent(versionIndicator as unknown as HTMLElement, 'click', handleClick);
     
-    if (alertIcon) {
-        view.registerDomEvent(alertIcon as unknown as HTMLElement, 'click', (ev: Event) => {
-            ev.stopPropagation();
-            try {
-                const versionService = getVersionCheckService();
-                versionService.openUpdateSettings(view.plugin.app);
-            } catch {
-                // Ignore
-            }
-        });
-    }
-    
-    // Set cursor to pointer for the icon area
+    // Set cursor to pointer for the entire indicator area
     versionIndicator.style.cursor = 'pointer';
 }

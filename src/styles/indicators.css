@@ -3,7 +3,7 @@
    Bottom-right corner version display with update alert
    ============================================================================= */
 .rt-version-indicator {
-  cursor: default;
+  cursor: pointer;
   transition: filter 0.2s ease;
 }
 
@@ -11,8 +11,8 @@
   filter: drop-shadow(0 0 5px var(--text-muted));
 }
 
-.rt-version-indicator.rt-has-update {
-  cursor: pointer;
+.rt-version-hitarea {
+  pointer-events: all;
 }
 
 /* =============================================================================

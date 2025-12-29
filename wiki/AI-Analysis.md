@@ -8,8 +8,8 @@
 **Settings**: `AI LLM for scene analysis`
 
 <div style="text-align: center; margin: 20px 0;">
-  <img src="images/beats.png" alt="Story Beats Analysis" style="width: 600; max-width: 100%;" />
-  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Story Beats Analysis</div>
+  <img src="images/beats.png" alt="Story Pulse Analysis" style="width: 600; max-width: 100%;" />
+  <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Story Pulse Analysis</div>
 </div>
 
 ## Local LLM / Ollama Guide
@@ -88,7 +88,7 @@ For users developing custom integrations or troubleshooting local LLM responses,
 | `currentSceneAnalysis` | array | **Yes** | Analysis of the current scene (at least one item required) |
 | `nextSceneAnalysis` | array | No | Analysis of how the next scene builds on the current scene |
 
-**Beat Item Structure:**
+**Pulse Item Structure:**
 
 Each array item must have:
 
