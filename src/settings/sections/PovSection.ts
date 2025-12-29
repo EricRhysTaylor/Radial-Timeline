@@ -1,6 +1,7 @@
 import { Setting as ObsidianSetting } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { GlobalPovMode } from '../../types/settings';
+import { addWikiLink } from '../wikiLink';
 
 const POV_MODE_OPTIONS: Record<GlobalPovMode, string> = {
     off: 'first listed character (pov)',
@@ -17,9 +18,10 @@ export function renderPovSection(params: {
 }): void {
     const { plugin, containerEl } = params;
 
-    new ObsidianSetting(containerEl)
+    const povHeading = new ObsidianSetting(containerEl)
         .setName('Point of view')
         .setHeading();
+    addWikiLink(povHeading, 'Settings#pov');
 
     const storedMode = plugin.settings.globalPovMode;
     const currentMode: GlobalPovMode = storedMode && storedMode in POV_MODE_OPTIONS ? storedMode : 'off';

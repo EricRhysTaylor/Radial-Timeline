@@ -3,6 +3,7 @@ import type RadialTimelinePlugin from '../../main';
 import type { PlanetaryProfile } from '../../types';
 import { convertFromEarth, parseCommaNames, validatePlanetaryProfile } from '../../utils/planetaryTime';
 import { t } from '../../i18n';
+import { addWikiLinkToElement } from '../wikiLink';
 
 interface SectionParams {
     app: App;
@@ -45,7 +46,8 @@ export function renderPlanetaryTimeSection({ plugin, containerEl }: SectionParam
     }
 
     // Section header and description (use Obsidian defaults)
-    containerEl.createEl('h3', { text: t('planetary.heading') });
+    const headerEl = containerEl.createEl('h3', { text: t('planetary.heading') });
+    addWikiLinkToElement(headerEl, 'Settings#planetary-time');
 
     // Feature toggle
     const visibilityTargets: HTMLElement[] = [];

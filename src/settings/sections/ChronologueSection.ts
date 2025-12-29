@@ -2,6 +2,7 @@ import { App, Setting as Settings, Notice, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { TimelineItem } from '../../types';
 import { parseDurationDetail, formatDurationSelectionLabel, calculateAutoDiscontinuityThreshold } from '../../utils/date';
+import { addWikiLink } from '../wikiLink';
 
 interface DurationCapOption {
     key: string;
@@ -55,9 +56,10 @@ async function collectDurationCapOptions(plugin: RadialTimelinePlugin): Promise<
 export function renderChronologueSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
 
-    new Settings(containerEl)
+    const chronoHeading = new Settings(containerEl)
         .setName('Chronologue mode settings')
         .setHeading();
+    addWikiLink(chronoHeading, 'Settings#chronologue');
 
     // 1. Chronologue duration arc cap
     const baseDurationDesc = 'Scenes with durations at or above the selected value fill the entire segment. All other durations below this are proportionally scaled.';

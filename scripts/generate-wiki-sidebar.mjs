@@ -4,31 +4,49 @@ import path from 'path';
 const WIKI_DIR = 'wiki';
 const SIDEBAR_FILE = path.join(WIKI_DIR, '_Sidebar.md');
 
-// Define the desired order and hierarchy manually for better control, 
-// or leave empty to auto-discover (auto-discovery is simple alphabetical in this basic script)
+// Define the desired order and hierarchy manually for better control.
 const STRUCTURE = [
     { name: 'Home', link: 'Home' },
     {
-        group: 'User Guide',
+        group: 'Getting Started',
         items: [
             { name: 'Core Workflows', link: 'Core-Workflows' },
+            { name: 'How-to', link: 'How-to' },
+            { name: 'View Modes', link: 'View-Modes' },
+        ]
+    },
+    {
+        group: 'Modes',
+        items: [
             { name: 'Chronologue Mode', link: 'Chronologue-Mode' },
             { name: 'Gossamer Mode', link: 'Gossamer-Mode' },
+            { name: 'Narrative Mode', link: 'Narrative-Mode' },
+            { name: 'Subplot Mode', link: 'Subplot-Mode' },
+        ]
+    },
+    {
+        group: 'Features & Tools',
+        items: [
             { name: 'AI Analysis', link: 'AI-Analysis' },
+            { name: 'Book Designer', link: 'Book-Designer' },
         ]
     },
     {
         group: 'Reference',
         items: [
-            { name: 'View Modes', link: 'View-Modes' },
-            { name: 'YAML Frontmatter', link: 'YAML-Frontmatter' },
+            { name: 'Advanced YAML', link: 'Advanced-YAML' },
+            { name: 'Commands', link: 'Commands' },
             { name: 'Settings', link: 'Settings' },
+            { name: 'YAML Frontmatter', link: 'YAML-Frontmatter' },
         ]
     },
     {
-        group: 'Technical & FAQ',
+        group: 'Support & Legal',
         items: [
-            { name: 'Technical', link: 'Technical' },
+            { name: 'Acknowledgments', link: 'Acknowledgments' },
+            { name: 'FAQ', link: 'FAQ' },
+            { name: 'License', link: 'License' },
+            { name: 'Notice', link: 'Notice' },
         ]
     }
 ];

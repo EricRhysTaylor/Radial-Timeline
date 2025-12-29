@@ -1,20 +1,22 @@
 *   [[Home]]
-*   **User Guide**
+*   **Getting Started**
     *   [[Core Workflows]]
-    *   [[Book Designer]]
-    *   [[Narrative Mode]]
-    *   [[Subplot Mode]]
+    *   [[How-to]]
+    *   [[View Modes]]
+*   **Modes**
     *   [[Chronologue Mode]]
     *   [[Gossamer Mode]]
+    *   [[Narrative Mode]]
+    *   [[Subplot Mode]]
+*   **Features & Tools**
     *   [[AI Analysis]]
-    *   [[How-to]]
+    *   [[Book Designer]]
 *   **Reference**
+    *   [[Advanced YAML]]
     *   [[Commands]]
     *   [[Settings]]
-    *   [[View Modes]]
     *   [[YAML Frontmatter]]
-*   **Technical & Help**
-    *   [[Technical]]
+*   **Support & Legal**
     *   [[Acknowledgments]]
     *   [[FAQ]]
     *   [[License]]

@@ -1147,3 +1147,19 @@
   color: var(--text-normal);
   line-height: 1.3;
 }
+
+/* Wiki Link Styles */
+.rt-wiki-link {
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  opacity: 0.6;
+  transform: scale(0.8);
+  padding-bottom: 5px;
+  transition: opacity 0.2s ease;
+}
+
+.rt-wiki-link:hover {
+  opacity: 1;
+}

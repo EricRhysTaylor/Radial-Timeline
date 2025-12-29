@@ -6,6 +6,7 @@
 
 import type { TimelineItem, RadialTimelineSettings } from '../types';
 import type { GossamerRun } from '../utils/gossamer';
+import { getVersionCheckService } from '../services/VersionCheckService';
 
 /**
  * Types of changes that can trigger renders
@@ -21,6 +22,7 @@ export enum ChangeType {
     GOSSAMER = 'gossamer',            // Gossamer data updated
     DOMINANT_SUBPLOT = 'dominant_subplot',  // Dominant subplot changed (scene colors only)
     SYNOPSIS = 'synopsis',            // Synopsis text changed
+    UPDATE_STATUS = 'update_status',  // Plugin update available
 }
 
 /**
@@ -55,6 +57,9 @@ export interface TimelineSnapshot {
     // Gossamer
     gossamerRunExists: boolean;
     gossamerRunHash: string;
+    
+    // Plugin Update Status
+    updateAvailable: boolean;
     
     timestamp: number;
 }
@@ -175,6 +180,7 @@ export function createSnapshot(
         povMode: settings.globalPovMode ?? 'off',
         gossamerRunExists: !!gossamerRun,
         gossamerRunHash,
+        updateAvailable: getVersionCheckService()?.isUpdateAvailable() ?? false,
         timestamp: Date.now()
     };
 }
@@ -246,6 +252,11 @@ export function detectChanges(
         changeTypes.add(ChangeType.GOSSAMER);
     }
     
+    // Detect update status changes
+    if (prev.updateAvailable !== current.updateAvailable) {
+        changeTypes.add(ChangeType.UPDATE_STATUS);
+    }
+    
     // Determine update strategy
     const hasChanges = changeTypes.size > 0;
     
@@ -306,6 +317,7 @@ export function describeChanges(result: ChangeDetectionResult): string {
             case ChangeType.SETTINGS: return 'settings';
             case ChangeType.TIME: return 'time';
             case ChangeType.GOSSAMER: return 'gossamer';
+            case ChangeType.UPDATE_STATUS: return 'plugin update';
             default: return type;
         }
     }).join(', ');

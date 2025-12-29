@@ -17,3 +17,23 @@ Gossamer Mode visualizes narrative momentum using story beat scores. Timeline gr
   <img src="images/gossamer.png" alt="Gossamer Range & Three Scores" style="width: 400; max-width: 100%;" />
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Gossamer Range & Three Scores</div>
 </div>
+
+## Story Beats Configuration
+
+You can configure the underlying system that powers Gossamer Mode in **Settings → Story beats system**.
+
+### 1. Select a System
+Choose a preset structure:
+*   **Save The Cat** (15 beats)
+*   **Hero's Journey** (12 beats)
+*   **Story Grid** (5 Commandments)
+*   **Custom**: Define your own structure.
+
+### 2. Custom Beat System
+When "Custom" is selected, a configuration area appears:
+*   **Name**: Give your system a name (e.g., "7 Point Structure").
+*   **Edit Beats**: Add beats, rename them, and assign them to specific Acts.
+*   **Reorder**: Drag and drop beats to change their order.
+
+### 3. Create Templates
+Click **Create template beat notes** to generate a set of notes in your source folder, one for each beat in your selected system. These notes come pre-populated with the correct YAML frontmatter (`Class: Beat`, `Beat Model`, `Range`, etc.) so they are immediately recognized by Gossamer Mode.

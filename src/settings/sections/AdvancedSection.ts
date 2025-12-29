@@ -2,13 +2,15 @@ import { App, Setting as Settings, Notice, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { clearFontMetricsCaches } from '../../renderer/utils/FontMetricsCache';
 import { t } from '../../i18n';
+import { addWikiLink } from '../wikiLink';
 
 export function renderAdvancedSection(params: { app: App; plugin: RadialTimelinePlugin; containerEl: HTMLElement; }): void {
     const { app, plugin, containerEl } = params;
 
-    new Settings(containerEl)
+    const advancedHeading = new Settings(containerEl)
         .setName(t('settings.advanced.heading'))
         .setHeading();
+    addWikiLink(advancedHeading, 'Settings#advanced');
 
     // 0. AI output folder for logs and generated files
     new Settings(containerEl)

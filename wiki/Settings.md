@@ -1,58 +1,114 @@
+# Settings Reference
+
 Access via Obsidian **Settings → Community Plugins → Radial Timeline**.
 
-Below is the **current settings order** as implemented in `src/settings/SettingsTab.ts`.
+This page serves as a comprehensive reference for all plugin settings.
 
+<a name="general"></a>
 ### Source path
-*   **Source path**: Root folder for your manuscript scene files (e.g., `Book 1`). Leave blank to scan the entire vault.
-*   **Show source path as title**: When on, uses the source folder name as the work title; when off shows “Work in Progress”.
+*   **Source path**: The root folder in your vault containing your manuscript scene files (e.g., `Book 1`). Leave blank to scan the entire vault.
+*   **Show source path as title**: When enabled, the timeline uses the source folder name as the central title. When disabled, it displays "Work in Progress".
 
+<a name="publication"></a>
 ### Publication and progress
-*   **Target completion date**: Optional target (YYYY-MM-DD). Marker appears on the outer ring.
-*   **Zero draft mode**: Intercepts clicks on scenes with `Publish Stage: Zero` + `Status: Complete` so you can capture `Pending Edits` without opening the note.
-*   **Show completion estimate**: Toggles the predicted completion tick on the timeline (based on your writing pace).
+Manage your project's milestones and status tracking.
+*   **Target completion date**: Set an optional target date (YYYY-MM-DD). A marker will appear on the outer ring of the timeline.
+*   **Zero draft mode**: A focused mode for reviewing. Intercepts clicks on scenes with `Publish Stage: Zero` and `Status: Complete` to open a "Pending Edits" modal instead of the full note.
+*   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline, calculated based on your recent writing pace.
 
+> [!NOTE]
+> Learn more about workflows in [[Core-Workflows]].
+
+<a name="pov"></a>
 ### Point of view
-*   **Global POV**: Default POV mode applied across scenes; scene-level `POV:` overrides it.
-*   **Scene level YAML overrides**: Supported `POV:` values and multi-carrier shorthand.
+Control how narrative perspective is visualized.
+*   **Global POV**: Sets a default Point of View mode (e.g., First Person, Third Person) for the entire project.
+*   **Scene level YAML overrides**: You can override the global default on a per-scene basis using the `POV` YAML key.
 
+> [!NOTE]
+> See [[Advanced-YAML#point-of-view]] for configuration details and supported keywords.
+
+<a name="chronologue"></a>
 ### Chronologue mode settings
-*   **Chronologue duration arc cap**: Choose a max duration for scaling duration arcs (or auto).
-*   **Discontinuity gap threshold**: Controls when the ∞ symbol appears in Shift mode (auto default is 3× median gap; you can override with values like “4 days”, “1 week”, “30 minutes”).
+Configure the time-based visualization of your story.
+*   **Chronologue duration arc cap**: Determines the maximum duration used for scaling the "duration arcs" (outer ring segments). Can be set to "Auto" or specific timeframes.
+*   **Discontinuity gap threshold**: Controls the sensitivity of the Shift Mode (Time gaps). When the gap between scenes exceeds this threshold, an ∞ symbol appears. Default is auto-calculated (3× median gap).
 
+> [!NOTE]
+> Read more about [[Chronologue-Mode]].
+
+<a name="acts"></a>
 ### Acts
-*   **Act count**: Minimum 3. Applies to Narrative/Subplot/Gossamer layouts and the `Act:` values used in Scene and Beat YAML.
-*   **Act labels (optional)**: Comma-separated labels (extra labels ignored; missing/empty entries fall back to defaults).
-*   **Show act labels**: Number-only act markers when off (your “numbering toggle”).
+Configure the high-level structure of your narrative ring.
+*   **Act count**: Sets the number of acts (Minimum 3). This divides the Narrative, Subplot, and Gossamer timeline rings.
+*   **Act labels**: (Optional) Define custom names for your acts (e.g., "Part 1, Part 2, Part 3").
+*   **Show act labels**: Toggle to hide labels and show only act numbers.
 
+> [!NOTE]
+> See [[Narrative-Mode]] for details on the act structure.
+
+<a name="story-beats"></a>
 ### Story beats system
-*   **Story beats system**: Save The Cat, Hero’s Journey, Story Grid, or **Custom**.
-*   **Custom story beat system** (Custom only): Name your system and edit the beat list. Beats can be drag-reordered, renamed, deleted, and assigned to an act.
-*   **Create story beat template notes**: Generates beat note templates in your source path.
+Configure the structural pacing guide for your story.
+*   **Story beats system**: Select a preset structure (**Save The Cat**, **Hero's Journey**, **Story Grid**) or choose **Custom**.
+*   **Custom story beat system**: (Visible when "Custom" is selected) Define your own beat names and assign them to acts. Drag to reorder.
+*   **Create story beat template notes**: A utility button to generate empty beat notes in your source folder based on the selected system.
 
+> [!NOTE]
+> Learn more about using beats in [[Gossamer-Mode]].
+
+<a name="yaml-templates"></a>
 ### Scene YAML templates & remapping
-*   **Custom Metadata Mapping**: Map your vault’s frontmatter keys to Radial Timeline system keys (useful for pre-existing notes / legacy YAML).
-*   **Advanced YAML editor**: Toggle the Advanced template editor to add/reorder optional YAML keys while keeping required base keys locked.
+Manage how Radial Timeline reads and writes metadata.
+*   **Custom Metadata Mapping**: Map existing frontmatter keys in your vault (e.g., `story_date`) to the system keys (e.g., `When`) without changing your files.
+*   **Advanced YAML editor**: Enable this to customize the "Advanced" scene template. You can add, remove, or reorder optional fields while keeping the required system keys intact.
 
-See also: [[Advanced-YAML]] and [[YAML-Frontmatter]].
+> [!NOTE]
+> *   For template customization: [[Advanced-YAML]]
+> *   For a full list of keys: [[YAML-Frontmatter]]
 
+<a name="planetary-time"></a>
 ### Planetary Time
-*   **Enable planetary time**: Turns on Planetary Time features.
-*   **Active profile**: Select which custom calendar to use.
-*   **Profiles**: Create/manage calendars (hours/day, days/week, days/year, epoch offset + labels, optional month/weekday names).
+Configure custom calendars for sci-fi and fantasy worlds.
+*   **Enable planetary time**: Activates the planetary time conversion features.
+*   **Active profile**: Selects which custom calendar profile is currently active.
+*   **Profiles**: Create and edit profiles. define day length, year length, epoch offsets, and custom month/day names.
 
+> [!NOTE]
+> See [[Chronologue-Mode#planetary-time]] for usage details.
+
+<a name="ai"></a>
 ### AI LLM for scene analysis
-*   **Enable AI LLM features**: Shows/hides AI commands and AI hover visuals (metadata stays untouched when off).
-*   **AI prompt role & context template**: Manage templates used for prompt generation (Scene analysis + Gossamer).
-*   **Model**: Pick a curated model (Anthropic/Gemini/OpenAI) or a Local/OpenAI-compatible endpoint.
-*   **API logging**: Writes request/response logs into your AI output folder (see Advanced).
+Configure the AI assistant for narrative analysis.
+*   **Enable AI LLM features**: Toggles AI commands and visual indicators.
+*   **AI prompt role & context template**: Customize the system prompt and context sent to the AI.
+*   **Model**: Select your preferred LLM (Anthropic Claude, Google Gemini, OpenAI GPT, or Local/Ollama).
+*   **API logging**: When enabled, saves detailed JSON logs of every AI request and response to the AI output folder.
 
+> [!NOTE]
+> Learn how to interpret the analysis in [[AI-Analysis]].
+
+<a name="advanced"></a>
 ### Advanced
-*   **AI output folder**: Where AI logs and generated files (including manuscripts) are saved (default `AI`).
-*   **Auto-expand clipped scene titles**
-*   **Timeline readability scale**
-*   **Metadata refresh debounce (ms)**
-*   **Reset subplot color precedence**
+Technical configuration and file handling.
+*   **AI output folder**: The folder where AI logs, manuscripts, and analysis files are saved. Default is `AI`.
+*   **Auto-expand clipped scene titles**: Automatically expands truncated text in the radial view on hover.
+*   **Timeline readability scale**: Adjusts the global font size of the timeline (Normal or Large).
+*   **Metadata refresh debounce**: Technical setting to adjust how often the timeline refreshes while typing (default 1000ms).
+*   **Reset subplot color precedence**: Clears manually assigned dominant subplot colors.
 
+<a name="colors"></a>
 ### Visual customization
-*   **Publishing stage colors**
-*   **Subplot ring colors** (16 ring palette)
+*   **Publishing stage colors**: Customize the colors used for the publishing stages (Zero Draft, Author's Draft, House Edit, Press Ready).
+*   **Subplot ring colors**: Customize the 16-color palette used for subplots.
+
+---
+
+## Hardware Recommendations
+
+The radial timeline is designed for high pixel density displays (around 200 ppi or higher) for optimal visual quality.
+*   All Apple Retina displays — 2x pixel density.
+*   Recommend Windows systems with 4k displays or higher. (Tested on 1080p 2550x1440)
+*   Tablets.
+
+If you're experiencing visual quality issues on Windows, please check your display scaling settings.

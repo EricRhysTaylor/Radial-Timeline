@@ -15,6 +15,23 @@ The Advanced YAML editor lets you tailor the Advanced scene template while keepi
 
 Tip: Values support Templater syntax (e.g., `<% tp.date.now() %>`) if Templater is set to run on new files.
 
+## Point of View
+
+<a name="point-of-view"></a>
+
+You can control how Point of View (POV) is displayed on the timeline in **Settings → Point of view**.
+
+*   **Global POV**: Sets the default POV mode for all scenes (e.g., "First-person", "Third-person limited").
+*   **Scene Level Override**: You can override the global setting for individual scenes by adding a `POV:` key to the scene's YAML frontmatter.
+
+**Common POV Keywords:**
+*   `pov: first` (¹ marker)
+*   `pov: third` (³ marker)
+*   `pov: omni` (Omni³ marker)
+*   `pov: two` / `pov: all` (Mark multiple characters)
+
+See [[YAML-Frontmatter#pov-keywords]] for the full list of supported values.
+
 ## Data Integrity & Backups
 
 When heavily customizing YAML keys or using advanced plugins, it is crucial to protect your work against data loss or corruption.
@@ -26,4 +43,3 @@ Use a reliable backup solution.
 
 **Mac/iCloud Users:**
 To prevent iCloud sync conflicts from corrupting plugin data, you can append `.nosync` to folder names (e.g., `radial-backups.nosync`) to exclude them from iCloud syncing while keeping them in your vault.
-

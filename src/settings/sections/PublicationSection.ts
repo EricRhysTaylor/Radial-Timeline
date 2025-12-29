@@ -2,6 +2,7 @@ import type { App } from 'obsidian';
 import { Setting as ObsidianSetting, Notice } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { t } from '../../i18n';
+import { addWikiLink } from '../wikiLink';
 
 export function renderPublicationSection(params: {
     app: App;
@@ -10,9 +11,10 @@ export function renderPublicationSection(params: {
 }): void {
     const { app, plugin, containerEl } = params;
 
-    new ObsidianSetting(containerEl)
+    const pubHeading = new ObsidianSetting(containerEl)
         .setName('Publication and progress')
         .setHeading();
+    addWikiLink(pubHeading, 'Settings#publication');
 
     // --- Target Completion Date ---
     new ObsidianSetting(containerEl)

@@ -5,6 +5,7 @@ import { getPlotSystem, getCustomSystemFromSettings } from '../../utils/beatsSys
 import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { renderMetadataSection } from './MetadataSection';
+import { addWikiLink } from '../wikiLink';
 
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
@@ -17,9 +18,10 @@ export function renderStoryBeatsSection(params: {
     const { app, plugin, containerEl } = params;
 
     // Acts Section (above beats)
-    new Settings(containerEl)
+    const actsHeading = new Settings(containerEl)
         .setName('Acts')
         .setHeading();
+    addWikiLink(actsHeading, 'Settings#acts');
 
     const getActCount = () => Math.max(3, plugin.settings.actCount ?? 3);
 
@@ -91,9 +93,10 @@ export function renderStoryBeatsSection(params: {
 
     updateActPreview();
 
-    new Settings(containerEl)
+    const beatsHeading = new Settings(containerEl)
         .setName('Story beats system')
         .setHeading();
+    addWikiLink(beatsHeading, 'Settings#story-beats');
 
     const beatSystemSetting = new Settings(containerEl)
         .setName('Story beats system')
@@ -358,9 +361,10 @@ export function renderStoryBeatsSection(params: {
     updateTemplateButton(templateSetting, plugin.settings.beatSystem || 'Custom');
 
     // Scene YAML Templates Section
-    new Settings(containerEl)
+    const yamlHeading = new Settings(containerEl)
         .setName('Scene YAML templates & remapping')
         .setHeading();
+    addWikiLink(yamlHeading, 'Settings#yaml-templates');
 
     // Frontmatter remapper (moved here) - separate from template editor visibility
     const remapContainer = containerEl.createDiv();
