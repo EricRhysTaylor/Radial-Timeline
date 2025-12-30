@@ -1,6 +1,13 @@
 {
   "entries": [
     {
+      "version": "5.0.2",
+      "title": "5.0.2",
+      "body": "## What's Changed\n\n### New Features\n- Feature - Book Designer Manual mode ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Bug Fixes\n- Bug - unscoped Obsidian styles ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Other Changes\n- src/settings/SettingsTab.ts ([1c16a84](https://github.com/EricRhysTaylor/Radial-Timeline/commit/1c16a84e8bbe38a76e0cd93f01df7c37f2307c65))\n- Save templates ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.2",
+      "publishedAt": "2025-12-30T23:24:48.173Z"
+    },
+    {
       "version": "5.0.1",
       "title": "5.0.1",
       "body": "## What's Changed\r\n\r\n### Bug\r\n- Release script allowed the manifest to not update properly with the new release ([4e14615](https://github.com/EricRhysTaylor/Radial-Timeline/commit/4e146158260bc80fe5228b610749c6ad152227f0)) Peventing Obsidian from detecting and updating plugin.\r\n\r\n### Improvements\r\n- New Release Alert in Timeline now shows versions on hover. Large click zone.\r\n- Update and reorganized wiki ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\r\n\r\n### Documentation\r\n- Settings inline links to related wiki docs ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))",
@@ -27,11 +34,27 @@
     "isDraft": false
   },
   "latest": {
-    "version": "5.0.1",
-    "title": "5.0.1",
-    "body": "## What's Changed\r\n\r\n### Bug\r\n- Release script allowed the manifest to not update properly with the new release ([4e14615](https://github.com/EricRhysTaylor/Radial-Timeline/commit/4e146158260bc80fe5228b610749c6ad152227f0)) Peventing Obsidian from detecting and updating plugin.\r\n\r\n### Improvements\r\n- New Release Alert in Timeline now shows versions on hover. Large click zone.\r\n- Update and reorganized wiki ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\r\n\r\n### Documentation\r\n- Settings inline links to related wiki docs ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.1",
-    "publishedAt": "2025-12-29T17:45:53Z",
-    "isDraft": false
-  }
+    "version": "5.0.2",
+    "title": "5.0.2",
+    "body": "## What's Changed\n\n### New Features\n- Feature - Book Designer Manual mode ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Bug Fixes\n- Bug - unscoped Obsidian styles ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Other Changes\n- src/settings/SettingsTab.ts ([1c16a84](https://github.com/EricRhysTaylor/Radial-Timeline/commit/1c16a84e8bbe38a76e0cd93f01df7c37f2307c65))\n- Save templates ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.2",
+    "publishedAt": "2025-12-30T23:24:48.173Z"
+  },
+  "patches": [
+    {
+      "version": "5.0.2",
+      "title": "5.0.2",
+      "body": "## What's Changed\n\n### New Features\n- Feature - Book Designer Manual mode ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Bug Fixes\n- Bug - unscoped Obsidian styles ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Other Changes\n- src/settings/SettingsTab.ts ([1c16a84](https://github.com/EricRhysTaylor/Radial-Timeline/commit/1c16a84e8bbe38a76e0cd93f01df7c37f2307c65))\n- Save templates ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.2",
+      "publishedAt": "2025-12-30T23:24:48.173Z"
+    },
+    {
+      "version": "5.0.1",
+      "title": "5.0.1",
+      "body": "## What's Changed\r\n\r\n### Bug\r\n- Release script allowed the manifest to not update properly with the new release ([4e14615](https://github.com/EricRhysTaylor/Radial-Timeline/commit/4e146158260bc80fe5228b610749c6ad152227f0)) Peventing Obsidian from detecting and updating plugin.\r\n\r\n### Improvements\r\n- New Release Alert in Timeline now shows versions on hover. Large click zone.\r\n- Update and reorganized wiki ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))\r\n\r\n### Documentation\r\n- Settings inline links to related wiki docs ([a83d5aa](https://github.com/EricRhysTaylor/Radial-Timeline/commit/a83d5aab00a8514dbca984d3ce96b74057f90844))",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.1",
+      "publishedAt": "2025-12-29T17:45:53Z",
+      "isDraft": false
+    }
+  ]
 }
