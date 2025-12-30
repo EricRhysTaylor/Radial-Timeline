@@ -568,7 +568,7 @@ export class BookDesignerModal extends Modal {
         const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
         hero.createSpan({ cls: 'rt-modal-badge', text: 'SETUP' });
         hero.createDiv({ cls: 'rt-modal-title', text: 'Book designer' });
-        hero.createDiv({ cls: 'rt-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Source path from settings will place scenes in ${sourcePath}. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.` });
+        hero.createDiv({ cls: 'rt-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.` });
     
         
         const heroMeta = hero.createDiv({ cls: 'rt-modal-meta' });

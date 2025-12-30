@@ -396,9 +396,6 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Clear AI-related elements array for fresh render
         this._aiRelatedElements = [];
 
-        // Patreon support section at the top
-        this.renderPatreonSection(containerEl);
-
         // 1. Source path (from GeneralSection)
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl });
 
