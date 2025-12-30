@@ -88,7 +88,6 @@
 /* Duo grid: column-specific padding tweaks */
 .rt-manuscript-duo-grid > .rt-manuscript-group-setting:first-child {
     padding-right: 16px;
-    padding-bottom: 16px;
 }
 
 .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
@@ -105,7 +104,7 @@
 
 /* Scoped padding for stacked settings inside Book Designer (e.g., Subplots) */
 .rt-book-designer-modal .rt-setting-stacked.rt-manuscript-group-setting {
-    padding: 0px 16px 16px 16px !important;
+    padding: 0 16px !important;
 }
 
 /* Remove left padding from setting info in stacked layouts - align with input fields */
@@ -178,14 +177,13 @@
 
 /* Fix for vertical alignment of 'Target book length' (2nd item in Duo Grid) */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
-    padding-bottom: 16px !important;
+    padding-bottom: 0 !important;
 }
 
 /* Scoped padding & divider only for Book Designer duo grid */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-scenes-generate-setting {
     padding-left: 16px !important;
     padding-right: 16px !important;
-    padding-bottom: 16px !important;
     border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -330,14 +328,15 @@
     justify-content: center;
     width: 100%;
     height: auto;
+    min-height: 0;
     aspect-ratio: auto;
 }
 
 .rt-manuscript-surface .rt-manuscript-preview-svg {
-    width: auto;
-    height: auto;
-    max-width: 180px;
-    max-height: 180px;
+    height: 290px;
+    max-width: none;
+    max-height: none;
+    aspect-ratio: 1 / 1;
 }
 
 .rt-manuscript-surface .rt-manuscript-preview-guide {
@@ -389,6 +388,10 @@
 .rt-book-designer-modal .rt-layout-templates-card.rt-manuscript-group-block {
     padding-left: 16px !important;
     padding-right: 16px !important;
+}
+
+.rt-book-designer-modal .rt-template-actions .rt-template-delete {
+    margin-left: auto;
 }
 
 /* --- Animations --- */

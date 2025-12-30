@@ -55,6 +55,18 @@ const ALLOWED_ANY_CONTEXTS = [
   'obsidian-augment.ts', // Type augmentation file matches Obsidian's official API
 ];
 
+// Scope enforcement for settings.css: selectors that touch Obsidian settings classes must live under .rt-settings-root
+const SETTINGS_SCOPE_TOKENS = [
+  '.setting-item',
+  '.setting-item-control',
+  '.setting-item-info',
+  '.setting-item-name',
+  '.setting-item-description',
+  '.setting-item-heading',
+  '.documentation-container',
+  '.clickable-icon',
+];
+
 // CSS class naming pattern - must start with rt- or radial-timeline-
 // Matches: addClass('class-name'), removeClass('class-name'), toggleClass('class-name'), cls: 'class-name'
 const CSS_CLASS_PATTERN = { 
@@ -123,6 +135,7 @@ function processFile(filePath) {
     
     // For TypeScript files, also check for 'any' type usage
     const isTypeScript = filePath.endsWith('.ts');
+    const isSettingsCss = filePath.endsWith(path.join('src', 'styles', 'settings.css')) || filePath.includes('src/styles/settings.css');
     
     lines.forEach((line, lineNumber) => {
       // Check Obsidian guidelines patterns
@@ -177,6 +190,33 @@ function processFile(filePath) {
       });
       return false;
     }
+
+    // Additional check: enforce .rt-settings-root scoping in settings.css
+    if (isSettingsCss) {
+      const scopeViolations = [];
+      lines.forEach((line, lineNumber) => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('@') || !trimmed.includes('{')) return;
+        const lower = trimmed.toLowerCase();
+        const touchesSettings = SETTINGS_SCOPE_TOKENS.some(token => lower.includes(token));
+        if (touchesSettings && !lower.includes('.rt-settings-root')) {
+          scopeViolations.push({
+            line: lineNumber + 1,
+            content: trimmed,
+            message: 'settings.css selectors touching Obsidian settings classes must be scoped under .rt-settings-root'
+          });
+        }
+      });
+
+      if (scopeViolations.length > 0) {
+        console.error(`\x1b[31mViolations found in ${filePath}:\x1b[0m`);
+        scopeViolations.forEach(v => {
+          console.error(`  Line ${v.line}: ${v.message} - ${v.content}`);
+        });
+        return false;
+      }
+    }
+
     return true;
   } catch (error) {
     console.error(`Error processing file ${filePath}:`, error);

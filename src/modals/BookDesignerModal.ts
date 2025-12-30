@@ -7,6 +7,9 @@ import { parseDuration, parseDurationDetail } from '../utils/date';
 import { getCustomSystemFromSettings } from '../utils/beatsSystems';
 import type { BookDesignerTemplate, BookDesignerSceneAssignment } from '../types/settings';
 
+const DEFAULT_SUBPLOTS = "Main Plot\nSubplot A\nSubplot B";
+const DEFAULT_CHARACTERS = "Hero\nAntagonist";
+
 type PreviewDims = {
     cx: number;
     cy: number;
@@ -46,6 +49,7 @@ class SaveTemplateModal extends Modal {
             .setDesc('Choose a short, unique name.')
             .addText(text => {
                 this.nameInput = text;
+                text.inputEl.addClass('rt-input-lg');
                 text.setPlaceholder('e.g., Thriller / 3-Act Balanced');
                 text.setValue(this.defaultName);
                 text.inputEl.addEventListener('keydown', (evt) => {
@@ -85,6 +89,46 @@ class SaveTemplateModal extends Modal {
     }
 }
 
+class DeleteTemplateModal extends Modal {
+    private onConfirm: () => void;
+    private templateName: string;
+
+    constructor(app: App, templateName: string, onConfirm: () => void) {
+        super(app);
+        this.templateName = templateName;
+        this.onConfirm = onConfirm;
+    }
+
+    onOpen(): void {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass('rt-modal-container');
+        contentEl.addClass('rt-book-designer-modal');
+
+        const header = contentEl.createDiv({ cls: 'rt-modal-header' });
+        header.createSpan({ cls: 'rt-modal-badge', text: 'TEMPLATE' });
+        header.createDiv({ cls: 'rt-modal-title', text: 'Delete template' });
+        header.createDiv({ cls: 'rt-modal-subtitle', text: `Delete "${this.templateName}"? This cannot be undone.` });
+
+        const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });
+        new ButtonComponent(footer)
+            .setButtonText('Delete')
+            .setCta()
+            .onClick(() => {
+                this.onConfirm();
+                this.close();
+            });
+
+        new ButtonComponent(footer)
+            .setButtonText('Cancel')
+            .onClick(() => this.close());
+
+        footer.querySelectorAll('button').forEach(btn => {
+            btn.style.cursor = 'pointer';
+        });
+    }
+}
+
 export class BookDesignerModal extends Modal {
     private plugin: RadialTimelinePlugin;
     
@@ -93,8 +137,8 @@ export class BookDesignerModal extends Modal {
     private scenesToGenerate: number = 1;
     private targetRangeMax: number = 60;
     private selectedActs: number[] = [1, 2, 3];
-    private subplots: string = "Main Plot\nSubplot A\nSubplot B";
-    private character: string = "Hero\nAntagonist";
+    private subplots: string = DEFAULT_SUBPLOTS;
+    private character: string = DEFAULT_CHARACTERS;
     private templateType: 'base' | 'advanced';
     private generateBeats: boolean = false;
 
@@ -122,6 +166,7 @@ export class BookDesignerModal extends Modal {
     private actCheckboxes: HTMLInputElement[] = [];
     private templateTypePills: HTMLElement[] = [];
     private beatPills: HTMLElement[] = [];
+    private deleteTemplateBtn: ButtonComponent | null = null;
 
     constructor(app: App, plugin: RadialTimelinePlugin) {
         super(app);
@@ -147,6 +192,54 @@ export class BookDesignerModal extends Modal {
         this.sceneAssignments = this.rebuildAutoAssignments();
         this.dragState = null;
         this.updateDistributionStatus();
+    }
+
+    private resetAllDefaults(): void {
+        const maxActs = this.getMaxActs();
+        this.timeIncrement = '1 day';
+        this.scenesToGenerate = 1;
+        this.targetRangeMax = 60;
+        this.selectedActs = Array.from({ length: maxActs }, (_, i) => i + 1);
+        this.subplots = DEFAULT_SUBPLOTS;
+        this.character = DEFAULT_CHARACTERS;
+        this.templateType = 'base';
+        this.generateBeats = false;
+        this.activeTemplateId = null;
+        this.distributionMode = 'auto';
+        this.sceneAssignments = this.rebuildAutoAssignments();
+
+        // Sync UI fields if they exist
+        if (this.timeIncrementInput) this.timeIncrementInput.setValue(this.timeIncrement);
+        if (this.scenesInput) this.scenesInput.setValue(this.scenesToGenerate.toString());
+        if (this.targetRangeInput) this.targetRangeInput.setValue(this.targetRangeMax.toString());
+        if (this.subplotsInput) this.subplotsInput.setValue(this.subplots);
+        if (this.characterInput) this.characterInput.setValue(this.character);
+
+        // Acts checkboxes
+        this.actCheckboxes.forEach((input, idx) => {
+            const actNum = idx + 1;
+            input.checked = this.selectedActs.includes(actNum);
+        });
+
+        // Template pills
+        this.templateTypePills.forEach(pill => {
+            const id = pill.getAttr('data-template-id') as 'base' | 'advanced' | null;
+            if (!id) return;
+            if (id === this.templateType) pill.addClass('rt-is-active');
+            else pill.removeClass('rt-is-active');
+        });
+
+        // Beat pills
+        this.beatPills.forEach(pill => {
+            const val = pill.getAttr('data-generate-beats') === 'true';
+            if (val === this.generateBeats) pill.addClass('rt-is-active');
+            else pill.removeClass('rt-is-active');
+        });
+
+        if (this.templateDropdown) this.templateDropdown.value = '';
+        this.refreshTemplateDropdown();
+        this.updateDistributionStatus();
+        this.schedulePreviewUpdate();
     }
 
     private markManualLayout(): void {
@@ -246,6 +339,12 @@ export class BookDesignerModal extends Modal {
         return [];
     }
 
+    private getCurrentTemplateSelection(): string | null {
+        if (!this.templateDropdown) return null;
+        const val = this.templateDropdown.value;
+        return val && val.trim().length > 0 ? val : null;
+    }
+
     private async persistTemplateList(list: BookDesignerTemplate[]): Promise<void> {
         (this.plugin.settings as any).bookDesignerTemplates = list;
         await this.plugin.saveSettings();
@@ -262,37 +361,71 @@ export class BookDesignerModal extends Modal {
         if (!this.templateDropdown) return;
         const selectEl = this.templateDropdown;
         selectEl.empty();
+        const templates = this.getTemplateList();
+        const hasTemplates = templates.length > 0;
+
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.text = 'Select template';
+        placeholder.text = hasTemplates ? 'Select template' : '—';
+        placeholder.disabled = hasTemplates;
+        placeholder.selected = !this.activeTemplateId;
         selectEl.appendChild(placeholder);
 
-        const templates = this.getTemplateList();
         templates.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t.id;
             opt.text = t.name;
             if (this.activeTemplateId && this.activeTemplateId === t.id) {
                 opt.selected = true;
+                placeholder.selected = false;
             }
             selectEl.appendChild(opt);
         });
+
+        selectEl.disabled = !hasTemplates;
+
+        if (this.deleteTemplateBtn) {
+            const hasSelection = !!this.getCurrentTemplateSelection();
+            this.deleteTemplateBtn.setDisabled(!hasTemplates || !hasSelection);
+        }
     }
 
-    private openSaveTemplateModal(): void {
+    private async deleteTemplate(templateId: string): Promise<void> {
+        const templates = this.getTemplateList().filter(t => t.id !== templateId);
+        await this.persistTemplateList(templates);
+        if (this.activeTemplateId === templateId) {
+            this.activeTemplateId = null;
+        }
+        if (this.templateDropdown) {
+            this.templateDropdown.value = '';
+        }
+        this.resetManualLayout();
+        this.refreshTemplateDropdown();
+        this.schedulePreviewUpdate();
+        new Notice('Template deleted.');
+    }
+
+    private async saveOrUpdateTemplate(): Promise<void> {
+        const selectedId = this.getCurrentTemplateSelection();
+        if (selectedId) {
+            const tpl = this.getTemplateList().find(t => t.id === selectedId);
+            if (!tpl) return;
+            await this.saveTemplate(tpl.name, selectedId);
+            return;
+        }
         const defaultName = `Layout ${this.templateType === 'base' ? 'Basic' : 'Advanced'} ${new Date().toLocaleDateString()}`;
         new SaveTemplateModal(this.app, (name) => {
             void this.saveTemplate(name);
         }, defaultName).open();
     }
 
-    private async saveTemplate(name: string): Promise<void> {
+    private async saveTemplate(name: string, existingId?: string): Promise<void> {
         const subplotList = this.parseSubplots();
         const characters = this.character.split('\n').map(c => c.trim()).filter(Boolean);
         const assignments = this.getWorkingAssignments();
 
         const template: BookDesignerTemplate = {
-            id: `${Date.now()}`,
+            id: existingId ?? `${Date.now()}`,
             name,
             templateType: this.templateType,
             createdAt: new Date().toISOString(),
@@ -307,13 +440,13 @@ export class BookDesignerModal extends Modal {
         };
 
         const existing = this.getTemplateList();
-        const filtered = existing.filter(t => t.name !== name);
+        const filtered = existing.filter(t => t.id !== template.id);
         filtered.unshift(template);
         await this.persistTemplateList(filtered);
         this.activeTemplateId = template.id;
         this.refreshTemplateDropdown();
         this.updateDistributionStatus();
-        new Notice(`Template "${name}" saved.`);
+        new Notice(`Template "${name}" ${existingId ? 'updated' : 'saved'}.`);
     }
 
     private applyTemplateById(templateId: string): void {
@@ -413,7 +546,7 @@ export class BookDesignerModal extends Modal {
         const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
         hero.createSpan({ cls: 'rt-modal-badge', text: 'SETUP' });
         hero.createDiv({ cls: 'rt-modal-title', text: 'Book designer' });
-        hero.createDiv({ cls: 'rt-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Source path from settings will place scenes in ${sourcePath}` });
+        hero.createDiv({ cls: 'rt-modal-subtitle', text: `Configure and generate the scaffold for your new novel. Source path from settings will place scenes in ${sourcePath}. Drag scenes in Preview to different acts and subplots to activate manual mode. Save the template to reuse it later.` });
     
         
         const heroMeta = hero.createDiv({ cls: 'rt-modal-meta' });
@@ -692,34 +825,34 @@ export class BookDesignerModal extends Modal {
         templateSetting.settingEl.addClass('rt-manuscript-group-setting');
 
         const templateActions = templateCard.createDiv({ cls: 'rt-template-actions' });
-        new ButtonComponent(templateActions)
-            .setButtonText('Save current as template')
-            .onClick(() => this.openSaveTemplateModal());
 
         new ButtonComponent(templateActions)
-            .setButtonText('Commit manual layout')
+            .setButtonText('Update / Save template')
             .onClick(() => {
-                this.markManualLayout();
-                this.sceneAssignments = this.getWorkingAssignments();
-                this.schedulePreviewUpdate();
-                new Notice('Manual layout committed.');
+                void this.saveOrUpdateTemplate();
             });
 
         new ButtonComponent(templateActions)
-            .setButtonText('Reset to auto')
+            .setButtonText('Reset')
             .onClick(() => {
-                this.resetManualLayout();
-                this.schedulePreviewUpdate();
-                new Notice('Layout reset to auto distribution.');
+                this.resetAllDefaults();
+                new Notice('Layout reset to defaults with auto distribution.');
             });
 
-        new ButtonComponent(templateActions)
-            .setButtonText('Refresh auto layout')
+        this.deleteTemplateBtn = new ButtonComponent(templateActions)
+            .setButtonText('Delete template')
+            .setDisabled(true)
+            .setWarning()
             .onClick(() => {
-                this.resetManualLayout();
-                this.schedulePreviewUpdate();
-                new Notice('Auto distribution refreshed.');
+                const selectedId = this.getCurrentTemplateSelection();
+                if (!selectedId) return;
+                const tpl = this.getTemplateList().find(t => t.id === selectedId);
+                if (!tpl) return;
+                new DeleteTemplateModal(this.app, tpl.name, () => {
+                    this.deleteTemplate(selectedId);
+                }).open();
             });
+        this.deleteTemplateBtn.buttonEl.addClass('rt-template-delete');
 
         // Actions Footer
         const footer = contentEl.createDiv({ cls: 'rt-modal-actions' });

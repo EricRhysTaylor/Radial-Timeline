@@ -23,7 +23,7 @@ try {
   run('node show-scripts.mjs');
   run('node scripts/bundle-css.mjs'); // Generate CSS before checking it
   run('npx tsc --noEmit');
-  run('node code-quality-check.mjs src/main.ts --quiet');
+  run('node code-quality-check.mjs src/main.ts src/styles/settings.css --quiet');
   run('node check-css-duplicates.mjs --quiet');
   run('node esbuild.config.mjs production');
   
