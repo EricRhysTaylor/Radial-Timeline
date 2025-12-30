@@ -4,9 +4,9 @@
       "version": "5.0.2",
       "title": "5.0.2",
       "body": "## What's Changed\r\n\r\n### New Features\r\n-  Book Designer Manual mode. Drag to reorder scenes in Preview ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n-- Save templates ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n\r\n### Bug Fixes\r\n- Scoped the settings UI to prevent CSS bleed. ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n",
-      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-8f7c47764b76859a8745",
-      "publishedAt": "2025-12-30T23:29:25.448Z",
-      "isDraft": true
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.2",
+      "publishedAt": "2025-12-30T23:29:38Z",
+      "isDraft": false
     },
     {
       "version": "5.0.1",
@@ -38,9 +38,9 @@
     "version": "5.0.2",
     "title": "5.0.2",
     "body": "## What's Changed\r\n\r\n### New Features\r\n-  Book Designer Manual mode. Drag to reorder scenes in Preview ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n-- Save templates ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n\r\n### Bug Fixes\r\n- Scoped the settings UI to prevent CSS bleed. ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-8f7c47764b76859a8745",
-    "publishedAt": "2025-12-30T23:29:25.448Z",
-    "isDraft": true
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.2",
+    "publishedAt": "2025-12-30T23:29:38Z",
+    "isDraft": false
   },
   "patches": [
     {
