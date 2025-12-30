@@ -23,6 +23,19 @@
     margin-top: 0 !important; /* remove inherited pulse margin in Book Designer */
 }
 
+/* Hero meta status pills */
+.rt-book-designer-modal .rt-modal-meta-item.rt-meta-auto {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: var(--text-muted);
+}
+
+.rt-book-designer-modal .rt-modal-meta-item.rt-meta-manual {
+    background: rgba(var(--interactive-accent-rgb), 0.12);
+    border-color: rgba(var(--interactive-accent-rgb), 0.6);
+    color: var(--text-normal);
+}
+
 /* Inner Block (Group) */
 .rt-manuscript-surface .rt-manuscript-card-block {
     display: flex;

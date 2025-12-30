@@ -223,13 +223,31 @@ export function renderAiSection(params: {
             text.inputEl.addClass('rt-input-full');
             text
                 .setPlaceholder('Enter your Anthropic API key')
-                .setValue(plugin.settings.anthropicApiKey || '')
-                .onChange(async (value) => {
-                    plugin.settings.anthropicApiKey = value.trim();
-                    await plugin.saveSettings();
-                    params.setKeyInputRef('anthropic', text.inputEl);
+                .setValue(plugin.settings.anthropicApiKey || '');
+
+            text.onChange(() => {
+                text.inputEl.removeClass('rt-setting-input-success');
+                text.inputEl.removeClass('rt-setting-input-error');
+            });
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const trimmed = text.getValue().trim();
+                plugin.settings.anthropicApiKey = trimmed;
+                await plugin.saveSettings();
+                params.setKeyInputRef('anthropic', text.inputEl);
+                if (trimmed) {
                     params.scheduleKeyValidation('anthropic');
-                });
+                }
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
         });
     anthropicKeySetting.settingEl.addClass('rt-setting-full-width-input');
 
@@ -253,13 +271,31 @@ export function renderAiSection(params: {
             text.inputEl.addClass('rt-input-full');
             text
                 .setPlaceholder('Enter your Gemini API key')
-                .setValue(plugin.settings.geminiApiKey || '')
-                .onChange(async (value) => {
-                    plugin.settings.geminiApiKey = value.trim();
-                    await plugin.saveSettings();
-                    params.setKeyInputRef('gemini', text.inputEl);
+                .setValue(plugin.settings.geminiApiKey || '');
+
+            text.onChange(() => {
+                text.inputEl.removeClass('rt-setting-input-success');
+                text.inputEl.removeClass('rt-setting-input-error');
+            });
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const trimmed = text.getValue().trim();
+                plugin.settings.geminiApiKey = trimmed;
+                await plugin.saveSettings();
+                params.setKeyInputRef('gemini', text.inputEl);
+                if (trimmed) {
                     params.scheduleKeyValidation('gemini');
-                });
+                }
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
         });
     geminiKeySetting.settingEl.addClass('rt-setting-full-width-input');
 
@@ -283,21 +319,36 @@ export function renderAiSection(params: {
             text.inputEl.addClass('rt-input-full');
             text
                 .setPlaceholder('Enter your API key')
-                .setValue(plugin.settings.openaiApiKey || '')
-                .onChange(async (value) => {
-                    plugin.settings.openaiApiKey = value.trim();
-                    await plugin.saveSettings();
-                    params.setKeyInputRef('openai', text.inputEl);
-                    const v = value.trim();
-                    text.inputEl.removeClass('rt-setting-input-success');
-                    text.inputEl.removeClass('rt-setting-input-error');
-                    if (v && !v.startsWith('sk-')) {
-                        text.inputEl.addClass('rt-setting-input-error');
-                        new Notice('This does not look like an OpenAI secret key. Keys start with "sk-".');
-                    } else {
-                        params.scheduleKeyValidation('openai');
-                    }
-                });
+                .setValue(plugin.settings.openaiApiKey || '');
+
+            text.onChange(() => {
+                text.inputEl.removeClass('rt-setting-input-success');
+                text.inputEl.removeClass('rt-setting-input-error');
+            });
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const trimmed = text.getValue().trim();
+                plugin.settings.openaiApiKey = trimmed;
+                await plugin.saveSettings();
+                params.setKeyInputRef('openai', text.inputEl);
+                text.inputEl.removeClass('rt-setting-input-success');
+                text.inputEl.removeClass('rt-setting-input-error');
+                if (trimmed && !trimmed.startsWith('sk-')) {
+                    text.inputEl.addClass('rt-setting-input-error');
+                    new Notice('This does not look like an OpenAI secret key. Keys start with "sk-".');
+                } else if (trimmed) {
+                    params.scheduleKeyValidation('openai');
+                }
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
         });
     openAiKeySetting.settingEl.addClass('rt-setting-full-width-input');
 
@@ -314,12 +365,23 @@ export function renderAiSection(params: {
             text.inputEl.addClass('rt-input-full');
             text
                 .setPlaceholder('http://localhost:11434/v1')
-                .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1')
-                .onChange(async (value) => {
-                    plugin.settings.localBaseUrl = value.trim();
-                    await plugin.saveSettings();
-                    params.scheduleKeyValidation('local');
-                });
+                .setValue(plugin.settings.localBaseUrl || 'http://localhost:11434/v1');
+            text.onChange(() => {
+                text.inputEl.removeClass('rt-setting-input-success');
+                text.inputEl.removeClass('rt-setting-input-error');
+            });
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+            const handleBlur = async () => {
+                plugin.settings.localBaseUrl = text.getValue().trim();
+                await plugin.saveSettings();
+                params.scheduleKeyValidation('local');
+            };
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
             params.setLocalConnectionInputs({ baseInput: text.inputEl });
         });
     localBaseUrlSetting.settingEl.addClass('rt-setting-full-width-input');
@@ -340,12 +402,23 @@ export function renderAiSection(params: {
             localModelText = text;
             text
                 .setPlaceholder('llama3')
-                .setValue(plugin.settings.localModelId || 'llama3')
-                .onChange(async (value) => {
-                    plugin.settings.localModelId = value.trim();
-                    await plugin.saveSettings();
-                    params.scheduleKeyValidation('local');
-                });
+                .setValue(plugin.settings.localModelId || 'llama3');
+            text.onChange(() => {
+                text.inputEl.removeClass('rt-setting-input-success');
+                text.inputEl.removeClass('rt-setting-input-error');
+            });
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+            const handleBlur = async () => {
+                plugin.settings.localModelId = text.getValue().trim();
+                await plugin.saveSettings();
+                params.scheduleKeyValidation('local');
+            };
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
             params.setLocalConnectionInputs({ modelInput: text.inputEl });
         });
 
@@ -354,6 +427,11 @@ export function renderAiSection(params: {
             .setIcon('refresh-ccw')
             .setTooltip('Detect installed models and auto-fill this field')
             .onClick(async () => {
+                const selectedProvider = (plugin.settings.defaultAiProvider || 'openai') as Provider;
+                if (selectedProvider !== 'local') {
+                    new Notice('Select "Local / OpenAI Compatible" above to detect models.');
+                    return;
+                }
                 const baseUrl = plugin.settings.localBaseUrl?.trim();
                 if (!baseUrl) {
                     new Notice('Set the Local LLM Base URL first.');
@@ -422,38 +500,29 @@ export function renderAiSection(params: {
             text.inputEl.addClass('rt-input-full');
             text
                 .setPlaceholder('not-needed')
-                .setValue(plugin.settings.localApiKey || '')
-                .onChange(async (value) => {
-                    plugin.settings.localApiKey = value.trim();
-                    await plugin.saveSettings();
-                    params.scheduleKeyValidation('local');
-                });
+                .setValue(plugin.settings.localApiKey || '');
+            text.onChange(() => {
+                text.inputEl.removeClass('rt-setting-input-success');
+                text.inputEl.removeClass('rt-setting-input-error');
+            });
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+            const handleBlur = async () => {
+                plugin.settings.localApiKey = text.getValue().trim();
+                await plugin.saveSettings();
+                params.scheduleKeyValidation('local');
+            };
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
             params.setKeyInputRef('local', text.inputEl);
         });
     apiKeySetting.settingEl.addClass('rt-setting-full-width-input');
 
     // Apply provider dimming on first render
     params.refreshProviderDimming();
-
-    // Passive validation for present keys
-    if (plugin.settings.anthropicApiKey?.trim()) {
-        const input = anthropicSection.querySelector('input[type="text"], input[type="password"], input') as HTMLInputElement | undefined;
-        params.setKeyInputRef('anthropic', input);
-        params.scheduleKeyValidation('anthropic');
-    }
-    if (plugin.settings.geminiApiKey?.trim()) {
-        const input = geminiSection.querySelector('input[type="text"], input[type="password"], input') as HTMLInputElement | undefined;
-        params.setKeyInputRef('gemini', input);
-        params.scheduleKeyValidation('gemini');
-    }
-    if (plugin.settings.openaiApiKey?.trim()) {
-        const input = openaiSection.querySelector('input[type="text"], input[type="password"], input') as HTMLInputElement | undefined;
-        params.setKeyInputRef('openai', input);
-        params.scheduleKeyValidation('openai');
-    }
-    if ((plugin.settings.localBaseUrl?.trim()) && (plugin.settings.localModelId?.trim())) {
-        params.scheduleKeyValidation('local');
-    }
 
     // API Logging toggle
     const apiLoggingSetting = new Settings(containerEl)

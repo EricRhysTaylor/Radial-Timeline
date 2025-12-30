@@ -146,10 +146,12 @@ export class BookDesignerModal extends Modal {
     private previewHostEl: HTMLElement | null = null;
     private previewUpdateRaf: number | null = null;
     private previewStatusEl: HTMLElement | null = null;
+    private heroLocationMeta: HTMLElement | null = null;
+    private heroModeMeta: HTMLElement | null = null;
 
     // Layout + templates
     private sceneAssignments: BookDesignerSceneAssignment[] = [];
-    private distributionMode: 'auto' | 'manual' = 'auto';
+    private distributionMode: 'auto' | 'manual';
     private activeTemplateId: string | null = null;
     private isApplyingTemplate: boolean = false;
 
@@ -172,6 +174,7 @@ export class BookDesignerModal extends Modal {
         super(app);
         this.plugin = plugin;
         this.templateType = 'base';
+        this.distributionMode = 'auto';
     }
 
     private getMaxActs(): number {
@@ -350,11 +353,27 @@ export class BookDesignerModal extends Modal {
         await this.plugin.saveSettings();
     }
 
+    private updateHeroMeta(): void {
+        if (this.heroLocationMeta) {
+            const sourcePath = this.plugin.settings.sourcePath || 'vault root';
+            this.heroLocationMeta.setText(`Location: ${sourcePath}`);
+        }
+
+        if (this.heroModeMeta) {
+            const modeLabel = this.distributionMode === 'manual' ? 'Manual mode' : 'Auto mode';
+            this.heroModeMeta.setText(modeLabel);
+            this.heroModeMeta.toggleClass('rt-meta-auto', this.distributionMode !== 'manual');
+            this.heroModeMeta.toggleClass('rt-meta-manual', this.distributionMode === 'manual');
+        }
+    }
+
     private updateDistributionStatus(): void {
-        if (!this.previewStatusEl) return;
         const mode = this.distributionMode === 'manual' ? 'Manual layout active' : 'Auto distribution';
         const templatePart = this.activeTemplateId ? ' · From template' : '';
-        this.previewStatusEl.setText(`— ${mode}${templatePart}`);
+        if (this.previewStatusEl) {
+            this.previewStatusEl.setText(`— ${mode}${templatePart}`);
+        }
+        this.updateHeroMeta();
     }
 
     private refreshTemplateDropdown(): void {
@@ -366,8 +385,8 @@ export class BookDesignerModal extends Modal {
 
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.text = hasTemplates ? 'Select template' : '—';
-        placeholder.disabled = hasTemplates;
+        placeholder.text = hasTemplates ? 'New template' : '—';
+        placeholder.disabled = false;
         placeholder.selected = !this.activeTemplateId;
         selectEl.appendChild(placeholder);
 
@@ -382,7 +401,8 @@ export class BookDesignerModal extends Modal {
             selectEl.appendChild(opt);
         });
 
-        selectEl.disabled = !hasTemplates;
+        selectEl.disabled = false;
+        selectEl.value = this.activeTemplateId ?? '';
 
         if (this.deleteTemplateBtn) {
             const hasSelection = !!this.getCurrentTemplateSelection();
@@ -528,6 +548,8 @@ export class BookDesignerModal extends Modal {
         this.actCheckboxes = [];
         this.templateTypePills = [];
         this.beatPills = [];
+        this.heroLocationMeta = null;
+        this.heroModeMeta = null;
         
         // Use generic modal system + Book Designer specific class
         if (modalEl) {
@@ -550,8 +572,9 @@ export class BookDesignerModal extends Modal {
     
         
         const heroMeta = hero.createDiv({ cls: 'rt-modal-meta' });
-        heroMeta.createSpan({ cls: 'rt-modal-meta-item', text: 'Scenes + Subplots' });
-        heroMeta.createSpan({ cls: 'rt-modal-meta-item', text: 'Acts + Beats' });
+        this.heroLocationMeta = heroMeta.createSpan({ cls: 'rt-modal-meta-item', text: `Location: ${sourcePath}` });
+        this.heroModeMeta = heroMeta.createSpan({ cls: 'rt-modal-meta-item rt-meta-auto', text: 'Auto mode' });
+        this.updateHeroMeta();
         
         const scrollContainer = contentEl.createDiv({ cls: 'rt-container rt-card-stack' });
 
@@ -818,7 +841,12 @@ export class BookDesignerModal extends Modal {
                 this.templateDropdown = drop.selectEl;
                 this.refreshTemplateDropdown();
                 drop.onChange(value => {
-                    if (!value) return;
+                    if (!value) {
+                        this.activeTemplateId = null;
+                        if (this.deleteTemplateBtn) this.deleteTemplateBtn.setDisabled(true);
+                        this.updateDistributionStatus();
+                        return;
+                    }
                     this.applyTemplateById(value);
                 });
             });
@@ -827,7 +855,7 @@ export class BookDesignerModal extends Modal {
         const templateActions = templateCard.createDiv({ cls: 'rt-template-actions' });
 
         new ButtonComponent(templateActions)
-            .setButtonText('Update / Save template')
+            .setButtonText('Save / Update template')
             .onClick(() => {
                 void this.saveOrUpdateTemplate();
             });
@@ -904,6 +932,8 @@ export class BookDesignerModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         this.previewHostEl = null;
+        this.heroLocationMeta = null;
+        this.heroModeMeta = null;
         if (this.previewUpdateRaf !== null) {
             window.cancelAnimationFrame(this.previewUpdateRaf);
             this.previewUpdateRaf = null;

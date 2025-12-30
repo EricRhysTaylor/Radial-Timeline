@@ -69,6 +69,7 @@ export class GossamerProcessingModal extends Modal {
             modalEl.classList.add('rt-modal-shell');
             modalEl.style.width = '800px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
             modalEl.style.maxWidth = '90vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.style.maxHeight = '92vh'; // Align with other tall modals for small screens
         }
 
         contentEl.addClass('rt-modal-container', 'rt-gossamer-processing-modal');

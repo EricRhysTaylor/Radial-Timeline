@@ -90,6 +90,20 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                     input.setAttribute('disabled', 'true');
                 }
             });
+
+            // Some interactive controls (like clickable icons) ignore the disabled attribute,
+            // so explicitly block pointer events when the provider is not selected.
+            const clickableIcons = el.querySelectorAll('.clickable-icon');
+            clickableIcons.forEach(icon => {
+                const htmlIcon = icon as HTMLElement;
+                if (isSelected) {
+                    htmlIcon.removeAttribute('aria-disabled');
+                    htmlIcon.style.pointerEvents = '';
+                } else {
+                    htmlIcon.setAttribute('aria-disabled', 'true');
+                    htmlIcon.style.pointerEvents = 'none';
+                }
+            });
         });
     }
 

@@ -346,6 +346,32 @@
   max-height: 90vh;
 }
 
+/* Height-safe shells for tall modals */
+.rt-manuscript-modal,
+.rt-gossamer-processing-modal,
+.rt-book-designer-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 92vh;
+  min-height: 0;
+}
+
+.rt-manuscript-modal {
+  overflow-y: auto;
+}
+
+.rt-gossamer-processing-modal {
+  overflow-y: auto;
+}
+
+.rt-book-designer-modal .rt-card-stack {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
 /* Planetary Time Modal */
 .rt-planetary-modal-result {
   margin-top: 0;

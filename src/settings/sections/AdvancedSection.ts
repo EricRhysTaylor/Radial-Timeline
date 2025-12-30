@@ -102,19 +102,29 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
         .setDesc(t('settings.advanced.debounce.desc'))
         .addText(text => {
             const current = String(plugin.settings.metadataRefreshDebounceMs ?? 10000);
-            text.setPlaceholder(t('settings.advanced.debounce.placeholder'))
-                .setValue(current)
-                .onChange(async (value) => {
-                    const n = Number(value.trim());
-                    if (!Number.isFinite(n) || n < 0) {
-                        new Notice(t('settings.advanced.debounce.error'));
-                        text.setValue(String(plugin.settings.metadataRefreshDebounceMs ?? 10000));
-                        return;
-                    }
-                    plugin.settings.metadataRefreshDebounceMs = n;
-                    await plugin.saveSettings();
-                });
+            text.setPlaceholder(t('settings.advanced.debounce.placeholder'));
+            text.setValue(current);
             text.inputEl.addClass('rt-input-xs');
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const n = Number(text.getValue().trim());
+                if (!Number.isFinite(n) || n < 0) {
+                    new Notice(t('settings.advanced.debounce.error'));
+                    text.setValue(String(plugin.settings.metadataRefreshDebounceMs ?? 10000));
+                    return;
+                }
+                plugin.settings.metadataRefreshDebounceMs = n;
+                await plugin.saveSettings();
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
         });
 
     // 3. Reset subplot color precedence

@@ -23,31 +23,46 @@ export function renderPublicationSection(params: {
         .addText(text => {
             text.inputEl.type = 'date';
             text.inputEl.addClass('rt-input-md'); /* YYYY-MM-DD needs more space */
-            text.setValue(plugin.settings.targetCompletionDate || '')
-                .onChange(async (value) => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
+            text.setValue(plugin.settings.targetCompletionDate || '');
 
-                    if (!value) {
-                        plugin.settings.targetCompletionDate = undefined;
-                        text.inputEl.removeClass('rt-setting-input-error');
-                        await plugin.saveSettings();
-                        plugin.refreshTimelineIfNeeded(null);
-                        return;
-                    }
+            text.onChange(() => {
+                text.inputEl.removeClass('rt-setting-input-error');
+            });
 
-                    const selectedDate = new Date(value + 'T00:00:00');
-                    if (selectedDate > today) {
-                        plugin.settings.targetCompletionDate = value;
-                        text.inputEl.removeClass('rt-setting-input-error');
-                    } else {
-                        new Notice('Target date must be in the future.');
-                        text.setValue(plugin.settings.targetCompletionDate || '');
-                        return;
-                    }
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const value = text.getValue();
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                if (!value) {
+                    plugin.settings.targetCompletionDate = undefined;
+                    text.inputEl.removeClass('rt-setting-input-error');
                     await plugin.saveSettings();
                     plugin.refreshTimelineIfNeeded(null);
-                });
+                    return;
+                }
+
+                const selectedDate = new Date(value + 'T00:00:00');
+                if (selectedDate > today) {
+                    plugin.settings.targetCompletionDate = value;
+                    text.inputEl.removeClass('rt-setting-input-error');
+                } else {
+                    new Notice('Target date must be in the future.');
+                    text.setValue(plugin.settings.targetCompletionDate || '');
+                    return;
+                }
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
         });
 
     // --- Zero draft mode toggle ---

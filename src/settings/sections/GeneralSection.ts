@@ -25,22 +25,21 @@ export function renderGeneralSection(params: {
 
         attachFolderSuggest(text);
 
-        if (plugin.settings.sourcePath?.trim()) {
-            window.setTimeout(async () => {
-                const isValid = await plugin.validateAndRememberPath(plugin.settings.sourcePath);
-                if (isValid) {
-                    text.inputEl.addClass('rt-setting-input-success');
-                    window.setTimeout(() => {
-                        text.inputEl.removeClass('rt-setting-input-success');
-                    }, 2000);
-                }
-            }, 100);
-        }
-
-        text.onChange(async (value) => {
+        text.onChange(() => {
             text.inputEl.removeClass('rt-setting-input-success');
             text.inputEl.removeClass('rt-setting-input-error');
+        });
 
+        // Treat Enter like blur so validation runs once when user confirms
+        plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                text.inputEl.blur();
+            }
+        });
+
+        const handleBlur = async () => {
+            const value = text.getValue();
             const trimmed = value.trim();
             const normalizedValue = trimmed ? normalizePath(trimmed) : '';
 
@@ -75,7 +74,9 @@ export function renderGeneralSection(params: {
                     text.inputEl.removeClass('rt-setting-input-success');
                 }, 1000);
             }
-        });
+        };
+
+        plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
     });
 
     // --- Show Source Path as Title ---
