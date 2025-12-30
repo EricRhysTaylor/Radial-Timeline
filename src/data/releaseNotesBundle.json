@@ -3,9 +3,10 @@
     {
       "version": "5.0.2",
       "title": "5.0.2",
-      "body": "## What's Changed\n\n### New Features\n- Feature - Book Designer Manual mode ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Bug Fixes\n- Bug - unscoped Obsidian styles ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Other Changes\n- src/settings/SettingsTab.ts ([1c16a84](https://github.com/EricRhysTaylor/Radial-Timeline/commit/1c16a84e8bbe38a76e0cd93f01df7c37f2307c65))\n- Save templates ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))",
-      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.2",
-      "publishedAt": "2025-12-30T23:24:48.173Z"
+      "body": "## What's Changed\r\n\r\n### New Features\r\n-  Book Designer Manual mode. Drag to reorder scenes in Preview ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n-- Save templates ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n\r\n### Bug Fixes\r\n- Scoped the settings UI to prevent CSS bleed. ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n",
+      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-8f7c47764b76859a8745",
+      "publishedAt": "2025-12-30T23:29:25.448Z",
+      "isDraft": true
     },
     {
       "version": "5.0.1",
@@ -36,18 +37,12 @@
   "latest": {
     "version": "5.0.2",
     "title": "5.0.2",
-    "body": "## What's Changed\n\n### New Features\n- Feature - Book Designer Manual mode ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Bug Fixes\n- Bug - unscoped Obsidian styles ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Other Changes\n- src/settings/SettingsTab.ts ([1c16a84](https://github.com/EricRhysTaylor/Radial-Timeline/commit/1c16a84e8bbe38a76e0cd93f01df7c37f2307c65))\n- Save templates ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))",
-    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.2",
-    "publishedAt": "2025-12-30T23:24:48.173Z"
+    "body": "## What's Changed\r\n\r\n### New Features\r\n-  Book Designer Manual mode. Drag to reorder scenes in Preview ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n-- Save templates ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n\r\n### Bug Fixes\r\n- Scoped the settings UI to prevent CSS bleed. ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\r\n",
+    "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/untagged-8f7c47764b76859a8745",
+    "publishedAt": "2025-12-30T23:29:25.448Z",
+    "isDraft": true
   },
   "patches": [
-    {
-      "version": "5.0.2",
-      "title": "5.0.2",
-      "body": "## What's Changed\n\n### New Features\n- Feature - Book Designer Manual mode ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Bug Fixes\n- Bug - unscoped Obsidian styles ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))\n\n### Other Changes\n- src/settings/SettingsTab.ts ([1c16a84](https://github.com/EricRhysTaylor/Radial-Timeline/commit/1c16a84e8bbe38a76e0cd93f01df7c37f2307c65))\n- Save templates ([5d3d4f4](https://github.com/EricRhysTaylor/Radial-Timeline/commit/5d3d4f4b5d638481db51fe69fadd2cfcc1958d44))",
-      "url": "https://github.com/EricRhysTaylor/Radial-Timeline/releases/tag/5.0.2",
-      "publishedAt": "2025-12-30T23:24:48.173Z"
-    },
     {
       "version": "5.0.1",
       "title": "5.0.1",
