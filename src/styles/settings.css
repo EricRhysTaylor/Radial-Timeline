@@ -4,40 +4,40 @@
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.documentation-container {
+.rt-settings-root .documentation-container {
   padding: 0 1em;
 }
 
-.documentation-container h1 {
+.rt-settings-root .documentation-container h1 {
   font-size: 2.2em;
   margin-top: 0.5em;
 }
 
-.documentation-container h2 {
+.rt-settings-root .documentation-container h2 {
   font-size: 1.5em;
   margin-top: 1.5em;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.documentation-container h3 {
+.rt-settings-root .documentation-container h3 {
   font-size: 1.2em;
   margin-top: 1em;
 }
 
-.documentation-container img {
+.rt-settings-root .documentation-container img {
   max-width: 100%;
   border-radius: 5px;
   margin: 1em 0;
 }
 
-.documentation-container code {
+.rt-settings-root .documentation-container code {
   background-color: var(--background-primary);
   padding: 0.2em 0.4em;
   border-radius: 3px;
 }
 
-.documentation-container pre {
+.rt-settings-root .documentation-container pre {
   background-color: var(--background-primary);
   padding: 1em;
   border-radius: 5px;
@@ -64,7 +64,7 @@
 }
 
 /* Settings dropdown width normalization (works within Obsidian's flex layout) */
-.setting-item .setting-item-control select.rt-setting-dropdown {
+.rt-settings-root .setting-item .setting-item-control select.rt-setting-dropdown {
   width: var(--rt-settings-select-width) !important;
   min-width: var(--rt-settings-select-width);
   max-width: var(--rt-settings-select-width);
@@ -102,7 +102,7 @@
   min-width: var(--rt-input-width-xl);
 }
 
-.setting-item .setting-item-control .rt-input-full {
+.rt-settings-root .setting-item .setting-item-control .rt-input-full {
   width: 100%;
   min-width: var(--rt-input-width-xl);
 }
@@ -150,14 +150,14 @@
 }
 
 /* Default sizing for settings inputs (override with utilities above when needed) */
-.setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
-.setting-item .setting-item-control input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
-.setting-item .setting-item-control input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full) {
+.rt-settings-root .setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
+.rt-settings-root .setting-item .setting-item-control input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
+.rt-settings-root .setting-item .setting-item-control input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full) {
   width: var(--rt-input-width-md);
   max-width: 100%;
 }
 
-.setting-item .setting-item-control textarea {
+.rt-settings-root .setting-item .setting-item-control textarea {
   width: 100%;
 }
 
@@ -208,17 +208,17 @@
 }
 
 /* Fix alignment of extra buttons (like gear icon) with setting item text */
-.setting-item {
+.rt-settings-root .setting-item {
   display: flex !important;
   align-items: center !important;
 }
 
-.setting-item-control {
+.rt-settings-root .setting-item-control {
   display: flex !important;
   align-items: center !important;
 }
 
-.clickable-icon.extra-setting-button {
+.rt-settings-root .clickable-icon.extra-setting-button {
   align-self: center !important;
   margin-top: 0 !important;
 }
@@ -1045,9 +1045,9 @@
 }
 
 /* Ensure all settings buttons/toggles use pointer cursor (match Patreon CTA feel) */
-.setting-item-control button,
-.setting-item-control .clickable-icon,
-.setting-item-control input[type="checkbox"] {
+.rt-settings-root .setting-item-control button,
+.rt-settings-root .setting-item-control .clickable-icon,
+.rt-settings-root .setting-item-control input[type="checkbox"] {
   cursor: pointer;
 }
 

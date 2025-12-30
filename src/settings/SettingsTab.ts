@@ -377,6 +377,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
+        containerEl.addClass('rt-settings-root');
 
         // Clear AI-related elements array for fresh render
         this._aiRelatedElements = [];
