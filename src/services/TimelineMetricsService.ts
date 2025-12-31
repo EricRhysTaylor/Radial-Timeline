@@ -2,6 +2,7 @@ import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import { isBeatNote } from '../utils/sceneHelpers';
 import { STAGE_ORDER } from '../utils/constants';
+import { parseSceneTitle } from '../utils/text';
 
 export interface CompletionEstimate {
     date: Date | null;
@@ -54,6 +55,21 @@ export class TimelineMetricsService {
         const stageScenes = sceneNotesOnly.filter(scene => normalizeStage(scene['Publish Stage']) === activeStage);
         if (stageScenes.length === 0) return null;
 
+        // Compute highest scene number across all scenes (any stage) as a floor for total count
+        const seenForMax = new Set<string>();
+        let highestPrefixNumber = 0;
+        sceneNotesOnly.forEach(scene => {
+            if (!scene.path || seenForMax.has(scene.path)) return;
+            seenForMax.add(scene.path);
+            const { number } = parseSceneTitle(scene.title || '', scene.number);
+            if (number) {
+                const n = parseFloat(String(number));
+                if (!isNaN(n)) {
+                    highestPrefixNumber = Math.max(highestPrefixNumber, n);
+                }
+            }
+        });
+
         const processedPaths = new Set<string>();
         const currentStatusCounts = stageScenes.reduce((acc, scene) => {
             if (!scene.path || processedPaths.has(scene.path)) {
@@ -85,11 +101,12 @@ export class TimelineMetricsService {
         this.plugin.latestStatusCounts = currentStatusCounts;
 
         const completedCount = currentStatusCounts['Completed'] || 0;
-        const totalScenes = Object.values(currentStatusCounts).reduce((sum, count) => sum + count, 0);
-        const remainingScenes = totalScenes - completedCount;
+        const totalScenesDeduped = processedPaths.size;
+        const totalForStage = Math.max(totalScenesDeduped, Math.floor(highestPrefixNumber));
+        const remainingScenes = Math.max(0, totalForStage - completedCount);
 
         if (remainingScenes <= 0) {
-            this.captureLatestStats(totalScenes, 0, 0);
+            this.captureLatestStats(totalForStage, 0, 0);
             return null;
         }
 
@@ -139,7 +156,7 @@ export class TimelineMetricsService {
 
         const result: CompletionEstimate = {
             date: estimatedDate,
-            total: totalScenes,
+            total: totalForStage,
             remaining: remainingScenes,
             rate: parseFloat(scenesPerWeek.toFixed(1)),
             stage: activeStage,
@@ -153,13 +170,13 @@ export class TimelineMetricsService {
         // Freeze to last fresh estimate if we have no valid rate/date but we had one before
         if (!estimatedDate || scenesPerDay <= 0 || !Number.isFinite(daysNeeded)) {
             const frozen = this.freezeToLastEstimate(activeStage, lastProgressDate, windowDays);
-            this.captureLatestStats(totalScenes, remainingScenes, scenesPerWeek);
+            this.captureLatestStats(totalForStage, remainingScenes, scenesPerWeek);
             return frozen;
         }
 
         // Store as last fresh estimate for morale-friendly freezing
         this.lastFreshEstimate = { ...result, isFrozen: false, labelText: undefined };
-        this.captureLatestStats(totalScenes, remainingScenes, scenesPerWeek);
+        this.captureLatestStats(totalForStage, remainingScenes, scenesPerWeek);
         return result;
     }
 

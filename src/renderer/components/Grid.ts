@@ -97,7 +97,7 @@ export function renderCenterGrid(params: {
     return `
       <g transform="translate(${x}, ${y})" ${tooltipText ? `class="rt-tooltip-target rt-grid-cell" data-tooltip="${tooltipText}" data-tooltip-placement="bottom"` : ''}>
         <rect x="0" y="0" width="${cellWidth}" height="${cellHeight}" ${fillAttr} fill-opacity="${cellOpacity}" pointer-events="all" />
-        ${status === 'Completed' && count > 0 ? `<text x="2" y="${cellHeight - 3}" text-anchor="start" dominant-baseline="alphabetic" class="grid-completed-count">${count}</text>` : ''}
+        ${count > 0 ? `<text x="${cellWidth - 2}" y="${cellHeight - 3}" text-anchor="end" dominant-baseline="alphabetic" class="grid-cell-count">${count}</text>` : ''}
       </g>
     `;
   };

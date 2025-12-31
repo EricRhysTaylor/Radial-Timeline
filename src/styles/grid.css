@@ -303,11 +303,10 @@
   text-decoration: underline;
 }
 
-/* bottom-left count inside Completed grid cells */
-.radial-timeline-container .grid-completed-count {
+/* count inside any grid cell (bottom-right) */
+.radial-timeline-container .grid-cell-count {
   fill: #000000;
   font-size: 14px;
-  /* doubled size */
   pointer-events: none;
 }
 
