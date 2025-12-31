@@ -144,7 +144,8 @@ export class TimelineMetricsService {
             }
         });
 
-        const scenesPerDay = completedWindow > 0 ? completedWindow / windowDays : 0;
+        const hasEnoughSamples = completedWindow >= 2; // require at least 2 completions for a meaningful pace
+        const scenesPerDay = hasEnoughSamples ? (completedWindow / windowDays) : 0;
         const scenesPerWeek = scenesPerDay * 7;
         const daysNeeded = scenesPerDay > 0 ? remainingScenes / scenesPerDay : Number.POSITIVE_INFINITY;
         const estimatedDate = Number.isFinite(daysNeeded) && daysNeeded >= 0
@@ -152,7 +153,7 @@ export class TimelineMetricsService {
             : null;
 
         const staleness = this.classifyStaleness(lastProgressDate, today);
-        const labelText = (staleness === 'stalled' || !estimatedDate) ? '?' : undefined;
+        const labelText = (staleness === 'stalled' || !estimatedDate || !hasEnoughSamples) ? '?' : undefined;
 
         const result: CompletionEstimate = {
             date: estimatedDate,
@@ -206,8 +207,8 @@ export class TimelineMetricsService {
         const msInDay = 24 * 60 * 60 * 1000;
         const daysSince = Math.floor((today.getTime() - lastProgressDate.getTime()) / msInDay);
         if (daysSince <= 7) return 'fresh';
-        if (daysSince <= 14) return 'warn';
-        if (daysSince <= 21) return 'late';
+        if (daysSince <= 10) return 'warn';
+        if (daysSince <= 20) return 'late';
         return 'stalled';
     }
 

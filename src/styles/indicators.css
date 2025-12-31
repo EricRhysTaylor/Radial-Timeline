@@ -210,7 +210,7 @@
 .radial-timeline-container .estimation-date-label {
   font-size: 14px;
   fill: #ff0000;
-  font-weight: bold;
+  font-weight: normal;
 }
 
 .radial-timeline-container .estimated-date-tick {
