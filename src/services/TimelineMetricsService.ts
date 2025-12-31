@@ -144,8 +144,9 @@ export class TimelineMetricsService {
             }
         });
 
-        const hasEnoughSamples = completedWindow >= 2; // require at least 2 completions for a meaningful pace
-        const scenesPerDay = hasEnoughSamples ? (completedWindow / windowDays) : 0;
+        const hasEnoughSamples = completedWindow >= 2; // require at least 2 completions for a confident pace
+        const rawScenesPerDay = completedWindow > 0 ? (completedWindow / windowDays) : 0;
+        const scenesPerDay = rawScenesPerDay; // still use raw pace for geometry placement
         const scenesPerWeek = scenesPerDay * 7;
         const daysNeeded = scenesPerDay > 0 ? remainingScenes / scenesPerDay : Number.POSITIVE_INFINITY;
         const estimatedDate = Number.isFinite(daysNeeded) && daysNeeded >= 0

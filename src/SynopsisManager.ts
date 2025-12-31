@@ -5,6 +5,7 @@
  */
 import type RadialTimelinePlugin from './main';
 import type { TimelineItem } from './types';
+import type { HoverMetadataField } from './types/settings';
 import { decodeHtmlEntities, parseSceneTitleComponents, splitIntoBalancedLines } from './utils/text';
 import { getPublishStageStyle, splitSynopsisLines, decodeContentLines, isOverdueAndIncomplete } from './synopsis/SynopsisData';
 import { createSynopsisContainer, createTextGroup, createText } from './synopsis/SynopsisView';
@@ -21,6 +22,7 @@ import { sortScenes, isBeatNote, shouldDisplayMissingWhenWarning } from './utils
 import { parseWhenField } from './utils/date';
 import { getReadabilityMultiplier, getReadabilityScale } from './utils/readability';
 import { isAlienModeActive } from './view/interactions/ChronologueShiftController';
+import { getIcon } from 'obsidian';
 
 /**
  * Handles generating synopsis SVG/HTML blocks and positioning logic.
@@ -524,6 +526,65 @@ export default class SynopsisManager {
         currentMetadataY = beatsY + (linesAdded * pulseLineHeight);
         if (linesAdded > 0) {
           // Call addSpacer with height 0, update starting point for next block
+          currentMetadataY = addSpacer(currentMetadataY, 0);
+        }
+      }
+
+      // --- Custom Hover Metadata Fields ---
+      const enabledHoverFields = (this.plugin.settings.hoverMetadataFields || []).filter((f: HoverMetadataField) => f.enabled);
+      if (enabledHoverFields.length > 0) {
+        const hoverMetaStartY = currentMetadataY;
+        let hoverMetaLinesAdded = 0;
+
+        enabledHoverFields.forEach((field: HoverMetadataField) => {
+          // Check if the scene has this key in its data
+          const sceneValue = (scene as unknown as Record<string, unknown>)[field.key];
+          if (sceneValue !== undefined && sceneValue !== null && sceneValue !== '') {
+            const y = hoverMetaStartY + (hoverMetaLinesAdded * metadataLineHeight);
+            
+            // Create a group for this hover metadata line
+            const lineGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            lineGroup.setAttribute("class", "rt-hover-metadata-line");
+            
+            // Get the Lucide icon SVG
+            const iconSvg = getIcon(field.icon || 'align-vertical-space-around');
+            if (iconSvg) {
+              // Convert the icon to an SVG use element or embed it
+              const iconSize = 12 * fontScale;
+              const iconG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+              iconG.setAttribute("transform", `translate(0, ${y - iconSize + 2})`);
+              
+              // Clone and resize the icon SVG contents
+              const foreignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+              foreignObject.setAttribute("width", String(iconSize));
+              foreignObject.setAttribute("height", String(iconSize));
+              foreignObject.setAttribute("class", "rt-hover-metadata-icon");
+              
+              // Clone the icon and set its size (dynamic based on readability scale)
+              const iconClone = iconSvg.cloneNode(true) as SVGElement;
+              iconClone.setAttribute("width", String(iconSize));
+              iconClone.setAttribute("height", String(iconSize));
+              iconClone.style.width = `${iconSize}px`; // SAFE: inline style used for dynamic icon sizing based on readability scale
+              iconClone.style.height = `${iconSize}px`; // SAFE: inline style used for dynamic icon sizing based on readability scale
+              
+              foreignObject.appendChild(iconClone);
+              iconG.appendChild(foreignObject);
+              lineGroup.appendChild(iconG);
+            }
+            
+            // Create the text element (key: value)
+            const valueStr = Array.isArray(sceneValue) ? sceneValue.join(', ') : String(sceneValue);
+            const textX = 16 * fontScale; // Offset for icon
+            const textEl = createText(textX, y, 'rt-info-text rt-title-text-secondary rt-hover-metadata-text', `${field.key}: ${valueStr}`);
+            lineGroup.appendChild(textEl);
+            
+            synopsisTextGroup.appendChild(lineGroup);
+            hoverMetaLinesAdded++;
+          }
+        });
+
+        if (hoverMetaLinesAdded > 0) {
+          currentMetadataY = hoverMetaStartY + (hoverMetaLinesAdded * metadataLineHeight);
           currentMetadataY = addSpacer(currentMetadataY, 0);
         }
       }

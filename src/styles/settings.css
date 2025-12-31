@@ -1163,3 +1163,94 @@
 .rt-wiki-link:hover {
   opacity: 1;
 }
+
+/* Hover Metadata UI in Advanced YAML Editor */
+.rt-yaml-row-hover-meta {
+  /* Extended grid: Handle | Spacer | Icon | Checkbox | Key | Value | Trash */
+  grid-template-columns: auto 1fr auto auto auto auto auto !important;
+}
+
+.rt-hover-icon-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rt-hover-icon-preview {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.rt-hover-icon-preview svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rt-icon-input {
+  width: 100px !important;
+  min-width: 100px !important;
+}
+
+.rt-hover-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rt-hover-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--interactive-accent);
+}
+
+/* Hover Metadata Preview Panel */
+.rt-hover-metadata-preview {
+  margin-top: 12px;
+}
+
+.rt-hover-preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.rt-hover-preview-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1em;
+  font-weight: 500;
+}
+
+.rt-hover-preview-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.rt-hover-preview-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rt-hover-preview-text {
+  color: var(--text-normal);
+}
+
+.rt-hover-preview-empty {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  font-style: italic;
+}

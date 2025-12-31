@@ -21,8 +21,8 @@ Manage your project's milestones and status tracking.
 * Scope: Only the active publish stage (highest stage with any incomplete scenes). Other stages do not affect pace or remaining.
 * Total scenes for the active stage: `max(unique stage scenes, highest scene number seen anywhere)`. This lets an early high-numbered scene (e.g., “Scene 70”) set a floor even if few notes exist.
 * Remaining: Total − Completed (stage-scoped, deduped by path, clamped to ≥0).
-* Date: If pace > 0, `today + ceil(remaining / pace)`. If no pace, the last good estimate stays visible but is marked stale.
-* Staleness colors: fresh (≤7d, normal), warn (8–14d, orange), late (15–21d, red), stalled (>21d or no pace, red “?”). Geometry is frozen until new completions update the pace.
+* Date: Requires at least 2 completed scenes in the window for a confident pace. With fewer, the geometry stays but the label shows “?”.
+* Staleness colors: fresh (≤7d, normal), warn (8–10d, orange), late (11–20d, red), stalled (>20d or no pace/insufficient samples, red “?”). Geometry is frozen until new completions update the pace.
 
 > [!NOTE]
 > Learn more about workflows in [[Core-Workflows]].

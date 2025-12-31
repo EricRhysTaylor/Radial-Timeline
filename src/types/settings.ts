@@ -40,6 +40,12 @@ export interface BookDesignerTemplate {
     assignments: BookDesignerSceneAssignment[];
 }
 
+export interface HoverMetadataField {
+    key: string;           // YAML key name
+    icon: string;          // Lucide icon name
+    enabled: boolean;      // Show in hover synopsis
+}
+
 export interface RadialTimelineSettings {
     sourcePath: string;
     showSourcePathAsTitle?: boolean;
@@ -107,6 +113,7 @@ export interface RadialTimelineSettings {
     };
     bookDesignerTemplates?: BookDesignerTemplate[];
     backdropYamlTemplate?: string;
+    hoverMetadataFields?: HoverMetadataField[];
 }
 
 export interface PlanetaryProfile {

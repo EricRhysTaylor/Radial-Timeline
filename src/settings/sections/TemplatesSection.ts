@@ -1,4 +1,4 @@
-import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent } from 'obsidian';
+import { App, Notice, Setting as Settings, parseYaml, setIcon, setTooltip, Modal, ButtonComponent, getIconIds } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { CreateBeatsTemplatesModal } from '../../modals/CreateBeatsTemplatesModal';
 import { getPlotSystem, getCustomSystemFromSettings } from '../../utils/beatsSystems';
@@ -6,9 +6,12 @@ import { createBeatTemplateNotes } from '../../utils/beatsTemplates';
 import { DEFAULT_SETTINGS } from '../defaults';
 import { renderMetadataSection } from './MetadataSection';
 import { addWikiLink } from '../wikiLink';
+import type { HoverMetadataField } from '../../types/settings';
 
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
+
+const DEFAULT_HOVER_ICON = 'align-vertical-space-around';
 
 export function renderStoryBeatsSection(params: {
     app: App;
@@ -395,6 +398,43 @@ export function renderStoryBeatsSection(params: {
 
     const advancedContainer = templateSection.createDiv({ cls: 'rt-advanced-template-card' });
 
+    // Helper functions for hover metadata management
+    const getHoverMetadata = (key: string): HoverMetadataField | undefined => {
+        return plugin.settings.hoverMetadataFields?.find(f => f.key === key);
+    };
+
+    const setHoverMetadata = (key: string, icon: string, enabled: boolean) => {
+        if (!plugin.settings.hoverMetadataFields) {
+            plugin.settings.hoverMetadataFields = [];
+        }
+        const existing = plugin.settings.hoverMetadataFields.find(f => f.key === key);
+        if (existing) {
+            existing.icon = icon;
+            existing.enabled = enabled;
+        } else {
+            plugin.settings.hoverMetadataFields.push({ key, icon, enabled });
+        }
+        void plugin.saveSettings();
+    };
+
+    const removeHoverMetadata = (key: string) => {
+        if (plugin.settings.hoverMetadataFields) {
+            plugin.settings.hoverMetadataFields = plugin.settings.hoverMetadataFields.filter(f => f.key !== key);
+            void plugin.saveSettings();
+        }
+    };
+
+    const renameHoverMetadataKey = (oldKey: string, newKey: string) => {
+        const existing = plugin.settings.hoverMetadataFields?.find(f => f.key === oldKey);
+        if (existing) {
+            existing.key = newKey;
+            void plugin.saveSettings();
+        }
+    };
+
+    // Preview update function (will be set by the preview panel)
+    let updateHoverPreview: (() => void) | undefined;
+
     const renderAdvancedTemplateEditor = () => {
         advancedContainer.empty();
 
@@ -534,11 +574,30 @@ export function renderStoryBeatsSection(params: {
             advancedContainer.toggleClass('rt-settings-hidden', !isEnabled);
             if (!isEnabled) return;
 
+            // Create datalist for icon autocomplete (if not exists)
+            if (!document.getElementById('rt-icon-datalist')) {
+                const datalist = document.createElement('datalist');
+                datalist.id = 'rt-icon-datalist';
+                // Populate with common Lucide icons (full list is very large)
+                const iconIds = getIconIds();
+                iconIds.forEach(iconId => {
+                    const option = document.createElement('option');
+                    option.value = iconId;
+                    datalist.appendChild(option);
+                });
+                document.body.appendChild(datalist);
+            }
+
             const listEl = advancedContainer.createDiv({ cls: 'rt-template-entries rt-template-indent' });
 
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
                 // Match beats row structure: all inputs are direct grid children
-                const row = listEl.createDiv({ cls: 'rt-yaml-row' });
+                const row = listEl.createDiv({ cls: 'rt-yaml-row rt-yaml-row-hover-meta' });
+
+                // Get existing hover metadata for this key
+                const hoverMeta = getHoverMetadata(entry.key);
+                const currentIcon = hoverMeta?.icon ?? DEFAULT_HOVER_ICON;
+                const currentEnabled = hoverMeta?.enabled ?? false;
 
                 // 1. Drag handle (direct child)
                 const dragHandle = row.createDiv({ cls: 'rt-drag-handle' });
@@ -549,7 +608,54 @@ export function renderStoryBeatsSection(params: {
                 // 2. Spacer (pushes rest to the right)
                 row.createDiv({ cls: 'rt-grid-spacer' });
 
-                // 3. Key input (direct child - no wrapper!)
+                // 3. Icon input with preview (for hover synopsis)
+                const iconWrapper = row.createDiv({ cls: 'rt-hover-icon-wrapper' });
+                const iconPreview = iconWrapper.createDiv({ cls: 'rt-hover-icon-preview' });
+                setIcon(iconPreview, currentIcon);
+                const iconInput = iconWrapper.createEl('input', { 
+                    type: 'text', 
+                    cls: 'rt-template-input rt-input-sm rt-icon-input',
+                    attr: { placeholder: 'Icon', list: 'rt-icon-datalist' }
+                });
+                iconInput.value = currentIcon;
+                setTooltip(iconInput, 'Lucide icon name for hover synopsis');
+                iconInput.oninput = () => {
+                    const iconName = iconInput.value.trim();
+                    if (iconName && getIconIds().includes(iconName)) {
+                        iconPreview.empty();
+                        setIcon(iconPreview, iconName);
+                        setHoverMetadata(entry.key, iconName, currentEnabled);
+                        updateHoverPreview?.();
+                    }
+                };
+                iconInput.onchange = () => {
+                    const iconName = iconInput.value.trim() || DEFAULT_HOVER_ICON;
+                    if (!getIconIds().includes(iconName)) {
+                        iconInput.value = currentIcon;
+                        new Notice(`Invalid icon name: "${iconName}"`);
+                        return;
+                    }
+                    iconPreview.empty();
+                    setIcon(iconPreview, iconName);
+                    setHoverMetadata(entry.key, iconName, currentEnabled);
+                    updateHoverPreview?.();
+                };
+
+                // 4. Checkbox to enable in hover synopsis
+                const checkboxWrapper = row.createDiv({ cls: 'rt-hover-checkbox-wrapper' });
+                const checkbox = checkboxWrapper.createEl('input', { 
+                    type: 'checkbox', 
+                    cls: 'rt-hover-checkbox'
+                });
+                checkbox.checked = currentEnabled;
+                setTooltip(checkbox, 'Show in hover synopsis');
+                checkbox.onchange = () => {
+                    const iconName = iconInput.value.trim() || DEFAULT_HOVER_ICON;
+                    setHoverMetadata(entry.key, iconName, checkbox.checked);
+                    updateHoverPreview?.();
+                };
+
+                // 5. Key input (direct child - no wrapper!)
                 const keyInput = row.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md' });
                 keyInput.value = entry.key;
                 keyInput.placeholder = 'Key';
@@ -569,13 +675,16 @@ export function renderStoryBeatsSection(params: {
                         keyInput.value = entry.key;
                         return;
                     }
+                    // Rename the hover metadata key
+                    renameHoverMetadataKey(entry.key, newKey);
                     const nextList = [...list];
                     nextList[idx] = { ...entry, key: newKey };
                     saveEntries(nextList);
                     rerender(nextList);
+                    updateHoverPreview?.();
                 };
 
-                // 4. Value input (direct child - no wrapper!)
+                // 6. Value input (direct child - no wrapper!)
                 const value = entry.value;
                 const valInput = row.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md' });
                 if (Array.isArray(value)) {
@@ -585,6 +694,7 @@ export function renderStoryBeatsSection(params: {
                         const nextList = [...list];
                         nextList[idx] = { ...entry, value: valInput.value.split(',').map(s => s.trim()).filter(Boolean) };
                         saveEntries(nextList);
+                        updateHoverPreview?.();
                     };
                 } else {
                     valInput.value = value ?? '';
@@ -593,16 +703,19 @@ export function renderStoryBeatsSection(params: {
                         const nextList = [...list];
                         nextList[idx] = { ...entry, value: valInput.value };
                         saveEntries(nextList);
+                        updateHoverPreview?.();
                     };
                 }
 
-                // 5. Delete button (direct child - no wrapper!)
+                // 7. Delete button (direct child - no wrapper!)
                 const delBtn = row.createEl('button', { cls: 'rt-template-icon-btn' });
                 setIcon(delBtn, 'trash');
                 delBtn.onclick = () => {
+                    removeHoverMetadata(entry.key);
                     const nextList = list.filter((_, i) => i !== idx);
                     saveEntries(nextList);
                     rerender(nextList);
+                    updateHoverPreview?.();
                 };
 
                 plugin.registerDomEvent(dragHandle, 'dragstart', (e) => {
@@ -647,7 +760,7 @@ export function renderStoryBeatsSection(params: {
             data.forEach((entry, idx, arr) => renderEntryRow(entry, idx, arr));
 
             // Add new key/value - inside listEl so it gets the indent border
-            const addRow = listEl.createDiv({ cls: 'rt-yaml-row rt-yaml-add-row' });
+            const addRow = listEl.createDiv({ cls: 'rt-yaml-row rt-yaml-add-row rt-yaml-row-hover-meta' });
 
             // 1. Handle placeholder (direct child)
             addRow.createDiv({ cls: 'rt-drag-handle rt-drag-placeholder' });
@@ -655,13 +768,41 @@ export function renderStoryBeatsSection(params: {
             // 2. Spacer (direct child)
             addRow.createDiv({ cls: 'rt-grid-spacer' });
 
-            // 3. Key input (direct child - no wrapper!)
+            // 3. Icon input with preview for new entry
+            const addIconWrapper = addRow.createDiv({ cls: 'rt-hover-icon-wrapper' });
+            const addIconPreview = addIconWrapper.createDiv({ cls: 'rt-hover-icon-preview' });
+            setIcon(addIconPreview, DEFAULT_HOVER_ICON);
+            const addIconInput = addIconWrapper.createEl('input', { 
+                type: 'text', 
+                cls: 'rt-template-input rt-input-sm rt-icon-input',
+                attr: { placeholder: 'Icon', list: 'rt-icon-datalist' }
+            });
+            addIconInput.value = DEFAULT_HOVER_ICON;
+            setTooltip(addIconInput, 'Lucide icon name for hover synopsis');
+            addIconInput.oninput = () => {
+                const iconName = addIconInput.value.trim();
+                if (iconName && getIconIds().includes(iconName)) {
+                    addIconPreview.empty();
+                    setIcon(addIconPreview, iconName);
+                }
+            };
+
+            // 4. Checkbox for new entry (default unchecked)
+            const addCheckboxWrapper = addRow.createDiv({ cls: 'rt-hover-checkbox-wrapper' });
+            const addCheckbox = addCheckboxWrapper.createEl('input', { 
+                type: 'checkbox', 
+                cls: 'rt-hover-checkbox'
+            });
+            addCheckbox.checked = false;
+            setTooltip(addCheckbox, 'Show in hover synopsis');
+
+            // 5. Key input (direct child - no wrapper!)
             const keyInput = addRow.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md', attr: { placeholder: 'New key' } });
 
-            // 4. Value input (direct child - no wrapper!)
+            // 6. Value input (direct child - no wrapper!)
             const valInput = addRow.createEl('input', { type: 'text', cls: 'rt-template-input rt-input-md', attr: { placeholder: 'Value' } }) as HTMLInputElement;
 
-            // 5. Buttons wrapper (holds both + and reset)
+            // 7. Buttons wrapper (holds both + and reset)
             const btnWrap = addRow.createDiv({ cls: 'rt-template-add-buttons' });
 
             const addBtn = btnWrap.createEl('button', { cls: 'rt-template-icon-btn rt-mod-cta' });
@@ -678,9 +819,15 @@ export function renderStoryBeatsSection(params: {
                     new Notice(`Key "${k}" already exists.`);
                     return;
                 }
+                // Save hover metadata for new key
+                const iconName = addIconInput.value.trim() || DEFAULT_HOVER_ICON;
+                if (addCheckbox.checked || iconName !== DEFAULT_HOVER_ICON) {
+                    setHoverMetadata(k, iconName, addCheckbox.checked);
+                }
                 const nextList = [...data, { key: k, value: valInput.value || '', required: false }];
                 saveEntries(nextList);
                 rerender(nextList);
+                updateHoverPreview?.();
             };
 
             const revertBtn = btnWrap.createEl('button', { cls: 'rt-template-icon-btn rt-template-reset-btn' });
@@ -740,8 +887,46 @@ export function renderStoryBeatsSection(params: {
 
     renderAdvancedTemplateEditor();
 
+    // Hover Metadata Preview Panel
+    const hoverPreviewContainer = templateSection.createDiv({ cls: 'rt-planetary-preview rt-hover-metadata-preview' });
+    const hoverPreviewHeading = hoverPreviewContainer.createDiv({ cls: 'rt-planetary-preview-heading', text: 'Hover Metadata Preview' });
+    const hoverPreviewBody = hoverPreviewContainer.createDiv({ cls: 'rt-planetary-preview-body rt-hover-preview-body' });
+
+    const renderHoverPreview = () => {
+        hoverPreviewBody.empty();
+        const enabledFields = (plugin.settings.hoverMetadataFields || []).filter(f => f.enabled);
+        const currentTemplate = plugin.settings.sceneYamlTemplates?.advanced ?? '';
+        const templateObj = safeParseYaml(currentTemplate);
+
+        if (enabledFields.length === 0) {
+            hoverPreviewHeading.setText('Hover Metadata Preview (none enabled)');
+            hoverPreviewBody.createDiv({ text: 'Enable fields using the checkboxes above to show them in hover synopsis.', cls: 'rt-hover-preview-empty' });
+            return;
+        }
+
+        hoverPreviewHeading.setText(`Hover Metadata Preview (${enabledFields.length} field${enabledFields.length > 1 ? 's' : ''})`);
+
+        enabledFields.forEach(field => {
+            const lineEl = hoverPreviewBody.createDiv({ cls: 'rt-hover-preview-line' });
+            
+            // Icon bullet
+            const iconEl = lineEl.createSpan({ cls: 'rt-hover-preview-icon' });
+            setIcon(iconEl, field.icon || DEFAULT_HOVER_ICON);
+            
+            // Key: Value text
+            const value = templateObj[field.key];
+            const valueStr = Array.isArray(value) ? value.join(', ') : (value ?? '');
+            lineEl.createSpan({ text: `${field.key}: ${valueStr || '(value from scene)'}`, cls: 'rt-hover-preview-text' });
+        });
+    };
+
+    // Set the preview update function
+    updateHoverPreview = renderHoverPreview;
+    renderHoverPreview();
+
     const refreshVisibility = () => {
         renderAdvancedTemplateEditor();
+        renderHoverPreview();
     };
     onAdvancedToggle = refreshVisibility;
     refreshVisibility();

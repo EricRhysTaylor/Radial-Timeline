@@ -617,3 +617,21 @@
 .rt-number-text.rt-non-selected.rt-grade-C {
   fill: var(--rt-color-empty) !important;
 }
+
+/* Custom Hover Metadata Lines in Synopsis */
+.rt-hover-metadata-line {
+  pointer-events: none;
+}
+
+.rt-hover-metadata-icon {
+  overflow: visible;
+}
+
+.rt-hover-metadata-icon svg {
+  color: var(--text-muted);
+  stroke: var(--text-muted);
+}
+
+.rt-hover-metadata-text {
+  fill: var(--text-muted);
+}
