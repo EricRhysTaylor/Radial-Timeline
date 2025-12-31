@@ -14,7 +14,15 @@ This page serves as a comprehensive reference for all plugin settings.
 Manage your project's milestones and status tracking.
 *   **Target completion date**: Set an optional target date (YYYY-MM-DD). A marker will appear on the outer ring of the timeline.
 *   **Zero draft mode**: A focused mode for reviewing. Intercepts clicks on scenes with `Publish Stage: Zero` and `Status: Complete` to open a "Pending Edits" modal instead of the full note.
-*   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline, calculated based on your recent writing pace.
+*   **Show completion estimate**: Toggles the predicted completion tick mark on the timeline.
+*   **Completion estimate window (days)**: Rolling window (default 30, min 14, max 90) used to measure pace. Pace = completions in the active publish stage within the last N days ÷ N (scenes/day).
+
+> [!INFO] How the completion estimate works
+> * Scope: Only the active publish stage (highest stage with any incomplete scenes). Other stages do not affect pace or remaining.
+> * Total scenes for the active stage: `max(unique stage scenes, highest scene number seen anywhere)`. This lets an early high-numbered scene (e.g., “Scene 70”) set a floor even if few notes exist.
+> * Remaining: Total − Completed (stage-scoped, deduped by path, clamped to ≥0).
+> * Date: If pace > 0, `today + ceil(remaining / pace)`. If no pace, the last good estimate stays visible but is marked stale.
+> * Staleness colors: fresh (≤7d, normal), warn (8–14d, orange), late (15–21d, red), stalled (>21d or no pace, red “?”). Geometry is frozen until new completions update the pace.
 
 > [!NOTE]
 > Learn more about workflows in [[Core-Workflows]].
