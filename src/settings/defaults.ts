@@ -43,6 +43,7 @@ export const DEFAULT_SETTINGS: RadialTimelineSettings = {
     logApiInteractions: true, // Default for new setting
     targetCompletionDate: undefined, // Ensure it's undefined by default
     showCompletionEstimate: true, // Default: show the estimate tick
+    completionEstimateWindowDays: 30, // Rolling window (days) for completion estimate pace
     openaiApiKey: '', // Default to empty string
     anthropicApiKey: '', // Default empty string
     anthropicModelId: 'claude-sonnet-4-5-20250929', // Default to Sonnet 4.5 (20250929)

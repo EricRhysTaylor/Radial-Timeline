@@ -222,6 +222,30 @@
   fill: #ff0000;
 }
 
+.radial-timeline-container .estimated-date-tick.estimate-warn,
+.radial-timeline-container .estimated-date-dot.estimate-warn,
+.radial-timeline-container .estimation-date-label.estimate-warn {
+  stroke: #ff9a00;
+  fill: #ff9a00;
+  color: #ff9a00;
+}
+
+.radial-timeline-container .estimated-date-tick.estimate-late,
+.radial-timeline-container .estimated-date-dot.estimate-late,
+.radial-timeline-container .estimation-date-label.estimate-late {
+  stroke: #ff4d4f;
+  fill: #ff4d4f;
+  color: #ff4d4f;
+}
+
+.radial-timeline-container .estimated-date-tick.estimate-stalled,
+.radial-timeline-container .estimated-date-dot.estimate-stalled,
+.radial-timeline-container .estimation-date-label.estimate-stalled {
+  stroke: #c1121f;
+  fill: #c1121f;
+  color: #c1121f;
+}
+
 /* Target Completion Date Marker Styles */
 .radial-timeline-container .target-date-tick {
   stroke: #00cc00;

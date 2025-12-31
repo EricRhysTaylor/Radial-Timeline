@@ -86,7 +86,18 @@ export interface PluginRendererFacade {
     searchTerm: string;
     openScenePaths: Set<string>;
     desaturateColor(hex: string, amount: number): string;
-    calculateCompletionEstimate(scenes: TimelineItem[]): { date: Date | null; total: number; remaining: number; rate: number } | null;
+    calculateCompletionEstimate(scenes: TimelineItem[]): {
+        date: Date | null;
+        total: number;
+        remaining: number;
+        rate: number;
+        stage: string;
+        staleness: 'fresh' | 'warn' | 'late' | 'stalled';
+        lastProgressDate: Date | null;
+        windowDays: number;
+        labelText?: string;
+        isFrozen?: boolean;
+    } | null;
     synopsisManager: { generateElement: (scene: TimelineItem, contentLines: string[], sceneId: string, subplotIndexResolver?: (name: string) => number) => SVGGElement };
     latestStatusCounts?: Record<string, number>;
 }

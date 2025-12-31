@@ -1,15 +1,24 @@
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import { isBeatNote } from '../utils/sceneHelpers';
+import { STAGE_ORDER } from '../utils/constants';
 
 export interface CompletionEstimate {
     date: Date | null;
     total: number;
     remaining: number;
     rate: number;
+    stage: string;
+    staleness: 'fresh' | 'warn' | 'late' | 'stalled';
+    lastProgressDate: Date | null;
+    windowDays: number;
+    labelText?: string;
+    isFrozen?: boolean;
 }
 
 export class TimelineMetricsService {
+    private lastFreshEstimate: CompletionEstimate | null = null;
+
     constructor(private plugin: RadialTimelinePlugin) {}
 
     calculateCompletionEstimate(scenes: TimelineItem[]): CompletionEstimate | null {
@@ -18,60 +27,35 @@ export class TimelineMetricsService {
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-
-        const allScenesComplete = sceneNotesOnly.every(scene => {
-            const publishStage = scene['Publish Stage']?.toString().trim().toLowerCase() || '';
-            const sceneStatus = scene.status?.toString().trim().toLowerCase() || '';
-            return publishStage === 'press' && (sceneStatus === 'complete' || sceneStatus === 'done');
-        });
-
-        if (allScenesComplete) {
-            const targetDate = this.plugin.settings.targetCompletionDate
-                ? new Date(this.plugin.settings.targetCompletionDate + 'T00:00:00')
-                : null;
-            this.captureLatestStats(sceneNotesOnly.length, 0, 0);
-            return { date: targetDate, total: sceneNotesOnly.length, remaining: 0, rate: 0 };
-        }
-
-        const startOfYear = new Date(today.getFullYear(), 0, 1);
-        const startOfYearTime = startOfYear.getTime();
         const todayTime = today.getTime();
-        const daysPassedThisYear = Math.max(1, Math.round((todayTime - startOfYearTime) / (1000 * 60 * 60 * 24)));
+        const windowDays = this.clampWindowDays(this.plugin.settings.completionEstimateWindowDays ?? 30);
+        const windowStartTime = todayTime - windowDays * 24 * 60 * 60 * 1000;
 
-        let completedThisYear = 0;
-        const completedPathsThisYear = new Set<string>();
+        const normalizeStage = (raw: unknown): (typeof STAGE_ORDER)[number] => {
+            const v = (raw ?? 'Zero').toString().trim().toLowerCase();
+            const match = STAGE_ORDER.find(stage => stage.toLowerCase() === v);
+            return match ?? 'Zero';
+        };
 
-        sceneNotesOnly.forEach(scene => {
-            const dueDateStr = scene.due;
-            const scenePath = scene.path;
-            const sceneStatus = scene.status?.toString().trim().toLowerCase();
+        const isCompleted = (status: TimelineItem['status']): boolean => {
+            const val = Array.isArray(status) ? status[0] : status;
+            const normalized = (val ?? '').toString().trim().toLowerCase();
+            return normalized === 'complete' || normalized === 'completed' || normalized === 'done';
+        };
 
-            if (sceneStatus !== 'complete' && sceneStatus !== 'done') return;
-            if (!scenePath || completedPathsThisYear.has(scenePath)) return;
-            if (!dueDateStr) return;
+        // Determine active publish stage: highest stage that still has incomplete work
+        const stageWithIncomplete = [...STAGE_ORDER].reverse().find(stage =>
+            sceneNotesOnly.some(scene => normalizeStage(scene['Publish Stage']) === stage && !isCompleted(scene.status))
+        );
+        const stageWithAnyScenes = [...STAGE_ORDER].reverse().find(stage =>
+            sceneNotesOnly.some(scene => normalizeStage(scene['Publish Stage']) === stage)
+        );
+        const activeStage = stageWithIncomplete ?? stageWithAnyScenes ?? 'Zero';
+        const stageScenes = sceneNotesOnly.filter(scene => normalizeStage(scene['Publish Stage']) === activeStage);
+        if (stageScenes.length === 0) return null;
 
-            try {
-                const dueDate = new Date(dueDateStr + 'T00:00:00');
-                dueDate.setHours(0, 0, 0, 0);
-                const dueTime = dueDate.getTime();
-
-                if (!isNaN(dueTime) && dueTime >= startOfYearTime && dueTime < todayTime) {
-                    completedThisYear++;
-                    completedPathsThisYear.add(scenePath);
-                }
-            } catch {
-                // ignore parse errors
-            }
-        });
-
-        if (completedThisYear <= 0) {
-            this.captureLatestStats(sceneNotesOnly.length, sceneNotesOnly.length, 0);
-            return null;
-        }
-
-        const scenesPerDay = completedThisYear / daysPassedThisYear;
         const processedPaths = new Set<string>();
-        const currentStatusCounts = sceneNotesOnly.reduce((acc, scene) => {
+        const currentStatusCounts = stageScenes.reduce((acc, scene) => {
             if (!scene.path || processedPaths.has(scene.path)) {
                 return acc;
             }
@@ -105,33 +89,113 @@ export class TimelineMetricsService {
         const remainingScenes = totalScenes - completedCount;
 
         if (remainingScenes <= 0) {
-            this.captureLatestStats(totalScenes, 0, scenesPerDay * 7);
+            this.captureLatestStats(totalScenes, 0, 0);
             return null;
         }
 
-        const daysNeeded = remainingScenes / scenesPerDay;
-        if (!isFinite(daysNeeded) || daysNeeded < 0 || scenesPerDay <= 0) {
-            this.captureLatestStats(totalScenes, remainingScenes, scenesPerDay * 7);
-            return null;
-        }
+        // Count completions in the active stage within the rolling window
+        const completedPathsWindow = new Set<string>();
+        let completedWindow = 0;
+        let lastProgressDate: Date | null = null;
 
+        stageScenes.forEach(scene => {
+            const scenePath = scene.path;
+            if (!scenePath) return;
+            if (!isCompleted(scene.status)) return;
+
+            const dueStr = scene.due;
+            if (!dueStr) return;
+
+            try {
+                const dueDate = new Date(dueStr + 'T00:00:00');
+                dueDate.setHours(0, 0, 0, 0);
+                const dueTime = dueDate.getTime();
+                if (isNaN(dueTime)) return;
+
+                if (!lastProgressDate || dueTime > lastProgressDate.getTime()) {
+                    lastProgressDate = new Date(dueTime);
+                }
+
+                if (dueTime >= windowStartTime && dueTime <= todayTime) {
+                    if (!completedPathsWindow.has(scenePath)) {
+                        completedPathsWindow.add(scenePath);
+                        completedWindow++;
+                    }
+                }
+            } catch {
+                // ignore parse errors
+            }
+        });
+
+        const scenesPerDay = completedWindow > 0 ? completedWindow / windowDays : 0;
         const scenesPerWeek = scenesPerDay * 7;
-        const estimatedDate = new Date(today);
-        estimatedDate.setDate(today.getDate() + Math.ceil(daysNeeded));
+        const daysNeeded = scenesPerDay > 0 ? remainingScenes / scenesPerDay : Number.POSITIVE_INFINITY;
+        const estimatedDate = Number.isFinite(daysNeeded) && daysNeeded >= 0
+            ? new Date(today.getTime() + Math.ceil(daysNeeded) * 24 * 60 * 60 * 1000)
+            : null;
 
-        this.captureLatestStats(totalScenes, remainingScenes, scenesPerWeek);
+        const staleness = this.classifyStaleness(lastProgressDate, today);
+        const labelText = (staleness === 'stalled' || !estimatedDate) ? '?' : undefined;
 
-        return {
+        const result: CompletionEstimate = {
             date: estimatedDate,
             total: totalScenes,
             remaining: remainingScenes,
-            rate: parseFloat(scenesPerWeek.toFixed(1))
+            rate: parseFloat(scenesPerWeek.toFixed(1)),
+            stage: activeStage,
+            staleness,
+            lastProgressDate,
+            windowDays,
+            labelText,
+            isFrozen: false
         };
+
+        // Freeze to last fresh estimate if we have no valid rate/date but we had one before
+        if (!estimatedDate || scenesPerDay <= 0 || !Number.isFinite(daysNeeded)) {
+            const frozen = this.freezeToLastEstimate(activeStage, lastProgressDate, windowDays);
+            this.captureLatestStats(totalScenes, remainingScenes, scenesPerWeek);
+            return frozen;
+        }
+
+        // Store as last fresh estimate for morale-friendly freezing
+        this.lastFreshEstimate = { ...result, isFrozen: false, labelText: undefined };
+        this.captureLatestStats(totalScenes, remainingScenes, scenesPerWeek);
+        return result;
     }
 
     private captureLatestStats(total: number, remaining: number, rate: number): void {
         this.plugin.latestTotalScenes = total;
         this.plugin.latestRemainingScenes = remaining;
         this.plugin.latestScenesPerWeek = rate;
+    }
+
+    private freezeToLastEstimate(stage: string, lastProgressDate: Date | null, windowDays: number): CompletionEstimate | null {
+        if (!this.lastFreshEstimate || this.lastFreshEstimate.stage !== stage) {
+            return null;
+        }
+        const staleness = this.classifyStaleness(lastProgressDate, new Date());
+        return {
+            ...this.lastFreshEstimate,
+            staleness,
+            lastProgressDate: lastProgressDate ?? this.lastFreshEstimate.lastProgressDate,
+            windowDays,
+            labelText: '?',
+            isFrozen: true
+        };
+    }
+
+    private classifyStaleness(lastProgressDate: Date | null, today: Date): CompletionEstimate['staleness'] {
+        if (!lastProgressDate) return 'stalled';
+        const msInDay = 24 * 60 * 60 * 1000;
+        const daysSince = Math.floor((today.getTime() - lastProgressDate.getTime()) / msInDay);
+        if (daysSince <= 7) return 'fresh';
+        if (daysSince <= 14) return 'warn';
+        if (daysSince <= 21) return 'late';
+        return 'stalled';
+    }
+
+    private clampWindowDays(value: number): number {
+        if (!Number.isFinite(value)) return 30;
+        return Math.min(90, Math.max(14, Math.round(value)));
     }
 }

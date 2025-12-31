@@ -370,12 +370,7 @@ export default class RadialTimelinePlugin extends Plugin {
     // --- END: Color Conversion & Desaturation Helpers ---
 
     // Add this function inside the RadialTimelinePlugin class
-    public calculateCompletionEstimate(scenes: TimelineItem[]): {
-        date: Date | null;
-        total: number;
-        remaining: number;
-        rate: number;
-    } | null {
+    public calculateCompletionEstimate(scenes: TimelineItem[]) {
         return this.timelineMetricsService.calculateCompletionEstimate(scenes);
     }
 

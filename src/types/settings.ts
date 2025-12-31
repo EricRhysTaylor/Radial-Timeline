@@ -59,6 +59,7 @@ export interface RadialTimelineSettings {
     logApiInteractions: boolean;
     targetCompletionDate?: string;
     showCompletionEstimate?: boolean;
+    completionEstimateWindowDays?: number;
     openaiApiKey?: string;
     anthropicApiKey?: string;
     anthropicModelId?: string;

@@ -343,11 +343,13 @@ export class RendererService {
                 const estimateResult = view.plugin.calculateCompletionEstimate(scenes);
                 if (estimateResult && (view.plugin.settings as any).showCompletionEstimate !== false) {
                     // Only draw arc for current/past year (mirror renderer logic)
-                    const yearsDiff = estimateResult.date.getFullYear() - now.getFullYear();
-                    if (yearsDiff <= 0) {
-                        estimationHtml += renderEstimationArc({ estimateDate: estimateResult.date, progressRadius });
+                    if (estimateResult.date) {
+                        const yearsDiff = estimateResult.date.getFullYear() - now.getFullYear();
+                        if (yearsDiff <= 0) {
+                            estimationHtml += renderEstimationArc({ estimateDate: estimateResult.date, progressRadius });
+                        }
                     }
-                    estimationHtml += renderEstimatedDateElements({ estimateDate: estimateResult.date, progressRadius });
+                    estimationHtml += renderEstimatedDateElements({ estimate: estimateResult, progressRadius });
                 }
             }
         } catch {}

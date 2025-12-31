@@ -1,11 +1,18 @@
 import { formatNumber } from '../../utils/svg';
 import { dateToAngle } from '../../utils/date';
+import type { CompletionEstimate } from '../../services/TimelineMetricsService';
 
 export function renderEstimatedDateElements(params: {
-  estimateDate: Date | null;
+  estimate: CompletionEstimate;
   progressRadius: number;
 }): string {
-  const { estimateDate, progressRadius } = params;
+  const { estimate, progressRadius } = params;
+  const estimateDate = estimate.date;
+  const stalenessClass = estimate.staleness ? ` estimate-${estimate.staleness}` : '';
+  const labelText = estimate.labelText;
+  const displayDate = estimateDate === null ? new Date(new Date().getFullYear(), 0, 1) : estimateDate;
+  const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+  const dateDisplay = labelText ?? dateFormatter.format(displayDate);
   
   // null date means "use default angle" (book complete, no target set)
   let absoluteDatePos: number;
@@ -28,15 +35,10 @@ export function renderEstimatedDateElements(params: {
   let svg = '';
   if ([tickOuterX, tickOuterY, tickInnerX, tickInnerY].every((v) => Number.isFinite(v))) {
     svg += `
-      <line x1="${formatNumber(tickOuterX)}" y1="${formatNumber(tickOuterY)}" x2="${formatNumber(tickInnerX)}" y2="${formatNumber(tickInnerY)}" class="estimated-date-tick" />
-      <circle cx="${formatNumber(tickInnerX)}" cy="${formatNumber(tickInnerY)}" r="4" class="estimated-date-dot" />
+      <line x1="${formatNumber(tickOuterX)}" y1="${formatNumber(tickOuterY)}" x2="${formatNumber(tickInnerX)}" y2="${formatNumber(tickInnerY)}" class="estimated-date-tick${stalenessClass}" />
+      <circle cx="${formatNumber(tickInnerX)}" cy="${formatNumber(tickInnerY)}" r="4" class="estimated-date-dot${stalenessClass}" />
     `;
   }
-
-  // Display "Jan 1" for null date (book complete, no target set), otherwise show actual date
-  const displayDate = estimateDate === null ? new Date(new Date().getFullYear(), 0, 1) : estimateDate;
-  const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-  const dateDisplay = dateFormatter.format(displayDate);
 
   const labelRadius = progressRadius - 45;
   const maxOffset = -18;
@@ -45,11 +47,12 @@ export function renderEstimatedDateElements(params: {
   const offsetY = -maxYOffset * Math.sin(absoluteDatePos);
   const labelXNum = labelRadius * Math.cos(absoluteDatePos) + offsetX;
   const labelYNum = labelRadius * Math.sin(absoluteDatePos) + offsetY;
+
   if (Number.isFinite(labelXNum) && Number.isFinite(labelYNum)) {
     const labelX = formatNumber(labelXNum);
     const labelY = formatNumber(labelYNum);
     svg += `
-      <text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" class="estimation-date-label">${dateDisplay}</text>
+      <text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" class="estimation-date-label${stalenessClass}">${dateDisplay}</text>
     `;
   }
   return svg;

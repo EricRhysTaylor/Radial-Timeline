@@ -87,4 +87,39 @@ export function renderPublicationSection(params: {
                 await plugin.saveSettings();
                 plugin.refreshTimelineIfNeeded(null);
             }));
+
+    // --- Completion estimate window (days) ---
+    new ObsidianSetting(containerEl)
+        .setName('Completion estimate window (days)')
+        .setDesc('Active Publish Stage only. Pace = completed scenes in the last N days ÷ N. Estimate date = remaining scenes ÷ pace. Inactivity colors the date (7/14/21 days) and shows “?” after 21 days of no progress.')
+        .addText(text => {
+            const current = String(plugin.settings.completionEstimateWindowDays ?? 30);
+            text.inputEl.type = 'number';
+            text.inputEl.min = '14';
+            text.inputEl.max = '90';
+            text.inputEl.addClass('rt-input-xs');
+            text.setValue(current);
+
+            plugin.registerDomEvent(text.inputEl, 'keydown', (evt: KeyboardEvent) => {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    text.inputEl.blur();
+                }
+            });
+
+            const handleBlur = async () => {
+                const raw = Number(text.getValue().trim());
+                if (!Number.isFinite(raw)) {
+                    text.setValue(String(plugin.settings.completionEstimateWindowDays ?? 30));
+                    return;
+                }
+                const clamped = Math.min(90, Math.max(14, Math.round(raw)));
+                plugin.settings.completionEstimateWindowDays = clamped;
+                text.setValue(String(clamped));
+                await plugin.saveSettings();
+                plugin.refreshTimelineIfNeeded(null);
+            };
+
+            plugin.registerDomEvent(text.inputEl, 'blur', () => { void handleBlur(); });
+        });
 }

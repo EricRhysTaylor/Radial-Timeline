@@ -121,10 +121,10 @@ export function updateEstimationElements(
         const yearsDiff = estimateResult.date ? estimateResult.date.getFullYear() - new Date().getFullYear() : 0;
         let newEstimationSvg = '';
         
-        if (yearsDiff <= 0) {
+        if (estimateResult.date && yearsDiff <= 0) {
             newEstimationSvg += renderEstimationArc({ estimateDate: estimateResult.date, progressRadius });
         }
-        newEstimationSvg += renderEstimatedDateElements({ estimateDate: estimateResult.date, progressRadius });
+        newEstimationSvg += renderEstimatedDateElements({ estimate: estimateResult, progressRadius });
         
         // Parse and insert
         const parser = new DOMParser();
