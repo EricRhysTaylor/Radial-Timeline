@@ -84,10 +84,6 @@ export interface TranslationKeys {
                 clearedNotice: string;
                 nothingToReset: string;
             };
-            sceneOrdering: {
-                name: string;
-                desc: string;
-            };
         };
         ai: {
             heading: string;
@@ -268,10 +264,6 @@ export const en: TranslationKeys = {
                 button: 'Reset to default',
                 clearedNotice: 'Cleared saved colors for {{count}} multi-subplot scene(s).',
                 nothingToReset: 'No subplot dominance preferences to reset.',
-            },
-            sceneOrdering: {
-                name: 'Scene ordering based on When date',
-                desc: 'Under consideration. Sort scenes chronologically by When date instead of manuscript order for all modes.',
             },
         },
         ai: {

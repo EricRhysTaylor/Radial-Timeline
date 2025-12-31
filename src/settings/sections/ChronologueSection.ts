@@ -194,7 +194,6 @@ export function renderChronologueSection(params: { app: App; plugin: RadialTimel
         const currentValue = plugin.settings.discontinuityThreshold || '';
         text.setPlaceholder('Calculating…')
             .setValue(currentValue);
-        text.inputEl.addClass('rt-input-sm');
         
         void calculateAutoThreshold().then(autoThreshold => {
             text.setPlaceholder(`${autoThreshold.display} (auto)`);

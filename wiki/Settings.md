@@ -51,7 +51,7 @@ Configure the high-level structure of your narrative ring.
 ### Story beats system
 Configure the structural pacing guide for your story.
 *   **Story beats system**: Select a preset structure (**Save The Cat**, **Hero's Journey**, **Story Grid**) or choose **Custom**.
-*   **Custom story beat system**: (Visible when "Custom" is selected) Define your own beat names and assign them to acts. Drag to reorder.
+*   **Custom story beat system editor**: (Visible when "Custom" is selected) Define your own beat names and assign them to acts. Drag to reorder.
 *   **Create story beat template notes**: A utility button to generate empty beat notes in your source folder based on the selected system.
 
 > [!NOTE]

@@ -99,7 +99,7 @@ export function renderStoryBeatsSection(params: {
     addWikiLink(beatsHeading, 'Settings#story-beats');
 
     const beatSystemSetting = new Settings(containerEl)
-        .setName('Story beats system')
+        .setName('Available system templates')
         .setDesc('Select the story structure model for your manuscript. This will establish the story beat system and can be used to create beat notes and graph scores using Gossamer mode.')
         .addDropdown(dropdown => {
             dropdown
@@ -148,7 +148,7 @@ export function renderStoryBeatsSection(params: {
         customConfigContainer.empty();
         
         new Settings(customConfigContainer)
-            .setName('Custom story beat system')
+            .setName('Custom story beat system editor')
             .setDesc('The name of your custom beat system (e.g. "7 Point Structure"). Assigned to the "Beat Model" field in YAML. Drag to reorder beats.')
             .addText(text => text
                 .setPlaceholder('Custom')
@@ -751,7 +751,7 @@ export function renderStoryBeatsSection(params: {
             'Save The Cat': 'Commercial fiction, screenplays, and genre stories. Emphasizes clear emotional beats and audience engagement. <i>The Hunger Games</i>, <i>The Martian</i>, <i>The Fault in Our Stars</i>.',
             'Hero\'s Journey': 'Mythic, adventure, and transformation stories. Focuses on the protagonist\'s arc through trials and self-discovery. <i>The Odyssey</i>, <i>The Hobbit</i>, <i>Harry Potter and the Sorcerer\'s Stone</i>.',
             'Story Grid': 'Scene-driven structure built around the 5 Commandments: Inciting Incident, Progressive Complications, Crisis, Climax, Resolution. Useful per-scene and at the global level. <i>The Silence of the Lambs</i>, <i>Pride and Prejudice</i>.',
-            'Custom': 'Uses any story beat notes you create. Perfect for when you don\'t follow a traditional story structure.'
+            'Custom': 'Uses any story beat note you create manually or below via the custom story beat system editor. Perfect for when you don\'t follow a traditional story structure.'
         };
 
         container.empty();

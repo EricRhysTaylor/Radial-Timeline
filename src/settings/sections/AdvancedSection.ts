@@ -149,18 +149,4 @@ export function renderAdvancedSection(params: { app: App; plugin: RadialTimeline
                 }
             }));
 
-    // 5. Scene ordering by When date (DISABLED/GRAYED OUT)
-    const sortSetting = new Settings(containerEl)
-        .setName(t('settings.advanced.sceneOrdering.name'))
-        .setDesc(t('settings.advanced.sceneOrdering.desc'))
-        .addToggle(toggle => toggle
-            .setValue(false)
-            .setDisabled(true) // Make toggle inoperative
-            .onChange(async () => {
-                // No-op - disabled
-            }));
-    
-    // Gray out the disabled setting
-    sortSetting.settingEl.style.opacity = '0.5';
-    sortSetting.settingEl.style.cursor = 'not-allowed';
 }
