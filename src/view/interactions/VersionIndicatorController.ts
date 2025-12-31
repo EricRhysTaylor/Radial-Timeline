@@ -54,6 +54,11 @@ export function setupVersionIndicatorController(view: VersionIndicatorView, svg:
 
     const hitArea = versionIndicator.querySelector('.rt-version-hitarea') as SVGRectElement | null;
 
+    // Strip any lingering tooltip/title attributes so hover shows only text swap
+    versionIndicator.querySelectorAll('[title]').forEach((el) => el.removeAttribute('title'));
+    versionIndicator.querySelectorAll('[data-tooltip]').forEach((el) => el.removeAttribute('data-tooltip'));
+    versionIndicator.querySelectorAll('.rt-tooltip-target').forEach((el) => el.classList.remove('rt-tooltip-target'));
+
     const handleClick = (ev: Event) => {
         ev.stopPropagation();
         try {

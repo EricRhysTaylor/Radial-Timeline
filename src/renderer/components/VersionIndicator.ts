@@ -161,8 +161,6 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
 
     return `
         <g id="version-indicator" class="${groupClasses.join(' ')}" transform="translate(${x}, ${y})">
-            <title>${hasUpdate ? updateRangeText : currentVersionLabel}</title>
-
             <!-- Unified hit area covers text and icon for consistent hover/click -->
             <rect class="rt-version-hitarea"
                 x="${formatNumber(hitAreaX)}"
@@ -171,7 +169,6 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
                 height="${formatNumber(hitAreaHeight)}"
                 rx="6" ry="6"
                 fill="white" fill-opacity="0" stroke="none" pointer-events="all">
-                <title>${hasUpdate ? updateRangeText : currentVersionLabel}</title>
             </rect>
 
             <!-- Version text (visible by default) -->
@@ -186,7 +183,6 @@ export function renderVersionIndicator(options: VersionIndicatorOptions): string
             
             <!-- Icon below version: Bug icon (no update) or Alert icon (update available) -->
             <g class="${iconClass}" transform="translate(${formatNumber(iconX)}, ${formatNumber(iconY)}) scale(${iconScale})">
-                <title>${hasUpdate ? updateRangeText : currentVersionLabel}</title>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
                     ${iconContent}
                 </svg>

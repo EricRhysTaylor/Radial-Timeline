@@ -34,6 +34,7 @@ import { renderAiSection } from './sections/AiSection';
 import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
 import { renderPovSection } from './sections/PovSection';
 import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
+import { renderMetadataSection } from './sections/MetadataSection';
 import { validateLocalModelAvailability } from '../api/localAiApi';
 
 declare const EMBEDDED_README_CONTENT: string;
@@ -357,25 +358,22 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Backup and safety notice at the top
         this.renderPatreonSection(containerEl);
 
-        // 1. Source path (from GeneralSection)
+        // Data setup: source path + custom metadata mapping
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl });
+        renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl });
 
-        // 2. Publication and Progress section (target date, show estimate, zero draft mode)
-        renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl });
-
-        // POV section (global defaults + YAML guidance)
+        // Story defaults: POV and story beats/acts
         renderPovSection({ plugin: this.plugin, containerEl });
-
-        // 3. Chronologue Mode settings (duration cap, discontinuity threshold)
-        renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl });
-
-        // 4. Story Beats System and Gossamer (templates dropdown, create templates button)
         renderStoryBeatsSection({ app: this.app, plugin: this.plugin, containerEl });
 
-        // Planetary time conversions (opt-in)
+        // Progress targets
+        renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl });
+
+        // Timeline display controls
+        renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl });
         renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl });
 
-        // 5. AI LLM for Scene Analysis
+        // AI LLM for Scene Analysis (keeps provider blocks together)
         renderAiSection({
             app: this.app,
             plugin: this.plugin,
@@ -397,14 +395,10 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             },
         });
 
-        // 6. Custom Metadata Mapping
-        // Moved to GeneralSection to be under Source Path
-        // renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl });
-
-        // 7. Advanced settings (scene clipping, debounce, disabled when date sorting)
+        // Advanced settings (scene clipping, debounce, disabled when date sorting)
         renderAdvancedSection({ app: this.app, plugin: this.plugin, containerEl });
 
-        // Colors section
+        // Custom colors (rarely changed; keep low)
         renderColorsSection(containerEl, this.plugin);
 
         void renderReleaseNotesSection({ plugin: this.plugin, containerEl });
