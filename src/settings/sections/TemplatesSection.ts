@@ -606,13 +606,22 @@ export function renderStoryBeatsSection(params: {
                 });
                 iconInput.value = currentIcon;
                 setTooltip(iconInput, 'Lucide icon name for hover synopsis');
+
+                // 4. Checkbox to enable in hover synopsis (defined before icon handlers so they can reference it)
+                const checkboxWrapper = row.createDiv({ cls: 'rt-hover-checkbox-wrapper' });
+                const checkbox = checkboxWrapper.createEl('input', { 
+                    type: 'checkbox', 
+                    cls: 'rt-hover-checkbox'
+                });
+                checkbox.checked = currentEnabled;
+                setTooltip(checkbox, 'Show in hover synopsis');
                 
-                // Add icon suggester with preview
+                // Add icon suggester with preview (uses checkbox.checked for current state)
                 new IconSuggest(app, iconInput, (selectedIcon) => {
                     iconInput.value = selectedIcon;
                     iconPreview.empty();
                     setIcon(iconPreview, selectedIcon);
-                    setHoverMetadata(entry.key, selectedIcon, currentEnabled);
+                    setHoverMetadata(entry.key, selectedIcon, checkbox.checked);
                     updateHoverPreview?.();
                 });
                 
@@ -621,19 +630,11 @@ export function renderStoryBeatsSection(params: {
                     if (iconName && getIconIds().includes(iconName)) {
                         iconPreview.empty();
                         setIcon(iconPreview, iconName);
-                        setHoverMetadata(entry.key, iconName, currentEnabled);
+                        setHoverMetadata(entry.key, iconName, checkbox.checked);
                         updateHoverPreview?.();
                     }
                 };
 
-                // 4. Checkbox to enable in hover synopsis
-                const checkboxWrapper = row.createDiv({ cls: 'rt-hover-checkbox-wrapper' });
-                const checkbox = checkboxWrapper.createEl('input', { 
-                    type: 'checkbox', 
-                    cls: 'rt-hover-checkbox'
-                });
-                checkbox.checked = currentEnabled;
-                setTooltip(checkbox, 'Show in hover synopsis');
                 checkbox.onchange = () => {
                     const iconName = iconInput.value.trim() || DEFAULT_HOVER_ICON;
                     setHoverMetadata(entry.key, iconName, checkbox.checked);
@@ -906,10 +907,11 @@ export function renderStoryBeatsSection(params: {
             const iconEl = lineEl.createSpan({ cls: 'rt-hover-preview-icon' });
             setIcon(iconEl, field.icon || DEFAULT_HOVER_ICON);
             
-            // Key: Value text
+            // Key: Value text (show just key if no template value)
             const value = templateObj[field.key];
             const valueStr = Array.isArray(value) ? value.join(', ') : (value ?? '');
-            lineEl.createSpan({ text: `${field.key}: ${valueStr || '(value from scene)'}`, cls: 'rt-hover-preview-text' });
+            const displayText = valueStr ? `${field.key}: ${valueStr}` : field.key;
+            lineEl.createSpan({ text: displayText, cls: 'rt-hover-preview-text' });
         });
     };
 
