@@ -137,6 +137,7 @@ Pulse Update:             # AI-generated scene pulse analysis flag`,
 Act: {{Act}}
 When: {{When}}
 Duration: 1 hours
+Runtime:                             # Technical runtime (screen time / reading time, e.g., "2:30", "45s")
 Synopsis: Short scene summary.
 Subplot:
 {{SubplotList}}
@@ -163,4 +164,15 @@ Pulse Update: No`
 When: {{When}}                       # Start Date/Time (YYYY-MM-DD HH:MM)
 End: {{End}}                         # End Date/Time (YYYY-MM-DD HH:MM)
 Synopsis: What this backdrop represents and how it shapes the story.`,
+    
+    // Runtime Estimation defaults
+    runtimeContentType: 'novel',
+    runtimeDialogueWpm: 160,
+    runtimeActionWpm: 100,
+    runtimeNarrationWpm: 150,
+    runtimeBeatSeconds: 2,
+    runtimePauseSeconds: 3,
+    runtimeLongPauseSeconds: 5,
+    runtimeMomentSeconds: 4,
+    runtimeSilenceSeconds: 5,
 };

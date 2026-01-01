@@ -1192,8 +1192,7 @@
 }
 
 .rt-icon-input {
-  width: 100px !important;
-  min-width: 100px !important;
+  /* Uses rt-input-md sizing from template input utilities */
 }
 
 .rt-hover-checkbox-wrapper {
@@ -1253,4 +1252,194 @@
   font-size: 0.9em;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* Icon Suggester Dropdown Styles */
+.rt-icon-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.rt-icon-suggestion-preview {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-normal);
+}
+
+.rt-icon-suggestion-preview svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rt-icon-suggestion-text {
+  color: var(--text-normal);
+  font-size: 13px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* RUNTIME SETTINGS SECTION                                                   */
+/* -------------------------------------------------------------------------- */
+
+.rt-runtime-subheader {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px 0 8px 0;
+  color: var(--text-normal);
+}
+
+.rt-runtime-explanation {
+  margin-bottom: 16px;
+}
+
+.rt-runtime-explanation p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.rt-runtime-scope-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rt-runtime-scope-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.rt-runtime-scope-option:hover {
+  background: var(--background-modifier-hover);
+}
+
+.rt-runtime-scope-option input[type="radio"] {
+  margin-top: 2px;
+}
+
+.rt-runtime-scope-label {
+  flex: 1;
+}
+
+.rt-runtime-scope-title {
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.rt-runtime-scope-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.rt-runtime-subplot-container {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.rt-runtime-override-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.rt-runtime-override-row input[type="checkbox"] {
+  margin-top: 3px;
+}
+
+.rt-runtime-override-label {
+  flex: 1;
+}
+
+.rt-runtime-override-label span {
+  font-weight: 500;
+}
+
+.rt-runtime-count {
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.rt-runtime-count-text {
+  font-size: 16px;
+}
+
+.rt-runtime-number {
+  font-weight: 600;
+  color: var(--interactive-accent);
+}
+
+.rt-runtime-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rt-runtime-label {
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.rt-runtime-running-total {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: 16px;
+}
+
+.rt-runtime-queue {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 12px;
+}
+
+.rt-runtime-explicit-patterns {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.rt-runtime-explicit-patterns p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+}
+
+.rt-runtime-explicit-patterns ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.rt-runtime-explicit-patterns li {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0;
+}
+
+.rt-runtime-explicit-patterns code {
+  background: var(--background-primary);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+/* Utility class for hiding elements */
+.rt-hidden {
+  display: none !important;
 }

@@ -33,6 +33,7 @@ import {
 import { generateNumberSquareGroup, makeSceneId } from '../utils/numberSquareHelpers';
 import { normalizeBeatName } from '../utils/gossamer';
 import { buildChronologueOuterLabels, renderChronologueOverlays, renderOuterLabelTexts, renderChronologueOuterTicks } from './utils/Chronologue';
+import { isRuntimeModeActive } from '../view/interactions/ChronologueShiftController';
 import { getMostAdvancedStageColor } from '../utils/colour';
 import { computeCacheableValues, type PrecomputedRenderValues } from './utils/Precompute';
 import { computeRingGeometry } from './layout/Rings';
@@ -475,8 +476,8 @@ export function createTimelineSVG(
     const textOffset = 30;
     const lineHeight = GRID_LINE_HEIGHT; // Reduced for tighter spacing
 
-    // Calculate grid data (status counts, grid counts, estimates)
-    const { statusCounts, gridCounts, estimatedTotalScenes } = computeGridData(scenes);
+    // Calculate grid data (status counts, grid counts, estimates, runtime)
+    const { statusCounts, gridCounts, estimatedTotalScenes, totalRuntimeSeconds } = computeGridData(scenes);
 
     // Save status counts for completion estimate
     plugin.latestStatusCounts = statusCounts;
@@ -544,6 +545,7 @@ export function createTimelineSVG(
         PUBLISH_STAGE_COLORS,
         currentYearLabel,
         estimatedTotalScenes,
+        totalRuntimeSeconds,
         startXGrid,
         startYGrid,
         cellWidth,
@@ -600,7 +602,8 @@ export function createTimelineSVG(
             chronologueSceneEntries,
             durationArcRadius: CHRONOLOGUE_DURATION_ARC_RADIUS,
             synopsesElements,
-            maxTextWidth
+            maxTextWidth,
+            useRuntimeMode: isRuntimeModeActive()
         });
     }
 

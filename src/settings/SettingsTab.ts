@@ -35,6 +35,7 @@ import { renderReleaseNotesSection } from './sections/ReleaseNotesSection';
 import { renderPovSection } from './sections/PovSection';
 import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 import { renderMetadataSection } from './sections/MetadataSection';
+import { renderRuntimeSection } from './sections/RuntimeSection';
 import { validateLocalModelAvailability } from '../api/localAiApi';
 
 declare const EMBEDDED_README_CONTENT: string;
@@ -372,6 +373,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Timeline display controls
         renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl });
         renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl });
+        renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl });
 
         // AI LLM for Scene Analysis (keeps provider blocks together)
         renderAiSection({

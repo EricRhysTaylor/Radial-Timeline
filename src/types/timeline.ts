@@ -20,6 +20,7 @@ export interface TimelineItem {
     due?: string;
     pendingEdits?: string;
     Duration?: string;
+    Runtime?: string;
     "previousSceneAnalysis"?: string;
     "currentSceneAnalysis"?: string;
     "nextSceneAnalysis"?: string;

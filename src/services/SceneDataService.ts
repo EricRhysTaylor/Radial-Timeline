@@ -182,6 +182,9 @@ export class SceneDataService {
                             due: metadata.Due as string | undefined,
                             pendingEdits: metadata["Pending Edits"] as string | undefined,
                             Duration: duration,
+                            Runtime: metadata.Runtime !== undefined && metadata.Runtime !== null
+                                ? String(metadata.Runtime)
+                                : undefined,
                             // AI Scene Analysis fields - handle both string and array formats from YAML
                             "previousSceneAnalysis": Array.isArray(metadata["previousSceneAnalysis"])
                                 ? (metadata["previousSceneAnalysis"] as string[]).join('\n')

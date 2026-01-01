@@ -12,6 +12,8 @@ export type ScenePovKeyword = 'first' | 'second' | 'third' | 'omni' | 'objective
 
 export type ReadabilityScale = 'normal' | 'large';
 
+export type RuntimeContentType = 'screenplay' | 'novel';
+
 export interface AiContextTemplate {
     id: string;
     name: string;
@@ -114,6 +116,17 @@ export interface RadialTimelineSettings {
     bookDesignerTemplates?: BookDesignerTemplate[];
     backdropYamlTemplate?: string;
     hoverMetadataFields?: HoverMetadataField[];
+    
+    // Runtime Estimation Settings
+    runtimeContentType?: RuntimeContentType;
+    runtimeDialogueWpm?: number;
+    runtimeActionWpm?: number;
+    runtimeNarrationWpm?: number;
+    runtimeBeatSeconds?: number;
+    runtimePauseSeconds?: number;
+    runtimeLongPauseSeconds?: number;
+    runtimeMomentSeconds?: number;
+    runtimeSilenceSeconds?: number;
 }
 
 export interface PlanetaryProfile {

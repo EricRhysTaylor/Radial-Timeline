@@ -7,6 +7,7 @@ import { DEFAULT_SETTINGS } from '../defaults';
 import { renderMetadataSection } from './MetadataSection';
 import { addWikiLink } from '../wikiLink';
 import type { HoverMetadataField } from '../../types/settings';
+import { IconSuggest } from '../IconSuggest';
 
 type TemplateEntryValue = string | string[];
 type TemplateEntry = { key: string; value: TemplateEntryValue; required: boolean };
@@ -574,20 +575,6 @@ export function renderStoryBeatsSection(params: {
             advancedContainer.toggleClass('rt-settings-hidden', !isEnabled);
             if (!isEnabled) return;
 
-            // Create datalist for icon autocomplete (if not exists)
-            if (!document.getElementById('rt-icon-datalist')) {
-                const datalist = document.createElement('datalist');
-                datalist.id = 'rt-icon-datalist';
-                // Populate with common Lucide icons (full list is very large)
-                const iconIds = getIconIds();
-                iconIds.forEach(iconId => {
-                    const option = document.createElement('option');
-                    option.value = iconId;
-                    datalist.appendChild(option);
-                });
-                document.body.appendChild(datalist);
-            }
-
             const listEl = advancedContainer.createDiv({ cls: 'rt-template-entries rt-template-indent' });
 
             const renderEntryRow = (entry: TemplateEntry, idx: number, list: TemplateEntry[]) => {
@@ -614,11 +601,21 @@ export function renderStoryBeatsSection(params: {
                 setIcon(iconPreview, currentIcon);
                 const iconInput = iconWrapper.createEl('input', { 
                     type: 'text', 
-                    cls: 'rt-template-input rt-input-sm rt-icon-input',
-                    attr: { placeholder: 'Icon', list: 'rt-icon-datalist' }
+                    cls: 'rt-template-input rt-input-lg rt-icon-input',
+                    attr: { placeholder: 'Icon name...' }
                 });
                 iconInput.value = currentIcon;
                 setTooltip(iconInput, 'Lucide icon name for hover synopsis');
+                
+                // Add icon suggester with preview
+                new IconSuggest(app, iconInput, (selectedIcon) => {
+                    iconInput.value = selectedIcon;
+                    iconPreview.empty();
+                    setIcon(iconPreview, selectedIcon);
+                    setHoverMetadata(entry.key, selectedIcon, currentEnabled);
+                    updateHoverPreview?.();
+                });
+                
                 iconInput.oninput = () => {
                     const iconName = iconInput.value.trim();
                     if (iconName && getIconIds().includes(iconName)) {
@@ -627,18 +624,6 @@ export function renderStoryBeatsSection(params: {
                         setHoverMetadata(entry.key, iconName, currentEnabled);
                         updateHoverPreview?.();
                     }
-                };
-                iconInput.onchange = () => {
-                    const iconName = iconInput.value.trim() || DEFAULT_HOVER_ICON;
-                    if (!getIconIds().includes(iconName)) {
-                        iconInput.value = currentIcon;
-                        new Notice(`Invalid icon name: "${iconName}"`);
-                        return;
-                    }
-                    iconPreview.empty();
-                    setIcon(iconPreview, iconName);
-                    setHoverMetadata(entry.key, iconName, currentEnabled);
-                    updateHoverPreview?.();
                 };
 
                 // 4. Checkbox to enable in hover synopsis
@@ -774,11 +759,19 @@ export function renderStoryBeatsSection(params: {
             setIcon(addIconPreview, DEFAULT_HOVER_ICON);
             const addIconInput = addIconWrapper.createEl('input', { 
                 type: 'text', 
-                cls: 'rt-template-input rt-input-sm rt-icon-input',
-                attr: { placeholder: 'Icon', list: 'rt-icon-datalist' }
+                cls: 'rt-template-input rt-input-lg rt-icon-input',
+                attr: { placeholder: 'Icon name...' }
             });
             addIconInput.value = DEFAULT_HOVER_ICON;
             setTooltip(addIconInput, 'Lucide icon name for hover synopsis');
+            
+            // Add icon suggester with preview
+            new IconSuggest(app, addIconInput, (selectedIcon) => {
+                addIconInput.value = selectedIcon;
+                addIconPreview.empty();
+                setIcon(addIconPreview, selectedIcon);
+            });
+            
             addIconInput.oninput = () => {
                 const iconName = addIconInput.value.trim();
                 if (iconName && getIconIds().includes(iconName)) {

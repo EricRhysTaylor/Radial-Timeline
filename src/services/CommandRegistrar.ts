@@ -39,7 +39,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'clear-timeline-search',
-            name: 'Clear search',
+            name: 'Search clear',
             callback: () => this.plugin.clearSearch()
         });
 
@@ -120,7 +120,7 @@ export class CommandRegistrar {
 
         this.plugin.addCommand({
             id: 'gossamer-generate-manuscript',
-            name: 'Generate manuscript',
+            name: 'Manuscript generate',
             callback: async () => this.generateManuscript()
         });
 

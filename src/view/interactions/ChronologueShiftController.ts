@@ -55,13 +55,20 @@ export function isAlienModeActive(): boolean {
     return globalAlienModeActive;
 }
 
+// Export function to check if runtime mode is active
+let globalRuntimeModeActive = false;
+export function isRuntimeModeActive(): boolean {
+    return globalRuntimeModeActive;
+}
+
 /**
- * Reset the global shift/alien mode state
+ * Reset the global shift/alien/runtime mode state
  * Called when exiting Chronologue mode to ensure clean state
  */
 export function resetShiftModeState(): void {
     globalShiftModeActive = false;
     globalAlienModeActive = false;
+    globalRuntimeModeActive = false;
 }
 
 /**
@@ -76,6 +83,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
     let shiftModeActive = false;
     let alienModeActive = false;
+    let runtimeModeActive = false;
     let selectedScenes: TimelineItem[] = []; // Locked scenes (stay selected)
     let hoveredScenePath: string | null = null; // Currently hovered scene (encoded path)
     let elapsedTimeClickCount = 0;
@@ -184,6 +192,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     svg.appendChild(shiftButton);
 
     let altButton: SVGGElement | null = null;
+    let rtButton: SVGGElement | null = null;
 
     // Check if Planetary Time is enabled and active profile is valid
     const activeProfile = getActivePlanetaryProfile(view.plugin.settings);
@@ -194,6 +203,10 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         altButton = createAltButton();
         svg.appendChild(altButton);
     }
+
+    // Always show RT button for Runtime mode
+    rtButton = createRtButton(shouldShowAlt);
+    svg.appendChild(rtButton);
 
     // Function to activate shift mode
     const activateShiftMode = (enableAlien: boolean = false) => {
@@ -405,6 +418,50 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
     };
 
+    const toggleRuntimeMode = () => {
+        if (!rtButton) return;
+
+        if (runtimeModeActive) {
+            // Turn OFF Runtime Mode
+            runtimeModeActive = false;
+            globalRuntimeModeActive = false;
+            updateRtButtonState(rtButton, false);
+            svg.removeAttribute('data-shift-mode');
+            // Trigger timeline refresh to switch back to Duration arcs
+            if (view.plugin.refreshTimelineIfNeeded) {
+                view.plugin.refreshTimelineIfNeeded(null);
+            }
+        } else {
+            // Turn ON Runtime Mode
+            // First deactivate any other modes
+            if (alienModeActive && altButton) {
+                alienModeActive = false;
+                globalAlienModeActive = false;
+                updateAltButtonState(altButton, false);
+                updateDateLabelsForAlienMode(false);
+            }
+            if (shiftModeActive) {
+                shiftModeActive = false;
+                globalShiftModeActive = false;
+                updateShiftButtonState(shiftButton, false);
+                selectedScenes = [];
+                rebuildSelectedPathsSet();
+                removeElapsedTimeArc(svg);
+                removeSceneHighlights(svg);
+                removeShiftModeFromAllScenes(svg);
+            }
+            
+            runtimeModeActive = true;
+            globalRuntimeModeActive = true;
+            updateRtButtonState(rtButton, true);
+            svg.setAttribute('data-shift-mode', 'runtime');
+            // Trigger timeline refresh to switch to Runtime arcs
+            if (view.plugin.refreshTimelineIfNeeded) {
+                view.plugin.refreshTimelineIfNeeded(null);
+            }
+        }
+    };
+
     // Register shift button click handler
     view.registerDomEvent(shiftButton as unknown as HTMLElement, 'click', (e: MouseEvent) => {
         e.stopPropagation();
@@ -420,6 +477,14 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         view.registerDomEvent(altButton as unknown as HTMLElement, 'click', (e: MouseEvent) => {
             e.stopPropagation();
             toggleAlienMode();
+        });
+    }
+
+    // Register RT button click handler
+    if (rtButton) {
+        view.registerDomEvent(rtButton as unknown as HTMLElement, 'click', (e: MouseEvent) => {
+            e.stopPropagation();
+            toggleRuntimeMode();
         });
     }
 
@@ -530,6 +595,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
         if (altButton && altButton.parentNode) {
             altButton.parentNode.removeChild(altButton);
+        }
+        if (rtButton && rtButton.parentNode) {
+            rtButton.parentNode.removeChild(rtButton);
         }
     };
 
@@ -856,6 +924,108 @@ function updateAltButtonState(button: SVGGElement, active: boolean): void {
     } else {
         button.setAttribute('transform', `translate(${basePosX}, ${basePosY})`);
         button.classList.remove('rt-shift-mode-active');
+    }
+}
+
+/**
+ * Create the RT (Runtime) button element (Left of ALT, or left of Shift if no ALT)
+ */
+function createRtButton(altButtonVisible: boolean): SVGGElement {
+    const button = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    button.setAttribute('class', 'rt-shift-mode-button rt-runtime-button');
+    button.setAttribute('id', 'runtime-mode-toggle');
+
+    const RT_WIDTH = 36;
+    const RT_HEIGHT = 46;
+    const SHIFT_HEIGHT = 55;
+    const ALT_WIDTH = 43;
+
+    // Position to the LEFT of ALT button (or Shift if no ALT)
+    let basePosX: number;
+    if (altButtonVisible) {
+        // ALT is at SHIFT_BUTTON_POS_X - 10 - ALT_WIDTH
+        const altPosX = SHIFT_BUTTON_POS_X - 10 - ALT_WIDTH;
+        basePosX = altPosX - 10 - RT_WIDTH;
+    } else {
+        // No ALT, position left of Shift
+        basePosX = SHIFT_BUTTON_POS_X - 10 - RT_WIDTH;
+    }
+    
+    // Align bottom of RT button with bottom of Shift button
+    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_HEIGHT);
+
+    button.setAttribute('transform', `translate(${basePosX}, ${basePosY})`);
+
+    // Create path element (simple rounded rect)
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', createRtButtonShape());
+    path.setAttribute('class', 'rt-shift-button-bg rt-runtime-button-bg');
+    path.setAttribute('fill', 'var(--interactive-normal)');
+    path.setAttribute('stroke', 'var(--text-normal)');
+    path.setAttribute('stroke-width', '2');
+
+    // Create text element
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', '18'); // Center of 36
+    text.setAttribute('y', '36'); // Near bottom
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('class', 'rt-shift-button-text');
+    text.textContent = 'RT';
+
+    // Add tooltip
+    button.classList.add('rt-tooltip-target');
+    button.setAttribute('data-tooltip', 'Toggle Runtime Mode (shows scene runtimes instead of durations)');
+    button.setAttribute('data-tooltip-placement', 'bottom');
+
+    button.appendChild(path);
+    button.appendChild(text);
+
+    return button;
+}
+
+/**
+ * Create button shape for RT (36×46) - similar to ALT
+ */
+function createRtButtonShape(): string {
+    // Scaled version of ALT shape (43×46 → 36×46)
+    return 'M35.4 35.5C35.4 41 31.9 46 26.3 46L8 46C2.4 46 0 38.6 0 34.3C0 33.2 0 29 0 27.6C0 25.6 0.3 19.3 6.8 10.2C13.3 1 20 0 21.8 0L27.3 0C33.2 0 35.5 5.3 35.5 10.2C35.5 12.1 35.5 33.2 35.4 35.5Z';
+}
+
+/**
+ * Update RT button visual state
+ */
+function updateRtButtonState(button: SVGGElement, active: boolean): void {
+    const RT_WIDTH = 36;
+    const RT_HEIGHT = 46;
+    const SHIFT_HEIGHT = 55;
+    const ALT_WIDTH = 43;
+
+    // Check if ALT button exists to determine position
+    const altButtonVisible = !!button.parentElement?.querySelector('#alt-mode-toggle');
+    
+    let basePosX: number;
+    if (altButtonVisible) {
+        const altPosX = SHIFT_BUTTON_POS_X - 10 - ALT_WIDTH;
+        basePosX = altPosX - 10 - RT_WIDTH;
+    } else {
+        basePosX = SHIFT_BUTTON_POS_X - 10 - RT_WIDTH;
+    }
+    
+    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_HEIGHT);
+
+    if (active) {
+        const expansionX = RT_WIDTH * (BUTTON_ACTIVE_SCALE - 1);
+        const scaledPosX = basePosX - expansionX;
+        const scaledPosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_HEIGHT) * BUTTON_ACTIVE_SCALE;
+        
+        button.setAttribute('transform', `translate(${scaledPosX}, ${scaledPosY}) scale(${BUTTON_ACTIVE_SCALE})`);
+        button.classList.add('rt-shift-mode-active');
+        button.classList.add('rt-runtime-mode-active');
+    } else {
+        button.setAttribute('transform', `translate(${basePosX}, ${basePosY})`);
+        button.classList.remove('rt-shift-mode-active');
+        button.classList.remove('rt-runtime-mode-active');
     }
 }
 

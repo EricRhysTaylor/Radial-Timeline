@@ -311,7 +311,7 @@ export const en: TranslationKeys = {
         invalidInput: 'Invalid input.',
     },
     manuscriptModal: {
-        title: 'Generate manuscript',
+        title: 'Manuscript generate',
         description: 'Use markdown-linked TOC for Obsidian-friendly navigation, or plain TOC for AI processing. All orderings support custom ranges with the draggable selector.',
         heroLoading: 'Loading scenes...',
         heroNarrativeMeta: 'Drag handles to select range',
@@ -335,7 +335,7 @@ export const en: TranslationKeys = {
         rangeCountLabel: '{{count}} scenes selected',
         rangeStatus: 'Scenes {{start}} – {{end}} of {{total}} ({{count}} selected)',
         rangeLoading: 'Fetching scenes…',
-        actionCreate: 'Generate manuscript',
+        actionCreate: 'Manuscript generate',
         actionCancel: 'Cancel',
         emptyNotice: 'No scenes available to assemble.',
         rangeEmpty: 'Selected range is empty.',

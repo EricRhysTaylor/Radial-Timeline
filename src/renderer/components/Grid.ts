@@ -1,3 +1,5 @@
+import { formatRuntimeValue } from '../../utils/runtimeEstimator';
+
 export function renderCenterGrid(params: {
   statusesForGrid: string[];
   stagesForGrid: string[];
@@ -5,6 +7,7 @@ export function renderCenterGrid(params: {
   PUBLISH_STAGE_COLORS: Record<string, string>;
   currentYearLabel: string;
   estimatedTotalScenes: number;
+  totalRuntimeSeconds: number;
   startXGrid: number;
   startYGrid: number;
   cellWidth: number;
@@ -22,6 +25,7 @@ export function renderCenterGrid(params: {
     PUBLISH_STAGE_COLORS,
     currentYearLabel,
     estimatedTotalScenes,
+    totalRuntimeSeconds,
     startXGrid,
     startYGrid,
     cellWidth,
@@ -116,6 +120,7 @@ export function renderCenterGrid(params: {
           </g>
         `;
       }).join('')}
+      ${totalRuntimeSeconds > 0 ? `<text x="${startXGrid - 12}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="start" dominant-baseline="alphabetic" class="center-key-text rt-runtime-total">${formatRuntimeValue(totalRuntimeSeconds)}</text>` : ''}
       <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}//${estimatedTotalScenes}</text>
     `;
 

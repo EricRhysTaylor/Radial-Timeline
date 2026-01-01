@@ -7,6 +7,7 @@
 import { formatNumber } from '../../utils/svg';
 import type { TimelineItem } from '../../types';
 import { parseWhenField, calculateTimeSpan, parseDuration, detectDiscontinuities, detectSceneOverlaps, prepareScenesForDiscontinuityDetection, calculateAutoDiscontinuityThreshold } from '../../utils/date';
+import { parseRuntimeField } from '../../utils/runtimeEstimator';
 
 export interface ChronologueSceneEntry {
     scene: TimelineItem;
@@ -57,7 +58,8 @@ export function renderChronologueTimelineArc(
     scenePositions?: Map<string, { startAngle: number; endAngle: number }>,
     durationCapMs?: number | null,
     arcRadius: number = 758,  // Absolute radius for duration arcs
-    precomputedEntries?: ChronologueSceneEntry[]
+    precomputedEntries?: ChronologueSceneEntry[],
+    useRuntimeMode: boolean = false
 ): string {
     const sceneEntries = precomputedEntries ?? collectChronologueSceneEntries(scenes);
     const validDates = sceneEntries.map(entry => entry.date);
@@ -78,14 +80,15 @@ export function renderChronologueTimelineArc(
     // Use the passed arcRadius directly (no longer calculating as offset)
     svg += `<g class="rt-chronologue-timeline-arc">`;
     
-    // Level 4 - Scene Duration Arcs (manuscript-order positions) - RENDER FIRST (behind ticks)
+    // Level 4 - Scene Duration/Runtime Arcs (manuscript-order positions) - RENDER FIRST (behind ticks)
     if (scenePositions) {
         const durationSegments = renderDurationTickArcs({
             sceneEntries,
             arcRadius,
             timeSpanTotalMs: timeSpan.totalMs,
             scenePositions,
-            durationCapMs
+            durationCapMs,
+            useRuntimeMode
         });
         if (durationSegments) {
             svg += durationSegments;
@@ -104,10 +107,11 @@ interface DurationTickArcParams {
     timeSpanTotalMs: number;
     scenePositions: Map<string, { startAngle: number; endAngle: number }>;
     durationCapMs?: number | null;
+    useRuntimeMode?: boolean;
 }
 
 function renderDurationTickArcs(params: DurationTickArcParams): string | null {
-    const { sceneEntries, arcRadius, timeSpanTotalMs, scenePositions, durationCapMs } = params;
+    const { sceneEntries, arcRadius, timeSpanTotalMs, scenePositions, durationCapMs, useRuntimeMode } = params;
     if (sceneEntries.length === 0 || timeSpanTotalMs <= 0) {
         return null;
     }
@@ -116,22 +120,34 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         .slice()
         .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    // Parse all durations and categorize them
+    // Parse all durations/runtimes and categorize them
     interface DurationInfo {
         durationMs: number | null; // null = unparseable, 0 = no duration, >0 = valid
         rawDuration: string | undefined;
     }
     
     const parsedDurations: DurationInfo[] = sortedEntries.map(entry => {
-        const raw = entry.scene.Duration;
+        // In runtime mode, use Runtime field; otherwise use Duration
+        const raw = useRuntimeMode ? entry.scene.Runtime : entry.scene.Duration;
         if (!raw) {
-            return { durationMs: 0, rawDuration: raw }; // No duration field
+            return { durationMs: 0, rawDuration: raw }; // No field
         }
-        const value = parseDuration(raw);
-        if (value === null) {
-            return { durationMs: null, rawDuration: raw }; // Unparseable (e.g., "ongoing")
+        
+        if (useRuntimeMode) {
+            // Parse Runtime (seconds-based) and convert to ms
+            const seconds = parseRuntimeField(raw);
+            if (seconds === null) {
+                return { durationMs: null, rawDuration: raw }; // Unparseable
+            }
+            return { durationMs: seconds * 1000, rawDuration: raw };
+        } else {
+            // Parse Duration (ms-based)
+            const value = parseDuration(raw);
+            if (value === null) {
+                return { durationMs: null, rawDuration: raw }; // Unparseable (e.g., "ongoing")
+            }
+            return { durationMs: value, rawDuration: raw };
         }
-        return { durationMs: value, rawDuration: raw };
     });
 
     // Collect valid (parseable, positive) durations

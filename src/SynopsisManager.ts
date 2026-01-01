@@ -539,48 +539,80 @@ export default class SynopsisManager {
         enabledHoverFields.forEach((field: HoverMetadataField) => {
           // Check if the scene has this key in its data
           const sceneValue = (scene as unknown as Record<string, unknown>)[field.key];
-          if (sceneValue !== undefined && sceneValue !== null && sceneValue !== '') {
-            const y = hoverMetaStartY + (hoverMetaLinesAdded * metadataLineHeight);
+          
+          // Skip if value is undefined, null, empty string, or empty array
+          if (sceneValue === undefined || sceneValue === null) return;
+          if (sceneValue === '') return;
+          if (Array.isArray(sceneValue) && sceneValue.length === 0) return;
+          
+          const y = hoverMetaStartY + (hoverMetaLinesAdded * metadataLineHeight);
+          
+          // Format the value for display
+          const formatValue = (val: unknown): string => {
+            if (val === null || val === undefined) return '';
             
-            // Create a group for this hover metadata line
-            const lineGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            lineGroup.setAttribute("class", "rt-hover-metadata-line");
-            
-            // Get the Lucide icon SVG
-            const iconSvg = getIcon(field.icon || 'align-vertical-space-around');
-            if (iconSvg) {
-              // Convert the icon to an SVG use element or embed it
-              const iconSize = 12 * fontScale;
-              const iconG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-              iconG.setAttribute("transform", `translate(0, ${y - iconSize + 2})`);
-              
-              // Clone and resize the icon SVG contents
-              const foreignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-              foreignObject.setAttribute("width", String(iconSize));
-              foreignObject.setAttribute("height", String(iconSize));
-              foreignObject.setAttribute("class", "rt-hover-metadata-icon");
-              
-              // Clone the icon and set its size (dynamic based on readability scale)
-              const iconClone = iconSvg.cloneNode(true) as SVGElement;
-              iconClone.setAttribute("width", String(iconSize));
-              iconClone.setAttribute("height", String(iconSize));
-              iconClone.style.width = `${iconSize}px`; // SAFE: inline style used for dynamic icon sizing based on readability scale
-              iconClone.style.height = `${iconSize}px`; // SAFE: inline style used for dynamic icon sizing based on readability scale
-              
-              foreignObject.appendChild(iconClone);
-              iconG.appendChild(foreignObject);
-              lineGroup.appendChild(iconG);
+            // Handle arrays (e.g., Place: ["[[Earth]]", "[[Place/Diego]]"])
+            if (Array.isArray(val)) {
+              return val.map(item => formatValue(item)).join(', ');
             }
             
-            // Create the text element (key: value)
-            const valueStr = Array.isArray(sceneValue) ? sceneValue.join(', ') : String(sceneValue);
-            const textX = 16 * fontScale; // Offset for icon
-            const textEl = createText(textX, y, 'rt-info-text rt-title-text-secondary rt-hover-metadata-text', `${field.key}: ${valueStr}`);
-            lineGroup.appendChild(textEl);
+            let str = String(val);
             
-            synopsisTextGroup.appendChild(lineGroup);
-            hoverMetaLinesAdded++;
+            // Strip wiki link brackets: [[Link]] -> Link, [[Path/Name]] -> Name
+            str = str.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, (_match, link) => {
+              // Get the display name (last part of path)
+              const parts = link.split('/');
+              return parts[parts.length - 1];
+            });
+            
+            // Handle Date objects
+            if (val instanceof Date && !isNaN(val.getTime())) {
+              return this.formatDateForDisplay(val);
+            }
+            
+            return str.trim();
+          };
+          
+          const valueStr = formatValue(sceneValue);
+          if (!valueStr) return; // Skip if formatted value is empty
+          
+          // Create a group for this hover metadata line
+          const lineGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          lineGroup.setAttribute("class", "rt-hover-metadata-line");
+          
+          // Get the Lucide icon SVG
+          const iconSvg = getIcon(field.icon || 'align-vertical-space-around');
+          if (iconSvg) {
+            // Convert the icon to an SVG use element or embed it
+            const iconSize = 12 * fontScale;
+            const iconG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            iconG.setAttribute("transform", `translate(0, ${y - iconSize + 2})`);
+            
+            // Clone and resize the icon SVG contents
+            const foreignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+            foreignObject.setAttribute("width", String(iconSize));
+            foreignObject.setAttribute("height", String(iconSize));
+            foreignObject.setAttribute("class", "rt-hover-metadata-icon");
+            
+            // Clone the icon and set its size (dynamic based on readability scale)
+            const iconClone = iconSvg.cloneNode(true) as SVGElement;
+            iconClone.setAttribute("width", String(iconSize));
+            iconClone.setAttribute("height", String(iconSize));
+            iconClone.style.width = `${iconSize}px`; // SAFE: inline style used for dynamic icon sizing based on readability scale
+            iconClone.style.height = `${iconSize}px`; // SAFE: inline style used for dynamic icon sizing based on readability scale
+            
+            foreignObject.appendChild(iconClone);
+            iconG.appendChild(foreignObject);
+            lineGroup.appendChild(iconG);
           }
+          
+          // Create the text element (key: value)
+          const textX = 16 * fontScale; // Offset for icon
+          const textEl = createText(textX, y, 'rt-info-text rt-title-text-secondary rt-hover-metadata-text', `${field.key}: ${valueStr}`);
+          lineGroup.appendChild(textEl);
+          
+          synopsisTextGroup.appendChild(lineGroup);
+          hoverMetaLinesAdded++;
         });
 
         if (hoverMetaLinesAdded > 0) {

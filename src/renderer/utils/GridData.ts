@@ -4,11 +4,13 @@ import { isBeatNote } from '../../utils/sceneHelpers';
 import { parseSceneTitle, normalizeStatus } from '../../utils/text';
 import { isOverdueDateString } from '../../utils/date';
 import { STAGES_FOR_GRID, STATUSES_FOR_GRID } from '../../utils/constants';
+import { parseRuntimeField } from '../../utils/runtimeEstimator';
 
 export interface GridDataResult {
     statusCounts: Record<string, number>;
     gridCounts: Record<string, Record<string, number>>;
     estimatedTotalScenes: number;
+    totalRuntimeSeconds: number;
 }
 
 export function computeGridData(scenes: TimelineItem[]): GridDataResult {
@@ -132,9 +134,27 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
 
     const estimatedTotalScenes = Math.max(uniqueScenesCount, Math.floor(highestPrefixNumber));
 
+    // 4. Calculate Total Runtime (sum of all scene Runtime fields)
+    const seenForRuntime = new Set<string>();
+    let totalRuntimeSeconds = 0;
+
+    scenes.forEach(scene => {
+        if (isBeatNote(scene)) return;
+        if (!scene.path || seenForRuntime.has(scene.path)) return;
+        seenForRuntime.add(scene.path);
+
+        if (scene.Runtime) {
+            const seconds = parseRuntimeField(scene.Runtime);
+            if (seconds !== null && seconds > 0) {
+                totalRuntimeSeconds += seconds;
+            }
+        }
+    });
+
     return {
         statusCounts,
         gridCounts,
-        estimatedTotalScenes
+        estimatedTotalScenes,
+        totalRuntimeSeconds
     };
 }

@@ -95,6 +95,7 @@ export type ChronologueOverlayOptions = {
     durationArcRadius?: number;
     synopsesElements?: SVGGElement[];
     maxTextWidth?: number;
+    useRuntimeMode?: boolean;
 };
 
 export function renderChronologueOverlays({
@@ -108,7 +109,8 @@ export function renderChronologueOverlays({
     chronologueSceneEntries,
     durationArcRadius = 0,
     synopsesElements = [],
-    maxTextWidth = 0
+    maxTextWidth = 0,
+    useRuntimeMode = false
 }: ChronologueOverlayOptions): string {
     const stopChronoOverlays = startPerfSegment(plugin, 'timeline.chronologue-overlays');
     let svg = '';
@@ -120,7 +122,8 @@ export function renderChronologueOverlays({
         manuscriptOrderPositions,
         durationCapMs,
         durationArcRadius,
-        chronologueSceneEntries
+        chronologueSceneEntries,
+        useRuntimeMode
     );
     if (chronologueTimelineArc) {
         svg += chronologueTimelineArc;

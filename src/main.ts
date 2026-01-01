@@ -35,6 +35,7 @@ import { SettingsService } from './services/SettingsService';
 import { DEFAULT_GEMINI_MODEL_ID } from './constants/aiDefaults';
 import { DEFAULT_SETTINGS } from './settings/defaults';
 import { initVersionCheckService, getVersionCheckService } from './services/VersionCheckService';
+import { registerRuntimeCommands } from './RuntimeCommands';
 
 
 // Declare the variable that will be injected by the build process
@@ -212,6 +213,7 @@ export default class RadialTimelinePlugin extends Plugin {
         // Register ribbon + commands
         this.commandRegistrar.registerAll();
         this.sceneAnalysisService.registerCommands();
+        registerRuntimeCommands(this);
 
         // Add settings tab (only once)
         if (!this._settingsTabAdded) {
