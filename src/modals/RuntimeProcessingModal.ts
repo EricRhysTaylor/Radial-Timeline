@@ -128,14 +128,16 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== SCOPE SECTION =====
         const scopeCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
-        scopeCard.createEl('h4', { text: 'Scope', cls: 'rt-runtime-section-header' });
-        scopeCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Select which scenes to process for runtime estimation.' });
+        const scopeLayout = scopeCard.createDiv({ cls: 'rt-runtime-scope-layout' });
+        const scopeInfo = scopeLayout.createDiv({ cls: 'rt-runtime-scope-info' });
+        scopeInfo.createEl('h4', { text: 'Scope', cls: 'rt-runtime-section-header' });
+        scopeInfo.createDiv({ cls: 'rt-runtime-section-desc', text: 'Select which scenes to process for runtime estimation.' });
 
-        const scopeRow = scopeCard.createDiv({ cls: 'rt-runtime-scope-row' });
+        const scopeControls = scopeLayout.createDiv({ cls: 'rt-runtime-scope-controls' });
+        const scopeRow = scopeControls.createDiv({ cls: 'rt-runtime-scope-row' });
         
         // Scope dropdown
         const scopeDropdownContainer = scopeRow.createDiv({ cls: 'rt-runtime-dropdown-container' });
-        scopeDropdownContainer.createEl('label', { text: 'Process:', cls: 'rt-runtime-label' });
         this.scopeDropdown = new DropdownComponent(scopeDropdownContainer);
         this.scopeDropdown
             .addOption('current', 'Current scene')
@@ -171,7 +173,7 @@ export class RuntimeProcessingModal extends Modal {
         // ===== STATUS FILTERS SECTION =====
         const statusCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
         statusCard.createEl('h4', { text: 'Scene Status Filter', cls: 'rt-runtime-section-header' });
-        statusCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Only scenes with the selected status(es) will be processed.' });
+        statusCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Only scenes with the selected status will be processed.' });
 
         const statusRow = statusCard.createDiv({ cls: 'rt-runtime-status-row' });
 

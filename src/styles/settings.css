@@ -1490,6 +1490,27 @@
   margin-bottom: 12px;
 }
 
+.rt-runtime-scope-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.rt-runtime-scope-info {
+  flex: 1 1 260px;
+  min-width: 240px;
+}
+
+.rt-runtime-scope-controls {
+  flex: 1 1 260px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 /* Scope row - horizontal layout */
 .rt-runtime-scope-row {
   display: flex;

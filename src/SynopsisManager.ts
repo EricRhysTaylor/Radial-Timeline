@@ -1213,8 +1213,8 @@ export default class SynopsisManager {
       const verticalNudge = 2; // px
       const iconX = Math.round(
         isRightAligned
-          ? textX + iconGap - (baseHorizontalNudge + 2) // slight left nudge for right side
-          : textStartX - iconGap - iconSize
+          ? textX + iconGap - (baseHorizontalNudge + 0) + 2 // push outward (right) by 2px
+          : textStartX - iconGap - iconSize + 2            // push outward (right) by 2px
       );
       const iconY = Math.round(textY - (iconSize * 0.85) - verticalNudge);
       const scale = iconSize / 24;
