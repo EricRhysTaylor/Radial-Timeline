@@ -201,6 +201,11 @@
   opacity: 0 !important;
 }
 
+/* Hide subplot ring labels in runtime mode (top left quadrant behavior) */
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-subplot-ring-label-text {
+  opacity: 0 !important;
+}
+
 /* Mode selector grid */
 .rt-mode-selector-grid {
   pointer-events: all;
@@ -798,11 +803,6 @@
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-chronological-tick-major,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-chronological-tick-minor {
   stroke: rgba(60, 120, 180, 0.5) !important;
-}
-
-/* 6. Subplot Headlines: Slightly faded in Runtime mode */
-.radial-timeline-svg[data-shift-mode="runtime"] .rt-subplot-ring-label-text {
-  opacity: 0.6 !important;
 }
 
 /* 7. Duration/Runtime arcs get blue tint in runtime mode */

@@ -213,8 +213,22 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         svg.appendChild(rtButton);
     }
 
+    const deactivateRuntimeMode = () => {
+        if (!runtimeModeActive || !rtButton) return;
+        runtimeModeActive = false;
+        globalRuntimeModeActive = false;
+        updateRtButtonState(rtButton, false);
+        svg.removeAttribute('data-shift-mode');
+        if (view.plugin.refreshTimelineIfNeeded) {
+            view.plugin.refreshTimelineIfNeeded(null);
+        }
+    };
+
     // Function to activate shift mode
     const activateShiftMode = (enableAlien: boolean = false) => {
+        // Exclusive: turning on Shift disables Runtime
+        deactivateRuntimeMode();
+
         if (!shiftModeActive) {
             shiftModeActive = true;
             globalShiftModeActive = true;
@@ -412,6 +426,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             // Turn ON Alien Mode
             // Must ensure Shift is Active
             if (!shiftModeActive) {
+                deactivateRuntimeMode();
                 activateShiftMode(true); // Will set alien flags
             } else {
                 alienModeActive = true;
@@ -502,7 +517,10 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
         capsLockState = isActive;
         if (isActive) {
-            if (!shiftModeActive) activateShiftMode(false);
+            if (!shiftModeActive) {
+                deactivateRuntimeMode();
+                activateShiftMode(false);
+            }
         } else {
             if (shiftModeActive) deactivateShiftMode();
         }
@@ -946,10 +964,10 @@ function createRtButton(contentType: RuntimeContentType): SVGGElement {
     const SHIFT_WIDTH = 62;
     const SHIFT_HEIGHT = 55;
 
-    // Position to the RIGHT of Shift button (30px gap + 40px additional offset)
-    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 70;
-    // Vertically center with shift button
-    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2;
+    // Position to the RIGHT of Shift button (60px gap) and 5px down
+    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 60;
+    // Vertically center with shift button, then nudge down 5px
+    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2 + 5;
 
     button.setAttribute('transform', `translate(${basePosX}, ${basePosY})`);
     button.setAttribute('data-base-x', String(basePosX));
@@ -1028,9 +1046,9 @@ function updateRtButtonState(button: SVGGElement, active: boolean): void {
     const SHIFT_WIDTH = 62;
     const SHIFT_HEIGHT = 55;
 
-    // Position to the RIGHT of Shift button (30px gap + 40px additional offset)
-    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 70;
-    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2;
+    // Position to the RIGHT of Shift button (60px gap) and 5px down
+    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 60;
+    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2 + 5;
 
     if (active) {
         // Scale from center
