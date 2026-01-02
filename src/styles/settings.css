@@ -1422,6 +1422,11 @@
   margin-bottom: 12px;
 }
 
+/* Runtime sections use glass-card but without heavy dropshadow */
+.rt-glass-card.rt-runtime-section {
+  box-shadow: none;
+}
+
 /* rt-runtime-section-header replaced by rt-section-title in base.css */
 
 .rt-runtime-section-desc {

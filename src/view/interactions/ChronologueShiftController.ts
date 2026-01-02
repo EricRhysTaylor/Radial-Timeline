@@ -946,8 +946,8 @@ function createRtButton(contentType: RuntimeContentType): SVGGElement {
     const SHIFT_WIDTH = 62;
     const SHIFT_HEIGHT = 55;
 
-    // Position to the RIGHT of Shift button (30px gap)
-    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 30;
+    // Position to the RIGHT of Shift button (30px gap + 40px additional offset)
+    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 70;
     // Vertically center with shift button
     const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2;
 
@@ -1028,8 +1028,8 @@ function updateRtButtonState(button: SVGGElement, active: boolean): void {
     const SHIFT_WIDTH = 62;
     const SHIFT_HEIGHT = 55;
 
-    // Position to the RIGHT of Shift button (30px gap)
-    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 30;
+    // Position to the RIGHT of Shift button (30px gap + 40px additional offset)
+    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 70;
     const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2;
 
     if (active) {

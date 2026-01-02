@@ -378,7 +378,7 @@ export function renderStoryBeatsSection(params: {
 
     new Settings(containerEl)
         .setName('Advanced YAML editor')
-        .setDesc('Enable editing of custom YAML keys for the advanced scene template. Use checkboxes to enable/disable fields in the hover metadata preview.')
+        .setDesc('Enable editing of custom YAML keys for the advanced scene template. Search for the perfect lucide icon. Enable fields using checkbox.')
         .addExtraButton(button => {
             const refreshButton = () => {
                 const expanded = plugin.settings.enableAdvancedYamlEditor ?? false;

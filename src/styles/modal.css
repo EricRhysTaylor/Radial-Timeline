@@ -62,6 +62,7 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.01em;
+  margin: 0; /* Reset h1/h2 default margins when used on heading elements */
 }
 
 .rt-modal-subtitle {
@@ -344,6 +345,7 @@
 .rt-manage-subplots-modal {
   display: flex;
   flex-direction: column;
+  gap: 16px;
   height: 100%;
   min-height: 80vh;
   max-height: 90vh;

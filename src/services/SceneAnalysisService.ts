@@ -216,7 +216,7 @@ class SubplotPickerModal extends Modal {
         const hero = contentEl.createDiv({ cls: 'rt-modal-header' });
         const badgeText = modelName ? `AI pulse run · ${modelName}` : 'AI pulse run';
         hero.createSpan({ text: badgeText, cls: 'rt-subplot-picker-badge' });
-        hero.createEl('h2', { text: 'Process subplot scenes', cls: 'rt-modal-title' });
+        hero.createDiv({ text: 'Process subplot scenes', cls: 'rt-modal-title' });
         hero.createDiv({ cls: 'rt-modal-subtitle', text: 'Choose a subplot and run pulse updates just for that arc.' });
 
         const heroStats = hero.createDiv({ cls: 'rt-subplot-picker-hero-stats' });
