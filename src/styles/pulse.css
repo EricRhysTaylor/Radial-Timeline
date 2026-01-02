@@ -713,7 +713,9 @@
   color: var(--text-muted);
 }
 
-.rt-pulse-ruler-chip {
+/* Consolidated chip pattern - shared by pulse ruler and beats ruler */
+.rt-pulse-ruler-chip,
+.rt-beats-ruler-chip {
   padding: 8px 12px;
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -723,14 +725,16 @@
   gap: 2px;
 }
 
-.rt-pulse-ruler-chip-label {
+.rt-pulse-ruler-chip-label,
+.rt-beats-ruler-chip-label {
   text-transform: uppercase;
   font-size: 0.65rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
 }
 
-.rt-pulse-ruler-chip-value {
+.rt-pulse-ruler-chip-value,
+.rt-beats-ruler-chip-value {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-normal);
@@ -771,28 +775,7 @@
   color: var(--text-muted);
 }
 
-.rt-beats-ruler-chip {
-  padding: 8px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.rt-beats-ruler-chip-label {
-  font-size: 0.65rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.rt-beats-ruler-chip-value {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-normal);
-}
+/* rt-beats-ruler-chip - consolidated above with rt-pulse-ruler-chip */
 
 .rt-beats-summary {
   margin-top: 18px;
@@ -1206,21 +1189,8 @@
   border-color: var(--text-error);
 }
 
-/* Footer button rows */
-.rt-gossamer-actions-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: nowrap;
-}
-
-.rt-gossamer-actions-bottom {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-}
+/* rt-gossamer-actions-top and rt-gossamer-actions-bottom 
+   replaced by rt-row and rt-stack utilities in base.css */
 
 /* Checkbox toggle inline with buttons */
 .rt-gossamer-copy-toggle {

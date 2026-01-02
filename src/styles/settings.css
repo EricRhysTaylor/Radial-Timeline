@@ -432,55 +432,9 @@
   justify-content: flex-end;
 }
 
-/* Standardized template input styling (used for beats, YAML keys/values) */
-.rt-template-input {
-  height: 36px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-modifier-form-field);
-  color: var(--text-normal);
-}
+/* rt-template-input consolidated in base.css */
 
-.rt-template-input:focus {
-  outline: 1px solid var(--interactive-accent);
-}
-
-.rt-template-icon-btn {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-  background-color: var(--background-modifier-form-field);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 16px 16px;
-  background-image: none;
-}
-
-.rt-template-icon-btn svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-/* CTA variant for icon buttons (accent-styled add buttons) */
-.rt-template-icon-btn.rt-mod-cta {
-  background-color: var(--interactive-accent);
-  border-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-}
-
-.rt-template-icon-btn.rt-mod-cta svg,
-.rt-template-icon-btn.rt-mod-cta svg * {
-  stroke: var(--text-on-accent);
-}
-
+/* rt-template-icon-btn uses rt-icon-btn from base.css - add hover effect */
 .rt-template-icon-btn.rt-mod-cta:hover {
   filter: brightness(1.05);
 }
@@ -534,18 +488,9 @@
   border-radius: 10px;
 }
 
+/* rt-drag-handle defined in base.css */
 .rt-custom-beat-row .rt-drag-handle {
   justify-self: start;
-}
-
-.rt-drag-handle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  width: 22px;
-  height: 22px;
-  color: var(--text-muted);
 }
 
 /* Grid spacer - occupies 1fr column to push content right */
@@ -1477,12 +1422,7 @@
   margin-bottom: 12px;
 }
 
-.rt-runtime-section-header {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 4px 0;
-  color: var(--text-normal);
-}
+/* rt-runtime-section-header replaced by rt-section-title in base.css */
 
 .rt-runtime-section-desc {
   font-size: 12px;
@@ -1490,34 +1430,8 @@
   margin-bottom: 12px;
 }
 
-.rt-runtime-scope-layout {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-
-.rt-runtime-scope-info {
-  flex: 1 1 260px;
-  min-width: 240px;
-}
-
-.rt-runtime-scope-controls {
-  flex: 1 1 260px;
-  min-width: 240px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* Scope row - horizontal layout */
-.rt-runtime-scope-row {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  align-items: flex-end;
-}
+/* rt-runtime-scope-layout, rt-runtime-scope-info, rt-runtime-scope-controls, rt-runtime-scope-row
+   replaced by rt-row and rt-stack utilities in base.css */
 
 .rt-runtime-dropdown-container {
   display: flex;
@@ -1530,12 +1444,7 @@
   width: 100%;
 }
 
-/* Status filter row */
-.rt-runtime-status-row {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-}
+/* rt-runtime-status-row replaced by rt-row rt-row-loose rt-row-wrap in base.css */
 
 .rt-runtime-status-checkbox {
   display: flex;
@@ -1556,12 +1465,7 @@
   cursor: pointer;
 }
 
-/* Override row */
-.rt-runtime-override-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
+/* rt-runtime-override-row replaced by rt-row in base.css */
 
 .rt-runtime-override-row input[type="checkbox"] {
   margin-top: 3px;

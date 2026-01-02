@@ -438,9 +438,9 @@ export class GossamerScoreModal extends Modal {
 
 
     // Buttons
-    const buttonContainer = contentEl.createDiv('rt-modal-actions');
-    const topActions = buttonContainer.createDiv('rt-gossamer-actions-top');
-    const bottomActions = buttonContainer.createDiv('rt-gossamer-actions-bottom');
+    const buttonContainer = contentEl.createDiv({ cls: 'rt-stack rt-stack-loose' });
+    const topActions = buttonContainer.createDiv({ cls: 'rt-row rt-row-wrap' });
+    const bottomActions = buttonContainer.createDiv({ cls: 'rt-row rt-row-wrap rt-row-end' });
 
     const pasteBtn = new ButtonComponent(topActions)
       .setButtonText('Paste scores')
@@ -903,9 +903,7 @@ export class GossamerScoreModal extends Modal {
       });
 
       // Button container with proper styling
-      const buttonContainer = contentEl.createDiv({
-        cls: ['rt-modal-actions', 'rt-inline-actions']
-      });
+      const buttonContainer = contentEl.createDiv({ cls: 'rt-row rt-row-end' });
 
       new ButtonComponent(buttonContainer)
         .setButtonText('Delete all scores')
@@ -1070,7 +1068,7 @@ class NormalizeConfirmationModal extends Modal {
     const warningEl = card.createDiv({ cls: 'rt-pulse-warning' });
     warningEl.createEl('strong', { text: 'Are you sure you want to proceed?' });
 
-    const buttonRow = contentEl.createDiv({ cls: ['rt-modal-actions', 'rt-inline-actions'] });
+    const buttonRow = contentEl.createDiv({ cls: 'rt-row rt-row-end' });
     new ButtonComponent(buttonRow)
       .setButtonText('Normalize')
       .setWarning()

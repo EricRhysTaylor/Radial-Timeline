@@ -37,7 +37,10 @@
   margin-bottom: 20px;
 }
 
-.rt-modal-badge {
+/* Consolidated badge pattern - all badges with identical styling grouped together */
+.rt-modal-badge,
+.rt-scene-analysis-badge,
+.rt-subplot-picker-badge {
   display: inline-block;
   padding: 6px 12px;
   border-radius: 8px;
@@ -74,8 +77,12 @@
   margin-top: 8px;
 }
 
-.rt-modal-meta-item {
-  display: inline-block;
+/* Consolidated meta-item base pattern */
+.rt-modal-meta-item,
+.rt-pulse-hero-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.06);
@@ -85,12 +92,21 @@
   color: var(--text-muted);
 }
 
-.rt-modal-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 20px;
+/* Warning variant - inherits base + warning colors */
+.rt-pulse-hero-meta-item-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-warning);
+  border: 1px solid rgba(255, 165, 0, 0.2);
 }
+
+/* rt-modal-actions base consolidated in base.css */
 
 .rt-pulse-modal .rt-modal-actions {
   margin-top: 10px;
@@ -238,19 +254,7 @@
   gap: 16px;
 }
 
-.rt-scene-analysis-badge {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
+/* rt-scene-analysis-badge - consolidated above with rt-modal-badge */
 
 .rt-scene-analysis-meta {
   margin-top: 12px;
@@ -313,15 +317,7 @@
   z-index: 1;
 }
 
-.rt-glass-card {
-  position: relative;
-  border-radius: 18px;
-  padding: 18px 20px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(14px);
-}
+/* rt-glass-card base consolidated in base.css */
 
 .rt-gossamer-score-modal .rt-glass-card {
   padding: 12px 14px !important;
@@ -646,19 +642,7 @@
   color: var(--text-muted);
 }
 
-.rt-subplot-picker-badge {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
+/* rt-subplot-picker-badge - consolidated at top with rt-modal-badge */
 
 .rt-release-notes-modal.modal {
   width: min(70vw, 980px);
@@ -981,14 +965,7 @@
   margin-bottom: 20px;
 }
 
-.rt-gossamer-proc-section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-normal);
-  margin: 0 0 10px 0;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--background-modifier-border);
-}
+/* rt-gossamer-proc-section-title replaced by rt-section-title in base.css */
 
 .rt-gossamer-proc-manuscript-info {
   margin-top: 12px;
@@ -1395,33 +1372,8 @@
   margin-top: 8px;
 }
 
-.rt-pulse-hero-meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.rt-pulse-hero-meta-item-warning {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--text-warning);
-  border-color: rgba(255, 165, 0, 0.2);
-}
+/* rt-pulse-hero-meta-item - consolidated above with rt-modal-meta-item */
+/* rt-pulse-hero-meta-item-warning - warning override consolidated above */
 
 .rt-gossamer-score-cards {
   display: grid;

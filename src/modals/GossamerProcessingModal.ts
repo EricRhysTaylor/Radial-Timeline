@@ -135,7 +135,7 @@ export class GossamerProcessingModal extends Modal {
 
         // Manuscript info section (will be populated by caller)
         const infoSection = card.createDiv({ cls: 'rt-gossamer-proc-info-section' });
-        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-gossamer-proc-section-title' });
+        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-section-title' });
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-proc-manuscript-info' });
         this.manuscriptInfoEl.setText('Gathering manuscript details...');
 
@@ -186,7 +186,7 @@ export class GossamerProcessingModal extends Modal {
 
         // Manuscript info section (reusing existing styles but inside the card)
         const infoSection = progressCard.createDiv({ cls: 'rt-gossamer-proc-info-section' });
-        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-gossamer-proc-section-title' });
+        infoSection.createEl('h3', { text: 'Manuscript Information', cls: 'rt-section-title' });
         this.manuscriptInfoEl = infoSection.createDiv({ cls: 'rt-gossamer-proc-manuscript-info' });
         this.manuscriptInfoEl.setText('Assembling manuscript...');
 
@@ -198,13 +198,13 @@ export class GossamerProcessingModal extends Modal {
 
         // Status section
         const statusSection = progressCard.createDiv({ cls: 'rt-gossamer-proc-status-section' });
-        statusSection.createEl('h3', { text: 'Status', cls: 'rt-gossamer-proc-section-title' });
+        statusSection.createEl('h3', { text: 'Status', cls: 'rt-section-title' });
         this.statusTextEl = statusSection.createDiv({ cls: 'rt-gossamer-proc-status-text' });
         this.statusTextEl.setText(this.currentStatus);
 
         // API status section
         const apiSection = progressCard.createDiv({ cls: 'rt-gossamer-proc-api-section' });
-        apiSection.createEl('h3', { text: 'API Activity', cls: 'rt-gossamer-proc-section-title' });
+        apiSection.createEl('h3', { text: 'API Activity', cls: 'rt-section-title' });
         this.apiStatusEl = apiSection.createDiv({ cls: 'rt-gossamer-proc-api-status' });
         this.apiStatusEl.setText('Waiting to send...');
 

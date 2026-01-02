@@ -143,13 +143,13 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== SCOPE SECTION =====
         const scopeCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
-        const scopeLayout = scopeCard.createDiv({ cls: 'rt-runtime-scope-layout' });
-        const scopeInfo = scopeLayout.createDiv({ cls: 'rt-runtime-scope-info' });
-        scopeInfo.createEl('h4', { text: 'Scope', cls: 'rt-runtime-section-header' });
+        const scopeLayout = scopeCard.createDiv({ cls: 'rt-row rt-row-wrap rt-row-between' });
+        const scopeInfo = scopeLayout.createDiv({ cls: 'rt-stack rt-stack-tight' });
+        scopeInfo.createEl('h4', { text: 'Scope', cls: 'rt-section-title' });
         scopeInfo.createDiv({ cls: 'rt-runtime-section-desc', text: 'Select which scenes to process for runtime estimation.' });
 
-        const scopeControls = scopeLayout.createDiv({ cls: 'rt-runtime-scope-controls' });
-        const scopeRow = scopeControls.createDiv({ cls: 'rt-runtime-scope-row' });
+        const scopeControls = scopeLayout.createDiv({ cls: 'rt-stack' });
+        const scopeRow = scopeControls.createDiv({ cls: 'rt-row rt-row-wrap' });
         
         // Scope dropdown
         const scopeDropdownContainer = scopeRow.createDiv({ cls: 'rt-runtime-dropdown-container' });
@@ -187,10 +187,10 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== STATUS FILTERS SECTION =====
         const statusCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
-        statusCard.createEl('h4', { text: 'Scene Status Filter', cls: 'rt-runtime-section-header' });
+        statusCard.createEl('h4', { text: 'Scene Status Filter', cls: 'rt-section-title' });
         statusCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Only scenes with the selected status will be processed.' });
 
-        const statusRow = statusCard.createDiv({ cls: 'rt-runtime-status-row' });
+        const statusRow = statusCard.createDiv({ cls: 'rt-row rt-row-loose rt-row-wrap' });
 
         this.createStatusCheckbox(statusRow, 'Todo', 'includeTodo', this.statusFilters.includeTodo);
         this.createStatusCheckbox(statusRow, 'Working', 'includeWorking', this.statusFilters.includeWorking);
@@ -198,10 +198,10 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== OVERRIDE SECTION =====
         const overrideCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
-        overrideCard.createEl('h4', { text: 'Override', cls: 'rt-runtime-section-header' });
+        overrideCard.createEl('h4', { text: 'Override', cls: 'rt-section-title' });
         overrideCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'By default, only scenes without a Runtime field are processed.' });
 
-        const overrideRow = overrideCard.createDiv({ cls: 'rt-runtime-override-row' });
+        const overrideRow = overrideCard.createDiv({ cls: 'rt-row' });
         
         const checkbox = overrideRow.createEl('input', { type: 'checkbox' });
         checkbox.checked = this.overrideExisting;
@@ -239,10 +239,10 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== MODE SELECTION =====
         const modeCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
-        modeCard.createEl('h4', { text: 'Estimation Mode', cls: 'rt-runtime-section-header' });
+        modeCard.createEl('h4', { text: 'Estimation Mode', cls: 'rt-section-title' });
         modeCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Use local math only or compare with an AI estimate. AI modes send scene stats (and small samples) to your configured provider.' });
 
-        const modeRow = modeCard.createDiv({ cls: 'rt-runtime-mode-row' });
+        const modeRow = modeCard.createDiv({ cls: 'rt-row' });
         const modeDropdownContainer = modeRow.createDiv({ cls: 'rt-runtime-dropdown-container' });
         const modeDropdown = new DropdownComponent(modeDropdownContainer);
         modeDropdown
@@ -256,7 +256,7 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== SCENE COUNT SECTION =====
         const countCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
-        countCard.createEl('h4', { text: 'Summary', cls: 'rt-runtime-section-header' });
+        countCard.createEl('h4', { text: 'Summary', cls: 'rt-section-title' });
         this.countEl = countCard.createDiv({ cls: 'rt-runtime-count' });
         this.countEl.setText('Calculating...');
 

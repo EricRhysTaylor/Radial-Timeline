@@ -94,7 +94,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     text.inputEl.max = '300';
                     text.inputEl.addClass('rt-input-xs');
                     text.setValue(String(plugin.settings.runtimeDialogueWpm || 160));
-                    text.inputEl.addEventListener('blur', async () => {
+                    plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                         const num = parseInt(text.getValue());
                         if (!Number.isFinite(num) || num < 50 || num > 300) {
                             flash(text.inputEl, 'error');
@@ -115,7 +115,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     text.inputEl.max = '300';
                     text.inputEl.addClass('rt-input-xs');
                     text.setValue(String(plugin.settings.runtimeActionWpm || 100));
-                    text.inputEl.addEventListener('blur', async () => {
+                    plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                         const num = parseInt(text.getValue());
                         if (!Number.isFinite(num) || num < 50 || num > 300) {
                             flash(text.inputEl, 'error');
@@ -154,7 +154,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         text.inputEl.addClass('rt-input-xs');
                         const currentValue = plugin.settings[p.key] as number | undefined;
                         text.setValue(String(currentValue ?? p.defaultVal));
-                        text.inputEl.addEventListener('blur', async () => {
+                        plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                             const num = parseInt(text.getValue());
                             if (!Number.isFinite(num) || num < 0 || num > 60) {
                                 flash(text.inputEl, 'error');
@@ -186,7 +186,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     text.inputEl.max = '300';
                     text.inputEl.addClass('rt-input-xs');
                     text.setValue(String(plugin.settings.runtimeNarrationWpm || 150));
-                    text.inputEl.addEventListener('blur', async () => {
+                    plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                         const num = parseInt(text.getValue());
                         if (!Number.isFinite(num) || num < 50 || num > 300) {
                             flash(text.inputEl, 'error');
