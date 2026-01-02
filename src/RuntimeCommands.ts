@@ -8,11 +8,12 @@
 
 import { TFile, Notice } from 'obsidian';
 import type RadialTimelinePlugin from './main';
-import { RuntimeProcessingModal, type RuntimeScope, type RuntimeStatusFilters } from './modals/RuntimeProcessingModal';
+import { RuntimeProcessingModal, type RuntimeScope, type RuntimeStatusFilters, type RuntimeMode, type RuntimeProcessResult } from './modals/RuntimeProcessingModal';
 import { estimateRuntime, getRuntimeSettings, formatRuntimeValue, parseRuntimeField } from './utils/runtimeEstimator';
 import { isBeatNote } from './utils/sceneHelpers';
 import { normalizeStatus } from './utils/text';
 import type { TimelineItem } from './types';
+import { callProvider } from './api/providerRouter';
 
 interface SceneToProcess {
     file: TFile;
@@ -21,6 +22,26 @@ interface SceneToProcess {
     subplot?: string;
     existingRuntime?: string;
     body: string;
+}
+
+interface SceneRuntimeSnapshot {
+    title: string;
+    path: string;
+    runtimeSeconds: number;
+    dialogueWords: number;
+    actionWords: number;
+    directiveSeconds: number;
+    directiveCounts: Record<string, number>;
+    sample?: string;
+}
+
+interface AiEstimateResult {
+    success: boolean;
+    aiSeconds?: number;
+    provider?: string;
+    modelId?: string;
+    rationale?: string;
+    error?: string;
 }
 
 /**
@@ -155,13 +176,14 @@ async function processScenes(
     subplotFilter: string | undefined,
     overrideExisting: boolean,
     statusFilters: RuntimeStatusFilters,
+    mode: RuntimeMode,
     modal: RuntimeProcessingModal
-): Promise<void> {
+): Promise<RuntimeProcessResult> {
     const scenes = await getScenesForScope(plugin, scope, subplotFilter, overrideExisting, statusFilters);
     
     if (scenes.length === 0) {
         new Notice('No scenes to process.');
-        return;
+        return { message: 'No scenes to process.' };
     }
 
     modal.setTotalCount(scenes.length);
@@ -170,6 +192,7 @@ async function processScenes(
     let processed = 0;
     let totalRuntime = 0;
     let errors = 0;
+    const sceneStats: SceneRuntimeSnapshot[] = [];
 
     for (const scene of scenes) {
         if (modal.isAborted()) {
@@ -186,6 +209,17 @@ async function processScenes(
             if (success) {
                 processed++;
                 totalRuntime += result.totalSeconds;
+                const sample = mode === 'local' ? undefined : truncateText(scene.body, mode === 'ai-full' ? 1200 : 400);
+                sceneStats.push({
+                    title: scene.title,
+                    path: scene.path,
+                    runtimeSeconds: result.totalSeconds,
+                    dialogueWords: result.dialogueWords,
+                    actionWords: result.actionWords,
+                    directiveSeconds: result.directiveSeconds,
+                    directiveCounts: result.directiveCounts,
+                    sample,
+                });
                 modal.updateProgress(processed, scenes.length, scene.title, result.totalSeconds);
             } else {
                 errors++;
@@ -199,11 +233,185 @@ async function processScenes(
     // Refresh timeline
     plugin.refreshTimelineIfNeeded(null);
     
-    if (errors > 0) {
-        new Notice(`Runtime estimation complete. ${processed} scenes updated, ${errors} errors.`);
-    } else {
-        new Notice(`Runtime estimation complete! ${processed} scenes updated. Total: ${formatRuntimeValue(totalRuntime)}`);
+    let aiResult: AiEstimateResult | undefined;
+    if (mode !== 'local') {
+        modal.setStatusMessage('Preparing AI runtime estimate...');
+        aiResult = await estimateRuntimeWithAi(plugin, sceneStats, settings, mode);
     }
+
+    const message = errors > 0
+        ? `Runtime estimation complete. ${processed} scenes updated, ${errors} errors.`
+        : `Runtime estimation complete! ${processed} scenes updated. Total: ${formatRuntimeValue(totalRuntime)}`;
+
+    new Notice(message);
+
+    return {
+        message,
+        localTotalSeconds: totalRuntime,
+        aiResult: aiResult ? { ...aiResult } : undefined,
+    };
+}
+
+function truncateText(text: string, maxChars: number): string {
+    if (!text) return '';
+    if (text.length <= maxChars) return text;
+    return `${text.slice(0, maxChars)}…`;
+}
+
+function aggregateStats(scenes: SceneRuntimeSnapshot[]) {
+    return scenes.reduce(
+        (acc, scene) => {
+            acc.dialogueWords += scene.dialogueWords;
+            acc.actionWords += scene.actionWords;
+            acc.directiveSeconds += scene.directiveSeconds;
+            Object.entries(scene.directiveCounts).forEach(([key, value]) => {
+                acc.directiveCounts[key] = (acc.directiveCounts[key] || 0) + value;
+            });
+            acc.localSeconds += scene.runtimeSeconds;
+            return acc;
+        },
+        { dialogueWords: 0, actionWords: 0, directiveSeconds: 0, directiveCounts: {} as Record<string, number>, localSeconds: 0 }
+    );
+}
+
+function pickScenesForAi(scenes: SceneRuntimeSnapshot[], mode: RuntimeMode): SceneRuntimeSnapshot[] {
+    const sorted = [...scenes].sort((a, b) => b.runtimeSeconds - a.runtimeSeconds);
+    const limit = mode === 'ai-full' ? 24 : 12;
+    return sorted.slice(0, limit);
+}
+
+function extractJsonFromContent(content: string): unknown {
+    if (!content) return null;
+    const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidate = fenced ? fenced[1] : content;
+    try {
+        return JSON.parse(candidate.trim());
+    } catch (err) {
+        // Try lenient parse by trimming leading/trailing text
+        const firstBrace = candidate.indexOf('{');
+        const lastBrace = candidate.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+            try {
+                return JSON.parse(candidate.slice(firstBrace, lastBrace + 1));
+            } catch (e) {
+                return null;
+            }
+        }
+        return null;
+    }
+}
+
+async function estimateRuntimeWithAi(
+    plugin: RadialTimelinePlugin,
+    sceneStats: SceneRuntimeSnapshot[],
+    settings: ReturnType<typeof getRuntimeSettings>,
+    mode: RuntimeMode
+): Promise<AiEstimateResult> {
+    if (sceneStats.length === 0) {
+        return { success: false, error: 'No scenes available for AI estimate.' };
+    }
+
+    const selectedScenes = pickScenesForAi(sceneStats, mode);
+    const omittedScenes = sceneStats.filter((s) => !selectedScenes.includes(s));
+    const totalsAll = aggregateStats(sceneStats);
+    const totalsOmitted = aggregateStats(omittedScenes);
+
+    const payload = {
+        mode,
+        sceneCount: sceneStats.length,
+        settings: {
+            contentType: settings.contentType,
+            dialogueWpm: settings.dialogueWpm,
+            actionWpm: settings.actionWpm,
+            narrationWpm: settings.narrationWpm,
+            directives: {
+                beatSeconds: settings.beatSeconds,
+                pauseSeconds: settings.pauseSeconds,
+                longPauseSeconds: settings.longPauseSeconds,
+                momentSeconds: settings.momentSeconds,
+                silenceSeconds: settings.silenceSeconds,
+            },
+        },
+        totals: totalsAll,
+        sampleScenes: selectedScenes.map((scene) => ({
+            title: scene.title,
+            path: scene.path,
+            localRuntimeSeconds: scene.runtimeSeconds,
+            dialogueWords: scene.dialogueWords,
+            actionWords: scene.actionWords,
+            directiveSeconds: scene.directiveSeconds,
+            directives: scene.directiveCounts,
+            sample: scene.sample,
+        })),
+        omittedSummary: {
+            count: omittedScenes.length,
+            totals: totalsOmitted,
+        },
+        note: 'Estimate total runtime (seconds). Prefer local math if confident; adjust using pacing intuition from stats/samples.',
+    };
+
+    const systemPrompt = [
+        'You are a runtime estimator for novels and screenplays.',
+        'Use provided per-scene stats to estimate total runtime in seconds.',
+        'Return JSON: {"estimatedSeconds": number, "rationale": string, "confidence": 1-5}.',
+        'Do not include prose outside JSON.',
+    ].join(' ');
+
+    const userPrompt = [
+        'Runtime data follows as JSON.',
+        'Account for pacing differences between dialogue and action.',
+        'Adjust modestly for directive seconds if they seem over/under-weighted.',
+        'Respond with JSON only.',
+        JSON.stringify(payload, null, 2),
+    ].join('\n\n');
+
+    const response = await callProvider(plugin, {
+        systemPrompt,
+        userPrompt,
+        maxTokens: 900,
+        temperature: 0.25,
+    });
+
+    const provider = response?.provider || plugin.settings.defaultAiProvider || 'openai';
+    const modelId = response?.modelId || '';
+
+    if (!response.success || !response.content) {
+        return {
+            success: false,
+            provider,
+            modelId,
+            error: 'AI request failed',
+        };
+    }
+
+    const parsed = extractJsonFromContent(response.content) as
+        | { estimatedSeconds?: number; totalSeconds?: number; rationale?: string; reasoning?: string; confidence?: number }
+        | null;
+
+    const aiSeconds =
+        (parsed && typeof parsed.estimatedSeconds === 'number' && Number.isFinite(parsed.estimatedSeconds) && parsed.estimatedSeconds >= 0)
+            ? parsed.estimatedSeconds
+            : parsed && typeof parsed.totalSeconds === 'number' && Number.isFinite(parsed.totalSeconds) && parsed.totalSeconds >= 0
+                ? parsed.totalSeconds
+                : null;
+
+    if (aiSeconds === null) {
+        return {
+            success: false,
+            provider,
+            modelId,
+            rationale: response.content,
+            error: 'AI response missing estimatedSeconds',
+        };
+    }
+
+    return {
+        success: true,
+        aiSeconds: Math.round(aiSeconds),
+        provider,
+        modelId,
+        rationale: parsed?.rationale || parsed?.reasoning || response.content,
+    };
 }
 
 /**
@@ -231,11 +439,11 @@ export function openRuntimeEstimator(plugin: RadialTimelinePlugin): void {
         plugin,
         (scope, subplotFilter, overrideExisting, statusFilters) => 
             getSceneCount(plugin, scope, subplotFilter, overrideExisting, statusFilters),
-        (scope, subplotFilter, overrideExisting, statusFilters) => {
+        (scope, subplotFilter, overrideExisting, statusFilters, mode) => {
             if (!modalInstance) {
                 throw new Error('Modal not initialized');
             }
-            return processScenes(plugin, scope, subplotFilter, overrideExisting, statusFilters, modalInstance);
+            return processScenes(plugin, scope, subplotFilter, overrideExisting, statusFilters, mode, modalInstance);
         }
     );
     modalInstance = modal;

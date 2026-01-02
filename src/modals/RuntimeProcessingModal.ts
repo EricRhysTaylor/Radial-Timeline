@@ -13,6 +13,20 @@ import { formatRuntimeValue } from '../utils/runtimeEstimator';
 import { isBeatNote } from '../utils/sceneHelpers';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
+export type RuntimeMode = 'local' | 'ai-full' | 'ai-hybrid';
+
+export interface RuntimeProcessResult {
+    message?: string;
+    localTotalSeconds?: number;
+    aiResult?: {
+        success: boolean;
+        aiSeconds?: number;
+        provider?: string;
+        modelId?: string;
+        rationale?: string;
+        error?: string;
+    };
+}
 
 export interface RuntimeStatusFilters {
     includeTodo: boolean;
@@ -31,12 +45,13 @@ export interface RuntimeQueueItem {
  */
 export class RuntimeProcessingModal extends Modal {
     private readonly plugin: RadialTimelinePlugin;
-    private readonly onProcess: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters) => Promise<void>;
+    private readonly onProcess: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters, mode: RuntimeMode) => Promise<RuntimeProcessResult | void>;
     private readonly getSceneCount: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters) => Promise<number>;
 
     private selectedScope: RuntimeScope = 'all';
     private selectedSubplot: string = '';
     private overrideExisting: boolean = false;
+    private selectedMode: RuntimeMode = 'local';
     private statusFilters: RuntimeStatusFilters = {
         includeTodo: false,
         includeWorking: true,
@@ -73,7 +88,7 @@ export class RuntimeProcessingModal extends Modal {
         app: App,
         plugin: RadialTimelinePlugin,
         getSceneCount: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters) => Promise<number>,
-        onProcess: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters) => Promise<void>
+        onProcess: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters, mode: RuntimeMode) => Promise<RuntimeProcessResult | void>
     ) {
         super(app);
         this.plugin = plugin;
@@ -221,6 +236,23 @@ export class RuntimeProcessingModal extends Modal {
                 setIcon(accordionIcon, 'chevron-right');
             }
         });
+
+        // ===== MODE SELECTION =====
+        const modeCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
+        modeCard.createEl('h4', { text: 'Estimation Mode', cls: 'rt-runtime-section-header' });
+        modeCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Use local math only or compare with an AI estimate. AI modes send scene stats (and small samples) to your configured provider.' });
+
+        const modeRow = modeCard.createDiv({ cls: 'rt-runtime-mode-row' });
+        const modeDropdownContainer = modeRow.createDiv({ cls: 'rt-runtime-dropdown-container' });
+        const modeDropdown = new DropdownComponent(modeDropdownContainer);
+        modeDropdown
+            .addOption('local', 'Local only')
+            .addOption('ai-hybrid', 'AI hybrid (stats + samples)')
+            .addOption('ai-full', 'AI fuller pass')
+            .setValue(this.selectedMode)
+            .onChange((value) => {
+                this.selectedMode = value as RuntimeMode;
+            });
 
         // ===== SCENE COUNT SECTION =====
         const countCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
@@ -381,8 +413,12 @@ export class RuntimeProcessingModal extends Modal {
 
         try {
             const subplotFilter = this.selectedScope === 'subplot' ? this.selectedSubplot : undefined;
-            await this.onProcess(this.selectedScope, subplotFilter, this.overrideExisting, this.statusFilters);
-            this.showCompletionSummary('Estimation completed successfully!');
+            const result = await this.onProcess(this.selectedScope, subplotFilter, this.overrideExisting, this.statusFilters, this.selectedMode);
+            if (result && typeof result === 'object') {
+                this.showCompletionSummary(result.message ?? 'Estimation completed successfully!', result.aiResult);
+            } else {
+                this.showCompletionSummary('Estimation completed successfully!');
+            }
         } catch (error) {
             if (this.abortController?.signal.aborted) {
                 this.showCompletionSummary('Estimation aborted');
@@ -479,11 +515,17 @@ export class RuntimeProcessingModal extends Modal {
         }
     }
 
+    public setStatusMessage(message: string): void {
+        if (this.statusTextEl) {
+            this.statusTextEl.setText(message);
+        }
+    }
+
     public isAborted(): boolean {
         return this.abortController?.signal.aborted ?? false;
     }
 
-    private showCompletionSummary(message: string): void {
+    private showCompletionSummary(message: string, aiResult?: RuntimeProcessResult['aiResult']): void {
         if (this.progressBarEl) {
             this.progressBarEl.style.setProperty('--progress-width', '100%');
             this.progressBarEl.addClass('rt-progress-complete');
@@ -499,6 +541,27 @@ export class RuntimeProcessingModal extends Modal {
 
         if (this.runningTotalEl) {
             this.runningTotalEl.setText(formatRuntimeValue(this.runningTotalSeconds));
+        }
+
+        if (aiResult) {
+            const aiSeconds = aiResult.aiSeconds;
+            const aiLabel = aiResult.provider ? `${aiResult.provider}${aiResult.modelId ? `/${aiResult.modelId}` : ''}` : 'AI';
+            const delta = typeof aiSeconds === 'number' ? aiSeconds - this.runningTotalSeconds : null;
+            const deltaText = delta === null ? '' : ` · Δ ${delta >= 0 ? '+' : '-'}${formatRuntimeValue(Math.abs(delta))}`;
+
+            if (this.progressTextEl) {
+                const aiRuntime = typeof aiSeconds === 'number' ? formatRuntimeValue(aiSeconds) : '—';
+                this.progressTextEl.setText(`Local: ${formatRuntimeValue(this.runningTotalSeconds)} · ${aiLabel}: ${aiRuntime}${deltaText}`);
+            }
+
+            if (this.statusTextEl) {
+                if (aiResult.success) {
+                    const rationale = aiResult.rationale ? aiResult.rationale.slice(0, 280) : 'AI estimate ready.';
+                    this.statusTextEl.setText(rationale);
+                } else {
+                    this.statusTextEl.setText(`AI error: ${aiResult.error ?? 'Unknown error'}`);
+                }
+            }
         }
 
         if (this.closeButton) {
