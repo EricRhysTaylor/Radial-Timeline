@@ -24,14 +24,14 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     const heading = new Setting(containerEl)
         .setName('Runtime estimation')
         .setHeading();
-    addWikiLink(heading, 'Runtime-Estimation');
+    addWikiLink(heading, 'Settings#runtime-estimation');
 
     // ─────────────────────────────────────────────────────────────────────────
     // Enable Toggle
     // ─────────────────────────────────────────────────────────────────────────
     new Setting(containerEl)
         .setName('Enable runtime estimation')
-        .setDesc('Adds a runtime mode button to Chronologue and registers the Runtime Estimator command.')
+        .setDesc('Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.')
         .addToggle(toggle => {
             toggle
                 .setValue(plugin.settings.enableRuntimeEstimation ?? false)
@@ -130,16 +130,13 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
             // ─────────────────────────────────────────────────────────────────
             // Parenthetical Timing (screenplay only)
             // ─────────────────────────────────────────────────────────────────
-            const parentheticalInfo = conditionalContainer.createDiv({ cls: 'setting-item-description' });
-            parentheticalInfo.setText('Parenthetical timings — seconds added when these screenplay directives are detected:');
-
             const parentheticals: Array<{
                 key: keyof typeof plugin.settings;
                 label: string;
                 desc: string;
                 defaultVal: number;
             }> = [
-                { key: 'runtimeBeatSeconds', label: '(beat)', desc: 'Brief pause', defaultVal: 2 },
+                { key: 'runtimeBeatSeconds', label: '(beat)', desc: 'Brief pause. Parenthetical timings — seconds added when screenplay directives are detected.', defaultVal: 2 },
                 { key: 'runtimePauseSeconds', label: '(pause)', desc: 'Standard pause', defaultVal: 3 },
                 { key: 'runtimeLongPauseSeconds', label: '(long pause)', desc: 'Extended silence', defaultVal: 5 },
                 { key: 'runtimeMomentSeconds', label: '(a moment)', desc: 'Reflective beat', defaultVal: 4 },

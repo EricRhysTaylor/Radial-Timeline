@@ -117,12 +117,14 @@ export class RuntimeProcessingModal extends Modal {
 
         // Header
         const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'Runtime estimator' });
-        header.createDiv({ cls: 'rt-modal-title', text: 'Runtime Estimation' });
         
         const contentType = this.plugin.settings.runtimeContentType || 'novel';
-        const modeLabel = contentType === 'screenplay' ? 'Screenplay mode' : 'Novel/Audiobook mode';
-        header.createDiv({ cls: 'rt-modal-subtitle', text: `Estimate screen time or reading time for your scenes. ${modeLabel}.` });
+        const modeLabel = contentType === 'screenplay' ? 'Screenplay' : 'Audiobook';
+        const badgeText = `Runtime estimator · ${modeLabel}`;
+        
+        header.createSpan({ cls: 'rt-modal-badge', text: badgeText });
+        header.createDiv({ cls: 'rt-modal-title', text: 'Runtime Estimation' });
+        header.createDiv({ cls: 'rt-modal-subtitle', text: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.' });
 
         // ===== SCOPE SECTION =====
         const scopeCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
@@ -179,8 +181,8 @@ export class RuntimeProcessingModal extends Modal {
 
         // ===== OVERRIDE SECTION =====
         const overrideCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
-        overrideCard.createEl('h4', { text: 'Override Options', cls: 'rt-runtime-section-header' });
-        overrideCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Control how existing Runtime values are handled.' });
+        overrideCard.createEl('h4', { text: 'Override', cls: 'rt-runtime-section-header' });
+        overrideCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'By default, only scenes without a Runtime field are processed.' });
 
         const overrideRow = overrideCard.createDiv({ cls: 'rt-runtime-override-row' });
         
@@ -192,8 +194,8 @@ export class RuntimeProcessingModal extends Modal {
         });
         
         const labelContainer = overrideRow.createDiv({ cls: 'rt-runtime-override-label' });
-        labelContainer.createEl('span', { text: 'Override existing Runtime values' });
-        labelContainer.createDiv({ cls: 'rt-runtime-field-hint', text: 'When checked, recalculates and replaces any existing Runtime values. Otherwise, only scenes without Runtime are processed.' });
+        labelContainer.createEl('span', { text: 'Recalculate all' });
+        labelContainer.createDiv({ cls: 'rt-runtime-field-hint', text: 'Replaces existing Runtime values, including manual estimates you may have entered.' });
 
         // ===== SETTINGS ACCORDION =====
         const settingsCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
@@ -397,7 +399,11 @@ export class RuntimeProcessingModal extends Modal {
 
         // Header
         const header = contentEl.createDiv({ cls: 'rt-modal-header' });
-        header.createSpan({ cls: 'rt-modal-badge', text: 'Runtime estimator' });
+        
+        const contentType = this.plugin.settings.runtimeContentType || 'novel';
+        const modeLabel = contentType === 'screenplay' ? 'Screenplay' : 'Audiobook';
+        
+        header.createSpan({ cls: 'rt-modal-badge', text: `Runtime estimator · ${modeLabel}` });
         header.createDiv({ cls: 'rt-modal-title', text: 'Estimating Runtimes...' });
         this.statusTextEl = header.createDiv({ cls: 'rt-modal-subtitle' });
         this.statusTextEl.setText('Initializing...');

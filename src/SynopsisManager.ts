@@ -583,7 +583,7 @@ export default class SynopsisManager {
           lineGroup.setAttribute("class", "rt-hover-metadata-line");
           
           // Icon positioning
-          const iconSize = 16 * fontScale;
+          const iconSize = 18 * fontScale;
           const iconGap = 6 * fontScale;
           const textX = iconSize + iconGap; // Offset for icon + gap
           
@@ -593,6 +593,10 @@ export default class SynopsisManager {
             // Native SVG approach: Extract paths and transform
             const iconG = document.createElementNS("http://www.w3.org/2000/svg", "g");
             iconG.setAttribute("class", "rt-hover-metadata-icon-g");
+            iconG.setAttribute("stroke", "currentColor");
+            iconG.setAttribute("stroke-linecap", "round");
+            iconG.setAttribute("stroke-linejoin", "round");
+            iconG.setAttribute("fill", "none");
             
             // Calculate scale: Lucide icons are 24x24
             const scale = iconSize / 24;
@@ -616,7 +620,7 @@ export default class SynopsisManager {
           }
           
           // Create the text element (key: value)
-          const textEl = createText(textX, y, 'rt-info-text rt-title-text-secondary rt-hover-metadata-text', `${field.key}: ${valueStr}`);
+          const textEl = createText(textX, y, 'rt-info-text rt-title-text-secondary rt-hover-metadata-text', valueStr);
           textEl.setAttribute('data-hover-icon-size', String(iconSize));
           textEl.setAttribute('data-hover-icon-gap', String(iconGap));
           lineGroup.appendChild(textEl);
@@ -1041,12 +1045,16 @@ export default class SynopsisManager {
         inset = fontSize * ratio;
       }
       const rightQuadrantInset = isRightAligned ? 20 : 0;
-      const anchorAbsoluteX = (circleX - inset - rightQuadrantInset) * direction;
+      // Only apply extra inset on right side when the row carries a hover icon
+      const hasHoverIcon = this.getHoverIconTotalOffset(primaryEl) > 0;
+      const extraRightInset = isRightAligned && hasHoverIcon ? rightQuadrantInset : 0;
+      const anchorAbsoluteX = (circleX - inset - extraRightInset) * direction;
 
       const anchorX = anchorAbsoluteX - baseX;
 
       const { primaryWidth, metadataWidth, gap } = this.measureRowLayout(rowElements, metadataSpacing, isRightAligned);
-      const roundedAnchorX = Math.round(anchorX);
+      const textNudge = isRightAligned ? -8 : 0; // pull right-side text further left to clear icons
+      const roundedAnchorX = Math.round(anchorX + textNudge);
       const rowY = rowIndex === 0 ? 0 : yOffset;
 
       this.positionRowColumns(
@@ -1200,13 +1208,21 @@ export default class SynopsisManager {
 
       const isRightAligned = anchor === 'end';
       const textStartX = anchor === 'end' ? textX - textWidth : textX;
-      const iconX = isRightAligned
-        ? textX + iconGap
-        : textStartX - iconGap - iconSize;
-      const iconY = textY - (iconSize * 0.85);
+      // Nudge icons closer to their text and slightly upward for clearer rendering
+      const baseHorizontalNudge = 4; // px
+      const verticalNudge = 2; // px
+      const iconX = Math.round(
+        isRightAligned
+          ? textX + iconGap - (baseHorizontalNudge + 2) // slight left nudge for right side
+          : textStartX - iconGap - iconSize
+      );
+      const iconY = Math.round(textY - (iconSize * 0.85) - verticalNudge);
       const scale = iconSize / 24;
 
       iconG.setAttribute('transform', `translate(${iconX}, ${iconY}) scale(${scale})`);
+      iconG.setAttribute('stroke-width', '2');
+      iconG.setAttribute('stroke-linecap', 'round');
+      iconG.setAttribute('stroke-linejoin', 'round');
       iconG.style.stroke = "";
       iconG.style.fill = "";
     });
