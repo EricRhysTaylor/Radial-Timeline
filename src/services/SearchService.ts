@@ -140,6 +140,11 @@ export class SearchService {
         const planetaryProfile = getActivePlanetaryProfile(this.plugin.settings as any);
         
         this.plugin.getSceneData().then(scenes => {
+            // Get enabled hover metadata fields for search indexing
+            const enabledHoverFields = (this.plugin.settings.hoverMetadataFields || [])
+                .filter(f => f.enabled)
+                .map(f => f.key);
+            
             scenes.forEach(scene => {
                 const povText = scene.pov ? String(scene.pov) : '';
                 // Include hover-visible text so squares highlight when hover text matches
@@ -148,13 +153,27 @@ export class SearchService {
                     scene.synopsis,
                     ...(scene.Character || []),
                     scene.subplot,
-                    scene.location,
+                    scene.place,
                     povText,
                     scene.Duration,
                     scene["currentSceneAnalysis"],
                     scene["previousSceneAnalysis"],
                     scene["nextSceneAnalysis"]
                 ];
+                
+                // Add enabled custom hover metadata fields to search index
+                if (scene.rawFrontmatter && enabledHoverFields.length > 0) {
+                    enabledHoverFields.forEach(key => {
+                        const val = scene.rawFrontmatter?.[key];
+                        if (val !== undefined && val !== null) {
+                            if (Array.isArray(val)) {
+                                val.forEach(item => textFields.push(String(item)));
+                            } else {
+                                textFields.push(String(val));
+                            }
+                        }
+                    });
+                }
                 
                 // Add planetary line text if planetary time is enabled and scene has a When date
                 if (planetaryProfile && scene.when) {

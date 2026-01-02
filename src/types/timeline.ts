@@ -9,7 +9,7 @@ export interface TimelineItem {
     subplot?: string;
     act?: string;
     pov?: string;
-    location?: string;
+    place?: string;
     number?: number;
     synopsis?: string;
     when?: Date;
@@ -64,4 +64,6 @@ export interface TimelineItem {
     Gossamer29?: number;
     Gossamer30?: number;
     End?: string;
+    /** Raw frontmatter data for custom field access */
+    rawFrontmatter?: Record<string, unknown>;
 }

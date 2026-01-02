@@ -814,22 +814,58 @@
   stroke: rgba(220, 160, 60, 0.9) !important;
 }
 
-/* 8. RT Button Styling */
-.rt-runtime-button .rt-shift-button-bg {
-  /* Default state */
+/* 8. RT Icon Button Styling */
+.rt-runtime-button {
+  cursor: pointer;
+  transition: transform 0.15s ease-out;
 }
 
-.rt-runtime-button.rt-runtime-mode-active .rt-shift-button-bg {
-  fill: rgba(60, 120, 200, 0.9) !important;
-  stroke: rgba(80, 140, 220, 1) !important;
-  stroke-width: 2px !important;
+.rt-runtime-button .rt-runtime-icon-bg {
+  fill: var(--background-secondary);
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  transition: all 0.2s ease-out;
 }
 
-.rt-runtime-button.rt-runtime-mode-active .rt-shift-button-text {
-  fill: rgba(80, 160, 240, 1) !important;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+.rt-runtime-button .rt-runtime-lucide-icon {
+  stroke: var(--text-muted);
+  transition: all 0.2s ease-out;
+}
+
+/* Hover state - enlarge and blue glow */
+.rt-runtime-button:hover .rt-runtime-icon-bg {
+  fill: rgba(60, 140, 220, 0.15);
+  stroke: rgba(60, 160, 220, 0.9);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px rgba(60, 160, 220, 0.5));
+}
+
+.rt-runtime-button:hover .rt-runtime-lucide-icon {
+  stroke: rgba(60, 160, 220, 1);
+  filter: drop-shadow(0 0 4px rgba(60, 160, 220, 0.6));
+}
+
+/* Active state - solid blue glow */
+.rt-runtime-button.rt-runtime-mode-active .rt-runtime-icon-bg {
+  fill: rgba(60, 140, 220, 0.25) !important;
+  stroke: rgba(60, 160, 220, 1) !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 10px rgba(60, 160, 220, 0.7));
+}
+
+.rt-runtime-button.rt-runtime-mode-active .rt-runtime-lucide-icon {
+  stroke: rgba(80, 180, 255, 1) !important;
+  filter: drop-shadow(0 0 6px rgba(80, 180, 255, 0.8));
+}
+
+/* Active + Hover - intensify glow */
+.rt-runtime-button.rt-runtime-mode-active:hover .rt-runtime-icon-bg {
+  filter: drop-shadow(0 0 14px rgba(60, 180, 255, 0.9));
+}
+
+.rt-runtime-button.rt-runtime-mode-active:hover .rt-runtime-lucide-icon {
+  stroke: rgba(100, 200, 255, 1) !important;
+  filter: drop-shadow(0 0 8px rgba(100, 200, 255, 1));
 }
 
 /* 9. Runtime Total display in grid footer */

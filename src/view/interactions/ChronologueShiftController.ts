@@ -4,8 +4,9 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  */
 
+import { setIcon } from 'obsidian';
 import type { TimelineItem } from '../../types';
-import type { PlanetaryProfile } from '../../types/settings';
+import type { PlanetaryProfile, RuntimeContentType } from '../../types/settings';
 import { getActivePlanetaryProfile, validatePlanetaryProfile, convertFromEarth, formatElapsedTimePlanetary, formatPlanetaryDateAdaptive } from '../../utils/planetaryTime';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
@@ -204,8 +205,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         svg.appendChild(altButton);
     }
 
-    // Always show RT button for Runtime mode
-    rtButton = createRtButton(shouldShowAlt);
+    // Always show RT button for Runtime mode - icon changes based on content type
+    const runtimeContentType: RuntimeContentType = view.plugin.settings?.runtimeContentType || 'novel';
+    rtButton = createRtButton(runtimeContentType);
     svg.appendChild(rtButton);
 
     // Function to activate shift mode
@@ -928,96 +930,109 @@ function updateAltButtonState(button: SVGGElement, active: boolean): void {
 }
 
 /**
- * Create the RT (Runtime) button element (Left of ALT, or left of Shift if no ALT)
+ * Create the RT (Runtime) icon button element (Right of Shift button)
+ * Uses Lucide icons: 'film' for screenplay, 'mic-vocal' for novel/audiobook
  */
-function createRtButton(altButtonVisible: boolean): SVGGElement {
+function createRtButton(contentType: RuntimeContentType): SVGGElement {
     const button = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     button.setAttribute('class', 'rt-shift-mode-button rt-runtime-button');
     button.setAttribute('id', 'runtime-mode-toggle');
 
-    const RT_WIDTH = 36;
-    const RT_HEIGHT = 46;
+    // Icon button dimensions
+    const RT_SIZE = 32; // Square icon container
+    const SHIFT_WIDTH = 62;
     const SHIFT_HEIGHT = 55;
-    const ALT_WIDTH = 43;
 
-    // Position to the LEFT of ALT button (or Shift if no ALT)
-    let basePosX: number;
-    if (altButtonVisible) {
-        // ALT is at SHIFT_BUTTON_POS_X - 10 - ALT_WIDTH
-        const altPosX = SHIFT_BUTTON_POS_X - 10 - ALT_WIDTH;
-        basePosX = altPosX - 10 - RT_WIDTH;
-    } else {
-        // No ALT, position left of Shift
-        basePosX = SHIFT_BUTTON_POS_X - 10 - RT_WIDTH;
-    }
-    
-    // Align bottom of RT button with bottom of Shift button
-    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_HEIGHT);
+    // Position to the RIGHT of Shift button (10px gap)
+    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 10;
+    // Vertically center with shift button
+    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2;
 
     button.setAttribute('transform', `translate(${basePosX}, ${basePosY})`);
+    button.setAttribute('data-base-x', String(basePosX));
+    button.setAttribute('data-base-y', String(basePosY));
 
-    // Create path element (simple rounded rect)
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', createRtButtonShape());
-    path.setAttribute('class', 'rt-shift-button-bg rt-runtime-button-bg');
-    path.setAttribute('fill', 'var(--interactive-normal)');
-    path.setAttribute('stroke', 'var(--text-normal)');
-    path.setAttribute('stroke-width', '2');
+    // Create a circular background
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', String(RT_SIZE / 2));
+    circle.setAttribute('cy', String(RT_SIZE / 2));
+    circle.setAttribute('r', String(RT_SIZE / 2));
+    circle.setAttribute('class', 'rt-runtime-icon-bg');
+    circle.setAttribute('fill', 'var(--background-secondary)');
+    circle.setAttribute('stroke', 'var(--text-muted)');
+    circle.setAttribute('stroke-width', '1.5');
 
-    // Create text element
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', '18'); // Center of 36
-    text.setAttribute('y', '36'); // Near bottom
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('dominant-baseline', 'middle');
-    text.setAttribute('class', 'rt-shift-button-text');
-    text.textContent = 'RT';
+    // Create foreignObject to embed the Lucide icon
+    const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    foreignObject.setAttribute('x', '0');
+    foreignObject.setAttribute('y', '0');
+    foreignObject.setAttribute('width', String(RT_SIZE));
+    foreignObject.setAttribute('height', String(RT_SIZE));
+    foreignObject.setAttribute('class', 'rt-runtime-icon-container');
 
-    // Add tooltip
+    // Create the icon wrapper div
+    const iconWrapper = document.createElement('div');
+    iconWrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    iconWrapper.className = 'rt-runtime-icon-wrapper';
+    iconWrapper.style.cssText = `
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+    `;
+
+    // Use Obsidian's setIcon to add the Lucide icon
+    const iconName = contentType === 'screenplay' ? 'film' : 'mic-vocal';
+    setIcon(iconWrapper, iconName);
+
+    // Style the icon element
+    const iconSvg = iconWrapper.querySelector('svg');
+    if (iconSvg) {
+        iconSvg.style.cssText = `
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-muted);
+            stroke-width: 2;
+            fill: none;
+        `;
+        iconSvg.classList.add('rt-runtime-lucide-icon');
+    }
+
+    foreignObject.appendChild(iconWrapper);
+
+    // Add tooltip based on content type
+    const tooltipText = contentType === 'screenplay' 
+        ? 'Toggle Runtime Mode (Screenplay)' 
+        : 'Toggle Runtime Mode (Audiobook/Novel)';
     button.classList.add('rt-tooltip-target');
-    button.setAttribute('data-tooltip', 'Toggle Runtime Mode (shows scene runtimes instead of durations)');
+    button.setAttribute('data-tooltip', tooltipText);
     button.setAttribute('data-tooltip-placement', 'bottom');
+    button.setAttribute('data-content-type', contentType);
 
-    button.appendChild(path);
-    button.appendChild(text);
+    button.appendChild(circle);
+    button.appendChild(foreignObject);
 
     return button;
 }
 
 /**
- * Create button shape for RT (36×46) - similar to ALT
- */
-function createRtButtonShape(): string {
-    // Scaled version of ALT shape (43×46 → 36×46)
-    return 'M35.4 35.5C35.4 41 31.9 46 26.3 46L8 46C2.4 46 0 38.6 0 34.3C0 33.2 0 29 0 27.6C0 25.6 0.3 19.3 6.8 10.2C13.3 1 20 0 21.8 0L27.3 0C33.2 0 35.5 5.3 35.5 10.2C35.5 12.1 35.5 33.2 35.4 35.5Z';
-}
-
-/**
- * Update RT button visual state
+ * Update RT icon button visual state
  */
 function updateRtButtonState(button: SVGGElement, active: boolean): void {
-    const RT_WIDTH = 36;
-    const RT_HEIGHT = 46;
+    const RT_SIZE = 32;
+    const SHIFT_WIDTH = 62;
     const SHIFT_HEIGHT = 55;
-    const ALT_WIDTH = 43;
 
-    // Check if ALT button exists to determine position
-    const altButtonVisible = !!button.parentElement?.querySelector('#alt-mode-toggle');
-    
-    let basePosX: number;
-    if (altButtonVisible) {
-        const altPosX = SHIFT_BUTTON_POS_X - 10 - ALT_WIDTH;
-        basePosX = altPosX - 10 - RT_WIDTH;
-    } else {
-        basePosX = SHIFT_BUTTON_POS_X - 10 - RT_WIDTH;
-    }
-    
-    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_HEIGHT);
+    // Position to the RIGHT of Shift button
+    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 10;
+    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2;
 
     if (active) {
-        const expansionX = RT_WIDTH * (BUTTON_ACTIVE_SCALE - 1);
-        const scaledPosX = basePosX - expansionX;
-        const scaledPosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_HEIGHT) * BUTTON_ACTIVE_SCALE;
+        // Scale from center
+        const scaledPosX = basePosX - (RT_SIZE * (BUTTON_ACTIVE_SCALE - 1)) / 2;
+        const scaledPosY = basePosY - (RT_SIZE * (BUTTON_ACTIVE_SCALE - 1)) / 2;
         
         button.setAttribute('transform', `translate(${scaledPosX}, ${scaledPosY}) scale(${BUTTON_ACTIVE_SCALE})`);
         button.classList.add('rt-shift-mode-active');

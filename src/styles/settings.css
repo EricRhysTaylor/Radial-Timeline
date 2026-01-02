@@ -1351,24 +1351,6 @@
   border-radius: 6px;
 }
 
-.rt-runtime-override-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.rt-runtime-override-row input[type="checkbox"] {
-  margin-top: 3px;
-}
-
-.rt-runtime-override-label {
-  flex: 1;
-}
-
-.rt-runtime-override-label span {
-  font-weight: 500;
-}
-
 .rt-runtime-count {
   padding: 12px;
   background: var(--background-secondary);
@@ -1442,4 +1424,184 @@
 /* Utility class for hiding elements */
 .rt-hidden {
   display: none !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/* RUNTIME MODAL - ENHANCED LAYOUT                                            */
+/* -------------------------------------------------------------------------- */
+
+/* Section spacing */
+.rt-runtime-section {
+  margin-bottom: 16px;
+}
+
+.rt-runtime-section:last-of-type {
+  margin-bottom: 12px;
+}
+
+.rt-runtime-section-header {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: var(--text-normal);
+}
+
+.rt-runtime-section-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* Scope row - horizontal layout */
+.rt-runtime-scope-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.rt-runtime-dropdown-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.rt-runtime-dropdown-container .dropdown {
+  width: 100%;
+}
+
+/* Status filter row */
+.rt-runtime-status-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.rt-runtime-status-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.rt-runtime-status-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.rt-runtime-status-checkbox label {
+  font-size: 14px;
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+/* Override row */
+.rt-runtime-override-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.rt-runtime-override-row input[type="checkbox"] {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+}
+
+.rt-runtime-override-label {
+  flex: 1;
+}
+
+.rt-runtime-override-label span {
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.rt-runtime-field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Accordion for settings */
+.rt-runtime-accordion-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 0;
+  user-select: none;
+}
+
+.rt-runtime-accordion-header:hover {
+  color: var(--interactive-accent);
+}
+
+.rt-runtime-accordion-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.rt-runtime-accordion-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rt-runtime-accordion-title {
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.rt-runtime-accordion-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.rt-runtime-accordion-content {
+  padding: 12px 0 0 28px;
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: 8px;
+}
+
+/* Settings display rows */
+.rt-runtime-setting-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.rt-runtime-setting-label {
+  color: var(--text-muted);
+}
+
+.rt-runtime-setting-value {
+  color: var(--text-normal);
+  font-weight: 500;
+}
+
+.rt-runtime-setting-subheader {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 12px 0 8px 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.rt-runtime-settings-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 12px;
+  font-style: italic;
 }

@@ -378,7 +378,7 @@ export function renderStoryBeatsSection(params: {
 
     new Settings(containerEl)
         .setName('Advanced YAML editor')
-        .setDesc('Enable editing of custom YAML keys for the advanced scene template.')
+        .setDesc('Enable editing of custom YAML keys for the advanced scene template. Use checkboxes to enable/disable fields in the hover metadata preview.')
         .addExtraButton(button => {
             const refreshButton = () => {
                 const expanded = plugin.settings.enableAdvancedYamlEditor ?? false;
@@ -431,6 +431,18 @@ export function renderStoryBeatsSection(params: {
             existing.key = newKey;
             void plugin.saveSettings();
         }
+    };
+
+    // Reorder hoverMetadataFields to match YAML template order
+    const reorderHoverMetadataToMatchYaml = (yamlKeys: string[]) => {
+        if (!plugin.settings.hoverMetadataFields) return;
+        const keyOrder = new Map(yamlKeys.map((k, i) => [k, i]));
+        plugin.settings.hoverMetadataFields.sort((a, b) => {
+            const aIdx = keyOrder.get(a.key) ?? Infinity;
+            const bIdx = keyOrder.get(b.key) ?? Infinity;
+            return aIdx - bIdx;
+        });
+        void plugin.saveSettings();
     };
 
     // Preview update function (will be set by the preview panel)
@@ -739,7 +751,10 @@ export function renderStoryBeatsSection(params: {
                     nextList.splice(idx, 0, moved);
                     dragIndex = null;
                     saveEntries(nextList);
+                    // Keep hover metadata order in sync with YAML template order
+                    reorderHoverMetadataToMatchYaml(nextList.map(e => e.key));
                     rerender(nextList);
+                    updateHoverPreview?.();
                 });
             };
 

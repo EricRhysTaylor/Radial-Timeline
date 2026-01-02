@@ -6,13 +6,19 @@
  * Runtime Estimation Processing Modal
  */
 
-import { App, Modal, ButtonComponent, DropdownComponent, Notice } from 'obsidian';
+import { App, Modal, ButtonComponent, DropdownComponent, Notice, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
-import { estimateRuntime, getRuntimeSettings, formatRuntimeValue, parseRuntimeField } from '../utils/runtimeEstimator';
+import { formatRuntimeValue } from '../utils/runtimeEstimator';
 import { isBeatNote } from '../utils/sceneHelpers';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
+
+export interface RuntimeStatusFilters {
+    includeTodo: boolean;
+    includeWorking: boolean;
+    includeComplete: boolean;
+}
 
 export interface RuntimeQueueItem {
     path: string;
@@ -25,18 +31,26 @@ export interface RuntimeQueueItem {
  */
 export class RuntimeProcessingModal extends Modal {
     private readonly plugin: RadialTimelinePlugin;
-    private readonly onProcess: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean) => Promise<void>;
-    private readonly getSceneCount: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean) => Promise<number>;
+    private readonly onProcess: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters) => Promise<void>;
+    private readonly getSceneCount: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters) => Promise<number>;
 
     private selectedScope: RuntimeScope = 'all';
-    private selectedSubplot: string = 'All Subplots';
+    private selectedSubplot: string = '';
     private overrideExisting: boolean = false;
+    private statusFilters: RuntimeStatusFilters = {
+        includeTodo: false,
+        includeWorking: true,
+        includeComplete: true
+    };
     public isProcessing: boolean = false;
 
     // UI elements
-    private scopeContainer?: HTMLElement;
+    private scopeDropdown?: DropdownComponent;
     private subplotDropdown?: DropdownComponent;
     private subplotContainer?: HTMLElement;
+    private settingsAccordion?: HTMLElement;
+    private settingsContent?: HTMLElement;
+    private settingsExpanded: boolean = false;
     private countEl?: HTMLElement;
     private progressBarEl?: HTMLElement;
     private progressTextEl?: HTMLElement;
@@ -45,6 +59,9 @@ export class RuntimeProcessingModal extends Modal {
     private queueContainer?: HTMLElement;
     private actionButton?: ButtonComponent;
     private closeButton?: ButtonComponent;
+
+    // Subplot data
+    private orderedSubplots: { name: string; count: number }[] = [];
 
     // Processing state
     private processedCount: number = 0;
@@ -55,8 +72,8 @@ export class RuntimeProcessingModal extends Modal {
     constructor(
         app: App,
         plugin: RadialTimelinePlugin,
-        getSceneCount: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean) => Promise<number>,
-        onProcess: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean) => Promise<void>
+        getSceneCount: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters) => Promise<number>,
+        onProcess: (scope: RuntimeScope, subplotFilter: string | undefined, overrideExisting: boolean, statusFilters: RuntimeStatusFilters) => Promise<void>
     ) {
         super(app);
         this.plugin = plugin;
@@ -69,12 +86,12 @@ export class RuntimeProcessingModal extends Modal {
         titleEl.setText('');
 
         if (modalEl) {
-            modalEl.classList.add('rt-modal-shell');
-            modalEl.style.width = '720px'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxWidth = '92vw'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
-            modalEl.style.maxHeight = '92vh'; // SAFE: Modal sizing via inline styles (Obsidian pattern)
+            modalEl.classList.add('rt-modal-shell', 'rt-runtime-modal-shell');
         }
         contentEl.addClass('rt-modal-container', 'rt-runtime-modal');
+
+        // Load subplots first
+        await this.loadSubplots();
 
         if (this.isProcessing) {
             this.showProgressView();
@@ -107,32 +124,64 @@ export class RuntimeProcessingModal extends Modal {
         const modeLabel = contentType === 'screenplay' ? 'Screenplay mode' : 'Novel/Audiobook mode';
         header.createDiv({ cls: 'rt-modal-subtitle', text: `Estimate screen time or reading time for your scenes. ${modeLabel}.` });
 
-        // Scope selection
-        const scopeCard = contentEl.createDiv({ cls: 'rt-glass-card' });
-        scopeCard.createEl('h4', { text: 'Scope', cls: 'rt-runtime-subheader' });
+        // ===== SCOPE SECTION =====
+        const scopeCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
+        scopeCard.createEl('h4', { text: 'Scope', cls: 'rt-runtime-section-header' });
+        scopeCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Select which scenes to process for runtime estimation.' });
 
-        this.scopeContainer = scopeCard.createDiv({ cls: 'rt-runtime-scope-options' });
+        const scopeRow = scopeCard.createDiv({ cls: 'rt-runtime-scope-row' });
         
-        this.createScopeOption('current', 'Current scene', 'Estimate runtime for the currently open scene only.');
-        this.createScopeOption('subplot', 'Subplot scenes', 'Estimate runtime for all scenes in a specific subplot.');
-        this.createScopeOption('all', 'All scenes', 'Estimate runtime for all scenes in the manuscript.');
+        // Scope dropdown
+        const scopeDropdownContainer = scopeRow.createDiv({ cls: 'rt-runtime-dropdown-container' });
+        scopeDropdownContainer.createEl('label', { text: 'Process:', cls: 'rt-runtime-label' });
+        this.scopeDropdown = new DropdownComponent(scopeDropdownContainer);
+        this.scopeDropdown
+            .addOption('current', 'Current scene')
+            .addOption('subplot', 'Subplot scenes')
+            .addOption('all', 'All scenes')
+            .setValue(this.selectedScope)
+            .onChange((value) => {
+                this.selectedScope = value as RuntimeScope;
+                this.updateScopeVisibility();
+                this.updateCount();
+            });
 
         // Subplot dropdown (shown only when subplot scope is selected)
-        this.subplotContainer = scopeCard.createDiv({ cls: 'rt-runtime-subplot-container rt-hidden' });
-        this.subplotContainer.createEl('label', { text: 'Select subplot:', cls: 'rt-runtime-label' });
+        this.subplotContainer = scopeRow.createDiv({ cls: 'rt-runtime-dropdown-container rt-hidden' });
+        this.subplotContainer.createEl('label', { text: 'Subplot:', cls: 'rt-runtime-label' });
+        this.subplotDropdown = new DropdownComponent(this.subplotContainer);
         
-        const dropdownContainer = this.subplotContainer.createDiv();
-        this.subplotDropdown = new DropdownComponent(dropdownContainer);
+        // Populate subplot dropdown
+        this.orderedSubplots.forEach(sub => {
+            this.subplotDropdown?.addOption(sub.name, `${sub.name} (${sub.count})`);
+        });
         
-        await this.loadSubplots();
+        if (this.orderedSubplots.length > 0) {
+            this.selectedSubplot = this.orderedSubplots[0].name;
+            this.subplotDropdown.setValue(this.selectedSubplot);
+        }
         
-        this.subplotDropdown.onChange(() => {
-            this.selectedSubplot = this.subplotDropdown?.getValue() || 'All Subplots';
+        this.subplotDropdown.onChange((value) => {
+            this.selectedSubplot = value;
             this.updateCount();
         });
 
-        // Override toggle
-        const overrideCard = contentEl.createDiv({ cls: 'rt-glass-card' });
+        // ===== STATUS FILTERS SECTION =====
+        const statusCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
+        statusCard.createEl('h4', { text: 'Scene Status Filter', cls: 'rt-runtime-section-header' });
+        statusCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Only scenes with the selected status(es) will be processed.' });
+
+        const statusRow = statusCard.createDiv({ cls: 'rt-runtime-status-row' });
+
+        this.createStatusCheckbox(statusRow, 'Todo', 'includeTodo', this.statusFilters.includeTodo);
+        this.createStatusCheckbox(statusRow, 'Working', 'includeWorking', this.statusFilters.includeWorking);
+        this.createStatusCheckbox(statusRow, 'Complete', 'includeComplete', this.statusFilters.includeComplete);
+
+        // ===== OVERRIDE SECTION =====
+        const overrideCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
+        overrideCard.createEl('h4', { text: 'Override Options', cls: 'rt-runtime-section-header' });
+        overrideCard.createDiv({ cls: 'rt-runtime-section-desc', text: 'Control how existing Runtime values are handled.' });
+
         const overrideRow = overrideCard.createDiv({ cls: 'rt-runtime-override-row' });
         
         const checkbox = overrideRow.createEl('input', { type: 'checkbox' });
@@ -144,10 +193,34 @@ export class RuntimeProcessingModal extends Modal {
         
         const labelContainer = overrideRow.createDiv({ cls: 'rt-runtime-override-label' });
         labelContainer.createEl('span', { text: 'Override existing Runtime values' });
-        labelContainer.createDiv({ cls: 'setting-item-description', text: 'When checked, recalculates and replaces any existing Runtime values. Otherwise, only scenes without Runtime are processed.' });
+        labelContainer.createDiv({ cls: 'rt-runtime-field-hint', text: 'When checked, recalculates and replaces any existing Runtime values. Otherwise, only scenes without Runtime are processed.' });
 
-        // Scene count display
-        const countCard = contentEl.createDiv({ cls: 'rt-glass-card' });
+        // ===== SETTINGS ACCORDION =====
+        const settingsCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
+        
+        this.settingsAccordion = settingsCard.createDiv({ cls: 'rt-runtime-accordion-header' });
+        const accordionIcon = this.settingsAccordion.createSpan({ cls: 'rt-runtime-accordion-icon' });
+        setIcon(accordionIcon, 'chevron-right');
+        this.settingsAccordion.createSpan({ text: 'Estimation Settings', cls: 'rt-runtime-accordion-title' });
+        this.settingsAccordion.createSpan({ cls: 'rt-runtime-accordion-hint', text: `(${modeLabel})` });
+        
+        this.settingsContent = settingsCard.createDiv({ cls: 'rt-runtime-accordion-content rt-hidden' });
+        this.renderSettingsContent();
+        
+        this.settingsAccordion.addEventListener('click', () => {
+            this.settingsExpanded = !this.settingsExpanded;
+            if (this.settingsExpanded) {
+                this.settingsContent?.removeClass('rt-hidden');
+                setIcon(accordionIcon, 'chevron-down');
+            } else {
+                this.settingsContent?.addClass('rt-hidden');
+                setIcon(accordionIcon, 'chevron-right');
+            }
+        });
+
+        // ===== SCENE COUNT SECTION =====
+        const countCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
+        countCard.createEl('h4', { text: 'Summary', cls: 'rt-runtime-section-header' });
         this.countEl = countCard.createDiv({ cls: 'rt-runtime-count' });
         this.countEl.setText('Calculating...');
 
@@ -165,39 +238,64 @@ export class RuntimeProcessingModal extends Modal {
             .setButtonText('Cancel')
             .onClick(() => this.close());
 
-        // Initial count
+        // Initial visibility and count
+        this.updateScopeVisibility();
         await this.updateCount();
     }
 
-    private createScopeOption(scope: RuntimeScope, label: string, description: string): void {
-        if (!this.scopeContainer) return;
-
-        const optionEl = this.scopeContainer.createDiv({ cls: 'rt-runtime-scope-option' });
-
-        const radioEl = optionEl.createEl('input', {
-            type: 'radio',
-            attr: { name: 'runtime-scope', value: scope }
-        });
-        radioEl.checked = this.selectedScope === scope;
-
-        radioEl.addEventListener('change', () => {
-            if (radioEl.checked) {
-                this.selectedScope = scope;
-                this.updateScopeVisibility();
-                this.updateCount();
-            }
-        });
-
-        const labelContainer = optionEl.createDiv({ cls: 'rt-runtime-scope-label' });
-        labelContainer.createDiv({ cls: 'rt-runtime-scope-title', text: label });
-        labelContainer.createDiv({ cls: 'rt-runtime-scope-desc', text: description });
-
-        optionEl.addEventListener('click', () => {
-            radioEl.checked = true;
-            this.selectedScope = scope;
-            this.updateScopeVisibility();
+    private createStatusCheckbox(container: HTMLElement, label: string, key: keyof RuntimeStatusFilters, checked: boolean): void {
+        const wrapper = container.createDiv({ cls: 'rt-runtime-status-checkbox' });
+        const checkbox = wrapper.createEl('input', { type: 'checkbox' });
+        checkbox.checked = checked;
+        checkbox.addEventListener('change', () => {
+            this.statusFilters[key] = checkbox.checked;
             this.updateCount();
         });
+        wrapper.createEl('label', { text: label });
+    }
+
+    private renderSettingsContent(): void {
+        if (!this.settingsContent) return;
+        this.settingsContent.empty();
+
+        const contentType = this.plugin.settings.runtimeContentType || 'novel';
+
+        if (contentType === 'screenplay') {
+            // Screenplay settings
+            const dialogueRow = this.settingsContent.createDiv({ cls: 'rt-runtime-setting-row' });
+            dialogueRow.createSpan({ text: 'Dialogue rate:', cls: 'rt-runtime-setting-label' });
+            dialogueRow.createSpan({ text: `${this.plugin.settings.runtimeDialogueWpm || 160} wpm`, cls: 'rt-runtime-setting-value' });
+
+            const actionRow = this.settingsContent.createDiv({ cls: 'rt-runtime-setting-row' });
+            actionRow.createSpan({ text: 'Action/Description rate:', cls: 'rt-runtime-setting-label' });
+            actionRow.createSpan({ text: `${this.plugin.settings.runtimeActionWpm || 100} wpm`, cls: 'rt-runtime-setting-value' });
+        } else {
+            // Novel settings
+            const narrationRow = this.settingsContent.createDiv({ cls: 'rt-runtime-setting-row' });
+            narrationRow.createSpan({ text: 'Narration rate:', cls: 'rt-runtime-setting-label' });
+            narrationRow.createSpan({ text: `${this.plugin.settings.runtimeNarrationWpm || 150} wpm`, cls: 'rt-runtime-setting-value' });
+        }
+
+        // Parenthetical timings (shown for both modes)
+        const parentheticalHeader = this.settingsContent.createDiv({ cls: 'rt-runtime-setting-subheader' });
+        parentheticalHeader.setText('Parenthetical Timings');
+
+        const timings = [
+            { label: '(beat)', value: this.plugin.settings.runtimeBeatSeconds || 2 },
+            { label: '(pause)', value: this.plugin.settings.runtimePauseSeconds || 3 },
+            { label: '(long pause)', value: this.plugin.settings.runtimeLongPauseSeconds || 5 },
+            { label: '(a moment)', value: this.plugin.settings.runtimeMomentSeconds || 4 },
+            { label: '(silence)', value: this.plugin.settings.runtimeSilenceSeconds || 5 },
+        ];
+
+        timings.forEach(t => {
+            const row = this.settingsContent!.createDiv({ cls: 'rt-runtime-setting-row' });
+            row.createSpan({ text: t.label, cls: 'rt-runtime-setting-label' });
+            row.createSpan({ text: `${t.value}s`, cls: 'rt-runtime-setting-value' });
+        });
+
+        const hint = this.settingsContent.createDiv({ cls: 'rt-runtime-settings-hint' });
+        hint.setText('Configure these values in Settings → Runtime Estimation');
     }
 
     private updateScopeVisibility(): void {
@@ -211,8 +309,6 @@ export class RuntimeProcessingModal extends Modal {
     }
 
     private async loadSubplots(): Promise<void> {
-        if (!this.subplotDropdown) return;
-
         try {
             const scenes = await this.plugin.getSceneData();
             const subplotCounts = new Map<string, number>();
@@ -223,20 +319,18 @@ export class RuntimeProcessingModal extends Modal {
                 subplotCounts.set(sub, (subplotCounts.get(sub) || 0) + 1);
             });
 
-            const sortedSubplots = Array.from(subplotCounts.keys()).sort((a, b) => {
-                if (a === 'Main Plot') return -1;
-                if (b === 'Main Plot') return 1;
-                return (subplotCounts.get(b) || 0) - (subplotCounts.get(a) || 0);
-            });
+            // Sort: Main Plot first, then by count descending, then alphabetically
+            this.orderedSubplots = Array.from(subplotCounts.entries())
+                .map(([name, count]) => ({ name, count }))
+                .sort((a, b) => {
+                    if (a.name === 'Main Plot') return -1;
+                    if (b.name === 'Main Plot') return 1;
+                    if (a.count !== b.count) return b.count - a.count;
+                    return a.name.localeCompare(b.name);
+                });
 
-            this.subplotDropdown.selectEl.textContent = '';
-            sortedSubplots.forEach(sub => {
-                this.subplotDropdown?.addOption(sub, `${sub} (${subplotCounts.get(sub)})`);
-            });
-
-            if (sortedSubplots.length > 0) {
-                this.selectedSubplot = sortedSubplots[0];
-                this.subplotDropdown.setValue(this.selectedSubplot);
+            if (this.orderedSubplots.length > 0 && !this.selectedSubplot) {
+                this.selectedSubplot = this.orderedSubplots[0].name;
             }
         } catch (e) {
             console.error('Failed to load subplots', e);
@@ -251,7 +345,7 @@ export class RuntimeProcessingModal extends Modal {
 
         try {
             const subplotFilter = this.selectedScope === 'subplot' ? this.selectedSubplot : undefined;
-            const count = await this.getSceneCount(this.selectedScope, subplotFilter, this.overrideExisting);
+            const count = await this.getSceneCount(this.selectedScope, subplotFilter, this.overrideExisting, this.statusFilters);
 
             this.countEl.empty();
             const countText = this.countEl.createDiv({ cls: 'rt-runtime-count-text' });
@@ -262,8 +356,10 @@ export class RuntimeProcessingModal extends Modal {
                 const hint = this.countEl.createDiv({ cls: 'rt-runtime-hint' });
                 if (this.selectedScope === 'current') {
                     hint.setText('Open a scene file to estimate its runtime.');
+                } else if (!this.statusFilters.includeTodo && !this.statusFilters.includeWorking && !this.statusFilters.includeComplete) {
+                    hint.setText('Select at least one status filter.');
                 } else if (!this.overrideExisting) {
-                    hint.setText('All scenes already have Runtime values. Enable "Override existing" to recalculate.');
+                    hint.setText('All matching scenes already have Runtime values. Enable "Override existing" to recalculate.');
                 }
             }
         } catch (error) {
@@ -281,7 +377,7 @@ export class RuntimeProcessingModal extends Modal {
 
         try {
             const subplotFilter = this.selectedScope === 'subplot' ? this.selectedSubplot : undefined;
-            await this.onProcess(this.selectedScope, subplotFilter, this.overrideExisting);
+            await this.onProcess(this.selectedScope, subplotFilter, this.overrideExisting, this.statusFilters);
             this.showCompletionSummary('Estimation completed successfully!');
         } catch (error) {
             if (this.abortController?.signal.aborted) {
@@ -307,7 +403,7 @@ export class RuntimeProcessingModal extends Modal {
         this.statusTextEl.setText('Initializing...');
 
         // Progress card
-        const progressCard = contentEl.createDiv({ cls: 'rt-glass-card' });
+        const progressCard = contentEl.createDiv({ cls: 'rt-glass-card rt-runtime-section' });
 
         // Progress bar
         const progressContainer = progressCard.createDiv({ cls: 'rt-pulse-progress-container' });
@@ -405,4 +501,3 @@ export class RuntimeProcessingModal extends Modal {
 }
 
 export default RuntimeProcessingModal;
-

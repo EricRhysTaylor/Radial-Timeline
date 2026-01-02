@@ -96,6 +96,13 @@
   margin-top: 10px;
 }
 
+/* Runtime Estimator Modal sizing */
+.rt-runtime-modal-shell.modal {
+  width: 720px;
+  max-width: 92vw;
+  max-height: 92vh;
+}
+
 .rt-modal-shell.modal:has(.rt-search-modal) {
   width: min(600px, 90vw);
 }

@@ -621,7 +621,15 @@
 /* Custom Hover Metadata Lines in Synopsis */
 .rt-hover-metadata-line {
   pointer-events: none;
+  /* Inherit text color for icons using currentColor */
+  color: var(--text-muted);
 }
+
+.rt-hover-metadata-icon-g {
+  stroke: var(--text-muted);
+  fill: none;
+}
+
 
 .rt-hover-metadata-icon {
   overflow: visible;

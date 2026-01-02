@@ -107,7 +107,7 @@ export function createSnapshot(
                 // Range field (rendered in Gossamer mode)
                 s.Range || '',
                 (s.Character || []).length,
-                s.location || ''
+                s.place || ''
             ];
             
             // Include all Gossamer fields (Gossamer1 through Gossamer30)

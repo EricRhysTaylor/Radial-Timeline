@@ -469,7 +469,9 @@ export default class SynopsisManager {
     }
 
     // Process metadata items with consistent vertical spacing
-    if (metadataItems.length > 0) {
+    // Also render if there are enabled hover metadata fields
+    const hasEnabledHoverFields = (this.plugin.settings.hoverMetadataFields || []).some((f: HoverMetadataField) => f.enabled);
+    if (metadataItems.length > 0 || hasEnabledHoverFields) {
 
       // Helper function to add a spacer element
       const addSpacer = (yPosition: number, height: number) => {
@@ -537,8 +539,8 @@ export default class SynopsisManager {
         let hoverMetaLinesAdded = 0;
 
         enabledHoverFields.forEach((field: HoverMetadataField) => {
-          // Check if the scene has this key in its data
-          const sceneValue = (scene as unknown as Record<string, unknown>)[field.key];
+          // Check if the scene has this key in its raw frontmatter
+          const sceneValue = scene.rawFrontmatter?.[field.key];
           
           // Skip if value is undefined, null, empty string, or empty array
           if (sceneValue === undefined || sceneValue === null) return;
@@ -580,35 +582,50 @@ export default class SynopsisManager {
           const lineGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
           lineGroup.setAttribute("class", "rt-hover-metadata-line");
           
+          // Icon positioning
+          const iconSize = 12 * fontScale;
+          const iconGap = 4 * fontScale;
+          const textX = iconSize + iconGap; // Offset for icon + gap
+          
           // Get the Lucide icon SVG
           const iconSvg = getIcon(field.icon || 'align-vertical-space-around');
           if (iconSvg) {
-            // Convert the icon to an SVG use element or embed it
-            const iconSize = 12 * fontScale;
+            // Native SVG approach: Extract paths and transform
             const iconG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            iconG.setAttribute("transform", `translate(0, ${y - iconSize + 2})`);
+            iconG.setAttribute("class", "rt-hover-metadata-icon-g");
             
-            // Clone and resize the icon SVG contents
-            const foreignObject = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
-            foreignObject.setAttribute("width", String(iconSize));
-            foreignObject.setAttribute("height", String(iconSize));
-            foreignObject.setAttribute("class", "rt-hover-metadata-icon");
+            // Calculate scale: Lucide icons are 24x24
+            const scale = iconSize / 24;
             
-            // Clone the icon and set its size (dynamic based on readability scale)
-            const iconClone = iconSvg.cloneNode(true) as SVGElement;
-            iconClone.setAttribute("width", String(iconSize));
-            iconClone.setAttribute("height", String(iconSize));
-            iconClone.style.width = `${iconSize}px`; // SAFE: inline style used for dynamic icon sizing based on readability scale
-            iconClone.style.height = `${iconSize}px`; // SAFE: inline style used for dynamic icon sizing based on readability scale
+            // Position: y is baseline, so we move up by iconSize (roughly) to align bottom
+            // Fine-tuned: y - iconSize * 0.85 aligns the visual bottom of the icon with the text baseline
+            const iconY = y - (iconSize * 0.85);
+
+            iconG.setAttribute("transform", `translate(0, ${iconY}) scale(${scale})`);
             
-            foreignObject.appendChild(iconClone);
-            iconG.appendChild(foreignObject);
+            // Copy all child nodes (paths, circles, etc.) from the Lucide SVG
+            Array.from(iconSvg.childNodes).forEach(node => {
+              // Skip non-element nodes if any
+              if (node.nodeType === 1) { // Element node
+                const clone = node.cloneNode(true) as SVGElement;
+                // Ensure strokes are consistent
+                clone.setAttribute("stroke-width", "2");
+                clone.setAttribute("vector-effect", "non-scaling-stroke"); // Keep stroke crisp
+                iconG.appendChild(clone);
+              }
+            });
+            
+            // Set stroke color via class or direct style to match text
+            iconG.style.stroke = "currentColor";
+            iconG.style.fill = "none";
+            
             lineGroup.appendChild(iconG);
           }
           
           // Create the text element (key: value)
-          const textX = 16 * fontScale; // Offset for icon
           const textEl = createText(textX, y, 'rt-info-text rt-title-text-secondary rt-hover-metadata-text', `${field.key}: ${valueStr}`);
+          textEl.setAttribute('data-hover-icon-size', String(iconSize));
+          textEl.setAttribute('data-hover-icon-gap', String(iconGap));
           lineGroup.appendChild(textEl);
           
           synopsisTextGroup.appendChild(lineGroup);
@@ -1049,6 +1066,9 @@ export default class SynopsisManager {
       );
 
     });
+
+    // After positioning text, reposition hover metadata icons to match the row start
+    this.updateHoverMetadataIcons(synopsis);
   }
 
   private measureRowLayout(rowElements: SVGTextElement[], defaultGap: number): { primaryWidth: number; metadataWidth: number; gap: number } {
@@ -1056,7 +1076,7 @@ export default class SynopsisManager {
       return { primaryWidth: 0, metadataWidth: 0, gap: defaultGap };
     }
 
-    const primaryWidth = this.measureTextWidth(rowElements[0]);
+    const primaryWidth = this.measureTextWidth(rowElements[0]) + this.getHoverIconTotalOffset(rowElements[0]);
     let metadataWidth = 0;
     let gap = defaultGap;
 
@@ -1096,8 +1116,9 @@ export default class SynopsisManager {
       const titleRightEdge = hasMetadata ? metadataLeftEdge - gap : metadataRightEdge;
 
       rowElements.forEach((textEl, index) => {
-        const x = index === 0 ? titleRightEdge : metadataLeftEdge;
-        textEl.setAttribute('x', String(x));
+        const iconOffset = index === 0 ? this.getHoverIconTotalOffset(textEl) : 0;
+        const targetX = index === 0 ? titleRightEdge - iconOffset : metadataLeftEdge;
+        textEl.setAttribute('x', String(targetX));
         textEl.setAttribute('y', String(yPosition));
 
         // Update planetary outline rect if present
@@ -1112,7 +1133,7 @@ export default class SynopsisManager {
             }
           } catch (e) { /* ignore */ }
 
-          prev.setAttribute('x', String(x - currentWidth));
+          prev.setAttribute('x', String(targetX - currentWidth));
           prev.setAttribute('y', String(yPosition - 14));
           textEl.setAttribute('dx', '-6');
         }
@@ -1127,7 +1148,8 @@ export default class SynopsisManager {
       const metadataLeftEdge = hasMetadata ? rowLeftEdge + primaryWidth + gap : rowLeftEdge;
 
       rowElements.forEach((textEl, index) => {
-        const x = index === 0 ? rowLeftEdge : metadataLeftEdge;
+        const iconOffset = index === 0 ? this.getHoverIconTotalOffset(textEl) : 0;
+        const x = index === 0 ? rowLeftEdge + iconOffset : metadataLeftEdge;
         textEl.setAttribute('x', String(x));
         textEl.setAttribute('y', String(yPosition));
 
@@ -1151,6 +1173,45 @@ export default class SynopsisManager {
         }
       });
     }
+  }
+
+  private getHoverIconOffsets(textEl: SVGTextElement | null): { iconSize: number; iconGap: number; total: number } {
+    if (!textEl) return { iconSize: 0, iconGap: 0, total: 0 };
+    const iconSize = parseFloat(textEl.getAttribute('data-hover-icon-size') || '0') || 0;
+    const iconGap = parseFloat(textEl.getAttribute('data-hover-icon-gap') || '0') || 0;
+    return { iconSize, iconGap, total: iconSize + iconGap };
+  }
+
+  private getHoverIconTotalOffset(textEl: SVGTextElement | null): number {
+    return this.getHoverIconOffsets(textEl).total;
+  }
+
+  private updateHoverMetadataIcons(synopsis: Element): void {
+    const lines = Array.from(synopsis.querySelectorAll('.rt-hover-metadata-line')) as SVGGElement[];
+    if (lines.length === 0) return;
+
+    lines.forEach(line => {
+      const textEl = line.querySelector('.rt-hover-metadata-text') as SVGTextElement | null;
+      const iconG = line.querySelector('.rt-hover-metadata-icon-g') as SVGGElement | null;
+      if (!textEl || !iconG) return;
+
+      const { iconSize, iconGap, total } = this.getHoverIconOffsets(textEl);
+      if (total <= 0) return;
+
+      const textX = parseFloat(textEl.getAttribute('x') || '0');
+      const textY = parseFloat(textEl.getAttribute('y') || '0');
+      const anchor = textEl.getAttribute('text-anchor') || 'start';
+      const textWidth = this.measureTextWidth(textEl);
+
+      const textStartX = anchor === 'end' ? textX - textWidth : textX;
+      const iconX = textStartX - iconGap - iconSize;
+      const iconY = textY - (iconSize * 0.85);
+      const scale = iconSize / 24;
+
+      iconG.setAttribute('transform', `translate(${iconX}, ${iconY}) scale(${scale})`);
+      iconG.style.stroke = "currentColor";
+      iconG.style.fill = "none";
+    });
   }
 
   private alignMetadataTspans(metadataText: SVGTextElement, columnX: number): void {

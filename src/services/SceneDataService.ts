@@ -174,7 +174,7 @@ export class SceneDataService {
                             act: String(validActNumber),
                             actNumber: validActNumber,
                             pov: povField,
-                            location: metadata.Place as string | undefined,
+                            place: metadata.Place as string | undefined,
                             Character: characterList,
                             synopsis: metadata.Synopsis as string | undefined,
                             status: metadata.Status as string | string[] | undefined,
@@ -197,7 +197,8 @@ export class SceneDataService {
                                 : metadata["nextSceneAnalysis"] as string | undefined,
                             itemType: "Scene",
                             "Pulse Update": normalizeBooleanValue(pulseUpdate),
-                            "Pulse Last Updated": typeof pulseLastUpdated === 'string' ? pulseLastUpdated : undefined
+                            "Pulse Last Updated": typeof pulseLastUpdated === 'string' ? pulseLastUpdated : undefined,
+                            rawFrontmatter: metadata
                         });
                     }
                 } else if (metadata && metadata.Class === "Backdrop") {

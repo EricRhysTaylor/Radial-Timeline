@@ -8,9 +8,10 @@
 
 import { TFile, Notice } from 'obsidian';
 import type RadialTimelinePlugin from './main';
-import { RuntimeProcessingModal, type RuntimeScope } from './modals/RuntimeProcessingModal';
+import { RuntimeProcessingModal, type RuntimeScope, type RuntimeStatusFilters } from './modals/RuntimeProcessingModal';
 import { estimateRuntime, getRuntimeSettings, formatRuntimeValue, parseRuntimeField } from './utils/runtimeEstimator';
 import { isBeatNote } from './utils/sceneHelpers';
+import { normalizeStatus } from './utils/text';
 import type { TimelineItem } from './types';
 
 interface SceneToProcess {
@@ -23,13 +24,32 @@ interface SceneToProcess {
 }
 
 /**
- * Get scene files matching the specified scope
+ * Check if a scene's status matches the filters
+ */
+function matchesStatusFilter(scene: TimelineItem, filters: RuntimeStatusFilters): boolean {
+    const normalized = normalizeStatus(scene.status);
+    
+    // Map to our filter categories
+    const isTodo = !normalized || normalized === 'Todo';
+    const isWorking = normalized === 'Working';
+    const isComplete = normalized === 'Completed';
+    
+    if (isTodo && filters.includeTodo) return true;
+    if (isWorking && filters.includeWorking) return true;
+    if (isComplete && filters.includeComplete) return true;
+    
+    return false;
+}
+
+/**
+ * Get scene files matching the specified scope and status filters
  */
 async function getScenesForScope(
     plugin: RadialTimelinePlugin,
     scope: RuntimeScope,
     subplotFilter: string | undefined,
-    overrideExisting: boolean
+    overrideExisting: boolean,
+    statusFilters: RuntimeStatusFilters
 ): Promise<SceneToProcess[]> {
     const scenes = await plugin.getSceneData();
     const vault = plugin.app.vault;
@@ -57,6 +77,9 @@ async function getScenesForScope(
         // All scenes
         targetScenes = scenes.filter(s => !isBeatNote(s));
     }
+
+    // Filter by status
+    targetScenes = targetScenes.filter(scene => matchesStatusFilter(scene, statusFilters));
 
     // Filter by existing runtime if not overriding
     for (const scene of targetScenes) {
@@ -131,9 +154,10 @@ async function processScenes(
     scope: RuntimeScope,
     subplotFilter: string | undefined,
     overrideExisting: boolean,
+    statusFilters: RuntimeStatusFilters,
     modal: RuntimeProcessingModal
 ): Promise<void> {
-    const scenes = await getScenesForScope(plugin, scope, subplotFilter, overrideExisting);
+    const scenes = await getScenesForScope(plugin, scope, subplotFilter, overrideExisting, statusFilters);
     
     if (scenes.length === 0) {
         new Notice('No scenes to process.');
@@ -183,15 +207,16 @@ async function processScenes(
 }
 
 /**
- * Get count of scenes matching scope
+ * Get count of scenes matching scope and filters
  */
 async function getSceneCount(
     plugin: RadialTimelinePlugin,
     scope: RuntimeScope,
     subplotFilter: string | undefined,
-    overrideExisting: boolean
+    overrideExisting: boolean,
+    statusFilters: RuntimeStatusFilters
 ): Promise<number> {
-    const scenes = await getScenesForScope(plugin, scope, subplotFilter, overrideExisting);
+    const scenes = await getScenesForScope(plugin, scope, subplotFilter, overrideExisting, statusFilters);
     return scenes.length;
 }
 
@@ -204,12 +229,13 @@ export function openRuntimeEstimator(plugin: RadialTimelinePlugin): void {
     const modal = new RuntimeProcessingModal(
         plugin.app,
         plugin,
-        (scope, subplotFilter, overrideExisting) => getSceneCount(plugin, scope, subplotFilter, overrideExisting),
-        (scope, subplotFilter, overrideExisting) => {
+        (scope, subplotFilter, overrideExisting, statusFilters) => 
+            getSceneCount(plugin, scope, subplotFilter, overrideExisting, statusFilters),
+        (scope, subplotFilter, overrideExisting, statusFilters) => {
             if (!modalInstance) {
                 throw new Error('Modal not initialized');
             }
-            return processScenes(plugin, scope, subplotFilter, overrideExisting, modalInstance);
+            return processScenes(plugin, scope, subplotFilter, overrideExisting, statusFilters, modalInstance);
         }
     );
     modalInstance = modal;
@@ -226,4 +252,3 @@ export function registerRuntimeCommands(plugin: RadialTimelinePlugin): void {
         callback: () => openRuntimeEstimator(plugin),
     });
 }
-
