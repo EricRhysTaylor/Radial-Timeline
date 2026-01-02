@@ -36,6 +36,7 @@ import { renderPovSection } from './sections/PovSection';
 import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 import { renderMetadataSection } from './sections/MetadataSection';
 import { renderRuntimeSection } from './sections/RuntimeSection';
+import { renderProfessionalSection } from './sections/ProfessionalSection';
 import { validateLocalModelAvailability } from '../api/localAiApi';
 
 declare const EMBEDDED_README_CONTENT: string;
@@ -358,6 +359,9 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
         // Backup and safety notice at the top
         this.renderPatreonSection(containerEl);
+
+        // Professional license (above all other sections)
+        renderProfessionalSection({ app: this.app, plugin: this.plugin, containerEl });
 
         // Data setup: source path + custom metadata mapping
         renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl });

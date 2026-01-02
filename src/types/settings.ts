@@ -117,7 +117,10 @@ export interface RadialTimelineSettings {
     backdropYamlTemplate?: string;
     hoverMetadataFields?: HoverMetadataField[];
     
-    // Runtime Estimation Settings
+    // Professional License
+    professionalLicenseKey?: string;
+    
+    // Runtime Estimation Settings (Professional feature)
     enableRuntimeEstimation?: boolean;
     runtimeContentType?: RuntimeContentType;
     runtimeDialogueWpm?: number;

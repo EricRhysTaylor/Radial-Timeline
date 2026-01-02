@@ -1,3 +1,220 @@
+/* -------------------------------------------------------------------------- */
+/* PROFESSIONAL SECTION                                                       */
+/* -------------------------------------------------------------------------- */
+
+.rt-professional-header {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, rgba(180, 140, 60, 0.08) 0%, rgba(180, 140, 60, 0.02) 100%);
+  border: 1px solid rgba(180, 140, 60, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.rt-professional-header:hover {
+  background: linear-gradient(135deg, rgba(180, 140, 60, 0.12) 0%, rgba(180, 140, 60, 0.04) 100%);
+  border-color: rgba(180, 140, 60, 0.35);
+}
+
+.rt-professional-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rt-professional-icon {
+  color: rgba(200, 160, 60, 0.9);
+  display: flex;
+  align-items: center;
+}
+
+.rt-professional-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.rt-professional-heading {
+  flex: 1;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0;
+}
+
+.rt-settings-root .rt-professional-heading .setting-item-name {
+  color: rgba(200, 160, 60, 0.95);
+  font-weight: 600;
+}
+
+.rt-professional-toggle {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.rt-professional-content {
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.2s ease;
+  margin-bottom: 16px;
+}
+
+.rt-professional-content.rt-collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  margin-bottom: 0;
+}
+
+.rt-professional-status {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+
+.rt-professional-status-active {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-success);
+  background: rgba(var(--color-green-rgb), 0.1);
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+
+.rt-professional-status-active .rt-professional-status-icon {
+  display: flex;
+}
+
+.rt-professional-status-active .rt-professional-status-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.rt-professional-status-inactive {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.rt-professional-key-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rt-professional-key-toggle:hover {
+  color: var(--text-normal);
+}
+
+.rt-professional-key-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rt-professional-get-license {
+  margin: 12px 0 16px 0;
+}
+
+.rt-professional-get-license a {
+  color: rgba(200, 160, 60, 0.9);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.rt-professional-get-license a:hover {
+  color: rgba(220, 180, 80, 1);
+  text-decoration: underline;
+}
+
+.rt-professional-features {
+  padding: 12px 14px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.rt-professional-features h5 {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rt-professional-features ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rt-professional-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.rt-professional-feature-icon {
+  color: rgba(200, 160, 60, 0.7);
+  display: flex;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.rt-professional-feature-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Professional badge on section headings */
+.rt-professional-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: rgba(180, 140, 60, 0.15);
+  border: 1px solid rgba(180, 140, 60, 0.3);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(200, 160, 60, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
+
+.rt-professional-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Professional gate for locked features */
+.rt-professional-gate {
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--background-secondary);
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 8px;
+}
+
+.rt-professional-gate-message {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
 .rt-settings-root .rt-settings-separator {
   margin: 1em 0 2em 0;
   border: none;

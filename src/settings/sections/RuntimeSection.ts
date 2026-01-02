@@ -6,10 +6,11 @@
  * Runtime Estimation Settings Section
  */
 
-import { App, Setting, TextComponent, DropdownComponent } from 'obsidian';
+import { App, Setting, TextComponent, DropdownComponent, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType } from '../../types';
 import { addWikiLink } from '../wikiLink';
+import { isProfessionalActive } from './ProfessionalSection';
 
 interface SectionParams {
     app: App;
@@ -18,6 +19,8 @@ interface SectionParams {
 }
 
 export function renderRuntimeSection({ plugin, containerEl }: SectionParams): void {
+    const hasProfessional = isProfessionalActive(plugin);
+    
     // ─────────────────────────────────────────────────────────────────────────
     // Section Header
     // ─────────────────────────────────────────────────────────────────────────
@@ -25,6 +28,23 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         .setName('Runtime estimation')
         .setHeading();
     addWikiLink(heading, 'Settings#runtime-estimation');
+    
+    // Add Professional badge to heading
+    const badgeEl = heading.nameEl.createSpan({ cls: 'rt-professional-badge' });
+    setIcon(badgeEl, 'crown');
+    badgeEl.createSpan({ text: 'Pro' });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Professional Gate
+    // ─────────────────────────────────────────────────────────────────────────
+    if (!hasProfessional) {
+        const gateEl = containerEl.createDiv({ cls: 'rt-professional-gate' });
+        gateEl.createDiv({ 
+            cls: 'rt-professional-gate-message', 
+            text: 'Runtime estimation requires a Professional license. Enter your license key in the Professional section above to unlock this feature.' 
+        });
+        return;
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Enable Toggle
