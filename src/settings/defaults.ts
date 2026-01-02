@@ -166,6 +166,7 @@ End: {{End}}                         # End Date/Time (YYYY-MM-DD HH:MM)
 Synopsis: What this backdrop represents and how it shapes the story.`,
     
     // Runtime Estimation defaults
+    enableRuntimeEstimation: false,
     runtimeContentType: 'novel',
     runtimeDialogueWpm: 160,
     runtimeActionWpm: 100,

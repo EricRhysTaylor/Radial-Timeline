@@ -249,6 +249,15 @@ export function registerRuntimeCommands(plugin: RadialTimelinePlugin): void {
     plugin.addCommand({
         id: 'runtime-estimator',
         name: 'Runtime estimator',
-        callback: () => openRuntimeEstimator(plugin),
+        checkCallback: (checking: boolean) => {
+            // Only show command when runtime estimation is enabled
+            if (!plugin.settings.enableRuntimeEstimation) {
+                return false;
+            }
+            if (!checking) {
+                openRuntimeEstimator(plugin);
+            }
+            return true;
+        },
     });
 }

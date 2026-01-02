@@ -9,7 +9,7 @@
 import { App, Setting, TextComponent, DropdownComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import type { RuntimeContentType } from '../../types';
-import { addWikiLinkToElement } from '../wikiLink';
+import { addWikiLink } from '../wikiLink';
 
 interface SectionParams {
     app: App;
@@ -18,37 +18,34 @@ interface SectionParams {
 }
 
 export function renderRuntimeSection({ plugin, containerEl }: SectionParams): void {
-    // Section header
-    const headerEl = containerEl.createEl('h3', { text: 'Runtime Estimation' });
-    addWikiLinkToElement(headerEl, 'Runtime-Estimation');
+    // ─────────────────────────────────────────────────────────────────────────
+    // Section Header
+    // ─────────────────────────────────────────────────────────────────────────
+    const heading = new Setting(containerEl)
+        .setName('Runtime estimation')
+        .setHeading();
+    addWikiLink(heading, 'Runtime-Estimation');
 
-    // Content Type dropdown
+    // ─────────────────────────────────────────────────────────────────────────
+    // Enable Toggle
+    // ─────────────────────────────────────────────────────────────────────────
     new Setting(containerEl)
-        .setName('Content type')
-        .setDesc('Select how your content should be analyzed for runtime estimation.')
-        .addDropdown((dropdown: DropdownComponent) => {
-            dropdown
-                .addOption('novel', 'Novel / Audiobook')
-                .addOption('screenplay', 'Screenplay')
-                .setValue(plugin.settings.runtimeContentType || 'novel')
-                .onChange(async (value: string) => {
-                    plugin.settings.runtimeContentType = value as RuntimeContentType;
+        .setName('Enable runtime estimation')
+        .setDesc('Adds a runtime mode button to Chronologue and registers the Runtime Estimator command.')
+        .addToggle(toggle => {
+            toggle
+                .setValue(plugin.settings.enableRuntimeEstimation ?? false)
+                .onChange(async (value) => {
+                    plugin.settings.enableRuntimeEstimation = value;
                     await plugin.saveSettings();
-                    // Re-render to show/hide conditional fields
-                    renderConditionalFields();
+                    renderConditionalContent();
                 });
         });
 
-    // Explanation text
-    const explanationEl = containerEl.createDiv({ cls: 'setting-item-description rt-runtime-explanation' });
-    explanationEl.innerHTML = `<p><strong>Novel / Audiobook:</strong> All text at narration pace. Optimized for audiobook or read-aloud estimation.</p><p><strong>Screenplay:</strong> Dialogue (quoted text) at speaking pace, action/description at reading pace. Optimized for film/TV scripts.</p>`; // SAFE: innerHTML used for static trusted HTML with formatting tags (no user input)
+    // Container for conditional settings (shown when enabled)
+    const conditionalContainer = containerEl.createDiv({ cls: 'rt-runtime-conditional-settings' });
 
-    // Container for conditional fields (word rates)
-    const wordRatesContainer = containerEl.createDiv({ cls: 'rt-runtime-word-rates' });
-    
-    // Container for parenthetical timing
-    const parentheticalContainer = containerEl.createDiv({ cls: 'rt-runtime-parentheticals' });
-
+    // Flash helper for input validation
     const flash = (input: HTMLInputElement, type: 'success' | 'error') => {
         const successClass = 'rt-setting-input-success';
         const errorClass = 'rt-setting-input-error';
@@ -57,19 +54,40 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         window.setTimeout(() => input.classList.remove(type === 'success' ? successClass : errorClass), type === 'success' ? 900 : 1200);
     };
 
-    const renderConditionalFields = () => {
-        wordRatesContainer.empty();
+    const renderConditionalContent = () => {
+        conditionalContainer.empty();
         
+        if (!plugin.settings.enableRuntimeEstimation) {
+            return;
+        }
+
         const contentType = plugin.settings.runtimeContentType || 'novel';
-        
-        // Word Rates header
-        wordRatesContainer.createEl('h4', { text: 'Word Rates', cls: 'rt-runtime-subheader' });
-        
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Content Type Selection
+        // ─────────────────────────────────────────────────────────────────────
+        new Setting(conditionalContainer)
+            .setName('Content type')
+            .setDesc('Novel calculates all text at narration pace. Screenplay separates dialogue from action.')
+            .addDropdown((dropdown: DropdownComponent) => {
+                dropdown
+                    .addOption('novel', 'Novel / Audiobook')
+                    .addOption('screenplay', 'Screenplay')
+                    .setValue(contentType)
+                    .onChange(async (value: string) => {
+                        plugin.settings.runtimeContentType = value as RuntimeContentType;
+                        await plugin.saveSettings();
+                        renderConditionalContent();
+                    });
+            });
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Word Rates (content-type specific)
+        // ─────────────────────────────────────────────────────────────────────
         if (contentType === 'screenplay') {
-            // Screenplay: show dialogue and action rates
-            new Setting(wordRatesContainer)
-                .setName('Dialogue rate (wpm)')
-                .setDesc('Words per minute for quoted dialogue text.')
+            new Setting(conditionalContainer)
+                .setName('Dialogue words per minute')
+                .setDesc('Reading speed for quoted dialogue.')
                 .addText((text: TextComponent) => {
                     text.inputEl.type = 'number';
                     text.inputEl.min = '50';
@@ -88,9 +106,9 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     });
                 });
 
-            new Setting(wordRatesContainer)
-                .setName('Action/Description rate (wpm)')
-                .setDesc('Words per minute for non-dialogue text.')
+            new Setting(conditionalContainer)
+                .setName('Action words per minute')
+                .setDesc('Reading speed for scene descriptions and action lines.')
                 .addText((text: TextComponent) => {
                     text.inputEl.type = 'number';
                     text.inputEl.min = '50';
@@ -108,11 +126,63 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                         flash(text.inputEl, 'success');
                     });
                 });
+
+            // ─────────────────────────────────────────────────────────────────
+            // Parenthetical Timing (screenplay only)
+            // ─────────────────────────────────────────────────────────────────
+            const parentheticalInfo = conditionalContainer.createDiv({ cls: 'setting-item-description' });
+            parentheticalInfo.setText('Parenthetical timings — seconds added when these screenplay directives are detected:');
+
+            const parentheticals: Array<{
+                key: keyof typeof plugin.settings;
+                label: string;
+                desc: string;
+                defaultVal: number;
+            }> = [
+                { key: 'runtimeBeatSeconds', label: '(beat)', desc: 'Brief pause', defaultVal: 2 },
+                { key: 'runtimePauseSeconds', label: '(pause)', desc: 'Standard pause', defaultVal: 3 },
+                { key: 'runtimeLongPauseSeconds', label: '(long pause)', desc: 'Extended silence', defaultVal: 5 },
+                { key: 'runtimeMomentSeconds', label: '(a moment)', desc: 'Reflective beat', defaultVal: 4 },
+                { key: 'runtimeSilenceSeconds', label: '(silence)', desc: 'Atmospheric pause', defaultVal: 5 },
+            ];
+
+            for (const p of parentheticals) {
+                new Setting(conditionalContainer)
+                    .setName(p.label)
+                    .setDesc(p.desc)
+                    .addText((text: TextComponent) => {
+                        text.inputEl.type = 'number';
+                        text.inputEl.min = '0';
+                        text.inputEl.max = '60';
+                        text.inputEl.addClass('rt-input-xs');
+                        const currentValue = plugin.settings[p.key] as number | undefined;
+                        text.setValue(String(currentValue ?? p.defaultVal));
+                        text.inputEl.addEventListener('blur', async () => {
+                            const num = parseInt(text.getValue());
+                            if (!Number.isFinite(num) || num < 0 || num > 60) {
+                                flash(text.inputEl, 'error');
+                                return;
+                            }
+                            (plugin.settings as unknown as Record<string, unknown>)[p.key] = num;
+                            await plugin.saveSettings();
+                            flash(text.inputEl, 'success');
+                        });
+                    })
+                    .addExtraButton(btn => {
+                        btn.setIcon('rotate-ccw');
+                        btn.setTooltip('Reset to default');
+                        btn.onClick(async () => {
+                            (plugin.settings as unknown as Record<string, unknown>)[p.key] = p.defaultVal;
+                            await plugin.saveSettings();
+                            renderConditionalContent();
+                        });
+                    });
+            }
         } else {
-            // Novel: show narration rate only
-            new Setting(wordRatesContainer)
-                .setName('Narration rate (wpm)')
-                .setDesc('Words per minute for all text (audiobook narration pace).')
+            // Novel / Audiobook mode
+            new Setting(conditionalContainer)
+                .setName('Narration words per minute')
+                .setDesc('Reading pace for all content (audiobook narration).')
                 .addText((text: TextComponent) => {
                     text.inputEl.type = 'number';
                     text.inputEl.min = '50';
@@ -131,77 +201,24 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     });
                 });
         }
-    };
 
-    const renderParentheticalFields = () => {
-        parentheticalContainer.empty();
-        
-        // Parenthetical Timing header
-        parentheticalContainer.createEl('h4', { text: 'Parenthetical Timing', cls: 'rt-runtime-subheader' });
-        
-        const descEl = parentheticalContainer.createDiv({ cls: 'setting-item-description' });
-        descEl.setText('Standard screenplay parentheticals detected in scene content add time. Explicit durations like (30 seconds) or (2 minutes) are always parsed.');
-
-        const parentheticals: Array<{
-            key: keyof typeof plugin.settings;
-            label: string;
-            directive: string;
-            desc: string;
-        }> = [
-            { key: 'runtimeBeatSeconds', label: '(beat)', directive: 'beat', desc: 'Brief pause in dialogue or action' },
-            { key: 'runtimePauseSeconds', label: '(pause)', directive: 'pause', desc: 'Standard pause' },
-            { key: 'runtimeLongPauseSeconds', label: '(long pause)', directive: 'long pause', desc: 'Extended silence or reflection' },
-            { key: 'runtimeMomentSeconds', label: '(a moment)', directive: 'a moment', desc: 'Reflective beat' },
-            { key: 'runtimeSilenceSeconds', label: '(silence)', directive: 'silence', desc: 'No dialogue, atmospheric' },
+        // ─────────────────────────────────────────────────────────────────────
+        // Explicit Duration Patterns (always shown when enabled)
+        // ─────────────────────────────────────────────────────────────────────
+        const patternsInfo = conditionalContainer.createDiv({ cls: 'setting-item-description rt-runtime-patterns-info' });
+        patternsInfo.createEl('p', { text: 'Explicit duration patterns are always parsed and added to runtime:' });
+        const patternsList = patternsInfo.createEl('ul');
+        const patterns = [
+            '(30 seconds) or (30s)',
+            '(2 minutes) or (2m)',
+            '(runtime: 3m)',
+            '(allow 5 minutes) — for demos, podcasts',
         ];
-
-        for (const p of parentheticals) {
-            new Setting(parentheticalContainer)
-                .setName(p.label)
-                .setDesc(p.desc)
-                .addText((text: TextComponent) => {
-                    text.inputEl.type = 'number';
-                    text.inputEl.min = '0';
-                    text.inputEl.max = '60';
-                    text.inputEl.addClass('rt-input-xs');
-                    const currentValue = plugin.settings[p.key] as number | undefined;
-                    text.setValue(String(currentValue ?? 0));
-                    text.inputEl.addEventListener('blur', async () => {
-                        const num = parseInt(text.getValue());
-                        if (!Number.isFinite(num) || num < 0 || num > 60) {
-                            flash(text.inputEl, 'error');
-                            return;
-                        }
-                        (plugin.settings as unknown as Record<string, unknown>)[p.key] = num;
-                        await plugin.saveSettings();
-                        flash(text.inputEl, 'success');
-                    });
-                })
-                .addExtraButton(btn => {
-                    btn.setIcon('rotate-ccw');
-                    btn.setTooltip('Reset to default');
-                    btn.onClick(async () => {
-                        const defaults: Record<string, number> = {
-                            runtimeBeatSeconds: 2,
-                            runtimePauseSeconds: 3,
-                            runtimeLongPauseSeconds: 5,
-                            runtimeMomentSeconds: 4,
-                            runtimeSilenceSeconds: 5,
-                        };
-                        (plugin.settings as unknown as Record<string, unknown>)[p.key] = defaults[p.key];
-                        await plugin.saveSettings();
-                        renderParentheticalFields();
-                    });
-                });
+        for (const pat of patterns) {
+            patternsList.createEl('li').createEl('code', { text: pat });
         }
-
-        // Explicit duration patterns info
-        const explicitEl = parentheticalContainer.createDiv({ cls: 'setting-item-description rt-runtime-explicit-patterns' });
-        explicitEl.innerHTML = `<p><strong>Explicit duration patterns</strong> (always parsed):</p><ul><li><code>(30 seconds)</code> or <code>(30s)</code></li><li><code>(2 minutes)</code> or <code>(2m)</code> or <code>(2 min)</code></li><li><code>(runtime: 3m)</code></li><li><code>(allow 5 minutes)</code> - for demos, podcasts</li></ul>`; // SAFE: innerHTML used for static trusted HTML with formatting tags (no user input)
     };
 
     // Initial render
-    renderConditionalFields();
-    renderParentheticalFields();
+    renderConditionalContent();
 }
-

@@ -621,12 +621,12 @@
 /* Custom Hover Metadata Lines in Synopsis */
 .rt-hover-metadata-line {
   pointer-events: none;
-  /* Inherit text color for icons using currentColor */
-  color: var(--text-muted);
+  /* Match synopsis body color */
+  color: #666666;
 }
 
 .rt-hover-metadata-icon-g {
-  stroke: var(--text-muted);
+  stroke: #666666;
   fill: none;
 }
 
@@ -636,10 +636,10 @@
 }
 
 .rt-hover-metadata-icon svg {
-  color: var(--text-muted);
-  stroke: var(--text-muted);
+  color: #666666;
+  stroke: #666666;
 }
 
 .rt-hover-metadata-text {
-  fill: var(--text-muted);
+  fill: #666666;
 }

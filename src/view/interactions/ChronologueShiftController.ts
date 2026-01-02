@@ -205,10 +205,13 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         svg.appendChild(altButton);
     }
 
-    // Always show RT button for Runtime mode - icon changes based on content type
-    const runtimeContentType: RuntimeContentType = view.plugin.settings?.runtimeContentType || 'novel';
-    rtButton = createRtButton(runtimeContentType);
-    svg.appendChild(rtButton);
+    // Only show runtime button if runtime estimation is enabled
+    const shouldShowRuntime = view.plugin.settings?.enableRuntimeEstimation ?? false;
+    if (shouldShowRuntime) {
+        const runtimeContentType: RuntimeContentType = view.plugin.settings?.runtimeContentType || 'novel';
+        rtButton = createRtButton(runtimeContentType);
+        svg.appendChild(rtButton);
+    }
 
     // Function to activate shift mode
     const activateShiftMode = (enableAlien: boolean = false) => {
@@ -943,8 +946,8 @@ function createRtButton(contentType: RuntimeContentType): SVGGElement {
     const SHIFT_WIDTH = 62;
     const SHIFT_HEIGHT = 55;
 
-    // Position to the RIGHT of Shift button (10px gap)
-    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 10;
+    // Position to the RIGHT of Shift button (30px gap)
+    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 30;
     // Vertically center with shift button
     const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2;
 
@@ -1025,8 +1028,8 @@ function updateRtButtonState(button: SVGGElement, active: boolean): void {
     const SHIFT_WIDTH = 62;
     const SHIFT_HEIGHT = 55;
 
-    // Position to the RIGHT of Shift button
-    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 10;
+    // Position to the RIGHT of Shift button (30px gap)
+    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 30;
     const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2;
 
     if (active) {

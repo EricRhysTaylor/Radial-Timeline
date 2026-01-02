@@ -583,8 +583,8 @@ export default class SynopsisManager {
           lineGroup.setAttribute("class", "rt-hover-metadata-line");
           
           // Icon positioning
-          const iconSize = 12 * fontScale;
-          const iconGap = 4 * fontScale;
+          const iconSize = 16 * fontScale;
+          const iconGap = 6 * fontScale;
           const textX = iconSize + iconGap; // Offset for icon + gap
           
           // Get the Lucide icon SVG
@@ -608,17 +608,10 @@ export default class SynopsisManager {
               // Skip non-element nodes if any
               if (node.nodeType === 1) { // Element node
                 const clone = node.cloneNode(true) as SVGElement;
-                // Ensure strokes are consistent
-                clone.setAttribute("stroke-width", "2");
-                clone.setAttribute("vector-effect", "non-scaling-stroke"); // Keep stroke crisp
                 iconG.appendChild(clone);
               }
             });
-            
-            // Set stroke color via class or direct style to match text
-            iconG.style.stroke = "currentColor";
-            iconG.style.fill = "none";
-            
+
             lineGroup.appendChild(iconG);
           }
           
@@ -1047,11 +1040,12 @@ export default class SynopsisManager {
         const ratio = rowIndex <= 1 ? 0.5 : SynopsisManager.TEXT_HEIGHT_INSET_RATIO;
         inset = fontSize * ratio;
       }
-      const anchorAbsoluteX = (circleX - inset) * direction;
+      const rightQuadrantInset = isRightAligned ? 20 : 0;
+      const anchorAbsoluteX = (circleX - inset - rightQuadrantInset) * direction;
 
       const anchorX = anchorAbsoluteX - baseX;
 
-      const { primaryWidth, metadataWidth, gap } = this.measureRowLayout(rowElements, metadataSpacing);
+      const { primaryWidth, metadataWidth, gap } = this.measureRowLayout(rowElements, metadataSpacing, isRightAligned);
       const roundedAnchorX = Math.round(anchorX);
       const rowY = rowIndex === 0 ? 0 : yOffset;
 
@@ -1071,12 +1065,13 @@ export default class SynopsisManager {
     this.updateHoverMetadataIcons(synopsis);
   }
 
-  private measureRowLayout(rowElements: SVGTextElement[], defaultGap: number): { primaryWidth: number; metadataWidth: number; gap: number } {
+  private measureRowLayout(rowElements: SVGTextElement[], defaultGap: number, isRightAligned: boolean): { primaryWidth: number; metadataWidth: number; gap: number } {
     if (rowElements.length === 0) {
       return { primaryWidth: 0, metadataWidth: 0, gap: defaultGap };
     }
 
-    const primaryWidth = this.measureTextWidth(rowElements[0]) + this.getHoverIconTotalOffset(rowElements[0]);
+    const iconOffset = isRightAligned ? 0 : this.getHoverIconTotalOffset(rowElements[0]);
+    const primaryWidth = this.measureTextWidth(rowElements[0]) + iconOffset;
     let metadataWidth = 0;
     let gap = defaultGap;
 
@@ -1116,7 +1111,7 @@ export default class SynopsisManager {
       const titleRightEdge = hasMetadata ? metadataLeftEdge - gap : metadataRightEdge;
 
       rowElements.forEach((textEl, index) => {
-        const iconOffset = index === 0 ? this.getHoverIconTotalOffset(textEl) : 0;
+        const iconOffset = 0; // Icons render after text on right-aligned rows
         const targetX = index === 0 ? titleRightEdge - iconOffset : metadataLeftEdge;
         textEl.setAttribute('x', String(targetX));
         textEl.setAttribute('y', String(yPosition));
@@ -1203,14 +1198,17 @@ export default class SynopsisManager {
       const anchor = textEl.getAttribute('text-anchor') || 'start';
       const textWidth = this.measureTextWidth(textEl);
 
+      const isRightAligned = anchor === 'end';
       const textStartX = anchor === 'end' ? textX - textWidth : textX;
-      const iconX = textStartX - iconGap - iconSize;
+      const iconX = isRightAligned
+        ? textX + iconGap
+        : textStartX - iconGap - iconSize;
       const iconY = textY - (iconSize * 0.85);
       const scale = iconSize / 24;
 
       iconG.setAttribute('transform', `translate(${iconX}, ${iconY}) scale(${scale})`);
-      iconG.style.stroke = "currentColor";
-      iconG.style.fill = "none";
+      iconG.style.stroke = "";
+      iconG.style.fill = "";
     });
   }
 

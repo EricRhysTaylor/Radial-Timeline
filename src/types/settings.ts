@@ -118,6 +118,7 @@ export interface RadialTimelineSettings {
     hoverMetadataFields?: HoverMetadataField[];
     
     // Runtime Estimation Settings
+    enableRuntimeEstimation?: boolean;
     runtimeContentType?: RuntimeContentType;
     runtimeDialogueWpm?: number;
     runtimeActionWpm?: number;
