@@ -338,35 +338,36 @@
   fill: var(--text-on-accent);
 }
 
-/* Alt button reddish hover/click styles */
+/* Alt button hover/click styles - only fill changes to red, stroke/text stay normal */
 .rt-alt-button:hover .rt-shift-button-bg {
   fill: rgba(180, 60, 60, 0.8);
-  stroke: rgba(200, 80, 80, 1);
+  stroke: var(--text-normal);
   stroke-width: 2px;
 }
 
 .rt-alt-button:hover .rt-shift-button-text {
-  fill: rgba(200, 80, 80, 1);
+  fill: var(--text-normal);
 }
 
 .rt-alt-button:active .rt-shift-button-bg {
   fill: rgba(180, 60, 60, 0.9);
-  stroke: rgba(200, 80, 80, 1);
+  stroke: var(--text-normal);
   stroke-width: 2px;
 }
 
 .rt-alt-button:active .rt-shift-button-text {
-  fill: rgba(200, 80, 80, 1);
+  fill: var(--text-normal);
 }
 
-.rt-shift-mode-active .rt-shift-button-bg {
-  fill: var(--interactive-accent) !important;
-  stroke: var(--text-normal) !important;
-  stroke-width: 2px !important;
+/* Generic shift mode active state (excludes alt button which has its own red styling) */
+.rt-shift-mode-active:not(.rt-alt-button) .rt-shift-button-bg {
+  fill: var(--interactive-accent);
+  stroke: var(--text-normal);
+  stroke-width: 2px;
 }
 
-.rt-shift-mode-active .rt-shift-button-text {
-  fill: var(--text-on-accent) !important;
+.rt-shift-mode-active:not(.rt-alt-button) .rt-shift-button-text {
+  fill: var(--text-on-accent);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -779,15 +780,15 @@
   fill: var(--rt-subplot-colors-15) !important;
 }
 
-/* 8. ALT Button Active State - reddish tint */
+/* 8. ALT Button Active State - only fill is red, stroke/text stay normal */
 .rt-alt-button.rt-shift-mode-active .rt-shift-button-bg {
-  fill: rgba(180, 60, 60, 0.9) !important;
-  stroke: rgba(200, 80, 80, 1) !important;
-  stroke-width: 2px !important;
+  fill: rgba(180, 60, 60, 0.9);
+  stroke: var(--text-normal);
+  stroke-width: 2px;
 }
 
 .rt-alt-button.rt-shift-mode-active .rt-shift-button-text {
-  fill: rgba(200, 80, 80, 1) !important;
+  fill: var(--text-normal);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.1em;

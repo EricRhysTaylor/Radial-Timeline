@@ -70,18 +70,18 @@ function verifyWritableDir(dir) {
 
 // Use a relative output directory when running in CI
 if (isCI) {
-	destDirs = ["./build"];
+	destDirs = [{ path: "./build", name: "build" }];
 } else {
 	// Local development paths
 	destDirs = [
-		"/Users/ericrhystaylor/Documents/Author/Author Obsidian Vault .nosync/.obsidian/plugins/radial-timeline",
-		"/Users/ericrhystaylor/Documents/Code Projects/Obsidian Vault Fresh/.obsidian/plugins/radial-timeline",
-		"/Users/ericrhystaylor/Documents/Code Projects/Obsidian Vault Jane Austin/.obsidian/plugins/radial-timeline",
-		"./release"  // Add release folder for distribution
+		{ path: "/Users/ericrhystaylor/Documents/Author/Obsidian Vault Author .nosync/.obsidian/plugins/radial-timeline", name: "Author" },
+		{ path: "/Users/ericrhystaylor/Documents/Code Projects/Obsidian Vault Fresh/.obsidian/plugins/radial-timeline", name: "Fresh" },
+		{ path: "/Users/ericrhystaylor/Documents/Code Projects/Obsidian Vault Jane Austin/.obsidian/plugins/radial-timeline", name: "Jane Austin" },
+		{ path: "./release", name: "release" }
 	];
 }
 
-destDirs.forEach(dir => verifyWritableDir(dir));
+destDirs.forEach(dest => verifyWritableDir(dest.path));
 
 // Files to copy from src/ (in addition to the built JS)
 const filesToCopy = [
@@ -101,64 +101,65 @@ const filesToCopy = [
 		// Copy the generated styles.css from root to all destination folders
 		const stylesSource = path.join(sourceDir, "styles.css");
 
-		for (const destDir of destDirs) {
-			// Ensure the destination directory exists
-			try {
-				if (!fs.existsSync(destDir)) {
-					fs.mkdirSync(destDir, { recursive: true });
-				}
-			} catch (err) {
-				logErrorDetails(`Error ensuring destination directory ${destDir}`, err);
-				continue;
+	for (const dest of destDirs) {
+		const destDir = dest.path;
+		// Ensure the destination directory exists
+		try {
+			if (!fs.existsSync(destDir)) {
+				fs.mkdirSync(destDir, { recursive: true });
 			}
-
-			// --- Copy styles.css (Generated Artifact) ---
-			if (fs.existsSync(stylesSource)) {
-				try {
-					fs.copyFileSync(stylesSource, path.join(destDir, "styles.css"));
-				} catch (err) {
-					logErrorDetails(`Error copying styles.css to ${destDir}:`, err);
-				}
-			} else {
-				console.warn(`Warning: styles.css not found at ${stylesSource}`);
-			}
-
-			// --- Copy individual files from src/ ---
-			for (const file of filesToCopy) {
-				const sourcePath = path.join(sourceDir, "src", file);
-				const destPath = path.join(destDir, file);
-
-
-			// Check if source file exists
-			if (fs.existsSync(sourcePath)) {
-				try {
-					// Create destination directory if it doesn't exist
-					if (!fs.existsSync(path.dirname(destPath))) {
-						fs.mkdirSync(path.dirname(destPath), { recursive: true });
-					}
-
-					// Copy the file
-					fs.copyFileSync(sourcePath, destPath);
-				} catch (err) {
-					logErrorDetails(`Error copying ${file} to ${destDir}:`, err);
-				}
-			} else {
-				console.warn(`Warning: ${sourcePath} does not exist, skipping.`);
-			}
+		} catch (err) {
+			logErrorDetails(`Error ensuring destination directory ${dest.name}`, err);
+			continue;
 		}
 
-		// --- Copy main.js ---
-		if (destDirs.length > 1) {
-			const mainJsPath = path.join(destDirs[0], "main.js");
-			if (fs.existsSync(mainJsPath) && destDir !== destDirs[0]) {
-				try {
-					fs.copyFileSync(mainJsPath, path.join(destDir, "main.js"));
-				} catch (err) {
-					logErrorDetails(`Error copying main.js to ${destDir}:`, err);
+		// --- Copy styles.css (Generated Artifact) ---
+		if (fs.existsSync(stylesSource)) {
+			try {
+				fs.copyFileSync(stylesSource, path.join(destDir, "styles.css"));
+			} catch (err) {
+				logErrorDetails(`Error copying styles.css to ${dest.name}:`, err);
+			}
+		} else {
+			console.warn(`Warning: styles.css not found at ${stylesSource}`);
+		}
+
+		// --- Copy individual files from src/ ---
+		for (const file of filesToCopy) {
+			const sourcePath = path.join(sourceDir, "src", file);
+			const destPath = path.join(destDir, file);
+
+
+		// Check if source file exists
+		if (fs.existsSync(sourcePath)) {
+			try {
+				// Create destination directory if it doesn't exist
+				if (!fs.existsSync(path.dirname(destPath))) {
+					fs.mkdirSync(path.dirname(destPath), { recursive: true });
 				}
+
+				// Copy the file
+				fs.copyFileSync(sourcePath, destPath);
+			} catch (err) {
+				logErrorDetails(`Error copying ${file} to ${dest.name}:`, err);
+			}
+		} else {
+			console.warn(`Warning: ${sourcePath} does not exist, skipping.`);
+		}
+	}
+
+	// --- Copy main.js ---
+	if (destDirs.length > 1) {
+		const mainJsPath = path.join(destDirs[0].path, "main.js");
+		if (fs.existsSync(mainJsPath) && destDir !== destDirs[0].path) {
+			try {
+				fs.copyFileSync(mainJsPath, path.join(destDir, "main.js"));
+			} catch (err) {
+				logErrorDetails(`Error copying main.js to ${dest.name}:`, err);
 			}
 		}
 	}
+}
 
 	// Keep root manifest.json in sync for submission tooling
 	try {
@@ -173,9 +174,8 @@ const filesToCopy = [
 	// Note: Release files are now maintained in the release/ folder
 	// No need to copy to project root since release/ is the source of truth
 
-	// Show full destination paths, one per line for better readability
-	console.log('Build assets copied to:');
-	destDirs.forEach(dir => console.log(`  ${dir}`));
+	// Show destination names
+	console.log(`Build copied to: ${destDirs.map(d => d.name).join('/')}`);
 }
 
 const context = await esbuild.context({
@@ -203,7 +203,7 @@ const context = await esbuild.context({
 	logLevel: 'info',
 	sourcemap: prod ? false : 'inline',
 	treeShaking: true,
-	outdir: destDirs[0],
+	outdir: destDirs[0].path,
 	define: {
 		'EMBEDDED_README_CONTENT': JSON.stringify(readmeContent),
 		// 'EMBEDDED_RELEASE_NOTES': // REMOVED: Managed via direct import in code
@@ -238,8 +238,8 @@ if (prod) {
 		fs.watch(sourcePath, async () => {
 			try {
 				// Update file in all destination directories
-				for (const destDir of destDirs) {
-					const destPath = path.join(destDir, file);
+				for (const dest of destDirs) {
+					const destPath = path.join(dest.path, file);
 					fs.copyFileSync(sourcePath, destPath);
 				}
 				// Also sync root manifest.json on change
@@ -250,7 +250,7 @@ if (prod) {
 						logErrorDetails("Error syncing root manifest.json on change:", e);
 					}
 				}
-				console.log(`Files updated in all destination directories`);
+				console.log(`Files updated in ${destDirs.map(d => d.name).join('/')}`);
 			} catch (err) {
 				logErrorDetails(`Error updating ${file}:`, err);
 			}
@@ -273,14 +273,14 @@ if (prod) {
 	}
 
 	// Watch for main.js changes (the output file) and copy to other destinations
-	const mainJsPath = path.join(destDirs[0], "main.js");
+	const mainJsPath = path.join(destDirs[0].path, "main.js");
 	fs.watch(mainJsPath, async () => {
 		try {
 			// Copy to all other destination directories
 			for (let i = 1; i < destDirs.length; i++) {
-				fs.copyFileSync(mainJsPath, path.join(destDirs[i], "main.js"));
+				fs.copyFileSync(mainJsPath, path.join(destDirs[i].path, "main.js"));
 			}
-			console.log(`main.js updated in all destination directories`);
+			console.log(`main.js updated in ${destDirs.map(d => d.name).join('/')}`);
 		} catch (err) {
 			logErrorDetails(`Error updating main.js:`, err);
 		}

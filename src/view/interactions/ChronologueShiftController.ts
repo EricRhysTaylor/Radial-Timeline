@@ -224,13 +224,24 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
     };
 
-    // Function to activate shift mode
+    // Function to deactivate alien mode
     const deactivateAlienMode = () => {
         if (!altButton && !alienModeActive) return;
         alienModeActive = false;
         globalAlienModeActive = false;
         if (altButton) updateAltButtonState(altButton, false);
         updateDateLabelsForAlienMode(false);
+        
+        // Clear selected scenes and elapsed time arc (same as shift mode)
+        selectedScenes = [];
+        rebuildSelectedPathsSet();
+        hoveredScenePath = null;
+        elapsedTimeClickCount = 0;
+        removeElapsedTimeArc(svg);
+        removeSceneHighlights(svg);
+        removeShiftModeFromAllScenes(svg);
+        svg.classList.remove('rt-global-fade');
+        
         // Clear data attribute if no other mode is active
         if (!shiftModeActive && !runtimeModeActive) {
             svg.removeAttribute('data-shift-mode');

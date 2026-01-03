@@ -375,11 +375,11 @@ function setupSceneClickInteractions(view: ChronologueView, svg: SVGSVGElement):
         const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"], .rt-scene-group[data-item-type="Backdrop"]');
         if (!g) return;
 
-        // When shift mode is active, delegate to shift controller
-        if (isShiftModeActive()) {
+        // When shift/alt/runtime mode is active, delegate to shift controller
+        if (isShiftModeActive() || isAlienModeActive() || isRuntimeModeActive()) {
             const handled = (view as any).handleShiftModeClick?.(e, g);
             if (handled) {
-                return; // Shift mode handled the click
+                return; // Shift/ALT mode handled the click
             }
         }
 
