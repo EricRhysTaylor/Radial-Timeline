@@ -223,6 +223,27 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // Runtime Arc Cap Default
+        // ─────────────────────────────────────────────────────────────────────
+        new Setting(conditionalContainer)
+            .setName('Runtime arc cap default')
+            .setDesc('Default cap for runtime arcs in Chronologue mode. Lower values emphasize shorter scenes.')
+            .addDropdown((dropdown: DropdownComponent) => {
+                dropdown
+                    .addOption('100', 'Auto (100%) — longest scene fills arc')
+                    .addOption('75', '75% of max runtime')
+                    .addOption('50', '50% of max runtime')
+                    .addOption('25', '25% of max runtime')
+                    .addOption('0', 'Minimum stub — all scenes equal')
+                    .setValue(String(plugin.settings.runtimeCapDefaultPercent ?? 100))
+                    .onChange(async (value: string) => {
+                        plugin.settings.runtimeCapDefaultPercent = parseInt(value);
+                        await plugin.saveSettings();
+                        plugin.refreshTimelineIfNeeded(null);
+                    });
+            });
+
+        // ─────────────────────────────────────────────────────────────────────
         // Explicit Duration Patterns (always shown when enabled)
         // ─────────────────────────────────────────────────────────────────────
         const patternsInfo = conditionalContainer.createDiv({ cls: 'setting-item-description rt-runtime-patterns-info' });

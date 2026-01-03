@@ -36,3 +36,83 @@
   pointer-events: none !important;
 }
 
+/* Runtime mode elapsed time arc and label - blue styling */
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-elapsed-arc-path {
+  stroke: rgba(60, 160, 220, 0.9) !important;
+  stroke-width: 3px;
+}
+
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-elapsed-endpoint-marker {
+  stroke: rgba(60, 160, 220, 1) !important;
+  stroke-width: 2px;
+}
+
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-elapsed-time-label {
+  fill: rgba(60, 160, 220, 1) !important;
+  stroke: white;
+  stroke-width: 5px;
+}
+
+/* Runtime tick labels at arc heads */
+.rt-runtime-tick-label {
+  font-size: 9px;
+  font-weight: 600;
+  fill: rgba(60, 160, 220, 1);
+  stroke: var(--background-primary);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+
+.rt-runtime-tick-mark {
+  stroke: rgba(60, 160, 220, 0.8);
+  stroke-width: 1.5px;
+}
+
+/* Runtime Cap Slider */
+.rt-runtime-cap-slider {
+  cursor: pointer;
+}
+
+.rt-runtime-cap-track {
+  fill: var(--background-modifier-border);
+  stroke: rgba(60, 140, 220, 0.3);
+  stroke-width: 1px;
+}
+
+.rt-runtime-cap-tick {
+  stroke: rgba(60, 140, 220, 0.5);
+  stroke-width: 1px;
+}
+
+.rt-runtime-cap-label {
+  font-size: 8px;
+  font-weight: 500;
+  fill: rgba(60, 140, 220, 0.8);
+  pointer-events: none;
+}
+
+.rt-runtime-cap-handle {
+  fill: rgba(60, 160, 220, 0.9);
+  stroke: white;
+  stroke-width: 2px;
+  cursor: grab;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  transition: transform 0.1s ease-out, filter 0.1s ease-out;
+}
+
+.rt-runtime-cap-handle:hover {
+  fill: rgba(80, 180, 255, 1);
+  filter: drop-shadow(0 0 4px rgba(60, 160, 220, 0.6));
+  transform: scale(1.15);
+}
+
+.rt-runtime-cap-handle-active {
+  cursor: grabbing;
+  fill: rgba(100, 200, 255, 1);
+  filter: drop-shadow(0 0 6px rgba(60, 160, 220, 0.8));
+  transform: scale(1.2);
+}
+

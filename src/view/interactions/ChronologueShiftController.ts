@@ -10,11 +10,16 @@ import type { PlanetaryProfile, RuntimeContentType } from '../../types/settings'
 import { getActivePlanetaryProfile, validatePlanetaryProfile, convertFromEarth, formatElapsedTimePlanetary, formatPlanetaryDateAdaptive } from '../../utils/planetaryTime';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
 import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
+import { parseRuntimeField, formatRuntimeValue } from '../../utils/runtimeEstimator';
 import {
     ELAPSED_ARC_RADIUS,
     ELAPSED_TICK_LENGTH,
     SHIFT_BUTTON_POS_X,
-    SHIFT_BUTTON_POS_Y
+    SHIFT_BUTTON_POS_Y,
+    RUNTIME_SLIDER_POS_X,
+    RUNTIME_SLIDER_POS_Y,
+    RUNTIME_SLIDER_WIDTH,
+    RUNTIME_SLIDER_HEIGHT
 } from '../../renderer/layout/LayoutConstants';
 
 // Scaling applied on click/activation
@@ -194,6 +199,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
     let altButton: SVGGElement | null = null;
     let rtButton: SVGGElement | null = null;
+    let runtimeCapSlider: SVGGElement | null = null;
+    // Use saved default from settings, fallback to 100%
+    let currentRuntimeCapPercent = view.plugin.settings.runtimeCapDefaultPercent ?? 100;
 
     // Check if Planetary Time is enabled and active profile is valid
     const activeProfile = getActivePlanetaryProfile(view.plugin.settings);
@@ -212,6 +220,45 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         rtButton = createRtButton(runtimeContentType);
         svg.appendChild(rtButton);
     }
+
+    // Calculate max runtime from all scenes for slider labels
+    const calculateMaxRuntime = (): number => {
+        const allScenes = (view as any).sceneData || (view as any).scenes || [];
+        let maxRuntime = 0;
+        allScenes.forEach((scene: TimelineItem) => {
+            if (scene.itemType === 'Scene' || scene.itemType === 'Backdrop') {
+                const runtime = parseRuntimeField(scene.Runtime);
+                if (runtime !== null && runtime > maxRuntime) {
+                    maxRuntime = runtime;
+                }
+            }
+        });
+        return maxRuntime;
+    };
+
+    // Create and show/hide runtime cap slider
+    const showRuntimeCapSlider = () => {
+        if (runtimeCapSlider) return; // Already showing
+        
+        const maxRuntime = calculateMaxRuntime();
+        runtimeCapSlider = createRuntimeCapSlider(maxRuntime, currentRuntimeCapPercent, (newPercent) => {
+            currentRuntimeCapPercent = newPercent;
+            // Store in transient view state for renderer to use
+            (view as any).runtimeCapPercent = newPercent;
+            // Refresh timeline to apply new cap
+            if (view.plugin.refreshTimelineIfNeeded) {
+                view.plugin.refreshTimelineIfNeeded(null);
+            }
+        });
+        svg.appendChild(runtimeCapSlider);
+    };
+
+    const hideRuntimeCapSlider = () => {
+        if (runtimeCapSlider && runtimeCapSlider.parentNode) {
+            runtimeCapSlider.parentNode.removeChild(runtimeCapSlider);
+            runtimeCapSlider = null;
+        }
+    };
 
     const deactivateRuntimeMode = () => {
         if (!runtimeModeActive || !rtButton) return;
@@ -444,6 +491,94 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         });
     };
 
+    // Update date labels for Runtime mode (00:00 to total runtime in mm:ss)
+    const updateDateLabelsForRuntimeMode = (enableRuntime: boolean) => {
+        const dateLabels = svg.querySelectorAll('.rt-month-label-outer');
+        const allScenes = (view as any).sceneData || (view as any).scenes || [];
+        
+        // Calculate total runtime from all scenes
+        let totalRuntimeSeconds = 0;
+        if (enableRuntime && allScenes.length > 0) {
+            allScenes.forEach((scene: TimelineItem) => {
+                if (scene.itemType === 'Scene' || scene.itemType === 'Backdrop') {
+                    const runtime = parseRuntimeField(scene.Runtime);
+                    if (runtime !== null && runtime > 0) {
+                        totalRuntimeSeconds += runtime;
+                    }
+                }
+            });
+        }
+        
+        const totalRuntimeLabel = formatRuntimeValue(totalRuntimeSeconds);
+        
+        dateLabels.forEach(label => {
+            const textPath = label.querySelector('textPath');
+            if (!textPath) return;
+            
+            const isFirst = label.classList.contains('rt-date-first');
+            const isLast = label.classList.contains('rt-date-last');
+            
+            if (enableRuntime) {
+                // Store original label if not already stored
+                if (!label.getAttribute('data-earth-label')) {
+                    const tspans = textPath.querySelectorAll('tspan');
+                    if (tspans.length > 0) {
+                        const lines = Array.from(tspans).map(t => t.textContent || '');
+                        label.setAttribute('data-earth-label', lines.join('\n'));
+                    } else {
+                        label.setAttribute('data-earth-label', textPath.textContent || '');
+                    }
+                }
+                if (!label.getAttribute('data-earth-label-html')) {
+                    label.setAttribute('data-earth-label-html', textPath.innerHTML);
+                }
+                
+                if (isFirst) {
+                    // First label shows "00:00"
+                    while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
+                    const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                    tspan.setAttribute('x', '0');
+                    tspan.setAttribute('dy', '0');
+                    tspan.textContent = '00:00';
+                    textPath.appendChild(tspan);
+                } else if (isLast) {
+                    // Last label shows total runtime
+                    while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
+                    const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                    tspan.setAttribute('x', '0');
+                    tspan.setAttribute('dy', '0');
+                    tspan.textContent = totalRuntimeLabel;
+                    textPath.appendChild(tspan);
+                } else {
+                    // Hide regular tick labels in runtime mode (they're based on dates, not runtime)
+                    textPath.setAttribute('data-runtime-hidden', 'true');
+                    while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
+                }
+            } else {
+                // Restore Earth label
+                const earthLabelHtml = label.getAttribute('data-earth-label-html');
+                const earthLabel = label.getAttribute('data-earth-label');
+                textPath.removeAttribute('data-runtime-hidden');
+                if (earthLabelHtml) {
+                    textPath.innerHTML = earthLabelHtml; // SAFE: innerHTML used for restoring saved SVG tspan structure
+                } else if (earthLabel) {
+                    while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
+                    if (earthLabel.includes('\n')) {
+                        earthLabel.split('\n').forEach((line, i) => {
+                            const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                            tspan.setAttribute('x', '0');
+                            tspan.setAttribute('dy', i === 0 ? '0' : '0.9em');
+                            tspan.textContent = line;
+                            textPath.appendChild(tspan);
+                        });
+                    } else {
+                        textPath.textContent = earthLabel;
+                    }
+                }
+            }
+        });
+    };
+
     const toggleAlienMode = () => {
         if (!altButton) return; // Guard clause
 
@@ -474,7 +609,11 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             runtimeModeActive = false;
             globalRuntimeModeActive = false;
             updateRtButtonState(rtButton, false);
+            updateDateLabelsForRuntimeMode(false);
+            hideRuntimeCapSlider();
             svg.removeAttribute('data-shift-mode');
+            // Clear transient runtime cap state
+            (view as any).runtimeCapPercent = undefined;
             // Trigger timeline refresh to switch back to Duration arcs
             if (view.plugin.refreshTimelineIfNeeded) {
                 view.plugin.refreshTimelineIfNeeded(null);
@@ -503,6 +642,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             globalRuntimeModeActive = true;
             updateRtButtonState(rtButton, true);
             svg.setAttribute('data-shift-mode', 'runtime');
+            updateDateLabelsForRuntimeMode(true);
+            showRuntimeCapSlider();
             // Trigger timeline refresh to switch to Runtime arcs
             if (view.plugin.refreshTimelineIfNeeded) {
                 view.plugin.refreshTimelineIfNeeded(null);
@@ -641,7 +782,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
 
-        // Explicitly remove buttons to ensure instant disappearance on mode switch
+        // Explicitly remove buttons and slider to ensure instant disappearance on mode switch
         if (shiftButton && shiftButton.parentNode) {
             shiftButton.parentNode.removeChild(shiftButton);
         }
@@ -650,6 +791,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
         if (rtButton && rtButton.parentNode) {
             rtButton.parentNode.removeChild(rtButton);
+        }
+        if (runtimeCapSlider && runtimeCapSlider.parentNode) {
+            runtimeCapSlider.parentNode.removeChild(runtimeCapSlider);
         }
     };
 
@@ -693,9 +837,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         };
 
         // Use capture phase to run before other handlers
-        // Works for both Shift mode and ALT (Alien) mode
+        // Works for Shift mode, ALT (Alien) mode, and Runtime mode
         view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
-            if (!shiftModeActive && !alienModeActive) return;
+            if (!shiftModeActive && !alienModeActive && !runtimeModeActive) return;
 
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
             if (!g) return;
@@ -722,9 +866,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }, { capture: true }); // Use capture phase
 
         // Use capture phase for pointerout too
-        // Works for both Shift mode and ALT (Alien) mode
+        // Works for Shift mode, ALT (Alien) mode, and Runtime mode
         view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
-            if (!shiftModeActive && !alienModeActive) return;
+            if (!shiftModeActive && !alienModeActive && !runtimeModeActive) return;
 
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
             if (!g) return;
@@ -757,9 +901,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     const rebuildSelectedPathsSet = setupShiftModeHover();
 
     // Export click handler for external use (called from ChronologueMode)
-    // Works for both Shift mode and ALT (Alien) mode
+    // Works for Shift mode, ALT (Alien) mode, and Runtime mode
     (view as any).handleShiftModeClick = (e: MouseEvent, sceneGroup: Element) => {
-        if (!shiftModeActive && !alienModeActive) return false;
+        if (!shiftModeActive && !alienModeActive && !runtimeModeActive) return false;
 
         // Prevent default scene opening behavior when in shift mode
         e.preventDefault();
@@ -790,7 +934,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             if (selectedScenes.length < 2) {
                 removeElapsedTimeArc(svg);
             } else {
-                showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings);
+                const allScenes = (view as any).sceneData || (view as any).scenes || [];
+                showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings, allScenes);
             }
             return true;
         }
@@ -806,15 +951,16 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
         // If we have 2 scenes, show elapsed time
         if (selectedScenes.length === 2) {
-            showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings);
+            const allScenes = (view as any).sceneData || (view as any).scenes || [];
+            showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings, allScenes);
         }
 
         return true; // Indicate we handled the click
     };
 
-    // Register elapsed time text click handler (works for both Shift and ALT mode)
+    // Register elapsed time text click handler (works for Shift, ALT, and Runtime modes)
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', (e: MouseEvent) => {
-        if ((!shiftModeActive && !alienModeActive) || selectedScenes.length !== 2) return;
+        if ((!shiftModeActive && !alienModeActive && !runtimeModeActive) || selectedScenes.length !== 2) return;
 
         const elapsedTimeLabel = (e.target as Element).closest('.rt-elapsed-time-label');
         if (!elapsedTimeLabel) return;
@@ -823,7 +969,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         e.stopPropagation();
 
         elapsedTimeClickCount++;
-        showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings);
+        const allScenes = (view as any).sceneData || (view as any).scenes || [];
+        showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings, allScenes);
     });
 }
 
@@ -1098,6 +1245,159 @@ function updateRtButtonState(button: SVGGElement, active: boolean): void {
 }
 
 /**
+ * Create the runtime cap slider component
+ * 5-division slider showing time values at 0%, 25%, 50%, 75%, 100% of max runtime
+ * @param maxRuntimeSeconds - Maximum runtime in seconds from all scenes
+ * @param initialPercent - Initial slider position (0-100)
+ * @param onCapChange - Callback when cap percentage changes
+ */
+function createRuntimeCapSlider(
+    maxRuntimeSeconds: number,
+    initialPercent: number,
+    onCapChange: (percent: number) => void
+): SVGGElement {
+    const slider = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    slider.setAttribute('class', 'rt-runtime-cap-slider');
+    slider.setAttribute('transform', `translate(${RUNTIME_SLIDER_POS_X}, ${RUNTIME_SLIDER_POS_Y})`);
+
+    const TRACK_WIDTH = RUNTIME_SLIDER_WIDTH;
+    const TRACK_HEIGHT = 3;
+    const HANDLE_RADIUS = 6;
+    const TICK_HEIGHT = 8;
+    const LABEL_Y_OFFSET = 18;
+    const NUM_DIVISIONS = 5;
+    const DIVISION_SPACING = TRACK_WIDTH / (NUM_DIVISIONS - 1);
+
+    // Background track
+    const track = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    track.setAttribute('x', '0');
+    track.setAttribute('y', String(-TRACK_HEIGHT / 2));
+    track.setAttribute('width', String(TRACK_WIDTH));
+    track.setAttribute('height', String(TRACK_HEIGHT));
+    track.setAttribute('rx', '1.5');
+    track.setAttribute('class', 'rt-runtime-cap-track');
+    slider.appendChild(track);
+
+    // Division ticks and labels
+    const percentValues = [0, 25, 50, 75, 100];
+    percentValues.forEach((percent, i) => {
+        const x = i * DIVISION_SPACING;
+        
+        // Tick mark
+        const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        tick.setAttribute('x1', String(x));
+        tick.setAttribute('y1', String(-TICK_HEIGHT / 2));
+        tick.setAttribute('x2', String(x));
+        tick.setAttribute('y2', String(TICK_HEIGHT / 2));
+        tick.setAttribute('class', 'rt-runtime-cap-tick');
+        slider.appendChild(tick);
+
+        // Calculate time value for this percentage
+        // 0% shows minimum stub (we'll label it as "min")
+        // 100% shows max runtime
+        let labelText: string;
+        if (percent === 0) {
+            labelText = 'min';
+        } else {
+            const seconds = Math.round((percent / 100) * maxRuntimeSeconds);
+            labelText = formatRuntimeValue(seconds);
+        }
+
+        // Label
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', String(x));
+        label.setAttribute('y', String(LABEL_Y_OFFSET));
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('class', 'rt-runtime-cap-label');
+        label.textContent = labelText;
+        slider.appendChild(label);
+    });
+
+    // Draggable handle
+    const handleX = (initialPercent / 100) * TRACK_WIDTH;
+    const handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    handle.setAttribute('cx', String(handleX));
+    handle.setAttribute('cy', '0');
+    handle.setAttribute('r', String(HANDLE_RADIUS));
+    handle.setAttribute('class', 'rt-runtime-cap-handle');
+    slider.appendChild(handle);
+
+    // Make handle draggable
+    let isDragging = false;
+    let sliderRect: DOMRect | null = null;
+
+    const updateHandlePosition = (clientX: number) => {
+        if (!sliderRect) return;
+        
+        // Calculate position relative to slider
+        const svgElement = slider.ownerSVGElement;
+        if (!svgElement) return;
+        
+        const point = svgElement.createSVGPoint();
+        point.x = clientX;
+        point.y = 0;
+        
+        const ctm = slider.getScreenCTM();
+        if (!ctm) return;
+        
+        const localPoint = point.matrixTransform(ctm.inverse());
+        
+        // Clamp to track bounds
+        const clampedX = Math.max(0, Math.min(TRACK_WIDTH, localPoint.x));
+        handle.setAttribute('cx', String(clampedX));
+        
+        // Snap to nearest division
+        const divisionIndex = Math.round(clampedX / DIVISION_SPACING);
+        const snappedX = divisionIndex * DIVISION_SPACING;
+        const snappedPercent = percentValues[divisionIndex];
+        
+        // Update handle to snapped position
+        handle.setAttribute('cx', String(snappedX));
+        
+        // Notify callback
+        onCapChange(snappedPercent);
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+        isDragging = true;
+        sliderRect = slider.getBoundingClientRect();
+        handle.classList.add('rt-runtime-cap-handle-active');
+        (e.target as Element).setPointerCapture(e.pointerId);
+        updateHandlePosition(e.clientX);
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+        if (!isDragging) return;
+        updateHandlePosition(e.clientX);
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+        if (!isDragging) return;
+        isDragging = false;
+        handle.classList.remove('rt-runtime-cap-handle-active');
+        (e.target as Element).releasePointerCapture(e.pointerId);
+    };
+
+    handle.addEventListener('pointerdown', onPointerDown);
+    handle.addEventListener('pointermove', onPointerMove);
+    handle.addEventListener('pointerup', onPointerUp);
+    handle.addEventListener('pointercancel', onPointerUp);
+
+    // Also allow clicking on track to move handle
+    track.addEventListener('pointerdown', (e: PointerEvent) => {
+        sliderRect = slider.getBoundingClientRect();
+        updateHandlePosition(e.clientX);
+    });
+
+    // Add tooltip
+    slider.classList.add('rt-tooltip-target');
+    slider.setAttribute('data-tooltip', 'Adjust runtime arc cap (drag or click)');
+    slider.setAttribute('data-tooltip-placement', 'bottom');
+
+    return slider;
+}
+
+/**
  * Toggle number square and its text for a given sceneId
  * sceneId corresponds to the id of the scene path (e.g. "scene-path-0-2-5")
  */
@@ -1241,6 +1541,7 @@ function removeSceneHighlights(svg: SVGSVGElement): void {
 /**
  * Show elapsed time arc and label between two scenes
  * Connects the beginning (start angle) of each scene around the perimeter
+ * In Runtime mode, calculates cumulative runtime of all scenes between the two selected
  */
 function showElapsedTime(
     svg: SVGSVGElement,
@@ -1248,7 +1549,8 @@ function showElapsedTime(
     clickCount: number,
     sceneGeometry: Map<string, SceneGeometryInfo>,
     defaultOuterRadius: number,
-    settings?: { enablePlanetaryTime?: boolean; planetaryProfiles?: PlanetaryProfile[]; activePlanetaryProfileId?: string }
+    settings?: { enablePlanetaryTime?: boolean; planetaryProfiles?: PlanetaryProfile[]; activePlanetaryProfileId?: string },
+    allScenes?: TimelineItem[]
 ): void {
     removeElapsedTimeArc(svg);
 
@@ -1275,14 +1577,24 @@ function showElapsedTime(
         return;
     }
 
-    const elapsedMs = Math.abs(date2.getTime() - date1.getTime());
-    
-    // Use planetary time formatting if in alien mode
+    // Check if Runtime mode is active
+    const isRuntimeMode = svg.getAttribute('data-shift-mode') === 'runtime';
     const isAlienMode = svg.getAttribute('data-shift-mode') === 'alien';
     const profile = settings ? getActivePlanetaryProfile(settings as any) : null;
-    const elapsedTimeText = (isAlienMode && profile) 
-        ? formatElapsedTimePlanetary(elapsedMs, profile, clickCount)
-        : formatElapsedTime(elapsedMs, clickCount);
+    
+    let elapsedTimeText: string;
+    
+    if (isRuntimeMode && allScenes) {
+        // Calculate cumulative runtime of all scenes between the two selected (inclusive)
+        const cumulativeSeconds = calculateCumulativeRuntime(scene1, scene2, allScenes);
+        elapsedTimeText = formatRuntimeValue(cumulativeSeconds);
+    } else if (isAlienMode && profile) {
+        const elapsedMs = Math.abs(date2.getTime() - date1.getTime());
+        elapsedTimeText = formatElapsedTimePlanetary(elapsedMs, profile, clickCount);
+    } else {
+        const elapsedMs = Math.abs(date2.getTime() - date1.getTime());
+        elapsedTimeText = formatElapsedTime(elapsedMs, clickCount);
+    }
 
     if (geometry1 && geometry2) {
         const startAngleScene1 = geometry1.startAngle;
@@ -1511,4 +1823,76 @@ function hideOverlappingTicks(svg: SVGSVGElement, angle1: number, angle2: number
 function restoreHiddenTicks(svg: SVGSVGElement): void {
     const hiddenTicks = Array.from(svg.querySelectorAll<SVGLineElement>('.rt-tick-hidden'));
     hiddenTicks.forEach(tick => tick.classList.remove('rt-tick-hidden'));
+}
+
+/**
+ * Calculate cumulative runtime of all scenes between two selected scenes (inclusive)
+ * Scenes are sorted chronologically by their When field, then all runtimes are summed
+ * from the first selected scene through the last selected scene (including all intervening scenes)
+ */
+function calculateCumulativeRuntime(scene1: TimelineItem, scene2: TimelineItem, allScenes: TimelineItem[]): number {
+    // Parse dates for the two selected scenes
+    const parseDate = (scene: TimelineItem): Date | null => {
+        if (scene.when instanceof Date) return scene.when;
+        if (typeof scene.when === 'string') return parseWhenField(scene.when);
+        return null;
+    };
+    
+    const date1 = parseDate(scene1);
+    const date2 = parseDate(scene2);
+    
+    if (!date1 || !date2) {
+        // Fallback: just sum the two selected scenes
+        const r1 = parseRuntimeField(scene1.Runtime) || 0;
+        const r2 = parseRuntimeField(scene2.Runtime) || 0;
+        return r1 + r2;
+    }
+    
+    // Sort all scenes chronologically
+    const scenesWithDates = allScenes
+        .filter(s => s.itemType === 'Scene' || s.itemType === 'Backdrop')
+        .map(s => {
+            const when = parseDate(s);
+            return { scene: s, when };
+        })
+        .filter((s): s is { scene: TimelineItem; when: Date } => s.when !== null)
+        .sort((a, b) => a.when.getTime() - b.when.getTime());
+    
+    // Find indices of the two selected scenes
+    const earlierDate = date1.getTime() <= date2.getTime() ? date1 : date2;
+    const laterDate = date1.getTime() > date2.getTime() ? date1 : date2;
+    const earlierScene = date1.getTime() <= date2.getTime() ? scene1 : scene2;
+    const laterScene = date1.getTime() > date2.getTime() ? scene1 : scene2;
+    
+    // Find the index range
+    let startIdx = -1;
+    let endIdx = -1;
+    
+    for (let i = 0; i < scenesWithDates.length; i++) {
+        const s = scenesWithDates[i].scene;
+        if (s.path === earlierScene.path && startIdx === -1) {
+            startIdx = i;
+        }
+        if (s.path === laterScene.path) {
+            endIdx = i;
+        }
+    }
+    
+    if (startIdx === -1 || endIdx === -1 || startIdx > endIdx) {
+        // Fallback: just sum the two selected scenes
+        const r1 = parseRuntimeField(scene1.Runtime) || 0;
+        const r2 = parseRuntimeField(scene2.Runtime) || 0;
+        return r1 + r2;
+    }
+    
+    // Sum runtimes from startIdx through endIdx (inclusive)
+    let totalSeconds = 0;
+    for (let i = startIdx; i <= endIdx; i++) {
+        const runtime = parseRuntimeField(scenesWithDates[i].scene.Runtime);
+        if (runtime !== null && runtime > 0) {
+            totalSeconds += runtime;
+        }
+    }
+    
+    return totalSeconds;
 }

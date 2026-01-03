@@ -7,7 +7,7 @@
 import { formatNumber } from '../../utils/svg';
 import type { TimelineItem } from '../../types';
 import { parseWhenField, calculateTimeSpan, parseDuration, detectDiscontinuities, detectSceneOverlaps, prepareScenesForDiscontinuityDetection, calculateAutoDiscontinuityThreshold } from '../../utils/date';
-import { parseRuntimeField } from '../../utils/runtimeEstimator';
+import { parseRuntimeField, formatRuntimeValue } from '../../utils/runtimeEstimator';
 
 export interface ChronologueSceneEntry {
     scene: TimelineItem;
@@ -179,10 +179,13 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
     } as { when: Date; Duration?: string })));
 
     const durationPaths: string[] = [];
+    const runtimeLabels: string[] = []; // Runtime tick labels (mm:ss) at arc ends
 
     const TWO_PI = Math.PI * 2;
     const EDGE_MARGIN_RAD = Math.PI / 360; // 0.5 degree margin from tick mark
     const STUB_FILL_RATIO = 0.20; // Red stub fills 20% of scene arc
+    const TICK_LABEL_RADIUS = arcRadius + 12; // Position labels slightly outside arc
+    const TICK_MARK_LENGTH = 6; // Short tick mark at arc end
 
     sortedEntries.forEach((entry, idx) => {
         const durationInfo = parsedDurations[idx];
@@ -253,14 +256,55 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         durationPaths.push(
             `<path d="M ${x1} ${y1} A ${formatNumber(arcRadius)} ${formatNumber(arcRadius)} 0 ${largeArcFlag} 1 ${x2} ${y2}" class="${arcClass}" />`
         );
+
+        // In runtime mode, add tick mark and mm:ss label at arc end for valid runtimes
+        if (useRuntimeMode && durationMs && durationMs > 0 && !isUnparseable) {
+            const runtimeSeconds = durationMs / 1000;
+            const runtimeLabel = formatRuntimeValue(runtimeSeconds);
+            
+            // Tick mark at arc end
+            const tickInnerX = formatNumber(arcRadius * Math.cos(arcEnd));
+            const tickInnerY = formatNumber(arcRadius * Math.sin(arcEnd));
+            const tickOuterX = formatNumber((arcRadius + TICK_MARK_LENGTH) * Math.cos(arcEnd));
+            const tickOuterY = formatNumber((arcRadius + TICK_MARK_LENGTH) * Math.sin(arcEnd));
+            
+            runtimeLabels.push(
+                `<line x1="${tickInnerX}" y1="${tickInnerY}" x2="${tickOuterX}" y2="${tickOuterY}" class="rt-runtime-tick-mark" />`
+            );
+            
+            // Text label positioned at arc end, outside the tick
+            const labelX = formatNumber(TICK_LABEL_RADIUS * Math.cos(arcEnd));
+            const labelY = formatNumber(TICK_LABEL_RADIUS * Math.sin(arcEnd));
+            
+            // Determine text anchor based on angle to prevent clipping
+            // Right side (0 to π/2 and -π/2 to 0): start anchor
+            // Left side (π/2 to π and -π to -π/2): end anchor
+            const normalizedAngle = ((arcEnd % TWO_PI) + TWO_PI) % TWO_PI;
+            let textAnchor = 'middle';
+            if (normalizedAngle > Math.PI * 0.25 && normalizedAngle < Math.PI * 0.75) {
+                textAnchor = 'start'; // Bottom-right quadrant
+            } else if (normalizedAngle > Math.PI * 1.25 && normalizedAngle < Math.PI * 1.75) {
+                textAnchor = 'end'; // Top-left quadrant
+            }
+            
+            runtimeLabels.push(
+                `<text x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" dominant-baseline="middle" class="rt-runtime-tick-label">${runtimeLabel}</text>`
+            );
+        }
     });
     
     if (durationPaths.length === 0) {
         return null;
     }
     
+    // Include runtime labels in the output if any
+    const labelsGroup = runtimeLabels.length > 0 
+        ? `<g class="rt-runtime-tick-labels">${runtimeLabels.join('')}</g>` 
+        : '';
+    
     return `<g class="rt-chronologue-duration-ticks">
         ${durationPaths.join('')}
+        ${labelsGroup}
     </g>`;
 }
 

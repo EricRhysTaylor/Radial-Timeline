@@ -176,4 +176,5 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
     runtimeLongPauseSeconds: 5,
     runtimeMomentSeconds: 4,
     runtimeSilenceSeconds: 5,
+    runtimeCapDefaultPercent: 100, // Auto/Max - longest scene fills 100%
 };

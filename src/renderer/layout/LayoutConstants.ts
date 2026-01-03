@@ -225,6 +225,22 @@ export const SHIFT_BUTTON_POS_X = -700;
 /** Vertical position for chronologue shift button */
 export const SHIFT_BUTTON_POS_Y = -740;
 
+// =============================================================================
+// RUNTIME CAP SLIDER
+// =============================================================================
+
+/** Horizontal position for runtime cap slider (left edge) */
+export const RUNTIME_SLIDER_POS_X = -700;
+
+/** Vertical position for runtime cap slider (below RT button) */
+export const RUNTIME_SLIDER_POS_Y = -665;
+
+/** Width of runtime cap slider track */
+export const RUNTIME_SLIDER_WIDTH = 120;
+
+/** Height of runtime cap slider (including labels) */
+export const RUNTIME_SLIDER_HEIGHT = 24;
+
 
 
 
