@@ -560,6 +560,11 @@
 /* ALIEN SHIFT MODE ([data-shift-mode="alien"])                              */
 /* -------------------------------------------------------------------------- */
 
+/* 0. Base State: Fade all scenes like Shift */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] {
+  opacity: 0.15;
+}
+
 /* 1. Base State: Scene paths fade out with muted red tint (matching SHIFT mode visibility ~15%) */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
   fill: rgba(180, 60, 60, 0.15) !important;
@@ -576,13 +581,13 @@
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-text {
   fill: rgba(200, 50, 50, 0.8) !important;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 /* 3. Scene Text: Match number square text color and opacity */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-title {
   fill: rgba(200, 50, 50, 0.8) !important;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 /* 4. Spokes/Radial Lines/Month Lines: Muted red tint (increased visibility to match SHIFT) */
@@ -755,6 +760,11 @@
 /* Blue-tinted styling to distinguish from normal (gray) and alien (red)      */
 /* -------------------------------------------------------------------------- */
 
+/* 0. Base State: Fade all scenes like Shift */
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"] {
+  opacity: 0.15;
+}
+
 /* 1. Act Borders with blue tint */
 .radial-timeline-svg[data-shift-mode="runtime"] .act-border,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-month-spoke-line.rt-act-boundary {
@@ -773,18 +783,18 @@
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-number-square {
   fill: var(--interactive-normal) !important;
   stroke: none !important;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-number-text {
   fill: rgba(60, 140, 200, 0.9) !important;
-  opacity: 0.8;
+  opacity: 0.6;
 }
 
 /* 4. Scene Text: Match number square text color */
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-title {
   fill: rgba(60, 140, 200, 0.9) !important;
-  opacity: 0.8;
+  opacity: 0.6;
 }
 
 /* 5. Spokes/Radial Lines/Month Lines: Blue tint */
@@ -803,6 +813,22 @@
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-chronological-tick-major,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-chronological-tick-minor {
   stroke: rgba(60, 120, 180, 0.5) !important;
+}
+
+/* 6. Hover State: Full Opacity, Brighter Blue */
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"]:hover,
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"]:has(.rt-shift-locked) {
+  opacity: 1 !important;
+  transition: none !important;
+}
+
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"]:hover .rt-scene-path,
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-scene-path,
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path.rt-shift-locked {
+  fill: rgba(60, 160, 220, 0.9) !important;
+  stroke: rgba(60, 160, 220, 0.9) !important;
+  filter: brightness(1.25) drop-shadow(0 0 5px rgba(60, 160, 220, 0.5));
 }
 
 /* 7. Duration/Runtime arcs get blue tint in runtime mode */

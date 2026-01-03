@@ -7,16 +7,16 @@
   flex-direction: column;
   padding: 12px 16px;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, var(--interactive-accent-alpha-10, rgba(var(--interactive-accent-rgb), 0.08)) 0%, var(--interactive-accent-alpha-02, rgba(var(--interactive-accent-rgb), 0.02)) 100%);
-  border: 1px solid var(--interactive-accent-alpha-20, rgba(var(--interactive-accent-rgb), 0.2));
+  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.08) 0%, rgba(var(--rt-pro-color-rgb), 0.02) 100%);
+  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.2);
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .rt-professional-header:hover {
-  background: linear-gradient(135deg, var(--interactive-accent-alpha-15, rgba(var(--interactive-accent-rgb), 0.12)) 0%, var(--interactive-accent-alpha-05, rgba(var(--interactive-accent-rgb), 0.04)) 100%);
-  border-color: var(--interactive-accent-alpha-35, rgba(var(--interactive-accent-rgb), 0.35));
+  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.12) 0%, rgba(var(--rt-pro-color-rgb), 0.04) 100%);
+  border-color: rgba(var(--rt-pro-color-rgb), 0.35);
 }
 
 /* Active state - green */
@@ -37,7 +37,7 @@
 }
 
 .rt-professional-icon {
-  color: var(--interactive-accent);
+  color: var(--rt-pro-color);
   display: flex;
   align-items: center;
   transition: color 0.3s ease;
@@ -56,7 +56,7 @@
   flex: 1;
   font-weight: 600;
   font-size: 16px;
-  color: var(--interactive-accent);
+  color: var(--rt-pro-color);
   transition: color 0.3s ease;
 }
 
@@ -119,17 +119,17 @@
 /* Inline "Get key" link next to License key label */
 .rt-professional-get-key-link {
   margin-left: 12px;
-  color: var(--interactive-accent);
+  color: var(--rt-pro-color);
+  opacity: 0.8;
   text-decoration: none;
   font-size: 12px;
   font-weight: 500;
-  opacity: 0.85;
 }
 
 .rt-professional-get-key-link:hover {
-  color: var(--interactive-accent-hover, var(--interactive-accent));
-  text-decoration: underline;
   opacity: 1;
+  color: var(--rt-pro-color);
+  text-decoration: underline;
 }
 
 .rt-professional-features {
@@ -164,7 +164,7 @@
 }
 
 .rt-professional-feature-icon {
-  color: var(--interactive-accent);
+  color: var(--rt-pro-color);
   opacity: 0.85;
   display: flex;
   flex-shrink: 0;
@@ -176,19 +176,156 @@
   height: 16px;
 }
 
-/* Professional badge on section headings */
+/* ─────────────────────────────────────────────────────────────────────────────
+   OPEN BETA STYLES
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Beta header state */
+.rt-professional-header.rt-professional-beta {
+  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.12) 0%, rgba(var(--rt-pro-color-rgb), 0.04) 100%);
+  border-color: rgba(var(--rt-pro-color-rgb), 0.35);
+}
+
+.rt-professional-header.rt-professional-beta:hover {
+  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.16) 0%, rgba(var(--rt-pro-color-rgb), 0.06) 100%);
+  border-color: rgba(var(--rt-pro-color-rgb), 0.5);
+}
+
+.rt-professional-header.rt-professional-beta .rt-professional-icon {
+  color: var(--rt-pro-color);
+}
+
+.rt-professional-header.rt-professional-beta .rt-professional-title {
+  color: var(--rt-pro-color);
+}
+
+/* Beta banner */
+.rt-professional-beta-banner {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.08) 0%, rgba(var(--rt-pro-color-rgb), 0.02) 100%);
+  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.25);
+  border-radius: 8px;
+}
+
+.rt-professional-beta-icon {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+  color: var(--rt-pro-color);
+  margin-top: 2px;
+}
+
+.rt-professional-beta-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.rt-professional-beta-text {
+  flex: 1;
+}
+
+.rt-professional-beta-text strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rt-pro-color);
+  margin-bottom: 6px;
+}
+
+.rt-professional-beta-text p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.rt-professional-feedback-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--rt-pro-color);
+  text-decoration: none;
+  opacity: 0.9;
+}
+
+.rt-professional-feedback-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* Future license note (during beta) */
+.rt-professional-future-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.rt-professional-key-reveal {
+  color: var(--rt-pro-color);
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.rt-professional-key-reveal:hover {
+  color: var(--rt-pro-color);
+  text-decoration: underline;
+}
+
+.rt-professional-key-container {
+  padding: 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
+}
+
+.rt-professional-key-container.rt-collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 12px;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+
+/* Pro badge on section headings (positioned BEFORE heading text) */
+.rt-pro-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+  padding: 4px 10px;
+  background: rgba(var(--rt-pro-color-rgb), 0.12);
+  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.35);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rt-pro-color);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  vertical-align: middle;
+}
+
+.rt-pro-badge svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Legacy badge class - keep for compatibility */
 .rt-professional-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   margin-left: 8px;
   padding: 2px 8px;
-  background: var(--interactive-accent-alpha-15, rgba(var(--interactive-accent-rgb), 0.15));
-  border: 1px solid var(--interactive-accent-alpha-30, rgba(var(--interactive-accent-rgb), 0.3));
+  background: rgba(var(--rt-pro-color-rgb), 0.15);
+  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.3);
   border-radius: 10px;
   font-size: 10px;
   font-weight: 600;
-  color: var(--interactive-accent);
+  color: var(--rt-pro-color);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   vertical-align: middle;
@@ -1563,7 +1700,7 @@
 
 .rt-runtime-number {
   font-weight: 600;
-  color: var(--interactive-accent);
+  color: var(--rt-pro-color);
 }
 
 .rt-runtime-hint {
@@ -1720,7 +1857,7 @@
 }
 
 .rt-runtime-accordion-header:hover {
-  color: var(--interactive-accent);
+  color: var(--rt-pro-color);
 }
 
 .rt-runtime-accordion-icon {

@@ -120,6 +120,13 @@
   max-height: 92vh;
 }
 
+/* Runtime modal uses Pro/Signature magenta color scheme */
+.rt-runtime-modal-shell .rt-modal-badge {
+  background: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.15);
+  border-color: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.3);
+  color: var(--rt-pro-color, #d946ef);
+}
+
 .rt-modal-shell.modal:has(.rt-search-modal) {
   width: min(600px, 90vw);
 }

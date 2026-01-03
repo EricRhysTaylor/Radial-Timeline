@@ -27,12 +27,15 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     const heading = new Setting(containerEl)
         .setName('Runtime estimation')
         .setHeading();
-    addWikiLink(heading, 'Settings#runtime-estimation');
     
-    // Add Pro badge to heading
-    const badgeEl = heading.nameEl.createSpan({ cls: 'rt-professional-badge' });
+    // Add Pro badge BEFORE the heading text
+    const nameEl = heading.nameEl;
+    const badgeEl = createEl('span', { cls: 'rt-pro-badge' });
     setIcon(badgeEl, 'signature');
     badgeEl.createSpan({ text: 'Pro' });
+    nameEl.insertBefore(badgeEl, nameEl.firstChild);
+    
+    addWikiLink(heading, 'Settings#runtime-estimation');
 
     // ─────────────────────────────────────────────────────────────────────────
     // Professional Gate

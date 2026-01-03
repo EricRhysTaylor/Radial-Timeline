@@ -14,6 +14,7 @@ import { isBeatNote } from './utils/sceneHelpers';
 import { normalizeStatus } from './utils/text';
 import type { TimelineItem } from './types';
 import { callProvider } from './api/providerRouter';
+import { isProfessionalActive } from './settings/sections/ProfessionalSection';
 
 interface SceneToProcess {
     file: TFile;
@@ -458,8 +459,9 @@ export function registerRuntimeCommands(plugin: RadialTimelinePlugin): void {
         id: 'runtime-estimator',
         name: 'Runtime estimator',
         checkCallback: (checking: boolean) => {
-            // Only show command when runtime estimation is enabled
-            if (!plugin.settings.enableRuntimeEstimation) {
+            // Only show command when Pro is active and runtime estimation is enabled
+            const hasPro = isProfessionalActive(plugin);
+            if (!hasPro || !plugin.settings.enableRuntimeEstimation) {
                 return false;
             }
             if (!checking) {

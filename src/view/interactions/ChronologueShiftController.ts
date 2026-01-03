@@ -225,6 +225,18 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     };
 
     // Function to activate shift mode
+    const deactivateAlienMode = () => {
+        if (!altButton && !alienModeActive) return;
+        alienModeActive = false;
+        globalAlienModeActive = false;
+        if (altButton) updateAltButtonState(altButton, false);
+        updateDateLabelsForAlienMode(false);
+        // Clear data attribute if no other mode is active
+        if (!shiftModeActive && !runtimeModeActive) {
+            svg.removeAttribute('data-shift-mode');
+        }
+    };
+
     const activateShiftMode = (enableAlien: boolean = false) => {
         // Exclusive: turning on Shift disables Runtime
         deactivateRuntimeMode();
@@ -233,6 +245,11 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             shiftModeActive = true;
             globalShiftModeActive = true;
             updateShiftButtonState(shiftButton, true);
+        }
+
+        // If Alt/Alien was latched, clicking Shift should replace it
+        if (!enableAlien && alienModeActive) {
+            deactivateAlienMode();
         }
 
         // Handle Alien Logic overlap
@@ -420,22 +437,22 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         if (!altButton) return; // Guard clause
 
         if (alienModeActive) {
-            // Turn OFF Alien Mode → also deactivate Shift
-            deactivateShiftMode(); // This will also clear alienModeActive
-        } else {
-            // Turn ON Alien Mode
-            // Must ensure Shift is Active
-            if (!shiftModeActive) {
-                deactivateRuntimeMode();
-                activateShiftMode(true); // Will set alien flags
-            } else {
-                alienModeActive = true;
-                globalAlienModeActive = true;
-                updateAltButtonState(altButton, true);
-                svg.setAttribute('data-shift-mode', 'alien');
-                updateDateLabelsForAlienMode(true);
-            }
+            // Turn OFF Alien Mode
+            deactivateAlienMode();
+            return;
         }
+
+        // Turn ON Alien Mode (exclusive)
+        deactivateRuntimeMode();
+        if (shiftModeActive) deactivateShiftMode();
+        shiftModeActive = false;
+        globalShiftModeActive = false;
+
+        alienModeActive = true;
+        globalAlienModeActive = true;
+        updateAltButtonState(altButton, true);
+        svg.setAttribute('data-shift-mode', 'alien');
+        updateDateLabelsForAlienMode(true);
     };
 
     const toggleRuntimeMode = () => {
@@ -519,7 +536,7 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         if (isActive) {
             if (!shiftModeActive) {
                 deactivateRuntimeMode();
-                activateShiftMode(false);
+                activateShiftMode();
             }
         } else {
             if (shiftModeActive) deactivateShiftMode();
@@ -543,7 +560,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
 
         if (e.key === 'Shift') {
-            activateShiftMode(e.altKey); // Enable Alien if Alt is held
+            deactivateRuntimeMode();
+            activateShiftMode(); // Shift only
         } else if (e.key === 'Alt') {
             // Alt key toggles Alien mode (same behavior as clicking the Alt button)
             // This also activates/deactivates Shift mode as needed
@@ -964,10 +982,10 @@ function createRtButton(contentType: RuntimeContentType): SVGGElement {
     const SHIFT_WIDTH = 62;
     const SHIFT_HEIGHT = 55;
 
-    // Position to the RIGHT of Shift button (60px gap) and 5px down
-    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 60;
-    // Vertically center with shift button, then nudge down 5px
-    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2 + 5;
+    // Position to the RIGHT of Shift button (50px gap) and 15px up (net -15 from center)
+    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 50;
+    // Vertically center with shift button, then nudge up 15px
+    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2 - 15;
 
     button.setAttribute('transform', `translate(${basePosX}, ${basePosY})`);
     button.setAttribute('data-base-x', String(basePosX));
@@ -1046,9 +1064,9 @@ function updateRtButtonState(button: SVGGElement, active: boolean): void {
     const SHIFT_WIDTH = 62;
     const SHIFT_HEIGHT = 55;
 
-    // Position to the RIGHT of Shift button (60px gap) and 5px down
-    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 60;
-    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2 + 5;
+    // Position to the RIGHT of Shift button (50px gap) and 15px up
+    const basePosX = SHIFT_BUTTON_POS_X + SHIFT_WIDTH + 50;
+    const basePosY = SHIFT_BUTTON_POS_Y + (SHIFT_HEIGHT - RT_SIZE) / 2 - 15;
 
     if (active) {
         // Scale from center

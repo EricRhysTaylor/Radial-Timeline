@@ -232,6 +232,12 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
   stroke: none;
 }
 
+/* Chronologue mode: soften and tint backdrop labels for visibility */
+.radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]) .rt-backdrop-label {
+  fill: rgba(60, 140, 220, 0.7) !important;
+  opacity: 0.25 !important;
+}
+
 /* On backdrop hover: text and box turn to max publish stage color */
 .rt-scene-group[data-item-type="Backdrop"]:hover .rt-backdrop-label {
   fill: var(--rt-max-publish-stage-color) !important;
@@ -360,5 +366,41 @@ svg[data-shift-mode="active"] .rt-discontinuity-marker {
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Backdrop"],
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Backdrop"] * {
+  pointer-events: none !important;
+}
+
+/* Runtime mode: blue-tinted backdrop treatment (similar to Alt/Alien tinting) */
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-ring {
+  opacity: 0.2;
+}
+
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-ring-background {
+  stroke: rgba(60, 140, 220, 0.5) !important;
+  stroke-opacity: 0.18 !important;
+}
+
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-border {
+  stroke: rgba(60, 140, 220, 0.4) !important;
+  opacity: 0.7 !important;
+}
+
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-label {
+  fill: rgba(60, 140, 220, 0.7) !important;
+  opacity: 0.3 !important;
+}
+
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0.25 !important;
+  pointer-events: none !important;
+}
+
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-backdrop-segment {
+  fill: rgba(60, 140, 220, 0.05) !important;
+  stroke: rgba(60, 140, 220, 0.25);
+  stroke-width: 1px;
+}
+
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Backdrop"],
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Backdrop"] * {
   pointer-events: none !important;
 }

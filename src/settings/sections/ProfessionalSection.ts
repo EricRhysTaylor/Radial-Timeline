@@ -10,6 +10,12 @@ import { App, Setting, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { addWikiLink } from '../wikiLink';
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// OPEN BETA CONFIGURATION
+// Set to false when transitioning to paid licensing
+// ═══════════════════════════════════════════════════════════════════════════════
+const OPEN_BETA_ACTIVE = true;
+
 interface SectionParams {
     app: App;
     plugin: RadialTimelinePlugin;
@@ -18,47 +24,65 @@ interface SectionParams {
 
 /**
  * Check if a professional license key is valid
- * Currently a dummy implementation - will be connected to backend later
  */
 export function isProfessionalLicenseValid(key: string | undefined): boolean {
     if (!key || key.trim().length === 0) {
         return false;
     }
-    // DUMMY: For now, any non-empty key is "valid" for testing
-    // TODO: Connect to license validation API
+    // TODO: Connect to license validation API when beta ends
     return key.trim().length >= 16;
 }
 
 /**
  * Check if the professional tier is active
+ * During Open Beta, Pro features are enabled for everyone
  */
 export function isProfessionalActive(plugin: RadialTimelinePlugin): boolean {
+    // During Open Beta, everyone gets Pro access
+    if (OPEN_BETA_ACTIVE) {
+        return true;
+    }
     return isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
 }
 
+/**
+ * Check if we're in Open Beta mode
+ */
+export function isOpenBeta(): boolean {
+    return OPEN_BETA_ACTIVE;
+}
+
 export function renderProfessionalSection({ plugin, containerEl }: SectionParams): void {
-    let hasValidKey = isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
+    const hasValidKey = isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
+    const isActive = isProfessionalActive(plugin);
     
     // ─────────────────────────────────────────────────────────────────────────
     // Combined Header/Status Bar
     // ─────────────────────────────────────────────────────────────────────────
     const headerContainer = containerEl.createDiv({ cls: 'rt-professional-header' });
-    if (hasValidKey) {
+    if (isActive) {
         headerContainer.addClass('rt-professional-active');
+    }
+    if (OPEN_BETA_ACTIVE) {
+        headerContainer.addClass('rt-professional-beta');
     }
     
     const headerRow = headerContainer.createDiv({ cls: 'rt-professional-header-row' });
     
-    // Icon (signature for inactive, check-circle for active)
+    // Icon - always use signature for brand consistency
     const iconEl = headerRow.createSpan({ cls: 'rt-professional-icon' });
-    setIcon(iconEl, hasValidKey ? 'check-circle' : 'signature');
+    setIcon(iconEl, 'signature');
     
     // Title text
     const titleEl = headerRow.createSpan({ cls: 'rt-professional-title' });
-    titleEl.setText(hasValidKey ? 'Pro features active' : 'Pro');
+    if (OPEN_BETA_ACTIVE) {
+        titleEl.setText('Pro · Early Access');
+    } else {
+        titleEl.setText(isActive ? 'Pro features active' : 'Pro');
+    }
     
-    // Wiki link (only when inactive)
-    if (!hasValidKey) {
+    // Wiki link (only when not active)
+    if (!isActive) {
         const linkContainer = headerRow.createSpan({ cls: 'rt-professional-wiki-link' });
         const dummySetting = new Setting(linkContainer);
         dummySetting.settingEl.addClass('rt-professional-heading-inline');
@@ -67,35 +91,19 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     
     // Collapse toggle
     const toggleEl = headerRow.createSpan({ cls: 'rt-professional-toggle' });
-    setIcon(toggleEl, hasValidKey ? 'chevron-down' : 'chevron-right');
+    setIcon(toggleEl, isActive ? 'chevron-down' : 'chevron-right');
     
     // Collapsible content container
     const contentContainer = containerEl.createDiv({ cls: 'rt-professional-content' });
     
-    // Start collapsed if no key, expanded if key exists
-    let isExpanded = hasValidKey;
+    // Start expanded if active (including beta), collapsed otherwise
+    let isExpanded = isActive;
     if (!isExpanded) {
         contentContainer.addClass('rt-collapsed');
     }
     
-    // Update header appearance based on key validity
-    const updateHeaderState = (valid: boolean) => {
-        hasValidKey = valid;
-        if (valid) {
-            headerContainer.addClass('rt-professional-active');
-            setIcon(iconEl, 'check-circle');
-            titleEl.setText('Pro features active');
-            setIcon(toggleEl, 'chevron-down');
-        } else {
-            headerContainer.removeClass('rt-professional-active');
-            setIcon(iconEl, 'signature');
-            titleEl.setText('Pro');
-            setIcon(toggleEl, 'chevron-right');
-        }
-    };
-    
     // Toggle behavior
-    headerContainer.addEventListener('click', (e) => {
+    plugin.registerDomEvent(headerContainer, 'click', (e) => {
         // Don't toggle if clicking on input or wiki link
         if ((e.target as HTMLElement).closest('input, a, .rt-wiki-link')) {
             return;
@@ -111,60 +119,125 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     });
     
     // ─────────────────────────────────────────────────────────────────────────
-    // Content
+    // Open Beta Banner (shown during beta period)
     // ─────────────────────────────────────────────────────────────────────────
-    
-    // License key input with inline "Get key" link
-    const licenseSetting = new Setting(contentContainer)
-        .setDesc('Enter your Pro license key to unlock advanced features.')
-        .addText(text => {
-            text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
-            text.setValue(plugin.settings.professionalLicenseKey || '');
-            text.inputEl.addClass('rt-input-lg');
-            text.inputEl.type = 'password';
-            
-            // Add show/hide toggle
-            const toggleVis = text.inputEl.parentElement?.createEl('button', { 
-                cls: 'rt-professional-key-toggle',
-                attr: { type: 'button', 'aria-label': 'Show/hide license key' }
-            });
-            if (toggleVis) {
-                setIcon(toggleVis, 'eye');
-                toggleVis.addEventListener('click', () => {
-                    if (text.inputEl.type === 'password') {
-                        text.inputEl.type = 'text';
-                        setIcon(toggleVis, 'eye-off');
-                    } else {
-                        text.inputEl.type = 'password';
-                        setIcon(toggleVis, 'eye');
-                    }
-                });
-            }
-            
-            plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                const value = text.getValue().trim();
-                plugin.settings.professionalLicenseKey = value || undefined;
-                await plugin.saveSettings();
-                updateHeaderState(isProfessionalLicenseValid(value));
-            });
+    if (OPEN_BETA_ACTIVE) {
+        const betaBanner = contentContainer.createDiv({ cls: 'rt-professional-beta-banner' });
+        
+        const bannerIcon = betaBanner.createSpan({ cls: 'rt-professional-beta-icon' });
+        setIcon(bannerIcon, 'signature');
+        
+        const bannerText = betaBanner.createDiv({ cls: 'rt-professional-beta-text' });
+        bannerText.createEl('strong', { text: 'Thank you for being an early adopter!' });
+        bannerText.createEl('p', { 
+            text: 'Pro features are free during the Open Beta. Your feedback helps shape the future of Radial Timeline. When we launch paid licensing, early supporters may receive special perks.'
         });
+        
+        // Feedback link
+        const feedbackLink = bannerText.createEl('a', {
+            text: 'Share feedback →',
+            href: 'https://radial-timeline.com/feedback',
+            cls: 'rt-professional-feedback-link',
+            attr: { target: '_blank', rel: 'noopener' }
+        });
+    }
     
-    // Custom name with inline link
-    const nameEl = licenseSetting.nameEl;
-    nameEl.empty();
-    nameEl.createSpan({ text: 'License key' });
-    nameEl.createEl('a', {
-        text: 'Get Signature →',
-        href: 'https://radial-timeline.com/signature',
-        cls: 'rt-professional-get-key-link',
-        attr: { target: '_blank', rel: 'noopener' }
-    });
+    // ─────────────────────────────────────────────────────────────────────────
+    // License Key Section (collapsed during beta, primary after)
+    // ─────────────────────────────────────────────────────────────────────────
+    if (!OPEN_BETA_ACTIVE) {
+        // Standard license key input (post-beta)
+        const licenseSetting = new Setting(contentContainer)
+            .setDesc('Enter your Pro license key to unlock advanced features.')
+            .addText(text => {
+                text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
+                text.setValue(plugin.settings.professionalLicenseKey || '');
+                text.inputEl.addClass('rt-input-lg');
+                text.inputEl.type = 'password';
+                
+                // Add show/hide toggle
+                const toggleVis = text.inputEl.parentElement?.createEl('button', { 
+                    cls: 'rt-professional-key-toggle',
+                    attr: { type: 'button', 'aria-label': 'Show/hide license key' }
+                });
+                if (toggleVis) {
+                    setIcon(toggleVis, 'eye');
+                    plugin.registerDomEvent(toggleVis, 'click', () => {
+                        if (text.inputEl.type === 'password') {
+                            text.inputEl.type = 'text';
+                            setIcon(toggleVis, 'eye-off');
+                        } else {
+                            text.inputEl.type = 'password';
+                            setIcon(toggleVis, 'eye');
+                        }
+                    });
+                }
+                
+                plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+                    const value = text.getValue().trim();
+                    plugin.settings.professionalLicenseKey = value || undefined;
+                    await plugin.saveSettings();
+                    // Re-render to update header state
+                    containerEl.empty();
+                    renderProfessionalSection({ app: plugin.app, plugin, containerEl });
+                });
+            });
+        
+        // Custom name with inline link
+        const nameEl = licenseSetting.nameEl;
+        nameEl.empty();
+        nameEl.createSpan({ text: 'License key' });
+        nameEl.createEl('a', {
+            text: 'Get key →',
+            href: 'https://radial-timeline.com/signature',
+            cls: 'rt-professional-get-key-link',
+            attr: { target: '_blank', rel: 'noopener' }
+        });
+    } else {
+        // During beta: show a small note about future licensing
+        const futureNote = contentContainer.createDiv({ cls: 'rt-professional-future-note' });
+        futureNote.createEl('span', { 
+            text: 'Already have a license key? ',
+            cls: 'rt-professional-future-label'
+        });
+        
+        // Collapsible key input for those who already have a key
+        const keyToggle = futureNote.createEl('a', {
+            text: 'Enter it here',
+            cls: 'rt-professional-key-reveal',
+            href: '#'
+        });
+        
+        const keyContainer = contentContainer.createDiv({ cls: 'rt-professional-key-container rt-collapsed' });
+        
+        plugin.registerDomEvent(keyToggle, 'click', (e) => {
+            e.preventDefault();
+            keyContainer.toggleClass('rt-collapsed', keyContainer.hasClass('rt-collapsed') ? false : true);
+            keyToggle.setText(keyContainer.hasClass('rt-collapsed') ? 'Enter it here' : 'Hide');
+        });
+        
+        new Setting(keyContainer)
+            .setName('License key')
+            .setDesc('If you have a Pro license key, enter it here.')
+            .addText(text => {
+                text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
+                text.setValue(plugin.settings.professionalLicenseKey || '');
+                text.inputEl.addClass('rt-input-lg');
+                text.inputEl.type = 'password';
+                
+                plugin.registerDomEvent(text.inputEl, 'blur', async () => {
+                    const value = text.getValue().trim();
+                    plugin.settings.professionalLicenseKey = value || undefined;
+                    await plugin.saveSettings();
+                });
+            });
+    }
     
     // ─────────────────────────────────────────────────────────────────────────
     // Professional Features List
     // ─────────────────────────────────────────────────────────────────────────
     const featuresEl = contentContainer.createDiv({ cls: 'rt-professional-features' });
-    featuresEl.createEl('h5', { text: 'Pro features include:' });
+    featuresEl.createEl('h5', { text: OPEN_BETA_ACTIVE ? 'Included in Early Access:' : 'Pro features include:' });
     
     const featuresList = featuresEl.createEl('ul');
     const features = [
