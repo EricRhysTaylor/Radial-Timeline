@@ -29,9 +29,9 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         .setHeading();
     addWikiLink(heading, 'Settings#runtime-estimation');
     
-    // Add Professional badge to heading
+    // Add Pro badge to heading
     const badgeEl = heading.nameEl.createSpan({ cls: 'rt-professional-badge' });
-    setIcon(badgeEl, 'crown');
+    setIcon(badgeEl, 'signature');
     badgeEl.createSpan({ text: 'Pro' });
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         const gateEl = containerEl.createDiv({ cls: 'rt-professional-gate' });
         gateEl.createDiv({ 
             cls: 'rt-professional-gate-message', 
-            text: 'Runtime estimation requires a Professional license. Enter your license key in the Professional section above to unlock this feature.' 
+            text: 'Runtime estimation requires a Pro license. Unlock this feature by entering your license key above. Run local or AI-powered estimates for screenplays and novels. Set custom word rates and parenthetical timings. Additional Chronologue duration arcs, sub-mode in blue and scene hover metadata.' 
         });
         return;
     }

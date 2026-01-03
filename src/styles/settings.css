@@ -7,28 +7,44 @@
   flex-direction: column;
   padding: 12px 16px;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, rgba(180, 140, 60, 0.08) 0%, rgba(180, 140, 60, 0.02) 100%);
-  border: 1px solid rgba(180, 140, 60, 0.2);
+  background: linear-gradient(135deg, var(--interactive-accent-alpha-10, rgba(var(--interactive-accent-rgb), 0.08)) 0%, var(--interactive-accent-alpha-02, rgba(var(--interactive-accent-rgb), 0.02)) 100%);
+  border: 1px solid var(--interactive-accent-alpha-20, rgba(var(--interactive-accent-rgb), 0.2));
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .rt-professional-header:hover {
-  background: linear-gradient(135deg, rgba(180, 140, 60, 0.12) 0%, rgba(180, 140, 60, 0.04) 100%);
-  border-color: rgba(180, 140, 60, 0.35);
+  background: linear-gradient(135deg, var(--interactive-accent-alpha-15, rgba(var(--interactive-accent-rgb), 0.12)) 0%, var(--interactive-accent-alpha-05, rgba(var(--interactive-accent-rgb), 0.04)) 100%);
+  border-color: var(--interactive-accent-alpha-35, rgba(var(--interactive-accent-rgb), 0.35));
+}
+
+/* Active state - green */
+.rt-professional-header.rt-professional-active {
+  background: linear-gradient(135deg, rgba(60, 160, 80, 0.12) 0%, rgba(60, 160, 80, 0.04) 100%);
+  border-color: rgba(60, 160, 80, 0.35);
+}
+
+.rt-professional-header.rt-professional-active:hover {
+  background: linear-gradient(135deg, rgba(60, 160, 80, 0.16) 0%, rgba(60, 160, 80, 0.06) 100%);
+  border-color: rgba(60, 160, 80, 0.5);
 }
 
 .rt-professional-header-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .rt-professional-icon {
-  color: rgba(200, 160, 60, 0.9);
+  color: var(--interactive-accent);
   display: flex;
   align-items: center;
+  transition: color 0.3s ease;
+}
+
+.rt-professional-header.rt-professional-active .rt-professional-icon {
+  color: rgba(80, 180, 100, 0.95);
 }
 
 .rt-professional-icon svg {
@@ -36,16 +52,28 @@
   height: 20px;
 }
 
-.rt-professional-heading {
+.rt-professional-title {
   flex: 1;
-  border: none !important;
-  padding: 0 !important;
-  margin: 0;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--interactive-accent);
+  transition: color 0.3s ease;
 }
 
-.rt-settings-root .rt-professional-heading .setting-item-name {
-  color: rgba(200, 160, 60, 0.95);
-  font-weight: 600;
+.rt-professional-header.rt-professional-active .rt-professional-title {
+  color: rgba(80, 180, 100, 0.95);
+}
+
+.rt-professional-wiki-link {
+  display: flex;
+  align-items: center;
+}
+
+.rt-professional-heading-inline {
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 0 !important;
 }
 
 .rt-professional-toggle {
@@ -68,36 +96,6 @@
   margin-bottom: 0;
 }
 
-.rt-professional-status {
-  margin-bottom: 12px;
-  padding: 10px 14px;
-  border-radius: 6px;
-}
-
-.rt-professional-status-active {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-success);
-  background: rgba(var(--color-green-rgb), 0.1);
-  padding: 10px 14px;
-  border-radius: 6px;
-}
-
-.rt-professional-status-active .rt-professional-status-icon {
-  display: flex;
-}
-
-.rt-professional-status-active .rt-professional-status-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.rt-professional-status-inactive {
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
 .rt-professional-key-toggle {
   background: transparent;
   border: none;
@@ -118,20 +116,20 @@
   height: 16px;
 }
 
-.rt-professional-get-license {
-  margin: 12px 0 16px 0;
-}
-
-.rt-professional-get-license a {
-  color: rgba(200, 160, 60, 0.9);
+/* Inline "Get key" link next to License key label */
+.rt-professional-get-key-link {
+  margin-left: 12px;
+  color: var(--interactive-accent);
   text-decoration: none;
+  font-size: 12px;
   font-weight: 500;
-  font-size: 13px;
+  opacity: 0.85;
 }
 
-.rt-professional-get-license a:hover {
-  color: rgba(220, 180, 80, 1);
+.rt-professional-get-key-link:hover {
+  color: var(--interactive-accent-hover, var(--interactive-accent));
   text-decoration: underline;
+  opacity: 1;
 }
 
 .rt-professional-features {
@@ -166,7 +164,8 @@
 }
 
 .rt-professional-feature-icon {
-  color: rgba(200, 160, 60, 0.7);
+  color: var(--interactive-accent);
+  opacity: 0.85;
   display: flex;
   flex-shrink: 0;
   margin-top: 2px;
@@ -184,12 +183,12 @@
   gap: 4px;
   margin-left: 8px;
   padding: 2px 8px;
-  background: rgba(180, 140, 60, 0.15);
-  border: 1px solid rgba(180, 140, 60, 0.3);
+  background: var(--interactive-accent-alpha-15, rgba(var(--interactive-accent-rgb), 0.15));
+  border: 1px solid var(--interactive-accent-alpha-30, rgba(var(--interactive-accent-rgb), 0.3));
   border-radius: 10px;
   font-size: 10px;
   font-weight: 600;
-  color: rgba(200, 160, 60, 0.9);
+  color: var(--interactive-accent);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   vertical-align: middle;

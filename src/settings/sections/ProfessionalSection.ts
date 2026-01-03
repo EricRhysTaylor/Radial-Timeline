@@ -37,24 +37,33 @@ export function isProfessionalActive(plugin: RadialTimelinePlugin): boolean {
 }
 
 export function renderProfessionalSection({ plugin, containerEl }: SectionParams): void {
-    const hasValidKey = isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
+    let hasValidKey = isProfessionalLicenseValid(plugin.settings.professionalLicenseKey);
     
     // ─────────────────────────────────────────────────────────────────────────
-    // Section Header with special styling
+    // Combined Header/Status Bar
     // ─────────────────────────────────────────────────────────────────────────
     const headerContainer = containerEl.createDiv({ cls: 'rt-professional-header' });
+    if (hasValidKey) {
+        headerContainer.addClass('rt-professional-active');
+    }
     
-    // Icon + Title row
     const headerRow = headerContainer.createDiv({ cls: 'rt-professional-header-row' });
     
+    // Icon (signature for inactive, check-circle for active)
     const iconEl = headerRow.createSpan({ cls: 'rt-professional-icon' });
-    setIcon(iconEl, 'crown');
+    setIcon(iconEl, hasValidKey ? 'check-circle' : 'signature');
     
-    const heading = new Setting(headerRow)
-        .setName('Professional')
-        .setHeading();
-    heading.settingEl.addClass('rt-professional-heading');
-    addWikiLink(heading, 'Settings#professional');
+    // Title text
+    const titleEl = headerRow.createSpan({ cls: 'rt-professional-title' });
+    titleEl.setText(hasValidKey ? 'Pro features active' : 'Pro');
+    
+    // Wiki link (only when inactive)
+    if (!hasValidKey) {
+        const linkContainer = headerRow.createSpan({ cls: 'rt-professional-wiki-link' });
+        const dummySetting = new Setting(linkContainer);
+        dummySetting.settingEl.addClass('rt-professional-heading-inline');
+        addWikiLink(dummySetting, 'Settings#professional');
+    }
     
     // Collapse toggle
     const toggleEl = headerRow.createSpan({ cls: 'rt-professional-toggle' });
@@ -68,6 +77,22 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     if (!isExpanded) {
         contentContainer.addClass('rt-collapsed');
     }
+    
+    // Update header appearance based on key validity
+    const updateHeaderState = (valid: boolean) => {
+        hasValidKey = valid;
+        if (valid) {
+            headerContainer.addClass('rt-professional-active');
+            setIcon(iconEl, 'check-circle');
+            titleEl.setText('Pro features active');
+            setIcon(toggleEl, 'chevron-down');
+        } else {
+            headerContainer.removeClass('rt-professional-active');
+            setIcon(iconEl, 'signature');
+            titleEl.setText('Pro');
+            setIcon(toggleEl, 'chevron-right');
+        }
+    };
     
     // Toggle behavior
     headerContainer.addEventListener('click', (e) => {
@@ -89,26 +114,9 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     // Content
     // ─────────────────────────────────────────────────────────────────────────
     
-    // Status indicator
-    const statusEl = contentContainer.createDiv({ cls: 'rt-professional-status' });
-    const updateStatus = () => {
-        statusEl.empty();
-        if (isProfessionalLicenseValid(plugin.settings.professionalLicenseKey)) {
-            const activeEl = statusEl.createDiv({ cls: 'rt-professional-status-active' });
-            const checkIcon = activeEl.createSpan({ cls: 'rt-professional-status-icon' });
-            setIcon(checkIcon, 'check-circle');
-            activeEl.createSpan({ text: 'Professional features active' });
-        } else {
-            const inactiveEl = statusEl.createDiv({ cls: 'rt-professional-status-inactive' });
-            inactiveEl.createSpan({ text: 'Enter your license key to unlock Professional features.' });
-        }
-    };
-    updateStatus();
-    
-    // License key input
-    new Setting(contentContainer)
-        .setName('License key')
-        .setDesc('Enter your Professional license key to unlock advanced features.')
+    // License key input with inline "Get key" link
+    const licenseSetting = new Setting(contentContainer)
+        .setDesc('Enter your Pro license key to unlock advanced features.')
         .addText(text => {
             text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
             text.setValue(plugin.settings.professionalLicenseKey || '');
@@ -137,20 +145,18 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
                 const value = text.getValue().trim();
                 plugin.settings.professionalLicenseKey = value || undefined;
                 await plugin.saveSettings();
-                updateStatus();
-                
-                // Update toggle icon based on key validity
-                if (isProfessionalLicenseValid(value)) {
-                    setIcon(toggleEl, 'chevron-down');
-                }
+                updateHeaderState(isProfessionalLicenseValid(value));
             });
         });
     
-    // Get license link
-    const getLicenseEl = contentContainer.createDiv({ cls: 'rt-professional-get-license' });
-    getLicenseEl.createEl('a', {
-        text: 'Get a Professional license →',
-        href: 'https://radial-timeline.com/professional',
+    // Custom name with inline link
+    const nameEl = licenseSetting.nameEl;
+    nameEl.empty();
+    nameEl.createSpan({ text: 'License key' });
+    nameEl.createEl('a', {
+        text: 'Get Signature →',
+        href: 'https://radial-timeline.com/signature',
+        cls: 'rt-professional-get-key-link',
         attr: { target: '_blank', rel: 'noopener' }
     });
     
@@ -158,14 +164,12 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     // Professional Features List
     // ─────────────────────────────────────────────────────────────────────────
     const featuresEl = contentContainer.createDiv({ cls: 'rt-professional-features' });
-    featuresEl.createEl('h5', { text: 'Professional features include:' });
+    featuresEl.createEl('h5', { text: 'Pro features include:' });
     
     const featuresList = featuresEl.createEl('ul');
     const features = [
         { icon: 'film', text: 'Runtime Estimation — Screen time and audiobook duration analysis' },
         // Future features can be added here
-        // { icon: 'sparkles', text: 'AI Scene Enhancement — Advanced AI-powered writing assistance' },
-        // { icon: 'layout-dashboard', text: 'Custom Dashboards — Build personalized writing dashboards' },
     ];
     
     features.forEach(feature => {
@@ -175,4 +179,3 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
         li.createSpan({ text: feature.text });
     });
 }
-
