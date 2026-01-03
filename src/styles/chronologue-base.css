@@ -1,0 +1,233 @@
+/* Chronologue base (no shift-mode) */
+
+/* Chronologue timeline arc */
+.rt-chronologue-timeline-arc {
+  pointer-events: none;
+}
+
+.rt-chronologue-timeline-arc line:not(.rt-elapsed-endpoint-marker) {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+/* Chronologue time labels */
+.rt-chronologue-time-label {
+  font-size: 20px;
+  fill: var(--text-muted);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Chronologue warning for scenes without When field */
+.rt-chronologue-warning .rt-scene-path {
+  stroke: var(--text-error);
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+}
+
+/* Hide chronological ticks that overlap with elapsed endpoint markers */
+.rt-chronological-tick.rt-tick-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Elapsed time label */
+.rt-elapsed-time-group {
+  pointer-events: none;
+}
+
+.rt-elapsed-time-label {
+  font-size: 16px;
+  font-weight: 700;
+  fill: var(--interactive-accent);
+  stroke: white;
+  stroke-width: 7px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
+  text-transform: uppercase;
+}
+
+.rt-chronologue-duration-ticks {
+  pointer-events: none;
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc {
+  stroke: var(--text-muted);
+  stroke-width: 6px;
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc-overlap {
+  stroke: #ff9900;
+  stroke-width: 6px;
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc-unparseable {
+  stroke: var(--rt-color-due);
+  stroke-width: 6px;
+}
+
+.rt-chronologue-duration-ticks .rt-duration-arc-ongoing:not(.rt-duration-arc-overlap) {
+  stroke: var(--text-muted);
+  stroke-width: 6px;
+}
+
+/* Discontinuity marker text "∞" */
+.rt-discontinuity-marker {
+  font-size: 20px;
+  font-weight: 500;
+  fill: var(--text-muted);
+  stroke: rgb(0, 0, 0);
+  stroke-width: 6px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, fill 0.2s ease;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-discontinuity-marker {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Backdrop ring styles */
+.rt-backdrop-ring {
+  pointer-events: none;
+}
+
+.rt-backdrop-ring-background {
+  stroke: var(--rt-color-empty);
+  stroke-opacity: 1;
+  fill: none !important;
+}
+
+.rt-backdrop-border {
+  stroke: var(--rt-color-empty);
+  stroke-width: 1px;
+  fill: none;
+  opacity: 1;
+}
+
+.radial-timeline-container .rt-backdrop-segment {
+  fill: #cccccc;
+  fill-opacity: 1;
+  opacity: 1;
+  cursor: pointer;
+  stroke: none !important;
+  pointer-events: fill !important;
+}
+
+.radial-timeline-container .rt-backdrop-segment:hover,
+.radial-timeline-container .rt-backdrop-segment.rt-selected {
+  fill: var(--rt-max-publish-stage-color) !important;
+  fill-opacity: 0.8 !important;
+  stroke: none !important;
+}
+
+.rt-backdrop-box {
+  display: none;
+}
+
+/* Overlap pattern */
+.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap {
+  fill: url(#rt-backdrop-diagonal);
+  stroke: none;
+  fill-opacity: 1;
+  opacity: 1;
+  mix-blend-mode: normal;
+}
+
+.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-even,
+.radial-timeline-container .rt-backdrop-segment.rt-backdrop-overlap-odd {
+  stroke-dasharray: none;
+  stroke: none !important;
+  fill-opacity: 1;
+  fill: url(#rt-backdrop-diagonal) !important;
+}
+
+.radial-timeline-container .rt-backdrop-segment:hover ~ .rt-backdrop-segment.rt-backdrop-overlap,
+.radial-timeline-container .rt-backdrop-segment.rt-selected ~ .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0;
+}
+
+.radial-timeline-container .rt-backdrop-ring:hover .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0;
+}
+
+.radial-timeline-container .rt-scene-group[data-item-type="Backdrop"]:hover ~ .rt-scene-group[data-item-type="Backdrop"],
+.radial-timeline-container .rt-scene-group[data-item-type="Backdrop"]:hover ~ .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Labels */
+.rt-backdrop-label {
+  font-family: 'hooge05_55Regular', monospace, ui-monospace, SFMono-Regular;
+  font-size: 20px;
+  font-weight: normal;
+  fill: white;
+  stroke: none;
+  text-shadow: none;
+  text-decoration: none;
+  dominant-baseline: middle;
+  pointer-events: none;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.rt-backdrop-overlap-label {
+  fill: white;
+  fill-opacity: 1;
+  stroke: none;
+}
+
+.rt-backdrop-overlap-label.rt-backdrop-overlap-odd {
+  fill: white !important;
+  stroke: none !important;
+}
+
+.rt-backdrop-label textPath {
+  text-decoration: none;
+  pointer-events: none;
+}
+
+.rt-scene-group[data-item-type="Backdrop"] defs path {
+  fill: none;
+  stroke: none;
+}
+
+.rt-scene-group[data-item-type="Backdrop"]:hover .rt-backdrop-label {
+  fill: var(--rt-max-publish-stage-color) !important;
+  opacity: 1 !important;
+  stroke: none !important;
+}
+
+.rt-scene-group[data-item-type="Backdrop"]:hover .rt-backdrop-box {
+  stroke: var(--rt-max-publish-stage-color) !important;
+}
+
+/* Scene-hover global fade (base chronologue only) */
+.radial-timeline-container .radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-segment:not(:hover) {
+  fill: var(--rt-color-empty-selected) !important;
+  fill-opacity: 1 !important;
+  stroke: none !important;
+}
+
+.radial-timeline-container .radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-segment.rt-backdrop-overlap {
+  opacity: 0 !important;
+}
+
+.radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-label {
+  fill: var(--rt-color-empty) !important;
+  opacity: 1 !important;
+  stroke: none !important;
+}
+
+.radial-timeline-svg[data-mode="chronologue"]:not([data-shift-mode]).scene-hover .rt-backdrop-ring-background {
+  stroke: var(--rt-color-empty-selected) !important;
+  stroke-opacity: 1 !important;
+}
+
