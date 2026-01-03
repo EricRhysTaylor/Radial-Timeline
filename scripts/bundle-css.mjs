@@ -20,7 +20,11 @@ const files = [
     'scenes.css',
     'grid.css',
     'indicators.css',
-    'chronologue.css',
+    // Chronologue partials (order matters: base first, then mode overrides)
+    'chronologue-base.css',
+    'chronologue-shift.css',
+    'chronologue-alt.css',
+    'chronologue-runtime.css',
     'modal.css',
     'pulse.css',
     'book-designer.css',

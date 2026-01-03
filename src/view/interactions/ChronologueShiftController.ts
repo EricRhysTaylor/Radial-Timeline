@@ -682,8 +682,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         };
 
         // Use capture phase to run before other handlers
+        // Works for both Shift mode and ALT (Alien) mode
         view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
-            if (!shiftModeActive) return;
+            if (!shiftModeActive && !alienModeActive) return;
 
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
             if (!g) return;
@@ -710,8 +711,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }, { capture: true }); // Use capture phase
 
         // Use capture phase for pointerout too
+        // Works for both Shift mode and ALT (Alien) mode
         view.registerDomEvent(svg as unknown as HTMLElement, 'pointerout', (e: PointerEvent) => {
-            if (!shiftModeActive) return;
+            if (!shiftModeActive && !alienModeActive) return;
 
             const g = (e.target as Element).closest('.rt-scene-group[data-item-type="Scene"]');
             if (!g) return;
@@ -744,8 +746,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
     const rebuildSelectedPathsSet = setupShiftModeHover();
 
     // Export click handler for external use (called from ChronologueMode)
+    // Works for both Shift mode and ALT (Alien) mode
     (view as any).handleShiftModeClick = (e: MouseEvent, sceneGroup: Element) => {
-        if (!shiftModeActive) return false;
+        if (!shiftModeActive && !alienModeActive) return false;
 
         // Prevent default scene opening behavior when in shift mode
         e.preventDefault();
@@ -798,9 +801,9 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         return true; // Indicate we handled the click
     };
 
-    // Register elapsed time text click handler
+    // Register elapsed time text click handler (works for both Shift and ALT mode)
     view.registerDomEvent(svg as unknown as HTMLElement, 'click', (e: MouseEvent) => {
-        if (!shiftModeActive || selectedScenes.length !== 2) return;
+        if ((!shiftModeActive && !alienModeActive) || selectedScenes.length !== 2) return;
 
         const elapsedTimeLabel = (e.target as Element).closest('.rt-elapsed-time-label');
         if (!elapsedTimeLabel) return;

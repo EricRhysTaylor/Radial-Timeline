@@ -240,7 +240,8 @@
   pointer-events: none;
 }
 
-.radial-timeline-container .rt-scene-path {
+/* Generic scene-path styling - excludes backdrop segments which have their own rules */
+.radial-timeline-container .rt-scene-path:not(.rt-backdrop-segment) {
   cursor: pointer;
   stroke: var(--rt-color-empty);
   stroke-width: 1px;
@@ -256,7 +257,8 @@
 }
 
 /* Optimized global fade: Apply to all children when parent has class */
-.rt-global-fade .rt-scene-path:not(.rt-selected) {
+/* Excludes backdrop segments which have their own styling */
+.rt-global-fade .rt-scene-path:not(.rt-selected):not(.rt-backdrop-segment) {
   fill: var(--rt-color-empty-selected) !important;
 }
 
@@ -270,11 +272,11 @@
   fill: var(--rt-color-empty);
 }
 
-.radial-timeline-container .rt-scene-path.rt-non-selected {
+.radial-timeline-container .rt-scene-path.rt-non-selected:not(.rt-backdrop-segment) {
   fill: var(--rt-color-empty-selected) !important;
 }
 
-.radial-timeline-container .rt-scene-path.rt-scene-is-open.rt-non-selected {
+.radial-timeline-container .rt-scene-path.rt-scene-is-open.rt-non-selected:not(.rt-backdrop-segment) {
   fill: var(--rt-color-empty-selected) !important;
 }
 

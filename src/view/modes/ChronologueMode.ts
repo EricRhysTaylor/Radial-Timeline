@@ -7,7 +7,7 @@
 import { TFile, App } from 'obsidian';
 import type { TimelineItem } from '../../types';
 import type SynopsisManager from '../../SynopsisManager';
-import { setupChronologueShiftController, isShiftModeActive } from '../interactions/ChronologueShiftController';
+import { setupChronologueShiftController, isShiftModeActive, isAlienModeActive, isRuntimeModeActive } from '../interactions/ChronologueShiftController';
 import { openOrRevealFile } from '../../utils/fileUtils';
 import { handleDominantSubplotSelection } from '../interactions/DominantSubplotHandler';
 import { SceneInteractionManager } from '../interactions/SceneInteractionManager';
@@ -267,9 +267,9 @@ function setupSceneHoverInteractions(view: ChronologueView, svg: SVGSVGElement):
 
     // Register hover handlers for Scene elements
     view.registerDomEvent(svg as unknown as HTMLElement, 'pointerover', (e: PointerEvent) => {
-        // Suspend hover synopsis reveal when shift mode is active
+        // Suspend hover synopsis reveal when shift/alt/runtime mode is active
         // CHECK THIS FIRST before any other work!
-        if (isShiftModeActive()) {
+        if (isShiftModeActive() || isAlienModeActive() || isRuntimeModeActive()) {
             return;
         }
 
