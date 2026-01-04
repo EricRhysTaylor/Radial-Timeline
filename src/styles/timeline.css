@@ -906,53 +906,54 @@
   filter: drop-shadow(0 0 4px rgba(60, 160, 220, 0.6));
 }
 
-/* Active state - solid blue glow */
+/* Active state - solid blue glow (specificity: class + class + class) */
 .rt-runtime-button.rt-runtime-mode-active .rt-runtime-icon-bg {
-  fill: rgba(60, 140, 220, 0.25) !important;
-  stroke: rgba(60, 160, 220, 1) !important;
-  stroke-width: 2.5 !important;
+  fill: rgba(60, 140, 220, 0.25);
+  stroke: rgba(60, 160, 220, 1);
+  stroke-width: 2.5;
   filter: drop-shadow(0 0 10px rgba(60, 160, 220, 0.7));
 }
 
 .rt-runtime-button.rt-runtime-mode-active .rt-runtime-lucide-icon {
-  stroke: rgba(80, 180, 255, 1) !important;
+  stroke: rgba(80, 180, 255, 1);
   filter: drop-shadow(0 0 6px rgba(80, 180, 255, 0.8));
 }
 
 /* Runtime hover: keep number squares/text tinted instead of turning white */
+/* High specificity via attribute + attribute + class chain */
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"]:hover .rt-number-square,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-number-square,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"] .rt-number-square.rt-shift-locked {
-  fill: var(--interactive-normal) !important;
-  stroke: none !important;
-  opacity: 0.6 !important;
+  fill: var(--interactive-normal);
+  stroke: none;
+  opacity: 0.6;
 }
 
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"]:hover .rt-number-text,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-number-text,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"] .rt-number-text.rt-shift-locked {
-  fill: rgba(60, 140, 200, 0.9) !important;
-  opacity: 0.8 !important;
+  fill: rgba(60, 140, 200, 0.9);
+  opacity: 0.8;
 }
 
 /* Runtime scene-hover (global .scene-hover flag): keep AI grade squares/text tinted */
 .radial-timeline-svg[data-shift-mode="runtime"].scene-hover .rt-number-square {
-  fill: var(--interactive-normal) !important;
-  stroke: none !important;
-  opacity: 0.6 !important;
+  fill: var(--interactive-normal);
+  stroke: none;
+  opacity: 0.6;
 }
 
 .radial-timeline-svg[data-shift-mode="runtime"].scene-hover .rt-number-text {
-  fill: rgba(60, 140, 200, 0.9) !important;
-  opacity: 0.8 !important;
+  fill: rgba(60, 140, 200, 0.9);
+  opacity: 0.8;
 }
 
 /* Runtime hover: synopsis/info text stays blue-tinted */
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-info.rt-visible {
-  opacity: 1 !important;
-  color: rgba(60, 140, 200, 0.9) !important;
-  fill: rgba(60, 140, 200, 0.9) !important;
-  stroke: rgba(60, 140, 200, 0.6) !important;
+  opacity: 1;
+  color: rgba(60, 140, 200, 0.9);
+  fill: rgba(60, 140, 200, 0.9);
+  stroke: rgba(60, 140, 200, 0.6);
 }
 
 /* Active + Hover - intensify glow */
@@ -961,13 +962,23 @@
 }
 
 .rt-runtime-button.rt-runtime-mode-active:hover .rt-runtime-lucide-icon {
-  stroke: rgba(100, 200, 255, 1) !important;
+  stroke: rgba(100, 200, 255, 1);
   filter: drop-shadow(0 0 8px rgba(100, 200, 255, 1));
 }
 
 /* 9. Runtime Total display in grid footer */
 .rt-runtime-total {
-  fill: rgba(60, 160, 220, 0.9) !important;
+  fill: rgba(60, 160, 220, 0.9);
   font-size: 14px;
   font-weight: 500;
+}
+
+.rt-runtime-display {
+  color: rgba(60, 160, 220, 0.9);
+}
+
+.rt-runtime-display path,
+.rt-runtime-display circle,
+.rt-runtime-display rect {
+  stroke: rgba(60, 160, 220, 0.9);
 }

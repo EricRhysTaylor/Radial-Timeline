@@ -1436,13 +1436,13 @@ function createRuntimeCapSlider(
         (e.target as Element).releasePointerCapture(e.pointerId);
     };
 
-    handle.addEventListener('pointerdown', onPointerDown);
-    handle.addEventListener('pointermove', onPointerMove);
-    handle.addEventListener('pointerup', onPointerUp);
-    handle.addEventListener('pointercancel', onPointerUp);
+    handle.addEventListener('pointerdown', onPointerDown); // SAFE: SVG element; registerDomEvent not available in this helper scope
+    handle.addEventListener('pointermove', onPointerMove); // SAFE: SVG element; registerDomEvent not available in this helper scope
+    handle.addEventListener('pointerup', onPointerUp); // SAFE: SVG element; registerDomEvent not available in this helper scope
+    handle.addEventListener('pointercancel', onPointerUp); // SAFE: SVG element; registerDomEvent not available in this helper scope
 
     // Also allow clicking on track to move handle
-    track.addEventListener('pointerdown', (e: PointerEvent) => {
+    track.addEventListener('pointerdown', (e: PointerEvent) => { // SAFE: SVG element; registerDomEvent not available in this helper scope
         sliderRect = slider.getBoundingClientRect();
         updateHandlePosition(e.clientX);
     });
@@ -1885,68 +1885,47 @@ function restoreHiddenTicks(svg: SVGSVGElement): void {
 
 /**
  * Calculate cumulative runtime of all scenes between two selected scenes (inclusive)
- * Scenes are sorted chronologically by their When field, then all runtimes are summed
- * from the first selected scene through the last selected scene (including all intervening scenes)
+ * Uses manuscript order (order in allScenes array), NOT chronological order.
+ * Simply sums all Runtime fields between the two selected scenes regardless of When dates.
  */
 function calculateCumulativeRuntime(scene1: TimelineItem, scene2: TimelineItem, allScenes: TimelineItem[]): number {
-    // Parse dates for the two selected scenes
-    const parseDate = (scene: TimelineItem): Date | null => {
-        if (scene.when instanceof Date) return scene.when;
-        if (typeof scene.when === 'string') return parseWhenField(scene.when);
-        return null;
-    };
+    // Filter to Scene/Backdrop only and dedupe by path
+    const seenPaths = new Set<string>();
+    const validScenes = allScenes.filter(s => {
+        if (s.itemType !== 'Scene' && s.itemType !== 'Backdrop') return false;
+        if (!s.path || seenPaths.has(s.path)) return false;
+        seenPaths.add(s.path);
+        return true;
+    });
     
-    const date1 = parseDate(scene1);
-    const date2 = parseDate(scene2);
+    // Find indices of the two selected scenes in manuscript order
+    let idx1 = -1;
+    let idx2 = -1;
     
-    if (!date1 || !date2) {
+    for (let i = 0; i < validScenes.length; i++) {
+        if (validScenes[i].path === scene1.path && idx1 === -1) {
+            idx1 = i;
+        }
+        if (validScenes[i].path === scene2.path) {
+            idx2 = i;
+        }
+    }
+    
+    if (idx1 === -1 || idx2 === -1) {
         // Fallback: just sum the two selected scenes
         const r1 = parseRuntimeField(scene1.Runtime) || 0;
         const r2 = parseRuntimeField(scene2.Runtime) || 0;
         return r1 + r2;
     }
     
-    // Sort all scenes chronologically
-    const scenesWithDates = allScenes
-        .filter(s => s.itemType === 'Scene' || s.itemType === 'Backdrop')
-        .map(s => {
-            const when = parseDate(s);
-            return { scene: s, when };
-        })
-        .filter((s): s is { scene: TimelineItem; when: Date } => s.when !== null)
-        .sort((a, b) => a.when.getTime() - b.when.getTime());
-    
-    // Find indices of the two selected scenes
-    const earlierDate = date1.getTime() <= date2.getTime() ? date1 : date2;
-    const laterDate = date1.getTime() > date2.getTime() ? date1 : date2;
-    const earlierScene = date1.getTime() <= date2.getTime() ? scene1 : scene2;
-    const laterScene = date1.getTime() > date2.getTime() ? scene1 : scene2;
-    
-    // Find the index range
-    let startIdx = -1;
-    let endIdx = -1;
-    
-    for (let i = 0; i < scenesWithDates.length; i++) {
-        const s = scenesWithDates[i].scene;
-        if (s.path === earlierScene.path && startIdx === -1) {
-            startIdx = i;
-        }
-        if (s.path === laterScene.path) {
-            endIdx = i;
-        }
-    }
-    
-    if (startIdx === -1 || endIdx === -1 || startIdx > endIdx) {
-        // Fallback: just sum the two selected scenes
-        const r1 = parseRuntimeField(scene1.Runtime) || 0;
-        const r2 = parseRuntimeField(scene2.Runtime) || 0;
-        return r1 + r2;
-    }
+    // Ensure startIdx <= endIdx
+    const startIdx = Math.min(idx1, idx2);
+    const endIdx = Math.max(idx1, idx2);
     
     // Sum runtimes from startIdx through endIdx (inclusive)
     let totalSeconds = 0;
     for (let i = startIdx; i <= endIdx; i++) {
-        const runtime = parseRuntimeField(scenesWithDates[i].scene.Runtime);
+        const runtime = parseRuntimeField(validScenes[i].Runtime);
         if (runtime !== null && runtime > 0) {
             totalSeconds += runtime;
         }

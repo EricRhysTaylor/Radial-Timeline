@@ -17,7 +17,6 @@ import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { ensureAiOutputFolder } from '../utils/aiOutput';
 import { buildOutlineExport, getExportFormatExtension, getTemplateForPreset, getVaultAbsolutePath, runPandocOnContent, writeTextFile } from '../utils/exportFormats';
 import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
-import * as path from 'path';
 
 export class CommandRegistrar {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -406,15 +405,13 @@ export class CommandRegistrar {
                     new Notice('Cannot resolve vault path for export.');
                     return;
                 }
-                const targetDir = path.dirname(absolutePath);
                 const templatePath = getTemplateForPreset(this.plugin, options.manuscriptPreset || 'novel');
                 await runPandocOnContent(manuscript.text, absolutePath, {
                     targetFormat: options.outputFormat === 'docx' ? 'docx' : 'pdf',
                     pandocPath: this.plugin.settings.pandocPath,
                     enableFallback: this.plugin.settings.pandocEnableFallback,
                     fallbackPath: this.plugin.settings.pandocFallbackPath,
-                    templatePath,
-                    workingDir: targetDir
+                    templatePath
                 });
                 new Notice(`Manuscript exported (${options.outputFormat.toUpperCase()}) to ${manuscriptPath}`);
             }

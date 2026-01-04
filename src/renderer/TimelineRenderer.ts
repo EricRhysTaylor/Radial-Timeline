@@ -555,6 +555,7 @@ export function createTimelineSVG(
         headerY,
         stageTooltips: STAGE_HEADER_TOOLTIPS,
         statusTooltips: STATUS_HEADER_TOOLTIPS,
+        runtimeContentType: plugin.settings.runtimeContentType || 'novel',
     });
 
     // Add tick mark and label for the estimated completion date if available

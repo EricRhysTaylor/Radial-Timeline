@@ -6,7 +6,7 @@
  * Professional License Settings Section
  */
 
-import { App, Setting, setIcon } from 'obsidian';
+import { App, Setting, setIcon, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { addWikiLink } from '../wikiLink';
 
@@ -262,7 +262,8 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             text.setPlaceholder('/usr/local/bin/pandoc');
             text.setValue(plugin.settings.pandocPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                plugin.settings.pandocPath = text.getValue().trim();
+            const value = text.getValue().trim();
+            plugin.settings.pandocPath = value ? normalizePath(value) : '';
                 await plugin.saveSettings();
             });
         });
@@ -285,7 +286,8 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             text.setPlaceholder('/path/to/pandoc');
             text.setValue(plugin.settings.pandocFallbackPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                plugin.settings.pandocFallbackPath = text.getValue().trim();
+                const value = text.getValue().trim();
+                plugin.settings.pandocFallbackPath = value ? normalizePath(value) : '';
                 await plugin.saveSettings();
             });
         });

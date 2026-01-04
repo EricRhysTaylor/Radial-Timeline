@@ -251,6 +251,11 @@ export default class RadialTimelinePlugin extends Plugin {
 
         // Initial status bar update (placeholder for future stats)
         // this.statusBarService.update(...);
+
+        // Dev-only debug infrastructure (tree-shaken in production)
+        if (__RT_DEV__) {
+            void import('./debug/index').then(m => m.installDebug(this));
+        }
     }
     public getRendererService(): RendererService { return this.rendererService; }
     public getTimelineService(): TimelineService { return this.timelineService; }

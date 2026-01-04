@@ -36,6 +36,7 @@
 	"license": "SEE LICENSE IN LICENSE",
 	"devDependencies": {
 		"@types/node": "^20.10.5",
+		"@vitest/coverage-v8": "^4.0.16",
 		"builtin-modules": "^3.3.0",
 		"esbuild": "^0.25.10",
 		"fs-extra": "^11.3.0",
@@ -44,7 +45,8 @@
 		"obsidian": "^1.4.11",
 		"ts-node": "^10.9.2",
 		"tslib": "2.6.2",
-		"typescript": "5.3.3"
+		"typescript": "5.3.3",
+		"vitest": "^4.0.16"
 	},
 	"lint-staged": {
 		"*.{js,ts}": [

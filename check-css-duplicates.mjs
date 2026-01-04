@@ -2,9 +2,10 @@
 /**
  * CSS Quality Checker
  * Scans styles.css for duplicate selectors and empty rulesets
+ * Scans src/styles/*.css for !important declarations
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -12,8 +13,45 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const cssPath = join(process.cwd(), 'styles.css');
+const srcStylesDir = join(process.cwd(), 'src', 'styles');
 const quiet = process.argv.includes('--quiet');
 
+// ========================================
+// Check 1: !important declarations in source CSS
+// ========================================
+function checkImportantDeclarations() {
+  const violations = [];
+  
+  try {
+    const cssFiles = readdirSync(srcStylesDir).filter(f => f.endsWith('.css'));
+    
+    for (const file of cssFiles) {
+      const filePath = join(srcStylesDir, file);
+      const content = readFileSync(filePath, 'utf-8');
+      const lines = content.split('\n');
+      
+      lines.forEach((line, idx) => {
+        if (line.includes('!important')) {
+          violations.push({
+            file,
+            line: idx + 1,
+            content: line.trim()
+          });
+        }
+      });
+    }
+  } catch (error) {
+    // src/styles may not exist in some setups - skip silently
+  }
+  
+  return violations;
+}
+
+const importantViolations = checkImportantDeclarations();
+
+// ========================================
+// Check 2: Duplicate selectors and empty rulesets
+// ========================================
 try {
   const css = readFileSync(cssPath, 'utf-8');
   
@@ -93,6 +131,22 @@ try {
   // Report results
   let hasIssues = false;
   
+  // Check for !important violations first
+  if (importantViolations.length > 0) {
+    console.log(`\x1b[31m❌ Found ${importantViolations.length} !important declaration(s) in source CSS:\x1b[0m\n`);
+    importantViolations.forEach(({ file, line, content }) => {
+      console.log(`  \x1b[33m${file}:${line}\x1b[0m`);
+      console.log(`    ${content}`);
+      console.log('');
+    });
+    console.log('\x1b[33m💡 Fix: Use proper CSS specificity instead of !important:\x1b[0m');
+    console.log('   - Increase selector specificity: .rt-settings-root .setting-item { }');
+    console.log('   - Use data attributes for mode states: [data-mode="active"] .element { }');
+    console.log('   - Order rules correctly: base → state → hover (later wins)');
+    console.log('   - See STANDARDS_MODAL_STYLING.md for patterns\n');
+    hasIssues = true;
+  }
+  
   if (duplicates.length > 0) {
     console.log(`⚠️  Found ${duplicates.length} duplicate CSS selector(s):\n`);
     duplicates.forEach(({ selector, lines }) => {
@@ -117,7 +171,7 @@ try {
   
   if (!hasIssues) {
     if (!quiet) {
-      console.log('✅ No duplicate selectors or empty rulesets found.');
+      console.log('✅ No CSS quality issues found (no duplicates, empty rulesets, or !important).');
     }
     process.exit(0);
   } else {

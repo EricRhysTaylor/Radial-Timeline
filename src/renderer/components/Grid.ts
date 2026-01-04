@@ -17,6 +17,7 @@ export function renderCenterGrid(params: {
   headerY: number;
   stageTooltips: Record<string, string>;
   statusTooltips: Record<string, string>;
+  runtimeContentType?: 'novel' | 'screenplay';
 }): string {
   const {
     statusesForGrid,
@@ -33,6 +34,7 @@ export function renderCenterGrid(params: {
     cellGapX,
     cellGapY,
     headerY,
+    runtimeContentType = 'novel',
   } = params;
 
   const gridWidth = statusesForGrid.length * cellWidth + (statusesForGrid.length - 1) * cellGapX;
@@ -120,7 +122,38 @@ export function renderCenterGrid(params: {
           </g>
         `;
       }).join('')}
-      ${totalRuntimeSeconds > 0 ? `<text x="${startXGrid - 12}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="start" dominant-baseline="alphabetic" class="center-key-text rt-runtime-total">${formatRuntimeValue(totalRuntimeSeconds)}</text>` : ''}
+      ${(() => {
+        const runtimeY = startYGrid + gridHeight + (cellGapY + 16);
+        const runtimeText = totalRuntimeSeconds > 0 ? formatRuntimeValue(totalRuntimeSeconds) : 'No Data';
+        // Estimate text width for icon positioning (approx 7px per character)
+        const textWidth = runtimeText.length * 7;
+        const iconX = startXGrid + textWidth + 6;
+        const iconY = runtimeY - 10; // Center icon vertically with text
+        const iconSize = 12;
+        // Lucide icon paths (scaled to iconSize)
+        const micVocalIcon = `<g transform="translate(${iconX}, ${iconY}) scale(${iconSize / 24})">
+          <path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928.911-5.127 2.374" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M21.174 16.5C20.5 15.5 20 14.372 20 13c0-2.058.911-3.928 2.374-5.127" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="16" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="2"/>
+        </g>`;
+        const filmIcon = `<g transform="translate(${iconX}, ${iconY}) scale(${iconSize / 24})">
+          <rect width="18" height="18" x="3" y="3" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M7 3v18" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M3 7.5h4" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M3 12h4" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M3 16.5h4" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M17 3v18" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M17 7.5h4" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M17 12h4" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M17 16.5h4" fill="none" stroke="currentColor" stroke-width="2"/>
+        </g>`;
+        const icon = runtimeContentType === 'screenplay' ? filmIcon : micVocalIcon;
+        return `<g class="rt-runtime-display">
+          <text x="${startXGrid}" y="${runtimeY}" text-anchor="start" dominant-baseline="alphabetic" class="center-key-text rt-runtime-total">${runtimeText}</text>
+          ${icon}
+        </g>`;
+      })()}
       <text x="${startXGrid + gridWidth}" y="${startYGrid + gridHeight + (cellGapY + 16)}" text-anchor="end" dominant-baseline="alphabetic" class="center-key-text">${currentYearLabel}//${estimatedTotalScenes}</text>
     `;
 

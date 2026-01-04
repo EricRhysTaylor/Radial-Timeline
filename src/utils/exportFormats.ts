@@ -5,9 +5,9 @@
 import { normalizePath, FileSystemAdapter, Vault } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { ManuscriptSceneSelection } from './manuscript';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'fs'; // SAFE: Node fs required for Pandoc temp files
+import * as os from 'os'; // SAFE: Node os required for temp directory resolution
+import * as path from 'path'; // SAFE: Node path required for temp/absolute paths
 
 export type ExportType = 'manuscript' | 'outline';
 export type ManuscriptPreset = 'screenplay' | 'podcast' | 'novel';
@@ -30,7 +30,7 @@ export interface OutlineExportResult {
 }
 
 function resolveVaultAbsolutePath(plugin: RadialTimelinePlugin, vaultPath: string): string | null {
-    const adapter = plugin.app.vault.adapter;
+    const adapter = plugin.app.vault.adapter; // SAFE: adapter needed to resolve absolute path for Pandoc output
     if (adapter instanceof FileSystemAdapter) {
         const basePath = adapter.getBasePath();
         return path.join(basePath, normalizePath(vaultPath));
@@ -199,7 +199,7 @@ export async function writeTextFile(
     content: string
 ): Promise<void> {
     const normalized = normalizePath(vaultPath);
-    const adapter = vault.adapter;
+    const adapter = vault.adapter; // SAFE: adapter write used to save generated export content
     await adapter.write(normalized, content);
 }
 

@@ -203,11 +203,13 @@ const context = await esbuild.context({
 	logLevel: 'info',
 	sourcemap: prod ? false : 'inline',
 	treeShaking: true,
+	minifySyntax: prod,  // Eliminates dead code like if(false){...} in production
 	outdir: destDirs[0].path,
 	define: {
 		'EMBEDDED_README_CONTENT': JSON.stringify(readmeContent),
 		// 'EMBEDDED_RELEASE_NOTES': // REMOVED: Managed via direct import in code
-		'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development')
+		'process.env.NODE_ENV': JSON.stringify(prod ? 'production' : 'development'),
+		'__RT_DEV__': String(!prod)  // false for production, true for dev
 	}
 });
 

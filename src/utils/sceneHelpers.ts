@@ -80,6 +80,7 @@ export interface PluginRendererFacade {
         dominantSubplots?: Record<string, string>;
         discontinuityThreshold?: string;
         globalPovMode?: GlobalPovMode;
+        runtimeContentType?: 'novel' | 'screenplay';
     };
     searchActive: boolean;
     searchResults: Set<string>;
