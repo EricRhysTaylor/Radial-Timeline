@@ -138,9 +138,13 @@ export class RuntimeProcessingModal extends Modal {
         const badgeText = `Runtime estimator · ${modeLabel}`;
         
         const badge = header.createSpan({ cls: 'rt-modal-badge' });
-        const iconSpan = badge.createSpan({ cls: 'rt-modal-badge-icon' });
-        setIcon(iconSpan, 'signature');
-        badge.createSpan({ text: badgeText });
+        const signatureIcon = badge.createSpan({ cls: 'rt-modal-badge-icon' });
+        setIcon(signatureIcon, 'signature');
+        badge.createSpan({ text: 'Runtime estimator · ' });
+        const modeIcon = badge.createSpan({ cls: 'rt-modal-badge-icon' });
+        const modeIconName = contentType === 'screenplay' ? 'film' : 'mic-vocal';
+        setIcon(modeIcon, modeIconName);
+        badge.createSpan({ text: ` ${modeLabel}` });
         header.createDiv({ cls: 'rt-modal-title', text: 'Runtime Estimation' });
         header.createDiv({ cls: 'rt-modal-subtitle', text: 'Algorithmic word-count analysis. Calculates runtime from scene text using configured WPM rates and parenthetical timing.' });
 

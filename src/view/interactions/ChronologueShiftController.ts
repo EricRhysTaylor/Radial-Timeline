@@ -67,6 +67,15 @@ export function isRuntimeModeActive(): boolean {
     return globalRuntimeModeActive;
 }
 
+// Store runtime cap percent globally for renderer access
+let globalRuntimeCapPercent: number = 100;
+export function getRuntimeCapPercent(): number {
+    return globalRuntimeCapPercent;
+}
+export function setRuntimeCapPercent(percent: number): void {
+    globalRuntimeCapPercent = percent;
+}
+
 /**
  * Reset the global shift/alien/runtime mode state
  * Called when exiting Chronologue mode to ensure clean state
@@ -75,6 +84,7 @@ export function resetShiftModeState(): void {
     globalShiftModeActive = false;
     globalAlienModeActive = false;
     globalRuntimeModeActive = false;
+    globalRuntimeCapPercent = 100;
 }
 
 /**
@@ -257,8 +267,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         const maxRuntime = calculateMaxRuntime();
         runtimeCapSlider = createRuntimeCapSlider(maxRuntime, currentRuntimeCapPercent, (newPercent) => {
             currentRuntimeCapPercent = newPercent;
-            // Store in transient view state for renderer to use
-            (view as any).runtimeCapPercent = newPercent;
+            // Store globally for renderer to access
+            setRuntimeCapPercent(newPercent);
             // Refresh timeline to apply new cap
             if (view.plugin.refreshTimelineIfNeeded) {
                 view.plugin.refreshTimelineIfNeeded(null);
@@ -279,6 +289,19 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         runtimeModeActive = false;
         globalRuntimeModeActive = false;
         updateRtButtonState(rtButton, false);
+        
+        // Clean up selections, elapsed arc, and scene highlights
+        selectedScenes = [];
+        rebuildSelectedPathsSet();
+        hoveredScenePath = null;
+        elapsedTimeClickCount = 0;
+        removeElapsedTimeArc(svg);
+        removeSceneHighlights(svg);
+        removeShiftModeFromAllScenes(svg);
+        svg.classList.remove('rt-global-fade');
+        hideRuntimeCapSlider();
+        updateDateLabelsForRuntimeMode(false);
+        
         svg.removeAttribute('data-shift-mode');
         if (view.plugin.refreshTimelineIfNeeded) {
             view.plugin.refreshTimelineIfNeeded(null);
@@ -619,19 +642,10 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         if (!rtButton) return;
 
         if (runtimeModeActive) {
-            // Turn OFF Runtime Mode
-            runtimeModeActive = false;
-            globalRuntimeModeActive = false;
-            updateRtButtonState(rtButton, false);
-            updateDateLabelsForRuntimeMode(false);
-            hideRuntimeCapSlider();
-            svg.removeAttribute('data-shift-mode');
-            // Clear transient runtime cap state
-            (view as any).runtimeCapPercent = undefined;
-            // Trigger timeline refresh to switch back to Duration arcs
-            if (view.plugin.refreshTimelineIfNeeded) {
-                view.plugin.refreshTimelineIfNeeded(null);
-            }
+            // Turn OFF Runtime Mode - use the unified deactivate function
+            deactivateRuntimeMode();
+            // Reset global runtime cap to default
+            setRuntimeCapPercent(100);
         } else {
             // Turn ON Runtime Mode
             // First deactivate any other modes
@@ -1305,10 +1319,10 @@ function createRuntimeCapSlider(
     slider.setAttribute('transform', `translate(${RUNTIME_SLIDER_POS_X}, ${RUNTIME_SLIDER_POS_Y})`);
 
     const TRACK_WIDTH = RUNTIME_SLIDER_WIDTH;
-    const TRACK_HEIGHT = 3;
-    const HANDLE_RADIUS = 6;
-    const TICK_HEIGHT = 8;
-    const LABEL_Y_OFFSET = 18;
+    const TRACK_HEIGHT = 4;
+    const HANDLE_RADIUS = 8;
+    const TICK_HEIGHT = 10;
+    const LABEL_Y_OFFSET = 22;
     const NUM_DIVISIONS = 5;
     const DIVISION_SPACING = TRACK_WIDTH / (NUM_DIVISIONS - 1);
 

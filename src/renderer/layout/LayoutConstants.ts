@@ -233,13 +233,13 @@ export const SHIFT_BUTTON_POS_Y = -740;
 export const RUNTIME_SLIDER_POS_X = -700;
 
 /** Vertical position for runtime cap slider (below RT button) */
-export const RUNTIME_SLIDER_POS_Y = -665;
+export const RUNTIME_SLIDER_POS_Y = -635;
 
 /** Width of runtime cap slider track */
-export const RUNTIME_SLIDER_WIDTH = 120;
+export const RUNTIME_SLIDER_WIDTH = 180;
 
 /** Height of runtime cap slider (including labels) */
-export const RUNTIME_SLIDER_HEIGHT = 24;
+export const RUNTIME_SLIDER_HEIGHT = 32;
 
 
 

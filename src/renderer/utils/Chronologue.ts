@@ -13,6 +13,8 @@ import {
     type ChronologueSceneEntry
 } from '../components/ChronologueTimeline';
 import { renderBackdropRing } from '../components/BackdropRing';
+import { getRuntimeCapPercent } from '../../view/interactions/ChronologueShiftController';
+import { parseRuntimeField } from '../../utils/runtimeEstimator';
 
 export type ChronologueLabel = {
     name: string;
@@ -115,7 +117,33 @@ export function renderChronologueOverlays({
     const stopChronoOverlays = startPerfSegment(plugin, 'timeline.chronologue-overlays');
     let svg = '';
 
-    const durationCapMs = durationSelectionToMs(plugin.settings.chronologueDurationCapSelection);
+    // Calculate cap: use runtime cap percent when in runtime mode, otherwise use duration setting
+    let durationCapMs: number | null;
+    if (useRuntimeMode) {
+        // Calculate max runtime from all scenes (in ms)
+        let maxRuntimeMs = 0;
+        scenes.forEach(scene => {
+            if (scene.itemType === 'Scene' || scene.itemType === 'Backdrop') {
+                const runtimeSeconds = parseRuntimeField(scene.Runtime);
+                if (runtimeSeconds !== null && runtimeSeconds > 0) {
+                    const runtimeMs = runtimeSeconds * 1000;
+                    if (runtimeMs > maxRuntimeMs) {
+                        maxRuntimeMs = runtimeMs;
+                    }
+                }
+            }
+        });
+        // Apply the cap percent (0 = minimum stub, 100 = full max runtime)
+        const capPercent = getRuntimeCapPercent();
+        if (capPercent === 0) {
+            // Minimum stub - use a very small cap to make all arcs minimal
+            durationCapMs = 1000; // 1 second minimum
+        } else {
+            durationCapMs = (capPercent / 100) * maxRuntimeMs;
+        }
+    } else {
+        durationCapMs = durationSelectionToMs(plugin.settings.chronologueDurationCapSelection);
+    }
     const chronologueTimelineArc = renderChronologueTimelineArc(
         scenes,
         subplotOuterRadius,
