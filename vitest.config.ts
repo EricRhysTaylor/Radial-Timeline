@@ -8,6 +8,9 @@ export default defineConfig({
     // Environment - node is fine for utility testing
     environment: 'node',
     
+    // Use threads pool instead of forks (better for sandboxed environments)
+    pool: 'threads',
+    
     // TypeScript support
     globals: true,
     
