@@ -1,7 +1,7 @@
 /*
  * Manuscript Assembly Utilities
  */
-import { TFile, Vault } from 'obsidian';
+import { TFile, Vault, App } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import { getScenePrefixNumber } from './text';
@@ -320,5 +320,39 @@ export async function assembleManuscript(
     scenes,
     sortOrder
   };
+}
+
+/**
+ * Update the Words field in scene YAML frontmatter for each processed scene
+ * @param app - Obsidian App instance
+ * @param sceneFiles - Array of TFile objects that were processed
+ * @param scenes - Array of SceneContent with word counts
+ * @returns Number of files successfully updated
+ */
+export async function updateSceneWordCounts(
+  app: App,
+  sceneFiles: TFile[],
+  scenes: SceneContent[]
+): Promise<number> {
+  let updatedCount = 0;
+
+  for (let i = 0; i < sceneFiles.length; i++) {
+    const file = sceneFiles[i];
+    const scene = scenes[i];
+    
+    if (!file || !scene) continue;
+
+    try {
+      await app.fileManager.processFrontMatter(file, (fm) => {
+        const fmObj = fm as Record<string, unknown>;
+        fmObj['Words'] = scene.wordCount;
+      });
+      updatedCount++;
+    } catch (error) {
+      console.error(`[updateSceneWordCounts] Error updating ${file.path}:`, error);
+    }
+  }
+
+  return updatedCount;
 }
 

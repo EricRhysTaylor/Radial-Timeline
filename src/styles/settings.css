@@ -1204,10 +1204,10 @@
 }
 
 /* ============================================
-   PATREON SUPPORT SECTION
+   BACKUP SAFETY SECTION
    ============================================ */
 
-.rt-patreon-support {
+.rt-backup-safety {
   margin: 0 0 24px 0;
   padding: 20px;
   background: var(--code-background);
@@ -1219,7 +1219,7 @@
   min-height: 180px;
 }
 
-.rt-patreon-bg-logo {
+.rt-backup-bg-logo {
   position: absolute;
   left: 20;
   top: 50%;
@@ -1232,33 +1232,33 @@
   z-index: 0;
 }
 
-.rt-patreon-bg-logo svg {
+.rt-backup-bg-logo svg {
   width: 100%;
   height: 140%;
 }
 
-.rt-patreon-bg-svg {
+.rt-backup-bg-svg {
   fill: var(--alternating-color-1, var(--interactive-accent));
   opacity: 0.12;
 }
 
-.rt-patreon-content {
+.rt-backup-content {
   position: relative;
   z-index: 1;
 }
 
-.rt-patreon-title-row {
+.rt-backup-title-row {
   display: flex;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.rt-patreon-title-icon {
+.rt-backup-title-icon {
   margin-right: 8px;
   color: var(--text-accent);
 }
 
-.rt-patreon-title {
+.rt-backup-title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
@@ -1268,69 +1268,18 @@
   gap: 8px;
 }
 
-.rt-patreon-sync-para {
+.rt-backup-sync-para {
   margin-top: 8px;
 }
 
-.rt-patreon-description {
+.rt-backup-description {
   margin: 0 0 16px 0;
   font-size: 14px;
   line-height: 1.4;
   color: var(--text-muted);
 }
 
-.rt-patreon-button-container {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.rt-patreon-button {
-  display: inline-flex;
-  align-items: center;
-  padding: 10px 24px;
-  background-color: var(--interactive-accent);
-  color: var(--text-on-accent);
-  text-decoration: none;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px var(--interactive-accent-alpha-30);
-  cursor: pointer;
-  gap: 6px;
-}
-
-.rt-patreon-icon {
-  margin-right: 6px;
-}
-
-.rt-patreon-button:hover {
-  background-color: var(--interactive-accent-hover);
-  filter: brightness(0.85) saturate(4);
-  box-shadow: 0 4px 16px var(--interactive-accent-alpha-50);
-  transform: translateY(-2px);
-  color: var(--text-on-accent);
-}
-
-.rt-patreon-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px var(--interactive-accent-alpha-30);
-}
-
-.rt-patreon-button svg {
-  flex-shrink: 0;
-}
-
-.rt-patreon-member-count {
-  font-size: 12px;
-  font-weight: 500;
-  padding-left: 8px;
-  margin-left: 8px;
-  border-left: 1px solid rgba(255, 255, 255, 0.3);
-  opacity: 0.9;
-}
-
-/* Ensure all settings buttons/toggles use pointer cursor (match Patreon CTA feel) */
+/* Ensure all settings buttons/toggles use pointer cursor */
 .rt-settings-root .setting-item-control button,
 .rt-settings-root .setting-item-control .clickable-icon,
 .rt-settings-root .setting-item-control input[type="checkbox"] {

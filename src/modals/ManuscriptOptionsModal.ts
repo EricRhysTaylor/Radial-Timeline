@@ -1,7 +1,7 @@
 /*
  * Manuscript Options Modal
  */
-import { App, ButtonComponent, DropdownComponent, Modal, Notice } from 'obsidian';
+import { App, ButtonComponent, DropdownComponent, Modal, Notice, ToggleComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
@@ -18,6 +18,7 @@ export interface ManuscriptModalResult {
     manuscriptPreset?: ManuscriptPreset;
     outlinePreset?: OutlinePreset;
     outputFormat: ExportFormat;
+    updateWordCounts?: boolean;
 }
 
 type DragHandle = 'start' | 'end' | null;
@@ -35,6 +36,7 @@ export class ManuscriptOptionsModal extends Modal {
     private manuscriptPreset: ManuscriptPreset = 'novel';
     private outlinePreset: OutlinePreset = 'beat-sheet';
     private outputFormat: ExportFormat = 'markdown';
+    private updateWordCounts: boolean = false;
 
     private sceneTitles: string[] = [];
     private sceneWhenDates: (string | null)[] = [];
@@ -197,6 +199,21 @@ export class ManuscriptOptionsModal extends Modal {
         this.tocCard.createDiv({
             cls: 'rt-sub-card-note',
             text: t('manuscriptModal.tocNote')
+        });
+
+        // Word Count Update Card
+        const wordCountCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        wordCountCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.wordCountHeading') });
+        const wordCountRow = wordCountCard.createDiv({ cls: 'rt-manuscript-toggle-row' });
+        const wordCountLabel = wordCountRow.createSpan({ cls: 'rt-manuscript-toggle-label', text: t('manuscriptModal.wordCountToggle') });
+        new ToggleComponent(wordCountRow)
+            .setValue(this.updateWordCounts)
+            .onChange((value) => {
+                this.updateWordCounts = value;
+            });
+        wordCountCard.createDiv({
+            cls: 'rt-sub-card-note',
+            text: t('manuscriptModal.wordCountNote')
         });
 
         // Subplot Filter Card
@@ -648,7 +665,8 @@ export class ManuscriptOptionsModal extends Modal {
                 exportType: this.exportType,
                 manuscriptPreset: this.manuscriptPreset,
                 outlinePreset: this.outlinePreset,
-                outputFormat: this.outputFormat
+                outputFormat: this.outputFormat,
+                updateWordCounts: this.updateWordCounts
             });
             this.close();
         } catch (err) {

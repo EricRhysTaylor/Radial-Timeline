@@ -107,6 +107,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     private queueData: SceneQueueItem[] = [];
     private queueActiveId?: string;
     private queueStatus: Map<string, 'success' | 'error'> = new Map();
+    private queueGrades: Map<string, 'A' | 'B' | 'C'> = new Map();
 
     // Statistics
     private processedCount: number = 0;
@@ -117,6 +118,10 @@ export class SceneAnalysisProcessingModal extends Modal {
     private errorMessages: { message: string; hint?: string }[] = [];
     private warningMessages: string[] = [];
     private logAttempts: number = 0;
+
+    // Animation state for progress bar estimation
+    private animationIntervalId: ReturnType<typeof setInterval> | null = null;
+    private currentEstimatedSeconds: number = 0;
 
     constructor(
         app: App,
@@ -162,6 +167,8 @@ export class SceneAnalysisProcessingModal extends Modal {
             cancelAnimationFrame(this.pendingRafId);
             this.pendingRafId = null;
         }
+        // Clean up animation interval
+        this.stopSceneAnimation();
     }
 
     /**
@@ -242,6 +249,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     public setProcessingQueue(queue: SceneQueueItem[]): void {
         this.queueData = queue.slice();
         this.queueStatus.clear();
+        this.queueGrades.clear();
         this.totalCount = queue.length;
         if (this.isProcessing && this.progressTextEl && queue.length > 0 && this.processedCount === 0) {
             this.progressTextEl.setText(`0 / ${queue.length} scenes (0%)`);
@@ -272,8 +280,9 @@ export class SceneAnalysisProcessingModal extends Modal {
             }
 
             const state = this.queueStatus.get(item.id);
+            const grade = this.queueGrades.get(item.id);
             if (state) {
-                this.applyQueueStatus(entry, state);
+                this.applyQueueStatus(entry, state, grade);
             }
 
             this.queueItems.push(entry);
@@ -307,18 +316,31 @@ export class SceneAnalysisProcessingModal extends Modal {
         }
     }
 
-    public markQueueStatus(queueId: string, status: 'success' | 'error'): void {
+    public markQueueStatus(queueId: string, status: 'success' | 'error', grade?: 'A' | 'B' | 'C'): void {
         if (!queueId) return;
         this.queueStatus.set(queueId, status);
+        if (grade) {
+            this.queueGrades.set(queueId, grade);
+        }
         const entry = this.queueItems.find(item => item.getAttribute('data-queue-id') === queueId);
         if (entry) {
-            this.applyQueueStatus(entry, status);
+            this.applyQueueStatus(entry, status, grade);
         }
     }
 
-    private applyQueueStatus(entry: HTMLElement, status: 'success' | 'error'): void {
+    private applyQueueStatus(entry: HTMLElement, status: 'success' | 'error', grade?: 'A' | 'B' | 'C'): void {
         entry.removeClass('rt-status-success', 'rt-status-error');
         entry.addClass(status === 'success' ? 'rt-status-success' : 'rt-status-error');
+        
+        // Add grade display for successful items
+        if (status === 'success' && grade) {
+            // Remove any existing grade element
+            entry.querySelector('.rt-pulse-grade')?.remove();
+            
+            const gradeEl = entry.createDiv({ cls: 'rt-pulse-grade' });
+            gradeEl.setText(`Grade ${grade}`);
+            gradeEl.addClass(`rt-pulse-grade-${grade.toLowerCase()}`);
+        }
     }
 
     private setTripletNote(prevNum: string, currentNum: string, nextNum: string): void {
@@ -676,6 +698,104 @@ export class SceneAnalysisProcessingModal extends Modal {
         if (this.heroStatusEl) {
             this.heroStatusEl.setText(`Processing ${sceneName}`);
         }
+    }
+
+    /**
+     * Estimate how long the LLM call will take based on historical calibration data.
+     * Default is aggressive (fast) so animation finishes early rather than late.
+     */
+    private estimateDuration(tripletMetric: number): number {
+        const stats = this.plugin.settings.pulseTimingStats;
+
+        // Default rate: 1.5 LLM seconds per runtime-second of content (aggressive/fast)
+        const rate = stats?.avgSecondsPerRuntimeSecond ?? 1.5;
+
+        // Cap at 85% to avoid overshooting
+        return tripletMetric * rate * 0.85;
+    }
+
+    /**
+     * Start smooth animation of progress bar during API wait.
+     * Animates from current position toward estimated completion for this scene.
+     */
+    public startSceneAnimation(tripletMetric: number, sceneIndex: number, total: number, sceneName: string): void {
+        // Clear any existing animation
+        this.stopSceneAnimation();
+
+        const estimatedSeconds = this.estimateDuration(tripletMetric);
+        this.currentEstimatedSeconds = estimatedSeconds;
+
+        // Calculate target: don't go past what this scene's completion would be
+        const sceneStartPercent = total > 0 ? (sceneIndex / total) * 100 : 0;
+        const sceneEndPercent = total > 0 ? ((sceneIndex + 1) / total) * 100 : 100;
+        const targetPercent = sceneStartPercent + (sceneEndPercent - sceneStartPercent) * 0.85;
+
+        // Animate in 200ms steps
+        const steps = Math.max(1, Math.ceil(estimatedSeconds * 5));
+        let step = 0;
+
+        // Update status with estimate
+        if (this.statusTextEl) {
+            this.statusTextEl.setText(`Processing: ${sceneName} (~${Math.ceil(estimatedSeconds)}s)`);
+        }
+
+        this.animationIntervalId = setInterval(() => {
+            step++;
+            const progress = step / steps;
+            const currentPercent = sceneStartPercent + (targetPercent - sceneStartPercent) * progress;
+
+            if (this.progressBarEl) {
+                this.progressBarEl.style.setProperty('--progress-width', `${currentPercent}%`);
+            }
+
+            if (step >= steps) {
+                this.stopSceneAnimation();
+            }
+        }, 200);
+    }
+
+    /**
+     * Stop any running animation interval.
+     */
+    private stopSceneAnimation(): void {
+        if (this.animationIntervalId !== null) {
+            clearInterval(this.animationIntervalId);
+            this.animationIntervalId = null;
+        }
+    }
+
+    /**
+     * Record actual processing time and update calibration data for future estimates.
+     */
+    public recordProcessingTime(tripletMetric: number, actualSeconds: number): void {
+        // Stop any running animation
+        this.stopSceneAnimation();
+
+        // Only calibrate if we have a meaningful metric
+        if (tripletMetric <= 0) return;
+
+        // Calculate actual rate
+        const actualRate = actualSeconds / tripletMetric;
+
+        // Update running average (exponential moving average, weight recent samples more)
+        const stats = this.plugin.settings.pulseTimingStats ?? {
+            avgSecondsPerRuntimeSecond: 1.5,
+            sampleCount: 0,
+            recentSamples: []
+        };
+
+        stats.recentSamples.push(actualRate);
+        if (stats.recentSamples.length > 10) {
+            stats.recentSamples.shift();
+        }
+
+        // New average from recent samples
+        stats.avgSecondsPerRuntimeSecond = stats.recentSamples.reduce((a, b) => a + b, 0) / stats.recentSamples.length;
+        stats.sampleCount++;
+
+        this.plugin.settings.pulseTimingStats = stats;
+        // Save in background (don't await to avoid blocking)
+        this.plugin.saveSettings();
     }
 
     public addError(message: string): void {

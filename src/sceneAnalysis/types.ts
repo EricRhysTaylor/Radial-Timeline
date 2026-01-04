@@ -44,6 +44,7 @@ export interface ParsedSceneAnalysis {
     previousSceneAnalysis: string;
     currentSceneAnalysis: string;
     nextSceneAnalysis: string;
+    sceneGrade?: 'A' | 'B' | 'C';
 }
 
 export interface ApiMessage {

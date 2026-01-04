@@ -262,8 +262,9 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             text.setPlaceholder('/usr/local/bin/pandoc');
             text.setValue(plugin.settings.pandocPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-            const value = text.getValue().trim();
-            plugin.settings.pandocPath = value ? normalizePath(value) : '';
+                const value = text.getValue().trim();
+                const normalized = value ? normalizePath(value) : '';
+                plugin.settings.pandocPath = normalized;
                 await plugin.saveSettings();
             });
         });
@@ -287,7 +288,8 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             text.setValue(plugin.settings.pandocFallbackPath || '');
             plugin.registerDomEvent(text.inputEl, 'blur', async () => {
                 const value = text.getValue().trim();
-                plugin.settings.pandocFallbackPath = value ? normalizePath(value) : '';
+                const normalized = value ? normalizePath(value) : '';
+                plugin.settings.pandocFallbackPath = normalized;
                 await plugin.saveSettings();
             });
         });

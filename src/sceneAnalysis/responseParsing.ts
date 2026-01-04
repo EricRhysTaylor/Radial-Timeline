@@ -123,10 +123,18 @@ function parseJsonBeatsResponse(jsonResult: string, plugin: RadialTimelinePlugin
         }
         validateSceneAnalysisPayload(parsed);
         (plugin as any).lastAnalysisError = '';
+        
+        // Extract the main grade (A/B/C) from first currentSceneAnalysis item
+        const firstCurrent = parsed.currentSceneAnalysis?.[0];
+        const sceneGrade = (firstCurrent?.grade === 'A' || firstCurrent?.grade === 'B' || firstCurrent?.grade === 'C')
+            ? firstCurrent.grade as 'A' | 'B' | 'C'
+            : undefined;
+        
         return {
             previousSceneAnalysis: formatBeatLines(parsed.previousSceneAnalysis, 'previous'),
             currentSceneAnalysis: formatBeatLines(parsed.currentSceneAnalysis, 'current'),
-            nextSceneAnalysis: formatBeatLines(parsed.nextSceneAnalysis, 'next')
+            nextSceneAnalysis: formatBeatLines(parsed.nextSceneAnalysis, 'next'),
+            sceneGrade
         };
     } catch (error) {
         console.error('[parseJsonBeatsResponse] Error parsing JSON beats response:', error);

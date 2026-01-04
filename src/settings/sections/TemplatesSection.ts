@@ -382,7 +382,7 @@ export function renderStoryBeatsSection(params: {
         .addExtraButton(button => {
             const refreshButton = () => {
                 const expanded = plugin.settings.enableAdvancedYamlEditor ?? false;
-                button.setIcon('chevrons-up-down');
+                button.setIcon(expanded ? 'chevron-down' : 'chevron-right');
                 button.setTooltip(expanded ? 'Hide advanced YAML editor' : 'Show advanced YAML editor');
             };
             refreshButton();

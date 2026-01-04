@@ -2605,7 +2605,7 @@
           {
             "file": "settings.css",
             "line_number": 1274,
-            "selector": ".rt-patreon-title",
+            "selector": ".rt-backup-title",
             "property": "margin",
             "value": "0",
             "category": "7_other"
@@ -2613,7 +2613,7 @@
           {
             "file": "settings.css",
             "line_number": 1275,
-            "selector": ".rt-patreon-title",
+            "selector": ".rt-backup-title",
             "property": "font-size",
             "value": "20px",
             "category": "7_other"
@@ -4236,7 +4236,7 @@
     {
       "file": "settings.css",
       "line_number": 1274,
-      "selector": ".rt-patreon-title",
+      "selector": ".rt-backup-title",
       "property": "margin",
       "value": "0",
       "category": "7_other"
@@ -4244,7 +4244,7 @@
     {
       "file": "settings.css",
       "line_number": 1275,
-      "selector": ".rt-patreon-title",
+      "selector": ".rt-backup-title",
       "property": "font-size",
       "value": "20px",
       "category": "7_other"

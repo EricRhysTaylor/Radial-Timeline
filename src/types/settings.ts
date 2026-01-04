@@ -21,6 +21,12 @@ export interface RuntimeSessionPlanning {
     dailyMinutes?: number;  // Minutes available per day for this profile
 }
 
+export interface LlmTimingStats {
+    avgSecondsPerRuntimeSecond: number;  // LLM processing time per runtime-second of content
+    sampleCount: number;                  // Total samples collected
+    recentSamples: number[];              // Last 10 samples for calibration
+}
+
 export interface RuntimeRateProfile {
     id: string;
     label: string;
@@ -157,6 +163,9 @@ export interface RadialTimelineSettings {
     runtimeMomentSeconds?: number;
     runtimeSilenceSeconds?: number;
     runtimeCapDefaultPercent?: number; // Default cap for runtime arcs (0, 25, 50, 75, 100)
+
+    // LLM Timing Calibration (for progress bar animation)
+    pulseTimingStats?: LlmTimingStats;
 
     // Export / Pandoc (Professional)
     pandocPath?: string;

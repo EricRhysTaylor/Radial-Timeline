@@ -5,7 +5,7 @@
 
 import { App, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { assembleManuscript, getSceneFilesByOrder, sliceScenesByRange, ManuscriptSceneSelection } from '../utils/manuscript';
+import { assembleManuscript, getSceneFilesByOrder, sliceScenesByRange, ManuscriptSceneSelection, updateSceneWordCounts } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult } from '../modals/ManuscriptOptionsModal';
@@ -382,6 +382,14 @@ export class CommandRegistrar {
             if (!manuscript.text || manuscript.text.trim().length === 0) {
                 new Notice('Manuscript is empty. Check that your scene files have content.');
                 return;
+            }
+
+            // Update scene word counts if requested
+            if (options.updateWordCounts && manuscript.scenes.length > 0) {
+                const updatedCount = await updateSceneWordCounts(this.app, orderedFiles, manuscript.scenes);
+                if (updatedCount > 0) {
+                    new Notice(`Updated word counts for ${updatedCount} scene${updatedCount !== 1 ? 's' : ''}.`);
+                }
             }
 
             const orderLabel = this.getOrderLabel(options.order);

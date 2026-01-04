@@ -24,6 +24,48 @@ import { parseGptResult } from './responseParsing';
 import { callAiProvider } from './aiProvider';
 import type { SceneData } from './types';
 import { parseSceneTitle, decodeHtmlEntities } from '../utils/text';
+import { parseRuntimeField } from '../utils/runtimeEstimator';
+
+export interface TripletMetric {
+    value: number;
+    source: 'runtime' | 'words' | 'default';
+}
+
+interface SceneTriplet {
+    prev: SceneData | null;
+    current: SceneData;
+    next: SceneData | null;
+}
+
+/**
+ * Extract a timing metric from a triplet of scenes for progress bar animation.
+ * Priority: Runtime (preferred) > Words (fallback) > Default (fast baseline)
+ */
+export function getTripletMetric(triplet: SceneTriplet): TripletMetric {
+    const scenes = [triplet.prev, triplet.current, triplet.next].filter((s): s is SceneData => s !== null);
+
+    // Try runtime first (preferred) - sum of all scene runtimes in seconds
+    const runtimes = scenes.map(s => {
+        const runtime = s.frontmatter?.Runtime;
+        return parseRuntimeField(runtime as string | number | undefined);
+    });
+    const validRuntimes = runtimes.filter((r): r is number => r !== null && r > 0);
+    if (validRuntimes.length === scenes.length) {
+        return { value: validRuntimes.reduce((a, b) => a + b, 0), source: 'runtime' };
+    }
+
+    // Try word count fallback - convert words to pseudo-runtime (~150 wpm = 0.4s per word)
+    const words = scenes.map(s => {
+        const w = s.frontmatter?.Words;
+        return typeof w === 'number' ? w : (typeof w === 'string' ? parseInt(w, 10) : 0);
+    }).filter(w => !isNaN(w) && w > 0);
+    if (words.length > 0) {
+        return { value: words.reduce((a, b) => a + b, 0) * 0.4, source: 'words' };
+    }
+
+    // Default: 5 seconds per scene in triplet (fast baseline, better to finish early)
+    return { value: scenes.length * 5, source: 'default' };
+}
 
 function buildQueueItem(scene: SceneData): SceneQueueItem {
     const rawTitle = typeof scene.frontmatter?.Title === 'string'
@@ -125,15 +167,30 @@ export async function processWithModal(
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
         const queueId = triplet.current.file.path;
-        const markQueueStatus = (status: 'success' | 'error') => {
+        const markQueueStatus = (status: 'success' | 'error', grade?: 'A' | 'B' | 'C') => {
             if (modal && typeof modal.markQueueStatus === 'function') {
-                modal.markQueueStatus(queueId, status);
+                modal.markQueueStatus(queueId, status, grade);
             }
         };
 
         const runAi = createAiRunner(plugin, vault, callAiProvider);
+
+        // Calculate triplet metric and start progress bar animation
+        const tripletMetric = getTripletMetric(triplet);
+        const currentSceneIndex = processedCount;
+        if (modal && typeof modal.startSceneAnimation === 'function') {
+            modal.startSceneAnimation(tripletMetric.value, currentSceneIndex, totalToProcess, sceneNameForLog);
+        }
+        const startTime = performance.now();
+
         try {
             const aiResult = await runAi(userPrompt, null, 'processByManuscriptOrder', sceneNameForLog, tripletForLog);
+
+            // Record actual processing time for calibration
+            const elapsedSeconds = (performance.now() - startTime) / 1000;
+            if (modal && typeof modal.recordProcessingTime === 'function') {
+                modal.recordProcessingTime(tripletMetric.value, elapsedSeconds);
+            }
 
             if (aiResult.result) {
                 const parsedAnalysis = parseGptResult(aiResult.result, plugin);
@@ -146,7 +203,7 @@ export async function processWithModal(
                         if (flagCleared) {
                             processedCount++;
                             modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
-                            markQueueStatus('success');
+                            markQueueStatus('success', parsedAnalysis.sceneGrade);
                         } else {
                             markQueueStatus('error');
                             modal.addError(`Failed to update pulse flag for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
@@ -158,7 +215,7 @@ export async function processWithModal(
                     if (success) {
                         processedCount++;
                         modal.updateProgress(processedCount, totalToProcess, triplet.current.file.basename);
-                        markQueueStatus('success');
+                        markQueueStatus('success', parsedAnalysis.sceneGrade);
                         await plugin.saveSettings();
                     } else {
                         markQueueStatus('error');
@@ -369,9 +426,9 @@ export async function processSubplotWithModal(
 
         const sceneName = triplet.current.file.basename;
         const queueId = triplet.current.file.path;
-        const markQueueStatus = (status: 'success' | 'error') => {
+        const markQueueStatus = (status: 'success' | 'error', grade?: 'A' | 'B' | 'C') => {
             if (modal && typeof modal.markQueueStatus === 'function') {
-                modal.markQueueStatus(queueId, status);
+                modal.markQueueStatus(queueId, status, grade);
             }
         };
 
@@ -393,8 +450,23 @@ export async function processSubplotWithModal(
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
         const runAi = createAiRunner(plugin, vault, callAiProvider);
+
+        // Calculate triplet metric and start progress bar animation
+        const tripletMetric = getTripletMetric(triplet);
+        const currentSceneIndex = processedCount;
+        if (modal && typeof modal.startSceneAnimation === 'function') {
+            modal.startSceneAnimation(tripletMetric.value, currentSceneIndex, total, sceneNameForLog);
+        }
+        const startTime = performance.now();
+
         try {
             const aiResult = await runAi(userPrompt, subplotName, 'processBySubplotOrder', sceneNameForLog, tripletForLog);
+
+            // Record actual processing time for calibration
+            const elapsedSeconds = (performance.now() - startTime) / 1000;
+            if (modal && typeof modal.recordProcessingTime === 'function') {
+                modal.recordProcessingTime(tripletMetric.value, elapsedSeconds);
+            }
 
             if (aiResult.result) {
                 const parsedAnalysis = parseGptResult(aiResult.result, plugin);
@@ -407,7 +479,7 @@ export async function processSubplotWithModal(
                         if (flagCleared) {
                             processedCount++;
                             modal.updateProgress(processedCount, total, sceneName);
-                            markQueueStatus('success');
+                            markQueueStatus('success', parsedAnalysis.sceneGrade);
                         } else {
                             markQueueStatus('error');
                             modal.addError(`Failed to update pulse flag for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
@@ -417,7 +489,7 @@ export async function processSubplotWithModal(
                         if (success) {
                             processedCount++;
                             modal.updateProgress(processedCount, total, sceneName);
-                            markQueueStatus('success');
+                            markQueueStatus('success', parsedAnalysis.sceneGrade);
                         } else {
                             markQueueStatus('error');
                             modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
@@ -502,9 +574,9 @@ export async function processEntireSubplotWithModalInternal(
 
         const sceneName = triplet.current.file.basename;
         const queueId = triplet.current.file.path;
-        const markQueueStatus = (status: 'success' | 'error') => {
+        const markQueueStatus = (status: 'success' | 'error', grade?: 'A' | 'B' | 'C') => {
             if (modal && typeof modal.markQueueStatus === 'function') {
-                modal.markQueueStatus(queueId, status);
+                modal.markQueueStatus(queueId, status, grade);
             }
         };
 
@@ -526,8 +598,23 @@ export async function processEntireSubplotWithModalInternal(
         const sceneNameForLog = triplet.current.file.basename;
         const tripletForLog = { prev: prevNum, current: currentNum, next: nextNum };
         const runAi = createAiRunner(plugin, vault, callAiProvider);
+
+        // Calculate triplet metric and start progress bar animation
+        const tripletMetric = getTripletMetric(triplet);
+        const currentSceneIndex = processedCount;
+        if (modal && typeof modal.startSceneAnimation === 'function') {
+            modal.startSceneAnimation(tripletMetric.value, currentSceneIndex, total, sceneNameForLog);
+        }
+        const startTime = performance.now();
+
         try {
             const aiResult = await runAi(userPrompt, subplotName, 'processEntireSubplot', sceneNameForLog, tripletForLog);
+
+            // Record actual processing time for calibration
+            const elapsedSeconds = (performance.now() - startTime) / 1000;
+            if (modal && typeof modal.recordProcessingTime === 'function') {
+                modal.recordProcessingTime(tripletMetric.value, elapsedSeconds);
+            }
 
             if (aiResult.result) {
                 const parsedAnalysis = parseGptResult(aiResult.result, plugin);
@@ -540,7 +627,7 @@ export async function processEntireSubplotWithModalInternal(
                         if (flagCleared) {
                             processedCount++;
                             modal.updateProgress(processedCount, total, sceneName);
-                            markQueueStatus('success');
+                            markQueueStatus('success', parsedAnalysis.sceneGrade);
                         } else {
                             markQueueStatus('error');
                             modal.addError(`Failed to update pulse flag for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);
@@ -550,7 +637,7 @@ export async function processEntireSubplotWithModalInternal(
                         if (success) {
                             processedCount++;
                             modal.updateProgress(processedCount, total, sceneName);
-                            markQueueStatus('success');
+                            markQueueStatus('success', parsedAnalysis.sceneGrade);
                         } else {
                             markQueueStatus('error');
                             modal.addError(`Failed to update file for scene ${triplet.current.sceneNumber}: ${triplet.current.file.path}`);

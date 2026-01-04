@@ -166,6 +166,18 @@
   border-color: rgba(255, 255, 255, 0.18);
 }
 
+.rt-manuscript-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rt-manuscript-toggle-label {
+  font-size: 0.9rem;
+  color: var(--text-normal);
+}
+
 .rt-manuscript-range-shell {
   display: flex;
   flex-direction: column;
@@ -703,6 +715,36 @@
 
 .rt-pulse-ruler-item.rt-is-complete {
   opacity: 0.55;
+}
+
+/* Scene grade display in queue items */
+.rt-pulse-grade {
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.rt-pulse-grade-a {
+  color: #2ecc71;
+  background: rgba(46, 204, 113, 0.15);
+  text-shadow: 0 0 8px rgba(46, 204, 113, 0.4);
+}
+
+.rt-pulse-grade-b {
+  color: #f39c12;
+  background: rgba(243, 156, 18, 0.15);
+  text-shadow: 0 0 8px rgba(243, 156, 18, 0.4);
+}
+
+.rt-pulse-grade-c {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.15);
+  text-shadow: 0 0 8px rgba(231, 76, 60, 0.4);
 }
 
 .rt-pulse-ruler-note {

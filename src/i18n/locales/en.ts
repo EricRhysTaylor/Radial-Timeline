@@ -180,6 +180,9 @@ export interface TranslationKeys {
         emptyNotice: string;
         rangeEmpty: string;
         loadError: string;
+        wordCountHeading: string;
+        wordCountToggle: string;
+        wordCountNote: string;
     };
     planetary: {
         heading: string;
@@ -382,6 +385,9 @@ export const en: TranslationKeys = {
         emptyNotice: 'No scenes available to assemble.',
         rangeEmpty: 'Selected range is empty.',
         loadError: 'Failed to load scenes.',
+        wordCountHeading: 'Update metadata',
+        wordCountToggle: 'Update Words in scene YAML',
+        wordCountNote: 'Updates the Words field in each scene\'s frontmatter with accurate counts (excludes YAML and comments).',
     },
     planetary: {
         heading: 'Planetary calendar system',
