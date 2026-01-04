@@ -40,7 +40,7 @@
 
 .rt-gossamer-beat-outline:hover,
 .rt-gossamer-beat-outline.rt-hover {
-  stroke: white !important;
+  stroke: white;
   /* Turn white on hover or synchronized hover */
   stroke-width: 3px;
 }

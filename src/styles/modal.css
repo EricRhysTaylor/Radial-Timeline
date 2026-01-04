@@ -170,7 +170,7 @@
 }
 
 .rt-search-input {
-  width: 100% !important;
+  width: 100%;
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -190,7 +190,7 @@
 }
 
 .rt-search-input.rt-input-error {
-  border-color: var(--text-error) !important;
+  border-color: var(--text-error);
   background: rgba(255, 0, 0, 0.08);
 }
 
@@ -325,7 +325,7 @@
 }
 
 .rt-pulse-modal.rt-gossamer-score-modal {
-  padding: 0 !important;
+  padding: 0;
 }
 
 .rt-pulse-modal::before {
@@ -345,7 +345,7 @@
 /* rt-glass-card base consolidated in base.css */
 
 .rt-gossamer-score-modal .rt-glass-card {
-  padding: 12px 14px !important;
+  padding: 12px 14px;
 }
 
 .rt-subplot-management-input-label {
@@ -430,8 +430,8 @@
 }
 
 .rt-planetary-modal .setting-item {
-  border-top: none !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-top: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding: 12px 0;
 }
 
@@ -534,9 +534,9 @@
 }
 
 .rt-zero-draft-override {
-  background-color: var(--rt-color-due) !important;
-  color: var(--rt-color-empty) !important;
-  border-color: var(--rt-color-due) !important;
+  background-color: var(--rt-color-due);
+  color: var(--rt-color-empty);
+  border-color: var(--rt-color-due);
 }
 
 .rt-zero-draft-override:hover {
@@ -955,26 +955,26 @@
 
 /* Gossamer / Pulse modal overrides */
 .rt-gossamer-score-modal .rt-pulse-progress-hero {
-  padding: 12px 14px !important;
-  background: rgba(255, 255, 255, 0.02) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  box-shadow: none !important;
-  border-radius: 12px !important;
-  margin-bottom: 12px !important;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+  border-radius: 12px;
+  margin-bottom: 12px;
 }
 
 .rt-gossamer-score-modal .rt-pulse-progress-hero::after {
-  display: none !important;
+  display: none;
 }
 
 .rt-gossamer-score-modal .rt-pulse-progress-body {
-  gap: 10px !important;
-  margin-top: 12px !important;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .rt-gossamer-score-modal .rt-pulse-progress-card {
-  padding: 16px 18px !important;
-  gap: 12px !important;
+  padding: 16px 18px;
+  gap: 12px;
 }
 
 .rt-gossamer-proc-modal {
@@ -1698,7 +1698,7 @@
 }
 
 .rt-gossamer-score-line [data-item-type=title] {
-  fill: var(--rt-max-publish-stage-color) !important;
+  fill: var(--rt-max-publish-stage-color);
   stroke: white;
   stroke-width: 0.07em;
   paint-order: stroke;

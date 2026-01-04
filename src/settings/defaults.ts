@@ -167,6 +167,28 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
     
     // Runtime Estimation defaults
     enableRuntimeEstimation: false,
+    runtimeRateProfiles: [
+        {
+            id: 'default',
+            label: 'Default',
+            contentType: 'novel',
+            dialogueWpm: 160,
+            actionWpm: 100,
+            narrationWpm: 150,
+            beatSeconds: 2,
+            pauseSeconds: 3,
+            longPauseSeconds: 5,
+            momentSeconds: 4,
+            silenceSeconds: 5,
+            sessionPlanning: {
+                draftingWpm: undefined,
+                recordingWpm: undefined,
+                editingWpm: undefined,
+                dailyMinutes: undefined,
+            },
+        },
+    ],
+    defaultRuntimeProfileId: 'default',
     runtimeContentType: 'novel',
     runtimeDialogueWpm: 160,
     runtimeActionWpm: 100,
@@ -177,4 +199,14 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
     runtimeMomentSeconds: 4,
     runtimeSilenceSeconds: 5,
     runtimeCapDefaultPercent: 100, // Auto/Max - longest scene fills 100%
+
+    // Export / Pandoc defaults
+    pandocPath: '',
+    pandocEnableFallback: false,
+    pandocFallbackPath: '',
+    pandocTemplates: {
+        screenplay: '',
+        podcast: '',
+        novel: ''
+    },
 };

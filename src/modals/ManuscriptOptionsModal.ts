@@ -5,6 +5,8 @@ import { App, ButtonComponent, DropdownComponent, Modal, Notice } from 'obsidian
 import type RadialTimelinePlugin from '../main';
 import { getSceneFilesByOrder, ManuscriptOrder, TocMode } from '../utils/manuscript';
 import { t } from '../i18n';
+import { ExportFormat, ExportType, ManuscriptPreset, OutlinePreset } from '../utils/exportFormats';
+import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
 
 export interface ManuscriptModalResult {
     order: ManuscriptOrder;
@@ -12,6 +14,10 @@ export interface ManuscriptModalResult {
     rangeStart?: number;
     rangeEnd?: number;
     subplot?: string;
+    exportType: ExportType;
+    manuscriptPreset?: ManuscriptPreset;
+    outlinePreset?: OutlinePreset;
+    outputFormat: ExportFormat;
 }
 
 type DragHandle = 'start' | 'end' | null;
@@ -20,9 +26,15 @@ export class ManuscriptOptionsModal extends Modal {
     private readonly plugin: RadialTimelinePlugin;
     private readonly onSubmit: (result: ManuscriptModalResult) => Promise<void>;
 
+    private readonly isPro: boolean;
+
     private order: ManuscriptOrder = 'narrative';
     private tocMode: TocMode = 'markdown';
     private subplot: string = 'All Subplots';
+    private exportType: ExportType = 'manuscript';
+    private manuscriptPreset: ManuscriptPreset = 'novel';
+    private outlinePreset: OutlinePreset = 'beat-sheet';
+    private outputFormat: ExportFormat = 'markdown';
 
     private sceneTitles: string[] = [];
     private sceneWhenDates: (string | null)[] = [];
@@ -42,6 +54,14 @@ export class ManuscriptOptionsModal extends Modal {
     private actionButton?: ButtonComponent;
     private subplotDropdown?: DropdownComponent;
     private orderPills: { el: HTMLElement, order: ManuscriptOrder }[] = [];
+    private exportTypePills: { el: HTMLElement, type: ExportType }[] = [];
+    private outputFormatPills: { el: HTMLElement, format: ExportFormat }[] = [];
+    private manuscriptPresetDropdown?: DropdownComponent;
+    private outlinePresetDropdown?: DropdownComponent;
+    private tocCard?: HTMLElement;
+    private manuscriptOptionsCard?: HTMLElement;
+    private outlineOptionsCard?: HTMLElement;
+    private proNoteEl?: HTMLElement;
 
     private activeHandle: DragHandle = null;
     private detachEvents?: () => void;
@@ -54,6 +74,7 @@ export class ManuscriptOptionsModal extends Modal {
         super(app);
         this.plugin = plugin;
         this.onSubmit = onSubmit;
+        this.isPro = isProfessionalActive(plugin);
     }
 
     async onOpen(): Promise<void> {
@@ -82,7 +103,7 @@ export class ManuscriptOptionsModal extends Modal {
     // Layout -----------------------------------------------------------------
     private renderSkeleton(container: HTMLElement): void {
         const hero = container.createDiv({ cls: 'rt-modal-header' });
-        hero.createSpan({ cls: 'rt-modal-badge', text: 'Manuscript' });
+        hero.createSpan({ cls: 'rt-modal-badge', text: t('manuscriptModal.badge') });
         hero.createDiv({
             cls: 'rt-modal-title',
             text: t('manuscriptModal.title')
@@ -94,9 +115,73 @@ export class ManuscriptOptionsModal extends Modal {
         this.heroMetaEl = hero.createDiv({ cls: 'rt-modal-meta' });
         this.renderHeroMeta([t('manuscriptModal.heroLoading')]);
 
-        const tocCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
-        tocCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.tocHeading') });
-        const tocActions = tocCard.createDiv({ cls: 'rt-manuscript-pill-row' });
+        // Export type switch
+        const exportCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        exportCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.exportHeading') });
+        const exportRow = exportCard.createDiv({ cls: 'rt-manuscript-pill-row' });
+        this.createExportTypePill(exportRow, t('manuscriptModal.exportTypeManuscript'), 'manuscript');
+        this.createExportTypePill(exportRow, `${t('manuscriptModal.exportTypeOutline')} · ${t('manuscriptModal.proBadge')}`, 'outline', !this.isPro);
+
+        this.proNoteEl = exportCard.createDiv({
+            cls: 'rt-sub-card-note',
+            text: this.isPro ? t('manuscriptModal.proEnabled') : t('manuscriptModal.proRequired')
+        });
+
+        // Manuscript preset + format
+        this.manuscriptOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        this.manuscriptOptionsCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.manuscriptPresetHeading') });
+        const presetRow = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-input-container' });
+        this.manuscriptPresetDropdown = new DropdownComponent(presetRow)
+            .addOption('novel', t('manuscriptModal.presetNovel'))
+            .addOption('screenplay', `${t('manuscriptModal.presetScreenplay')} · ${t('manuscriptModal.proBadge')}`)
+            .addOption('podcast', `${t('manuscriptModal.presetPodcast')} · ${t('manuscriptModal.proBadge')}`)
+            .setValue(this.manuscriptPreset)
+            .onChange((value) => {
+                const preset = value as ManuscriptPreset;
+                if (!this.isPro && (preset === 'screenplay' || preset === 'podcast')) {
+                    new Notice(t('manuscriptModal.proRequired'));
+                    this.manuscriptPresetDropdown?.setValue(this.manuscriptPreset);
+                    return;
+                }
+                this.manuscriptPreset = preset;
+            });
+
+        const formatRow = this.manuscriptOptionsCard.createDiv({ cls: 'rt-manuscript-pill-row' });
+        this.createOutputFormatPill(formatRow, t('manuscriptModal.formatMarkdown'), 'markdown');
+        this.createOutputFormatPill(formatRow, `${t('manuscriptModal.formatDocx')} · ${t('manuscriptModal.proBadge')}`, 'docx', !this.isPro);
+        this.createOutputFormatPill(formatRow, `${t('manuscriptModal.formatPdf')} · ${t('manuscriptModal.proBadge')}`, 'pdf', !this.isPro);
+
+        // Outline presets
+        this.outlineOptionsCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        this.outlineOptionsCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.outlinePresetHeading') });
+        const outlinePresetRow = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-input-container' });
+        this.outlinePresetDropdown = new DropdownComponent(outlinePresetRow)
+            .addOption('beat-sheet', t('manuscriptModal.outlineBeatSheet'))
+            .addOption('episode-rundown', t('manuscriptModal.outlineEpisodeRundown'))
+            .addOption('shooting-schedule', t('manuscriptModal.outlineShootingSchedule'))
+            .addOption('index-cards-csv', `${t('manuscriptModal.outlineIndexCardsCsv')} · ${t('manuscriptModal.proBadge')}`)
+            .addOption('index-cards-json', `${t('manuscriptModal.outlineIndexCardsJson')} · ${t('manuscriptModal.proBadge')}`)
+            .setValue(this.outlinePreset)
+            .onChange((value) => {
+                const preset = value as OutlinePreset;
+                if (!this.isPro && (preset === 'index-cards-csv' || preset === 'index-cards-json')) {
+                    new Notice(t('manuscriptModal.proRequired'));
+                    this.outlinePresetDropdown?.setValue(this.outlinePreset);
+                    return;
+                }
+                this.outlinePreset = preset;
+                this.normalizeOutputFormatForOutline();
+                this.syncOutputFormatPills();
+            });
+
+        const outlineFormatRow = this.outlineOptionsCard.createDiv({ cls: 'rt-manuscript-pill-row' });
+        this.createOutputFormatPill(outlineFormatRow, t('manuscriptModal.formatMarkdown'), 'markdown', false, 'outline');
+        this.createOutputFormatPill(outlineFormatRow, `${t('manuscriptModal.formatCsv')} · ${t('manuscriptModal.proBadge')}`, 'csv', !this.isPro, 'outline');
+        this.createOutputFormatPill(outlineFormatRow, `${t('manuscriptModal.formatJson')} · ${t('manuscriptModal.proBadge')}`, 'json', !this.isPro, 'outline');
+
+        this.tocCard = container.createDiv({ cls: 'rt-glass-card rt-sub-card' });
+        this.tocCard.createDiv({ cls: 'rt-sub-card-head', text: t('manuscriptModal.tocHeading') });
+        const tocActions = this.tocCard.createDiv({ cls: 'rt-manuscript-pill-row' });
         this.createPill(tocActions, t('manuscriptModal.tocMarkdown'), this.tocMode === 'markdown', () => {
             this.tocMode = 'markdown';
             this.updatePills(tocActions, 0);
@@ -109,7 +194,7 @@ export class ManuscriptOptionsModal extends Modal {
             this.tocMode = 'none';
             this.updatePills(tocActions, 2);
         });
-        tocCard.createDiv({
+        this.tocCard.createDiv({
             cls: 'rt-sub-card-note',
             text: t('manuscriptModal.tocNote')
         });
@@ -171,6 +256,8 @@ export class ManuscriptOptionsModal extends Modal {
         new ButtonComponent(actions)
             .setButtonText(t('manuscriptModal.actionCancel'))
             .onClick(() => this.close());
+
+        this.syncExportUi();
     }
 
     private renderHeroMeta(items: string[]): void {
@@ -217,6 +304,87 @@ export class ManuscriptOptionsModal extends Modal {
             this.order = order;
             await this.loadScenesForOrder();
         });
+    }
+
+    private createExportTypePill(parent: HTMLElement, label: string, type: ExportType, disabled = false): void {
+        const pill = parent.createDiv({ cls: 'rt-manuscript-pill' });
+        pill.createSpan({ text: label });
+        if (this.exportType === type) pill.classList.add('rt-is-active');
+        if (disabled) pill.classList.add('rt-is-disabled');
+        this.exportTypePills.push({ el: pill, type });
+
+        pill.onClickEvent(() => {
+            if (disabled) {
+                new Notice(t('manuscriptModal.proRequired'));
+                return;
+            }
+            this.exportTypePills.forEach(p => p.el.removeClass('rt-is-active'));
+            pill.classList.add('rt-is-active');
+            this.exportType = type;
+            this.normalizeOutputFormatForOutline();
+            this.syncExportUi();
+        });
+    }
+
+    private createOutputFormatPill(parent: HTMLElement, label: string, format: ExportFormat, disabled = false, scope: ExportType | 'both' = 'both'): void {
+        const pill = parent.createDiv({ cls: 'rt-manuscript-pill', attr: { 'data-scope': scope } });
+        pill.createSpan({ text: label });
+        const isActive = this.outputFormat === format;
+        if (isActive) pill.classList.add('rt-is-active');
+        if (disabled) pill.classList.add('rt-is-disabled');
+        this.outputFormatPills.push({ el: pill, format });
+
+        pill.onClickEvent(() => {
+            if (disabled) {
+                new Notice(t('manuscriptModal.proRequired'));
+                return;
+            }
+            const scopeMatch = scope === 'both' || scope === this.exportType;
+            if (!scopeMatch) return;
+            this.outputFormatPills
+                .filter(p => {
+                    const pillScope = p.el.getAttribute('data-scope') as ExportType | 'both' | null;
+                    return pillScope === 'both' || pillScope === this.exportType;
+                })
+                .forEach(p => p.el.removeClass('rt-is-active'));
+            pill.classList.add('rt-is-active');
+            this.outputFormat = format;
+            this.normalizeOutputFormatForOutline();
+        });
+    }
+
+    private normalizeOutputFormatForOutline(): void {
+        if (this.exportType !== 'outline') return;
+        if (this.outlinePreset === 'index-cards-csv') {
+            this.outputFormat = 'csv';
+        } else if (this.outlinePreset === 'index-cards-json') {
+            this.outputFormat = 'json';
+        } else if (this.outputFormat === 'csv' || this.outputFormat === 'json') {
+            // Reset back to markdown for outline presets that prefer md
+            this.outputFormat = 'markdown';
+        }
+    }
+
+    private syncOutputFormatPills(): void {
+        this.outputFormatPills.forEach(p => {
+            const scope = p.el.getAttribute('data-scope') as ExportType | 'both' | null;
+            const scopeMatch = scope === 'both' || scope === this.exportType;
+            p.el.toggleClass('rt-is-active', scopeMatch && this.outputFormat === p.format);
+            if (!scopeMatch) {
+                p.el.removeClass('rt-is-active');
+            }
+        });
+    }
+
+    private syncExportUi(): void {
+        if (this.proNoteEl) {
+            this.proNoteEl.setText(this.isPro ? t('manuscriptModal.proEnabled') : t('manuscriptModal.proRequired'));
+        }
+
+        this.tocCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
+        this.manuscriptOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'manuscript');
+        this.outlineOptionsCard?.toggleClass('rt-hidden', this.exportType !== 'outline');
+        this.syncOutputFormatPills();
     }
 
     private updateOrderPillsState(): void {
@@ -476,7 +644,11 @@ export class ManuscriptOptionsModal extends Modal {
                 tocMode: this.tocMode,
                 rangeStart: this.rangeStart,
                 rangeEnd: this.rangeEnd,
-                subplot: this.subplot === 'All Subplots' ? undefined : this.subplot
+                subplot: this.subplot === 'All Subplots' ? undefined : this.subplot,
+                exportType: this.exportType,
+                manuscriptPreset: this.manuscriptPreset,
+                outlinePreset: this.outlinePreset,
+                outputFormat: this.outputFormat
             });
             this.close();
         } catch (err) {

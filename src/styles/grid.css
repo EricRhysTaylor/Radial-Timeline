@@ -20,8 +20,8 @@
 
 .radial-timeline-svg #mode-toggle:hover use,
 .radial-timeline-svg #mode-toggle.rt-mode-toggle-hover use {
-  color: var(--rt-max-publish-stage-color) !important;
-  stroke: currentColor !important;
+  color: var(--rt-max-publish-stage-color);
+  stroke: currentColor;
 }
 
 /* Mode indicator text styles */
@@ -93,7 +93,7 @@
 
 .rt-gossamer-dot.rt-gossamer-missing-data:hover {
   opacity: 1;
-  fill: #ff6666 !important;
+  fill: #ff6666;
 }
 
 /* Gossamer1 dots on hover - add white stroke outline */
@@ -138,7 +138,7 @@
   font-size: 12px;
   text-anchor: middle;
   dominant-baseline: middle;
-  pointer-events: none !important;
+  pointer-events: none;
   cursor: default;
   font-weight: 600;
   fill: var(--rt-gossamer-historical-color);
@@ -209,44 +209,44 @@
 }
 
 .rt-gossamer-spoke.rt-gossamer-spoke-hover {
-  stroke: white !important;
+  stroke: white;
   /* Turn white when synchronized with dot/slice hover, override inline styles */
   stroke-width: 2px;
 }
 
 .rt-gossamer-grid-spoke {
-  stroke: #808080 !important;
+  stroke: #808080;
   /* Medium gray for month grid spokes - override theme colors */
-  stroke-width: 1px !important;
-  stroke-dasharray: 2, 2 !important;
+  stroke-width: 1px;
+  stroke-dasharray: 2, 2;
   /* Dotted lines for months */
-  opacity: 0.7 !important;
+  opacity: 0.7;
 }
 
 .rt-gossamer-grid-spoke.rt-act-boundary {
-  stroke: var(--text-normal) !important;
+  stroke: var(--text-normal);
   /* Use theme text color for consistency */
-  stroke-width: 2px !important;
+  stroke-width: 2px;
   /* Same thickness as regular timeline act spokes */
-  stroke-dasharray: none !important;
+  stroke-dasharray: none;
   /* Solid lines for acts */
-  opacity: 1 !important;
+  opacity: 1;
   /* Fully opaque for prominence */
 }
 
 .radial-timeline-svg.scene-hover .rt-gossamer-grid-spoke.rt-act-boundary {
-  stroke: #ffffff !important;
-  opacity: 0.35 !important;
+  stroke: #ffffff;
+  opacity: 0.35;
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-gossamer-grid-spoke.rt-act-boundary {
-  stroke: rgba(255, 255, 255, 0.3) !important;
-  opacity: 0.25 !important;
+  stroke: rgba(255, 255, 255, 0.3);
+  opacity: 0.25;
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-gossamer-grid-spoke.rt-act-boundary {
-  stroke: rgba(200, 50, 50, 0.8) !important;
-  opacity: 0.7 !important;
+  stroke: rgba(200, 50, 50, 0.8);
+  opacity: 0.7;
 }
 
 /* Story beat slices in all modes (except Gossamer) - base state with gray fill */
@@ -261,23 +261,23 @@
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"] .rt-scene-path {
   cursor: pointer;
   stroke: none;
-  pointer-events: fill !important;
+  pointer-events: fill;
 }
 
 /* Story beat slices in Gossamer mode - hover state (same pattern as score text) */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.beats .rt-scene-path:hover,
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"] .rt-scene-path:hover,
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group.rt-gossamer-hover .rt-scene-path {
-  fill: white !important;
-  stroke: white !important;
-  stroke-width: 3px !important;
-  opacity: 1 !important;
+  fill: white;
+  stroke: white;
+  stroke-width: 3px;
+  opacity: 1;
 }
 
 /* Non-beat slices in Gossamer mode - not interactive */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group:not(.beats):not([data-item-type="Beat"]) .rt-scene-path {
-  cursor: default !important;
-  pointer-events: none !important;
+  cursor: default;
+  pointer-events: none;
 }
 
 /* Beat slice outlines in gossamer layer - purely visual, not interactive */
@@ -286,7 +286,7 @@
   /* Use publish stage color for beat outlines */
   stroke-width: 2px;
   fill: none;
-  pointer-events: none !important;
+  pointer-events: none;
   /* Not interactive - fill area handles all hover/click */
   cursor: default;
 }

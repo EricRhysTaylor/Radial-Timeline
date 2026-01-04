@@ -1,17 +1,17 @@
 .rt-scene-title-bold.rt-title-stage-zero {
-  fill: var(--rt-publishStageColors-Zero, var(--rt-color-zero)) !important;
+  fill: var(--rt-publishStageColors-Zero, var(--rt-color-zero));
 }
 
 .rt-scene-title-bold.rt-title-stage-author {
-  fill: var(--rt-publishStageColors-Author, var(--rt-color-author)) !important;
+  fill: var(--rt-publishStageColors-Author, var(--rt-color-author));
 }
 
 .rt-scene-title-bold.rt-title-stage-house {
-  fill: var(--rt-publishStageColors-House, var(--rt-color-house)) !important;
+  fill: var(--rt-publishStageColors-House, var(--rt-color-house));
 }
 
 .rt-scene-title-bold.rt-title-stage-press {
-  fill: var(--rt-publishStageColors-Press, var(--rt-color-press)) !important;
+  fill: var(--rt-publishStageColors-Press, var(--rt-color-press));
 }
 
 .radial-timeline-container .rt-month-label {
@@ -74,12 +74,12 @@
 
 /* Beginning tick uses Zero stage color to match the date label */
 .radial-timeline-container .rt-chronological-tick.rt-date-first {
-  stroke: var(--rt-publishStageColors-Zero) !important;
+  stroke: var(--rt-publishStageColors-Zero);
 }
 
 /* Ending tick uses Press stage color to match the date label */
 .radial-timeline-container .rt-chronological-tick.rt-date-last {
-  stroke: var(--rt-publishStageColors-Press) !important;
+  stroke: var(--rt-publishStageColors-Press);
 }
 
 .radial-timeline-container .rt-act-label {
@@ -120,20 +120,20 @@
 /* Act spokes: soften or recolor on hover/shift modes */
 .radial-timeline-svg.scene-hover .act-border,
 .radial-timeline-svg.scene-hover .rt-month-spoke-line.rt-act-boundary {
-  stroke: #ffffff !important;
-  opacity: 0.35 !important;
+  stroke: #ffffff;
+  opacity: 0.35;
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .act-border,
 .radial-timeline-svg[data-shift-mode="active"] .rt-month-spoke-line.rt-act-boundary {
-  stroke: rgba(255, 255, 255, 0.3) !important;
-  opacity: 0.25 !important;
+  stroke: rgba(255, 255, 255, 0.3);
+  opacity: 0.25;
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .act-border,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-month-spoke-line.rt-act-boundary {
-  stroke: rgba(200, 50, 50, 0.8) !important;
-  opacity: 0.7 !important;
+  stroke: rgba(200, 50, 50, 0.8);
+  opacity: 0.7;
 }
 
 /* Hide act spokes and labels in Chronologue mode - act organization not relevant */
@@ -189,21 +189,21 @@
 
 /* Hide subplot ring labels in Gossamer mode AND on hover */
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-subplot-ring-label-text {
-  opacity: 0 !important;
+  opacity: 0;
 }
 
 .radial-timeline-svg.scene-hover .rt-subplot-ring-label-text {
-  opacity: 0 !important;
+  opacity: 0;
 }
 
 /* Hide subplot ring labels in shift mode (top left quadrant) */
 .radial-timeline-svg[data-shift-mode="active"] .rt-subplot-ring-label-text {
-  opacity: 0 !important;
+  opacity: 0;
 }
 
 /* Hide subplot ring labels in runtime mode (top left quadrant behavior) */
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-subplot-ring-label-text {
-  opacity: 0 !important;
+  opacity: 0;
 }
 
 /* Mode selector grid */
@@ -258,20 +258,20 @@
 }
 
 .rt-mode-option .rt-active {
-  fill: var(--interactive-accent) !important;
-  stroke: var(--text-normal) !important;
-  stroke-width: 2px !important;
+  fill: var(--interactive-accent);
+  stroke: var(--text-normal);
+  stroke-width: 2px;
 }
 
 .rt-mode-option .rt-active.rt-mode-acronym-text {
-  fill: var(--text-on-accent) !important;
+  fill: var(--text-on-accent);
   font-size: 14px;
   font-weight: 300;
   letter-spacing: 0.1em;
 }
 
 .rt-mode-option .rt-active.rt-mode-number-label {
-  fill: var(--text-on-accent) !important;
+  fill: var(--text-on-accent);
   font-size: 14px;
   font-weight: 300;
 
@@ -381,40 +381,40 @@
 
 /* Shift mode: All scene fills are gray */
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
-  fill: var(--interactive-normal) !important;
+  fill: var(--interactive-normal);
 }
 
 /* Shift mode: Style the number squares and text to match the grayed-out scenes */
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square {
-  fill: var(--interactive-normal) !important;
+  fill: var(--interactive-normal);
   /* Dark gray background */
-  stroke: none !important;
+  stroke: none;
   /* Remove any borders */
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-text {
-  fill: var(--text-muted) !important;
+  fill: var(--text-muted);
   /* Dark muted text to match dark theme */
   opacity: 0.5;
   /* Dim the text to match the faded scenes */
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-scene-is-open:not(.rt-shift-active) {
-  fill: var(--interactive-normal) !important;
-  stroke: none !important;
+  fill: var(--interactive-normal);
+  stroke: none;
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-scene-is-open:not(.rt-shift-active) {
-  fill: var(--text-muted) !important;
-  opacity: 0.5 !important;
+  fill: var(--text-muted);
+  opacity: 0.5;
 }
 
 /* Shift mode: Hover/selected scenes restore full opacity and disable transition */
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:hover,
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:has(.rt-shift-locked) {
-  opacity: 1 !important;
-  transition: none !important;
+  opacity: 1;
+  transition: none;
   /* Override parent transition for instant hover */
 }
 
@@ -422,8 +422,8 @@
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:hover .rt-scene-path,
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-scene-path,
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path.rt-shift-locked {
-  fill: var(--interactive-accent) !important;
-  filter: brightness(1.2) !important;
+  fill: var(--interactive-accent);
+  filter: brightness(1.2);
 }
 
 /* Shift mode: A new class, managed by JS, to restore number squares on hover/select */
@@ -435,87 +435,87 @@
 
 /* Apply subplot colors via data attributes - avoids inline style recalc */
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="0"] {
-  fill: var(--rt-subplot-colors-0) !important;
+  fill: var(--rt-subplot-colors-0);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="1"] {
-  fill: var(--rt-subplot-colors-1) !important;
+  fill: var(--rt-subplot-colors-1);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="2"] {
-  fill: var(--rt-subplot-colors-2) !important;
+  fill: var(--rt-subplot-colors-2);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="3"] {
-  fill: var(--rt-subplot-colors-3) !important;
+  fill: var(--rt-subplot-colors-3);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="4"] {
-  fill: var(--rt-subplot-colors-4) !important;
+  fill: var(--rt-subplot-colors-4);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="5"] {
-  fill: var(--rt-subplot-colors-5) !important;
+  fill: var(--rt-subplot-colors-5);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="6"] {
-  fill: var(--rt-subplot-colors-6) !important;
+  fill: var(--rt-subplot-colors-6);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="7"] {
-  fill: var(--rt-subplot-colors-7) !important;
+  fill: var(--rt-subplot-colors-7);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="8"] {
-  fill: var(--rt-subplot-colors-8) !important;
+  fill: var(--rt-subplot-colors-8);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="9"] {
-  fill: var(--rt-subplot-colors-9) !important;
+  fill: var(--rt-subplot-colors-9);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="10"] {
-  fill: var(--rt-subplot-colors-10) !important;
+  fill: var(--rt-subplot-colors-10);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="11"] {
-  fill: var(--rt-subplot-colors-11) !important;
+  fill: var(--rt-subplot-colors-11);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="12"] {
-  fill: var(--rt-subplot-colors-12) !important;
+  fill: var(--rt-subplot-colors-12);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="13"] {
-  fill: var(--rt-subplot-colors-13) !important;
+  fill: var(--rt-subplot-colors-13);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="14"] {
-  fill: var(--rt-subplot-colors-14) !important;
+  fill: var(--rt-subplot-colors-14);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-shift-active[data-subplot-idx="15"] {
-  fill: var(--rt-subplot-colors-15) !important;
+  fill: var(--rt-subplot-colors-15);
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
-  fill: #000000 !important;
+  fill: #000000;
   /* Black text */
-  opacity: 1 !important;
+  opacity: 1;
   /* Full opacity when active */
 }
 
 /* Ensure active text wins over grade/non-selected rules */
 .radial-timeline-container .radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-shift-active {
-  fill: #000000 !important;
-  opacity: 1 !important;
+  fill: #000000;
+  opacity: 1;
   /* Full opacity when active */
 }
 
 /* Legacy: Keep for backwards compatibility */
 .rt-shift-selected {
-  stroke: var(--interactive-accent) !important;
-  stroke-width: 3 !important;
+  stroke: var(--interactive-accent);
+  stroke-width: 3;
   filter: drop-shadow(0 0 8px var(--interactive-accent-alpha-50));
 }
 
@@ -563,26 +563,26 @@
 
 /* 1. Base State: Scene paths fade out with muted red tint (matching SHIFT mode visibility ~15%) */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
-  fill: rgba(180, 60, 60, 0.15) !important;
-  stroke: rgba(180, 60, 60, 0.25) !important;
+  fill: rgba(180, 60, 60, 0.15);
+  stroke: rgba(180, 60, 60, 0.25);
   stroke-width: 1px;
 }
 
 /* 2. Base State: Number Squares very muted (like shift mode but with slight red tint) */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square {
-  fill: var(--interactive-normal) !important;
-  stroke: none !important;
+  fill: var(--interactive-normal);
+  stroke: none;
   opacity: 0.5;
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-text {
-  fill: rgba(200, 50, 50, 0.8) !important;
+  fill: rgba(200, 50, 50, 0.8);
   opacity: 0.7;
 }
 
 /* 3. Scene Text: Match number square text color and opacity */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-title {
-  fill: rgba(200, 50, 50, 0.8) !important;
+  fill: rgba(200, 50, 50, 0.8);
   opacity: 0.7;
 }
 
@@ -590,25 +590,25 @@
 .radial-timeline-svg[data-shift-mode="alien"] .rt-ring,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-radial-line,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-month-spoke-line {
-  stroke: rgba(180, 60, 60, 0.5) !important;
+  stroke: rgba(180, 60, 60, 0.5);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-month-label,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-month-label-outer:not(.rt-date-boundary),
 .radial-timeline-svg[data-shift-mode="alien"] .rt-act-label {
-  fill: rgba(180, 60, 60, 0.5) !important;
+  fill: rgba(180, 60, 60, 0.5);
 }
 
 /* Boundary date labels (start/end dates at top) unchanged in alien mode - no override needed */
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-chronological-tick-major,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-chronological-tick-minor {
-  stroke: rgba(180, 60, 60, 0.5) !important;
+  stroke: rgba(180, 60, 60, 0.5);
 }
 
 /* 5. Subplot Headlines: Hidden in Alien Mode (like Shift mode) */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-subplot-ring-label-text {
-  opacity: 0 !important;
+  opacity: 0;
 }
 
 /* Settings Validation Icon */
@@ -632,7 +632,7 @@
 /* Planetary Time (Alien Calendar) Synopsis Line */
 .rt-planetary-time-text {
   fill: var(--text-muted, currentColor);
-  font-size: 16px !important;
+  font-size: 16px;
   line-height: 1.2;
 }
 
@@ -647,137 +647,137 @@
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:hover,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:has(.rt-shift-locked) {
-  opacity: 1 !important;
-  transition: none !important;
+  opacity: 1;
+  transition: none;
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:hover .rt-scene-path,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-scene-path,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path.rt-shift-locked {
-  fill: var(--text-error) !important;
-  stroke: var(--text-error) !important;
+  fill: var(--text-error);
+  stroke: var(--text-error);
   filter: brightness(1.3) drop-shadow(0 0 5px var(--text-error));
 }
 
 /* Alien scene-hover (global .scene-hover flag): keep AI grade squares/text tinted */
 .radial-timeline-svg[data-shift-mode="alien"].scene-hover .rt-number-square {
-  fill: var(--interactive-normal) !important;
-  stroke: none !important;
-  opacity: 0.5 !important;
+  fill: var(--interactive-normal);
+  stroke: none;
+  opacity: 0.5;
 }
 
 .radial-timeline-svg[data-shift-mode="alien"].scene-hover .rt-number-text {
-  fill: rgba(200, 50, 50, 0.8) !important;
-  opacity: 0.7 !important;
+  fill: rgba(200, 50, 50, 0.8);
+  opacity: 0.7;
 }
 
 /* Alien hover: keep number squares/text tinted instead of turning white */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:hover .rt-number-square,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-number-square,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-number-square.rt-shift-locked {
-  fill: var(--interactive-normal) !important;
-  stroke: none !important;
-  opacity: 0.5 !important;
+  fill: var(--interactive-normal);
+  stroke: none;
+  opacity: 0.5;
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"]:hover .rt-number-text,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-number-text,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-group[data-item-type="Scene"] .rt-number-text.rt-shift-locked {
-  fill: rgba(200, 50, 50, 0.8) !important;
-  opacity: 0.7 !important;
+  fill: rgba(200, 50, 50, 0.8);
+  opacity: 0.7;
 }
 
 /* Alien hover: synopsis/info text stays tinted */
 .radial-timeline-svg[data-shift-mode="alien"].scene-hover .rt-scene-info {
-  opacity: 1 !important;
-  color: rgba(200, 50, 50, 0.9) !important;
-  fill: rgba(200, 50, 50, 0.9) !important;
-  stroke: rgba(200, 50, 50, 0.6) !important;
+  opacity: 1;
+  color: rgba(200, 50, 50, 0.9);
+  fill: rgba(200, 50, 50, 0.9);
+  stroke: rgba(200, 50, 50, 0.6);
 }
 
 /* Alien hover: synopsis/info text stays tinted */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-scene-info.rt-visible {
-  opacity: 1 !important;
-  color: rgba(200, 50, 50, 0.9) !important;
-  fill: rgba(200, 50, 50, 0.9) !important;
-  stroke: rgba(200, 50, 50, 0.6) !important;
+  opacity: 1;
+  color: rgba(200, 50, 50, 0.9);
+  fill: rgba(200, 50, 50, 0.9);
+  stroke: rgba(200, 50, 50, 0.6);
 }
 
 /* 7. Active Number Square in Alien Mode */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active {
-  fill: var(--interactive-accent) !important;
-  opacity: 1 !important;
+  fill: var(--interactive-accent);
+  opacity: 1;
   /* Default if no subplot */
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-text.rt-shift-active {
-  fill: var(--background-primary) !important;
-  opacity: 1 !important;
+  fill: var(--background-primary);
+  opacity: 1;
 }
 
 /* Re-apply per-subplot colors for active squares in Alien Mode */
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="0"] {
-  fill: var(--rt-subplot-colors-0) !important;
+  fill: var(--rt-subplot-colors-0);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="1"] {
-  fill: var(--rt-subplot-colors-1) !important;
+  fill: var(--rt-subplot-colors-1);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="2"] {
-  fill: var(--rt-subplot-colors-2) !important;
+  fill: var(--rt-subplot-colors-2);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="3"] {
-  fill: var(--rt-subplot-colors-3) !important;
+  fill: var(--rt-subplot-colors-3);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="4"] {
-  fill: var(--rt-subplot-colors-4) !important;
+  fill: var(--rt-subplot-colors-4);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="5"] {
-  fill: var(--rt-subplot-colors-5) !important;
+  fill: var(--rt-subplot-colors-5);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="6"] {
-  fill: var(--rt-subplot-colors-6) !important;
+  fill: var(--rt-subplot-colors-6);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="7"] {
-  fill: var(--rt-subplot-colors-7) !important;
+  fill: var(--rt-subplot-colors-7);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="8"] {
-  fill: var(--rt-subplot-colors-8) !important;
+  fill: var(--rt-subplot-colors-8);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="9"] {
-  fill: var(--rt-subplot-colors-9) !important;
+  fill: var(--rt-subplot-colors-9);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="10"] {
-  fill: var(--rt-subplot-colors-10) !important;
+  fill: var(--rt-subplot-colors-10);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="11"] {
-  fill: var(--rt-subplot-colors-11) !important;
+  fill: var(--rt-subplot-colors-11);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="12"] {
-  fill: var(--rt-subplot-colors-12) !important;
+  fill: var(--rt-subplot-colors-12);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="13"] {
-  fill: var(--rt-subplot-colors-13) !important;
+  fill: var(--rt-subplot-colors-13);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="14"] {
-  fill: var(--rt-subplot-colors-14) !important;
+  fill: var(--rt-subplot-colors-14);
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-shift-active[data-subplot-idx="15"] {
-  fill: var(--rt-subplot-colors-15) !important;
+  fill: var(--rt-subplot-colors-15);
 }
 
 /* 8. ALT Button Active State - only fill is red, stroke/text stay normal */
@@ -803,32 +803,32 @@
 /* 1. Act Borders with blue tint */
 .radial-timeline-svg[data-shift-mode="runtime"] .act-border,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-month-spoke-line.rt-act-boundary {
-  stroke: rgba(60, 120, 200, 0.8) !important;
-  opacity: 0.7 !important;
+  stroke: rgba(60, 120, 200, 0.8);
+  opacity: 0.7;
 }
 
 /* 2. Scene paths with muted blue tint */
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path {
-  fill: rgba(60, 120, 180, 0.20) !important;
-  stroke: rgba(60, 120, 180, 0.35) !important;
+  fill: rgba(60, 120, 180, 0.20);
+  stroke: rgba(60, 120, 180, 0.35);
   stroke-width: 1px;
 }
 
 /* 3. Number Squares with blue-muted styling */
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-number-square {
-  fill: var(--interactive-normal) !important;
-  stroke: none !important;
+  fill: var(--interactive-normal);
+  stroke: none;
   opacity: 0.6;
 }
 
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-number-text {
-  fill: rgba(60, 140, 200, 0.9) !important;
+  fill: rgba(60, 140, 200, 0.9);
   opacity: 0.8;
 }
 
 /* 4. Scene Text: Match number square text color */
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-title {
-  fill: rgba(60, 140, 200, 0.9) !important;
+  fill: rgba(60, 140, 200, 0.9);
   opacity: 0.8;
 }
 
@@ -836,33 +836,33 @@
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-ring,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-radial-line,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-month-spoke-line {
-  stroke: rgba(60, 120, 180, 0.5) !important;
+  stroke: rgba(60, 120, 180, 0.5);
 }
 
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-month-label,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-month-label-outer:not(.rt-date-boundary),
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-act-label {
-  fill: rgba(60, 120, 180, 0.5) !important;
+  fill: rgba(60, 120, 180, 0.5);
 }
 
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-chronological-tick-major,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-chronological-tick-minor {
-  stroke: rgba(60, 120, 180, 0.5) !important;
+  stroke: rgba(60, 120, 180, 0.5);
 }
 
 /* 6. Hover State: Full Opacity, Brighter Blue with glow (matches ALT red glow pattern) */
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"]:hover,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"]:has(.rt-shift-locked) {
-  opacity: 1 !important;
-  transition: none !important;
+  opacity: 1;
+  transition: none;
 }
 
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"]:hover .rt-scene-path,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover .rt-scene-path,
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-scene-group[data-item-type="Scene"] .rt-scene-path.rt-shift-locked {
-  fill: rgba(80, 160, 255, 1) !important;
-  stroke: rgba(80, 160, 255, 1) !important;
+  fill: rgba(80, 160, 255, 1);
+  stroke: rgba(80, 160, 255, 1);
   filter: brightness(1.3) drop-shadow(0 0 5px rgba(80, 160, 255, 0.9));
 }
 

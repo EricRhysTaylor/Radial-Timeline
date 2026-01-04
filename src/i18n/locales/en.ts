@@ -134,6 +134,27 @@ export interface TranslationKeys {
         description: string;
         heroLoading: string;
         heroNarrativeMeta: string;
+        exportHeading: string;
+        exportTypeManuscript: string;
+        exportTypeOutline: string;
+        proBadge: string;
+        proRequired: string;
+        proEnabled: string;
+        manuscriptPresetHeading: string;
+        presetScreenplay: string;
+        presetPodcast: string;
+        presetNovel: string;
+        formatMarkdown: string;
+        formatDocx: string;
+        formatPdf: string;
+        formatCsv: string;
+        formatJson: string;
+        outlinePresetHeading: string;
+        outlineBeatSheet: string;
+        outlineEpisodeRundown: string;
+        outlineShootingSchedule: string;
+        outlineIndexCardsCsv: string;
+        outlineIndexCardsJson: string;
         tocHeading: string;
         tocPlain: string;
         tocMarkdown: string;
@@ -312,9 +333,30 @@ export const en: TranslationKeys = {
     },
     manuscriptModal: {
         title: 'Manuscript generate',
-        description: 'Use markdown-linked TOC for Obsidian-friendly navigation, or plain TOC for AI processing. All orderings support custom ranges with the draggable selector.',
+        description: 'Choose export presets for manuscripts or outlines. Use markdown-linked TOC for Obsidian-friendly navigation, or plain TOC for AI processing. All orderings support custom ranges with the draggable selector.',
         heroLoading: 'Loading scenes...',
         heroNarrativeMeta: 'Drag handles to select range',
+        exportHeading: 'Export type',
+        exportTypeManuscript: 'Manuscript',
+        exportTypeOutline: 'Outline',
+        proBadge: 'Pro',
+        proRequired: 'Pro export required for this option.',
+        proEnabled: 'Pro export enabled (beta).',
+        manuscriptPresetHeading: 'Manuscript preset',
+        presetScreenplay: 'Screenplay (Pandoc template)',
+        presetPodcast: 'Podcast script (Pandoc template)',
+        presetNovel: 'Novel manuscript',
+        formatMarkdown: 'Markdown',
+        formatDocx: 'DOCX',
+        formatPdf: 'PDF',
+        formatCsv: 'CSV',
+        formatJson: 'JSON',
+        outlinePresetHeading: 'Outline preset',
+        outlineBeatSheet: 'Beat sheet',
+        outlineEpisodeRundown: 'Episode rundown',
+        outlineShootingSchedule: 'Shooting schedule list',
+        outlineIndexCardsCsv: 'Index cards (CSV)',
+        outlineIndexCardsJson: 'Index cards (JSON)',
         tocHeading: 'Table of contents',
         tocMarkdown: 'Markdown links (default)',
         tocPlain: 'Plain text',

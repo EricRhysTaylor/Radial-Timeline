@@ -3,9 +3,9 @@
  * Encapsulates all command+ribbon registration.
  */
 
-import { App, Notice } from 'obsidian';
+import { App, Notice, TFile } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
-import { assembleManuscript, getSceneFilesByOrder, sliceScenesByRange } from '../utils/manuscript';
+import { assembleManuscript, getSceneFilesByOrder, sliceScenesByRange, ManuscriptSceneSelection } from '../utils/manuscript';
 import { openGossamerScoreEntry, runGossamerAiAnalysis } from '../GossamerCommands';
 import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult } from '../modals/ManuscriptOptionsModal';
@@ -15,6 +15,9 @@ import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
 import { ensureAiOutputFolder } from '../utils/aiOutput';
+import { buildOutlineExport, getExportFormatExtension, getTemplateForPreset, getVaultAbsolutePath, runPandocOnContent, writeTextFile } from '../utils/exportFormats';
+import { isProfessionalActive } from '../settings/sections/ProfessionalSection';
+import * as path from 'path';
 
 export class CommandRegistrar {
     constructor(private plugin: RadialTimelinePlugin, private app: App) { }
@@ -321,30 +324,50 @@ export class CommandRegistrar {
 
     private async handleManuscriptSubmission(options: ManuscriptModalResult): Promise<void> {
         try {
-            new Notice('Assembling manuscript...');
-            const { files, sortOrder } = await getSceneFilesByOrder(this.plugin, options.order, options.subplot);
-            if (files.length === 0) {
+            const isPro = isProfessionalActive(this.plugin);
+            if (this.requiresPro(options) && !isPro) {
+                new Notice('This export requires Pro. Unlock Pro to continue.');
+                return;
+            }
+
+            new Notice('Preparing export...');
+            const selection = await getSceneFilesByOrder(this.plugin, options.order, options.subplot);
+            if (selection.files.length === 0) {
                 new Notice('No scenes found in source path.');
                 return;
             }
 
             // Apply range to all ordering modes
-            const orderedFiles = sliceScenesByRange(files, options.rangeStart, options.rangeEnd);
+            const sliced = this.sliceSelection(selection, options.rangeStart, options.rangeEnd);
+            const orderedFiles = sliced.files;
 
             if (orderedFiles.length === 0) {
                 new Notice('Selected range is empty.');
                 return;
             }
 
-            const hasCustomRange = options.rangeStart && options.rangeEnd &&
-                !(options.rangeStart === 1 && options.rangeEnd === files.length);
-            const rangeSuffix = hasCustomRange
-                ? ` · Scenes ${options.rangeStart}-${options.rangeEnd}`
-                : '';
-            
-            const subplotSuffix = options.subplot ? ` · ${options.subplot}` : '';
-            const sortLabelWithRange = `${sortOrder}${subplotSuffix}${rangeSuffix}`;
+            const rangeInfo = this.buildRangeSuffix(options, selection.files.length);
+            const now = new Date();
+            const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+            const timeDisplayStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+            const timeFileStr = timeDisplayStr.replace(/:/g, '.');
+            const aiFolderPath = await ensureAiOutputFolder(this.plugin);
 
+            if (options.exportType === 'outline') {
+                const outlineResult = buildOutlineExport(sliced, options.outlinePreset || 'beat-sheet');
+                const extension = outlineResult.extension;
+                const filePath = `${aiFolderPath}/Outline ${outlineResult.label}${rangeInfo}${options.subplot ? ` ${options.subplot}` : ''} ${dateStr} ${timeFileStr}.${extension}`;
+                await writeTextFile(this.app.vault, filePath, outlineResult.text);
+                const outlineFile = this.app.vault.getAbstractFileByPath(filePath);
+                if (outlineFile instanceof TFile) {
+                    const leaf = this.app.workspace.getLeaf('tab');
+                    await leaf.openFile(outlineFile);
+                }
+                new Notice(`Outline generated: ${outlineResult.label}. Saved to ${filePath}`);
+                return;
+            }
+
+            const sortLabelWithRange = `${selection.sortOrder}${options.subplot ? ` · ${options.subplot}` : ''}${rangeInfo}`;
             const includeToc = options.tocMode !== 'none';
             const useMarkdownToc = options.tocMode === 'markdown';
 
@@ -362,43 +385,88 @@ export class CommandRegistrar {
                 return;
             }
 
-            let orderLabel: string;
-            switch (options.order) {
-                case 'chronological':
-                    orderLabel = 'Chronological';
-                    break;
-                case 'reverse-chronological':
-                    orderLabel = 'Reverse Chronological';
-                    break;
-                case 'reverse-narrative':
-                    orderLabel = 'Reverse Narrative';
-                    break;
-                default:
-                    orderLabel = 'Narrative';
-            }
-
-            const now = new Date();
-            const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-            const timeDisplayStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
-            const timeFileStr = timeDisplayStr.replace(/:/g, '.');
-            
+            const orderLabel = this.getOrderLabel(options.order);
             const fileSubplotLabel = options.subplot ? ` (${options.subplot})` : '';
-            const aiFolderPath = await ensureAiOutputFolder(this.plugin);
-            const manuscriptPath = `${aiFolderPath}/Manuscript ${orderLabel}${fileSubplotLabel} ${dateStr} ${timeFileStr}.md`;
+            const ext = getExportFormatExtension(options.outputFormat);
+            const manuscriptPath = `${aiFolderPath}/Manuscript ${orderLabel}${fileSubplotLabel}${rangeInfo} ${dateStr} ${timeFileStr}.${ext}`;
             const existing = this.app.vault.getAbstractFileByPath(manuscriptPath);
             if (existing) {
                 new Notice('Warning: Duplicate title. Please wait 1 minute then try again.');
                 return;
             }
-            const createdFile = await this.app.vault.create(manuscriptPath, manuscript.text);
-            const leaf = this.app.workspace.getLeaf('tab');
-            await leaf.openFile(createdFile);
-            new Notice(`Manuscript generated: ${manuscript.totalScenes} scenes, ${manuscript.totalWords.toLocaleString()} words. Saved to ${manuscriptPath}`);
+
+            if (options.outputFormat === 'markdown') {
+                const createdFile = await this.app.vault.create(manuscriptPath, manuscript.text);
+                const leaf = this.app.workspace.getLeaf('tab');
+                await leaf.openFile(createdFile);
+                new Notice(`Manuscript generated: ${manuscript.totalScenes} scenes, ${manuscript.totalWords.toLocaleString()} words. Saved to ${manuscriptPath}`);
+            } else {
+                const absolutePath = getVaultAbsolutePath(this.plugin, manuscriptPath);
+                if (!absolutePath) {
+                    new Notice('Cannot resolve vault path for export.');
+                    return;
+                }
+                const targetDir = path.dirname(absolutePath);
+                const templatePath = getTemplateForPreset(this.plugin, options.manuscriptPreset || 'novel');
+                await runPandocOnContent(manuscript.text, absolutePath, {
+                    targetFormat: options.outputFormat === 'docx' ? 'docx' : 'pdf',
+                    pandocPath: this.plugin.settings.pandocPath,
+                    enableFallback: this.plugin.settings.pandocEnableFallback,
+                    fallbackPath: this.plugin.settings.pandocFallbackPath,
+                    templatePath,
+                    workingDir: targetDir
+                });
+                new Notice(`Manuscript exported (${options.outputFormat.toUpperCase()}) to ${manuscriptPath}`);
+            }
         } catch (e) {
             const errorMsg = (e as Error)?.message || 'Unknown error';
             new Notice(`Failed to generate manuscript: ${errorMsg}`);
             console.error(e);
         }
+    }
+
+    private buildRangeSuffix(options: ManuscriptModalResult, total: number): string {
+        const hasCustomRange = options.rangeStart && options.rangeEnd &&
+            !(options.rangeStart === 1 && options.rangeEnd === total);
+        if (!hasCustomRange) return '';
+        return ` · Scenes ${options.rangeStart}-${options.rangeEnd}`;
+    }
+
+    private getOrderLabel(order: ManuscriptModalResult['order']): string {
+        switch (order) {
+            case 'chronological':
+                return 'Chronological';
+            case 'reverse-chronological':
+                return 'Reverse Chronological';
+            case 'reverse-narrative':
+                return 'Reverse Narrative';
+            default:
+                return 'Narrative';
+        }
+    }
+
+    private sliceSelection(selection: ManuscriptSceneSelection, start?: number, end?: number): ManuscriptSceneSelection {
+        const files = sliceScenesByRange(selection.files, start, end);
+        const normalizedStart = start && start > 0 ? start : 1;
+        const normalizedEnd = end && end > 0 ? end : selection.files.length;
+        const startIdx = Math.max(0, normalizedStart - 1);
+        const endIdx = Math.min(selection.files.length, normalizedEnd);
+        return {
+            ...selection,
+            files,
+            titles: selection.titles.slice(startIdx, endIdx),
+            whenDates: selection.whenDates.slice(startIdx, endIdx),
+            sceneNumbers: selection.sceneNumbers.slice(startIdx, endIdx),
+            subplots: selection.subplots.slice(startIdx, endIdx)
+        };
+    }
+
+    private requiresPro(options: ManuscriptModalResult): boolean {
+        if (options.exportType === 'outline') return true;
+        if (options.outputFormat !== 'markdown') return true;
+        if (options.manuscriptPreset && (options.manuscriptPreset === 'screenplay' || options.manuscriptPreset === 'podcast')) return true;
+        if (options.outlinePreset && (options.outlinePreset === 'index-cards-csv' || options.outlinePreset === 'index-cards-json')) return true;
+        return false;
     }
 
 }

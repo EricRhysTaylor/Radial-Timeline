@@ -259,7 +259,7 @@
 /* Optimized global fade: Apply to all children when parent has class */
 /* Excludes backdrop segments which have their own styling */
 .rt-global-fade .rt-scene-path:not(.rt-selected):not(.rt-backdrop-segment) {
-  fill: var(--rt-color-empty-selected) !important;
+  fill: var(--rt-color-empty-selected);
 }
 
 .rt-global-fade .rt-number-square:not(.rt-selected) {
@@ -273,11 +273,11 @@
 }
 
 .radial-timeline-container .rt-scene-path.rt-non-selected:not(.rt-backdrop-segment) {
-  fill: var(--rt-color-empty-selected) !important;
+  fill: var(--rt-color-empty-selected);
 }
 
 .radial-timeline-container .rt-scene-path.rt-scene-is-open.rt-non-selected:not(.rt-backdrop-segment) {
-  fill: var(--rt-color-empty-selected) !important;
+  fill: var(--rt-color-empty-selected);
 }
 
 .radial-timeline-container .rt-scene-path.rt-selected {

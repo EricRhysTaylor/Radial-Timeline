@@ -163,6 +163,11 @@ export class SceneDataService {
                             }
                         }
 
+                        const runtimeProfileRaw = metadata["Runtime Profile"] ?? metadata["RuntimeProfile"] ?? metadata["runtimeProfile"];
+                        const runtimeProfile = runtimeProfileRaw !== undefined && runtimeProfileRaw !== null
+                            ? String(runtimeProfileRaw).trim()
+                            : undefined;
+
                         scenes.push({
                             date: isoDate,
                             when: normalizedWhen,
@@ -185,6 +190,7 @@ export class SceneDataService {
                             Runtime: metadata.Runtime !== undefined && metadata.Runtime !== null
                                 ? String(metadata.Runtime)
                                 : undefined,
+                            RuntimeProfile: runtimeProfile && runtimeProfile.length > 0 ? runtimeProfile : undefined,
                             // AI Scene Analysis fields - handle both string and array formats from YAML
                             "previousSceneAnalysis": Array.isArray(metadata["previousSceneAnalysis"])
                                 ? (metadata["previousSceneAnalysis"] as string[]).join('\n')

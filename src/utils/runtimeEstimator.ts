@@ -7,7 +7,7 @@
  * Parses scene content to estimate screen time / reading time
  */
 
-import type { RadialTimelineSettings, RuntimeContentType } from '../types';
+import type { RadialTimelineSettings, RuntimeContentType, RuntimeRateProfile } from '../types';
 
 export interface RuntimeEstimateResult {
     totalSeconds: number;
@@ -31,11 +31,23 @@ export interface RuntimeSettings {
     silenceSeconds: number;
 }
 
-/**
- * Extract runtime settings from plugin settings
- */
-export function getRuntimeSettings(settings: RadialTimelineSettings): RuntimeSettings {
+function selectRuntimeProfile(settings: RadialTimelineSettings, profileId?: string): RuntimeRateProfile | null {
+    const profiles = settings.runtimeRateProfiles || [];
+    const targetId = profileId || settings.defaultRuntimeProfileId;
+    if (targetId) {
+        const match = profiles.find(p => p.id === targetId);
+        if (match) return match;
+    }
+    if (profiles.length > 0) {
+        return profiles[0];
+    }
+    return null;
+}
+
+function legacyProfile(settings: RadialTimelineSettings): RuntimeRateProfile {
     return {
+        id: 'legacy-runtime-default',
+        label: 'Legacy default',
         contentType: settings.runtimeContentType || 'novel',
         dialogueWpm: settings.runtimeDialogueWpm || 160,
         actionWpm: settings.runtimeActionWpm || 100,
@@ -45,6 +57,24 @@ export function getRuntimeSettings(settings: RadialTimelineSettings): RuntimeSet
         longPauseSeconds: settings.runtimeLongPauseSeconds || 5,
         momentSeconds: settings.runtimeMomentSeconds || 4,
         silenceSeconds: settings.runtimeSilenceSeconds || 5,
+    };
+}
+
+/**
+ * Extract runtime settings from plugin settings, optionally using a named profile
+ */
+export function getRuntimeSettings(settings: RadialTimelineSettings, profileId?: string): RuntimeSettings {
+    const profile = selectRuntimeProfile(settings, profileId) || legacyProfile(settings);
+    return {
+        contentType: profile.contentType || 'novel',
+        dialogueWpm: profile.dialogueWpm ?? settings.runtimeDialogueWpm ?? 160,
+        actionWpm: profile.actionWpm ?? settings.runtimeActionWpm ?? 100,
+        narrationWpm: profile.narrationWpm ?? settings.runtimeNarrationWpm ?? 150,
+        beatSeconds: profile.beatSeconds ?? settings.runtimeBeatSeconds ?? 2,
+        pauseSeconds: profile.pauseSeconds ?? settings.runtimePauseSeconds ?? 3,
+        longPauseSeconds: profile.longPauseSeconds ?? settings.runtimeLongPauseSeconds ?? 5,
+        momentSeconds: profile.momentSeconds ?? settings.runtimeMomentSeconds ?? 4,
+        silenceSeconds: profile.silenceSeconds ?? settings.runtimeSilenceSeconds ?? 5,
     };
 }
 

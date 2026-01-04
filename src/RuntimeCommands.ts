@@ -22,6 +22,7 @@ interface SceneToProcess {
     title: string;
     subplot?: string;
     existingRuntime?: string;
+    runtimeProfileId?: string;
     body: string;
 }
 
@@ -127,6 +128,7 @@ async function getScenesForScope(
             title: scene.title || file.basename,
             subplot: scene.subplot,
             existingRuntime: scene.Runtime,
+            runtimeProfileId: scene.RuntimeProfile,
             body,
         });
     }
@@ -188,7 +190,7 @@ async function processScenes(
     }
 
     modal.setTotalCount(scenes.length);
-    const settings = getRuntimeSettings(plugin.settings);
+    const defaultProfileId = plugin.settings.defaultRuntimeProfileId;
 
     let processed = 0;
     let totalRuntime = 0;
@@ -202,7 +204,8 @@ async function processScenes(
 
         try {
             // Estimate runtime from content
-            const result = estimateRuntime(scene.body, settings);
+            const runtimeSettings = getRuntimeSettings(plugin.settings, scene.runtimeProfileId || defaultProfileId);
+            const result = estimateRuntime(scene.body, runtimeSettings);
             
             // Update file frontmatter
             const success = await updateSceneRuntime(plugin, scene.file, result.totalSeconds);
@@ -234,7 +237,7 @@ async function processScenes(
     let aiResult: AiEstimateResult | undefined;
     if (mode !== 'local') {
         modal.setStatusMessage('Preparing AI runtime estimate...');
-        aiResult = await estimateRuntimeWithAi(plugin, sceneStats, settings, mode);
+        aiResult = await estimateRuntimeWithAi(plugin, sceneStats, getRuntimeSettings(plugin.settings, defaultProfileId), mode);
     }
 
     const message = errors > 0

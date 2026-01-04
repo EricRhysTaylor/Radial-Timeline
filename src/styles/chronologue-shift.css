@@ -5,25 +5,25 @@
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-ring-background {
-  stroke-opacity: 0.1 !important;
+  stroke-opacity: 0.1;
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-border {
-  opacity: 0.2 !important;
+  opacity: 0.2;
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-label {
-  fill: white !important;
+  fill: white;
   opacity: 1;
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment.rt-backdrop-overlap {
-  opacity: 0.2 !important;
-  pointer-events: none !important;
+  opacity: 0.2;
+  pointer-events: none;
 }
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-backdrop-segment {
-  fill: rgba(128, 128, 128, 0.01) !important;
+  fill: rgba(128, 128, 128, 0.01);
   stroke: var(--text-muted);
   stroke-width: 1px;
 }
@@ -39,6 +39,6 @@
 
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Backdrop"],
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Backdrop"] * {
-  pointer-events: none !important;
+  pointer-events: none;
 }
 

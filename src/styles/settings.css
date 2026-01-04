@@ -70,10 +70,10 @@
 }
 
 .rt-professional-heading-inline {
-  border: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  min-height: 0 !important;
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
 }
 
 .rt-professional-toggle {
@@ -418,7 +418,7 @@
 
 /* Settings dropdown width normalization (works within Obsidian's flex layout) */
 .rt-settings-root .setting-item .setting-item-control select.rt-setting-dropdown {
-  width: var(--rt-settings-select-width) !important;
+  width: var(--rt-settings-select-width);
   min-width: var(--rt-settings-select-width);
   max-width: var(--rt-settings-select-width);
   flex: 0 0 var(--rt-settings-select-width);
@@ -462,10 +462,10 @@
 
 /* Full-width input on its own row (for long URLs, paths, etc.) */
 .rt-setting-full-width-input {
-  display: grid !important;
-  grid-template-columns: 1fr !important;
-  grid-template-rows: auto auto !important;
-  gap: 12px !important;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  gap: 12px;
 }
 
 .rt-settings-root .rt-setting-full-width-input .setting-item-info {
@@ -480,10 +480,10 @@
 }
 
 .rt-settings-root .rt-setting-full-width-input .setting-item-control input[type="text"] {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  flex: 1 1 auto !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
   height: 42px;
   padding: 10px 14px;
   font-size: 15px;
@@ -491,10 +491,10 @@
 }
 
 .rt-settings-root .rt-setting-full-width-input .setting-item-control textarea {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  flex: 1 1 auto !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
   min-height: 80px;
   padding: 12px 14px;
   font-size: 14px;
@@ -562,18 +562,18 @@
 
 /* Fix alignment of extra buttons (like gear icon) with setting item text */
 .rt-settings-root .setting-item {
-  display: flex !important;
-  align-items: center !important;
+  display: flex;
+  align-items: center;
 }
 
 .rt-settings-root .setting-item-control {
-  display: flex !important;
-  align-items: center !important;
+  display: flex;
+  align-items: center;
 }
 
 .rt-settings-root .clickable-icon.extra-setting-button {
-  align-self: center !important;
-  margin-top: 0 !important;
+  align-self: center;
+  margin-top: 0;
 }
 
 @media (max-width: 1100px) {
@@ -970,8 +970,8 @@
 }
 
 .rt-color-grid-controls .rt-hex-input {
-  width: 10ch !important;
-  flex: 0 0 10ch !important;
+  width: 10ch;
+  flex: 0 0 10ch;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
   border-radius: 6px;
@@ -988,32 +988,22 @@
 
 /* Promoted section headings in settings (with bottom border and spacing) */
 .rt-section-heading {
-  margin-top: 18px !important;
-  padding-bottom: 6px !important;
-  border-bottom: 1px solid var(--background-modifier-border) !important;
+  margin-top: 18px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .rt-settings-root .rt-color-grid-controls .setting-item {
   margin: 0;
   width: 100%;
   display: block;
-  padding: 0 !important;
-  /* remove default vertical padding */
-  border: none !important;
-  /* remove all borders */
-  border-top: none !important;
-  /* specifically remove top border */
-  border-bottom: none !important;
-  /* specifically remove bottom border */
-  border-left: none !important;
-  /* specifically remove left border */
-  border-right: none !important;
-  /* specifically remove right border */
+  padding: 0;
+  border: none;
 }
 
 /* Also neutralize the Obsidian adjacency rule for setting items (scoped under rt-settings-root) */
 .rt-settings-root .rt-color-grid-controls .setting-item+.setting-item {
-  border-top: none !important;
+  border-top: none;
 }
 
 .rt-settings-root .rt-color-grid-controls .setting-item-control {
@@ -1021,10 +1011,8 @@
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 0 !important;
-  /* remove default padding */
-  margin: 0 !important;
-  /* remove default margins */
+  padding: 0;
+  margin: 0;
   justify-content: space-between;
 }
 
@@ -1157,15 +1145,15 @@
 
 /* Settings input validation styles */
 .rt-setting-input-success {
-  border-color: #00ff48 !important;
-  background-color: rgba(0, 255, 72, 0.1) !important;
-  box-shadow: 0 0 0 2px rgba(0, 255, 72, 0.2) !important;
+  border-color: #00ff48;
+  background-color: rgba(0, 255, 72, 0.1);
+  box-shadow: 0 0 0 2px rgba(0, 255, 72, 0.2);
 }
 
 .rt-setting-input-error {
-  border-color: var(--rt-gossamer-error-color) !important;
-  background-color: rgba(255, 68, 68, 0.1) !important;
-  box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2) !important;
+  border-color: var(--rt-gossamer-error-color);
+  background-color: rgba(255, 68, 68, 0.1);
+  box-shadow: 0 0 0 2px rgba(255, 68, 68, 0.2);
 }
 
 /* Source path autocomplete suggestions */
@@ -1207,12 +1195,12 @@
 }
 
 .rt-source-path-suggestion-item:last-child {
-  border-bottom: none !important;
+  border-bottom: none;
 }
 
 .rt-source-path-suggestion-item:hover,
 .rt-source-path-suggestion-item.selected {
-  background-color: var(--background-modifier-hover) !important;
+  background-color: var(--background-modifier-hover);
 }
 
 /* ============================================
@@ -1271,8 +1259,8 @@
 }
 
 .rt-patreon-title {
-  margin: 0 !important;
-  font-size: 20px !important;
+  margin: 0;
+  font-size: 20px;
   font-weight: 600;
   color: var(--text-normal);
   display: flex;
@@ -1361,9 +1349,9 @@
 }
 
 .rt-setting-two-row {
-  display: grid !important;
-  grid-template-columns: 1fr auto !important;
-  grid-template-rows: auto auto !important;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
   column-gap: 24px;
   row-gap: 8px;
   align-items: start;
@@ -1391,19 +1379,19 @@
 
 /* Utility classes for settings */
 .rt-reset-margin-padding {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .rt-text-muted {
-  color: var(--text-muted) !important;
+  color: var(--text-muted);
 }
 
 /* Consolidated Hidden States */
 .rt-planetary-hidden,
 .rt-settings-hidden,
 .rt-mapping-hidden {
-  display: none !important;
+  display: none;
 }
 
 /* Planetary & Acts Preview Styling */
@@ -1465,7 +1453,7 @@
 /* Hover Metadata UI in Advanced YAML Editor */
 .rt-yaml-row-hover-meta {
   /* Extended grid: Handle | Spacer | Icon | Checkbox | Key | Value | Trash */
-  grid-template-columns: auto 1fr auto auto auto auto auto !important;
+  grid-template-columns: auto 1fr auto auto auto auto auto;
 }
 
 .rt-hover-icon-wrapper {
@@ -1759,7 +1747,7 @@
 
 /* Utility class for hiding elements */
 .rt-hidden {
-  display: none !important;
+  display: none;
 }
 
 /* -------------------------------------------------------------------------- */

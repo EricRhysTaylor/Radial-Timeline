@@ -21,6 +21,7 @@ export interface TimelineItem {
     pendingEdits?: string;
     Duration?: string;
     Runtime?: string;
+    RuntimeProfile?: string;
     "previousSceneAnalysis"?: string;
     "currentSceneAnalysis"?: string;
     "nextSceneAnalysis"?: string;

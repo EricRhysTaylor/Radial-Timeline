@@ -14,6 +14,28 @@ export type ReadabilityScale = 'normal' | 'large';
 
 export type RuntimeContentType = 'screenplay' | 'novel';
 
+export interface RuntimeSessionPlanning {
+    draftingWpm?: number;   // Words per minute during drafting
+    recordingWpm?: number;  // Words per minute when recording/podcasting
+    editingWpm?: number;    // Words per minute equivalent for editing passes
+    dailyMinutes?: number;  // Minutes available per day for this profile
+}
+
+export interface RuntimeRateProfile {
+    id: string;
+    label: string;
+    contentType: RuntimeContentType;
+    dialogueWpm?: number;
+    actionWpm?: number;
+    narrationWpm?: number;
+    beatSeconds?: number;
+    pauseSeconds?: number;
+    longPauseSeconds?: number;
+    momentSeconds?: number;
+    silenceSeconds?: number;
+    sessionPlanning?: RuntimeSessionPlanning;
+}
+
 export interface AiContextTemplate {
     id: string;
     name: string;
@@ -122,6 +144,8 @@ export interface RadialTimelineSettings {
     
     // Runtime Estimation Settings (Professional feature)
     enableRuntimeEstimation?: boolean;
+    runtimeRateProfiles?: RuntimeRateProfile[];
+    defaultRuntimeProfileId?: string;
     runtimeContentType?: RuntimeContentType;
     runtimeDialogueWpm?: number;
     runtimeActionWpm?: number;
@@ -132,6 +156,16 @@ export interface RadialTimelineSettings {
     runtimeMomentSeconds?: number;
     runtimeSilenceSeconds?: number;
     runtimeCapDefaultPercent?: number; // Default cap for runtime arcs (0, 25, 50, 75, 100)
+
+    // Export / Pandoc (Professional)
+    pandocPath?: string;
+    pandocEnableFallback?: boolean;
+    pandocFallbackPath?: string;
+    pandocTemplates?: {
+        screenplay?: string;
+        podcast?: string;
+        novel?: string;
+    };
 }
 
 export interface PlanetaryProfile {

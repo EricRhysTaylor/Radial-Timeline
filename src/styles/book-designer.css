@@ -20,7 +20,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 8px 16px 14px;
     gap: 10px;
-    margin-top: 0 !important; /* remove inherited pulse margin in Book Designer */
+    margin-top: 0; /* remove inherited pulse margin in Book Designer */
 }
 
 /* Hero meta status pills */
@@ -67,9 +67,9 @@
 /* Reset Obsidian default setting item styles */
 .rt-manuscript-surface .setting-item {
     background: transparent;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    border: none;
+    padding: 0;
+    margin: 0;
     min-height: unset;
 }
 
@@ -80,15 +80,15 @@
     border-radius: 0;
     padding: 0; /* Handled by grid logic */
     height: 100%;
-    margin: 0 !important;
+    margin: 0;
 }
 
 /* Global snug fit for settings inside the designer */
 .rt-manuscript-surface .rt-manuscript-group-setting .setting-item-info,
 .rt-manuscript-surface .rt-manuscript-group-setting .setting-item-control {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-    border-top: none !important;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
 }
 
 /* Horizontal Layout (Default for Group Setting) - Top Aligned */
@@ -117,17 +117,17 @@
 
 /* Scoped padding for stacked settings inside Book Designer (e.g., Subplots) */
 .rt-book-designer-modal .rt-setting-stacked.rt-manuscript-group-setting {
-    padding: 0 16px !important;
+    padding: 0 16px;
 }
 
 /* Remove left padding from setting info in stacked layouts - align with input fields */
 .rt-book-designer-modal .rt-setting-stacked .setting-item-info {
-    padding-left: 0 !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    width: 100% !important;
-    text-align: left !important;
-    align-self: flex-start !important;
+    padding-left: 0;
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    text-align: left;
+    align-self: flex-start;
 }
 
 .rt-manuscript-surface .rt-setting-stacked .setting-item-control {
@@ -190,20 +190,20 @@
 
 /* Fix for vertical alignment of 'Target book length' (2nd item in Duo Grid) */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-manuscript-group-setting:nth-child(2) {
-    padding-bottom: 0 !important;
+    padding-bottom: 0;
 }
 
 /* Scoped padding & divider only for Book Designer duo grid */
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-scenes-generate-setting {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
+    padding-left: 16px;
+    padding-right: 16px;
     border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .rt-book-designer-modal .rt-manuscript-duo-grid > .rt-book-length-setting {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-    border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+    padding-left: 16px;
+    padding-right: 16px;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* Standard Row Grid (e.g. Acts checkboxes) */
@@ -246,18 +246,18 @@
     /* Reset borders and spacing for stack */
     .rt-manuscript-surface .rt-manuscript-duo-grid > div,
     .rt-manuscript-surface .rt-manuscript-trio-grid > div {
-        border-right: none !important;
+        border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 0 0 12px 0 !important;
-        margin-bottom: 12px !important;
+        padding: 0 0 12px 0;
+        margin-bottom: 12px;
     }
 
     /* Remove border from last item in stack */
     .rt-manuscript-surface .rt-manuscript-duo-grid > div:last-child,
     .rt-manuscript-surface .rt-manuscript-trio-grid > div:last-child {
         border-bottom: none;
-        padding-bottom: 0 !important;
-        margin-bottom: 0 !important;
+        padding-bottom: 0;
+        margin-bottom: 0;
     }
 }
 
@@ -366,7 +366,7 @@
 
 .rt-book-designer-modal .rt-manuscript-preview-host.rt-preview-dragging,
 .rt-book-designer-modal .rt-manuscript-preview-host.rt-preview-dragging svg {
-    cursor: grabbing !important;
+    cursor: grabbing;
 }
 
 .rt-manuscript-surface .rt-manuscript-preview-core {
@@ -394,13 +394,13 @@
 }
 
 .rt-book-designer-modal .rt-layout-templates-card {
-    padding: 10px 16px !important;
+    padding: 10px 16px;
 }
 
 /* Override group-block horizontal strip-out for layout templates */
 .rt-book-designer-modal .rt-layout-templates-card.rt-manuscript-group-block {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
+    padding-left: 16px;
+    padding-right: 16px;
 }
 
 .rt-book-designer-modal .rt-template-actions .rt-template-delete {

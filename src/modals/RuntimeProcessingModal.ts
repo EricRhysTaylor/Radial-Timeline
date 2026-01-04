@@ -9,7 +9,7 @@
 import { App, Modal, ButtonComponent, DropdownComponent, Notice, setIcon } from 'obsidian';
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
-import { formatRuntimeValue } from '../utils/runtimeEstimator';
+import { formatRuntimeValue, getRuntimeSettings } from '../utils/runtimeEstimator';
 import { isBeatNote } from '../utils/sceneHelpers';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
@@ -301,22 +301,29 @@ export class RuntimeProcessingModal extends Modal {
         if (!this.settingsContent) return;
         this.settingsContent.empty();
 
-        const contentType = this.plugin.settings.runtimeContentType || 'novel';
+        const runtimeSettings = getRuntimeSettings(this.plugin.settings, this.plugin.settings.defaultRuntimeProfileId);
+        const profiles = this.plugin.settings.runtimeRateProfiles || [];
+        const profileLabel = profiles.find(p => p.id === this.plugin.settings.defaultRuntimeProfileId)?.label || 'Default';
+        const contentType = runtimeSettings.contentType || 'novel';
+
+        const profileRow = this.settingsContent.createDiv({ cls: 'rt-runtime-setting-row' });
+        profileRow.createSpan({ text: 'Profile:', cls: 'rt-runtime-setting-label' });
+        profileRow.createSpan({ text: profileLabel, cls: 'rt-runtime-setting-value' });
 
         if (contentType === 'screenplay') {
             // Screenplay settings
             const dialogueRow = this.settingsContent.createDiv({ cls: 'rt-runtime-setting-row' });
             dialogueRow.createSpan({ text: 'Dialogue rate:', cls: 'rt-runtime-setting-label' });
-            dialogueRow.createSpan({ text: `${this.plugin.settings.runtimeDialogueWpm || 160} wpm`, cls: 'rt-runtime-setting-value' });
+            dialogueRow.createSpan({ text: `${runtimeSettings.dialogueWpm || 160} wpm`, cls: 'rt-runtime-setting-value' });
 
             const actionRow = this.settingsContent.createDiv({ cls: 'rt-runtime-setting-row' });
             actionRow.createSpan({ text: 'Action/Description rate:', cls: 'rt-runtime-setting-label' });
-            actionRow.createSpan({ text: `${this.plugin.settings.runtimeActionWpm || 100} wpm`, cls: 'rt-runtime-setting-value' });
+            actionRow.createSpan({ text: `${runtimeSettings.actionWpm || 100} wpm`, cls: 'rt-runtime-setting-value' });
         } else {
             // Novel settings
             const narrationRow = this.settingsContent.createDiv({ cls: 'rt-runtime-setting-row' });
             narrationRow.createSpan({ text: 'Narration rate:', cls: 'rt-runtime-setting-label' });
-            narrationRow.createSpan({ text: `${this.plugin.settings.runtimeNarrationWpm || 150} wpm`, cls: 'rt-runtime-setting-value' });
+            narrationRow.createSpan({ text: `${runtimeSettings.narrationWpm || 150} wpm`, cls: 'rt-runtime-setting-value' });
         }
 
         // Parenthetical timings (shown for both modes)
@@ -324,11 +331,11 @@ export class RuntimeProcessingModal extends Modal {
         parentheticalHeader.setText('Parenthetical Timings');
 
         const timings = [
-            { label: '(beat)', value: this.plugin.settings.runtimeBeatSeconds || 2 },
-            { label: '(pause)', value: this.plugin.settings.runtimePauseSeconds || 3 },
-            { label: '(long pause)', value: this.plugin.settings.runtimeLongPauseSeconds || 5 },
-            { label: '(a moment)', value: this.plugin.settings.runtimeMomentSeconds || 4 },
-            { label: '(silence)', value: this.plugin.settings.runtimeSilenceSeconds || 5 },
+            { label: '(beat)', value: runtimeSettings.beatSeconds || 2 },
+            { label: '(pause)', value: runtimeSettings.pauseSeconds || 3 },
+            { label: '(long pause)', value: runtimeSettings.longPauseSeconds || 5 },
+            { label: '(a moment)', value: runtimeSettings.momentSeconds || 4 },
+            { label: '(silence)', value: runtimeSettings.silenceSeconds || 5 },
         ];
 
         timings.forEach(t => {

@@ -17,7 +17,7 @@
 .radial-timeline-svg[data-gossamer-mode="true"] .rt-scene-group[data-item-type="Beat"]:hover .rt-storybeat-title {
   filter: url(#beatTextBg);
   /* black background halo */
-  fill: var(--rt-color-empty) !important;
+  fill: var(--rt-color-empty);
   font-weight: 700;
   /* heavier for readability */
 }
@@ -31,9 +31,9 @@
 
 .radial-timeline-svg #rotation-toggle:hover use {
   /* Make arrow white on hover via currentColor (symbols use stroke=currentColor) */
-  color: var(--rt-color-empty) !important;
-  stroke: var(--rt-color-empty) !important;
-  fill: none !important;
+  color: var(--rt-color-empty);
+  stroke: var(--rt-color-empty);
+  fill: none;
 }
 
 .radial-timeline-svg #rotation-toggle .arrow-icon.is-hidden {
@@ -66,7 +66,7 @@
 
 .rt-scene-info {
   opacity: 0;
-  pointer-events: none !important;
+  pointer-events: none;
   vector-effect: non-scaling-stroke;
 }
 
@@ -74,7 +74,7 @@
   stroke: white;
   stroke-width: 4px;
   paint-order: stroke;
-  pointer-events: none !important;
+  pointer-events: none;
 }
 
 .rt-status-count {
@@ -227,13 +227,13 @@
 
 /* Scene is open: non-selected state */
 .rt-number-square.rt-scene-is-open.rt-non-selected {
-  fill: var(--rt-color-empty-selected) !important;
+  fill: var(--rt-color-empty-selected);
   stroke: none;
   stroke-width: 0;
 }
 
 .rt-number-text.rt-scene-is-open.rt-non-selected {
-  fill: var(--rt-color-empty) !important;
+  fill: var(--rt-color-empty);
   opacity: 1;
 }
 
@@ -278,7 +278,7 @@
 /* Tspans don't inherit stroke from parent text elements, so set explicitly */
 .rt-info-text.rt-metadata-text tspan[data-item-type=subplot],
 .rt-info-text.rt-metadata-text tspan[data-item-type=character] {
-  fill: var(--rt-dynamic-color, var(--text-normal)) !important;
+  fill: var(--rt-dynamic-color, var(--text-normal));
   stroke: white;
   stroke-width: 4px;
   paint-order: stroke;
@@ -290,9 +290,9 @@
 
 /* POV marker styling - superscript after first character name */
 .rt-info-text.rt-metadata-text tspan.rt-pov-marker {
-  fill: var(--rt-dynamic-color, var(--text-muted)) !important;
+  fill: var(--rt-dynamic-color, var(--text-muted));
   /* Use character color, fallback to muted */
-  font-size: calc(12px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1))) !important;
+  font-size: calc(12px * var(--rt-synopsis-font-scale, var(--rt-font-scale, 1)));
   /* Smaller than default 18px metadata text */
   font-weight: 500;
 }
@@ -317,10 +317,10 @@
 }
 
 .rt-scene-info.rt-visible {
-  opacity: 1 !important;
-  pointer-events: all !important;
-  visibility: visible !important;
-  display: block !important;
+  opacity: 1;
+  pointer-events: all;
+  visibility: visible;
+  display: block;
 }
 
 /*Synopsis Title*/
@@ -337,31 +337,31 @@
 .rt-title-date-time {
   font-size: 14px;
   font-weight: 400;
-  font-style: normal !important;
+  font-style: normal;
 }
 
 /* Title tspans use dynamic color (set on hover) or fallback to max publish stage color */
 .rt-title-text-main tspan[data-item-type=title] {
-  fill: var(--rt-dynamic-color, var(--rt-max-publish-stage-color)) !important;
+  fill: var(--rt-dynamic-color, var(--rt-max-publish-stage-color));
 }
 
 /* Date and Duration tspans - small gray text */
 .rt-title-date-time tspan {
-  fill: #888888 !important;
-  font-size: 16px !important;
+  fill: #888888;
+  font-size: 16px;
   font-weight: 400;
 }
 
 /* Date tspan - explicitly normal (not italic) */
 .rt-title-date-time tspan[data-item-type=date],
 .rt-title-date-time .rt-date-text {
-  font-style: normal !important;
+  font-style: normal;
 }
 
 /* Duration tspan - italic only */
 .rt-title-date-time tspan[data-item-type=duration],
 .rt-title-date-time .rt-duration-text {
-  font-style: italic !important;
+  font-style: italic;
 }
 
 /*Beats text styling*/
@@ -380,22 +380,22 @@
 
 /* Overdue text styling */
 .rt-overdue-text {
-  fill: var(--rt-color-due) !important;
+  fill: var(--rt-color-due);
 }
 
 .rt-missing-when-text {
-  fill: var(--rt-color-due) !important;
+  fill: var(--rt-color-due);
   font-style: italic;
 }
 
 /* Revisions/Pending edits text styling */
 .rt-revisions-text {
-  fill: var(--rt-gossamer-historical-color) !important;
+  fill: var(--rt-gossamer-historical-color);
 }
 
 /* Search highlight parent tspan with dynamic fill */
 .rt-scene-info tspan.rt-with-dynamic-fill {
-  fill: var(--rt-dynamic-fill-color, inherit) !important;
+  fill: var(--rt-dynamic-fill-color, inherit);
 }
 
 .rt-number-square.rt-scene-is-open {
@@ -415,24 +415,24 @@
 }
 
 .rt-number-square.rt-search-result {
-  fill: var(--rt-color-search) !important;
+  fill: var(--rt-color-search);
 }
 
 .rt-number-square.rt-search-result.rt-non-selected,
 .rt-number-square.rt-search-result.rt-scene-is-open.rt-non-selected {
-  fill: var(--rt-color-empty-selected) !important;
+  fill: var(--rt-color-empty-selected);
 }
 
 .rt-number-text.rt-search-result.rt-non-selected {
-  fill: var(--rt-color-empty) !important;
+  fill: var(--rt-color-empty);
 }
 
 .rt-number-text.rt-scene-is-open.rt-search-result.rt-non-selected {
-  fill: var(--rt-color-empty) !important;
+  fill: var(--rt-color-empty);
 }
 
 .rt-number-text.rt-scene-is-open.rt-search-result {
-  fill: #000000 !important;
+  fill: #000000;
 }
 
 /* Search result squares stay yellow unless muted via rt-non-selected */
@@ -448,7 +448,7 @@
 }
 
 .rt-number-square.rt-has-edits.rt-search-result {
-  fill: var(--rt-color-search) !important;
+  fill: var(--rt-color-search);
 }
 
 .rt-number-square.rt-has-edits.rt-scene-is-open {
@@ -456,21 +456,21 @@
 }
 
 .rt-number-square.rt-has-edits.rt-non-selected {
-  fill: var(--rt-color-empty-selected) !important;
+  fill: var(--rt-color-empty-selected);
 }
 
 .rt-number-square.rt-has-edits.rt-scene-is-open.rt-non-selected {
-  fill: var(--rt-color-empty-selected) !important;
+  fill: var(--rt-color-empty-selected);
 }
 
 .rt-number-square.rt-missing-when {
-  fill: var(--rt-color-due) !important;
-  stroke: var(--rt-color-due) !important;
+  fill: var(--rt-color-due);
+  stroke: var(--rt-color-due);
   stroke-width: 2px;
 }
 
 .rt-number-text.rt-missing-when {
-  fill: var(--rt-color-empty) !important;
+  fill: var(--rt-color-empty);
   opacity: 1;
 }
 
@@ -518,7 +518,7 @@
   line-height: 1.5em;
   min-height: 1.5em;
   display: block;
-  visibility: visible !important;
+  visibility: visible;
   fill: transparent;
 }
 
@@ -616,7 +616,7 @@
 .rt-number-text.rt-non-selected.rt-grade-A,
 .rt-number-text.rt-non-selected.rt-grade-B,
 .rt-number-text.rt-non-selected.rt-grade-C {
-  fill: var(--rt-color-empty) !important;
+  fill: var(--rt-color-empty);
 }
 
 /* Custom Hover Metadata Lines in Synopsis */
