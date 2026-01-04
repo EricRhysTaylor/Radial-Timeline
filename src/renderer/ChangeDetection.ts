@@ -97,6 +97,8 @@ export function createSnapshot(
                 s.number || '',
                 s.when instanceof Date ? s.when.getTime() : (s.when || ''),
                 s.Duration || '',
+                // Runtime affects Chronologue duration arcs when in runtime mode
+                s.Runtime || '',
                 s.due || '',
                 s['Publish Stage'] || '',
                 s.synopsis || '',

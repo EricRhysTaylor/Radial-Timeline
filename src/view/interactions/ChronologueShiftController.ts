@@ -213,11 +213,25 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         svg.appendChild(altButton);
     }
 
+    // Check if any scene has runtime data
+    const checkHasRuntimeData = (): boolean => {
+        const allScenes = (view as any).sceneData || (view as any).scenes || [];
+        return allScenes.some((scene: TimelineItem) => {
+            if (scene.itemType === 'Scene' || scene.itemType === 'Backdrop') {
+                const runtime = parseRuntimeField(scene.Runtime);
+                return runtime !== null && runtime > 0;
+            }
+            return false;
+        });
+    };
+
+    const hasRuntimeData = checkHasRuntimeData();
+
     // Only show runtime button if runtime estimation is enabled
     const shouldShowRuntime = view.plugin.settings?.enableRuntimeEstimation ?? false;
     if (shouldShowRuntime) {
         const runtimeContentType: RuntimeContentType = view.plugin.settings?.runtimeContentType || 'novel';
-        rtButton = createRtButton(runtimeContentType);
+        rtButton = createRtButton(runtimeContentType, !hasRuntimeData);
         svg.appendChild(rtButton);
     }
 
@@ -1132,11 +1146,18 @@ function updateAltButtonState(button: SVGGElement, active: boolean): void {
 /**
  * Create the RT (Runtime) icon button element (Right of Shift button)
  * Uses Lucide icons: 'film' for screenplay, 'mic-vocal' for novel/audiobook
+ * @param contentType - screenplay or novel
+ * @param noData - if true, button shows warning state (no Runtime YAML data found)
  */
-function createRtButton(contentType: RuntimeContentType): SVGGElement {
+function createRtButton(contentType: RuntimeContentType, noData: boolean = false): SVGGElement {
     const button = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     button.setAttribute('class', 'rt-shift-mode-button rt-runtime-button');
     button.setAttribute('id', 'runtime-mode-toggle');
+
+    // Add no-data warning class if needed
+    if (noData) {
+        button.classList.add('rt-runtime-no-data');
+    }
 
     // Icon button dimensions
     const RT_SIZE = 32; // Square icon container
@@ -1158,8 +1179,15 @@ function createRtButton(contentType: RuntimeContentType): SVGGElement {
     circle.setAttribute('cy', String(RT_SIZE / 2));
     circle.setAttribute('r', String(RT_SIZE / 2));
     circle.setAttribute('class', 'rt-runtime-icon-bg');
-    circle.setAttribute('fill', 'var(--background-secondary)');
-    circle.setAttribute('stroke', 'var(--text-muted)');
+    
+    if (noData) {
+        // Warning state: red-tinted background
+        circle.setAttribute('fill', 'rgba(200, 60, 60, 0.15)');
+        circle.setAttribute('stroke', 'var(--text-error)');
+    } else {
+        circle.setAttribute('fill', 'var(--background-secondary)');
+        circle.setAttribute('stroke', 'var(--text-muted)');
+    }
     circle.setAttribute('stroke-width', '1.5');
 
     // Create foreignObject to embed the Lucide icon
@@ -1190,22 +1218,38 @@ function createRtButton(contentType: RuntimeContentType): SVGGElement {
     // Style the icon element
     const iconSvg = iconWrapper.querySelector('svg');
     if (iconSvg) {
-        iconSvg.style.cssText = `
-            width: 18px;
-            height: 18px;
-            stroke: var(--text-muted);
-            stroke-width: 2;
-            fill: none;
-        `;
+        if (noData) {
+            // Warning state: red icon
+            iconSvg.style.cssText = `
+                width: 18px;
+                height: 18px;
+                stroke: var(--text-error);
+                stroke-width: 2;
+                fill: none;
+            `;
+        } else {
+            iconSvg.style.cssText = `
+                width: 18px;
+                height: 18px;
+                stroke: var(--text-muted);
+                stroke-width: 2;
+                fill: none;
+            `;
+        }
         iconSvg.classList.add('rt-runtime-lucide-icon');
     }
 
     foreignObject.appendChild(iconWrapper);
 
-    // Add tooltip based on content type
-    const tooltipText = contentType === 'screenplay' 
-        ? 'Toggle Runtime Mode (Screenplay)' 
-        : 'Toggle Runtime Mode (Audiobook/Novel)';
+    // Add tooltip based on content type and data availability
+    let tooltipText: string;
+    if (noData) {
+        tooltipText = 'No Runtime data found. Run "Estimate Runtime" from Command Palette to seed scene runtimes.';
+    } else {
+        tooltipText = contentType === 'screenplay' 
+            ? 'Toggle Runtime Mode (Screenplay)' 
+            : 'Toggle Runtime Mode (Audiobook/Novel)';
+    }
     button.classList.add('rt-tooltip-target');
     button.setAttribute('data-tooltip', tooltipText);
     button.setAttribute('data-tooltip-placement', 'bottom');

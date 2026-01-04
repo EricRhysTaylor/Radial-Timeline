@@ -230,9 +230,6 @@ async function processScenes(
             errors++;
         }
     }
-
-    // Refresh timeline
-    plugin.refreshTimelineIfNeeded(null);
     
     let aiResult: AiEstimateResult | undefined;
     if (mode !== 'local') {
@@ -245,6 +242,10 @@ async function processScenes(
         : `Runtime estimation complete! ${processed} scenes updated. Total: ${formatRuntimeValue(totalRuntime)}`;
 
     new Notice(message);
+
+    // Refresh timeline AFTER all processing (including AI estimate) completes
+    // Use direct refresh on all views to bypass debounce for immediate visual feedback
+    plugin.getTimelineViews().forEach(v => v.refreshTimeline());
 
     return {
         message,

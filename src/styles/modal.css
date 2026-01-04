@@ -122,9 +122,26 @@
 
 /* Runtime modal uses Pro/Signature magenta color scheme */
 .rt-runtime-modal-shell .rt-modal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.15);
   border-color: rgba(var(--rt-pro-color-rgb, 217, 70, 239), 0.3);
   color: var(--rt-pro-color, #d946ef);
+}
+
+.rt-runtime-modal-shell .rt-modal-badge-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rt-runtime-modal-shell .rt-modal-badge-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--rt-pro-color, #d946ef);
+  stroke-width: 2;
+  fill: none;
 }
 
 .rt-modal-shell.modal:has(.rt-search-modal) {
