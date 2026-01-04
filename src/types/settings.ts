@@ -137,6 +137,7 @@ export interface RadialTimelineSettings {
     };
     bookDesignerTemplates?: BookDesignerTemplate[];
     backdropYamlTemplate?: string;
+    showBackdropRing?: boolean;
     hoverMetadataFields?: HoverMetadataField[];
     
     // Professional License

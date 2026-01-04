@@ -164,6 +164,7 @@ Pulse Update: No`
 When: {{When}}                       # Start Date/Time (YYYY-MM-DD HH:MM)
 End: {{End}}                         # End Date/Time (YYYY-MM-DD HH:MM)
 Synopsis: What this backdrop represents and how it shapes the story.`,
+    showBackdropRing: true,
     
     // Runtime Estimation defaults
     enableRuntimeEstimation: false,

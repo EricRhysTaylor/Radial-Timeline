@@ -409,6 +409,20 @@
   opacity: 0.5;
 }
 
+/* Shift mode: Mute pending edits and grade colors when not active */
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-square.rt-has-edits:not(.rt-shift-active) {
+  fill: var(--interactive-normal);
+  stroke: none;
+}
+
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-has-edits:not(.rt-shift-active),
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-grade-A:not(.rt-shift-active),
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-grade-B:not(.rt-shift-active),
+.radial-timeline-svg[data-shift-mode="active"] .rt-number-text.rt-grade-C:not(.rt-shift-active) {
+  fill: var(--text-muted);
+  opacity: 0.5;
+}
+
 /* Shift mode: Hover/selected scenes restore full opacity and disable transition */
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"]:hover,
 .radial-timeline-svg[data-shift-mode="active"] .rt-scene-group[data-item-type="Scene"].rt-shift-hover,
@@ -576,6 +590,23 @@
 }
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-number-text {
+  fill: rgba(200, 50, 50, 0.8);
+  opacity: 0.7;
+}
+
+/* Alien mode: Mute open scenes, pending edits, and grade colors when not active */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-scene-is-open:not(.rt-shift-active),
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-square.rt-has-edits:not(.rt-shift-active) {
+  fill: var(--interactive-normal);
+  stroke: none;
+  opacity: 0.5;
+}
+
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-text.rt-scene-is-open:not(.rt-shift-active),
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-text.rt-has-edits:not(.rt-shift-active),
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-text.rt-grade-A:not(.rt-shift-active),
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-text.rt-grade-B:not(.rt-shift-active),
+.radial-timeline-svg[data-shift-mode="alien"] .rt-number-text.rt-grade-C:not(.rt-shift-active) {
   fill: rgba(200, 50, 50, 0.8);
   opacity: 0.7;
 }
@@ -822,6 +853,23 @@
 }
 
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-number-text {
+  fill: rgba(60, 140, 200, 0.9);
+  opacity: 0.8;
+}
+
+/* Runtime mode: Mute open scenes, pending edits, and grade colors */
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-number-square.rt-scene-is-open,
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-number-square.rt-has-edits {
+  fill: var(--interactive-normal);
+  stroke: none;
+  opacity: 0.6;
+}
+
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-number-text.rt-scene-is-open,
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-number-text.rt-has-edits,
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-number-text.rt-grade-A,
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-number-text.rt-grade-B,
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-number-text.rt-grade-C {
   fill: rgba(60, 140, 200, 0.9);
   opacity: 0.8;
 }

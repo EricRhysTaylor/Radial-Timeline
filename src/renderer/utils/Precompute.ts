@@ -63,7 +63,8 @@ export function computeCacheableValues(
     const allSubplots = Array.from(allSubplotsSet);
 
     // Add virtual 'Backdrop' subplot for Chronologue mode to reserve space
-    if (isChronologueMode && hasBackdrops) {
+    const showBackdropRing = (plugin.settings as any).showBackdropRing ?? true;
+    if (isChronologueMode && hasBackdrops && showBackdropRing) {
         allSubplots.push('Backdrop');
     }
 

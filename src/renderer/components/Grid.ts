@@ -125,11 +125,11 @@ export function renderCenterGrid(params: {
       ${(() => {
         const runtimeY = startYGrid + gridHeight + (cellGapY + 16);
         const runtimeText = totalRuntimeSeconds > 0 ? formatRuntimeValue(totalRuntimeSeconds) : 'No Data';
-        // Estimate text width for icon positioning (approx 7px per character)
-        const textWidth = runtimeText.length * 7;
-        const iconX = startXGrid + textWidth + 6;
-        const iconY = runtimeY - 10; // Center icon vertically with text
-        const iconSize = 12;
+        // Estimate text width for icon positioning (approx 8px per character for 14px font)
+        const textWidth = runtimeText.length * 8;
+        const iconX = startXGrid + textWidth + 4;
+        const iconY = runtimeY - 14; // Center icon vertically with text
+        const iconSize = 18;
         // Lucide icon paths (scaled to iconSize)
         const micVocalIcon = `<g transform="translate(${iconX}, ${iconY}) scale(${iconSize / 24})">
           <path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
