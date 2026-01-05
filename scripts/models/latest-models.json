@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-01-04T18:19:28.579Z",
+  "generatedAt": "2026-01-05T23:07:16.159Z",
   "summary": {
-    "anthropic": 10,
+    "anthropic": 9,
     "openai": 114,
     "gemini": 50
   },
@@ -58,12 +58,6 @@
       "id": "claude-3-haiku-20240307",
       "display_name": "Claude Haiku 3",
       "created_at": "2024-03-07T00:00:00Z",
-      "type": "model"
-    },
-    {
-      "id": "claude-3-opus-20240229",
-      "display_name": "Claude Opus 3",
-      "created_at": "2024-02-29T00:00:00Z",
       "type": "model"
     }
   ],

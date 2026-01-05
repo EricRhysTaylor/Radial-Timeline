@@ -55,6 +55,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _localModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = []; // Store references to AI-related settings
     private _activeTab: 'pro' | 'core' = 'core'; // Default to Core tab
+    private _searchDebounceTimer?: number;
+    private _coreSearchableContent?: HTMLElement;
 
     // TODO: Migrate to Obsidian Keychain API when available (v1.11.0+)
     // Currently storing keys in data.json (plain text) because app.keychain is not yet exposed in the public API types.
@@ -336,6 +338,137 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
 
     }
 
+    // Render search box for Core settings
+    private renderSearchBox(containerEl: HTMLElement): HTMLInputElement {
+        const searchContainer = containerEl.createDiv({ cls: 'rt-settings-search-container' });
+        
+        const searchIconEl = searchContainer.createSpan({ cls: 'rt-settings-search-icon' });
+        setIcon(searchIconEl, 'search');
+        
+        const searchInput = searchContainer.createEl('input', {
+            cls: 'rt-settings-search-input',
+            attr: {
+                type: 'text',
+                placeholder: 'Search settings...',
+                spellcheck: 'false',
+            }
+        });
+        
+        const clearBtn = searchContainer.createSpan({ cls: 'rt-settings-search-clear rt-hidden' });
+        setIcon(clearBtn, 'x');
+        clearBtn.setAttribute('aria-label', 'Clear search');
+        
+        // Wire up search functionality
+        this.plugin.registerDomEvent(searchInput, 'input', () => {
+            const query = searchInput.value.trim();
+            clearBtn.toggleClass('rt-hidden', query.length === 0);
+            
+            // Debounce the filter
+            if (this._searchDebounceTimer) {
+                window.clearTimeout(this._searchDebounceTimer);
+            }
+            this._searchDebounceTimer = window.setTimeout(() => {
+                this.filterSettings(query);
+            }, 150);
+        });
+        
+        this.plugin.registerDomEvent(clearBtn, 'click', () => {
+            searchInput.value = '';
+            clearBtn.addClass('rt-hidden');
+            this.filterSettings('');
+            searchInput.focus();
+        });
+        
+        // Handle Escape to clear
+        this.plugin.registerDomEvent(searchInput, 'keydown', (evt: KeyboardEvent) => {
+            if (evt.key === 'Escape') {
+                searchInput.value = '';
+                clearBtn.addClass('rt-hidden');
+                this.filterSettings('');
+            }
+        });
+        
+        return searchInput;
+    }
+    
+    // Filter settings based on search query
+    private filterSettings(query: string): void {
+        if (!this._coreSearchableContent) return;
+        
+        const normalizedQuery = query.toLowerCase().trim();
+        
+        // Get all setting items and section headings
+        const allSettings = this._coreSearchableContent.querySelectorAll('.setting-item');
+        const allSectionContainers = this._coreSearchableContent.querySelectorAll('[data-rt-section]');
+        
+        if (normalizedQuery === '') {
+            // Show everything
+            allSettings.forEach(el => {
+                (el as HTMLElement).classList.remove('rt-search-hidden');
+            });
+            allSectionContainers.forEach(el => {
+                (el as HTMLElement).classList.remove('rt-search-section-hidden');
+            });
+            return;
+        }
+        
+        // Hide/show individual settings based on match
+        allSettings.forEach(settingEl => {
+            const el = settingEl as HTMLElement;
+            const searchText = el.dataset.rtSearchText || '';
+            const matches = searchText.includes(normalizedQuery);
+            el.classList.toggle('rt-search-hidden', !matches);
+        });
+        
+        // Hide sections that have no visible settings
+        allSectionContainers.forEach(sectionEl => {
+            const section = sectionEl as HTMLElement;
+            const visibleSettings = section.querySelectorAll('.setting-item:not(.rt-search-hidden)');
+            section.classList.toggle('rt-search-section-hidden', visibleSettings.length === 0);
+        });
+    }
+    
+    // Render a subtle Pro callout at the bottom of a Core section
+    private renderProCallout(
+        containerEl: HTMLElement,
+        text: string,
+        switchToProTab: () => void
+    ): void {
+        const callout = containerEl.createDiv({ cls: 'rt-pro-callout' });
+        
+        const badge = callout.createSpan({ cls: 'rt-pro-callout-badge' });
+        setIcon(badge, 'sparkles');
+        badge.createSpan({ text: 'Pro' });
+        
+        callout.createSpan({ cls: 'rt-pro-callout-text', text });
+        callout.createSpan({ cls: 'rt-pro-callout-arrow', text: '→' });
+        
+        this.plugin.registerDomEvent(callout, 'click', () => {
+            switchToProTab();
+        });
+    }
+
+    // Add search metadata to settings after they're rendered
+    private addSearchMetadataToSettings(containerEl: HTMLElement): void {
+        const settingItems = containerEl.querySelectorAll('.setting-item');
+        
+        settingItems.forEach(settingEl => {
+            const el = settingEl as HTMLElement;
+            // Skip if already has search text
+            if (el.dataset.rtSearchText) return;
+            
+            // Get name and description text
+            const nameEl = el.querySelector('.setting-item-name');
+            const descEl = el.querySelector('.setting-item-description');
+            
+            const name = nameEl?.textContent || '';
+            const desc = descEl?.textContent || '';
+            
+            // Store lowercase search text for filtering
+            el.dataset.rtSearchText = `${name} ${desc}`.toLowerCase();
+        });
+    }
+
     private renderProHero(containerEl: HTMLElement): void {
         const hero = containerEl.createDiv({ cls: 'rt-pro-hero' });
         const badgeRow = hero.createDiv({ cls: 'rt-pro-hero-badge-row' });
@@ -440,26 +573,52 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Backup and safety notice at the top of Core
         this.renderBackupSafetySection(coreContent);
 
+        // Search box for Core settings
+        this.renderSearchBox(coreContent);
+
+        // Searchable content wrapper - all sections below are searchable
+        const searchableContent = coreContent.createDiv({ cls: 'rt-settings-searchable-content' });
+        this._coreSearchableContent = searchableContent;
+
+        // Helper to switch to Pro tab (used by callouts)
+        const switchToProTab = () => {
+            this._activeTab = 'pro';
+            updateTabState();
+        };
+
         // Data setup: source path + custom metadata mapping
-        renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl: coreContent });
-        renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
+        const generalSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'general' } });
+        renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl: generalSection });
+        this.renderProCallout(generalSection, 'Manuscript exports via Pandoc', switchToProTab);
+        
+        const metadataSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'metadata' } });
+        renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl: metadataSection });
 
         // Story defaults: POV and story beats/acts
-        renderPovSection({ plugin: this.plugin, containerEl: coreContent });
-        renderStoryBeatsSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
+        const povSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'pov' } });
+        renderPovSection({ plugin: this.plugin, containerEl: povSection });
+        
+        const beatsSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'beats' } });
+        renderStoryBeatsSection({ app: this.app, plugin: this.plugin, containerEl: beatsSection });
 
         // Progress targets
-        renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
+        const publicationSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'publication' } });
+        renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl: publicationSection });
+        this.renderProCallout(publicationSection, 'Runtime estimation for screen time & audiobook', switchToProTab);
 
         // Timeline display controls
-        renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
-        renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
+        const chronologueSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'chronologue' } });
+        renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: chronologueSection });
+        
+        const planetarySection = searchableContent.createDiv({ attr: { 'data-rt-section': 'planetary' } });
+        renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: planetarySection });
 
         // AI LLM for Scene Analysis (keeps provider blocks together)
+        const aiSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'ai' } });
         renderAiSection({
             app: this.app,
             plugin: this.plugin,
-            containerEl: coreContent,
+            containerEl: aiSection,
             addAiRelatedElement: (el: HTMLElement) => this._aiRelatedElements.push(el),
             toggleAiSettingsVisibility: (show: boolean) => this.toggleAiSettingsVisibility(show),
             refreshProviderDimming: () => this.refreshProviderDimming(),
@@ -478,14 +637,21 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
 
         // Advanced settings (scene clipping, debounce, disabled when date sorting)
-        renderAdvancedSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
+        const advancedSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'advanced' } });
+        renderAdvancedSection({ app: this.app, plugin: this.plugin, containerEl: advancedSection });
 
         // Custom colors (rarely changed; keep low)
-        renderColorsSection(coreContent, this.plugin);
+        const colorsSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'colors' } });
+        renderColorsSection(colorsSection, this.plugin);
 
-        void renderReleaseNotesSection({ plugin: this.plugin, containerEl: coreContent });
+        const releaseNotesSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'release-notes' } });
+        void renderReleaseNotesSection({ plugin: this.plugin, containerEl: releaseNotesSection });
 
-        renderReadmeSection({ app: this.app, containerEl: coreContent, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
+        const readmeSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'readme' } });
+        renderReadmeSection({ app: this.app, containerEl: readmeSection, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
+
+        // Add search metadata to all settings after rendering
+        this.addSearchMetadataToSettings(searchableContent);
     }
 
     hide() {

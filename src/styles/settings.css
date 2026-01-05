@@ -164,7 +164,7 @@
 .rt-professional-content {
   overflow: hidden;
   transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.2s ease;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .rt-professional-content.rt-collapsed {
@@ -2102,4 +2102,153 @@
   color: var(--text-faint);
   margin-top: 12px;
   font-style: italic;
+}
+
+/* -------------------------------------------------------------------------- */
+/* SETTINGS SEARCH                                                             */
+/* -------------------------------------------------------------------------- */
+
+.rt-settings-search-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rt-settings-search-container:focus-within {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb, 100, 180, 255), 0.15);
+}
+
+.rt-settings-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.rt-settings-search-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.rt-settings-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: 15px;
+  outline: none;
+  padding: 4px 0;
+}
+
+.rt-settings-search-input::placeholder {
+  color: var(--text-faint);
+}
+
+.rt-settings-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-muted);
+  background: var(--background-modifier-hover);
+  transition: color 0.1s ease, background 0.1s ease;
+  flex-shrink: 0;
+}
+
+.rt-settings-search-clear:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-border);
+}
+
+.rt-settings-search-clear svg {
+  width: 14px;
+  height: 14px;
+}
+
+.rt-settings-search-clear.rt-hidden {
+  display: none;
+}
+
+/* Search filtering - hide non-matching settings */
+.rt-settings-root .rt-search-hidden {
+  display: none;
+}
+
+/* Section containers that are entirely hidden when no children match */
+.rt-settings-root .rt-search-section-hidden {
+  display: none;
+}
+
+/* Searchable content wrapper */
+.rt-settings-searchable-content {
+  /* Wrapper doesn't add visual styling, just contains searchable sections */
+}
+
+/* Section containers within searchable content */
+.rt-settings-searchable-content > [data-rt-section] {
+  /* Sections are blocks that can be hidden as a group */
+}
+
+/* -------------------------------------------------------------------------- */
+/* PRO CALLOUTS (upsell hints in Core sections)                               */
+/* -------------------------------------------------------------------------- */
+
+.rt-pro-callout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+  cursor: pointer;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.rt-pro-callout:hover {
+  color: var(--text-muted);
+  background: rgba(var(--rt-pro-color-rgb), 0.06);
+}
+
+.rt-pro-callout-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--rt-pro-color);
+  opacity: 0.75;
+}
+
+.rt-pro-callout-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.rt-pro-callout-text {
+  color: inherit;
+}
+
+.rt-pro-callout-arrow {
+  opacity: 0.5;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.rt-pro-callout:hover .rt-pro-callout-arrow {
+  opacity: 0.8;
+  transform: translateX(2px);
 }

@@ -20,8 +20,9 @@ export function renderMonthSpokesAndInnerLabels(params: {
   outerSpokeInnerRadius?: number;  // Optional: if provided, render additional outer spokes from this radius
   numActs?: number;
   monthlyCompletedCounts?: number[];  // Array of 12 counts, one per month
+  monthlyCompletedSceneNames?: string[][];  // Array of 12 arrays of scene names
 }): string {
-  const { months, lineInnerRadius, lineOuterRadius, currentMonthIndex, includeIntermediateSpokes = false, outerSpokeInnerRadius, numActs = 3, monthlyCompletedCounts } = params;
+  const { months, lineInnerRadius, lineOuterRadius, currentMonthIndex, includeIntermediateSpokes = false, outerSpokeInnerRadius, numActs = 3, monthlyCompletedCounts, monthlyCompletedSceneNames } = params;
   const totalActs = Math.max(3, Math.floor(numActs));
   const actBoundaryAngles = Array.from({ length: totalActs }, (_, i) => -Math.PI / 2 + (i * 2 * Math.PI) / totalActs);
   const isActBoundaryAngle = (angle: number): boolean => {
@@ -84,9 +85,17 @@ export function renderMonthSpokesAndInnerLabels(params: {
 
     // Build the month label text - add completed count for any month with completions
     const completedCount = monthlyCompletedCounts?.[monthIndex] ?? 0;
+    const sceneNames = monthlyCompletedSceneNames?.[monthIndex] ?? [];
     const labelText = completedCount > 0
       ? `${months[monthIndex].shortName} • ${completedCount}`
       : months[monthIndex].shortName;
+
+    // Build tooltip showing scene names if there are completions
+    let tooltipAttr = '';
+    if (completedCount > 0 && sceneNames.length > 0) {
+      const tooltipText = `Completed in ${months[monthIndex].name}: ${sceneNames.join(', ')}`.replace(/"/g, '&quot;');
+      tooltipAttr = ` class="rt-tooltip-target" data-tooltip="${tooltipText}" data-tooltip-placement="bottom"`;
+    }
 
     svg += `
       <path id="${innerPathId}"
@@ -96,7 +105,7 @@ export function renderMonthSpokesAndInnerLabels(params: {
         "
         fill="none"
       />
-      <text class="rt-month-label" ${isPastMonth ? 'opacity="0.5"' : ''}>
+      <text class="rt-month-label"${tooltipAttr} ${isPastMonth ? 'opacity="0.5"' : ''}>
         <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
           ${labelText}
         </textPath>
