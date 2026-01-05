@@ -15,6 +15,7 @@ import {
     TFolder,
     normalizePath,
     requestUrl,
+    setIcon,
 } from 'obsidian';
 import { FolderSuggest } from './FolderSuggest';
 import { renderGeneralSection } from './sections/GeneralSection';
@@ -36,7 +37,7 @@ import { renderPovSection } from './sections/PovSection';
 import { renderPlanetaryTimeSection } from './sections/PlanetaryTimeSection';
 import { renderMetadataSection } from './sections/MetadataSection';
 import { renderRuntimeSection } from './sections/RuntimeSection';
-import { renderProfessionalSection } from './sections/ProfessionalSection';
+import { renderProfessionalSection, isProfessionalActive } from './sections/ProfessionalSection';
 import { validateLocalModelAvailability } from '../api/localAiApi';
 
 declare const EMBEDDED_README_CONTENT: string;
@@ -275,8 +276,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         return /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex);
     }
 
-    // Render Backup and Safety section
+    // Render Backup and Safety section or Pro hero when Pro experience is enabled
     private renderBackupSafetySection(containerEl: HTMLElement): void {
+        const proEnabled = isProfessionalActive(this.plugin) && !!this.plugin.settings.proExperienceEnabled;
+        if (proEnabled) {
+            this.renderProHero(containerEl);
+            return;
+        }
+
         const container = containerEl.createDiv({ cls: 'rt-backup-safety' });
 
         // Create large background logo using theme variable
@@ -332,6 +339,28 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         syncPara.createSpan({ text: ' to the folder name to stop iCloud from syncing the vault. ' });
         syncPara.createEl('a', { text: 'Read the Obsidian Sync Guide.', href: 'https://help.obsidian.md/sync/switch' });
 
+    }
+
+    private renderProHero(containerEl: HTMLElement): void {
+        const hero = containerEl.createDiv({ cls: 'rt-pro-hero' });
+        const badgeRow = hero.createDiv({ cls: 'rt-pro-hero-badge-row' });
+        const badge = badgeRow.createSpan({ cls: 'rt-pro-hero-badge' });
+        setIcon(badge, 'signature');
+        badge.createSpan({ text: 'Pro · Signature' });
+
+        const title = hero.createEl('h3', { cls: 'rt-pro-hero-title', text: 'Signature tools unlocked' });
+        hero.appendChild(title);
+
+        const subtitle = hero.createEl('p', {
+            cls: 'rt-pro-hero-subtitle',
+            text: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.'
+        });
+        hero.appendChild(subtitle);
+
+        const meta = hero.createDiv({ cls: 'rt-pro-hero-meta' });
+        meta.createSpan({ text: 'Active Pro session' });
+        meta.createSpan({ text: 'Early Access perks' });
+        meta.createSpan({ text: 'Configure below' });
     }
 
     display(): void {

@@ -2,6 +2,12 @@
 /* PROFESSIONAL SECTION                                                       */
 /* -------------------------------------------------------------------------- */
 
+/* Pro color tokens (used across Pro badges, hero, and gates) */
+.rt-settings-root {
+  --rt-pro-color: #d946ef;
+  --rt-pro-color-rgb: 217, 70, 239;
+}
+
 .rt-professional-header {
   display: flex;
   flex-direction: column;
@@ -94,6 +100,96 @@
   opacity: 0;
   pointer-events: none;
   margin-bottom: 0;
+}
+
+/* Pro hero (replaces backup card when Pro experience is enabled) */
+.rt-pro-hero {
+  position: relative;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.35);
+  background: radial-gradient(circle at 12% 20%, rgba(var(--rt-pro-color-rgb), 0.16), transparent 40%),
+              linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.12), rgba(var(--rt-pro-color-rgb), 0.04));
+  box-shadow: 0 10px 40px rgba(var(--rt-pro-color-rgb), 0.18);
+  overflow: hidden;
+}
+
+.rt-pro-hero-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rt-pro-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(var(--rt-pro-color-rgb), 0.12);
+  color: var(--rt-pro-color);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.rt-pro-hero-badge svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rt-pro-hero-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.rt-pro-hero-subtitle {
+  margin: 4px 0 10px 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.rt-pro-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rt-pro-hero-meta span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(var(--rt-pro-color-rgb), 0.10);
+  color: var(--rt-pro-color);
+  font-size: 12px;
+}
+
+/* Pro setting rows inside logical sections */
+.rt-pro-setting {
+  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.22);
+  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.08), rgba(var(--rt-pro-color-rgb), 0.02));
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.rt-settings-root .rt-pro-setting .setting-item-name {
+  color: var(--rt-pro-color);
+  font-weight: 600;
+}
+
+/* Pro section card wrapper */
+.rt-pro-section-card {
+  border: 1px solid rgba(var(--rt-pro-color-rgb), 0.25);
+  background: linear-gradient(135deg, rgba(var(--rt-pro-color-rgb), 0.08), rgba(var(--rt-pro-color-rgb), 0.02));
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.rt-professional-header-toggle .checkbox-container {
+  margin-left: 10px;
 }
 
 .rt-professional-key-toggle {
@@ -503,7 +599,7 @@
 }
 
 /* Default sizing for settings inputs (override with utilities above when needed) */
-.rt-settings-root .setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
+.rt-settings-root .setting-item .setting-item-control input[type="text"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full):not(.rt-hex-input),
 .rt-settings-root .setting-item .setting-item-control input[type="number"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full),
 .rt-settings-root .setting-item .setting-item-control input[type="password"]:not(.rt-input-xs):not(.rt-input-sm):not(.rt-input-md):not(.rt-input-lg):not(.rt-input-full) {
   width: var(--rt-input-width-md);

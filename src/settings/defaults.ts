@@ -210,4 +210,7 @@ Synopsis: What this backdrop represents and how it shapes the story.`,
         podcast: '',
         novel: ''
     },
+
+    // Pro experience (visual/hero activation)
+    proExperienceEnabled: false,
 };

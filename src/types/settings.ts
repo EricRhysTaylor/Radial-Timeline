@@ -176,6 +176,9 @@ export interface RadialTimelineSettings {
         podcast?: string;
         novel?: string;
     };
+
+    // Pro experience (visual/hero activation)
+    proExperienceEnabled?: boolean;
 }
 
 export interface PlanetaryProfile {

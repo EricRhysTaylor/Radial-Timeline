@@ -9,6 +9,7 @@ import { parseRuntimeField } from '../../utils/runtimeEstimator';
 export interface GridDataResult {
     statusCounts: Record<string, number>;
     gridCounts: Record<string, Record<string, number>>;
+    gridSceneNames: Record<string, Record<string, string[]>>;
     estimatedTotalScenes: number;
     totalRuntimeSeconds: number;
 }
@@ -79,12 +80,14 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
         return acc;
     }, {} as Record<string, number>);
 
-    // 2. Calculate Grid Counts (Stage x Status)
+    // 2. Calculate Grid Counts (Stage x Status) and track scene names
     const processedPathsForGrid = new Set<string>();
     const gridCounts: Record<string, Record<string, number>> = {};
+    const gridSceneNames: Record<string, Record<string, string[]>> = {};
     // Initialize grid
     (STAGES_FOR_GRID as readonly string[]).forEach(s => {
         gridCounts[s] = { Todo: 0, Working: 0, Due: 0, Completed: 0 };
+        gridSceneNames[s] = { Todo: [], Working: [], Due: [], Completed: [] };
     });
 
     scenes.forEach(scene => {
@@ -111,6 +114,10 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
             bucket = 'Todo';
         }
         gridCounts[stageKey][bucket] += 1;
+        
+        // Track scene name for tooltip (use title or extract from path)
+        const sceneName = scene.title || scene.path?.split('/').pop()?.replace('.md', '') || 'Unknown';
+        gridSceneNames[stageKey][bucket].push(sceneName);
     });
 
     // 3. Calculate Estimated Total Scenes
@@ -154,6 +161,7 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
     return {
         statusCounts,
         gridCounts,
+        gridSceneNames,
         estimatedTotalScenes,
         totalRuntimeSeconds
     };

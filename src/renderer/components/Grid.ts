@@ -4,6 +4,7 @@ export function renderCenterGrid(params: {
   statusesForGrid: string[];
   stagesForGrid: string[];
   gridCounts: Record<string, Record<string, number>>;
+  gridSceneNames: Record<string, Record<string, string[]>>;
   PUBLISH_STAGE_COLORS: Record<string, string>;
   currentYearLabel: string;
   estimatedTotalScenes: number;
@@ -23,6 +24,7 @@ export function renderCenterGrid(params: {
     statusesForGrid,
     stagesForGrid,
     gridCounts,
+    gridSceneNames,
     PUBLISH_STAGE_COLORS,
     currentYearLabel,
     estimatedTotalScenes,
@@ -84,7 +86,7 @@ export function renderCenterGrid(params: {
     return false;
   };
 
-  const renderGridCell = (stage: string, status: string, x: number, y: number, count: number): string => {
+  const renderGridCell = (stage: string, status: string, x: number, y: number, count: number, sceneNames: string[]): string => {
     let fillAttr = '';
     if (status === 'Completed') {
       const solid = (PUBLISH_STAGE_COLORS[stage as keyof typeof PUBLISH_STAGE_COLORS] || '#888888');
@@ -99,7 +101,22 @@ export function renderCenterGrid(params: {
       fillAttr = `fill="#888888"`;
     }
     const cellOpacity = count <= 0 ? 0.10 : 1;
-    const tooltipText = count > 0 ? `${stage} • ${status}: ${count}` : '';
+    
+    // Build tooltip: show scene names for non-Completed statuses
+    let tooltipText = '';
+    if (count > 0) {
+      if (status === 'Completed') {
+        // Don't list scene names for Completed (too many)
+        tooltipText = `${stage} • ${status}: ${count}`;
+      } else {
+        // Show scene names for Todo, Working, Due
+        const sceneList = sceneNames.join(', ');
+        tooltipText = `${stage} • ${status}: ${sceneList}`;
+      }
+      // Escape quotes for HTML attribute
+      tooltipText = tooltipText.replace(/"/g, '&quot;');
+    }
+    
     return `
       <g transform="translate(${x}, ${y})" ${tooltipText ? `class="rt-tooltip-target rt-grid-cell" data-tooltip="${tooltipText}" data-tooltip-placement="bottom"` : ''}>
         <rect x="0" y="0" width="${cellWidth}" height="${cellHeight}" ${fillAttr} fill-opacity="${cellOpacity}" pointer-events="all" />
@@ -125,30 +142,27 @@ export function renderCenterGrid(params: {
       ${(() => {
         const runtimeY = startYGrid + gridHeight + (cellGapY + 16);
         const runtimeText = totalRuntimeSeconds > 0 ? formatRuntimeValue(totalRuntimeSeconds) : 'No Data';
-        // Estimate text width for icon positioning (approx 8px per character for 14px font)
-        const textWidth = runtimeText.length * 8;
-        const iconX = startXGrid + textWidth + 4;
-        const iconY = runtimeY - 14; // Center icon vertically with text
-        const iconSize = 18;
-        // Lucide icon paths (scaled to iconSize)
-        const micVocalIcon = `<g transform="translate(${iconX}, ${iconY}) scale(${iconSize / 24})">
-          <path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928.911-5.127 2.374" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M21.174 16.5C20.5 15.5 20 14.372 20 13c0-2.058.911-3.928 2.374-5.127" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="16" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="2"/>
+        // Estimate text width for icon positioning (approx 9px per character for 18px font)
+        const textWidth = runtimeText.length * 9;
+        const iconX = startXGrid + textWidth + 2;
+        const iconY = runtimeY - 16; // Center icon vertically with text
+        const iconSize = 20;
+        const iconColor = 'rgba(60, 160, 220, 0.9)';
+        // Lucide icons - mic-vocal (audiobook) and clapperboard (screenplay)
+        // mic-vocal icon content is offset in the 24x24 viewBox, so we shift left by 4 units after scaling
+        const micVocalIcon = `<g transform="translate(${iconX - 3}, ${iconY}) scale(${iconSize / 24})" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m11 7.601-5.994 8.19a1 1 0 0 0 .1 1.298l.817.818a1 1 0 0 0 1.314.087L15.09 12"/>
+          <path d="M16.5 21.174C15.5 20.5 14.372 20 13 20c-2.058 0-3.928.911-5.127 2.374"/>
+          <path d="M15.014 2.837a5 5 0 0 1 6.146 6.146"/>
+          <circle cx="16" cy="8" r="5"/>
         </g>`;
-        const filmIcon = `<g transform="translate(${iconX}, ${iconY}) scale(${iconSize / 24})">
-          <rect width="18" height="18" x="3" y="3" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M7 3v18" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M3 7.5h4" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M3 12h4" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M3 16.5h4" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M17 3v18" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M17 7.5h4" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M17 12h4" fill="none" stroke="currentColor" stroke-width="2"/>
-          <path d="M17 16.5h4" fill="none" stroke="currentColor" stroke-width="2"/>
+        const clapperboardIcon = `<g transform="translate(${iconX}, ${iconY}) scale(${iconSize / 24})" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/>
+          <path d="m6.2 5.3 3.1 3.9"/>
+          <path d="m12.4 3.4 3.1 4"/>
+          <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>
         </g>`;
-        const icon = runtimeContentType === 'screenplay' ? filmIcon : micVocalIcon;
+        const icon = runtimeContentType === 'screenplay' ? clapperboardIcon : micVocalIcon;
         return `<g class="rt-runtime-display">
           <text x="${startXGrid}" y="${runtimeY}" text-anchor="start" dominant-baseline="alphabetic" class="center-key-text rt-runtime-total">${runtimeText}</text>
           ${icon}
@@ -185,6 +199,7 @@ export function renderCenterGrid(params: {
     `;
     const cells = statusesForGrid.map((status, c) => {
       const count = gridCounts[stage][status] || 0;
+      const sceneNames = gridSceneNames[stage]?.[status] || [];
       const x = startXGrid + c * (cellWidth + cellGapX);
       const y = startYGrid + r * (cellHeight + cellGapY);
       const completeRow = isStageCompleteForGridRow(r, gridCounts, stagesForGrid);
@@ -208,7 +223,7 @@ export function renderCenterGrid(params: {
           </g>
         `;
       }
-      return renderGridCell(stage, status, x, y, count);
+      return renderGridCell(stage, status, x, y, count, sceneNames);
     }).join('');
     return `${stageHeader}${cells}`;
   }).join('');

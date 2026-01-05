@@ -68,19 +68,6 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
     // ─────────────────────────────────────────────────────────────────────────
     // Section Header
     // ─────────────────────────────────────────────────────────────────────────
-    const heading = new Setting(containerEl)
-        .setName('Runtime estimation')
-        .setHeading();
-    
-    // Add Pro badge BEFORE the heading text
-    const nameEl = heading.nameEl;
-    const badgeEl = createEl('span', { cls: 'rt-pro-badge' });
-    setIcon(badgeEl, 'signature');
-    badgeEl.createSpan({ text: 'Pro' });
-    nameEl.insertBefore(badgeEl, nameEl.firstChild);
-    
-    addWikiLink(heading, 'Settings#runtime-estimation');
-
     // ─────────────────────────────────────────────────────────────────────────
     // Professional Gate
     // ─────────────────────────────────────────────────────────────────────────
@@ -93,11 +80,12 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
         return;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Enable Toggle
-    // ─────────────────────────────────────────────────────────────────────────
-    new Setting(containerEl)
-        .setName('Enable runtime estimation')
+    // Pro container wrapping all runtime controls
+    const proContainer = containerEl.createDiv({ cls: 'rt-pro-section-card' });
+
+    // Heading row with Pro badge and toggle (double duty)
+    const heading = new Setting(proContainer)
+        .setName('Runtime estimation')
         .setDesc('Activate film and book runtime estimates to the scene hover metadata, Chronologue Mode, and the Command Palette Runtime Estimator.')
         .addToggle(toggle => {
             toggle
@@ -108,9 +96,19 @@ export function renderRuntimeSection({ plugin, containerEl }: SectionParams): vo
                     renderConditionalContent();
                 });
         });
+    heading.settingEl.addClass('rt-pro-setting');
+
+    // Add Pro badge BEFORE the heading text
+    const nameEl = heading.nameEl;
+    const badgeEl = createEl('span', { cls: 'rt-pro-badge' });
+    setIcon(badgeEl, 'signature');
+    badgeEl.createSpan({ text: 'Pro' });
+    nameEl.insertBefore(badgeEl, nameEl.firstChild);
+    
+    addWikiLink(heading, 'Settings#runtime-estimation');
 
     // Container for conditional settings (shown when enabled)
-    const conditionalContainer = containerEl.createDiv({ cls: 'rt-runtime-conditional-settings' });
+    const conditionalContainer = proContainer.createDiv({ cls: 'rt-runtime-conditional-settings' });
 
     // Flash helper for input validation
     const flash = (input: HTMLInputElement, type: 'success' | 'error') => {

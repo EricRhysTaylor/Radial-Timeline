@@ -477,7 +477,7 @@ export function createTimelineSVG(
     const lineHeight = GRID_LINE_HEIGHT; // Reduced for tighter spacing
 
     // Calculate grid data (status counts, grid counts, estimates, runtime)
-    const { statusCounts, gridCounts, estimatedTotalScenes, totalRuntimeSeconds } = computeGridData(scenes);
+    const { statusCounts, gridCounts, gridSceneNames, estimatedTotalScenes, totalRuntimeSeconds } = computeGridData(scenes);
 
     // Save status counts for completion estimate
     plugin.latestStatusCounts = statusCounts;
@@ -542,6 +542,7 @@ export function createTimelineSVG(
         statusesForGrid,
         stagesForGrid,
         gridCounts,
+        gridSceneNames,
         PUBLISH_STAGE_COLORS,
         currentYearLabel,
         estimatedTotalScenes,

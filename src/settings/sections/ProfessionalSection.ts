@@ -6,7 +6,7 @@
  * Professional License Settings Section
  */
 
-import { App, Setting, setIcon, normalizePath } from 'obsidian';
+import { App, Setting, setIcon, normalizePath, ToggleComponent } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { addWikiLink } from '../wikiLink';
 
@@ -81,6 +81,15 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
         titleEl.setText(isActive ? 'Pro features active' : 'Pro');
     }
     
+    // Pro experience toggle in header (replaces collapse arrow during beta)
+    const toggleWrap = headerRow.createSpan({ cls: 'rt-professional-header-toggle' });
+    const proToggle = new ToggleComponent(toggleWrap);
+    proToggle.setValue(!!plugin.settings.proExperienceEnabled);
+    proToggle.onChange(async (value) => {
+        plugin.settings.proExperienceEnabled = value;
+        await plugin.saveSettings();
+    });
+    
     // Wiki link (only when not active)
     if (!isActive) {
         const linkContainer = headerRow.createSpan({ cls: 'rt-professional-wiki-link' });
@@ -89,34 +98,8 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
         addWikiLink(dummySetting, 'Settings#professional');
     }
     
-    // Collapse toggle
-    const toggleEl = headerRow.createSpan({ cls: 'rt-professional-toggle' });
-    setIcon(toggleEl, isActive ? 'chevron-down' : 'chevron-right');
-    
-    // Collapsible content container
+    // Content container (always expanded during beta)
     const contentContainer = containerEl.createDiv({ cls: 'rt-professional-content' });
-    
-    // Start expanded if active (including beta), collapsed otherwise
-    let isExpanded = isActive;
-    if (!isExpanded) {
-        contentContainer.addClass('rt-collapsed');
-    }
-    
-    // Toggle behavior
-    plugin.registerDomEvent(headerContainer, 'click', (e) => {
-        // Don't toggle if clicking on input or wiki link
-        if ((e.target as HTMLElement).closest('input, a, .rt-wiki-link')) {
-            return;
-        }
-        isExpanded = !isExpanded;
-        if (isExpanded) {
-            contentContainer.removeClass('rt-collapsed');
-            setIcon(toggleEl, 'chevron-down');
-        } else {
-            contentContainer.addClass('rt-collapsed');
-            setIcon(toggleEl, 'chevron-right');
-        }
-    });
     
     // ─────────────────────────────────────────────────────────────────────────
     // Open Beta Banner (shown during beta period)
@@ -143,10 +126,8 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     }
     
     // ─────────────────────────────────────────────────────────────────────────
-    // License Key Section (collapsed during beta, primary after)
-    // ─────────────────────────────────────────────────────────────────────────
+    // License Key Section (post-beta only; hidden during early access)
     if (!OPEN_BETA_ACTIVE) {
-        // Standard license key input (post-beta)
         const licenseSetting = new Setting(contentContainer)
             .setDesc('Enter your Pro license key to unlock advanced features.')
             .addText(text => {
@@ -177,7 +158,6 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
                     const value = text.getValue().trim();
                     plugin.settings.professionalLicenseKey = value || undefined;
                     await plugin.saveSettings();
-                    // Re-render to update header state
                     containerEl.empty();
                     renderProfessionalSection({ app: plugin.app, plugin, containerEl });
                 });
@@ -193,44 +173,6 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             cls: 'rt-professional-get-key-link',
             attr: { target: '_blank', rel: 'noopener' }
         });
-    } else {
-        // During beta: show a small note about future licensing
-        const futureNote = contentContainer.createDiv({ cls: 'rt-professional-future-note' });
-        futureNote.createEl('span', { 
-            text: 'Already have a license key? ',
-            cls: 'rt-professional-future-label'
-        });
-        
-        // Collapsible key input for those who already have a key
-        const keyToggle = futureNote.createEl('a', {
-            text: 'Enter it here',
-            cls: 'rt-professional-key-reveal',
-            href: '#'
-        });
-        
-        const keyContainer = contentContainer.createDiv({ cls: 'rt-professional-key-container rt-collapsed' });
-        
-        plugin.registerDomEvent(keyToggle, 'click', (e) => {
-            e.preventDefault();
-            keyContainer.toggleClass('rt-collapsed', keyContainer.hasClass('rt-collapsed') ? false : true);
-            keyToggle.setText(keyContainer.hasClass('rt-collapsed') ? 'Enter it here' : 'Hide');
-        });
-        
-        new Setting(keyContainer)
-            .setName('License key')
-            .setDesc('If you have a Pro license key, enter it here.')
-            .addText(text => {
-                text.setPlaceholder('XXXX-XXXX-XXXX-XXXX');
-                text.setValue(plugin.settings.professionalLicenseKey || '');
-                text.inputEl.addClass('rt-input-lg');
-                text.inputEl.type = 'password';
-                
-                plugin.registerDomEvent(text.inputEl, 'blur', async () => {
-                    const value = text.getValue().trim();
-                    plugin.settings.professionalLicenseKey = value || undefined;
-                    await plugin.saveSettings();
-                });
-            });
     }
     
     // ─────────────────────────────────────────────────────────────────────────
@@ -251,6 +193,22 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
         setIcon(iconSpan, feature.icon);
         li.createSpan({ text: feature.text });
     });
+
+    // Pro experience toggle (controls premium hero/visuals elsewhere)
+    const proExperience = new Setting(contentContainer)
+        .setName('Enable pro early access experience')
+        .setDesc('Show Pro visuals and hero card when Pro is active. Off by default during early access.')
+        .addToggle(toggle => {
+            toggle.setValue(!!plugin.settings.proExperienceEnabled);
+            toggle.onChange(async (value) => {
+                plugin.settings.proExperienceEnabled = value;
+                await plugin.saveSettings();
+            });
+        });
+    if (!isActive) {
+        proExperience.controlEl.toggleClass('rt-setting-disabled', true);
+        proExperience.descEl.setText('Activate Pro first, then enable the Pro experience visuals.');
+    }
 
     // Export / Pandoc settings
     contentContainer.createEl('h5', { text: 'Export & Pandoc' });

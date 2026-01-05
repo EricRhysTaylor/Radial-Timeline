@@ -1014,19 +1014,7 @@
   filter: drop-shadow(0 0 8px rgba(100, 200, 255, 1));
 }
 
-/* 9. Runtime Total display in grid footer */
-.rt-runtime-total {
+/* 9. Runtime Total display in grid footer - matches center-key-text size (18px) */
+.rt-runtime-display .rt-runtime-total {
   fill: rgba(60, 160, 220, 0.9);
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.rt-runtime-display {
-  color: rgba(60, 160, 220, 0.9);
-}
-
-.rt-runtime-display path,
-.rt-runtime-display circle,
-.rt-runtime-display rect {
-  stroke: rgba(60, 160, 220, 0.9);
 }
