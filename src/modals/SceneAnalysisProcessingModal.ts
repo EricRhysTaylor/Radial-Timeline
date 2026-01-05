@@ -120,7 +120,7 @@ export class SceneAnalysisProcessingModal extends Modal {
     private logAttempts: number = 0;
 
     // Animation state for progress bar estimation
-    private animationIntervalId: ReturnType<typeof setInterval> | null = null;
+    private animationIntervalId: number | null = null;
     private currentEstimatedSeconds: number = 0;
 
     constructor(
@@ -739,7 +739,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.statusTextEl.setText(`Processing: ${sceneName} (~${Math.ceil(estimatedSeconds)}s)`);
         }
 
-        this.animationIntervalId = setInterval(() => {
+        this.animationIntervalId = this.plugin.registerInterval(window.setInterval(() => {
             step++;
             const progress = step / steps;
             const currentPercent = sceneStartPercent + (targetPercent - sceneStartPercent) * progress;
@@ -751,7 +751,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             if (step >= steps) {
                 this.stopSceneAnimation();
             }
-        }, 200);
+        }, 200));
     }
 
     /**
@@ -759,7 +759,7 @@ export class SceneAnalysisProcessingModal extends Modal {
      */
     private stopSceneAnimation(): void {
         if (this.animationIntervalId !== null) {
-            clearInterval(this.animationIntervalId);
+            window.clearInterval(this.animationIntervalId);
             this.animationIntervalId = null;
         }
     }

@@ -540,11 +540,11 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
             coreContent.toggleClass('rt-hidden', this._activeTab !== 'core');
         };
 
-        proTab.addEventListener('click', () => {
+        this.plugin.registerDomEvent(proTab, 'click', () => {
             this._activeTab = 'pro';
             updateTabState();
         });
-        coreTab.addEventListener('click', () => {
+        this.plugin.registerDomEvent(coreTab, 'click', () => {
             this._activeTab = 'core';
             updateTabState();
         });
