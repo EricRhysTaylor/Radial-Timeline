@@ -6,7 +6,7 @@
  * Professional License Settings Section
  */
 
-import { App, Setting, setIcon, normalizePath, ToggleComponent } from 'obsidian';
+import { App, Setting, setIcon, normalizePath } from 'obsidian';
 import type RadialTimelinePlugin from '../../main';
 import { addWikiLink } from '../wikiLink';
 
@@ -80,15 +80,6 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     } else {
         titleEl.setText(isActive ? 'Pro features active' : 'Pro');
     }
-    
-    // Pro experience toggle in header (replaces collapse arrow during beta)
-    const toggleWrap = headerRow.createSpan({ cls: 'rt-professional-header-toggle' });
-    const proToggle = new ToggleComponent(toggleWrap);
-    proToggle.setValue(!!plugin.settings.proExperienceEnabled);
-    proToggle.onChange(async (value) => {
-        plugin.settings.proExperienceEnabled = value;
-        await plugin.saveSettings();
-    });
     
     // Wiki link (only when not active)
     if (!isActive) {
@@ -176,44 +167,24 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
     }
     
     // ─────────────────────────────────────────────────────────────────────────
-    // Professional Features List
+    // Export / Pandoc Section (Pro feature with styled container)
     // ─────────────────────────────────────────────────────────────────────────
-    const featuresEl = contentContainer.createDiv({ cls: 'rt-professional-features' });
-    featuresEl.createEl('h5', { text: OPEN_BETA_ACTIVE ? 'Included in Early Access:' : 'Pro features include:' });
-    
-    const featuresList = featuresEl.createEl('ul');
-    const features = [
-        { icon: 'film', text: 'Runtime Estimation — Screen time and audiobook duration analysis' },
-        // Future features can be added here
-    ];
-    
-    features.forEach(feature => {
-        const li = featuresList.createEl('li');
-        const iconSpan = li.createSpan({ cls: 'rt-professional-feature-icon' });
-        setIcon(iconSpan, feature.icon);
-        li.createSpan({ text: feature.text });
-    });
+    const pandocContainer = contentContainer.createDiv({ cls: 'rt-pro-section-card' });
 
-    // Pro experience toggle (controls premium hero/visuals elsewhere)
-    const proExperience = new Setting(contentContainer)
-        .setName('Enable pro early access experience')
-        .setDesc('Show Pro visuals and hero card when Pro is active. Off by default during early access.')
-        .addToggle(toggle => {
-            toggle.setValue(!!plugin.settings.proExperienceEnabled);
-            toggle.onChange(async (value) => {
-                plugin.settings.proExperienceEnabled = value;
-                await plugin.saveSettings();
-            });
-        });
-    if (!isActive) {
-        proExperience.controlEl.toggleClass('rt-setting-disabled', true);
-        proExperience.descEl.setText('Activate Pro first, then enable the Pro experience visuals.');
-    }
+    // Heading with Pro badge
+    const pandocHeading = new Setting(pandocContainer)
+        .setName('Export & Pandoc')
+        .setDesc('Configure Pandoc binary paths and manuscript export templates for screenplay, podcast, and novel formats.');
+    pandocHeading.settingEl.addClass('rt-pro-setting');
 
-    // Export / Pandoc settings
-    contentContainer.createEl('h5', { text: 'Export & Pandoc' });
+    // Add Pro badge BEFORE the heading text
+    const pandocNameEl = pandocHeading.nameEl;
+    const pandocBadge = createEl('span', { cls: 'rt-pro-badge' });
+    setIcon(pandocBadge, 'signature');
+    pandocBadge.createSpan({ text: 'Pro' });
+    pandocNameEl.insertBefore(pandocBadge, pandocNameEl.firstChild);
 
-    new Setting(contentContainer)
+    new Setting(pandocContainer)
         .setName('Pandoc binary path')
         .setDesc('Optional: set a custom pandoc executable path. If blank, system PATH is used.')
         .addText(text => {
@@ -227,7 +198,7 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             });
         });
 
-    new Setting(contentContainer)
+    new Setting(pandocContainer)
         .setName('Enable fallback Pandoc')
         .setDesc('Attempt a secondary bundled/portable pandoc path if the primary is missing.')
         .addToggle(toggle => {
@@ -238,7 +209,7 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             });
         });
 
-    new Setting(contentContainer)
+    new Setting(pandocContainer)
         .setName('Fallback Pandoc path')
         .setDesc('Optional path to a portable/bundled pandoc binary.')
         .addText(text => {
@@ -252,12 +223,14 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             });
         });
 
-    const templateNote = contentContainer.createDiv({ cls: 'rt-professional-note' });
-    templateNote.setText('Pandoc templates (optional): leave blank to use Pandoc defaults.');
+    // Templates sub-section with proper container
+    const templatesCard = pandocContainer.createDiv({ cls: 'rt-pro-subsection' });
+    templatesCard.createDiv({ cls: 'rt-pro-subsection-heading', text: 'Pandoc templates' });
+    templatesCard.createDiv({ cls: 'rt-pro-subsection-note', text: 'Optional: leave blank to use Pandoc defaults.' });
 
     const templates = plugin.settings.pandocTemplates || {};
 
-    new Setting(contentContainer)
+    new Setting(templatesCard)
         .setName('Template: Screenplay')
         .addText(text => {
             text.setPlaceholder('vault/path/to/screenplay_template.tex');
@@ -271,7 +244,7 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             });
         });
 
-    new Setting(contentContainer)
+    new Setting(templatesCard)
         .setName('Template: Podcast Script')
         .addText(text => {
             text.setPlaceholder('vault/path/to/podcast_template.tex');
@@ -285,7 +258,7 @@ export function renderProfessionalSection({ plugin, containerEl }: SectionParams
             });
         });
 
-    new Setting(contentContainer)
+    new Setting(templatesCard)
         .setName('Template: Novel Manuscript')
         .addText(text => {
             text.setPlaceholder('vault/path/to/novel_template.tex');

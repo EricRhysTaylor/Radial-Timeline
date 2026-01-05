@@ -1,10 +1,29 @@
 
 import type { TimelineItem } from '../../types';
-import { isBeatNote } from '../../utils/sceneHelpers';
+import { isNonSceneItem } from '../../utils/sceneHelpers';
 import { parseSceneTitle, normalizeStatus } from '../../utils/text';
 import { isOverdueDateString } from '../../utils/date';
 import { STAGES_FOR_GRID, STATUSES_FOR_GRID } from '../../utils/constants';
 import { parseRuntimeField } from '../../utils/runtimeEstimator';
+
+/**
+ * Normalize a YAML value that might be accidentally formatted as an array.
+ * Handles: "Author", ["Author"], or undefined → returns first string value or undefined
+ * This handles sloppy YAML like:
+ *   Publish Stage:
+ *     - Author
+ * which becomes ["Author"] instead of "Author"
+ */
+function normalizeYamlValue(value: unknown): string | undefined {
+    if (value === null || value === undefined) return undefined;
+    if (Array.isArray(value)) {
+        return value.length > 0 ? String(value[0]).trim() : undefined;
+    }
+    if (typeof value === 'string') {
+        return value.trim() || undefined;
+    }
+    return String(value).trim() || undefined;
+}
 
 export interface GridDataResult {
     statusCounts: Record<string, number>;
@@ -16,7 +35,8 @@ export interface GridDataResult {
 
 export function computeGridData(scenes: TimelineItem[]): GridDataResult {
     // 1. Calculate Status Counts (for Color Key and Estimate)
-    const sceneNotesOnly = scenes.filter(scene => !isBeatNote(scene));
+    // Only count actual scenes (not Beat, Plot, or Backdrop items)
+    const sceneNotesOnly = scenes.filter(scene => !isNonSceneItem(scene));
     const processedScenes = new Set<string>();
 
     // Initialize Accumulator with known stages to ensure keys exist? 
@@ -38,8 +58,8 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
         }
 
         if (normalizedStatus === "complete") {
-            // For completed scenes, count by Publish Stage
-            const publishStage = scene["Publish Stage"] || 'Zero';
+            // For completed scenes, count by Publish Stage (handle array from sloppy YAML)
+            const publishStage = normalizeYamlValue(scene["Publish Stage"]) || 'Zero';
             acc[publishStage] = (acc[publishStage] || 0) + 1;
         } else if (scene.due) {
             // simplified overdue check logic needed here or import isOverdueDateString?
@@ -91,12 +111,13 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
     });
 
     scenes.forEach(scene => {
-        if (isBeatNote(scene)) return;
+        if (isNonSceneItem(scene)) return;
         if (!scene.path || processedPathsForGrid.has(scene.path)) return;
         processedPathsForGrid.add(scene.path);
 
-        const rawStage = scene["Publish Stage"];
-        const stageKey = (STAGES_FOR_GRID as readonly string[]).includes(rawStage as string)
+        // Handle Publish Stage that might be accidentally an array (sloppy YAML)
+        const rawStage = normalizeYamlValue(scene["Publish Stage"]);
+        const stageKey = rawStage && (STAGES_FOR_GRID as readonly string[]).includes(rawStage)
             ? (rawStage as typeof STAGES_FOR_GRID[number])
             : 'Zero';
 
@@ -126,7 +147,7 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
     let highestPrefixNumber = 0;
 
     scenes.forEach(scene => {
-        if (isBeatNote(scene)) return;
+        if (isNonSceneItem(scene)) return;
         if (!scene.path || seenForMax.has(scene.path)) return;
         seenForMax.add(scene.path);
 
@@ -146,7 +167,7 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
     let totalRuntimeSeconds = 0;
 
     scenes.forEach(scene => {
-        if (isBeatNote(scene)) return;
+        if (isNonSceneItem(scene)) return;
         if (!scene.path || seenForRuntime.has(scene.path)) return;
         seenForRuntime.add(scene.path);
 

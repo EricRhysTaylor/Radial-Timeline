@@ -10,7 +10,7 @@ import { TFile, Notice } from 'obsidian';
 import type RadialTimelinePlugin from './main';
 import { RuntimeProcessingModal, type RuntimeScope, type RuntimeStatusFilters, type RuntimeMode, type RuntimeProcessResult } from './modals/RuntimeProcessingModal';
 import { estimateRuntime, getRuntimeSettings, formatRuntimeValue, parseRuntimeField } from './utils/runtimeEstimator';
-import { isBeatNote } from './utils/sceneHelpers';
+import { isNonSceneItem } from './utils/sceneHelpers';
 import { normalizeStatus } from './utils/text';
 import type { TimelineItem } from './types';
 import { callProvider } from './api/providerRouter';
@@ -92,13 +92,13 @@ async function getScenesForScope(
         // Filter by subplot
         const normalizedFilter = (subplotFilter || 'Main Plot').trim().toLowerCase();
         targetScenes = scenes.filter(s => {
-            if (isBeatNote(s)) return false;
+            if (isNonSceneItem(s)) return false;
             const sub = s.subplot && s.subplot.trim() ? s.subplot.trim().toLowerCase() : 'main plot';
             return sub === normalizedFilter;
         });
     } else {
         // All scenes
-        targetScenes = scenes.filter(s => !isBeatNote(s));
+        targetScenes = scenes.filter(s => !isNonSceneItem(s));
     }
 
     // Filter by status

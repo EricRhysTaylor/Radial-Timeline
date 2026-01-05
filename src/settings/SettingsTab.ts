@@ -44,7 +44,7 @@ declare const EMBEDDED_README_CONTENT: string;
 
 export class RadialTimelineSettingsTab extends PluginSettingTab {
     plugin: RadialTimelinePlugin;
-    private readmeComponent: Component | null = null; // <<< ADD THIS LINE
+    private readmeComponent: Component | null = null;
     private _providerSections: { anthropic?: HTMLElement; gemini?: HTMLElement; openai?: HTMLElement; local?: HTMLElement } = {};
     private _keyValidateTimers: Partial<Record<'anthropic' | 'gemini' | 'openai' | 'local', number>> = {};
     private _anthropicKeyInput?: HTMLInputElement;
@@ -54,6 +54,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
     private _localBaseUrlInput?: HTMLInputElement;
     private _localModelIdInput?: HTMLInputElement;
     private _aiRelatedElements: HTMLElement[] = []; // Store references to AI-related settings
+    private _activeTab: 'pro' | 'core' = 'core'; // Default to Core tab
 
     // TODO: Migrate to Obsidian Keychain API when available (v1.11.0+)
     // Currently storing keys in data.json (plain text) because app.keychain is not yet exposed in the public API types.
@@ -276,14 +277,8 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         return /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex);
     }
 
-    // Render Backup and Safety section or Pro hero when Pro experience is enabled
+    // Render Backup and Safety section (shown in Core tab)
     private renderBackupSafetySection(containerEl: HTMLElement): void {
-        const proEnabled = isProfessionalActive(this.plugin) && !!this.plugin.settings.proExperienceEnabled;
-        if (proEnabled) {
-            this.renderProHero(containerEl);
-            return;
-        }
-
         const container = containerEl.createDiv({ cls: 'rt-backup-safety' });
 
         // Create large background logo using theme variable
@@ -348,14 +343,29 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         setIcon(badge, 'signature');
         badge.createSpan({ text: 'Pro · Signature' });
 
-        const title = hero.createEl('h3', { cls: 'rt-pro-hero-title', text: 'Signature tools unlocked' });
-        hero.appendChild(title);
+        hero.createEl('h3', { cls: 'rt-pro-hero-title', text: 'Signature tools for professional workflows.' });
 
-        const subtitle = hero.createEl('p', {
+        hero.createEl('p', {
             cls: 'rt-pro-hero-subtitle',
             text: 'Premium exports, runtime intelligence, and Pandoc templates. Make your publishing pipeline radial and your story ever revolving.'
         });
-        hero.appendChild(subtitle);
+
+        // Included in Early Access features list
+        const featuresSection = hero.createDiv({ cls: 'rt-pro-hero-features' });
+        featuresSection.createEl('h5', { text: 'Included in Early Access:' });
+        const featuresList = featuresSection.createEl('ul');
+        
+        const features = [
+            { icon: 'film', text: 'Runtime Estimation — Screen time and audiobook duration analysis' },
+            { icon: 'file-output', text: 'Pro Exports — Screenplay, podcast, and novel manuscript formats via Pandoc' },
+        ];
+        
+        features.forEach(feature => {
+            const li = featuresList.createEl('li');
+            const iconSpan = li.createSpan({ cls: 'rt-pro-hero-feature-icon' });
+            setIcon(iconSpan, feature.icon);
+            li.createSpan({ text: feature.text });
+        });
 
         const meta = hero.createDiv({ cls: 'rt-pro-hero-meta' });
         meta.createSpan({ text: 'Active Pro session' });
@@ -371,33 +381,85 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Clear AI-related elements array for fresh render
         this._aiRelatedElements = [];
 
-        // Backup and safety notice at the top
-        this.renderBackupSafetySection(containerEl);
+        // ─────────────────────────────────────────────────────────────────────────
+        // Two-Tab Controller: Pro | Core
+        // ─────────────────────────────────────────────────────────────────────────
+        const tabBar = containerEl.createDiv({ cls: 'rt-settings-tab-bar' });
+        
+        const proTab = tabBar.createDiv({ cls: 'rt-settings-tab' });
+        const proIcon = proTab.createSpan({ cls: 'rt-settings-tab-icon' });
+        setIcon(proIcon, 'signature');
+        proTab.createSpan({ text: 'Pro', cls: 'rt-settings-tab-label' });
+        
+        const coreTab = tabBar.createDiv({ cls: 'rt-settings-tab' });
+        const coreIcon = coreTab.createSpan({ cls: 'rt-settings-tab-icon' });
+        setIcon(coreIcon, 'settings');
+        coreTab.createSpan({ text: 'Core', cls: 'rt-settings-tab-label' });
 
-        // Professional license (above all other sections)
-        renderProfessionalSection({ app: this.app, plugin: this.plugin, containerEl });
+        // Content containers
+        const proContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-pro-content' });
+        const coreContent = containerEl.createDiv({ cls: 'rt-settings-tab-content rt-settings-core-content' });
+
+        const updateTabState = () => {
+            proTab.toggleClass('rt-settings-tab-active', this._activeTab === 'pro');
+            coreTab.toggleClass('rt-settings-tab-active', this._activeTab === 'core');
+            proContent.toggleClass('rt-hidden', this._activeTab !== 'pro');
+            coreContent.toggleClass('rt-hidden', this._activeTab !== 'core');
+        };
+
+        proTab.addEventListener('click', () => {
+            this._activeTab = 'pro';
+            updateTabState();
+        });
+        coreTab.addEventListener('click', () => {
+            this._activeTab = 'core';
+            updateTabState();
+        });
+
+        updateTabState();
+
+        // ─────────────────────────────────────────────────────────────────────────
+        // PRO TAB CONTENT
+        // ─────────────────────────────────────────────────────────────────────────
+        const isProActive = isProfessionalActive(this.plugin);
+        
+        if (isProActive) {
+            // Show Pro hero when Pro is active
+            this.renderProHero(proContent);
+        }
+
+        // Professional section (license, Pandoc settings)
+        renderProfessionalSection({ app: this.app, plugin: this.plugin, containerEl: proContent });
+
+        // Runtime estimation (Pro feature)
+        renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl: proContent });
+
+        // ─────────────────────────────────────────────────────────────────────────
+        // CORE TAB CONTENT
+        // ─────────────────────────────────────────────────────────────────────────
+        // Backup and safety notice at the top of Core
+        this.renderBackupSafetySection(coreContent);
 
         // Data setup: source path + custom metadata mapping
-        renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl });
-        renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl });
+        renderGeneralSection({ app: this.app, plugin: this.plugin, attachFolderSuggest: (t) => this.attachFolderSuggest(t), containerEl: coreContent });
+        renderMetadataSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
 
         // Story defaults: POV and story beats/acts
-        renderPovSection({ plugin: this.plugin, containerEl });
-        renderStoryBeatsSection({ app: this.app, plugin: this.plugin, containerEl });
+        renderPovSection({ plugin: this.plugin, containerEl: coreContent });
+        renderStoryBeatsSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
 
         // Progress targets
-        renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl });
+        renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
 
         // Timeline display controls
-        renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl });
-        renderRuntimeSection({ app: this.app, plugin: this.plugin, containerEl });
-        renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl });
+        renderChronologueSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
+        renderPlanetaryTimeSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
 
         // AI LLM for Scene Analysis (keeps provider blocks together)
         renderAiSection({
             app: this.app,
             plugin: this.plugin,
-            containerEl,
+            containerEl: coreContent,
             addAiRelatedElement: (el: HTMLElement) => this._aiRelatedElements.push(el),
             toggleAiSettingsVisibility: (show: boolean) => this.toggleAiSettingsVisibility(show),
             refreshProviderDimming: () => this.refreshProviderDimming(),
@@ -416,14 +478,14 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         });
 
         // Advanced settings (scene clipping, debounce, disabled when date sorting)
-        renderAdvancedSection({ app: this.app, plugin: this.plugin, containerEl });
+        renderAdvancedSection({ app: this.app, plugin: this.plugin, containerEl: coreContent });
 
         // Custom colors (rarely changed; keep low)
-        renderColorsSection(containerEl, this.plugin);
+        renderColorsSection(coreContent, this.plugin);
 
-        void renderReleaseNotesSection({ plugin: this.plugin, containerEl });
+        void renderReleaseNotesSection({ plugin: this.plugin, containerEl: coreContent });
 
-        renderReadmeSection({ app: this.app, containerEl, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
+        renderReadmeSection({ app: this.app, containerEl: coreContent, setComponentRef: (c: Component | null) => { this.readmeComponent = c; } });
     }
 
     hide() {

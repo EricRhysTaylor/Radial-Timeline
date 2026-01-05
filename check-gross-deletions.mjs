@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 import { execSync } from 'node:child_process';
 
-const fileThreshold = Number(process.env.GROSS_DELETION_FILE_THRESHOLD || '300');
-const totalThreshold = Number(process.env.GROSS_DELETION_TOTAL_THRESHOLD || '600');
-const allow = process.env.GROSS_DELETION_ALLOW === '1';
+const fileThreshold = Number(process.env.GROSS_DELETION_FILE_THRESHOLD || '100');
+const totalThreshold = Number(process.env.GROSS_DELETION_TOTAL_THRESHOLD || '100');
 
 function tryRun(cmd) {
   try {
@@ -50,11 +49,6 @@ if (totalDeleted < totalThreshold && largeFileDeletions.length === 0) {
   process.exit(0); // Nothing suspicious
 }
 
-if (allow) {
-  console.log('[warn] Large deletions detected but allowed via GROSS_DELETION_ALLOW=1');
-  process.exit(0);
-}
-
 console.log('\n⚠️  Possible accidental gross deletion detected.');
 if (totalDeleted >= totalThreshold) {
   console.log(`   Total deleted lines: ${totalDeleted} (threshold ${totalThreshold})`);
@@ -68,7 +62,6 @@ if (largeFileDeletions.length) {
     console.log(`     ...and ${largeFileDeletions.length - 5} more`);
   }
 }
-console.log('   If this deletion is expected, rerun with GROSS_DELETION_ALLOW=1.');
 
 process.exit(0);
 

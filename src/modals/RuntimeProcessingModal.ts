@@ -10,7 +10,7 @@ import { App, Modal, ButtonComponent, DropdownComponent, Notice, setIcon } from 
 import type RadialTimelinePlugin from '../main';
 import type { TimelineItem } from '../types';
 import { formatRuntimeValue, getRuntimeSettings } from '../utils/runtimeEstimator';
-import { isBeatNote } from '../utils/sceneHelpers';
+import { isNonSceneItem } from '../utils/sceneHelpers';
 
 export type RuntimeScope = 'current' | 'subplot' | 'all';
 export type RuntimeMode = 'local' | 'ai-full' | 'ai-hybrid';
@@ -364,7 +364,7 @@ export class RuntimeProcessingModal extends Modal {
             const subplotCounts = new Map<string, number>();
 
             scenes.forEach(scene => {
-                if (isBeatNote(scene)) return;
+                if (isNonSceneItem(scene)) return;
                 const sub = scene.subplot && scene.subplot.trim() ? scene.subplot : 'Main Plot';
                 subplotCounts.set(sub, (subplotCounts.get(sub) || 0) + 1);
             });

@@ -19,8 +19,9 @@ export function renderMonthSpokesAndInnerLabels(params: {
   includeIntermediateSpokes?: boolean;
   outerSpokeInnerRadius?: number;  // Optional: if provided, render additional outer spokes from this radius
   numActs?: number;
+  monthlyCompletedCounts?: number[];  // Array of 12 counts, one per month
 }): string {
-  const { months, lineInnerRadius, lineOuterRadius, currentMonthIndex, includeIntermediateSpokes = false, outerSpokeInnerRadius, numActs = 3 } = params;
+  const { months, lineInnerRadius, lineOuterRadius, currentMonthIndex, includeIntermediateSpokes = false, outerSpokeInnerRadius, numActs = 3, monthlyCompletedCounts } = params;
   const totalActs = Math.max(3, Math.floor(numActs));
   const actBoundaryAngles = Array.from({ length: totalActs }, (_, i) => -Math.PI / 2 + (i * 2 * Math.PI) / totalActs);
   const isActBoundaryAngle = (angle: number): boolean => {
@@ -81,6 +82,12 @@ export function renderMonthSpokesAndInnerLabels(params: {
     const endAngle = angle + (Math.PI / 6);
     const innerPathId = `innerMonthPath-${name}`;
 
+    // Build the month label text - add completed count for any month with completions
+    const completedCount = monthlyCompletedCounts?.[monthIndex] ?? 0;
+    const labelText = completedCount > 0
+      ? `${months[monthIndex].shortName} • ${completedCount}`
+      : months[monthIndex].shortName;
+
     svg += `
       <path id="${innerPathId}"
         d="
@@ -91,7 +98,7 @@ export function renderMonthSpokesAndInnerLabels(params: {
       />
       <text class="rt-month-label" ${isPastMonth ? 'opacity="0.5"' : ''}>
         <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
-          ${months[monthIndex].shortName}
+          ${labelText}
         </textPath>
       </text>
     `;

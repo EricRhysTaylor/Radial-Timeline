@@ -50,6 +50,15 @@ export function isBeatNote(scene: TimelineItem | { itemType?: string }): boolean
 }
 
 /**
+ * Check if item is NOT an actual scene (is Beat, Plot, or Backdrop)
+ * Only scenes should be counted in grid statistics, runtime, etc.
+ * Use this for filtering when you only want to process writable scene content.
+ */
+export function isNonSceneItem(item: TimelineItem | { itemType?: string }): boolean {
+    return isBeatNote(item) || item.itemType === 'Backdrop';
+}
+
+/**
  * Sort scenes based on plugin settings
  * @param scenes - Scenes to sort
  * @param sortByWhen - If true, sort by When date; if false, sort by manuscript order
