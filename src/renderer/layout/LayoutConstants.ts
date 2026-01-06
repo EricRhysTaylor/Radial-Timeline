@@ -229,8 +229,8 @@ export const SHIFT_BUTTON_POS_Y = -740;
 // RUNTIME CAP SLIDER
 // =============================================================================
 
-/** Horizontal position for runtime cap slider (left edge) */
-export const RUNTIME_SLIDER_POS_X = -700;
+/** Horizontal position for runtime cap slider (left edge) - aligned with ALT button left edge */
+export const RUNTIME_SLIDER_POS_X = -753;
 
 /** Vertical position for runtime cap slider (below RT button) */
 export const RUNTIME_SLIDER_POS_Y = -635;

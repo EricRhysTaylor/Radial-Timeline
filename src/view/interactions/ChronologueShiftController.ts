@@ -616,10 +616,13 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                     tspan.setAttribute('dy', '0');
                     tspan.textContent = totalRuntimeLabel;
                     textPath.appendChild(tspan);
-                } else if (sceneIndex !== null && cumulativeRuntimeByIndex.has(sceneIndex)) {
-                    // Show cumulative runtime at this scene position
-                    const cumulativeRuntime = cumulativeRuntimeByIndex.get(sceneIndex)!;
-                    const runtimeLabel = formatRuntimeValue(cumulativeRuntime);
+                } else if (sceneIndex !== null && sceneIndex >= 0) {
+                    // Show cumulative runtime BEFORE this scene (tick is at START of scene arc)
+                    // For scene N, show sum of runtimes for scenes 0 to N-1
+                    const cumulativeBeforeScene = sceneIndex > 0 && cumulativeRuntimeByIndex.has(sceneIndex - 1) 
+                        ? cumulativeRuntimeByIndex.get(sceneIndex - 1)! 
+                        : 0;
+                    const runtimeLabel = formatRuntimeValue(cumulativeBeforeScene);
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
                     const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
                     tspan.setAttribute('x', '0');

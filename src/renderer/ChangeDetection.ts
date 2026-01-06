@@ -7,6 +7,7 @@
 import type { TimelineItem, RadialTimelineSettings } from '../types';
 import type { GossamerRun } from '../utils/gossamer';
 import { getVersionCheckService } from '../services/VersionCheckService';
+import { isRuntimeModeActive, getRuntimeCapPercent } from '../view/interactions/ChronologueShiftController';
 
 /**
  * Types of changes that can trigger renders
@@ -60,6 +61,10 @@ export interface TimelineSnapshot {
     
     // Plugin Update Status
     updateAvailable: boolean;
+    
+    // Runtime mode state (affects Chronologue duration arcs)
+    runtimeModeActive: boolean;
+    runtimeCapPercent: number;
     
     timestamp: number;
 }
@@ -183,6 +188,8 @@ export function createSnapshot(
         gossamerRunExists: !!gossamerRun,
         gossamerRunHash,
         updateAvailable: getVersionCheckService()?.isUpdateAvailable() ?? false,
+        runtimeModeActive: isRuntimeModeActive(),
+        runtimeCapPercent: getRuntimeCapPercent(),
         timestamp: Date.now()
     };
 }
@@ -257,6 +264,12 @@ export function detectChanges(
     // Detect update status changes
     if (prev.updateAvailable !== current.updateAvailable) {
         changeTypes.add(ChangeType.UPDATE_STATUS);
+    }
+    
+    // Detect runtime mode changes (affects Chronologue duration arcs)
+    if (prev.runtimeModeActive !== current.runtimeModeActive ||
+        prev.runtimeCapPercent !== current.runtimeCapPercent) {
+        changeTypes.add(ChangeType.SETTINGS);
     }
     
     // Determine update strategy
