@@ -748,7 +748,7 @@ export class SceneAnalysisProcessingModal extends Modal {
             this.statusTextEl.setText(`Processing: ${sceneName} (~${Math.ceil(estimatedSeconds)}s)`);
         }
 
-        this.animationIntervalId = this.plugin.registerInterval(window.setInterval(() => {
+        this.animationIntervalId = this.plugin.registerInterval(window.setInterval(() => { // SAFE: setInterval wrapped with plugin.registerInterval for cleanup
             step++;
             const progress = step / steps;
             const currentPercent = sceneStartPercent + (targetPercent - sceneStartPercent) * progress;
