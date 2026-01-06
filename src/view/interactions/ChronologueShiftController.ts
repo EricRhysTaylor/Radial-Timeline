@@ -1726,16 +1726,29 @@ function showElapsedTime(
         const startAngleScene2 = geometry2.startAngle;
 
         const firstSceneIsEarlier = date1.getTime() <= date2.getTime();
-        const startAngle = firstSceneIsEarlier ? startAngleScene1 : startAngleScene2;
-        const endAngle = firstSceneIsEarlier ? startAngleScene2 : startAngleScene1;
+        let arcStartAngle = firstSceneIsEarlier ? startAngleScene1 : startAngleScene2;
+        let arcEndAngle = firstSceneIsEarlier ? startAngleScene2 : startAngleScene1;
 
-        let normalizedStart = startAngle;
-        let normalizedEnd = endAngle;
+        // Calculate the clockwise sweep from start to end
+        let normalizedStart = arcStartAngle;
+        let normalizedEnd = arcEndAngle;
         if (normalizedEnd < normalizedStart) {
             normalizedEnd += 2 * Math.PI;
         }
-        const sweep = normalizedEnd - normalizedStart;
-        const largeArcFlag = sweep > Math.PI ? 1 : 0;
+        let sweep = normalizedEnd - normalizedStart;
+        
+        // Always take the SHORTER arc between two scenes
+        // If clockwise sweep > π, swap endpoints so the clockwise path is now the short one
+        // Keep sweepFlag = 1 (clockwise) so the arc always bulges outward from center
+        if (sweep > Math.PI) {
+            // Swap angles - clockwise from new start to new end is now the shorter path
+            const temp = arcStartAngle;
+            arcStartAngle = arcEndAngle;
+            arcEndAngle = temp;
+            sweep = 2 * Math.PI - sweep;
+        }
+        const sweepFlag = 1; // Always clockwise so arc curves outward
+        const largeArcFlag = 0; // Always small arc since we're taking the shorter path
 
         const baseOuterRadius = Math.max(
             geometry1.outerRadius ?? defaultOuterRadius,
@@ -1744,11 +1757,11 @@ function showElapsedTime(
         );
         const arcRadius = ELAPSED_ARC_RADIUS; // Use absolute radius directly 
 
-        const x1 = arcRadius * Math.cos(startAngle);
-        const y1 = arcRadius * Math.sin(startAngle);
-        const x2 = arcRadius * Math.cos(endAngle);
-        const y2 = arcRadius * Math.sin(endAngle);
-        const arcPath = `M ${x1} ${y1} A ${arcRadius} ${arcRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
+        const x1 = arcRadius * Math.cos(arcStartAngle);
+        const y1 = arcRadius * Math.sin(arcStartAngle);
+        const x2 = arcRadius * Math.cos(arcEndAngle);
+        const y2 = arcRadius * Math.sin(arcEndAngle);
+        const arcPath = `M ${x1} ${y1} A ${arcRadius} ${arcRadius} 0 ${largeArcFlag} ${sweepFlag} ${x2} ${y2}`;
 
         const arcGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         arcGroup.setAttribute('class', 'rt-elapsed-time-arc');
@@ -1757,7 +1770,7 @@ function showElapsedTime(
         arcPathElement.setAttribute('class', 'rt-elapsed-arc-path');
         arcGroup.appendChild(arcPathElement);
 
-        // Add endpoint markers to the elapsed time arc
+        // Add endpoint markers to the elapsed time arc (use original scene angles for markers)
         const addEndpointMarker = (angle: number) => {
             const innerRadius = arcRadius;
             const outerRadius = arcRadius + ELAPSED_TICK_LENGTH;
@@ -1774,15 +1787,25 @@ function showElapsedTime(
             arcGroup.appendChild(marker);
         };
 
-        addEndpointMarker(startAngle);
-        addEndpointMarker(endAngle);
+        addEndpointMarker(startAngleScene1);
+        addEndpointMarker(startAngleScene2);
 
         // Hide chronological ticks that overlap with the endpoint markers
-        hideOverlappingTicks(svg, startAngle, endAngle);
+        hideOverlappingTicks(svg, startAngleScene1, startAngleScene2);
 
-        const midpointNormalized = normalizedStart + sweep / 2;
-        const midpointAngle = normalizeAngle(midpointNormalized);
-        const labelRadius = arcRadius + 24;
+        // ═══════════════════════════════════════════════════════════════════
+        // ELAPSED TIME ARC LABEL (shows when clicking two scenes to compare)
+        // NOT the duration runtime labels - those are in ChronologueTimeline.ts
+        // ═══════════════════════════════════════════════════════════════════
+        //
+        // midpointAngle: Position label at center of the arc between two scenes
+        // labelRadius: Distance from center
+        //   - INCREASE = further from center (outward, away from arc)
+        //   - DECREASE = closer to center (inward, toward arc)
+        //   - arcRadius is ~766px, adding 24 puts label outside the arc
+        //
+        const midpointAngle = normalizeAngle(arcStartAngle + sweep / 2);
+        const labelRadius = arcRadius + 24; // 24px outside the elapsed arc
         const labelX = labelRadius * Math.cos(midpointAngle);
         const labelY = labelRadius * Math.sin(midpointAngle);
 

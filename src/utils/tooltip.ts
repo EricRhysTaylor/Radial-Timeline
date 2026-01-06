@@ -109,18 +109,32 @@ export function setupTooltipsFromDataAttributes(
         const relatedTarget = (e as MouseEvent).relatedTarget as Element | null;
         
         // Check if we moved to a child or another valid target
-        // (Though typically SVGs don't nest tooltip targets this way)
         const newTarget = relatedTarget?.closest('.rt-tooltip-target[data-tooltip]');
 
         if (target && target === currentTarget && newTarget !== target) {
             // Delay hiding to allow moving to tooltip (if interactive) or reducing flicker
             hideTimeout = window.setTimeout(hideCustomTooltip, 50);
         }
+        
+        // Special handling for foreignObject elements (like Runtime button):
+        // If relatedTarget is null or outside the SVG entirely, hide the tooltip
+        if (currentTarget && !relatedTarget) {
+            hideTimeout = window.setTimeout(hideCustomTooltip, 50);
+        }
+    };
+    
+    // Additional mouseleave handler to catch edge cases with foreignObject/HTML content
+    // mouseleave doesn't bubble, so it fires when truly leaving the SVG
+    const handleMouseLeave = () => {
+        if (currentTarget) {
+            hideTimeout = window.setTimeout(hideCustomTooltip, 100);
+        }
     };
 
     // Use Obsidian lifecycle-backed registration for automatic cleanup
     registerDomEvent(svgElement as unknown as HTMLElement, 'mouseover', handleMouseOver);
     registerDomEvent(svgElement as unknown as HTMLElement, 'mouseout', handleMouseOut);
+    registerDomEvent(svgElement as unknown as HTMLElement, 'mouseleave', handleMouseLeave);
 }
 
 /**

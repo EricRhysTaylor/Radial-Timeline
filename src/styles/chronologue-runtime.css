@@ -55,7 +55,7 @@
 
 /* Runtime tick labels at arc heads */
 .rt-runtime-tick-label {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   fill: rgba(60, 160, 220, 1);
   stroke: var(--background-primary);

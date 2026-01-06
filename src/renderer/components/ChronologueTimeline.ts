@@ -241,11 +241,12 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         if (isUnparseable) {
             arcClass += ' rt-duration-arc-unparseable'; // Red stub for unparseable
         }
-        if (isOverlap) {
+        // In Runtime mode, overlaps don't apply (Runtime is scene duration, not temporal overlap)
+        if (isOverlap && !useRuntimeMode) {
             arcClass += ' rt-duration-arc-overlap'; // Yellow dotted for overlaps and ongoing
         }
-        if (isOngoing) {
-            arcClass += ' rt-duration-arc-ongoing'; // Additional tag for ongoing durations
+        if (isOngoing && !useRuntimeMode) {
+            arcClass += ' rt-duration-arc-ongoing'; // Additional tag for ongoing durations (not for Runtime)
         }
 
         const x1 = formatNumber(arcRadius * Math.cos(arcStart));
@@ -272,25 +273,46 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
                 `<line x1="${tickInnerX}" y1="${tickInnerY}" x2="${tickOuterX}" y2="${tickOuterY}" class="rt-runtime-tick-mark" />`
             );
             
-            // Text label positioned at arc end, outside the tick
-            // Rotate perpendicular to the arc (radial orientation)
-            const labelX = formatNumber(TICK_LABEL_RADIUS * Math.cos(arcEnd));
-            const labelY = formatNumber(TICK_LABEL_RADIUS * Math.sin(arcEnd));
+            // ═══════════════════════════════════════════════════════════════════
+            // DURATION RUNTIME LABEL POSITIONING (e.g., "12:06" at end of scene arc)
+            // ═══════════════════════════════════════════════════════════════════
+            // 
+            // LABEL_OFFSET_RAD: Angular offset from arc end (in radians)
+            //   - Positive = clockwise (after arc end, toward next scene)
+            //   - Negative = counter-clockwise (before arc end, toward scene start)
+            //   - Current: 0.003 rad ≈ 0.17° - just past the tick mark
+            //
+            // labelRadius: Distance from center to label position
+            //   - DECREASE = closer to center (inward toward arc)
+            //   - INCREASE = further from center (outward away from arc)
+            //   - arcRadius is the duration arc's radius (~758px)
+            //   - Current: arcRadius - 2 = label starts 2px inside the arc
+            //
+            const LABEL_OFFSET_RAD = 0.004;
+            const labelAngle = arcEnd + LABEL_OFFSET_RAD;
+            const labelRadius = arcRadius + 3; // 2px inside the arc (DECREASE to move inward)
+            const labelX = formatNumber(labelRadius * Math.cos(labelAngle));
+            const labelY = formatNumber(labelRadius * Math.sin(labelAngle));
             
-            // Calculate rotation angle for radial text (perpendicular to arc)
-            // Convert arcEnd to degrees and add 90 to make it radial
-            const normalizedAngle = ((arcEnd % TWO_PI) + TWO_PI) % TWO_PI;
-            let rotationDeg = (arcEnd * 180 / Math.PI) + 90;
+            // Rotation: text oriented radially (perpendicular to arc tangent)
+            // rotationDeg = angle in degrees, text baseline follows the radius
+            const normalizedAngle = ((labelAngle % TWO_PI) + TWO_PI) % TWO_PI;
+            let rotationDeg = labelAngle * 180 / Math.PI;
             
-            // Flip text on the left side of the circle so it's always readable
-            // (text reads from center outward, not upside down)
+            // Flip text on left side of circle (9 o'clock to 3 o'clock via bottom)
+            // so it's always readable (not upside down)
             const isLeftSide = normalizedAngle > Math.PI * 0.5 && normalizedAngle < Math.PI * 1.5;
+            // text-anchor controls which end of text is at the position:
+            //   'start' = left edge of text at position (text extends rightward/outward)
+            //   'end' = right edge of text at position (text extends leftward/inward)
+            let textAnchor = 'start';
             if (isLeftSide) {
-                rotationDeg += 180;
+                rotationDeg += 180; // Flip text so it reads correctly
+                textAnchor = 'end'; // Swap anchor to maintain visual consistency
             }
             
             runtimeLabels.push(
-                `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${formatNumber(rotationDeg)}, ${labelX}, ${labelY})" class="rt-runtime-tick-label">${runtimeLabel}</text>`
+                `<text x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" dominant-baseline="middle" transform="rotate(${formatNumber(rotationDeg)}, ${labelX}, ${labelY})" class="rt-runtime-tick-label">${runtimeLabel}</text>`
             );
         }
     });
@@ -328,7 +350,8 @@ function mapTimeToAngle(timeMs: number, startMs: number, endMs: number): number 
 }
 
 /**
- * Render elapsed time arc between two selected scenes
+ * Render elapsed time arc between two selected scenes (fallback when geometry not available)
+ * Note: This is rarely used - the main path in ChronologueShiftController handles most cases
  */
 export function renderElapsedTimeArc(
     scene1: TimelineItem,
@@ -343,26 +366,9 @@ export function renderElapsedTimeArc(
         return '';
     }
     
-    // Determine which scene is earlier
-    const [earlierScene, laterScene] = date1.getTime() < date2.getTime() ? [scene1, scene2] : [scene2, scene1];
-    const [earlierDate, laterDate] = date1.getTime() < date2.getTime() ? [date1, date2] : [date2, date1];
-    
-    const arcRadius = outerRadius + 15; // Position between main arc and tick marks
-    const startAngle = mapTimeToAngle(earlierDate.getTime(), earlierDate.getTime(), laterDate.getTime());
-    const endAngle = mapTimeToAngle(laterDate.getTime(), earlierDate.getTime(), laterDate.getTime());
-    
-    // Create arc path
-    const largeArcFlag = (endAngle - startAngle) > Math.PI ? 1 : 0;
-    const x1 = formatNumber(arcRadius * Math.cos(startAngle));
-    const y1 = formatNumber(arcRadius * Math.sin(startAngle));
-    const x2 = formatNumber(arcRadius * Math.cos(endAngle));
-    const y2 = formatNumber(arcRadius * Math.sin(endAngle));
-    
-    const arcPath = `M ${x1} ${y1} A ${formatNumber(arcRadius)} ${formatNumber(arcRadius)} 0 ${largeArcFlag} 1 ${x2} ${y2}`;
-    
-    return `<g class="rt-elapsed-time-arc">
-        <path d="${arcPath}" fill="none" stroke="var(--interactive-accent)" stroke-width="${arcWidth}" opacity="0.8"/>
-    </g>`;
+    // This fallback doesn't have scene positions, so just return an empty arc
+    // The actual arc rendering is handled by ChronologueShiftController when geometry is available
+    return '';
 }
 
 /**
