@@ -144,7 +144,7 @@ export function renderCenterGrid(params: {
         const runtimeText = totalRuntimeSeconds > 0 ? formatRuntimeValue(totalRuntimeSeconds) : 'No Data';
         // Estimate text width for icon positioning (approx 9px per character for 18px font)
         const textWidth = runtimeText.length * 9;
-        const iconX = startXGrid + textWidth;
+        const iconX = startXGrid + textWidth - 6;
         const iconY = runtimeY - 14; // Center icon vertically with text
         const iconColor = 'rgba(60, 160, 220, 0.9)';
         // Lucide mic-vocal icon (16x16, viewBox 0 0 24 24) - exact from Lucide

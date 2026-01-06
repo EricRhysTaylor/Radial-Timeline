@@ -85,33 +85,43 @@ export function renderDefs(PUBLISH_STAGE_COLORS: Record<string, string>): string
 }
 
 
-export function renderProgressRingGradients(): string {
-  return `
-    <defs>
-      <linearGradient id="linearColors1" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#FF0000"></stop>
-        <stop offset="100%" stop-color="#FF7F00"></stop>
-      </linearGradient>
-      <linearGradient id="linearColors2" x1="0.5" y1="0" x2="0.5" y2="1">
-        <stop offset="0%" stop-color="#FF7F00"></stop>
-        <stop offset="100%" stop-color="#FFFF00"></stop>
-      </linearGradient>
-      <linearGradient id="linearColors3" x1="1" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#FFFF00"></stop>
-        <stop offset="100%" stop-color="#00FF00"></stop>
-      </linearGradient>
-      <linearGradient id="linearColors4" x1="1" y1="1" x2="0" y2="0">
-        <stop offset="0%" stop-color="#00FF00"></stop>
-        <stop offset="100%" stop-color="#0000FF"></stop>
-      </linearGradient>
-      <linearGradient id="linearColors5" x1="0.5" y1="1" x2="0.5" y2="0">
-        <stop offset="0%" stop-color="#0000FF"></stop>
-        <stop offset="100%" stop-color="#4B0082"></stop>
-      </linearGradient>
-      <linearGradient id="linearColors6" x1="0" y1="1" x2="1" y2="0">
-        <stop offset="0%" stop-color="#4B0082"></stop>
-        <stop offset="100%" stop-color="#8F00FF"></stop>
-      </linearGradient>
-    </defs>`;
+export function renderProgressRingGradients(radius: number): string {
+  // Rainbow colors for 6 segments going clockwise from 12 o'clock
+  const colors = [
+    ['#FF0000', '#FF7F00'], // Red to Orange
+    ['#FF7F00', '#FFFF00'], // Orange to Yellow
+    ['#FFFF00', '#00FF00'], // Yellow to Green
+    ['#00FF00', '#0000FF'], // Green to Blue
+    ['#0000FF', '#4B0082'], // Blue to Indigo
+    ['#4B0082', '#8F00FF'], // Indigo to Violet
+  ];
+  
+  const segmentCount = 6;
+  const segmentAngle = (2 * Math.PI) / segmentCount;
+  const startAngle = -Math.PI / 2; // 12 o'clock
+  
+  let gradients = '<defs>';
+  
+  for (let i = 0; i < segmentCount; i++) {
+    const segStart = startAngle + i * segmentAngle;
+    const segEnd = startAngle + (i + 1) * segmentAngle;
+    
+    // Calculate gradient endpoints along the arc direction
+    const x1 = radius * Math.cos(segStart);
+    const y1 = radius * Math.sin(segStart);
+    const x2 = radius * Math.cos(segEnd);
+    const y2 = radius * Math.sin(segEnd);
+    
+    gradients += `
+      <linearGradient id="linearColors${i + 1}" gradientUnits="userSpaceOnUse" 
+        x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" 
+        x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}">
+        <stop offset="0%" stop-color="${colors[i][0]}"></stop>
+        <stop offset="100%" stop-color="${colors[i][1]}"></stop>
+      </linearGradient>`;
+  }
+  
+  gradients += '</defs>';
+  return gradients;
 }
 

@@ -4,7 +4,7 @@
  * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
  * 
  * Runtime Estimation Utility
- * Parses scene content to estimate screen time / reading time
+ * Parses scene content to estimate screenplay time / reading time
  */
 
 import type { RadialTimelineSettings, RuntimeContentType, RuntimeRateProfile } from '../types';

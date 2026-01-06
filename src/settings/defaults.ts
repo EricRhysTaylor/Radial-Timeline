@@ -137,7 +137,7 @@ Pulse Update:             # AI-generated scene pulse analysis flag`,
 Act: {{Act}}
 When: {{When}}
 Duration: 1 hours
-Runtime:                             # Technical runtime (screen time / reading time, e.g., "2:30", "45s")
+Runtime:                             # Technical runtime (screenplay time / reading time, e.g., "2:30", "45s")
 Synopsis: Short scene summary.
 Subplot:
 {{SubplotList}}

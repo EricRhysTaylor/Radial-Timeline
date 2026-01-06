@@ -11,7 +11,7 @@ export function renderProgressRingBaseLayer({
     estimateResult
 }: ProgressRingBaseOptions): string {
     let svg = '';
-    svg += renderProgressRingGradients();
+    svg += renderProgressRingGradients(progressRadius);
     svg += `
         <circle
             cx="0"

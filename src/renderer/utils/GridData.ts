@@ -1,7 +1,7 @@
 
 import type { TimelineItem } from '../../types';
 import { isNonSceneItem } from '../../utils/sceneHelpers';
-import { parseSceneTitle, normalizeStatus } from '../../utils/text';
+import { parseSceneTitle, normalizeStatus, getScenePrefixNumber } from '../../utils/text';
 import { isOverdueDateString } from '../../utils/date';
 import { STAGES_FOR_GRID, STATUSES_FOR_GRID } from '../../utils/constants';
 import { parseRuntimeField } from '../../utils/runtimeEstimator';
@@ -136,8 +136,11 @@ export function computeGridData(scenes: TimelineItem[]): GridDataResult {
         }
         gridCounts[stageKey][bucket] += 1;
         
-        // Track scene name for tooltip (use title or extract from path)
-        const sceneName = scene.title || scene.path?.split('/').pop()?.replace('.md', '') || 'Unknown';
+        // Track scene name for tooltip (include scene number prefix)
+        const rawTitle = scene.title || scene.path?.split('/').pop()?.replace('.md', '') || 'Unknown';
+        const baseTitle = rawTitle.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim();
+        const sceneNumber = getScenePrefixNumber(scene.title, scene.number);
+        const sceneName = sceneNumber ? `${sceneNumber}. ${baseTitle}` : baseTitle;
         gridSceneNames[stageKey][bucket].push(sceneName);
     });
 

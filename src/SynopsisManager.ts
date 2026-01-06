@@ -376,7 +376,7 @@ export default class SynopsisManager {
       // Compute approximate size immediately (getBBox fails when hidden)
       const charWidth = 7.5;
       const estWidth = text.length * charWidth + indentX;
-      const estHeight = 13;
+      const estHeight = 14;
       const padX = 6;
       const padY = 2;
       const yOffset = -1; // Aligned with positionRowColumns update (-14 offset)
@@ -1053,7 +1053,8 @@ export default class SynopsisManager {
       const anchorX = anchorAbsoluteX - baseX;
 
       const { primaryWidth, metadataWidth, gap } = this.measureRowLayout(rowElements, metadataSpacing, isRightAligned);
-      const textNudge = isRightAligned ? -8 : 0; // pull right-side text further left to clear icons
+      // Only nudge rows with hover icons; other rows stay flush against the outer radius
+      const textNudge = isRightAligned && hasHoverIcon ? -8 : 0;
       const roundedAnchorX = Math.round(anchorX + textNudge);
       const rowY = rowIndex === 0 ? 0 : yOffset;
 

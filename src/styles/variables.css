@@ -34,13 +34,13 @@
   /* Slightly darker gray for selected empty cells */
 
   /* Search and UI Colors */
-  --rt-color-search: #ffe374;
-  /* Yellow for search highlighting */
+  --rt-color-search: #ffd700;
+  /* Pure gold yellow for search highlighting */
   /* Search highlight tuning */
-  --rt-search-stroke-width: 3px;
-  /* default stroke thickness for search outline */
+  --rt-search-stroke-width: 4px;
+  /* stroke thickness for search outline */
   --rt-search-stroke-opacity: 1;
-  /* default stroke opacity for search outline */
+  /* stroke opacity for search outline */
 
   /* Plaid Colors and Opacity */
   --rt-color-working: #FF69B4;

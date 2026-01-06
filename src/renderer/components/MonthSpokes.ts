@@ -91,13 +91,15 @@ export function renderMonthSpokesAndInnerLabels(params: {
       : months[monthIndex].shortName;
 
     // Build tooltip showing scene names if there are completions
-    let tooltipClass = '';
-    let tooltipDataAttrs = '';
+    let tooltipAttrs = '';
     if (completedCount > 0 && sceneNames.length > 0) {
       const tooltipText = `Completed in ${months[monthIndex].name}: ${sceneNames.join(', ')}`.replace(/"/g, '&quot;');
-      tooltipClass = ' rt-tooltip-target';
-      tooltipDataAttrs = ` data-tooltip="${tooltipText}" data-tooltip-placement="bottom"`;
+      tooltipAttrs = ` class="rt-tooltip-target" data-tooltip="${tooltipText}" data-tooltip-placement="bottom"`;
     }
+
+    // Create hit area arc path (slightly thicker for easier hovering)
+    const hitAreaInnerR = innerLabelRadius - 8;
+    const hitAreaOuterR = innerLabelRadius + 8;
 
     svg += `
       <path id="${innerPathId}"
@@ -107,11 +109,26 @@ export function renderMonthSpokesAndInnerLabels(params: {
         "
         fill="none"
       />
-      <text class="rt-month-label${tooltipClass}"${tooltipDataAttrs} ${isPastMonth ? 'opacity="0.5"' : ''}>
-        <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
-          ${labelText}
-        </textPath>
-      </text>
+      <g${tooltipAttrs}>
+        ${completedCount > 0 ? `
+        <path
+          d="
+            M ${formatNumber(hitAreaInnerR * Math.cos(startAngle))} ${formatNumber(hitAreaInnerR * Math.sin(startAngle))}
+            A ${formatNumber(hitAreaInnerR)} ${formatNumber(hitAreaInnerR)} 0 0 1 ${formatNumber(hitAreaInnerR * Math.cos(endAngle))} ${formatNumber(hitAreaInnerR * Math.sin(endAngle))}
+            L ${formatNumber(hitAreaOuterR * Math.cos(endAngle))} ${formatNumber(hitAreaOuterR * Math.sin(endAngle))}
+            A ${formatNumber(hitAreaOuterR)} ${formatNumber(hitAreaOuterR)} 0 0 0 ${formatNumber(hitAreaOuterR * Math.cos(startAngle))} ${formatNumber(hitAreaOuterR * Math.sin(startAngle))}
+            Z
+          "
+          fill="transparent"
+          pointer-events="all"
+        />
+        ` : ''}
+        <text class="rt-month-label" ${isPastMonth ? 'opacity="0.5"' : ''}>
+          <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
+            ${labelText}
+          </textPath>
+        </text>
+      </g>
     `;
   });
 

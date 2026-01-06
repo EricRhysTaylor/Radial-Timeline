@@ -3,6 +3,7 @@ type MonthInfo = { name: string; shortName: string; angle: number };
 import { renderMonthSpokesAndInnerLabels } from '../components/MonthSpokes';
 import type { TimelineItem } from '../../types';
 import { isNonSceneItem } from '../../utils/sceneHelpers';
+import { getScenePrefixNumber } from '../../utils/text';
 
 type CalendarSpokeOptions = {
     months: MonthInfo[];
@@ -65,8 +66,10 @@ function calculateMonthlyCompletedData(scenes: TimelineItem[]): MonthlyCompleted
         const monthIndex = dueMonth - 1;
         if (monthIndex >= 0 && monthIndex < 12) {
             counts[monthIndex]++;
-            // Get scene name from title, strip leading number if present
-            const name = scene.title?.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim() || 'Untitled';
+            // Get scene name with number prefix
+            const baseTitle = scene.title?.replace(/^\s*\d+(?:\.\d+)?\s+/, '').trim() || 'Untitled';
+            const sceneNumber = getScenePrefixNumber(scene.title, scene.number);
+            const name = sceneNumber ? `${sceneNumber}. ${baseTitle}` : baseTitle;
             sceneNames[monthIndex].push(name);
         }
     });

@@ -316,7 +316,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         titleRow.appendChild(iconSvg);
 
         const title = titleRow.createEl('h3', { cls: 'rt-backup-title' });
-        title.createSpan({ text: 'Protect Your Work' });
+        title.createSpan({ text: 'Backup your Work' });
 
         const description = contentContainer.createEl('p', { cls: 'rt-backup-description' });
         
@@ -437,7 +437,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const callout = containerEl.createDiv({ cls: 'rt-pro-callout' });
         
         const badge = callout.createSpan({ cls: 'rt-pro-callout-badge' });
-        setIcon(badge, 'sparkles');
+        setIcon(badge, 'signature');
         badge.createSpan({ text: 'Pro' });
         
         callout.createSpan({ cls: 'rt-pro-callout-text', text });
@@ -489,7 +489,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         const featuresList = featuresSection.createEl('ul');
         
         const features = [
-            { icon: 'film', text: 'Runtime Estimation — Screen time and audiobook duration analysis' },
+            { icon: 'film', text: 'Runtime Estimation — Screenplay and audiobook duration analysis' },
             { icon: 'file-output', text: 'Pro Exports — Screenplay, podcast, and novel manuscript formats via Pandoc' },
         ];
         
@@ -604,7 +604,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
         // Progress targets
         const publicationSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'publication' } });
         renderPublicationSection({ app: this.app, plugin: this.plugin, containerEl: publicationSection });
-        this.renderProCallout(publicationSection, 'Runtime estimation for screen time & audiobook', switchToProTab);
+        this.renderProCallout(publicationSection, 'Runtime estimation for screenplay & audiobook', switchToProTab);
 
         // Timeline display controls
         const chronologueSection = searchableContent.createDiv({ attr: { 'data-rt-section': 'chronologue' } });

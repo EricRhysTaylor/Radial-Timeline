@@ -63,7 +63,7 @@ export function renderWelcomeScreen({ container, plugin, refreshTimeline }: Welc
     const backupText = backupNotice.createDiv({ cls: 'rt-welcome-backup-text' });
     
     const backupPara = backupText.createDiv();
-    backupPara.createEl('strong', { text: 'Protect Your Work: ' });
+    backupPara.createEl('strong', { text: 'Backup your Work: ' });
     backupPara.createSpan({ text: 'It is strongly recommended for you to ' });
     backupPara.createEl('a', { text: 'automate backups', href: 'https://help.obsidian.md/backup' });
     backupPara.createSpan({ text: '. The native ' });
