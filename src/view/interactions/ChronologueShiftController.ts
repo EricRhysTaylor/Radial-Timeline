@@ -1043,6 +1043,30 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         const allScenes = (view as any).sceneData || (view as any).scenes || [];
         showElapsedTime(svg, selectedScenes, elapsedTimeClickCount, sceneGeometry, outerRadius, view.plugin.settings, allScenes);
     });
+
+    // =========================================================================
+    // STATE RESTORATION: Sync local state with global state after SVG refresh
+    // When a refresh replaces the SVG, a new controller is created. We need to
+    // restore the UI state (buttons, slider, data attributes) based on global state.
+    // =========================================================================
+    if (globalRuntimeModeActive && rtButton) {
+        runtimeModeActive = true;
+        updateRtButtonState(rtButton, true);
+        svg.setAttribute('data-shift-mode', 'runtime');
+        updateDateLabelsForRuntimeMode(true);
+        showRuntimeCapSlider();
+    } else if (globalAlienModeActive && altButton) {
+        alienModeActive = true;
+        shiftModeActive = true; // Alien requires shift to be active
+        updateAltButtonState(altButton, true);
+        updateShiftButtonState(shiftButton, true);
+        svg.setAttribute('data-shift-mode', 'alien');
+        updateDateLabelsForAlienMode(true);
+    } else if (globalShiftModeActive) {
+        shiftModeActive = true;
+        updateShiftButtonState(shiftButton, true);
+        svg.setAttribute('data-shift-mode', 'active');
+    }
 }
 
 /**

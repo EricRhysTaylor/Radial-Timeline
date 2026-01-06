@@ -702,16 +702,25 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     /**
      * Estimate how long the LLM call will take based on historical calibration data.
-     * Default is aggressive (fast) so animation finishes early rather than late.
+     * Uses actual average call times, NOT content length (API time doesn't scale with scene runtime).
+     * Default is 10 seconds - reasonable for most models. Calibrates from actual samples.
      */
-    private estimateDuration(tripletMetric: number): number {
+    private estimateDuration(_tripletMetric: number): number {
         const stats = this.plugin.settings.pulseTimingStats;
 
-        // Default rate: 1.5 LLM seconds per runtime-second of content (aggressive/fast)
-        const rate = stats?.avgSecondsPerRuntimeSecond ?? 1.5;
+        // Use average of recent actual call times if we have valid samples
+        if (stats?.recentSamples && stats.recentSamples.length > 0) {
+            const avgCallTime = stats.recentSamples.reduce((a, b) => a + b, 0) / stats.recentSamples.length;
+            // Sanity check: if avg < 1 second, these are legacy ratio-based samples - ignore them
+            // Real API calls take at least 2-3 seconds even for the fastest models
+            if (avgCallTime >= 1) {
+                // Cap at 85% to avoid overshooting (animation completes slightly before actual call)
+                return avgCallTime * 0.85;
+            }
+        }
 
-        // Cap at 85% to avoid overshooting
-        return tripletMetric * rate * 0.85;
+        // Default: 10 seconds per call (reasonable for most API providers)
+        return 10 * 0.85;
     }
 
     /**
@@ -766,31 +775,28 @@ export class SceneAnalysisProcessingModal extends Modal {
 
     /**
      * Record actual processing time and update calibration data for future estimates.
+     * Stores raw call times (not ratios) since API time doesn't correlate with content length.
      */
-    public recordProcessingTime(tripletMetric: number, actualSeconds: number): void {
+    public recordProcessingTime(_tripletMetric: number, actualSeconds: number): void {
         // Stop any running animation
         this.stopSceneAnimation();
 
-        // Only calibrate if we have a meaningful metric
-        if (tripletMetric <= 0) return;
+        // Only calibrate if we have a meaningful time
+        if (actualSeconds <= 0) return;
 
-        // Calculate actual rate
-        const actualRate = actualSeconds / tripletMetric;
-
-        // Update running average (exponential moving average, weight recent samples more)
+        // Update running average of actual call times (keep last 10 samples)
         const stats = this.plugin.settings.pulseTimingStats ?? {
-            avgSecondsPerRuntimeSecond: 1.5,
+            avgSecondsPerRuntimeSecond: 1.5, // Legacy field, unused now
             sampleCount: 0,
             recentSamples: []
         };
 
-        stats.recentSamples.push(actualRate);
+        // Store actual call time directly (not a ratio)
+        stats.recentSamples.push(actualSeconds);
         if (stats.recentSamples.length > 10) {
             stats.recentSamples.shift();
         }
 
-        // New average from recent samples
-        stats.avgSecondsPerRuntimeSecond = stats.recentSamples.reduce((a, b) => a + b, 0) / stats.recentSamples.length;
         stats.sampleCount++;
 
         this.plugin.settings.pulseTimingStats = stats;

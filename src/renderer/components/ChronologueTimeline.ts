@@ -273,22 +273,24 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
             );
             
             // Text label positioned at arc end, outside the tick
+            // Rotate perpendicular to the arc (radial orientation)
             const labelX = formatNumber(TICK_LABEL_RADIUS * Math.cos(arcEnd));
             const labelY = formatNumber(TICK_LABEL_RADIUS * Math.sin(arcEnd));
             
-            // Determine text anchor based on angle to prevent clipping
-            // Right side (0 to π/2 and -π/2 to 0): start anchor
-            // Left side (π/2 to π and -π to -π/2): end anchor
+            // Calculate rotation angle for radial text (perpendicular to arc)
+            // Convert arcEnd to degrees and add 90 to make it radial
             const normalizedAngle = ((arcEnd % TWO_PI) + TWO_PI) % TWO_PI;
-            let textAnchor = 'middle';
-            if (normalizedAngle > Math.PI * 0.25 && normalizedAngle < Math.PI * 0.75) {
-                textAnchor = 'start'; // Bottom-right quadrant
-            } else if (normalizedAngle > Math.PI * 1.25 && normalizedAngle < Math.PI * 1.75) {
-                textAnchor = 'end'; // Top-left quadrant
+            let rotationDeg = (arcEnd * 180 / Math.PI) + 90;
+            
+            // Flip text on the left side of the circle so it's always readable
+            // (text reads from center outward, not upside down)
+            const isLeftSide = normalizedAngle > Math.PI * 0.5 && normalizedAngle < Math.PI * 1.5;
+            if (isLeftSide) {
+                rotationDeg += 180;
             }
             
             runtimeLabels.push(
-                `<text x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" dominant-baseline="middle" class="rt-runtime-tick-label">${runtimeLabel}</text>`
+                `<text x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${formatNumber(rotationDeg)}, ${labelX}, ${labelY})" class="rt-runtime-tick-label">${runtimeLabel}</text>`
             );
         }
     });
