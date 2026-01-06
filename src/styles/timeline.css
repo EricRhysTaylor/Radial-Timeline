@@ -935,8 +935,9 @@
   stroke: rgba(60, 160, 220, 0.8);
 }
 
-.radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-duration-arc-overlap {
-  stroke: rgba(220, 160, 60, 0.9);
+/* Unparseable arcs (no Runtime value) stay RED even in runtime mode */
+.radial-timeline-container .radial-timeline-svg[data-shift-mode="runtime"] .rt-duration-arc.rt-duration-arc-unparseable {
+  stroke: var(--rt-color-due);
 }
 
 /* 8. RT Icon Button Styling */

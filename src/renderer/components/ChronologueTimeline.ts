@@ -56,7 +56,7 @@ export function renderChronologueTimelineArc(
     scenes: TimelineItem[],
     outerRadius: number,
     scenePositions?: Map<string, { startAngle: number; endAngle: number }>,
-    durationCapMs?: number | null,
+    _durationCapMs?: number | null, // DEPRECATED: cap slider removed, kept for API compatibility
     arcRadius: number = 758,  // Absolute radius for duration arcs
     precomputedEntries?: ChronologueSceneEntry[],
     useRuntimeMode: boolean = false
@@ -87,7 +87,6 @@ export function renderChronologueTimelineArc(
             arcRadius,
             timeSpanTotalMs: timeSpan.totalMs,
             scenePositions,
-            durationCapMs,
             useRuntimeMode
         });
         if (durationSegments) {
@@ -106,12 +105,11 @@ interface DurationTickArcParams {
     arcRadius: number;
     timeSpanTotalMs: number;
     scenePositions: Map<string, { startAngle: number; endAngle: number }>;
-    durationCapMs?: number | null;
     useRuntimeMode?: boolean;
 }
 
 function renderDurationTickArcs(params: DurationTickArcParams): string | null {
-    const { sceneEntries, arcRadius, timeSpanTotalMs, scenePositions, durationCapMs, useRuntimeMode } = params;
+    const { sceneEntries, arcRadius, timeSpanTotalMs, scenePositions, useRuntimeMode } = params;
     if (sceneEntries.length === 0 || timeSpanTotalMs <= 0) {
         return null;
     }
@@ -162,15 +160,11 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
         return null;
     }
 
+    // Scale arcs proportionally: longest duration fills 100% of available arc space
     const observedMaxDurationMs = validDurationValues.length > 0
         ? Math.max(...validDurationValues)
         : 0;
-    const scaleCapMs = typeof durationCapMs === 'number' && durationCapMs > 0
-        ? durationCapMs
-        : observedMaxDurationMs;
-    const scaleMs = scaleCapMs > 0
-        ? scaleCapMs
-        : (observedMaxDurationMs > 0 ? observedMaxDurationMs : 1);
+    const scaleMs = observedMaxDurationMs > 0 ? observedMaxDurationMs : 1;
 
     // Detect overlaps (when scene.when + duration > nextScene.when)
     const overlapIndices = detectSceneOverlaps(sortedEntries.map(entry => ({
@@ -288,9 +282,9 @@ function renderDurationTickArcs(params: DurationTickArcParams): string | null {
             //   - arcRadius is the duration arc's radius (~758px)
             //   - Current: arcRadius - 2 = label starts 2px inside the arc
             //
-            const LABEL_OFFSET_RAD = 0.004;
+            const LABEL_OFFSET_RAD = 0.01;
             const labelAngle = arcEnd + LABEL_OFFSET_RAD;
-            const labelRadius = arcRadius + 3; // 2px inside the arc (DECREASE to move inward)
+            const labelRadius = arcRadius - 5; // 2px inside the arc (DECREASE to move inward)
             const labelX = formatNumber(labelRadius * Math.cos(labelAngle));
             const labelY = formatNumber(labelRadius * Math.sin(labelAngle));
             
@@ -353,23 +347,6 @@ function mapTimeToAngle(timeMs: number, startMs: number, endMs: number): number 
  * Render elapsed time arc between two selected scenes (fallback when geometry not available)
  * Note: This is rarely used - the main path in ChronologueShiftController handles most cases
  */
-export function renderElapsedTimeArc(
-    scene1: TimelineItem,
-    scene2: TimelineItem,
-    outerRadius: number,
-    arcWidth: number = 2
-): string {
-    const date1 = parseWhenField(typeof scene1.when === 'string' ? scene1.when : '');
-    const date2 = parseWhenField(typeof scene2.when === 'string' ? scene2.when : '');
-    
-    if (!date1 || !date2) {
-        return '';
-    }
-    
-    // This fallback doesn't have scene positions, so just return an empty arc
-    // The actual arc rendering is handled by ChronologueShiftController when geometry is available
-    return '';
-}
 
 /**
  * Arc 1: Chronological Timeline Backbone

@@ -55,7 +55,7 @@
 
 /* Runtime tick labels at arc heads */
 .rt-runtime-tick-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   fill: rgba(60, 160, 220, 1);
   stroke: var(--background-primary);
@@ -69,48 +69,6 @@
 .rt-runtime-tick-mark {
   stroke: rgba(60, 160, 220, 0.8);
   stroke-width: 1.5px;
-}
-
-/* Runtime Cap Slider */
-.rt-runtime-cap-slider {
-  cursor: pointer;
-}
-
-.rt-runtime-cap-track {
-  fill: rgba(60, 140, 220, 0.5);
-  stroke: none;
-}
-
-.rt-runtime-cap-tick {
-  stroke: rgba(60, 140, 220, 0.7);
-  stroke-width: 1px;
-}
-
-.rt-runtime-cap-label {
-  font-size: 13px;
-  font-weight: 600;
-  fill: rgba(60, 140, 220, 0.9);
-  pointer-events: none;
-}
-
-.rt-runtime-cap-handle {
-  fill: rgba(60, 160, 220, 0.9);
-  stroke: white;
-  stroke-width: 2px;
-  cursor: grab;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-  transition: fill 0.15s ease-out, filter 0.15s ease-out;
-}
-
-.rt-runtime-cap-handle:hover {
-  fill: rgba(80, 180, 255, 1);
-  filter: drop-shadow(0 0 6px rgba(60, 160, 220, 0.7));
-}
-
-.rt-runtime-cap-handle-active {
-  cursor: grabbing;
-  fill: rgba(100, 200, 255, 1);
-  filter: drop-shadow(0 0 8px rgba(60, 160, 220, 0.9));
 }
 
 /* RT Button Warning State (no runtime data) */

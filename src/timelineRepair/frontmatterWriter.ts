@@ -1,0 +1,348 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Copyright (c) 2025 Eric Rhys Taylor
+ * Licensed under a Source-Available, Non-Commercial License. See LICENSE file for details.
+ *
+ * Timeline Repair Wizard - Frontmatter Writer
+ * Batch updates YAML frontmatter with When dates and provenance metadata.
+ */
+
+import type { App, TFile } from 'obsidian';
+import type {
+    RepairSceneEntry,
+    SessionDiffModel,
+    FrontmatterUpdate,
+    FrontmatterWriteResult,
+    WhenSource,
+    WhenConfidence
+} from './types';
+import { getEffectiveWhen } from './types';
+
+// ============================================================================
+// Date Formatting
+// ============================================================================
+
+/**
+ * Format a Date for YAML frontmatter.
+ * Uses format: YYYY-MM-DD HH:MM
+ */
+function formatWhenForYaml(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+/**
+ * Format duration in milliseconds to a human-readable string.
+ */
+function formatDurationForYaml(durationMs: number): string {
+    const minutes = Math.floor(durationMs / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) {
+        return `${days}d ${hours % 24}h`;
+    }
+    if (hours > 0) {
+        return `${hours}h ${minutes % 60}m`;
+    }
+    return `${minutes}m`;
+}
+
+// ============================================================================
+// Update Preparation
+// ============================================================================
+
+/**
+ * Prepare frontmatter updates from session entries.
+ * Only includes entries that have actual changes.
+ */
+export function prepareUpdates(session: SessionDiffModel): FrontmatterUpdate[] {
+    const updates: FrontmatterUpdate[] = [];
+    
+    for (const entry of session.entries) {
+        if (!entry.isChanged) continue;
+        
+        const effectiveWhen = getEffectiveWhen(entry);
+        
+        const update: FrontmatterUpdate = {
+            file: entry.file,
+            when: effectiveWhen,
+            whenSource: entry.source,
+            whenConfidence: entry.confidence
+        };
+        
+        // Add duration if present
+        if (entry.proposedDuration !== undefined) {
+            update.duration = entry.proposedDuration;
+            update.durationSource = entry.durationSource;
+            update.durationOngoing = entry.durationOngoing;
+        }
+        
+        // Add review flag if needed
+        if (entry.needsReview) {
+            update.needsReview = true;
+        }
+        
+        updates.push(update);
+    }
+    
+    return updates;
+}
+
+// ============================================================================
+// Batch Write
+// ============================================================================
+
+export interface WriteOptions {
+    /** Include WhenSource provenance field */
+    includeSource?: boolean;
+    
+    /** Include WhenConfidence field */
+    includeConfidence?: boolean;
+    
+    /** Include Duration updates */
+    includeDuration?: boolean;
+    
+    /** Include NeedsReview flag */
+    includeNeedsReview?: boolean;
+    
+    /** Progress callback */
+    onProgress?: (current: number, total: number, fileName: string) => void;
+    
+    /** Abort signal */
+    abortSignal?: AbortSignal;
+}
+
+const DEFAULT_WRITE_OPTIONS: WriteOptions = {
+    includeSource: true,
+    includeConfidence: true,
+    includeDuration: true,
+    includeNeedsReview: true
+};
+
+/**
+ * Write frontmatter updates to files.
+ * Uses Obsidian's processFrontMatter for atomic updates.
+ */
+export async function writeFrontmatterUpdates(
+    app: App,
+    updates: FrontmatterUpdate[],
+    options: WriteOptions = {}
+): Promise<FrontmatterWriteResult> {
+    const opts = { ...DEFAULT_WRITE_OPTIONS, ...options };
+    
+    const result: FrontmatterWriteResult = {
+        success: 0,
+        failed: 0,
+        errors: []
+    };
+    
+    for (let i = 0; i < updates.length; i++) {
+        const update = updates[i];
+        
+        // Check for abort
+        if (opts.abortSignal?.aborted) {
+            break;
+        }
+        
+        // Progress callback
+        opts.onProgress?.(i + 1, updates.length, update.file.basename);
+        
+        try {
+            await app.fileManager.processFrontMatter(update.file, (fm) => {
+                const fmObj = fm as Record<string, unknown>;
+                
+                // Update When field
+                fmObj['When'] = formatWhenForYaml(update.when);
+                
+                // Provenance metadata
+                if (opts.includeSource) {
+                    fmObj['WhenSource'] = update.whenSource;
+                }
+                
+                if (opts.includeConfidence) {
+                    fmObj['WhenConfidence'] = update.whenConfidence;
+                }
+                
+                // Duration
+                if (opts.includeDuration && update.duration !== undefined) {
+                    if (update.durationOngoing) {
+                        fmObj['Duration'] = 'ongoing';
+                    } else {
+                        fmObj['Duration'] = formatDurationForYaml(update.duration);
+                    }
+                    
+                    if (update.durationSource) {
+                        fmObj['DurationSource'] = update.durationSource;
+                    }
+                }
+                
+                // Review flag
+                if (opts.includeNeedsReview && update.needsReview) {
+                    fmObj['NeedsReview'] = true;
+                } else if ('NeedsReview' in fmObj) {
+                    // Clear the flag if no longer needed
+                    delete fmObj['NeedsReview'];
+                }
+            });
+            
+            result.success++;
+        } catch (error) {
+            result.failed++;
+            result.errors.push({
+                file: update.file,
+                error: error instanceof Error ? error.message : String(error)
+            });
+        }
+    }
+    
+    return result;
+}
+
+// ============================================================================
+// Convenience Functions
+// ============================================================================
+
+/**
+ * Write all changes from a session to files.
+ */
+export async function writeSessionChanges(
+    app: App,
+    session: SessionDiffModel,
+    options: WriteOptions = {}
+): Promise<FrontmatterWriteResult> {
+    const updates = prepareUpdates(session);
+    return writeFrontmatterUpdates(app, updates, options);
+}
+
+/**
+ * Preview what would be written without actually writing.
+ */
+export function previewUpdates(session: SessionDiffModel): Array<{
+    fileName: string;
+    path: string;
+    originalWhen: string | null;
+    newWhen: string;
+    source: WhenSource;
+    confidence: WhenConfidence;
+}> {
+    const updates = prepareUpdates(session);
+    
+    return updates.map(update => {
+        const entry = session.entries.find(e => e.file.path === update.file.path);
+        
+        return {
+            fileName: update.file.basename,
+            path: update.file.path,
+            originalWhen: entry?.originalWhenRaw ?? 
+                (entry?.originalWhen ? formatWhenForYaml(entry.originalWhen) : null),
+            newWhen: formatWhenForYaml(update.when),
+            source: update.whenSource,
+            confidence: update.whenConfidence
+        };
+    });
+}
+
+/**
+ * Get a summary of changes for display.
+ */
+export function getChangeSummary(session: SessionDiffModel): {
+    totalChanges: number;
+    bySource: Record<WhenSource, number>;
+    byConfidence: Record<WhenConfidence, number>;
+    withDuration: number;
+    needingReview: number;
+} {
+    const updates = prepareUpdates(session);
+    
+    const bySource: Record<WhenSource, number> = {
+        pattern: 0,
+        keyword: 0,
+        ai: 0,
+        manual: 0,
+        original: 0
+    };
+    
+    const byConfidence: Record<WhenConfidence, number> = {
+        high: 0,
+        med: 0,
+        low: 0
+    };
+    
+    let withDuration = 0;
+    let needingReview = 0;
+    
+    for (const update of updates) {
+        bySource[update.whenSource]++;
+        byConfidence[update.whenConfidence]++;
+        
+        if (update.duration !== undefined) {
+            withDuration++;
+        }
+        
+        if (update.needsReview) {
+            needingReview++;
+        }
+    }
+    
+    return {
+        totalChanges: updates.length,
+        bySource,
+        byConfidence,
+        withDuration,
+        needingReview
+    };
+}
+
+// ============================================================================
+// Cleanup Functions
+// ============================================================================
+
+/**
+ * Remove Timeline Repair provenance fields from a file.
+ * Useful for cleaning up after repairs are verified.
+ */
+export async function clearProvenanceFields(
+    app: App,
+    file: TFile
+): Promise<boolean> {
+    try {
+        await app.fileManager.processFrontMatter(file, (fm) => {
+            const fmObj = fm as Record<string, unknown>;
+            delete fmObj['WhenSource'];
+            delete fmObj['WhenConfidence'];
+            delete fmObj['DurationSource'];
+            delete fmObj['NeedsReview'];
+        });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Clear provenance fields from all files in a session.
+ */
+export async function clearAllProvenanceFields(
+    app: App,
+    session: SessionDiffModel,
+    onProgress?: (current: number, total: number) => void
+): Promise<number> {
+    let cleared = 0;
+    
+    for (let i = 0; i < session.entries.length; i++) {
+        const entry = session.entries[i];
+        onProgress?.(i + 1, session.entries.length);
+        
+        const success = await clearProvenanceFields(app, entry.file);
+        if (success) cleared++;
+    }
+    
+    return cleared;
+}
+

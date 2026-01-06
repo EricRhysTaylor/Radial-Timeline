@@ -1,0 +1,446 @@
+/*
+ * Radial Timeline (tm) Plugin for Obsidian
+ * Timeline Repair Wizard Styles
+ */
+
+/* ============================================================================
+ * Modal Shell
+ * ============================================================================ */
+
+.rt-timeline-repair-modal-shell {
+    /* Inherits from rt-modal-shell */
+}
+
+.rt-timeline-repair-modal {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+    padding: var(--size-4-4);
+    overflow-y: auto;
+}
+
+/* ============================================================================
+ * Configuration Phase
+ * ============================================================================ */
+
+.rt-timeline-repair-summary-row {
+    display: flex;
+    gap: var(--size-4-6);
+    justify-content: center;
+    padding: var(--size-4-2) 0;
+}
+
+.rt-timeline-repair-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--size-4-1);
+}
+
+.rt-timeline-repair-stat-value {
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-semibold);
+    color: var(--text-normal);
+}
+
+.rt-timeline-repair-stat-label {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.rt-timeline-repair-section-desc {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    margin-bottom: var(--size-4-3);
+}
+
+/* Anchor row */
+.rt-timeline-repair-anchor-row {
+    display: flex;
+    gap: var(--size-4-4);
+    flex-wrap: wrap;
+}
+
+.rt-timeline-repair-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+}
+
+.rt-timeline-repair-label {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.rt-timeline-repair-date-input,
+.rt-timeline-repair-time-input {
+    padding: var(--size-4-2) var(--size-4-3);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-family: var(--font-monospace);
+}
+
+/* Pattern pills */
+.rt-timeline-repair-pattern-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.rt-timeline-repair-pattern-pill {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+    padding: var(--size-4-3);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rt-timeline-repair-pattern-pill:hover {
+    border-color: var(--interactive-accent);
+    background: var(--background-secondary);
+}
+
+.rt-timeline-repair-pattern-pill.rt-is-active {
+    border-color: var(--interactive-accent);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.rt-timeline-repair-pattern-pill.rt-is-active .rt-timeline-repair-pattern-desc {
+    color: var(--text-on-accent);
+    opacity: 0.85;
+}
+
+.rt-timeline-repair-pattern-label {
+    font-weight: var(--font-semibold);
+}
+
+.rt-timeline-repair-pattern-desc {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+}
+
+/* Level toggles */
+.rt-timeline-repair-level-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--size-4-2) 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.rt-timeline-repair-level-row:last-child {
+    border-bottom: none;
+}
+
+.rt-timeline-repair-level-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+}
+
+.rt-timeline-repair-level-title {
+    font-weight: var(--font-medium);
+}
+
+.rt-timeline-repair-level-desc {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+}
+
+/* Scope row */
+.rt-timeline-repair-scope-row {
+    display: flex;
+    gap: var(--size-4-4);
+    flex-wrap: wrap;
+}
+
+/* ============================================================================
+ * Review Phase
+ * ============================================================================ */
+
+.rt-timeline-repair-summary-bar {
+    display: flex;
+    gap: var(--size-4-4);
+    padding: var(--size-4-2) var(--size-4-3);
+    background: var(--background-secondary);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-small);
+}
+
+.rt-timeline-repair-summary-stat {
+    color: var(--text-muted);
+}
+
+.rt-timeline-repair-summary-warning {
+    color: var(--text-warning);
+}
+
+.rt-timeline-repair-ripple-on {
+    color: var(--interactive-accent);
+    font-weight: var(--font-semibold);
+}
+
+/* Filter row */
+.rt-timeline-repair-filter-row {
+    display: flex;
+    gap: var(--size-4-2);
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.rt-timeline-repair-filter-pill {
+    padding: var(--size-4-1) var(--size-4-3);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    font-size: var(--font-ui-smaller);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rt-timeline-repair-filter-pill:hover {
+    border-color: var(--interactive-accent);
+}
+
+.rt-timeline-repair-filter-pill.rt-is-active {
+    border-color: var(--interactive-accent);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.rt-timeline-repair-ripple-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    margin-left: auto;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+}
+
+/* Scene list */
+.rt-timeline-repair-scene-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    max-height: 400px;
+    overflow-y: auto;
+    padding: var(--size-4-2) 0;
+}
+
+.rt-timeline-repair-empty {
+    padding: var(--size-4-6);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* Scene card */
+.rt-timeline-repair-scene-card {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+    padding: var(--size-4-3);
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    transition: all 0.15s ease;
+}
+
+.rt-timeline-repair-scene-card:hover {
+    background: var(--background-secondary-alt);
+}
+
+.rt-timeline-repair-scene-card:focus {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+
+.rt-timeline-repair-scene-card.rt-is-selected {
+    border-color: var(--interactive-accent);
+    background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-secondary));
+}
+
+.rt-timeline-repair-scene-card.rt-needs-review {
+    border-left: 3px solid var(--text-warning);
+}
+
+.rt-timeline-repair-scene-card.rt-has-backward-time {
+    border-left: 3px solid var(--text-error);
+}
+
+.rt-timeline-repair-checkbox {
+    flex-shrink: 0;
+}
+
+/* Scene info */
+.rt-timeline-repair-scene-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.rt-timeline-repair-scene-title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    flex-wrap: wrap;
+}
+
+.rt-timeline-repair-scene-number {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    font-family: var(--font-monospace);
+}
+
+.rt-timeline-repair-scene-title {
+    font-weight: var(--font-medium);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Source badge */
+.rt-timeline-repair-source-badge {
+    padding: 2px 6px;
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+    font-family: var(--font-monospace);
+}
+
+.rt-timeline-repair-source-badge.rt-source-pattern {
+    background: var(--background-modifier-border);
+    color: var(--text-muted);
+}
+
+.rt-timeline-repair-source-badge.rt-source-keyword {
+    background: color-mix(in srgb, var(--color-blue) 20%, transparent);
+    color: var(--color-blue);
+}
+
+.rt-timeline-repair-source-badge.rt-source-ai {
+    background: color-mix(in srgb, var(--color-purple) 20%, transparent);
+    color: var(--color-purple);
+}
+
+.rt-timeline-repair-source-badge.rt-source-manual {
+    background: color-mix(in srgb, var(--color-green) 20%, transparent);
+    color: var(--color-green);
+}
+
+/* Warning badges */
+.rt-timeline-repair-warning-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--text-error);
+}
+
+.rt-timeline-repair-gap-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--text-warning);
+}
+
+/* When column */
+.rt-timeline-repair-when-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--size-4-1);
+    min-width: 140px;
+}
+
+.rt-timeline-repair-when-date {
+    font-family: var(--font-monospace);
+    font-size: var(--font-ui-small);
+}
+
+.rt-timeline-repair-when-bucket {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Controls */
+.rt-timeline-repair-controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.rt-timeline-repair-day-controls {
+    display: flex;
+    gap: var(--size-4-1);
+}
+
+.rt-timeline-repair-nudge-btn {
+    padding: var(--size-4-1) var(--size-4-2);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: var(--font-ui-smaller);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rt-timeline-repair-nudge-btn:hover {
+    border-color: var(--interactive-accent);
+    background: var(--background-secondary);
+}
+
+.rt-timeline-repair-bucket-controls {
+    display: flex;
+    gap: var(--size-4-1);
+}
+
+.rt-timeline-repair-bucket-pill {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background: var(--background-primary);
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rt-timeline-repair-bucket-pill:hover {
+    border-color: var(--interactive-accent);
+    color: var(--text-normal);
+}
+
+.rt-timeline-repair-bucket-pill.rt-is-active {
+    border-color: var(--interactive-accent);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+/* Button spacer */
+.rt-timeline-repair-button-spacer {
+    flex: 1;
+}
+
+/* Confirm dialog */
+.rt-timeline-repair-confirm-warning {
+    margin-top: var(--size-4-2);
+    color: var(--text-warning);
+    font-size: var(--font-ui-small);
+}
+

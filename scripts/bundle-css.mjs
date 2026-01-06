@@ -29,7 +29,8 @@ const files = [
     'pulse.css',
     'book-designer.css',
     'settings.css',
-    'drag.css'
+    'drag.css',
+    'timeline-repair.css'
 ];
 
 async function bundle() {

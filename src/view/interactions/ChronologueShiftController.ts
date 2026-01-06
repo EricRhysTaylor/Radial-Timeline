@@ -9,17 +9,12 @@ import type { TimelineItem } from '../../types';
 import type { PlanetaryProfile, RuntimeContentType } from '../../types/settings';
 import { getActivePlanetaryProfile, validatePlanetaryProfile, convertFromEarth, formatElapsedTimePlanetary, formatPlanetaryDateAdaptive } from '../../utils/planetaryTime';
 import { parseWhenField, formatElapsedTime } from '../../utils/date';
-import { renderElapsedTimeArc } from '../../renderer/components/ChronologueTimeline';
 import { parseRuntimeField, formatRuntimeValue } from '../../utils/runtimeEstimator';
 import {
     ELAPSED_ARC_RADIUS,
     ELAPSED_TICK_LENGTH,
     SHIFT_BUTTON_POS_X,
-    SHIFT_BUTTON_POS_Y,
-    RUNTIME_SLIDER_POS_X,
-    RUNTIME_SLIDER_POS_Y,
-    RUNTIME_SLIDER_WIDTH,
-    RUNTIME_SLIDER_HEIGHT
+    SHIFT_BUTTON_POS_Y
 } from '../../renderer/layout/LayoutConstants';
 
 // Scaling applied on click/activation
@@ -67,15 +62,6 @@ export function isRuntimeModeActive(): boolean {
     return globalRuntimeModeActive;
 }
 
-// Store runtime cap percent globally for renderer access
-let globalRuntimeCapPercent: number = 100;
-export function getRuntimeCapPercent(): number {
-    return globalRuntimeCapPercent;
-}
-export function setRuntimeCapPercent(percent: number): void {
-    globalRuntimeCapPercent = percent;
-}
-
 /**
  * Reset the global shift/alien/runtime mode state
  * Called when exiting Chronologue mode to ensure clean state
@@ -84,7 +70,6 @@ export function resetShiftModeState(): void {
     globalShiftModeActive = false;
     globalAlienModeActive = false;
     globalRuntimeModeActive = false;
-    globalRuntimeCapPercent = 100;
 }
 
 /**
@@ -209,9 +194,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
 
     let altButton: SVGGElement | null = null;
     let rtButton: SVGGElement | null = null;
-    let runtimeCapSlider: SVGGElement | null = null;
-    // Use saved default from settings, fallback to 100%
-    let currentRuntimeCapPercent = view.plugin.settings.runtimeCapDefaultPercent ?? 100;
 
     // Check if Planetary Time is enabled and active profile is valid
     const activeProfile = getActivePlanetaryProfile(view.plugin.settings);
@@ -245,45 +227,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         svg.appendChild(rtButton);
     }
 
-    // Calculate max runtime from all scenes for slider labels
-    const calculateMaxRuntime = (): number => {
-        const allScenes = (view as any).sceneData || (view as any).scenes || [];
-        let maxRuntime = 0;
-        allScenes.forEach((scene: TimelineItem) => {
-            if (scene.itemType === 'Scene' || scene.itemType === 'Backdrop') {
-                const runtime = parseRuntimeField(scene.Runtime);
-                if (runtime !== null && runtime > maxRuntime) {
-                    maxRuntime = runtime;
-                }
-            }
-        });
-        return maxRuntime;
-    };
-
-    // Create and show/hide runtime cap slider
-    const showRuntimeCapSlider = () => {
-        if (runtimeCapSlider) return; // Already showing
-        
-        const maxRuntime = calculateMaxRuntime();
-        runtimeCapSlider = createRuntimeCapSlider(maxRuntime, currentRuntimeCapPercent, (newPercent) => {
-            currentRuntimeCapPercent = newPercent;
-            // Store globally for renderer to access
-            setRuntimeCapPercent(newPercent);
-            // Refresh timeline to apply new cap
-            if (view.plugin.refreshTimelineIfNeeded) {
-                view.plugin.refreshTimelineIfNeeded(null);
-            }
-        });
-        svg.appendChild(runtimeCapSlider);
-    };
-
-    const hideRuntimeCapSlider = () => {
-        if (runtimeCapSlider && runtimeCapSlider.parentNode) {
-            runtimeCapSlider.parentNode.removeChild(runtimeCapSlider);
-            runtimeCapSlider = null;
-        }
-    };
-
     const deactivateRuntimeMode = () => {
         if (!runtimeModeActive || !rtButton) return;
         runtimeModeActive = false;
@@ -299,7 +242,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         removeSceneHighlights(svg);
         removeShiftModeFromAllScenes(svg);
         svg.classList.remove('rt-global-fade');
-        hideRuntimeCapSlider();
         updateDateLabelsForRuntimeMode(false);
         
         svg.removeAttribute('data-shift-mode');
@@ -687,8 +629,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         if (runtimeModeActive) {
             // Turn OFF Runtime Mode - use the unified deactivate function
             deactivateRuntimeMode();
-            // Reset global runtime cap to default
-            setRuntimeCapPercent(100);
         } else {
             // Turn ON Runtime Mode
             // First deactivate any other modes
@@ -714,7 +654,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             updateRtButtonState(rtButton, true);
             svg.setAttribute('data-shift-mode', 'runtime');
             updateDateLabelsForRuntimeMode(true);
-            showRuntimeCapSlider();
             // Trigger timeline refresh to switch to Runtime arcs
             if (view.plugin.refreshTimelineIfNeeded) {
                 view.plugin.refreshTimelineIfNeeded(null);
@@ -862,9 +801,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         }
         if (rtButton && rtButton.parentNode) {
             rtButton.parentNode.removeChild(rtButton);
-        }
-        if (runtimeCapSlider && runtimeCapSlider.parentNode) {
-            runtimeCapSlider.parentNode.removeChild(runtimeCapSlider);
         }
     };
 
@@ -1054,7 +990,6 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         updateRtButtonState(rtButton, true);
         svg.setAttribute('data-shift-mode', 'runtime');
         updateDateLabelsForRuntimeMode(true);
-        showRuntimeCapSlider();
     } else if (globalAlienModeActive && altButton) {
         alienModeActive = true;
         shiftModeActive = true; // Alien requires shift to be active
@@ -1370,159 +1305,6 @@ function updateRtButtonState(button: SVGGElement, active: boolean): void {
 }
 
 /**
- * Create the runtime cap slider component
- * 5-division slider showing time values at 0%, 25%, 50%, 75%, 100% of max runtime
- * @param maxRuntimeSeconds - Maximum runtime in seconds from all scenes
- * @param initialPercent - Initial slider position (0-100)
- * @param onCapChange - Callback when cap percentage changes
- */
-function createRuntimeCapSlider(
-    maxRuntimeSeconds: number,
-    initialPercent: number,
-    onCapChange: (percent: number) => void
-): SVGGElement {
-    const slider = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    slider.setAttribute('class', 'rt-runtime-cap-slider');
-    slider.setAttribute('transform', `translate(${RUNTIME_SLIDER_POS_X}, ${RUNTIME_SLIDER_POS_Y})`);
-
-    const TRACK_WIDTH = RUNTIME_SLIDER_WIDTH;
-    const TRACK_HEIGHT = 4;
-    const HANDLE_RADIUS = 8;
-    const TICK_HEIGHT = 10;
-    const LABEL_Y_OFFSET = 22;
-    const NUM_DIVISIONS = 5;
-    const DIVISION_SPACING = TRACK_WIDTH / (NUM_DIVISIONS - 1);
-
-    // Background track
-    const track = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    track.setAttribute('x', '0');
-    track.setAttribute('y', String(-TRACK_HEIGHT / 2));
-    track.setAttribute('width', String(TRACK_WIDTH));
-    track.setAttribute('height', String(TRACK_HEIGHT));
-    track.setAttribute('rx', '1.5');
-    track.setAttribute('class', 'rt-runtime-cap-track');
-    slider.appendChild(track);
-
-    // Division ticks and labels
-    const percentValues = [0, 25, 50, 75, 100];
-    percentValues.forEach((percent, i) => {
-        const x = i * DIVISION_SPACING;
-        
-        // Tick mark
-        const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        tick.setAttribute('x1', String(x));
-        tick.setAttribute('y1', String(-TICK_HEIGHT / 2));
-        tick.setAttribute('x2', String(x));
-        tick.setAttribute('y2', String(TICK_HEIGHT / 2));
-        tick.setAttribute('class', 'rt-runtime-cap-tick');
-        slider.appendChild(tick);
-
-        // Calculate time value for this percentage
-        // 0% shows minimum stub (we'll label it as "min")
-        // 100% shows max runtime
-        let labelText: string;
-        if (percent === 0) {
-            labelText = 'min';
-        } else {
-            const seconds = Math.round((percent / 100) * maxRuntimeSeconds);
-            labelText = formatRuntimeValue(seconds);
-        }
-
-        // Label
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('x', String(x));
-        label.setAttribute('y', String(LABEL_Y_OFFSET));
-        label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('class', 'rt-runtime-cap-label');
-        label.textContent = labelText;
-        slider.appendChild(label);
-    });
-
-    // Draggable handle
-    const handleX = (initialPercent / 100) * TRACK_WIDTH;
-    const handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    handle.setAttribute('cx', String(handleX));
-    handle.setAttribute('cy', '0');
-    handle.setAttribute('r', String(HANDLE_RADIUS));
-    handle.setAttribute('class', 'rt-runtime-cap-handle');
-    slider.appendChild(handle);
-
-    // Make handle draggable
-    let isDragging = false;
-    let sliderRect: DOMRect | null = null;
-
-    const updateHandlePosition = (clientX: number) => {
-        if (!sliderRect) return;
-        
-        // Calculate position relative to slider
-        const svgElement = slider.ownerSVGElement;
-        if (!svgElement) return;
-        
-        const point = svgElement.createSVGPoint();
-        point.x = clientX;
-        point.y = 0;
-        
-        const ctm = slider.getScreenCTM();
-        if (!ctm) return;
-        
-        const localPoint = point.matrixTransform(ctm.inverse());
-        
-        // Clamp to track bounds
-        const clampedX = Math.max(0, Math.min(TRACK_WIDTH, localPoint.x));
-        handle.setAttribute('cx', String(clampedX));
-        
-        // Snap to nearest division
-        const divisionIndex = Math.round(clampedX / DIVISION_SPACING);
-        const snappedX = divisionIndex * DIVISION_SPACING;
-        const snappedPercent = percentValues[divisionIndex];
-        
-        // Update handle to snapped position
-        handle.setAttribute('cx', String(snappedX));
-        
-        // Notify callback
-        onCapChange(snappedPercent);
-    };
-
-    const onPointerDown = (e: PointerEvent) => {
-        isDragging = true;
-        sliderRect = slider.getBoundingClientRect();
-        handle.classList.add('rt-runtime-cap-handle-active');
-        (e.target as Element).setPointerCapture(e.pointerId);
-        updateHandlePosition(e.clientX);
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-        if (!isDragging) return;
-        updateHandlePosition(e.clientX);
-    };
-
-    const onPointerUp = (e: PointerEvent) => {
-        if (!isDragging) return;
-        isDragging = false;
-        handle.classList.remove('rt-runtime-cap-handle-active');
-        (e.target as Element).releasePointerCapture(e.pointerId);
-    };
-
-    handle.addEventListener('pointerdown', onPointerDown); // SAFE: SVG element; registerDomEvent not available in this helper scope
-    handle.addEventListener('pointermove', onPointerMove); // SAFE: SVG element; registerDomEvent not available in this helper scope
-    handle.addEventListener('pointerup', onPointerUp); // SAFE: SVG element; registerDomEvent not available in this helper scope
-    handle.addEventListener('pointercancel', onPointerUp); // SAFE: SVG element; registerDomEvent not available in this helper scope
-
-    // Also allow clicking on track to move handle
-    track.addEventListener('pointerdown', (e: PointerEvent) => { // SAFE: SVG element; registerDomEvent not available in this helper scope
-        sliderRect = slider.getBoundingClientRect();
-        updateHandlePosition(e.clientX);
-    });
-
-    // Add tooltip
-    slider.classList.add('rt-tooltip-target');
-    slider.setAttribute('data-tooltip', 'Adjust runtime arc cap (drag or click)');
-    slider.setAttribute('data-tooltip-placement', 'bottom');
-
-    return slider;
-}
-
-/**
  * Toggle number square and its text for a given sceneId
  * sceneId corresponds to the id of the scene path (e.g. "scene-path-0-2-5")
  */
@@ -1725,30 +1507,30 @@ function showElapsedTime(
         const startAngleScene1 = geometry1.startAngle;
         const startAngleScene2 = geometry2.startAngle;
 
+        // ═══════════════════════════════════════════════════════════════════
+        // ARC DIRECTION: CHRONOLOGICAL ORDER (Early -> Late)
+        // ═══════════════════════════════════════════════════════════════════
+        // Always draw from the Chronologically Earlier scene to the Later scene
+        // in the clockwise direction. This ensures the arc covers the timeline
+        // content and never crosses the Start/End gap.
+        
         const firstSceneIsEarlier = date1.getTime() <= date2.getTime();
-        let arcStartAngle = firstSceneIsEarlier ? startAngleScene1 : startAngleScene2;
-        let arcEndAngle = firstSceneIsEarlier ? startAngleScene2 : startAngleScene1;
+        const arcStartAngle = firstSceneIsEarlier ? startAngleScene1 : startAngleScene2;
+        const arcEndAngle = firstSceneIsEarlier ? startAngleScene2 : startAngleScene1;
 
         // Calculate the clockwise sweep from start to end
-        let normalizedStart = arcStartAngle;
-        let normalizedEnd = arcEndAngle;
-        if (normalizedEnd < normalizedStart) {
-            normalizedEnd += 2 * Math.PI;
-        }
-        let sweep = normalizedEnd - normalizedStart;
+        let sweep = arcEndAngle - arcStartAngle;
         
-        // Always take the SHORTER arc between two scenes
-        // If clockwise sweep > π, swap endpoints so the clockwise path is now the short one
-        // Keep sweepFlag = 1 (clockwise) so the arc always bulges outward from center
-        if (sweep > Math.PI) {
-            // Swap angles - clockwise from new start to new end is now the shorter path
-            const temp = arcStartAngle;
-            arcStartAngle = arcEndAngle;
-            arcEndAngle = temp;
-            sweep = 2 * Math.PI - sweep;
+        // If sweep is negative (e.g. End is 10°, Start is 350°),
+        // it means we wrapped past 0/360. Add 2π to get the positive clockwise sweep.
+        if (sweep < 0) {
+            sweep += 2 * Math.PI;
         }
-        const sweepFlag = 1; // Always clockwise so arc curves outward
-        const largeArcFlag = 0; // Always small arc since we're taking the shorter path
+        
+        // sweepFlag = 1 means draw clockwise (arc curves outward from center)
+        // largeArcFlag = 1 if sweep > π (more than half the circle)
+        const sweepFlag = 1;
+        const largeArcFlag = sweep > Math.PI ? 1 : 0;
 
         const baseOuterRadius = Math.max(
             geometry1.outerRadius ?? defaultOuterRadius,
@@ -1828,36 +1610,6 @@ function showElapsedTime(
         return;
     }
 
-    // SAFE: renderElapsedTimeArc returns plugin-generated SVG path markup only (no user input)
-    const fallbackArc = renderElapsedTimeArc(scene1, scene2, defaultOuterRadius);
-    const arcGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    arcGroup.setAttribute('class', 'rt-elapsed-time-arc');
-    arcGroup.innerHTML = fallbackArc; // SAFE: innerHTML used for trusted plugin-generated SVG path only
-
-    const midpointTime = (date1.getTime() + date2.getTime()) / 2;
-    const earliestTime = Math.min(date1.getTime(), date2.getTime());
-    const latestTime = Math.max(date1.getTime(), date2.getTime());
-    const timeRange = latestTime - earliestTime;
-    const progress = timeRange > 0 ? (midpointTime - earliestTime) / timeRange : 0.5;
-    const midpointAngle = -Math.PI / 2 + (progress * 2 * Math.PI);
-    const labelRadius = defaultOuterRadius + 30;
-    const labelX = labelRadius * Math.cos(midpointAngle);
-    const labelY = labelRadius * Math.sin(midpointAngle);
-
-    const labelGroup = createElapsedTimeLabel(labelX, labelY, elapsedTimeText, midpointAngle);
-
-    const chronologueArcLayer = svg.querySelector<SVGGElement>('.rt-chronologue-timeline-arc');
-    if (chronologueArcLayer) {
-        chronologueArcLayer.appendChild(arcGroup);
-        chronologueArcLayer.appendChild(labelGroup);
-        const parent = chronologueArcLayer.parentElement;
-        if (parent) {
-            parent.appendChild(chronologueArcLayer);
-        }
-    } else {
-        svg.appendChild(arcGroup);
-        svg.appendChild(labelGroup);
-    }
 }
 
 function createElapsedTimeLabel(x: number, y: number, value: string, midpointAngle?: number): SVGGElement {

@@ -11,6 +11,7 @@ import { ManageSubplotsModal } from '../modals/ManageSubplotsModal';
 import { ManuscriptOptionsModal, ManuscriptModalResult } from '../modals/ManuscriptOptionsModal';
 import { PlanetaryTimeModal } from '../modals/PlanetaryTimeModal';
 import { BookDesignerModal } from '../modals/BookDesignerModal';
+import { TimelineRepairModal } from '../modals/TimelineRepairModal';
 import { generateSceneContent } from '../utils/sceneGenerator';
 import { sanitizeSourcePath, buildInitialSceneFilename } from '../utils/sceneCreation';
 import { DEFAULT_SETTINGS } from '../settings/defaults';
@@ -82,6 +83,14 @@ export class CommandRegistrar {
             name: 'Book designer',
             callback: () => {
                 new BookDesignerModal(this.app, this.plugin).open();
+            }
+        });
+
+        this.plugin.addCommand({
+            id: 'timeline-repair-wizard',
+            name: 'Timeline repair wizard',
+            callback: () => {
+                new TimelineRepairModal(this.app, this.plugin).open();
             }
         });
 

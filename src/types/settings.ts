@@ -162,7 +162,6 @@ export interface RadialTimelineSettings {
     runtimeLongPauseSeconds?: number;
     runtimeMomentSeconds?: number;
     runtimeSilenceSeconds?: number;
-    runtimeCapDefaultPercent?: number; // Default cap for runtime arcs (0, 25, 50, 75, 100)
 
     // LLM Timing Calibration (for progress bar animation)
     pulseTimingStats?: LlmTimingStats;
