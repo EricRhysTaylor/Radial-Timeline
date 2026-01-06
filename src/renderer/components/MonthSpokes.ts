@@ -91,10 +91,12 @@ export function renderMonthSpokesAndInnerLabels(params: {
       : months[monthIndex].shortName;
 
     // Build tooltip showing scene names if there are completions
-    let tooltipAttr = '';
+    let tooltipClass = '';
+    let tooltipDataAttrs = '';
     if (completedCount > 0 && sceneNames.length > 0) {
       const tooltipText = `Completed in ${months[monthIndex].name}: ${sceneNames.join(', ')}`.replace(/"/g, '&quot;');
-      tooltipAttr = ` class="rt-tooltip-target" data-tooltip="${tooltipText}" data-tooltip-placement="bottom"`;
+      tooltipClass = ' rt-tooltip-target';
+      tooltipDataAttrs = ` data-tooltip="${tooltipText}" data-tooltip-placement="bottom"`;
     }
 
     svg += `
@@ -105,7 +107,7 @@ export function renderMonthSpokesAndInnerLabels(params: {
         "
         fill="none"
       />
-      <text class="rt-month-label"${tooltipAttr} ${isPastMonth ? 'opacity="0.5"' : ''}>
+      <text class="rt-month-label${tooltipClass}"${tooltipDataAttrs} ${isPastMonth ? 'opacity="0.5"' : ''}>
         <textPath href="#${innerPathId}" startOffset="0" text-anchor="start">
           ${labelText}
         </textPath>
