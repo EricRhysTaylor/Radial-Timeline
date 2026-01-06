@@ -220,7 +220,7 @@ export function renderOuterLabelTexts({
     let labelsSvg = '';
     let boundaryLabelsHtml = '';
 
-    outerLabels.forEach(({ shortName, isFirst, isLast, earthDate }, index) => {
+    outerLabels.forEach(({ shortName, isFirst, isLast, earthDate, sceneIndex }, index) => {
         const pathId = `monthLabelPath-${index}`;
 
         // Only apply past month dimming in non-chronologue modes
@@ -243,9 +243,11 @@ export function renderOuterLabelTexts({
 
         // Add data-earth-date so alien (planetary) mode can swap labels
         const earthDateAttr = earthDate ? ` data-earth-date="${earthDate}"` : '';
+        // Add data-scene-index so runtime mode can associate labels with scene runtimes
+        const sceneIndexAttr = sceneIndex !== undefined ? ` data-scene-index="${sceneIndex}"` : '';
 
         const labelHtml = `
-            <text class="${labelClass}"${earthDateAttr} ${isPastMonth ? 'opacity="0.5"' : ''}>
+            <text class="${labelClass}"${earthDateAttr}${sceneIndexAttr} ${isPastMonth ? 'opacity="0.5"' : ''}>
                 <textPath href="#${pathId}" startOffset="0" text-anchor="start">
                     ${labelContent}
                 </textPath>

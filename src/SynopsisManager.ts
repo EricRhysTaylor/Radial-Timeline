@@ -31,6 +31,9 @@ import { getIcon } from 'obsidian';
 export default class SynopsisManager {
   private plugin: RadialTimelinePlugin;
 
+  /** Vertical offset for planetary time dashed border rect (higher = further up) */
+  private static readonly PLANETARY_RECT_Y_OFFSET = 16;
+
   constructor(plugin: RadialTimelinePlugin) {
     this.plugin = plugin;
   }
@@ -376,14 +379,14 @@ export default class SynopsisManager {
       // Compute approximate size immediately (getBBox fails when hidden)
       const charWidth = 7.5;
       const estWidth = text.length * charWidth + indentX;
-      const estHeight = 14;
+      const estHeight = 15;
       const padX = 6;
       const padY = 2;
-      const yOffset = -1; // Aligned with positionRowColumns update (-14 offset)
 
       // Border starts at x=0 like other text lines (parent group handles positioning)
+      // Note: y position is overridden by positionRowColumns using PLANETARY_RECT_Y_OFFSET
       rect.setAttribute('x', '0');
-      rect.setAttribute('y', String(y - estHeight + padY + yOffset));
+      rect.setAttribute('y', String(y - SynopsisManager.PLANETARY_RECT_Y_OFFSET));
       rect.setAttribute('width', String(estWidth + padX));
       rect.setAttribute('height', String(estHeight + padY * 2));
       rect.setAttribute('rx', '6');
@@ -1138,7 +1141,7 @@ export default class SynopsisManager {
           } catch (e) { /* ignore */ }
 
           prev.setAttribute('x', String(targetX - currentWidth));
-          prev.setAttribute('y', String(yPosition - 14));
+          prev.setAttribute('y', String(yPosition - SynopsisManager.PLANETARY_RECT_Y_OFFSET));
           textEl.setAttribute('dx', '-6');
         }
 
@@ -1168,7 +1171,7 @@ export default class SynopsisManager {
           } catch (e) { /* ignore */ }
 
           prev.setAttribute('x', String(x));
-          prev.setAttribute('y', String(yPosition - 14));
+          prev.setAttribute('y', String(yPosition - SynopsisManager.PLANETARY_RECT_Y_OFFSET));
           textEl.setAttribute('dx', '6');
         }
 

@@ -630,7 +630,13 @@
   fill: rgba(180, 60, 60, 0.5);
 }
 
-/* Boundary date labels (start/end dates at top) unchanged in alien mode - no override needed */
+/* Boundary date labels (start/end dates at top) bright red in alien mode for readability */
+.radial-timeline-svg[data-shift-mode="alien"] .rt-month-label-outer.rt-date-boundary {
+  fill: rgba(255, 40, 40, 1);
+  stroke: #000000;
+  stroke-width: 0.5px;
+  paint-order: stroke fill;
+}
 
 .radial-timeline-svg[data-shift-mode="alien"] .rt-chronological-tick-major,
 .radial-timeline-svg[data-shift-mode="alien"] .rt-chronological-tick-minor {
@@ -888,9 +894,24 @@
 }
 
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-month-label,
-.radial-timeline-svg[data-shift-mode="runtime"] .rt-month-label-outer:not(.rt-date-boundary),
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-act-label {
   fill: rgba(60, 120, 180, 0.5);
+}
+
+/* Outer ring labels show cumulative runtime values - bright blue for readability */
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-month-label-outer {
+  fill: rgba(80, 180, 255, 1);
+  stroke: #000000;
+  stroke-width: 0.5px;
+  paint-order: stroke fill;
+}
+
+/* Boundary labels (00:00 and total runtime) extra bright */
+.radial-timeline-svg[data-shift-mode="runtime"] .rt-month-label-outer.rt-date-boundary {
+  fill: rgba(100, 200, 255, 1);
+  stroke: #000000;
+  stroke-width: 0.5px;
+  paint-order: stroke fill;
 }
 
 .radial-timeline-svg[data-shift-mode="runtime"] .rt-chronological-tick-major,

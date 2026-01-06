@@ -528,22 +528,50 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
         });
     };
 
-    // Update date labels for Runtime mode (00:00 to total runtime in mm:ss)
+    // Update date labels for Runtime mode (shows cumulative runtime at each scene position)
     const updateDateLabelsForRuntimeMode = (enableRuntime: boolean) => {
         const dateLabels = svg.querySelectorAll('.rt-month-label-outer');
-        const allScenes = (view as any).sceneData || (view as any).scenes || [];
+        const allScenes: TimelineItem[] = (view as any).sceneData || (view as any).scenes || [];
         
-        // Calculate total runtime from all scenes
+        // Build chronologically sorted scene list (matching buildChronologueOuterLabels)
+        // and calculate cumulative runtime at each scene index
+        const cumulativeRuntimeByIndex = new Map<number, number>();
         let totalRuntimeSeconds = 0;
+        
         if (enableRuntime && allScenes.length > 0) {
-            allScenes.forEach((scene: TimelineItem) => {
-                if (scene.itemType === 'Scene' || scene.itemType === 'Backdrop') {
-                    const runtime = parseRuntimeField(scene.Runtime);
-                    if (runtime !== null && runtime > 0) {
-                        totalRuntimeSeconds += runtime;
+            // Filter to scenes only (exclude beats and backdrops) and deduplicate
+            const seenPaths = new Set<string>();
+            const scenesOnly: TimelineItem[] = [];
+            allScenes.forEach(s => {
+                if (s.itemType === 'Scene') {
+                    const key = s.path || `${s.title || ''}::${String(s.when || '')}`;
+                    if (!seenPaths.has(key)) {
+                        seenPaths.add(key);
+                        scenesOnly.push(s);
                     }
                 }
             });
+            
+            // Sort chronologically by When date (same as buildChronologueOuterLabels)
+            const sortedScenes = scenesOnly.slice().sort((a, b) => {
+                const aWhen = a.when instanceof Date ? a.when : null;
+                const bWhen = b.when instanceof Date ? b.when : null;
+                if (aWhen && bWhen) return aWhen.getTime() - bWhen.getTime();
+                if (!aWhen && bWhen) return -1;
+                if (aWhen && !bWhen) return 1;
+                return 0;
+            });
+            
+            // Calculate cumulative runtime at end of each scene
+            let cumulativeRuntime = 0;
+            sortedScenes.forEach((scene, idx) => {
+                const runtime = parseRuntimeField(scene.Runtime);
+                if (runtime !== null && runtime > 0) {
+                    cumulativeRuntime += runtime;
+                }
+                cumulativeRuntimeByIndex.set(idx, cumulativeRuntime);
+            });
+            totalRuntimeSeconds = cumulativeRuntime;
         }
         
         const totalRuntimeLabel = formatRuntimeValue(totalRuntimeSeconds);
@@ -554,6 +582,8 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
             
             const isFirst = label.classList.contains('rt-date-first');
             const isLast = label.classList.contains('rt-date-last');
+            const sceneIndexAttr = label.getAttribute('data-scene-index');
+            const sceneIndex = sceneIndexAttr !== null ? parseInt(sceneIndexAttr, 10) : null;
             
             if (enableRuntime) {
                 // Store original label if not already stored
@@ -586,8 +616,18 @@ export function setupChronologueShiftController(view: ChronologueShiftView, svg:
                     tspan.setAttribute('dy', '0');
                     tspan.textContent = totalRuntimeLabel;
                     textPath.appendChild(tspan);
+                } else if (sceneIndex !== null && cumulativeRuntimeByIndex.has(sceneIndex)) {
+                    // Show cumulative runtime at this scene position
+                    const cumulativeRuntime = cumulativeRuntimeByIndex.get(sceneIndex)!;
+                    const runtimeLabel = formatRuntimeValue(cumulativeRuntime);
+                    while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
+                    const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                    tspan.setAttribute('x', '0');
+                    tspan.setAttribute('dy', '0');
+                    tspan.textContent = runtimeLabel;
+                    textPath.appendChild(tspan);
                 } else {
-                    // Hide regular tick labels in runtime mode (they're based on dates, not runtime)
+                    // No scene index - hide label (shouldn't happen normally)
                     textPath.setAttribute('data-runtime-hidden', 'true');
                     while (textPath.firstChild) textPath.removeChild(textPath.firstChild);
                 }

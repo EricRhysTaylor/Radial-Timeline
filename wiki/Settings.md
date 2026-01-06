@@ -45,6 +45,33 @@ Configure the time-based visualization of your story.
 > [!NOTE]
 > Read more about [[Chronologue-Mode]].
 
+<a name="runtime-estimation"></a>
+### Runtime estimation ✦ Pro
+Calculate screen time, audiobook duration, and manuscript length estimates.
+
+*   **Enable runtime estimation**: Activates runtime calculations for scenes and the Chronologue Runtime Mode.
+*   **Default runtime profile**: The profile used when no per-scene override is set.
+*   **Edit profile**: Manage multiple profiles with different settings for various project types.
+*   **Profile label**: Display name shown in pickers and the runtime modal.
+*   **Content type**: Choose between Novel/Audiobook (unified narration pace) or Screenplay (separate dialogue/action pacing).
+
+**Screenplay mode settings:**
+*   **Dialogue words per minute**: Reading speed for quoted dialogue (default 160).
+*   **Action words per minute**: Reading speed for scene descriptions (default 100).
+*   **Parenthetical timings**: Seconds added for screenplay directives—(beat), (pause), (long pause), (a moment), (silence).
+
+**Novel/Audiobook mode settings:**
+*   **Narration words per minute**: Reading pace for all content (default 150).
+
+**Session planning (optional):**
+*   **Drafting words per minute**: Your writing speed for completion projections.
+*   **Daily minutes available**: For "45 min/day" style time estimates.
+
+*   **Runtime arc cap default**: Controls Chronologue Runtime Mode arc scaling. Lower values emphasize shorter scenes.
+
+> [!NOTE]
+> See [[Signature]] for full Pro feature documentation and [[Chronologue-Mode#runtime-mode-pro]] for the Runtime Mode visualization.
+
 <a name="acts"></a>
 ### Acts
 Configure the high-level structure of your narrative ring.
@@ -90,8 +117,18 @@ Configure custom calendars for sci-fi and fantasy worlds.
 Configure the AI assistant for narrative analysis.
 *   **Enable AI LLM features**: Toggles AI commands and visual indicators.
 *   **AI prompt role & context template**: Customize the system prompt and context sent to the AI.
-*   **Model**: Select your preferred LLM (Anthropic Claude, Google Gemini, OpenAI GPT, or Local/Ollama).
-*   **API logging**: When enabled, saves detailed JSON logs of every AI request and response to the AI output folder.
+*   **Show previous and next scene analysis**: When enabled, scene hover metadata includes the AI pulse for neighboring scenes. Disable for a more compact view.
+*   **Model**: Select your preferred LLM (Anthropic Claude, Google Gemini, OpenAI GPT, or Local/Ollama). Models marked "Latest" auto-update to the newest version.
+*   **API keys**: Enter your API key for the selected provider (Anthropic, Gemini, or OpenAI).
+
+**Local LLM settings** (visible when Local/Ollama is selected):
+*   **Local LLM Base URL**: The API endpoint. For Ollama, use `http://localhost:11434/v1`. For LM Studio, use `http://localhost:1234/v1`.
+*   **Model ID**: The exact model name your server expects (e.g., "llama3", "mistral-7b").
+*   **Custom Instructions**: Additional instructions added to the start of the prompt for fine-tuning local model behavior.
+*   **Bypass scene hover metadata yaml writes**: When enabled, local LLM analysis skips writing to the scene note and saves results in the RAW AI log instead. Recommended for local models.
+*   **API Key (Optional)**: Required by some servers; usually ignored for local tools like Ollama.
+
+*   **Log AI interactions to file**: When enabled, saves detailed JSON logs of every AI request and response to the AI output folder.
 
 > [!NOTE]
 > Learn how to interpret the analysis in [[AI-Analysis]].
@@ -102,6 +139,7 @@ Technical configuration and file handling.
 *   **AI output folder**: The folder where AI logs, manuscripts, and analysis files are saved. Default is `AI`.
 *   **Auto-expand clipped scene titles**: Automatically expands truncated text in the radial view on hover.
 *   **Timeline readability scale**: Adjusts the global font size of the timeline (Normal or Large).
+*   **Show backdrop ring**: Display the backdrop ring in Chronologue mode. When disabled, the ring space is reclaimed for subplot rings.
 *   **Metadata refresh debounce**: Technical setting to adjust how often the timeline refreshes while typing (default 1000ms).
 *   **Reset subplot color precedence**: Clears manually assigned dominant subplot colors.
 
@@ -109,6 +147,26 @@ Technical configuration and file handling.
 ### Visual customization
 *   **Publishing stage colors**: Customize the colors used for the publishing stages (Zero Draft, Author's Draft, House Edit, Press Ready).
 *   **Subplot ring colors**: Customize the 16-color palette used for subplots.
+
+<a name="professional"></a>
+### Pro · Signature ✦
+Professional tools for serious writers.
+
+The Signature tier unlocks advanced capabilities for professional workflows. During the Open Beta, all Pro features are available free to early adopters.
+
+**Pro features include:**
+*   **Runtime Estimation** — Screen time, audiobook duration, and manuscript length analysis with custom profiles
+*   **Pro Exports** — Manuscript generation via Pandoc for screenplay, podcast, and novel formats
+*   **Chronologue Runtime Mode** — Blue wireframe sub-mode showing scene runtime duration arcs
+
+**Export & Pandoc settings:**
+*   **Pandoc binary path**: Optional custom path to your pandoc executable. If blank, system PATH is used.
+*   **Enable fallback Pandoc**: Attempt a secondary bundled/portable pandoc if the primary is missing.
+*   **Fallback Pandoc path**: Path to a portable/bundled pandoc binary.
+*   **Pandoc templates**: Custom LaTeX templates for Screenplay, Podcast Script, and Novel Manuscript formats.
+
+> [!NOTE]
+> See [[Signature]] for full Pro feature documentation.
 
 ---
 

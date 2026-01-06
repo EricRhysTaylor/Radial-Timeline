@@ -63,6 +63,31 @@ Some authors choose to organize scenes in manuscript/narrative order, but Chrono
   <div style="font-size: 0.85em; margin-top: 8px; color: #666;">Alt planetary wireframe overlay</div>
 </div>
 
+<a name="runtime-mode-pro"></a>
+### Runtime Mode ✦ Pro
+
+Runtime Mode is a specialized sub-mode that replaces elapsed story time with **runtime duration arcs**—showing how long each scene takes to read or perform rather than how much story time passes.
+
+- Toggle with the **RT** button in Chronologue mode (requires Runtime Estimation enabled in Settings → Pro)
+- Blue wireframe overlay distinguishes it from Shift mode (gray) and Alt mode (red)
+- Duration arcs scale to show relative scene runtime—longer scenes have larger arcs
+- Use the **runtime cap slider** to adjust maximum arc size, emphasizing shorter or longer scenes
+- Click scenes to compare their runtime visually
+
+**Use cases:**
+- **Screenplay pacing** — Verify act timing and scene balance for screen time
+- **Audiobook planning** — Estimate chapter and scene durations for narration
+- **Podcast structure** — Plan episode segments with time awareness
+
+**How to use:**
+1. Enable Runtime Estimation in **Settings → Pro**
+2. Configure a runtime profile matching your content type (Novel or Screenplay)
+3. Switch to Chronologue mode (keyboard **3**)
+4. Click the **RT** button to enter Runtime Mode
+5. Adjust the cap slider to tune the visualization
+
+> [!NOTE]
+> Runtime estimates appear in scene hover tooltips when Runtime Estimation is enabled. See [[Settings#runtime-estimation]] for configuration and [[Signature]] for full Pro documentation.
 
 ---
 

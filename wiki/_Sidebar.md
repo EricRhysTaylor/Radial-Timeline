@@ -11,6 +11,7 @@
 *   **Features & Tools**
     *   [[AI Analysis]]
     *   [[Book Designer]]
+    *   [[Signature]]
 *   **Reference**
     *   [[Advanced YAML]]
     *   [[Commands]]
