@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Component, Setting as Settings, setIcon, TextComponent } from 'obsidian';
+import { App, PluginSettingTab, Component, Setting as Settings, setIcon, TextComponent, normalizePath } from 'obsidian';
 import { renderGeneralSection } from './sections/GeneralSection';
 import { renderPublicationSection } from './sections/PublicationSection';
 import { renderChronologueSection } from './sections/ChronologueSection';
@@ -174,7 +174,7 @@ export class RadialTimelineSettingsTab extends PluginSettingTab {
                 textInput.setValue(path);
                 const ok = await this.plugin.validateAndRememberPath(path);
                 if (ok) {
-                    this.plugin.settings.sourcePath = path;
+                    this.plugin.settings.sourcePath = normalizePath(path);
                     await this.plugin.saveSettings();
                     container.classList.add('hidden');
                     textInput.inputEl.removeClass('rt-setting-input-error');

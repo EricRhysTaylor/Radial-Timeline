@@ -92,7 +92,14 @@ export class AuthorProgressService {
         if (mode === 'dynamic') {
             const path = settings.dynamicEmbedPath || 'AuthorProgress/progress.svg';
             await this.ensureFolder(path);
-            await this.app.vault.adapter.write(path, finalSvg);
+            
+            // Use Vault API: modify if exists, create if not
+            const existingFile = this.app.vault.getAbstractFileByPath(path);
+            if (existingFile) {
+                await this.app.vault.modify(existingFile as any, finalSvg);
+            } else {
+                await this.app.vault.create(path, finalSvg);
+            }
             
             // Update last published
             settings.lastPublishedDate = new Date().toISOString();
@@ -130,20 +137,22 @@ export class AuthorProgressService {
         const COOLDOWN = 5 * 60 * 1000; 
 
         if (diffMs > thresholdMs && diffMs > COOLDOWN) {
-            console.log('[Radial Timeline] Performing APR Auto-Update...');
             try {
                 await this.generateReport('dynamic');
                 new Notice('Author Progress Report updated automatically.');
-            } catch (e) {
-                console.error('Failed to auto-update APR:', e);
+            } catch {
+                // Silent failure for auto-update - user can manually trigger if needed
             }
         }
     }
 
     private async ensureFolder(filePath: string) {
         const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
-        if (folderPath && !(await this.app.vault.adapter.exists(folderPath))) {
-            await this.app.vault.createFolder(folderPath);
+        if (folderPath) {
+            const existing = this.app.vault.getAbstractFileByPath(folderPath);
+            if (!existing) {
+                await this.app.vault.createFolder(folderPath);
+            }
         }
     }
 }
